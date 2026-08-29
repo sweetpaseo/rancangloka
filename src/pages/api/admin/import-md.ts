@@ -79,7 +79,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       image_alt: frontmatter.image_alt || title,
       category_id: parseInt(frontmatter.category_id || '1', 10),
       author_id: parseInt(frontmatter.author_id || '1', 10),
-      status: 'published',
+      status: frontmatter.status || 'draft',
       reading_time_minutes: readingTime,
       focus_keyword: frontmatter.focus_keyword || '',
       content_hash: contentHash,
