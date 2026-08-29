@@ -37,6 +37,9 @@ export interface Category {
   slug: string;
   color_badge: string;
   description: string;
+  show_on_home?: number; // 1 = tampil di beranda, 0 = tidak
+  display_order?: number; // urutan kolom/section di beranda (1, 2, 3, ...)
+  layout_style?: 'bento' | 'grid3' | 'list'; // gaya tata letak section
 }
 
 export interface Author {
@@ -51,10 +54,10 @@ export interface Author {
 
 // In-Memory Fallback Demo Data for Local Testing & Initial State
 const MOCK_CATEGORIES: Category[] = [
-  { id: 1, name: 'Teknologi & AI', slug: 'teknologi', color_badge: '#2563eb', description: 'Perkembangan AI, Cloudflare, Web3, dan Gadget' },
-  { id: 2, name: 'Bisnis & Ekonomi', slug: 'bisnis', color_badge: '#059669', description: 'Pasar global, startup, strategi bisnis, dan investasi' },
-  { id: 3, name: 'Gaya Hidup Modern', slug: 'gaya-hidup', color_badge: '#d97706', description: 'Produktivitas, kesehatan digital, dan tren gaya hidup' },
-  { id: 4, name: 'Sains & Inovasi', slug: 'sains', color_badge: '#7c3aed', description: 'Penelitian ilmiah, masa depan ruang angkasa, dan bioteknologi' }
+  { id: 1, name: 'Teknologi & AI', slug: 'teknologi', color_badge: '#2563eb', description: 'Perkembangan AI, Cloudflare, Web3, dan Gadget', show_on_home: 1, display_order: 1, layout_style: 'bento' },
+  { id: 2, name: 'Bisnis & Ekonomi', slug: 'bisnis', color_badge: '#059669', description: 'Pasar global, startup, strategi bisnis, dan investasi', show_on_home: 1, display_order: 2, layout_style: 'grid3' },
+  { id: 3, name: 'Gaya Hidup Modern', slug: 'gaya-hidup', color_badge: '#d97706', description: 'Produktivitas, kesehatan digital, dan tren gaya hidup', show_on_home: 1, display_order: 3, layout_style: 'bento' },
+  { id: 4, name: 'Sains & Inovasi', slug: 'sains', color_badge: '#7c3aed', description: 'Penelitian ilmiah, masa depan ruang angkasa, dan bioteknologi', show_on_home: 0, display_order: 4, layout_style: 'grid3' }
 ];
 
 const MOCK_AUTHORS: Author[] = [
@@ -323,14 +326,17 @@ export async function insertCategory(db: any, cat: Partial<Category>): Promise<C
     name: cat.name || 'Kategori Baru',
     slug: cat.slug || `kategori-${newId}`,
     color_badge: cat.color_badge || '#2563eb',
-    description: cat.description || ''
+    description: cat.description || '',
+    show_on_home: cat.show_on_home !== undefined ? cat.show_on_home : 1,
+    display_order: cat.display_order || (MOCK_CATEGORIES.length + 1),
+    layout_style: cat.layout_style || 'bento'
   };
 
   if (db) {
     try {
       await db
-        .prepare('INSERT INTO categories (name, slug, color_badge, description) VALUES (?, ?, ?, ?)')
-        .bind(newCat.name, newCat.slug, newCat.color_badge, newCat.description)
+        .prepare('INSERT INTO categories (name, slug, color_badge, description, show_on_home, display_order, layout_style) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .bind(newCat.name, newCat.slug, newCat.color_badge, newCat.description, newCat.show_on_home, newCat.display_order, newCat.layout_style)
         .run();
     } catch (e) {
       console.warn('D1 Insert Category fallback:', e);
@@ -339,6 +345,27 @@ export async function insertCategory(db: any, cat: Partial<Category>): Promise<C
 
   MOCK_CATEGORIES.push(newCat);
   return newCat;
+}
+
+export async function updateCategoryLayout(db: any, updates: Array<{ id: number; show_on_home: number; display_order: number; layout_style: string }>): Promise<void> {
+  for (const item of updates) {
+    const found = MOCK_CATEGORIES.find(c => c.id === item.id);
+    if (found) {
+      found.show_on_home = item.show_on_home;
+      found.display_order = item.display_order;
+      found.layout_style = item.layout_style as any;
+    }
+    if (db) {
+      try {
+        await db
+          .prepare('UPDATE categories SET show_on_home = ?, display_order = ?, layout_style = ? WHERE id = ?')
+          .bind(item.show_on_home, item.display_order, item.layout_style, item.id)
+          .run();
+      } catch (e) {
+        console.warn('D1 Update Category Layout fallback:', e);
+      }
+    }
+  }
 }
 
 export async function deleteCategory(db: any, id: number): Promise<void> {

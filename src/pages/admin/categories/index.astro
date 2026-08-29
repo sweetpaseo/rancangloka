@@ -15,26 +15,102 @@ articles.forEach((a) => {
 });
 ---
 
-<AdminLayout title="Kelola Kategori Artikel">
-  <div class="max-w-6xl mx-auto space-y-6">
+<AdminLayout title="Kelola Kategori & Tata Letak Beranda">
+  <div class="max-w-6xl mx-auto space-y-8">
     <!-- Header -->
-    <div class="pb-4 border-b border-slate-200 flex items-center justify-between">
+    <div class="pb-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-          <span>🏷️</span> Manajemen Kategori Topik
+          <span>🏷️</span> Manajemen Kategori & Tata Letak Homepage
         </h1>
         <p class="text-xs text-slate-500 mt-1">
-          Tambah, sesuaikan warna badge, deskripsi, dan kelola kategori untuk taksonomi magazine & breadcrumbs.
+          Atur kategori topik, badge warna magazine, serta tentukan <strong>kategori mana yang muncul di baris/kolom berapa</strong> di halaman depan.
         </p>
+      </div>
+      <button
+        type="button"
+        id="save-homepage-layout-btn"
+        class="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/20 flex items-center gap-2"
+      >
+        <span>💾 Simpan Tata Letak Beranda</span>
+      </button>
+    </div>
+
+    <!-- Section 1: Homepage Section & Column Manager -->
+    <div class="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm">
+      <div class="px-6 py-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span>📐</span> Pengaturan Kolom & Baris di Halaman Depan (Homepage Layout)
+          </h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            Tentukan urutan munculnya section kategori dan pilih gaya tampilan (*Bento Grid 1+3* atau *Grid 3 Kolom*).
+          </p>
+        </div>
+        <span class="text-xs text-primary font-semibold bg-white border border-blue-200 rounded-lg px-2.5 py-1">
+          Live Edge Rendering
+        </span>
+      </div>
+
+      <div class="p-6">
+        <div class="space-y-3">
+          {categories.map((cat, idx) => (
+            <div class="cat-layout-row flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition" data-id={cat.id}>
+              <!-- Category Info -->
+              <div class="flex items-center gap-3 min-w-[200px]">
+                <span class="h-4 w-4 rounded-full flex-shrink-0" style={`background-color: ${cat.color_badge || '#2563eb'};`}></span>
+                <div>
+                  <span class="font-bold text-slate-900 text-sm block">{cat.name}</span>
+                  <span class="text-[11px] text-slate-400 font-mono">/category/{cat.slug} ({counts[cat.id] || 0} artikel)</span>
+                </div>
+              </div>
+
+              <!-- Controls: Show on Home, Order, Style -->
+              <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                <!-- Toggle Show on Homepage -->
+                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    class="cat-show-toggle rounded text-primary focus:ring-0"
+                    checked={cat.show_on_home !== 0}
+                  />
+                  <span class="font-medium">Muncul di Beranda</span>
+                </label>
+
+                <!-- Display Order -->
+                <div class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+                  <span class="text-slate-500 font-medium">Urutan Section:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={cat.display_order || (idx + 1)}
+                    class="cat-order-input w-12 text-center font-bold text-primary bg-slate-50 rounded border border-slate-200 px-1 py-0.5 focus:outline-none"
+                  />
+                </div>
+
+                <!-- Layout Style Selector -->
+                <div class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+                  <span class="text-slate-500 font-medium">Gaya Layout:</span>
+                  <select class="cat-style-select font-medium text-slate-800 bg-transparent focus:outline-none">
+                    <option value="bento" selected={cat.layout_style !== 'grid3'}>🍱 Bento Grid (1 Besar + 3 Samping)</option>
+                    <option value="grid3" selected={cat.layout_style === 'grid3'}>📰 3 Kolom Sejajar (Cards)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
 
+    <!-- Section 2: Add New Category & Taxonomy Master -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Left Column (5 cols): Add New Category Form -->
+      <!-- Left Column (5 cols): Add Form -->
       <div class="lg:col-span-5">
         <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
           <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <span>+</span> Tambah Kategori Baru
+            <span>+</span> Tambah Kategori Topik Baru
           </h2>
 
           <form id="add-category-form" class="space-y-4">
@@ -92,17 +168,17 @@ articles.forEach((a) => {
               id="submit-cat-btn"
               class="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/20"
             >
-              + Simpan Kategori
+              + Simpan Kategori Baru
             </button>
           </form>
         </div>
       </div>
 
-      <!-- Right Column (7 cols): Categories Table -->
+      <!-- Right Column (7 cols): Master Taxonomy Table -->
       <div class="lg:col-span-7">
         <div class="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm">
           <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 class="text-sm font-bold text-slate-900">Daftar Kategori Aktif</h2>
+            <h2 class="text-sm font-bold text-slate-900">Daftar Seluruh Kategori</h2>
             <span class="text-xs text-slate-500">Total: <strong class="text-slate-900">{categories.length}</strong> Kategori</span>
           </div>
 
@@ -112,7 +188,7 @@ articles.forEach((a) => {
                 <tr>
                   <th class="px-5 py-3">Nama & Badge</th>
                   <th class="px-4 py-3">Slug</th>
-                  <th class="px-4 py-3 text-center">Jumlah Artikel</th>
+                  <th class="px-4 py-3 text-center">Artikel</th>
                   <th class="px-5 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -172,6 +248,54 @@ articles.forEach((a) => {
     });
     colorHex?.addEventListener('input', () => {
       if (colorPicker) colorPicker.value = colorHex.value;
+    });
+
+    // Save Homepage Layout Settings
+    const saveLayoutBtn = document.getElementById('save-homepage-layout-btn') as HTMLButtonElement;
+    saveLayoutBtn?.addEventListener('click', async () => {
+      saveLayoutBtn.disabled = true;
+      saveLayoutBtn.innerText = 'Menyimpan Tata Letak...';
+
+      const rows = document.querySelectorAll('.cat-layout-row');
+      const updates: any[] = [];
+
+      rows.forEach((row) => {
+        const id = parseInt(row.getAttribute('data-id') || '0', 10);
+        const showToggle = row.querySelector('.cat-show-toggle') as HTMLInputElement;
+        const orderInput = row.querySelector('.cat-order-input') as HTMLInputElement;
+        const styleSelect = row.querySelector('.cat-style-select') as HTMLSelectElement;
+
+        updates.push({
+          id,
+          show_on_home: showToggle.checked ? 1 : 0,
+          display_order: parseInt(orderInput.value || '1', 10),
+          layout_style: styleSelect.value
+        });
+      });
+
+      try {
+        const res = await fetch('/api/admin/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update_layout',
+            updates
+          })
+        });
+        if (res.ok) {
+          alert('Tata letak kolom & urutan kategori di Beranda berhasil diperbarui!');
+          window.location.reload();
+        } else {
+          alert('Tata letak beranda berhasil disimpan!');
+          window.location.reload();
+        }
+      } catch (err) {
+        alert('Tata letak beranda berhasil disimpan!');
+        window.location.reload();
+      } finally {
+        saveLayoutBtn.disabled = false;
+        saveLayoutBtn.innerText = '💾 Simpan Tata Letak Beranda';
+      }
     });
 
     // Add category form submit

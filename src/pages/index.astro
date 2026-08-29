@@ -2,23 +2,24 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroMagazine from '../components/HeroMagazine.astro';
 import CategoryBentoGrid from '../components/CategoryBentoGrid.astro';
+import CategoryThreeColGrid from '../components/CategoryThreeColGrid.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 
 const db = await getDb(Astro.locals);
 const [articles, categories, siteSettings] = await Promise.all([
-  getAllArticles(db, 20, 0, 'published'),
+  getAllArticles(db, 30, 0, 'published'),
   getAllCategories(db),
   getSiteSettings(db)
 ]);
 
 const featuredArticle = articles.find((a) => a.is_featured === 1) || articles[0];
 const secondaryArticles = articles.filter((a) => a.id !== featuredArticle?.id).slice(0, 3);
-const remainingArticles = articles.filter((a) => a.id !== featuredArticle?.id && !secondaryArticles.some((sa) => sa.id === a.id));
+const heroIds = new Set([featuredArticle?.id, ...secondaryArticles.map(a => a.id)].filter(Boolean));
 
-// Group articles by category for Bento Grids
-const techArticles = articles.filter((a) => a.category_id === 1);
-const businessArticles = articles.filter((a) => a.category_id === 2);
-const lifestyleArticles = articles.filter((a) => a.category_id === 3);
+// Filter & sort categories configured to appear on homepage
+const homeCategories = categories
+  .filter((c) => c.show_on_home !== 0)
+  .sort((a, b) => (a.display_order || 99) - (b.display_order || 99));
 
 // JSON-LD Schema for Website
 const websiteSchema = {
@@ -40,32 +41,36 @@ const websiteSchema = {
   siteSettings={siteSettings}
   jsonLdSchema={websiteSchema}
 >
-  <!-- 1. Hero Magazine Section -->
+  <!-- 1. Hero Magazine Section (Top) -->
   {featuredArticle && (
     <HeroMagazine featuredArticle={featuredArticle} secondaryArticles={secondaryArticles} />
   )}
 
-  <!-- 2. Bento Grids per Category -->
-  {categories[0] && techArticles.length > 0 && (
-    <CategoryBentoGrid category={categories[0]} articles={techArticles} />
-  )}
+  <!-- 2. Dynamic Homepage Sections based on Admin Category Configuration -->
+  {homeCategories.map((category) => {
+    const categoryArticles = articles.filter((a) => a.category_id === category.id);
+    if (categoryArticles.length === 0) return null;
 
-  {categories[1] && businessArticles.length > 0 && (
-    <CategoryBentoGrid category={categories[1]} articles={businessArticles} />
-  )}
+    if (category.layout_style === 'grid3') {
+      return <CategoryThreeColGrid category={category} articles={categoryArticles} />;
+    }
 
-  <!-- 3. Latest Feed Section -->
-  {remainingArticles.length > 0 && (
+    // Default to Bento Grid (1 Big + 3 Side Articles)
+    return <CategoryBentoGrid category={category} articles={categoryArticles} />;
+  })}
+
+  <!-- 3. Latest Feed Section (Bottom) -->
+  {articles.length > 0 && (
     <section class="my-12">
       <div class="mb-6 flex items-center justify-between border-b-2 border-slate-100 pb-3 dark:border-slate-800">
         <h2 class="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
           <span class="h-6 w-2 rounded-full bg-accent"></span>
-          Kabar Terbaru Lainnya
+          Kabar Terhangat & Rangkuman Terkini
         </h2>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {remainingArticles.map((article) => (
+        {articles.slice(0, 6).map((article) => (
           <article class="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition">
             <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/9] bg-slate-100 dark:bg-slate-800">
               <img

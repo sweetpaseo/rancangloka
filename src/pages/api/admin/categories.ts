@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getDb, getAllCategories, insertCategory, deleteCategory } from '../../../lib/db';
+import { getDb, getAllCategories, insertCategory, deleteCategory, updateCategoryLayout } from '../../../lib/db';
 import { slugifyText } from '../../../lib/seo';
 
 export const GET: APIRoute = async ({ locals }) => {
@@ -19,6 +19,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (body.action === 'delete') {
       const id = parseInt(body.id, 10);
       await deleteCategory(db, id);
+      return new Response(JSON.stringify({ status: 'success' }), { status: 200 });
+    }
+
+    if (body.action === 'update_layout') {
+      await updateCategoryLayout(db, body.updates);
       return new Response(JSON.stringify({ status: 'success' }), { status: 200 });
     }
 
