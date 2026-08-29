@@ -316,6 +316,44 @@ export async function getAllCategories(db: any): Promise<Category[]> {
   return MOCK_CATEGORIES;
 }
 
+export async function insertCategory(db: any, cat: Partial<Category>): Promise<Category> {
+  const newId = MOCK_CATEGORIES.length > 0 ? Math.max(...MOCK_CATEGORIES.map(c => c.id)) + 1 : 1;
+  const newCat: Category = {
+    id: newId,
+    name: cat.name || 'Kategori Baru',
+    slug: cat.slug || `kategori-${newId}`,
+    color_badge: cat.color_badge || '#2563eb',
+    description: cat.description || ''
+  };
+
+  if (db) {
+    try {
+      await db
+        .prepare('INSERT INTO categories (name, slug, color_badge, description) VALUES (?, ?, ?, ?)')
+        .bind(newCat.name, newCat.slug, newCat.color_badge, newCat.description)
+        .run();
+    } catch (e) {
+      console.warn('D1 Insert Category fallback:', e);
+    }
+  }
+
+  MOCK_CATEGORIES.push(newCat);
+  return newCat;
+}
+
+export async function deleteCategory(db: any, id: number): Promise<void> {
+  const idx = MOCK_CATEGORIES.findIndex(c => c.id === id);
+  if (idx !== -1) MOCK_CATEGORIES.splice(idx, 1);
+
+  if (db) {
+    try {
+      await db.prepare('DELETE FROM categories WHERE id = ?').bind(id).run();
+    } catch (e) {
+      console.warn('D1 Delete Category fallback:', e);
+    }
+  }
+}
+
 export async function getAllAuthors(db: any): Promise<Author[]> {
   if (db) {
     try {
