@@ -89,11 +89,11 @@ const websiteSchema = {
                   {article.title}
                 </a>
               </h3>
-              <p class="mt-2.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 flex-1 leading-relaxed">
+              <p class="mt-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-2 flex-1 leading-relaxed">
                 {article.description}
               </p>
-              <div class="mt-5 flex items-center justify-between text-xs text-slate-400 border-t border-black/[0.04] dark:border-white/[0.06] pt-3.5">
-                <span class="font-medium">{article.author_name || 'Redaksi'}</span>
+              <div class="mt-5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-black/[0.04] dark:border-white/[0.06] pt-3.5 font-medium">
+                <span class="font-semibold text-slate-700 dark:text-slate-300">{article.author_name || 'Redaksi'}</span>
                 <span>⏱️ {article.reading_time_minutes} min read</span>
               </div>
             </div>
