@@ -50,6 +50,30 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
     <link rel="alternate" type="application/rss+xml" title={`${siteTitle} RSS Feed`} href="/rss.xml" />
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 
+    <!-- Resource Preconnects for Ultra-Fast Asset Delivery -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+
+    <!-- Non-Blocking Google Fonts Loading -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap"
+      />
+    </noscript>
+
     <!-- SEO Meta Tags -->
     <title>{fullTitle}</title>
     <meta name="description" content={metaDesc} />
@@ -119,24 +143,24 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
     </main>
 
     <!-- Footer -->
-    <footer class="mt-20 border-t border-black/[0.05] dark:border-white/[0.08] bg-slate-100/50 dark:bg-slate-950/80 py-16 text-slate-500 dark:text-slate-400">
+    <footer class="mt-20 border-t border-black/[0.05] dark:border-white/[0.08] bg-slate-100/50 dark:bg-slate-950/80 py-16 text-slate-600 dark:text-slate-400">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-10">
         <div class="md:col-span-2 space-y-3">
           <div class="flex items-center gap-2">
             <span class="text-xl">🏡</span>
             <span class="text-xl font-black text-slate-900 dark:text-white tracking-tight">{siteTitle}</span>
           </div>
-          <p class="text-xs md:text-sm leading-relaxed max-w-sm text-slate-500 dark:text-slate-400">
+          <p class="text-xs md:text-sm leading-relaxed max-w-sm text-slate-600 dark:text-slate-400">
             {siteSettings.site_description || 'Platform media digital independen untuk inspirasi desain interior, inovasi smart home, dan arsitektur hunian modern.'}
           </p>
         </div>
 
         <div>
           <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-4">Kategori Liputan</h4>
-          <ul class="space-y-2.5 text-xs">
+          <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
             {categories.map((c) => (
               <li>
-                <a href={`/category/${c.slug}`} class="hover:text-[#0071e3] transition">{c.name}</a>
+                <a href={`/category/${c.slug}`} class="hover:text-[#0071e3] transition text-slate-700 dark:text-slate-300 font-medium">{c.name}</a>
               </li>
             ))}
           </ul>
@@ -145,14 +169,14 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
         <div>
           <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-4">Informasi & Feed</h4>
           <ul class="space-y-2.5 text-xs">
-            <li><a href="/sitemap.xml" class="hover:text-[#0071e3] transition">Sitemap Index (XML)</a></li>
-            <li><a href="/sitemap-news.xml" class="hover:text-[#0071e3] transition">Google News Feed</a></li>
-            <li><a href="/rss.xml" class="hover:text-[#0071e3] transition">RSS Syndi­cation</a></li>
+            <li><a href="/sitemap.xml" class="hover:text-[#0071e3] transition text-slate-700 dark:text-slate-300 font-medium">Sitemap Index (XML)</a></li>
+            <li><a href="/sitemap-news.xml" class="hover:text-[#0071e3] transition text-slate-700 dark:text-slate-300 font-medium">Google News Feed</a></li>
+            <li><a href="/rss.xml" class="hover:text-[#0071e3] transition text-slate-700 dark:text-slate-300 font-medium">RSS Syndication</a></li>
           </ul>
         </div>
       </div>
 
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-black/[0.04] dark:border-white/[0.06] text-center text-xs text-slate-400">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-black/[0.04] dark:border-white/[0.06] text-center text-xs text-slate-500 dark:text-slate-400">
         <p>© 2026 {siteTitle}. All rights reserved. Kurasi editorial independen seputar dunia desain dan hunian modern.</p>
       </div>
     </footer>

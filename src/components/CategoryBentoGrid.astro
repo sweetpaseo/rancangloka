@@ -23,6 +23,7 @@ const subArticles = articles.slice(1, 4);
     </div>
     <a
       href={`/category/${category.slug}`}
+      aria-label={`Lihat semua artikel kategori ${category.name}`}
       class="text-xs font-semibold tracking-wide text-[#0071e3] hover:underline flex items-center gap-1 group"
     >
       Lihat Semua <span class="transition-transform group-hover:translate-x-0.5">→</span>
@@ -50,11 +51,11 @@ const subArticles = articles.slice(1, 4);
                 {leadArticle.title}
               </a>
             </h3>
-            <p class="mt-2.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-3 flex-1 leading-relaxed">
+            <p class="mt-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-3 flex-1 leading-relaxed">
               {leadArticle.description}
             </p>
-            <div class="mt-5 flex items-center justify-between text-xs text-slate-400 border-t border-black/[0.04] dark:border-white/[0.06] pt-4">
-              <span class="font-medium">{leadArticle.author_name || 'Redaksi'}</span>
+            <div class="mt-5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-black/[0.04] dark:border-white/[0.06] pt-4">
+              <span class="font-medium text-slate-700 dark:text-slate-300">{leadArticle.author_name || 'Redaksi'}</span>
               <span>⏱️ {leadArticle.reading_time_minutes} min read</span>
             </div>
           </div>
@@ -81,7 +82,7 @@ const subArticles = articles.slice(1, 4);
                 {article.title}
               </a>
             </h4>
-            <div class="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+            <div class="mt-2 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               <span class="truncate">{article.author_name || 'Redaksi'}</span>
               <span>•</span>
               <span class="whitespace-nowrap">⏱️ {article.reading_time_minutes}m</span>
