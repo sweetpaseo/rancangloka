@@ -82,18 +82,29 @@ const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Sma
       <div class="flex items-center gap-1.5 overflow-x-auto py-2 no-scrollbar scroll-smooth">
         <a
           href="/"
-          class="flex-shrink-0 rounded-full px-4 py-1 text-xs font-semibold tracking-tight transition bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs"
+          class={`flex-shrink-0 rounded-full px-4 py-1 text-xs font-semibold tracking-tight transition ${
+            Astro.url.pathname === '/' || Astro.url.pathname === ''
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-black/[0.04] dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08]'
+          }`}
         >
           Beranda
         </a>
-        {categories.map((cat) => (
-          <a
-            href={`/category/${cat.slug}`}
-            class="flex-shrink-0 rounded-full px-3.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-black/[0.04] dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08] transition"
-          >
-            {cat.name}
-          </a>
-        ))}
+        {categories.map((cat) => {
+          const isCatActive = Astro.url.pathname === `/category/${cat.slug}` || Astro.url.pathname === `/category/${cat.slug}/`;
+          return (
+            <a
+              href={`/category/${cat.slug}`}
+              class={`flex-shrink-0 rounded-full px-3.5 py-1 text-xs font-medium tracking-tight transition ${
+                isCatActive
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-black/[0.04] dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08]'
+              }`}
+            >
+              {cat.name}
+            </a>
+          );
+        })}
       </div>
     </div>
   </nav>
