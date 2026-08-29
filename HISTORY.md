@@ -95,6 +95,14 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 9: Validasi Kesiapan Artikel Sebelum Tayang (Editorial Quality Gate)
+* **Gejala:** Artikel dengan field kosong (misal tanpa gambar cover, tanpa meta deskripsi, atau tanpa kategori) dapat tidak sengaja ter-publish dan merusak tampilan layout.
+* **Solusi:**
+  - Menambahkan sistem *Editorial Quality Gate* di [`src/pages/api/admin/posts.ts`](file:///src/pages/api/admin/posts.ts) dan form editor [`src/pages/admin/posts/new.astro`](file:///src/pages/admin/posts/new.astro).
+  - Jika artikel belum memenuhi syarat wajib (Judul, Konten, Deskripsi, Cover Image, Kategori, Penulis), sistem menolak publish dan menampilkan checklist field yang perlu dilengkapi atau mengarahkannya untuk disimpan sebagai `Draft`.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
