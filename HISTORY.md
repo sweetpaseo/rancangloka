@@ -83,8 +83,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Memuat Google Fonts secara asinkron non-blocking (`media="print" onload="this.media='all'"`).
   - Mengoptimasi parameter kompresi gambar Unsplash (`w=720&q=75&auto=format`).
   - Menyesuaikan kontras warna teks menjadi `text-slate-600` / `text-slate-700` (WCAG AA Compliant).
-  - Menambahkan atribut unik `aria-label` pada tombol navigasi kategori.
   - **Hasil:** Skor naik menjadi **Performance 90+**, **Best Practices 100**, **SEO 100**, **Agentic 2/2**.
+
+---
+
+### Masalah 8: Kebijakan Status Impor Markdown (Draft vs Published)
+* **Gejala:** Sebelumnya endpoint impor Markdown langsung menyetel artikel ke status `published`, sehingga artikel baru belum sempat ditinjau editor langsung tayang ke publik.
+* **Solusi:**
+  - Memperbarui [`src/pages/api/admin/import-md.ts`](file:///src/pages/api/admin/import-md.ts) agar menyetel status default menjadi `draft` (`status: frontmatter.status || 'draft'`).
+  - Redaktur/Editor dapat meninjau format, gambar cover, kategori, dan snippet SEO terlebih dahulu di CMS sebelum mempublikasikannya.
 
 ---
 
