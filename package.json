@@ -1,5 +1,5 @@
 {
-  "name": "cloudflare-magazine-blog",
+  "name": "rancangloka",
   "type": "module",
   "version": "1.0.0",
   "scripts": {
@@ -7,7 +7,8 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^11.1.0",

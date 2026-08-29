@@ -1,14 +1,23 @@
-name = "cloudflare-magazine-blog"
+name = "rancangloka"
 compatibility_date = "2024-09-01"
 compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare Pages Build Directory
+pages_build_output_dir = "dist"
+
+# Worker Entrypoint & Static Assets Directory (Untuk Cloudflare Workers & Pages)
+main = "dist/_worker.js/index.js"
+
+[assets]
+directory = "dist"
 
 # Cloudflare D1 Database Binding
 [[d1_databases]]
 binding = "DB"
-database_name = "magazine_blog_db"
+database_name = "rancangloka_db"
 database_id = "your-d1-database-id-here"
 
 # Cloudflare R2 Object Storage Binding (for covers & media)
 [[r2_buckets]]
 binding = "MEDIA_BUCKET"
-bucket_name = "magazine-blog-media"
+bucket_name = "rancangloka-media"
