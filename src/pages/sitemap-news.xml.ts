@@ -8,8 +8,8 @@ export const GET: APIRoute = async ({ locals }) => {
     getSiteSettings(db)
   ]);
 
-  const siteUrl = settings.site_url || 'https://magazine.pages.dev';
-  const siteTitle = settings.site_title || 'Metro Magazine';
+  const siteUrl = settings.site_url || 'https://rancangloka.com';
+  const siteTitle = settings.site_title || 'RancangLoka';
 
   // Filter articles published in the last 48 hours for Google News
   const fortyEightHoursAgo = Date.now() - 48 * 3600 * 1000;

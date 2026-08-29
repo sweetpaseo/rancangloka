@@ -93,10 +93,10 @@ INSERT OR IGNORE INTO authors (id, name, slug, bio, avatar, role, social_links) 
 (2, 'Clarissa Amanda', 'clarissa-amanda', 'Desainer Interior & Penulis Niche Home Decor dengan keahlian konsep Japandi, Scandinavian, dan Minimalis Fungsional.', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80', 'Interior Stylist & Columnist', '{"twitter":"https://x.com","linkedin":"https://linkedin.com"}');
 
 INSERT OR IGNORE INTO settings (key, value) VALUES
-('site_title', 'ERIHOUSE MAGAZINE'),
-('site_tagline', 'Inspirasi Desain Interior, Smart Home & Solusi Hunian Impian'),
-('site_description', 'Platform editorial terdepan untuk panduan desain interior modern, inovasi smart home, tips renovasi hemat bujet, dan inspirasi hunian estetik.'),
-('site_url', 'https://magazine.pages.dev'),
+('site_title', 'RancangLoka'),
+('site_tagline', 'Inspirasi Desain Interior, Arsitektur & Smart Living'),
+('site_description', 'Platform editorial terdepan untuk inspirasi arsitektur modern, desain interior estetik, smart home, dan solusi hunian impian di rancangloka.com.'),
+('site_url', 'https://rancangloka.com'),
 ('site_logo', ''),
 ('site_favicon', '🏡'),
 ('theme_preset', 'elegant-white'),

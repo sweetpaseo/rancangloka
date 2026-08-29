@@ -69,7 +69,7 @@ export function injectHeadingIds(html: string): string {
  */
 export function generateArticleSchema(article: any, siteUrl: string, author: any, siteSettings: Record<string, string>) {
   const articleUrl = `${siteUrl}/${article.slug}`;
-  const publisherName = siteSettings.site_title || 'Metro Magazine';
+  const publisherName = siteSettings.site_title || 'RancangLoka';
   const logoUrl = siteSettings.site_logo || `${siteUrl}/favicon.svg`;
 
   return {

@@ -9,6 +9,10 @@ export default defineConfig({
     imageService: 'passthrough',
     mode: 'advanced'
   }),
+  server: {
+    host: true,
+    port: 4321
+  },
   integrations: [
     tailwind({
       applyBaseStyles: false

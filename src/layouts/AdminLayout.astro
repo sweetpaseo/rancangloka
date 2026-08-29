@@ -1,11 +1,19 @@
 ---
 import '../styles/global.css';
+import { getDb, getSiteSettings } from '../lib/db';
 
 interface Props {
   title?: string;
 }
 
 const { title = 'Admin Dashboard' } = Astro.props;
+
+const db = await getDb(Astro.locals);
+const siteSettings = await getSiteSettings(db);
+
+const siteTitle = siteSettings.site_title || 'RancangLoka';
+const siteLogo = siteSettings.site_logo || '';
+const siteFavicon = siteSettings.site_favicon || '🏡';
 ---
 
 <!doctype html>
@@ -13,8 +21,8 @@ const { title = 'Admin Dashboard' } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title} | CMS Metro Magazine</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>" />
+    <title>{title} | CMS {siteTitle}</title>
+    <link rel="icon" href={`data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${siteFavicon}</text></svg>`} />
     <meta name="robots" content="noindex, nofollow" />
   </head>
 
@@ -23,16 +31,20 @@ const { title = 'Admin Dashboard' } = Astro.props;
     <aside class="w-full md:w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col justify-between shadow-sm">
       <div>
         <!-- Brand Header -->
-        <div class="h-16 flex items-center px-6 border-b border-slate-200 gap-3">
-          <span class="text-2xl">📰</span>
-          <div>
-            <h1 class="font-black text-sm text-slate-900 tracking-tight">MAGAZINE CMS</h1>
+        <a href="/admin" class="h-16 flex items-center px-6 border-b border-slate-200 gap-3 group">
+          {siteLogo ? (
+            <img src={siteLogo} alt={siteTitle} class="h-8 max-w-[40px] object-contain flex-shrink-0" />
+          ) : (
+            <span class="text-2xl">{siteFavicon}</span>
+          )}
+          <div class="min-w-0">
+            <h1 class="font-black text-xs text-slate-900 tracking-tight truncate group-hover:text-primary transition">{siteTitle}</h1>
             <span class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
               <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Cloudflare Edge
+              Admin CMS
             </span>
           </div>
-        </div>
+        </a>
 
         <!-- Nav Links -->
         <nav class="p-4 space-y-1 text-sm">

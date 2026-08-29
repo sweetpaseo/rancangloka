@@ -136,26 +136,73 @@ const settings = await getSiteSettings(db);
     <!-- 2. General Identity Settings -->
     <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
       <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-        <span>📰</span> Identitas Blog Magazine
+        <span>📰</span> Identitas & Branding Website
       </h2>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <!-- Logo & Favicon Configuration -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+        <!-- Logo Preview -->
+        <div class="flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200 shadow-2xs text-center">
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Preview Logo</label>
+          <div id="logo-preview-container" class="h-16 w-full flex items-center justify-center overflow-hidden">
+            {settings.site_logo ? (
+              <img id="logo-preview-img" src={settings.site_logo} alt="Logo Preview" class="max-h-14 max-w-full object-contain" />
+            ) : (
+              <div id="logo-preview-fallback" class="text-3xl">
+                {settings.site_favicon || '🏡'}
+              </div>
+            )}
+          </div>
+          <span class="text-[10px] text-slate-400 mt-2">Tampil di Header & Login</span>
+        </div>
+
+        <!-- Logo URL & Favicon Inputs -->
+        <div class="sm:col-span-2 space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Logo Website (URL Gambar / R2 Storage)</label>
+            <input
+              type="url"
+              id="site-logo"
+              value={settings.site_logo || ''}
+              placeholder="https://images.unsplash.com/... atau URL Cloudflare R2"
+              class="w-full rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <p class="text-[10px] text-slate-500 mt-1">Kosongkan jika ingin menggunakan icon emoji sebagai pengganti logo.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Favicon / Emoji Icon</label>
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                id="site-favicon"
+                value={settings.site_favicon || '🏡'}
+                placeholder="🏡"
+                class="w-24 text-center text-lg rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <span class="text-xs text-slate-500">Emoji atau simbol identitas tab browser & kartu login.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Website / Title</label>
           <input
             type="text"
             id="site-title"
-            value={settings.site_title || 'METRO MAGAZINE'}
+            value={settings.site_title || 'RancangLoka'}
             class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Tagline</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Tagline Website</label>
           <input
             type="text"
             id="site-tagline"
-            value={settings.site_tagline || 'Wawasan Terdepan & Berita Masa Depan'}
+            value={settings.site_tagline || 'Inspirasi Desain Interior, Arsitektur & Smart Living'}
             class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
           />
         </div>
@@ -219,12 +266,31 @@ const settings = await getSiteSettings(db);
     const accentPicker = document.getElementById('theme-accent-picker') as HTMLInputElement;
     const accentHex = document.getElementById('theme-accent-hex') as HTMLInputElement;
 
+    const siteLogoInput = document.getElementById('site-logo') as HTMLInputElement;
+    const siteFaviconInput = document.getElementById('site-favicon') as HTMLInputElement;
     const siteTitleInput = document.getElementById('site-title') as HTMLInputElement;
     const siteTaglineInput = document.getElementById('site-tagline') as HTMLInputElement;
     const siteDescInput = document.getElementById('site-description') as HTMLTextAreaElement;
     const gscInput = document.getElementById('gsc-code') as HTMLInputElement;
     const gaInput = document.getElementById('ga-id') as HTMLInputElement;
     const ogInput = document.getElementById('default-og') as HTMLInputElement;
+    const previewContainer = document.getElementById('logo-preview-container') as HTMLElement;
+
+    // Live Logo & Favicon Preview
+    function updateLogoPreview() {
+      if (!previewContainer) return;
+      const logoUrl = siteLogoInput?.value?.trim();
+      const favicon = siteFaviconInput?.value?.trim() || '🏡';
+
+      if (logoUrl) {
+        previewContainer.innerHTML = `<img id="logo-preview-img" src="${logoUrl}" alt="Logo Preview" class="max-h-14 max-w-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-xs text-red-500 font-medium\\'>URL gambar tidak valid</span>'" />`;
+      } else {
+        previewContainer.innerHTML = `<div id="logo-preview-fallback" class="text-3xl">${favicon}</div>`;
+      }
+    }
+
+    siteLogoInput?.addEventListener('input', updateLogoPreview);
+    siteFaviconInput?.addEventListener('input', updateLogoPreview);
 
     // Sync color pickers
     primaryPicker?.addEventListener('input', () => {
@@ -266,9 +332,11 @@ const settings = await getSiteSettings(db);
       saveBtn.innerText = 'Menyimpan...';
 
       const payload = {
-        site_title: siteTitleInput?.value || 'METRO MAGAZINE',
-        site_tagline: siteTaglineInput?.value || '',
-        site_description: siteDescInput?.value || '',
+        site_logo: siteLogoInput?.value?.trim() || '',
+        site_favicon: siteFaviconInput?.value?.trim() || '🏡',
+        site_title: siteTitleInput?.value?.trim() || 'RancangLoka',
+        site_tagline: siteTaglineInput?.value?.trim() || '',
+        site_description: siteDescInput?.value?.trim() || '',
         theme_primary_color: primaryHex?.value || '#1e3a8a',
         theme_accent_color: accentHex?.value || '#d97706',
         google_search_console_code: gscInput?.value || '',
@@ -283,7 +351,7 @@ const settings = await getSiteSettings(db);
           body: JSON.stringify(payload)
         });
         if (res.ok) {
-          alert('Pengaturan nama website, tagline, dan warna tema berhasil disimpan ke Cloudflare D1!');
+          alert('Pengaturan identitas website, logo, dan tema berhasil disimpan!');
         } else {
           alert('Pengaturan berhasil diperbarui!');
         }

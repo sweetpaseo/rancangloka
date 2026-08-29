@@ -8,9 +8,9 @@ export const GET: APIRoute = async ({ locals }) => {
     getSiteSettings(db)
   ]);
 
-  const siteUrl = settings.site_url || 'https://magazine.pages.dev';
-  const siteTitle = settings.site_title || 'Metro Magazine';
-  const siteDesc = settings.site_description || 'Platform media digital masa depan.';
+  const siteUrl = settings.site_url || 'https://rancangloka.com';
+  const siteTitle = settings.site_title || 'RancangLoka';
+  const siteDesc = settings.site_description || 'Platform editorial arsitektur, desain interior, dan hunian modern.';
 
   const items = articles
     .map((a) => {

@@ -82,10 +82,10 @@ const MOCK_AUTHORS: Author[] = [
 ];
 
 const MOCK_SETTINGS: Record<string, string> = {
-  site_title: 'ERIHOUSE MAGAZINE',
-  site_tagline: 'Inspirasi Desain Interior, Smart Home & Solusi Hunian Impian',
-  site_description: 'Platform editorial terdepan untuk panduan desain interior modern, inovasi smart home, tips renovasi hemat bujet, dan inspirasi hunian estetik.',
-  site_url: 'https://magazine.pages.dev',
+  site_title: 'RancangLoka',
+  site_tagline: 'Inspirasi Desain Interior, Arsitektur & Smart Living',
+  site_description: 'Platform editorial terdepan untuk inspirasi arsitektur modern, desain interior estetik, smart home, dan solusi hunian impian di rancangloka.com.',
+  site_url: 'https://rancangloka.com',
   site_logo: '',
   site_favicon: '🏡',
   theme_preset: 'elegant-white',

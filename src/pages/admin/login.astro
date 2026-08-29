@@ -1,7 +1,15 @@
 ---
 import '../../styles/global.css';
+import { getDb, getSiteSettings } from '../../lib/db';
 
-// Admin Login Page (Clean White Theme)
+const db = await getDb(Astro.locals);
+const siteSettings = await getSiteSettings(db);
+
+const siteTitle = siteSettings.site_title || 'RancangLoka';
+const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Arsitektur & Smart Living';
+const siteLogo = siteSettings.site_logo || '';
+const siteFavicon = siteSettings.site_favicon || '🏡';
+const primaryColor = siteSettings.theme_primary_color || '#1e3a8a';
 ---
 
 <!doctype html>
@@ -9,20 +17,57 @@ import '../../styles/global.css';
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login CMS Admin | Metro Magazine</title>
+    <title>Login CMS Admin | {siteTitle}</title>
+    <link rel="icon" href={`data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${siteFavicon}</text></svg>`} />
     <meta name="robots" content="noindex, nofollow" />
+    <style define:vars={{ primaryColor }}>
+      :root {
+        --color-primary: var(--primaryColor);
+      }
+    </style>
   </head>
-  <body class="h-full flex items-center justify-center p-4 bg-slate-50 text-slate-800">
-    <div class="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 shadow-xl">
-      <div class="text-center mb-8">
-        <span class="text-4xl inline-block mb-2">📰</span>
-        <h1 class="text-2xl font-black text-slate-900 tracking-tight">CMS ADMIN LOGIN</h1>
-        <p class="text-xs text-slate-500 mt-1">Platform Editorial Serverless di Cloudflare Edge</p>
+  <body class="h-full min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50/80 text-slate-800 antialiased selection:bg-slate-200">
+    <!-- Subtle Background Glow -->
+    <div class="fixed inset-0 -z-10 flex items-center justify-center opacity-40 pointer-events-none">
+      <div class="h-96 w-96 rounded-full bg-blue-100/60 blur-3xl"></div>
+    </div>
+
+    <!-- Login Card (Apple Clean Aesthetic) -->
+    <div class="w-full max-w-md bg-white border border-slate-200/90 rounded-[2rem] p-7 sm:p-9 shadow-2xl shadow-slate-200/80 backdrop-blur-xl transition-all">
+      <!-- Brand Header -->
+      <div class="text-center mb-7">
+        <!-- Logo / Icon -->
+        <div class="flex justify-center mb-3">
+          {siteLogo ? (
+            <img
+              src={siteLogo}
+              alt={siteTitle}
+              class="max-h-14 max-w-[220px] object-contain drop-shadow-xs"
+            />
+          ) : (
+            <div class="h-14 w-14 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-3xl shadow-xs">
+              <span>{siteFavicon}</span>
+            </div>
+          )}
+        </div>
+
+        <!-- Site Title & Tagline -->
+        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+          {siteTitle}
+        </h1>
+        <div class="inline-flex items-center gap-1.5 mt-2 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200/60">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          CMS Admin Portal
+        </div>
+        <p class="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
+          {siteTagline}
+        </p>
       </div>
 
+      <!-- Login Form -->
       <form id="login-form" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">Username / Email</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Username / Email</label>
           <input
             type="text"
             id="username"
@@ -30,12 +75,12 @@ import '../../styles/global.css';
             required
             value="admin"
             placeholder="admin"
-            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
+            class="w-full rounded-xl bg-slate-50/80 border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">Password</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
           <input
             type="password"
             id="password"
@@ -43,24 +88,24 @@ import '../../styles/global.css';
             required
             value="admin123"
             placeholder="••••••••"
-            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
+            class="w-full rounded-xl bg-slate-50/80 border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition"
           />
         </div>
 
-        <div id="login-message" class="hidden rounded-xl p-3 text-xs"></div>
+        <div id="login-message" class="hidden rounded-xl p-3 text-xs font-medium"></div>
 
         <button
           type="submit"
           id="submit-btn"
-          class="w-full rounded-xl bg-primary py-3 text-sm font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/30"
+          class="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white hover:bg-slate-800 active:scale-[0.99] transition shadow-md shadow-slate-900/10"
         >
           Masuk ke Dashboard
         </button>
       </form>
 
-      <div class="mt-6 pt-6 border-t border-slate-100 text-center">
-        <a href="/" class="text-xs text-slate-500 hover:text-primary transition font-medium">
-          ← Kembali ke Halaman Utama Blog
+      <div class="mt-7 pt-6 border-t border-slate-100 text-center">
+        <a href="/" class="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition font-medium">
+          <span>←</span> Kembali ke Halaman Utama
         </a>
       </div>
     </div>
@@ -80,15 +125,15 @@ import '../../styles/global.css';
         const password = (document.getElementById('password') as HTMLInputElement).value;
 
         if ((username === 'admin' && password === 'admin123') || (username && password)) {
-          msg.className = 'rounded-xl p-3 text-xs bg-emerald-100 text-emerald-800 border border-emerald-200';
-          msg.innerText = 'Login Berhasil! Mengalihkan...';
+          msg.className = 'rounded-xl p-3 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-2';
+          msg.innerHTML = '<span>✅</span> Login Berhasil! Mengalihkan...';
           msg.classList.remove('hidden');
           setTimeout(() => {
             window.location.href = '/admin';
-          }, 800);
+          }, 600);
         } else {
-          msg.className = 'rounded-xl p-3 text-xs bg-red-100 text-red-800 border border-red-200';
-          msg.innerText = 'Username atau password salah.';
+          msg.className = 'rounded-xl p-3 text-xs bg-red-50 text-red-800 border border-red-200 flex items-center gap-2';
+          msg.innerHTML = '<span>⚠️</span> Username atau password salah.';
           msg.classList.remove('hidden');
           btn.disabled = false;
           btn.innerText = 'Masuk ke Dashboard';

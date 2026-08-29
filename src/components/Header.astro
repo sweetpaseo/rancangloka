@@ -8,8 +8,10 @@ interface Props {
 }
 
 const { categories = [], siteSettings = {}, trendingArticles = [] } = Astro.props;
-const siteTitle = siteSettings.site_title || 'ERIHOUSE JOURNAL';
-const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Smart Home & Hunian Modern';
+const siteTitle = siteSettings.site_title || 'RancangLoka';
+const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Arsitektur & Smart Living';
+const siteLogo = siteSettings.site_logo || '';
+const siteFavicon = siteSettings.site_favicon || '🏡';
 ---
 
 <header class="sticky top-0 z-40 w-full apple-glass transition-colors">
@@ -31,58 +33,66 @@ const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Sma
     </div>
   </div>
 
-  <!-- 2. Main Brand Bar -->
-  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3.5">
+  <!-- 2. Main Brand Bar with generous luxurious spacing -->
+  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 py-7 sm:py-9 md:py-10">
     <!-- Brand Title / Logo -->
-    <a href="/" class="group flex flex-col transition">
-      <div class="flex items-center gap-2">
-        <span class="text-lg">🏡</span>
-        <span class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white group-hover:text-[#0071e3] transition-colors">
+    <a href="/" class="group flex flex-col transition space-y-1.5">
+      <div class="flex items-center gap-3">
+        {siteLogo ? (
+          <img
+            src={siteLogo}
+            alt={siteTitle}
+            class="h-8 sm:h-10 md:h-11 w-auto max-w-[200px] object-contain"
+          />
+        ) : (
+          <span class="text-2xl sm:text-3xl">{siteFavicon}</span>
+        )}
+        <span class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white group-hover:text-[#0071e3] transition-colors">
           {siteTitle}
         </span>
       </div>
-      <span class="text-[10px] sm:text-[11px] font-medium tracking-wide text-slate-400 dark:text-slate-500 pl-7">
+      <span class="text-xs sm:text-sm font-medium tracking-wide text-slate-400 dark:text-slate-500 pl-9 sm:pl-11">
         {siteTagline}
       </span>
     </a>
 
     <!-- Action Buttons -->
-    <div class="flex items-center gap-2.5">
+    <div class="flex items-center gap-3 sm:gap-4">
       <!-- Search Trigger (Apple Pill Style) -->
       <button
         data-search-trigger
-        class="flex items-center gap-2.5 rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 px-3.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 transition border border-black/[0.04] dark:border-white/[0.06]"
+        class="flex items-center gap-3 rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 px-4 py-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 transition border border-black/[0.04] dark:border-white/[0.06] shadow-2xs"
         aria-label="Cari artikel"
       >
-        <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <span class="hidden sm:inline font-medium">Cari artikel...</span>
-        <kbd class="hidden md:inline rounded-md bg-white dark:bg-slate-900 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 border border-slate-200 dark:border-slate-800 shadow-2xs">⌘K</kbd>
+        <kbd class="hidden md:inline rounded-md bg-white dark:bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-slate-400 border border-slate-200 dark:border-slate-800 shadow-2xs">⌘K</kbd>
       </button>
 
       <!-- Theme Switcher -->
       <button
-        class="theme-toggle-btn rounded-full p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition"
+        class="theme-toggle-btn rounded-full p-2.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition"
         aria-label="Ganti Mode Gelap/Terang"
       >
-        <svg class="h-4 w-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="h-5 w-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
-        <svg class="h-4 w-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="h-5 w-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
         </svg>
       </button>
     </div>
   </div>
 
-  <!-- 3. Apple-style Swipeable Segmented Category Bar -->
-  <nav class="border-t border-black/[0.04] dark:border-white/[0.06] bg-slate-50/40 dark:bg-black/20">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6">
-      <div class="flex items-center gap-1.5 overflow-x-auto py-2 no-scrollbar scroll-smooth">
+  <!-- 3. Apple-style Swipeable Segmented Category Bar with more breathing room -->
+  <nav class="border-t border-black/[0.04] dark:border-white/[0.06] bg-slate-50/50 dark:bg-black/20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center gap-2 overflow-x-auto py-3 no-scrollbar scroll-smooth">
         <a
           href="/"
-          class={`flex-shrink-0 rounded-full px-4 py-1 text-xs font-semibold tracking-tight transition ${
+          class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold tracking-tight transition ${
             Astro.url.pathname === '/' || Astro.url.pathname === ''
               ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-black/[0.04] dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08]'
@@ -95,7 +105,7 @@ const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Sma
           return (
             <a
               href={`/category/${cat.slug}`}
-              class={`flex-shrink-0 rounded-full px-3.5 py-1 text-xs font-medium tracking-tight transition ${
+              class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-medium tracking-tight transition ${
                 isCatActive
                   ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-black/[0.04] dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08]'
