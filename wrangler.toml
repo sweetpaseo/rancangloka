@@ -11,7 +11,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "rancangloka_db"
-database_id = "your-d1-database-id-here"
+database_id = "3a86e9ad-410f-4440-884e-2eb813ec4cf7"
 
 # Cloudflare R2 Object Storage Binding (for covers & media)
 [[r2_buckets]]
