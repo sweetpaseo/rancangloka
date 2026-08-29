@@ -5,12 +5,6 @@ compatibility_flags = ["nodejs_compat"]
 # Cloudflare Pages Build Directory
 pages_build_output_dir = "dist"
 
-# Worker Entrypoint & Static Assets Directory (Untuk Cloudflare Workers & Pages)
-main = "dist/_worker.js/index.js"
-
-[assets]
-directory = "dist"
-
 # Cloudflare D1 Database Binding
 [[d1_databases]]
 binding = "DB"
