@@ -8,36 +8,36 @@ const settings = await getSiteSettings(db);
 
 <AdminLayout title="Pengaturan & Tema Magazine">
   <div class="max-w-4xl mx-auto space-y-6">
-    <div class="pb-4 border-b border-slate-800 flex items-center justify-between">
+    <div class="pb-4 border-b border-slate-200 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-black text-white tracking-tight">Pengaturan Blog & Tema (Customizer)</h1>
-        <p class="text-xs text-slate-400 mt-1">Ubah identitas, warna tema magazine secara live, dan kode Webmaster SEO.</p>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Pengaturan Blog & Tema (Customizer)</h1>
+        <p class="text-xs text-slate-500 mt-1">Ubah identitas, warna tema magazine secara live, dan kode Webmaster SEO.</p>
       </div>
       <button
         type="button"
         id="save-all-settings-btn"
-        class="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/20"
+        class="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/20"
       >
         💾 Simpan Pengaturan
       </button>
     </div>
 
     <!-- 1. Theme Color Customizer -->
-    <div class="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
           <span>🎨</span> Theme Engine Customizer (Ubah Warna Tema Magazine)
         </h2>
-        <span class="text-[10px] text-emerald-400 font-semibold uppercase">Anti-FOUC Edge Injected</span>
+        <span class="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-semibold uppercase">Anti-FOUC Edge Injected</span>
       </div>
 
       <!-- Theme Color Presets -->
       <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-2">Preset Warna Magazine Siap Pakai:</label>
+        <label class="block text-xs font-semibold text-slate-700 mb-2">Preset Warna Magazine Siap Pakai:</label>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             type="button"
-            class="preset-btn p-3 rounded-xl border border-slate-700 bg-slate-950 text-left hover:border-primary transition"
+            class="preset-btn p-3 rounded-xl border border-slate-200 bg-slate-50 text-left hover:border-primary hover:bg-blue-50/50 transition"
             data-primary="#1e3a8a"
             data-accent="#d97706"
           >
@@ -45,13 +45,13 @@ const settings = await getSiteSettings(db);
               <span class="h-4 w-4 rounded-full bg-[#1e3a8a]"></span>
               <span class="h-4 w-4 rounded-full bg-[#d97706]"></span>
             </div>
-            <span class="text-xs font-bold text-white block">✨ Elegant White</span>
-            <span class="text-[10px] text-slate-400">Deep Navy & Warm Amber</span>
+            <span class="text-xs font-bold text-slate-900 block">✨ Elegant White</span>
+            <span class="text-[10px] text-slate-500">Deep Navy & Warm Amber</span>
           </button>
 
           <button
             type="button"
-            class="preset-btn p-3 rounded-xl border border-slate-700 bg-slate-950 text-left hover:border-primary transition"
+            class="preset-btn p-3 rounded-xl border border-slate-200 bg-slate-50 text-left hover:border-primary hover:bg-emerald-50/50 transition"
             data-primary="#059669"
             data-accent="#10b981"
           >
@@ -59,13 +59,13 @@ const settings = await getSiteSettings(db);
               <span class="h-4 w-4 rounded-full bg-[#059669]"></span>
               <span class="h-4 w-4 rounded-full bg-[#10b981]"></span>
             </div>
-            <span class="text-xs font-bold text-white block">Cyber Tech</span>
+            <span class="text-xs font-bold text-slate-900 block">Cyber Tech</span>
             <span class="text-[10px] text-slate-500">Emerald & Mint</span>
           </button>
 
           <button
             type="button"
-            class="preset-btn p-3 rounded-xl border border-slate-700 bg-slate-950 text-left hover:border-primary transition"
+            class="preset-btn p-3 rounded-xl border border-slate-200 bg-slate-50 text-left hover:border-primary hover:bg-red-50/50 transition"
             data-primary="#dc2626"
             data-accent="#f97316"
           >
@@ -73,13 +73,13 @@ const settings = await getSiteSettings(db);
               <span class="h-4 w-4 rounded-full bg-[#dc2626]"></span>
               <span class="h-4 w-4 rounded-full bg-[#f97316]"></span>
             </div>
-            <span class="text-xs font-bold text-white block">Breaking News</span>
+            <span class="text-xs font-bold text-slate-900 block">Breaking News</span>
             <span class="text-[10px] text-slate-500">Crimson Red & Coral</span>
           </button>
 
           <button
             type="button"
-            class="preset-btn p-3 rounded-xl border border-slate-700 bg-slate-950 text-left hover:border-primary transition"
+            class="preset-btn p-3 rounded-xl border border-slate-200 bg-slate-50 text-left hover:border-primary hover:bg-purple-50/50 transition"
             data-primary="#7c3aed"
             data-accent="#ec4899"
           >
@@ -87,16 +87,16 @@ const settings = await getSiteSettings(db);
               <span class="h-4 w-4 rounded-full bg-[#7c3aed]"></span>
               <span class="h-4 w-4 rounded-full bg-[#ec4899]"></span>
             </div>
-            <span class="text-xs font-bold text-white block">Creative Violet</span>
+            <span class="text-xs font-bold text-slate-900 block">Creative Violet</span>
             <span class="text-[10px] text-slate-500">Purple & Pink</span>
           </button>
         </div>
       </div>
 
       <!-- Custom Color Hex Picker -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-800">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Warna Utama (Primary Color):</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Warna Utama (Primary Color):</label>
           <div class="flex items-center gap-2">
             <input
               type="color"
@@ -108,13 +108,13 @@ const settings = await getSiteSettings(db);
               type="text"
               id="theme-primary-hex"
               value={settings.theme_primary_color || '#1e3a8a'}
-              class="flex-1 rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs font-mono text-white focus:outline-none"
+              class="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:bg-white"
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Warna Aksen / Trending (Accent Color):</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Warna Aksen / Trending (Accent Color):</label>
           <div class="flex items-center gap-2">
             <input
               type="color"
@@ -126,7 +126,7 @@ const settings = await getSiteSettings(db);
               type="text"
               id="theme-accent-hex"
               value={settings.theme_accent_color || '#d97706'}
-              class="flex-1 rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs font-mono text-white focus:outline-none"
+              class="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:bg-white"
             />
           </div>
         </div>
@@ -134,80 +134,80 @@ const settings = await getSiteSettings(db);
     </div>
 
     <!-- 2. General Identity Settings -->
-    <div class="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4">
-      <h2 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
         <span>📰</span> Identitas Blog Magazine
       </h2>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Nama Website / Title</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Website / Title</label>
           <input
             type="text"
             id="site-title"
             value={settings.site_title || 'METRO MAGAZINE'}
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary"
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Tagline</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Tagline</label>
           <input
             type="text"
             id="site-tagline"
             value={settings.site_tagline || 'Wawasan Terdepan & Berita Masa Depan'}
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary"
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
           />
         </div>
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-1">Deskripsi Umum Blog (Default Meta Description)</label>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Deskripsi Umum Blog (Default Meta Description)</label>
         <textarea
           id="site-description"
           rows="2"
-          class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary"
+          class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
         >{settings.site_description}</textarea>
       </div>
     </div>
 
     <!-- 3. Webmaster & SEO 2026 -->
-    <div class="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4">
-      <h2 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
         <span>📈</span> SEO & Integrasi Webmaster
       </h2>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Google Search Console Verification Code</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Google Search Console Verification Code</label>
           <input
             type="text"
             id="gsc-code"
             value={settings.google_search_console_code || ''}
             placeholder="google-site-verification=..."
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white font-mono placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary"
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Google Analytics (GA4) ID</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Google Analytics (GA4) ID</label>
           <input
             type="text"
             id="ga-id"
             value={settings.google_analytics_id || ''}
             placeholder="G-XXXXXXXXXX"
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white font-mono placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary"
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
           />
         </div>
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-1">Default OpenGraph Image URL (Fallback Medsos Share)</label>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Default OpenGraph Image URL (Fallback Medsos Share)</label>
         <input
           type="url"
           id="default-og"
           value={settings.seo_default_og_image || ''}
-          class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary"
+          class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
         />
       </div>
     </div>

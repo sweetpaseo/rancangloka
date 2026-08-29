@@ -12,45 +12,45 @@ const [articles, categories, settings] = await Promise.all([
 
 <AdminLayout title="Backup & Export Data">
   <div class="max-w-4xl mx-auto space-y-6">
-    <div class="pb-4 border-b border-slate-800">
-      <h1 class="text-2xl font-black text-white tracking-tight flex items-center gap-2">
+    <div class="pb-4 border-b border-slate-200">
+      <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
         <span>💾</span> Backup & Export Database 1-Klik
       </h1>
-      <p class="text-xs text-slate-400 mt-1">
+      <p class="text-xs text-slate-500 mt-1">
         Unduh salinan lengkap seluruh artikel, kategori, dan pengaturan blog ke komputer lokal Anda kapan saja.
       </p>
     </div>
 
     <!-- Backup Info Card -->
-    <div class="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h2 class="text-sm font-bold text-white">Ringkasan Data yang Akan Diexport</h2>
-        <span class="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-400">Siap Diunduh</span>
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900">Ringkasan Data yang Akan Diexport</h2>
+        <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">Siap Diunduh</span>
       </div>
 
       <div class="grid grid-cols-3 gap-4">
-        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
-          <span class="text-xs text-slate-400 uppercase font-bold">Total Artikel</span>
-          <p class="text-2xl font-black text-white mt-1">{articles.length}</p>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+          <span class="text-xs text-slate-500 uppercase font-bold">Total Artikel</span>
+          <p class="text-2xl font-black text-slate-900 mt-1">{articles.length}</p>
         </div>
-        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
-          <span class="text-xs text-slate-400 uppercase font-bold">Kategori</span>
-          <p class="text-2xl font-black text-white mt-1">{categories.length}</p>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+          <span class="text-xs text-slate-500 uppercase font-bold">Kategori</span>
+          <p class="text-2xl font-black text-slate-900 mt-1">{categories.length}</p>
         </div>
-        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
-          <span class="text-xs text-slate-400 uppercase font-bold">Pengaturan</span>
-          <p class="text-2xl font-black text-white mt-1">{Object.keys(settings).length}</p>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+          <span class="text-xs text-slate-500 uppercase font-bold">Pengaturan</span>
+          <p class="text-2xl font-black text-slate-900 mt-1">{Object.keys(settings).length}</p>
         </div>
       </div>
 
       <div class="pt-4 flex items-center justify-between">
-        <p class="text-xs text-slate-400">
+        <p class="text-xs text-slate-500">
           Format file: <strong>JSON Lengkap</strong> (Kompatibel untuk restore dan migrasi).
         </p>
         <button
           type="button"
           id="download-backup-btn"
-          class="rounded-xl bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/20 flex items-center gap-2"
+          class="rounded-xl bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/20 flex items-center gap-2"
         >
           <span>📥 Unduh Backup Sekarang (.JSON)</span>
         </button>
