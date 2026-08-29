@@ -61,39 +61,39 @@ const websiteSchema = {
 
   <!-- 3. Latest Feed Section (Bottom) -->
   {articles.length > 0 && (
-    <section class="my-12">
-      <div class="mb-6 flex items-center justify-between border-b-2 border-slate-100 pb-3 dark:border-slate-800">
-        <h2 class="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="h-6 w-2 rounded-full bg-accent"></span>
+    <section class="my-16">
+      <div class="mb-7 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.08] pb-3.5">
+        <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+          <span class="h-6 w-2 rounded-full bg-[#0071e3]"></span>
           Kabar Terhangat & Rangkuman Terkini
         </h2>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {articles.slice(0, 6).map((article) => (
-          <article class="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition">
-            <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/9] bg-slate-100 dark:bg-slate-800">
+          <article class="apple-card group flex flex-col overflow-hidden">
+            <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/10] bg-slate-100 dark:bg-slate-800">
               <img
                 src={article.featured_image}
                 alt={article.image_alt || article.title}
-                class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                class="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-106"
                 loading="lazy"
               />
-              <span class="absolute top-3 left-3 rounded-full bg-slate-900/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+              <span class="absolute top-3.5 left-3.5 rounded-full bg-black/60 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md border border-white/20">
                 {article.category_name || 'Artikel'}
               </span>
             </a>
-            <div class="flex flex-1 flex-col p-4">
-              <h3 class="text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-primary transition">
+            <div class="flex flex-1 flex-col p-6">
+              <h3 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white line-clamp-2 group-hover:text-[#0071e3] transition-colors leading-snug">
                 <a href={`/${article.slug}`}>
                   {article.title}
                 </a>
               </h3>
-              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 flex-1">
+              <p class="mt-2.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 flex-1 leading-relaxed">
                 {article.description}
               </p>
-              <div class="mt-4 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-3 dark:border-slate-800">
-                <span>{article.author_name || 'Redaksi'}</span>
+              <div class="mt-5 flex items-center justify-between text-xs text-slate-400 border-t border-black/[0.04] dark:border-white/[0.06] pt-3.5">
+                <span class="font-medium">{article.author_name || 'Redaksi'}</span>
                 <span>⏱️ {article.reading_time_minutes} min read</span>
               </div>
             </div>
