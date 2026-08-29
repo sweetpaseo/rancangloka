@@ -103,6 +103,14 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 10: Drag & Drop Image Uploader & Client-Side WebP Converter ke R2
+* **Gejala:** Sebelumnya editor hanya bisa memasukkan URL gambar eksternal secara manual.
+* **Solusi:**
+  - Membuat endpoint upload R2 [`src/pages/api/admin/upload.ts`](file:///src/pages/api/admin/upload.ts) dan streaming media [`src/pages/media/[key].ts`](file:///src/pages/media/%5Bkey%5D.ts).
+  - Menambahkan fitur Drag & Drop di [`src/pages/admin/posts/new.astro`](file:///src/pages/admin/posts/new.astro) dengan konverter otomatis berbasis HTML5 Canvas yang otomatis mengubah foto format apa pun (PNG, JPG) menjadi WebP (skala maks 1200px, kualitas 82%) langsung di browser sebelum dikirim ke Cloudflare R2.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
@@ -110,7 +118,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, dark mode, dynamic styling. |
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main`. |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 6 tabel inti dan data seed awal kategori & penulis sudah aktif. |
-| **R2 Storage** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` siap menampung gambar cover dan upload. |
+| **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
 | **SEO & Feed** | ✅ Selesai | Google News XML, Sitemap XML, RSS feed, Schema.org aktif. |
 | **Keamanan Level Kode** | ✅ Selesai | Hashing PBKDF2, session token acak 24-byte, SQL parameterization. |
 | **Cloudflare Zero Trust (Access)** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
