@@ -1,6 +1,6 @@
-import { defineMiddleware } from 'astro:middleware';
+import type { MiddlewareHandler } from 'astro';
 
-export const onRequest = defineMiddleware(async (context, next) => {
+export const onRequest: MiddlewareHandler = async (context, next) => {
   const { url, request, cookies } = context;
   const pathname = url.pathname;
 
@@ -16,6 +16,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const response = await next();
 
   // 3. Inject Enterprise-Grade Security Headers (A+ Security Grade)
+  response.headers.delete('X-Powered-By');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-XSS-Protection', '1; mode=block');
@@ -29,4 +30,4 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   return response;
-});
+};
