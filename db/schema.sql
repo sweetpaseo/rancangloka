@@ -1,12 +1,15 @@
--- Cloudflare D1 Database Schema for Magazine Blog Platform
+-- Cloudflare D1 Database Schema for Erihouse Magazine Platform (Home & Living Ecosystem)
 
 -- 1. Table: Categories
 CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
-  color_badge TEXT DEFAULT '#2563eb',
+  color_badge TEXT DEFAULT '#059669',
   description TEXT,
+  show_on_home INTEGER DEFAULT 1,
+  display_order INTEGER DEFAULT 1,
+  layout_style TEXT DEFAULT 'bento',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -78,28 +81,29 @@ CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id);
 CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles(content_hash);
 CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
 
--- Initial Seed Data
-INSERT OR IGNORE INTO categories (id, name, slug, color_badge, description) VALUES
-(1, 'Teknologi', 'teknologi', '#2563eb', 'Berita dan ulasan teknologi terbaru, AI, cloud, dan gadget.'),
-(2, 'Bisnis & Finansial', 'bisnis', '#059669', 'Kabar pasar, startup, ekonomi digital, dan strategi bisnis.'),
-(3, 'Gaya Hidup', 'gaya-hidup', '#d97706', 'Tren gaya hidup modern, produktivitas, dan kesehatan.'),
-(4, 'Sains & Masa Depan', 'sains', '#7c3aed', 'Eksplorasi penemuan ilmiah dan inovasi masa depan.');
+-- Initial Seed Data (Erihome Home & Living Context)
+INSERT OR IGNORE INTO categories (id, name, slug, color_badge, description, show_on_home, display_order, layout_style) VALUES
+(1, 'Desain Interior & Estetika', 'interior-design', '#059669', 'Inspirasi tata ruang, gaya Japandi, palet warna, dan dekorasi estetik untuk hunian nyaman.', 1, 1, 'bento'),
+(2, 'Smart Home & Otomasi', 'smart-home', '#2563eb', 'Teknologi IoT rumah tangga, efisiensi energi listrik, dan sistem keamanan pintar.', 1, 2, 'grid3'),
+(3, 'Arsitektur & Renovasi', 'arsitektur-renovasi', '#d97706', 'Panduan renovasi hemat bujet, denah rumah open-space, dan material bangunan ramah lingkungan.', 1, 3, 'bento'),
+(4, 'Gaya Hidup & Hunian', 'lifestyle-hunian', '#7c3aed', 'Home office ergonomis, tanaman indoor, dan tips menciptakan suasana rumah bebas stres.', 1, 4, 'grid3');
 
 INSERT OR IGNORE INTO authors (id, name, slug, bio, avatar, role, social_links) VALUES
-(1, 'Redaksi Utama', 'redaksi-utama', 'Tim jurnalis dan analis konten editorial magazine.', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', 'Senior Editor', '{"twitter":"https://x.com","linkedin":"https://linkedin.com"}');
+(1, 'Dimas Prasetyo, IAI', 'dimas-prasetyo', 'Principal Architect & Konsultan Tata Ruang Berkelanjutan dengan fokus pada efisiensi energi hunian tropis modern.', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', 'Chief Architectural Editor', '{"twitter":"https://x.com","linkedin":"https://linkedin.com"}'),
+(2, 'Clarissa Amanda', 'clarissa-amanda', 'Desainer Interior & Penulis Niche Home Decor dengan keahlian konsep Japandi, Scandinavian, dan Minimalis Fungsional.', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80', 'Interior Stylist & Columnist', '{"twitter":"https://x.com","linkedin":"https://linkedin.com"}');
 
 INSERT OR IGNORE INTO settings (key, value) VALUES
-('site_title', 'METRO MAGAZINE'),
-('site_tagline', 'Portal Berita & Wawasan Masa Depan'),
-('site_description', 'Platform magazine berita modern dengan liputan mendalam teknologi, bisnis, gaya hidup, dan sains.'),
+('site_title', 'ERIHOUSE MAGAZINE'),
+('site_tagline', 'Inspirasi Desain Interior, Smart Home & Solusi Hunian Impian'),
+('site_description', 'Platform editorial terdepan untuk panduan desain interior modern, inovasi smart home, tips renovasi hemat bujet, dan inspirasi hunian estetik.'),
 ('site_url', 'https://magazine.pages.dev'),
 ('site_logo', ''),
-('site_favicon', '📰'),
-('theme_preset', 'editorial-blue'),
-('theme_primary_color', '#2563eb'),
-('theme_accent_color', '#f59e0b'),
-('theme_dark_mode_default', 'system'),
-('seo_default_og_image', 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&auto=format&fit=crop&q=80'),
+('site_favicon', '🏡'),
+('theme_preset', 'elegant-white'),
+('theme_primary_color', '#1e3a8a'),
+('theme_accent_color', '#d97706'),
+('theme_dark_mode_default', 'light'),
+('seo_default_og_image', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80'),
 ('google_analytics_id', ''),
 ('google_search_console_code', ''),
 ('allow_indexing', 'true'),
