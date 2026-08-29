@@ -15,17 +15,41 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const readingTime = calculateReadingTime(contentMd);
     const contentHash = await generateContentHash(contentMd);
 
+    let status = body.status || 'draft';
+
+    // Automatic Quality Gate / Completeness Validation for 'published'
+    if (status === 'published') {
+      const missingFields: string[] = [];
+      if (!title || title.trim().length < 5 || title === 'Untitled') missingFields.push('Judul Artikel (min. 5 karakter)');
+      if (!contentMd || contentMd.trim().length < 50) missingFields.push('Konten Artikel (min. 50 karakter)');
+      if (!body.description || body.description.trim().length < 10) missingFields.push('Meta Deskripsi (min. 10 karakter)');
+      if (!body.featured_image || body.featured_image.trim() === '') missingFields.push('Featured Image / Cover');
+      if (!body.category_id) missingFields.push('Kategori Artikel');
+      if (!body.author_id) missingFields.push('Penulis (Author E-E-A-T)');
+
+      if (missingFields.length > 0) {
+        return new Response(
+          JSON.stringify({
+            status: 'validation_error',
+            message: `Artikel belum lengkap untuk dipublish. Mohon lengkapi: ${missingFields.join(', ')}.`,
+            missingFields
+          }),
+          { status: 422 }
+        );
+      }
+    }
+
     const article = await insertArticle(db, {
       title,
       slug,
       description: body.description || title,
       content_md: contentMd,
       content_html: contentHtml,
-      featured_image: body.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80',
+      featured_image: body.featured_image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=720&auto=format&fit=crop&q=75',
       image_alt: body.image_alt || title,
       category_id: body.category_id || 1,
       author_id: body.author_id || 1,
-      status: body.status || 'published',
+      status,
       reading_time_minutes: readingTime,
       key_takeaways: body.key_takeaways || '[]',
       focus_keyword: body.focus_keyword || '',

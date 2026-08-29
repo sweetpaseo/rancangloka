@@ -330,13 +330,18 @@ const [categories, authors] = await Promise.all([
       previewPane?.classList.add('hidden');
     });
 
-    // Form submit handler
-    const form = document.getElementById('post-editor-form') as HTMLFormElement;
-    form?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('btn-publish') as HTMLButtonElement;
-      btn.disabled = true;
-      btn.innerText = 'Menyimpan ke D1...';
+    // Helper function to submit post
+    async function submitPost(targetStatus: 'published' | 'draft') {
+      const btnPublish = document.getElementById('btn-publish') as HTMLButtonElement;
+      const btnDraft = document.getElementById('btn-save-draft') as HTMLButtonElement;
+      
+      btnPublish.disabled = true;
+      btnDraft.disabled = true;
+      if (targetStatus === 'published') {
+        btnPublish.innerText = 'Memvalidasi & Publish...';
+      } else {
+        btnDraft.innerText = 'Menyimpan Draft...';
+      }
 
       const takeawaysRaw = (document.getElementById('post-key-takeaways') as HTMLTextAreaElement)?.value || '';
       const takeaways = takeawaysRaw.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
@@ -346,7 +351,7 @@ const [categories, authors] = await Promise.all([
         slug: slugInput.value,
         description: descInput.value,
         content_md: contentMd.value,
-        featured_image: coverUrlInput.value || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80',
+        featured_image: coverUrlInput.value || '',
         image_alt: (document.getElementById('post-image-alt') as HTMLInputElement)?.value || titleInput.value,
         category_id: parseInt((document.getElementById('post-category') as HTMLSelectElement)?.value || '1', 10),
         author_id: parseInt((document.getElementById('post-author') as HTMLSelectElement)?.value || '1', 10),
@@ -354,7 +359,7 @@ const [categories, authors] = await Promise.all([
         focus_keyword: (document.getElementById('post-keyword') as HTMLInputElement)?.value || '',
         is_featured: (document.getElementById('is-featured') as HTMLInputElement)?.checked ? 1 : 0,
         is_trending: (document.getElementById('is-trending') as HTMLInputElement)?.checked ? 1 : 0,
-        status: 'published'
+        status: targetStatus
       };
 
       try {
@@ -363,18 +368,44 @@ const [categories, authors] = await Promise.all([
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+        const data = await res.json();
+
         if (res.ok) {
-          alert('Artikel berhasil disimpan dan dipublish ke Cloudflare D1!');
+          alert(targetStatus === 'published' ? '🎉 Artikel berhasil dipublikasikan ke Cloudflare D1!' : '💾 Draft artikel berhasil disimpan!');
           window.location.href = '/admin/posts';
+        } else if (res.status === 422) {
+          alert(`⚠️ Kelengkapan Artikel Belum Memenuhi Syarat Publish:\n\n${data.message}\n\nTips: Anda bisa mengklik "Simpan Draft" terlebih dahulu jika materi belum lengkap.`);
+          btnPublish.disabled = false;
+          btnDraft.disabled = false;
+          btnPublish.innerText = '🚀 Publish Artikel';
+          btnDraft.innerText = 'Simpan Draft';
         } else {
-          alert('Gagal menyimpan artikel. Cek koneksi.');
-          btn.disabled = false;
-          btn.innerText = '🚀 Publish Artikel';
+          alert(`Gagal menyimpan artikel: ${data.message || 'Cek koneksi database.'}`);
+          btnPublish.disabled = false;
+          btnDraft.disabled = false;
+          btnPublish.innerText = '🚀 Publish Artikel';
+          btnDraft.innerText = 'Simpan Draft';
         }
-      } catch (err) {
-        alert('Artikel berhasil disimpan ke D1!');
-        window.location.href = '/admin/posts';
+      } catch (err: any) {
+        alert(`Terjadi kesalahan: ${err.message}`);
+        btnPublish.disabled = false;
+        btnDraft.disabled = false;
+        btnPublish.innerText = '🚀 Publish Artikel';
+        btnDraft.innerText = 'Simpan Draft';
       }
+    }
+
+    // Form submit handler (Publish)
+    const form = document.getElementById('post-editor-form') as HTMLFormElement;
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await submitPost('published');
+    });
+
+    // Save Draft button handler
+    const btnDraft = document.getElementById('btn-save-draft');
+    btnDraft?.addEventListener('click', async () => {
+      await submitPost('draft');
     });
   </script>
 </AdminLayout>
