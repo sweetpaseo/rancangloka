@@ -85,10 +85,10 @@ const MOCK_SETTINGS: Record<string, string> = {
   site_url: 'https://magazine.pages.dev',
   site_logo: '',
   site_favicon: '📰',
-  theme_preset: 'editorial-blue',
-  theme_primary_color: '#2563eb',
-  theme_accent_color: '#f59e0b',
-  theme_dark_mode_default: 'system',
+  theme_preset: 'elegant-white',
+  theme_primary_color: '#1e3a8a', // Deep Luxury Royal Blue
+  theme_accent_color: '#d97706',  // Warm Amber
+  theme_dark_mode_default: 'light',
   seo_default_og_image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&auto=format&fit=crop&q=80',
   google_analytics_id: '',
   google_search_console_code: '',
@@ -344,6 +344,22 @@ export async function getSiteSettings(db: any): Promise<Record<string, string>> 
     }
   }
   return MOCK_SETTINGS;
+}
+
+export async function updateSiteSettings(db: any, newSettings: Record<string, string>): Promise<void> {
+  Object.assign(MOCK_SETTINGS, newSettings);
+  if (db) {
+    try {
+      for (const [key, value] of Object.entries(newSettings)) {
+        await db
+          .prepare('INSERT INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP')
+          .bind(key, String(value))
+          .run();
+      }
+    } catch (e) {
+      console.warn('D1 Update Settings fallback:', e);
+    }
+  }
 }
 
 export async function checkDuplicateArticle(db: any, slug: string, contentHash?: string): Promise<{ isDuplicate: boolean; existingArticle?: Article; reason?: string }> {

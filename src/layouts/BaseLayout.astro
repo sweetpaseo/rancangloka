@@ -79,10 +79,10 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
       }
     </style>
 
-    <!-- Anti-FOUC Dark Mode Immediate Execution -->
+    <!-- Anti-FOUC Theme Immediate Execution (Default Elegant Light) -->
     <script is:inline>
-      const theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      if (theme === 'dark') {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');

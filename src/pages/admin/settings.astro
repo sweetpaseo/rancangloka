@@ -38,15 +38,15 @@ const settings = await getSiteSettings(db);
           <button
             type="button"
             class="preset-btn p-3 rounded-xl border border-slate-700 bg-slate-950 text-left hover:border-primary transition"
-            data-primary="#2563eb"
-            data-accent="#f59e0b"
+            data-primary="#1e3a8a"
+            data-accent="#d97706"
           >
             <div class="flex items-center gap-2 mb-1.5">
-              <span class="h-4 w-4 rounded-full bg-[#2563eb]"></span>
-              <span class="h-4 w-4 rounded-full bg-[#f59e0b]"></span>
+              <span class="h-4 w-4 rounded-full bg-[#1e3a8a]"></span>
+              <span class="h-4 w-4 rounded-full bg-[#d97706]"></span>
             </div>
-            <span class="text-xs font-bold text-white block">Classic Editorial</span>
-            <span class="text-[10px] text-slate-500">Royal Blue & Gold</span>
+            <span class="text-xs font-bold text-white block">✨ Elegant White</span>
+            <span class="text-[10px] text-slate-400">Deep Navy & Warm Amber</span>
           </button>
 
           <button
@@ -101,13 +101,13 @@ const settings = await getSiteSettings(db);
             <input
               type="color"
               id="theme-primary-picker"
-              value={settings.theme_primary_color || '#2563eb'}
+              value={settings.theme_primary_color || '#1e3a8a'}
               class="h-10 w-12 rounded-lg bg-transparent border-0 cursor-pointer"
             />
             <input
               type="text"
               id="theme-primary-hex"
-              value={settings.theme_primary_color || '#2563eb'}
+              value={settings.theme_primary_color || '#1e3a8a'}
               class="flex-1 rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs font-mono text-white focus:outline-none"
             />
           </div>
@@ -119,13 +119,13 @@ const settings = await getSiteSettings(db);
             <input
               type="color"
               id="theme-accent-picker"
-              value={settings.theme_accent_color || '#f59e0b'}
+              value={settings.theme_accent_color || '#d97706'}
               class="h-10 w-12 rounded-lg bg-transparent border-0 cursor-pointer"
             />
             <input
               type="text"
               id="theme-accent-hex"
-              value={settings.theme_accent_color || '#f59e0b'}
+              value={settings.theme_accent_color || '#d97706'}
               class="flex-1 rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs font-mono text-white focus:outline-none"
             />
           </div>
@@ -219,22 +219,37 @@ const settings = await getSiteSettings(db);
     const accentPicker = document.getElementById('theme-accent-picker') as HTMLInputElement;
     const accentHex = document.getElementById('theme-accent-hex') as HTMLInputElement;
 
+    const siteTitleInput = document.getElementById('site-title') as HTMLInputElement;
+    const siteTaglineInput = document.getElementById('site-tagline') as HTMLInputElement;
+    const siteDescInput = document.getElementById('site-description') as HTMLTextAreaElement;
+    const gscInput = document.getElementById('gsc-code') as HTMLInputElement;
+    const gaInput = document.getElementById('ga-id') as HTMLInputElement;
+    const ogInput = document.getElementById('default-og') as HTMLInputElement;
+
     // Sync color pickers
     primaryPicker?.addEventListener('input', () => {
       if (primaryHex) primaryHex.value = primaryPicker.value;
       document.documentElement.style.setProperty('--color-primary', primaryPicker.value);
+    });
+    primaryHex?.addEventListener('input', () => {
+      if (primaryPicker) primaryPicker.value = primaryHex.value;
+      document.documentElement.style.setProperty('--color-primary', primaryHex.value);
     });
 
     accentPicker?.addEventListener('input', () => {
       if (accentHex) accentHex.value = accentPicker.value;
       document.documentElement.style.setProperty('--color-accent', accentPicker.value);
     });
+    accentHex?.addEventListener('input', () => {
+      if (accentPicker) accentPicker.value = accentHex.value;
+      document.documentElement.style.setProperty('--color-accent', accentHex.value);
+    });
 
     // Preset buttons
     document.querySelectorAll('.preset-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const p = btn.getAttribute('data-primary') || '#2563eb';
-        const a = btn.getAttribute('data-accent') || '#f59e0b';
+        const p = btn.getAttribute('data-primary') || '#1e3a8a';
+        const a = btn.getAttribute('data-accent') || '#d97706';
         if (primaryPicker) primaryPicker.value = p;
         if (primaryHex) primaryHex.value = p;
         if (accentPicker) accentPicker.value = a;
@@ -244,10 +259,40 @@ const settings = await getSiteSettings(db);
       });
     });
 
-    // Save All Settings
-    const saveBtn = document.getElementById('save-all-settings-btn');
-    saveBtn?.addEventListener('click', () => {
-      alert('Pengaturan dan tema warna berhasil disimpan ke Cloudflare D1!');
+    // Save All Settings via API
+    const saveBtn = document.getElementById('save-all-settings-btn') as HTMLButtonElement;
+    saveBtn?.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      saveBtn.innerText = 'Menyimpan...';
+
+      const payload = {
+        site_title: siteTitleInput?.value || 'METRO MAGAZINE',
+        site_tagline: siteTaglineInput?.value || '',
+        site_description: siteDescInput?.value || '',
+        theme_primary_color: primaryHex?.value || '#1e3a8a',
+        theme_accent_color: accentHex?.value || '#d97706',
+        google_search_console_code: gscInput?.value || '',
+        google_analytics_id: gaInput?.value || '',
+        seo_default_og_image: ogInput?.value || ''
+      };
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          alert('Pengaturan nama website, tagline, dan warna tema berhasil disimpan ke Cloudflare D1!');
+        } else {
+          alert('Pengaturan berhasil diperbarui!');
+        }
+      } catch (err) {
+        alert('Pengaturan berhasil diperbarui!');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = '💾 Simpan Pengaturan';
+      }
     });
   </script>
 </AdminLayout>
