@@ -98,5 +98,18 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **R2 Storage** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` siap menampung gambar cover dan upload. |
 | **SEO & Feed** | ✅ Selesai | Google News XML, Sitemap XML, RSS feed, Schema.org aktif. |
 | **Keamanan Level Kode** | ✅ Selesai | Hashing PBKDF2, session token acak 24-byte, SQL parameterization. |
-| **Cloudflare Zero Trust (Access)** | ⏳ Dalam Proses | Tahap pembuatan Access Application di Cloudflare One untuk proteksi OTP `/admin*`. |
+| **Cloudflare Zero Trust (Access)** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
 | **Custom Domain** | ⏳ Siap Dipasang | Menunggu pengguna menghubungkan domain kustom via tab *Domains*. |
+
+---
+
+## 🔑 4. Panduan Kredensial & Akses Admin (Credentials & Access Guide)
+
+1. **Lapis 1 — Cloudflare Zero Trust (Access Edge Security):**
+   - URL: `https://rancangloka.chandrajoyko.workers.dev/admin`
+   - Otorisasi: Verifikasi kode OTP 6-digit via email `chandrajoyko@gmail.com`.
+2. **Lapis 2 — CMS Admin Portal:**
+   - Email: `admin@rancangloka.com`
+   - Default Password: `Admin@RancangLoka2026!`
+   - Fitur Tersedia: Manajemen posting artikel, kategori bento/3-col, author EEAT, SEO settings, dan upload gambar R2.
+
