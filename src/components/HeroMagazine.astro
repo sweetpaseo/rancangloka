@@ -10,43 +10,43 @@ const { featuredArticle, secondaryArticles = [] } = Astro.props;
 if (!featuredArticle) return null;
 ---
 
-<section class="mb-12">
+<section class="mb-14">
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-    <!-- 1. Big Featured Headline (7 cols) -->
+    <!-- 1. Apple-Style Cinematic Featured Story (7 cols) -->
     <div class="lg:col-span-7">
-      <article class="group relative flex flex-col justify-end overflow-hidden rounded-3xl bg-slate-900 aspect-[16/10] md:aspect-[16/9] shadow-xl">
+      <article class="group relative flex flex-col justify-end overflow-hidden rounded-[2rem] bg-slate-950 aspect-[16/11] md:aspect-[16/10] shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.12)]">
         <img
           src={featuredArticle.featured_image}
           alt={featuredArticle.image_alt || featuredArticle.title}
-          class="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-500 group-hover:scale-105 group-hover:opacity-75"
+          class="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 ease-out group-hover:scale-105"
           fetchpriority="high"
           loading="eager"
         />
-        <!-- Gradient Overlay -->
-        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent"></div>
+        <!-- Apple Soft Cinematic Gradient -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
 
-        <div class="relative z-10 p-6 md:p-8">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
-              {featuredArticle.category_name || 'Berita Utama'}
+        <div class="relative z-10 p-6 sm:p-8 md:p-10">
+          <div class="flex items-center gap-2 mb-3.5">
+            <span class="rounded-full bg-white/20 backdrop-blur-md px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white border border-white/20">
+              {featuredArticle.category_name || 'Featured Story'}
             </span>
-            <span class="text-xs text-slate-300 font-medium">
+            <span class="text-xs text-white/70 font-medium">
               ⏱️ {featuredArticle.reading_time_minutes} min read
             </span>
           </div>
 
-          <h1 class="font-display text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight text-white line-clamp-2 md:line-clamp-3 group-hover:text-blue-300 transition">
+          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight line-clamp-2 md:line-clamp-3 group-hover:text-blue-200 transition-colors">
             <a href={`/${featuredArticle.slug}`}>
               {featuredArticle.title}
             </a>
           </h1>
 
-          <p class="mt-3 text-sm md:text-base text-slate-300 line-clamp-2 hidden sm:block">
+          <p class="mt-3 text-xs sm:text-sm text-white/80 line-clamp-2 hidden sm:block font-normal leading-relaxed">
             {featuredArticle.description}
           </p>
 
-          <div class="mt-4 flex items-center gap-3 text-xs text-slate-400">
-            <span>Oleh {featuredArticle.author_name || 'Redaksi'}</span>
+          <div class="mt-5 flex items-center gap-3 text-xs text-white/60 pt-4 border-t border-white/10">
+            <span class="font-medium text-white/90">Oleh {featuredArticle.author_name || 'Redaksi'}</span>
             <span>•</span>
             <span>{new Date(featuredArticle.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </div>
@@ -54,32 +54,32 @@ if (!featuredArticle) return null;
       </article>
     </div>
 
-    <!-- 2. Side Stories Column (5 cols) -->
+    <!-- 2. Apple Side Stories Cards (5 cols) -->
     <div class="lg:col-span-5 flex flex-col justify-between gap-4">
       {secondaryArticles.slice(0, 3).map((article) => (
-        <article class="group flex gap-4 rounded-2xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition">
-          <a href={`/${article.slug}`} class="relative block h-24 w-28 md:h-28 md:w-36 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+        <article class="apple-card group flex items-center gap-4 p-4 hover:border-black/10 dark:hover:border-white/20 transition">
+          <a href={`/${article.slug}`} class="relative block h-24 w-28 sm:h-28 sm:w-36 flex-shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
             <img
               src={article.featured_image}
               alt={article.image_alt || article.title}
-              class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              class="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-108"
               loading="lazy"
             />
           </a>
 
-          <div class="flex flex-1 flex-col justify-center">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-primary">
+          <div class="flex flex-1 flex-col justify-center min-w-0">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-[#0071e3]">
               {article.category_name || 'Topik'}
             </span>
-            <h2 class="mt-1 text-sm md:text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-primary transition leading-snug">
+            <h2 class="mt-1 text-sm sm:text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-[#0071e3] transition-colors leading-snug tracking-tight">
               <a href={`/${article.slug}`}>
                 {article.title}
               </a>
             </h2>
-            <div class="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
-              <span>{article.author_name || 'Redaksi'}</span>
+            <div class="mt-2.5 flex items-center gap-2 text-[11px] text-slate-400">
+              <span class="truncate">{article.author_name || 'Redaksi'}</span>
               <span>•</span>
-              <span>⏱️ {article.reading_time_minutes}m</span>
+              <span class="whitespace-nowrap">⏱️ {article.reading_time_minutes}m</span>
             </div>
           </div>
         </article>

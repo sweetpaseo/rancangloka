@@ -1,108 +1,164 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --color-primary: #2563eb;
-    --color-primary-hover: #1d4ed8;
-    --color-primary-light: #eff6ff;
-    --color-primary-dark: #1e40af;
-    --color-accent: #f59e0b;
-    --color-accent-hover: #d97706;
-    --color-accent-light: #fef3c7;
-    --color-surface: #ffffff;
-    --color-surface-muted: #f8fafc;
-    --color-surface-dark: #0f172a;
-    --color-surface-card: #1e293b;
-    --color-text-main: #0f172a;
-    --color-text-muted: #64748b;
-    --color-border: #e2e8f0;
+    --color-primary: #1d1d1f; /* Apple Obsidian Primary */
+    --color-primary-hover: #0071e3; /* Apple Interactive Blue */
+    --color-primary-light: #f5f5f7;
+    --color-primary-dark: #000000;
+    --color-accent: #0071e3; /* Apple Accent Blue */
+    --color-accent-hover: #0077ed;
+    --color-accent-light: #e8f2ff;
+    --color-surface: #fbfbfd; /* Apple Signature Canvas */
+    --color-surface-muted: #f5f5f7;
+    --color-surface-card: #ffffff;
+    --color-text-main: #1d1d1f; /* Apple Headline Obsidian */
+    --color-text-muted: #6e6e73; /* Apple Graphite Body */
+    --color-border: rgba(0, 0, 0, 0.07);
   }
 
   .dark {
-    --color-surface: #0f172a;
-    --color-surface-muted: #1e293b;
-    --color-surface-card: #1e293b;
-    --color-text-main: #f8fafc;
-    --color-text-muted: #94a3b8;
-    --color-border: #334155;
+    --color-surface: #000000;
+    --color-surface-muted: #161617;
+    --color-surface-card: #1d1d1f;
+    --color-text-main: #f5f5f7;
+    --color-text-muted: #86868b;
+    --color-border: rgba(255, 255, 255, 0.12);
   }
 
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+    letter-spacing: -0.015em;
+    background-color: var(--color-surface);
   }
 
   body {
     background-color: var(--color-surface);
     color: var(--color-text-main);
-    transition: background-color 0.2s ease, color 0.2s ease;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
-/* Custom Typography for Magazine Reader */
+/* Apple-style Custom Typography for Editorial Reading */
 .prose-magazine {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
   font-size: 1.125rem;
-  line-height: 1.8;
-  color: inherit;
+  line-height: 1.85;
+  color: #333336;
+}
+
+.dark .prose-magazine {
+  color: #d2d2d7;
 }
 
 .prose-magazine p {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.65rem;
+  font-weight: 400;
 }
 
 .prose-magazine h2 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-top: 2.5rem;
-  margin-bottom: 1rem;
-  letter-spacing: -0.025em;
-  color: var(--color-primary);
+  font-size: 1.875rem;
+  font-weight: 800;
+  margin-top: 3rem;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  color: #1d1d1f;
+}
+
+.dark .prose-magazine h2 {
+  color: #f5f5f7;
 }
 
 .prose-magazine h3 {
-  font-size: 1.35rem;
-  font-weight: 600;
-  margin-top: 2rem;
-  margin-bottom: 0.75rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-top: 2.25rem;
+  margin-bottom: 0.85rem;
+  letter-spacing: -0.02em;
+  color: #1d1d1f;
+}
+
+.dark .prose-magazine h3 {
+  color: #f5f5f7;
 }
 
 .prose-magazine ul, .prose-magazine ol {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
   padding-left: 1.5rem;
 }
 
 .prose-magazine li {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
+  line-height: 1.75;
 }
 
 .prose-magazine blockquote {
-  border-left: 4px solid var(--color-primary);
-  padding-left: 1.25rem;
+  border-left: 3px solid #0071e3;
+  padding-left: 1.5rem;
   font-style: italic;
-  margin: 1.75rem 0;
-  color: var(--color-text-muted);
+  font-size: 1.2rem;
+  margin: 2rem 0;
+  color: #6e6e73;
 }
 
-/* Hide scrollbar for horizontal pills swipe */
+.dark .prose-magazine blockquote {
+  color: #a1a1a6;
+}
+
+/* Apple Floating Dock & Glass Effects */
+.apple-glass {
+  background-color: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dark .apple-glass {
+  background-color: rgba(22, 22, 23, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Apple Smooth Squircle Cards */
+.apple-card {
+  background: #ffffff;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.07), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+}
+
+.dark .apple-card {
+  background: #161617;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.3);
+}
+
+.dark .apple-card:hover {
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* Hide scrollbar for category pills */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Shimmer Loading Skeleton */
-.shimmer {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
 }

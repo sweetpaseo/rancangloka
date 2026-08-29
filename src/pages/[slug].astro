@@ -61,61 +61,63 @@ const breadcrumbItems = [
   isArticlePage={true}
   jsonLdSchema={jsonLdSchema}
 >
-  <!-- Sticky Reading Progress Bar (Top) -->
-  <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-primary z-50 transition-all duration-75" style="width: 0%;"></div>
+  <!-- Apple-Style Dynamic Reading Progress Bar (Top) -->
+  <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-[#0071e3] z-50 transition-all duration-100 ease-out" style="width: 0%;"></div>
 
-  <article class="max-w-4xl mx-auto">
+  <article class="max-w-3xl mx-auto px-2 sm:px-0">
     <!-- 1. Breadcrumbs -->
-    <Breadcrumbs items={breadcrumbItems} />
+    <div class="mb-4">
+      <Breadcrumbs items={breadcrumbItems} />
+    </div>
 
-    <!-- 2. Header Metadata & Title -->
-    <header class="mb-6">
-      <div class="flex items-center gap-2 mb-3">
+    <!-- 2. Header Metadata & Headline -->
+    <header class="mb-8">
+      <div class="flex items-center gap-2.5 mb-4">
         <a
           href={`/category/${article.category_slug || 'all'}`}
-          class="rounded-full px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-white"
-          style={`background-color: ${article.category_color || '#2563eb'};`}
+          class="rounded-full px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-2xs"
+          style={`background-color: ${article.category_color || '#059669'};`}
         >
-          {article.category_name || 'Berita'}
+          {article.category_name || 'Hunian'}
         </a>
-        <span class="text-xs text-slate-400">
+        <span class="text-xs text-slate-400 font-medium">
           ⏱️ {article.reading_time_minutes} min read
         </span>
       </div>
 
-      <h1 class="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+      <h1 class="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.18]">
         {article.title}
       </h1>
 
-      <p class="mt-4 text-base md:text-lg text-slate-600 dark:text-slate-300 leading-relaxed font-serif">
+      <p class="mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
         {article.description}
       </p>
 
       <!-- Author and Date Meta Line -->
-      <div class="mt-6 flex items-center justify-between border-y border-slate-100 py-3 dark:border-slate-800 text-xs md:text-sm text-slate-500 dark:text-slate-400">
-        <div class="flex items-center gap-3">
+      <div class="mt-7 flex items-center justify-between border-y border-black/[0.05] py-4 dark:border-white/[0.08] text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+        <div class="flex items-center gap-3.5">
           <img
             src={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
             alt={article.author_name || 'Redaksi'}
-            class="h-9 w-9 rounded-full object-cover ring-2 ring-primary/20"
+            class="h-11 w-11 rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10"
           />
           <div>
-            <span class="font-bold text-slate-900 dark:text-white block">{article.author_name || 'Redaksi Utama'}</span>
-            <span class="text-xs">{article.author_role || 'Senior Editor'}</span>
+            <span class="font-bold text-slate-900 dark:text-white block text-sm">{article.author_name || 'Redaksi Utama'}</span>
+            <span class="text-xs text-slate-400">{article.author_role || 'Senior Editor'}</span>
           </div>
         </div>
 
         <div class="text-right">
-          <time datetime={article.published_at}>
+          <time datetime={article.published_at} class="font-medium text-slate-700 dark:text-slate-300">
             {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </time>
-          <span class="block text-[11px] text-slate-400">Terakhir diperbarui</span>
+          <span class="block text-[11px] text-slate-400 mt-0.5">Edisi Digital Terverifikasi</span>
         </div>
       </div>
     </header>
 
-    <!-- 3. Featured Cover Image (16:9 Aspect Ratio) -->
-    <div class="my-8 overflow-hidden rounded-3xl bg-slate-100 dark:bg-slate-800 aspect-[16/9] shadow-lg">
+    <!-- 3. Featured Cover Image (Apple Squircle) -->
+    <div class="my-8 overflow-hidden rounded-[2rem] bg-slate-100 dark:bg-slate-800 aspect-[16/10] shadow-[0_10px_30px_rgba(0,0,0,0.06)] border border-black/[0.04] dark:border-white/[0.06]">
       <img
         src={article.featured_image}
         alt={article.image_alt || article.title}
@@ -125,14 +127,14 @@ const breadcrumbItems = [
       />
     </div>
 
-    <!-- 4. Key Takeaways / AI Summary Box (Sangat Disukai AI Engine & SGE) -->
+    <!-- 4. Key Takeaways / AI Summary Box (Apple Frosted Box) -->
     {keyTakeaways.length > 0 && (
-      <div class="my-8 rounded-2xl border-l-4 border-primary bg-primary-light/40 dark:bg-primary-dark/20 p-5 dark:border-primary">
-        <h3 class="flex items-center gap-2 text-sm md:text-base font-bold text-slate-900 dark:text-white mb-2">
-          <span class="text-primary">💡</span>
+      <div class="my-8 rounded-3xl border border-blue-100 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-6 sm:p-7 shadow-2xs">
+        <h3 class="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">
+          <span class="text-[#0071e3]">💡</span>
           Poin Kunci & Ringkasan Cepat (Key Takeaways):
         </h3>
-        <ul class="space-y-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-300 list-disc list-inside">
+        <ul class="space-y-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300 list-disc list-inside leading-relaxed">
           {keyTakeaways.map((item) => (
             <li>{item}</li>
           ))}
@@ -146,7 +148,7 @@ const breadcrumbItems = [
     )}
 
     <!-- 6. Main Prose Article Body -->
-    <div class="prose-magazine font-serif text-slate-800 dark:text-slate-200 mt-8" set:html={processedHtml} />
+    <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-9" set:html={processedHtml} />
 
     <!-- 7. Social Share Bar -->
     <SocialShareBar title={article.title} />

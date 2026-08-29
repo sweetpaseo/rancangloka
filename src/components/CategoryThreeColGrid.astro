@@ -11,46 +11,46 @@ if (articles.length === 0) return null;
 const displayArticles = articles.slice(0, 3);
 ---
 
-<section class="my-12">
+<section class="my-14">
   <!-- Section Title -->
-  <div class="mb-6 flex items-center justify-between border-b-2 border-slate-100 pb-3 dark:border-slate-800">
+  <div class="mb-7 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.08] pb-3.5">
     <div class="flex items-center gap-3">
-      <span class="h-6 w-2 rounded-full" style={`background-color: ${category.color_badge || '#059669'};`}></span>
-      <h2 class="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+      <span class="h-6 w-2 rounded-full" style={`background-color: ${category.color_badge || '#2563eb'};`}></span>
+      <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
         {category.name}
       </h2>
     </div>
     <a
       href={`/category/${category.slug}`}
-      class="text-xs font-bold uppercase tracking-wider text-primary hover:underline flex items-center gap-1"
+      class="text-xs font-semibold tracking-wide text-[#0071e3] hover:underline flex items-center gap-1 group"
     >
-      Lihat Semua ({articles.length}) →
+      Lihat Semua ({articles.length}) <span class="transition-transform group-hover:translate-x-0.5">→</span>
     </a>
   </div>
 
-  <!-- 3-Column Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <!-- 3-Column Apple Cards Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     {displayArticles.map((article) => (
-      <article class="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-sm hover:shadow-md transition">
-        <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/9] bg-slate-100 dark:bg-slate-800">
+      <article class="apple-card group flex flex-col overflow-hidden">
+        <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/10] bg-slate-100 dark:bg-slate-800">
           <img
             src={article.featured_image}
             alt={article.image_alt || article.title}
-            class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            class="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-106"
             loading="lazy"
           />
         </a>
-        <div class="flex flex-1 flex-col p-5">
-          <h3 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-primary transition line-clamp-2">
+        <div class="flex flex-1 flex-col p-6">
+          <h3 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-[#0071e3] transition-colors line-clamp-2 leading-snug">
             <a href={`/${article.slug}`}>
               {article.title}
             </a>
           </h3>
-          <p class="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 flex-1">
+          <p class="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 flex-1 leading-relaxed">
             {article.description}
           </p>
-          <div class="mt-4 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-3 dark:border-slate-800">
-            <span>{article.author_name || 'Redaksi'}</span>
+          <div class="mt-5 flex items-center justify-between text-xs text-slate-400 border-t border-black/[0.04] dark:border-white/[0.06] pt-3.5">
+            <span class="font-medium">{article.author_name || 'Redaksi'}</span>
             <span>⏱️ {article.reading_time_minutes} min</span>
           </div>
         </div>

@@ -8,96 +8,92 @@ interface Props {
 }
 
 const { categories = [], siteSettings = {}, trendingArticles = [] } = Astro.props;
-const siteTitle = siteSettings.site_title || 'METRO MAGAZINE';
-const siteTagline = siteSettings.site_tagline || 'Wawasan Terdepan & Berita Masa Depan';
+const siteTitle = siteSettings.site_title || 'ERIHOUSE JOURNAL';
+const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Smart Home & Hunian Modern';
 ---
 
-<header class="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 transition-colors">
-  <!-- 1. Top Bar: Breaking News Ticker & Live Date -->
-  <div class="hidden md:flex h-9 items-center justify-between border-b border-slate-100 bg-slate-50 px-4 text-xs text-slate-500 dark:border-slate-800/80 dark:bg-slate-950/60 dark:text-slate-400">
+<header class="sticky top-0 z-40 w-full apple-glass transition-colors">
+  <!-- 1. Top Minimalist Bar: Live Date & Admin Access -->
+  <div class="hidden md:flex h-8 items-center justify-between border-b border-black/[0.04] dark:border-white/[0.06] px-6 text-[11px] text-slate-500 dark:text-slate-400">
     <div class="flex items-center gap-3 overflow-hidden">
-      <span class="flex items-center gap-1 rounded bg-accent/20 px-2 py-0.5 font-bold uppercase tracking-wider text-accent text-[10px]">
-        🔥 Trending
+      <span class="flex items-center gap-1.5 font-semibold text-[#0071e3] tracking-wide">
+        <span class="h-1.5 w-1.5 rounded-full bg-[#0071e3] animate-pulse"></span>
+        Curated Living
       </span>
-      <div class="truncate">
-        {trendingArticles.length > 0 ? (
-          <a href={`/${trendingArticles[0].slug}`} class="hover:text-primary transition">
-            {trendingArticles[0].title}
-          </a>
-        ) : (
-          <span>Selamat datang di platform editorial masa depan.</span>
-        )}
-      </div>
+      <span class="text-slate-300 dark:text-slate-700">/</span>
+      <span class="text-slate-600 dark:text-slate-400 font-medium">
+        Solusi Hunian Nyaman & Desain Berkelanjutan
+      </span>
     </div>
 
-    <div class="flex items-center gap-4">
-      <span id="live-date">Sabtu, 29 Agustus 2026</span>
-      <div class="h-3 w-px bg-slate-300 dark:bg-slate-700"></div>
-      <a href="/rss.xml" class="hover:text-primary font-medium flex items-center gap-1">
-        <span>RSS</span>
-      </a>
-      <a href="/admin" class="hover:text-primary font-semibold text-primary">
+    <div class="flex items-center gap-4 text-[11px]">
+      <span class="font-medium text-slate-400">Edisi Digital 2026</span>
+      <span class="text-slate-300 dark:text-slate-700">|</span>
+      <a href="/admin" class="hover:text-[#0071e3] font-semibold text-slate-700 dark:text-slate-300 transition">
         CMS Admin →
       </a>
     </div>
   </div>
 
   <!-- 2. Main Brand Bar -->
-  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:py-4">
+  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3.5">
     <!-- Brand Title / Logo -->
-    <a href="/" class="flex flex-col">
-      <span class="font-display text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-        {siteTitle}
-      </span>
-      <span class="text-[10px] md:text-xs font-medium uppercase tracking-widest text-slate-500 dark:text-slate-400">
+    <a href="/" class="group flex flex-col transition">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🏡</span>
+        <span class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white group-hover:text-[#0071e3] transition-colors">
+          {siteTitle}
+        </span>
+      </div>
+      <span class="text-[10px] sm:text-[11px] font-medium tracking-wide text-slate-400 dark:text-slate-500 pl-7">
         {siteTagline}
       </span>
     </a>
 
     <!-- Action Buttons -->
-    <div class="flex items-center gap-2 md:gap-3">
-      <!-- Search Trigger (Desktop & Mobile) -->
+    <div class="flex items-center gap-2.5">
+      <!-- Search Trigger (Apple Pill Style) -->
       <button
         data-search-trigger
-        class="flex items-center gap-2 rounded-full bg-slate-100 px-3.5 py-2 text-sm text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 transition"
+        class="flex items-center gap-2.5 rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 px-3.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 transition border border-black/[0.04] dark:border-white/[0.06]"
         aria-label="Cari artikel"
       >
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        <span class="hidden md:inline text-xs">Cari...</span>
-        <kbd class="hidden md:inline rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 shadow-sm dark:bg-slate-900">Ctrl K</kbd>
+        <span class="hidden sm:inline font-medium">Cari artikel...</span>
+        <kbd class="hidden md:inline rounded-md bg-white dark:bg-slate-900 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 border border-slate-200 dark:border-slate-800 shadow-2xs">⌘K</kbd>
       </button>
 
-      <!-- Theme Switcher Button -->
+      <!-- Theme Switcher -->
       <button
-        class="theme-toggle-btn rounded-full p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+        class="theme-toggle-btn rounded-full p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition"
         aria-label="Ganti Mode Gelap/Terang"
       >
-        <svg class="h-5 w-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="h-4 w-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
-        <svg class="h-5 w-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="h-4 w-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
         </svg>
       </button>
     </div>
   </div>
 
-  <!-- 3. Horizontal Swipeable Category Navigation Pills (Mobile & Desktop) -->
-  <nav class="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
-    <div class="mx-auto max-w-7xl px-4">
-      <div class="flex items-center gap-2 overflow-x-auto py-2 no-scrollbar scroll-smooth">
+  <!-- 3. Apple-style Swipeable Segmented Category Bar -->
+  <nav class="border-t border-black/[0.04] dark:border-white/[0.06] bg-slate-50/40 dark:bg-black/20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6">
+      <div class="flex items-center gap-1.5 overflow-x-auto py-2 no-scrollbar scroll-smooth">
         <a
           href="/"
-          class="flex-shrink-0 rounded-full px-3.5 py-1 text-xs font-semibold uppercase tracking-wider transition bg-primary text-white"
+          class="flex-shrink-0 rounded-full px-4 py-1 text-xs font-semibold tracking-tight transition bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs"
         >
-          Semua
+          Beranda
         </a>
         {categories.map((cat) => (
           <a
             href={`/category/${cat.slug}`}
-            class="flex-shrink-0 rounded-full px-3.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+            class="flex-shrink-0 rounded-full px-3.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-black/[0.04] dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08] transition"
           >
             {cat.name}
           </a>
