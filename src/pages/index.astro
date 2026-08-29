@@ -1,0 +1,100 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HeroMagazine from '../components/HeroMagazine.astro';
+import CategoryBentoGrid from '../components/CategoryBentoGrid.astro';
+import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+
+const db = await getDb(Astro.locals);
+const [articles, categories, siteSettings] = await Promise.all([
+  getAllArticles(db, 20, 0, 'published'),
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+
+const featuredArticle = articles.find((a) => a.is_featured === 1) || articles[0];
+const secondaryArticles = articles.filter((a) => a.id !== featuredArticle?.id).slice(0, 3);
+const remainingArticles = articles.filter((a) => a.id !== featuredArticle?.id && !secondaryArticles.some((sa) => sa.id === a.id));
+
+// Group articles by category for Bento Grids
+const techArticles = articles.filter((a) => a.category_id === 1);
+const businessArticles = articles.filter((a) => a.category_id === 2);
+const lifestyleArticles = articles.filter((a) => a.category_id === 3);
+
+// JSON-LD Schema for Website
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: siteSettings.site_title || 'Metro Magazine',
+  url: siteSettings.site_url || 'https://magazine.pages.dev',
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: `${siteSettings.site_url || 'https://magazine.pages.dev'}/search?q={search_term_string}`,
+    'query-input': 'required name=search_term_string'
+  }
+};
+---
+
+<BaseLayout
+  title="Berita Terkini & Wawasan Masa Depan"
+  categories={categories}
+  siteSettings={siteSettings}
+  jsonLdSchema={websiteSchema}
+>
+  <!-- 1. Hero Magazine Section -->
+  {featuredArticle && (
+    <HeroMagazine featuredArticle={featuredArticle} secondaryArticles={secondaryArticles} />
+  )}
+
+  <!-- 2. Bento Grids per Category -->
+  {categories[0] && techArticles.length > 0 && (
+    <CategoryBentoGrid category={categories[0]} articles={techArticles} />
+  )}
+
+  {categories[1] && businessArticles.length > 0 && (
+    <CategoryBentoGrid category={categories[1]} articles={businessArticles} />
+  )}
+
+  <!-- 3. Latest Feed Section -->
+  {remainingArticles.length > 0 && (
+    <section class="my-12">
+      <div class="mb-6 flex items-center justify-between border-b-2 border-slate-100 pb-3 dark:border-slate-800">
+        <h2 class="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="h-6 w-2 rounded-full bg-accent"></span>
+          Kabar Terbaru Lainnya
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {remainingArticles.map((article) => (
+          <article class="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition">
+            <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/9] bg-slate-100 dark:bg-slate-800">
+              <img
+                src={article.featured_image}
+                alt={article.image_alt || article.title}
+                class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                loading="lazy"
+              />
+              <span class="absolute top-3 left-3 rounded-full bg-slate-900/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                {article.category_name || 'Artikel'}
+              </span>
+            </a>
+            <div class="flex flex-1 flex-col p-4">
+              <h3 class="text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-primary transition">
+                <a href={`/${article.slug}`}>
+                  {article.title}
+                </a>
+              </h3>
+              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 flex-1">
+                {article.description}
+              </p>
+              <div class="mt-4 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <span>{article.author_name || 'Redaksi'}</span>
+                <span>⏱️ {article.reading_time_minutes} min read</span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )}
+</BaseLayout>

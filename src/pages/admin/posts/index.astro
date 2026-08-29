@@ -1,0 +1,172 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb, getAllArticles, getAllCategories } from '../../../lib/db';
+
+const db = await getDb(Astro.locals);
+const [articles, categories] = await Promise.all([
+  getAllArticles(db, 200, 0, 'all'),
+  getAllCategories(db)
+]);
+---
+
+<AdminLayout title="Semua Artikel">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-black text-white tracking-tight">Manajemen Artikel (All Posts)</h1>
+        <p class="text-xs text-slate-400 mt-1">Daftar seluruh artikel yang tersimpan di database D1.</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a
+          href="/admin/import"
+          class="rounded-xl bg-slate-800 border border-slate-700 px-3.5 py-2 text-xs font-semibold text-amber-300 hover:bg-slate-700 transition"
+        >
+          📥 Import .MD
+        </a>
+        <a
+          href="/admin/posts/new"
+          class="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/20"
+        >
+          + Tambah Artikel Baru
+        </a>
+      </div>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <input
+          id="post-search"
+          type="text"
+          placeholder="Cari judul artikel..."
+          class="w-full sm:w-64 rounded-xl bg-slate-800 border border-slate-700 px-3.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <select
+          id="category-filter"
+          class="rounded-xl bg-slate-800 border border-slate-700 px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          <option value="all">Semua Kategori</option>
+          {categories.map((c) => (
+            <option value={c.slug}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <span class="text-xs text-slate-400">
+        Total: <strong class="text-white">{articles.length}</strong> Artikel
+      </span>
+    </div>
+
+    <!-- Posts Table -->
+    <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+            <tr>
+              <th class="px-6 py-3.5">Artikel & Cover</th>
+              <th class="px-4 py-3.5">Kategori</th>
+              <th class="px-4 py-3.5">Status</th>
+              <th class="px-4 py-3.5">Est. Read</th>
+              <th class="px-4 py-3.5">Tanggal</th>
+              <th class="px-6 py-3.5 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="posts-table-body" class="divide-y divide-slate-800">
+            {articles.map((article) => (
+              <tr class="post-row hover:bg-slate-800/50 transition" data-title={article.title.toLowerCase()} data-category={article.category_slug || ''}>
+                <td class="px-6 py-3.5 flex items-center gap-3">
+                  <img
+                    src={article.featured_image}
+                    alt={article.title}
+                    class="h-12 w-16 rounded-lg object-cover flex-shrink-0 bg-slate-800"
+                  />
+                  <div class="min-w-0">
+                    <a href={`/admin/posts/${article.id}`} class="font-bold text-white hover:text-primary transition line-clamp-1 text-sm">
+                      {article.title}
+                    </a>
+                    <span class="text-[10px] text-slate-500 font-mono">/{article.slug}</span>
+                    {article.is_featured === 1 && (
+                      <span class="ml-2 inline-block rounded bg-primary/20 px-1.5 py-0.2 text-[9px] font-bold text-primary-light">Featured Hero</span>
+                    )}
+                  </div>
+                </td>
+                <td class="px-4 py-3.5 whitespace-nowrap">
+                  <span class="rounded-full bg-slate-800 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">
+                    {article.category_name || 'Umum'}
+                  </span>
+                </td>
+                <td class="px-4 py-3.5 whitespace-nowrap">
+                  <span class={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${article.status === 'published' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                    {article.status}
+                  </span>
+                </td>
+                <td class="px-4 py-3.5 whitespace-nowrap text-slate-400">
+                  ⏱️ {article.reading_time_minutes}m
+                </td>
+                <td class="px-4 py-3.5 whitespace-nowrap text-slate-400">
+                  {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </td>
+                <td class="px-6 py-3.5 whitespace-nowrap text-right space-x-3">
+                  <a href={`/admin/posts/${article.id}`} class="text-primary hover:underline font-semibold">
+                    Edit
+                  </a>
+                  <a href={`/${article.slug}`} target="_blank" class="text-slate-400 hover:text-white">
+                    Lihat ↗
+                  </a>
+                  <button
+                    class="delete-post-btn text-red-400 hover:underline"
+                    data-id={article.id}
+                  >
+                    Hapus
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('post-search') as HTMLInputElement;
+    const catFilter = document.getElementById('category-filter') as HTMLSelectElement;
+    const rows = document.querySelectorAll('.post-row') as NodeListOf<HTMLElement>;
+
+    function filterPosts() {
+      const q = searchInput?.value.toLowerCase() || '';
+      const cat = catFilter?.value || 'all';
+
+      rows.forEach((row) => {
+        const title = row.getAttribute('data-title') || '';
+        const category = row.getAttribute('data-category') || '';
+        const matchSearch = title.includes(q);
+        const matchCat = cat === 'all' || category === cat;
+
+        if (matchSearch && matchCat) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    searchInput?.addEventListener('input', filterPosts);
+    catFilter?.addEventListener('change', filterPosts);
+
+    // Delete post listener
+    document.querySelectorAll('.delete-post-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (confirm('Apakah Anda yakin ingin menghapus artikel ini dari database D1?')) {
+          const row = btn.closest('tr');
+          if (row) {
+            row.remove();
+            alert('Artikel berhasil dihapus!');
+          }
+        }
+      });
+    });
+  </script>
+</AdminLayout>

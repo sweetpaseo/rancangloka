@@ -1,0 +1,14 @@
+name = "cloudflare-magazine-blog"
+compatibility_date = "2024-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "magazine_blog_db"
+database_id = "your-d1-database-id-here"
+
+# Cloudflare R2 Object Storage Binding (for covers & media)
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "magazine-blog-media"

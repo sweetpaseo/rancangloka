@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../../lib/db';
+
+const { category } = Astro.params;
+const db = await getDb(Astro.locals);
+
+const [allArticles, categories, siteSettings] = await Promise.all([
+  getAllArticles(db, 100, 0, 'published'),
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+
+const currentCategory = categories.find((c) => c.slug === category);
+const filteredArticles = allArticles.filter((a) => a.category_slug === category || a.category_id === currentCategory?.id);
+
+const breadcrumbItems = [
+  { name: 'Kategori', url: '/' },
+  { name: currentCategory?.name || 'Kategori', url: `/category/${category}` }
+];
+---
+
+<BaseLayout
+  title={`Kategori: ${currentCategory?.name || 'Arsip'}`}
+  description={currentCategory?.description || `Kumpulan artikel terbaru dalam kategori ${currentCategory?.name || ''}`}
+  categories={categories}
+  siteSettings={siteSettings}
+>
+  <div class="max-w-7xl mx-auto">
+    <Breadcrumbs items={breadcrumbItems} />
+
+    <!-- Category Header Banner -->
+    <header class="my-8 rounded-3xl bg-slate-900 p-8 text-white relative overflow-hidden shadow-xl">
+      <div class="relative z-10 max-w-2xl">
+        <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider text-white mb-3 inline-block" style={`background-color: ${currentCategory?.color_badge || '#2563eb'};`}>
+          Topik Liputan
+        </span>
+        <h1 class="font-display text-3xl md:text-5xl font-black tracking-tight text-white">
+          {currentCategory?.name || category}
+        </h1>
+        <p class="mt-3 text-sm md:text-base text-slate-300">
+          {currentCategory?.description || 'Telusuri kumpulan wawasan dan analisis mendalam seputar topik ini.'}
+        </p>
+      </div>
+      <div class="absolute -right-12 -bottom-12 h-64 w-64 rounded-full bg-primary/20 blur-3xl pointer-events-none"></div>
+    </header>
+
+    <!-- Articles Grid -->
+    {filteredArticles.length > 0 ? (
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-10">
+        {filteredArticles.map((article) => (
+          <article class="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition">
+            <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/9] bg-slate-100 dark:bg-slate-800">
+              <img
+                src={article.featured_image}
+                alt={article.image_alt || article.title}
+                class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                loading="lazy"
+              />
+            </a>
+            <div class="flex flex-1 flex-col p-5">
+              <h3 class="text-base md:text-lg font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-primary transition">
+                <a href={`/${article.slug}`}>
+                  {article.title}
+                </a>
+              </h3>
+              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-3 flex-1">
+                {article.description}
+              </p>
+              <div class="mt-4 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <span>{article.author_name || 'Redaksi'}</span>
+                <span>⏱️ {article.reading_time_minutes} min read</span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    ) : (
+      <div class="my-16 text-center text-slate-500 py-12 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl">
+        <p class="text-base font-semibold">Belum ada artikel di kategori ini.</p>
+        <a href="/" class="mt-4 inline-block text-sm text-primary font-bold hover:underline">
+          ← Kembali ke Beranda
+        </a>
+      </div>
+    )}
+  </div>
+</BaseLayout>

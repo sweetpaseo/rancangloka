@@ -1,0 +1,213 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Import Markdown (.md)">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="pb-4 border-b border-slate-800">
+      <h1 class="text-2xl font-black text-white tracking-tight flex items-center gap-2">
+        <span>📥</span> Import Artikel Markdown (.md)
+      </h1>
+      <p class="text-xs text-slate-400 mt-1">
+        Unggah satu atau banyak file <code>.md</code> sekaligus. Sistem otomatis membaca Frontmatter YAML, melakukan parsing HTML, dan memeriksa duplikasi konten.
+      </p>
+    </div>
+
+    <!-- Duplicate Detection Strategy Box -->
+    <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-3">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+        <span>🛡️</span> Strategi Deteksi Duplikat (Smart Duplicate Handler)
+      </h2>
+      <p class="text-xs text-slate-400">
+        Jika ditemukan file dengan <strong>Slug yang sama</strong> atau <strong>Konten SHA-256 identik</strong> di database:
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+        <label class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-primary transition">
+          <input type="radio" name="dup_strategy" value="skip" checked class="mt-0.5 text-primary" />
+          <div>
+            <span class="text-xs font-bold text-white block">1. Lewati (Skip)</span>
+            <span class="text-[11px] text-slate-500">Abaikan file duplikat, hanya simpan artikel baru (Default).</span>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-primary transition">
+          <input type="radio" name="dup_strategy" value="overwrite" class="mt-0.5 text-primary" />
+          <div>
+            <span class="text-xs font-bold text-white block">2. Timpa (Overwrite)</span>
+            <span class="text-[11px] text-slate-500">Perbarui isi artikel lama dengan data dari file baru.</span>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-primary transition">
+          <input type="radio" name="dup_strategy" value="rename" class="mt-0.5 text-primary" />
+          <div>
+            <span class="text-xs font-bold text-white block">3. Simpan Keduanya</span>
+            <span class="text-[11px] text-slate-500">Buat artikel baru dengan penomoran unik di slug.</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Drag & Drop Upload Zone -->
+    <div
+      id="drop-zone"
+      class="rounded-3xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:bg-slate-900/80 p-8 sm:p-12 text-center transition cursor-pointer flex flex-col items-center justify-center gap-3"
+    >
+      <div class="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary text-3xl">
+        📄
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-white">Tarik & Lepas File .MD di sini</h3>
+        <p class="text-xs text-slate-400 mt-1">Mendukung satu atau banyak file <code>.md</code> sekaligus</p>
+      </div>
+      <input type="file" id="file-input" multiple accept=".md,.markdown,.txt" class="hidden" />
+      <button
+        type="button"
+        id="select-file-btn"
+        class="mt-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/20"
+      >
+        Pilih File dari Komputer
+      </button>
+    </div>
+
+    <!-- Upload & Parsing Progress Container -->
+    <div id="import-report" class="hidden rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span>📊</span> Laporan Hasil Import Markdown
+        </h3>
+        <span id="report-summary-badge" class="rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-bold text-emerald-400">
+          Selesai
+        </span>
+      </div>
+
+      <!-- Stats Numbers -->
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase font-bold">Berhasil Disimpan</span>
+          <p id="stat-success" class="text-2xl font-black text-emerald-400 mt-1">0</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase font-bold">Duplikat (Dilewati)</span>
+          <p id="stat-skipped" class="text-2xl font-black text-amber-400 mt-1">0</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase font-bold">Gagal (Error)</span>
+          <p id="stat-failed" class="text-2xl font-black text-red-400 mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- Detailed Logs -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold text-slate-300">Rincian File yang Diproses:</h4>
+        <div id="report-log-list" class="max-h-60 overflow-y-auto space-y-1.5 font-mono text-xs text-slate-300"></div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end gap-3">
+        <a href="/admin/posts" class="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover transition">
+          Lihat Daftar Artikel →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input') as HTMLInputElement;
+    const selectBtn = document.getElementById('select-file-btn');
+    const reportBox = document.getElementById('import-report');
+    const statSuccess = document.getElementById('stat-success');
+    const statSkipped = document.getElementById('stat-skipped');
+    const statFailed = document.getElementById('stat-failed');
+    const logList = document.getElementById('report-log-list');
+
+    selectBtn?.addEventListener('click', () => fileInput?.click());
+    dropZone?.addEventListener('click', (e) => {
+      if (e.target !== selectBtn) fileInput?.click();
+    });
+
+    dropZone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-primary', 'bg-primary/5');
+    });
+
+    dropZone?.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-primary', 'bg-primary/5');
+    });
+
+    dropZone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-primary', 'bg-primary/5');
+      if (e.dataTransfer?.files) {
+        handleFiles(Array.from(e.dataTransfer.files));
+      }
+    });
+
+    fileInput?.addEventListener('change', () => {
+      if (fileInput.files) {
+        handleFiles(Array.from(fileInput.files));
+      }
+    });
+
+    async function handleFiles(files: File[]) {
+      if (files.length === 0) return;
+      reportBox?.classList.remove('hidden');
+      if (logList) logList.innerHTML = '<p class="text-slate-400 py-2">Memulai pemrosesan dan verifikasi duplikat...</p>';
+
+      let success = 0;
+      let skipped = 0;
+      let failed = 0;
+      const logs: string[] = [];
+
+      const strategyEl = document.querySelector('input[name="dup_strategy"]:checked') as HTMLInputElement;
+      const strategy = strategyEl?.value || 'skip';
+
+      for (const file of files) {
+        try {
+          const text = await file.text();
+          const formData = new FormData();
+          formData.append('filename', file.name);
+          formData.append('content', text);
+          formData.append('strategy', strategy);
+
+          const res = await fetch('/api/admin/import-md', {
+            method: 'POST',
+            body: formData
+          });
+          const result = await res.json();
+
+          if (result.status === 'success') {
+            success++;
+            logs.push(`<div class="p-2 rounded bg-slate-950 border border-emerald-900/40 text-emerald-400 flex items-center justify-between">
+              <span>✅ ${file.name} ➔ "${result.title}"</span>
+              <span class="text-[10px] text-slate-500 font-mono">/${result.slug}</span>
+            </div>`);
+          } else if (result.status === 'duplicate_skipped') {
+            skipped++;
+            logs.push(`<div class="p-2 rounded bg-slate-950 border border-amber-900/40 text-amber-400 flex items-center justify-between">
+              <span>⚠️ ${file.name} (Duplikat Terdeteksi: ${result.reason})</span>
+              <span class="text-[10px] text-amber-500 font-bold uppercase">Dilewati</span>
+            </div>`);
+          } else {
+            failed++;
+            logs.push(`<div class="p-2 rounded bg-slate-950 border border-red-900/40 text-red-400">
+              ❌ ${file.name} (Gagal: ${result.error || 'Parsing error'})
+            </div>`);
+          }
+        } catch (err: any) {
+          failed++;
+          logs.push(`<div class="p-2 rounded bg-slate-950 border border-red-900/40 text-red-400">
+            ❌ ${file.name} (Error: ${err.message})
+          </div>`);
+        }
+
+        if (statSuccess) statSuccess.innerText = String(success);
+        if (statSkipped) statSkipped.innerText = String(skipped);
+        if (statFailed) statFailed.innerText = String(failed);
+        if (logList) logList.innerHTML = logs.join('');
+      }
+    }
+  </script>
+</AdminLayout>

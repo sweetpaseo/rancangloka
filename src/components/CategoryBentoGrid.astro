@@ -1,0 +1,92 @@
+---
+import type { Article, Category } from '../lib/db';
+
+interface Props {
+  category: Category;
+  articles: Article[];
+}
+
+const { category, articles = [] } = Astro.props;
+if (articles.length === 0) return null;
+const leadArticle = articles[0];
+const subArticles = articles.slice(1, 4);
+---
+
+<section class="my-12">
+  <!-- Section Title -->
+  <div class="mb-6 flex items-center justify-between border-b-2 border-slate-100 pb-3 dark:border-slate-800">
+    <div class="flex items-center gap-3">
+      <span class="h-6 w-2 rounded-full" style={`background-color: ${category.color_badge || '#2563eb'};`}></span>
+      <h2 class="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+        {category.name}
+      </h2>
+    </div>
+    <a
+      href={`/category/${category.slug}`}
+      class="text-xs font-bold uppercase tracking-wider text-primary hover:underline flex items-center gap-1"
+    >
+      Lihat Semua →
+    </a>
+  </div>
+
+  <!-- Bento Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+    <!-- Big Bento Card (6 cols) -->
+    {leadArticle && (
+      <div class="md:col-span-6">
+        <article class="group flex flex-col h-full overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-sm hover:shadow-md transition">
+          <a href={`/${leadArticle.slug}`} class="relative block overflow-hidden aspect-[16/9] bg-slate-100 dark:bg-slate-800">
+            <img
+              src={leadArticle.featured_image}
+              alt={leadArticle.image_alt || leadArticle.title}
+              class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              loading="lazy"
+            />
+          </a>
+          <div class="flex flex-1 flex-col p-5">
+            <h3 class="text-lg md:text-xl font-bold text-slate-900 dark:text-white group-hover:text-primary transition line-clamp-2">
+              <a href={`/${leadArticle.slug}`}>
+                {leadArticle.title}
+              </a>
+            </h3>
+            <p class="mt-2 text-xs md:text-sm text-slate-500 dark:text-slate-400 line-clamp-3 flex-1">
+              {leadArticle.description}
+            </p>
+            <div class="mt-4 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-3 dark:border-slate-800">
+              <span>{leadArticle.author_name || 'Redaksi'}</span>
+              <span>⏱️ {leadArticle.reading_time_minutes} min read</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    )}
+
+    <!-- Sub List Column (6 cols) -->
+    <div class="md:col-span-6 flex flex-col justify-between gap-4">
+      {subArticles.map((article) => (
+        <article class="group flex gap-4 rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900 hover:shadow-sm transition">
+          <a href={`/${article.slug}`} class="relative block h-20 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+            <img
+              src={article.featured_image}
+              alt={article.image_alt || article.title}
+              class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              loading="lazy"
+            />
+          </a>
+          <div class="flex flex-1 flex-col justify-center">
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-primary transition leading-snug">
+              <a href={`/${article.slug}`}>
+                {article.title}
+              </a>
+            </h4>
+            <div class="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+              <span>{new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+              <span>•</span>
+              <span>⏱️ {article.reading_time_minutes}m</span>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>

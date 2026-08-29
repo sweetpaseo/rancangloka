@@ -1,0 +1,108 @@
+---
+import type { Category } from '../lib/db';
+
+interface Props {
+  categories: Category[];
+  siteSettings: Record<string, string>;
+  trendingArticles?: Array<{ slug: string; title: string }>;
+}
+
+const { categories = [], siteSettings = {}, trendingArticles = [] } = Astro.props;
+const siteTitle = siteSettings.site_title || 'METRO MAGAZINE';
+const siteTagline = siteSettings.site_tagline || 'Wawasan Terdepan & Berita Masa Depan';
+---
+
+<header class="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 transition-colors">
+  <!-- 1. Top Bar: Breaking News Ticker & Live Date -->
+  <div class="hidden md:flex h-9 items-center justify-between border-b border-slate-100 bg-slate-50 px-4 text-xs text-slate-500 dark:border-slate-800/80 dark:bg-slate-950/60 dark:text-slate-400">
+    <div class="flex items-center gap-3 overflow-hidden">
+      <span class="flex items-center gap-1 rounded bg-accent/20 px-2 py-0.5 font-bold uppercase tracking-wider text-accent text-[10px]">
+        🔥 Trending
+      </span>
+      <div class="truncate">
+        {trendingArticles.length > 0 ? (
+          <a href={`/${trendingArticles[0].slug}`} class="hover:text-primary transition">
+            {trendingArticles[0].title}
+          </a>
+        ) : (
+          <span>Selamat datang di platform editorial masa depan.</span>
+        )}
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <span id="live-date">Sabtu, 29 Agustus 2026</span>
+      <div class="h-3 w-px bg-slate-300 dark:bg-slate-700"></div>
+      <a href="/rss.xml" class="hover:text-primary font-medium flex items-center gap-1">
+        <span>RSS</span>
+      </a>
+      <a href="/admin" class="hover:text-primary font-semibold text-primary">
+        CMS Admin →
+      </a>
+    </div>
+  </div>
+
+  <!-- 2. Main Brand Bar -->
+  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:py-4">
+    <!-- Brand Title / Logo -->
+    <a href="/" class="flex flex-col">
+      <span class="font-display text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+        {siteTitle}
+      </span>
+      <span class="text-[10px] md:text-xs font-medium uppercase tracking-widest text-slate-500 dark:text-slate-400">
+        {siteTagline}
+      </span>
+    </a>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-2 md:gap-3">
+      <!-- Search Trigger (Desktop & Mobile) -->
+      <button
+        data-search-trigger
+        class="flex items-center gap-2 rounded-full bg-slate-100 px-3.5 py-2 text-sm text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 transition"
+        aria-label="Cari artikel"
+      >
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <span class="hidden md:inline text-xs">Cari...</span>
+        <kbd class="hidden md:inline rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 shadow-sm dark:bg-slate-900">Ctrl K</kbd>
+      </button>
+
+      <!-- Theme Switcher Button -->
+      <button
+        class="theme-toggle-btn rounded-full p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+        aria-label="Ganti Mode Gelap/Terang"
+      >
+        <svg class="h-5 w-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <svg class="h-5 w-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 3. Horizontal Swipeable Category Navigation Pills (Mobile & Desktop) -->
+  <nav class="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
+    <div class="mx-auto max-w-7xl px-4">
+      <div class="flex items-center gap-2 overflow-x-auto py-2 no-scrollbar scroll-smooth">
+        <a
+          href="/"
+          class="flex-shrink-0 rounded-full px-3.5 py-1 text-xs font-semibold uppercase tracking-wider transition bg-primary text-white"
+        >
+          Semua
+        </a>
+        {categories.map((cat) => (
+          <a
+            href={`/category/${cat.slug}`}
+            class="flex-shrink-0 rounded-full px-3.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+          >
+            {cat.name}
+          </a>
+        ))}
+      </div>
+    </div>
+  </nav>
+</header>

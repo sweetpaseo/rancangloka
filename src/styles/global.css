@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-primary-light: #eff6ff;
+    --color-primary-dark: #1e40af;
+    --color-accent: #f59e0b;
+    --color-accent-hover: #d97706;
+    --color-accent-light: #fef3c7;
+    --color-surface: #ffffff;
+    --color-surface-muted: #f8fafc;
+    --color-surface-dark: #0f172a;
+    --color-surface-card: #1e293b;
+    --color-text-main: #0f172a;
+    --color-text-muted: #64748b;
+    --color-border: #e2e8f0;
+  }
+
+  .dark {
+    --color-surface: #0f172a;
+    --color-surface-muted: #1e293b;
+    --color-surface-card: #1e293b;
+    --color-text-main: #f8fafc;
+    --color-text-muted: #94a3b8;
+    --color-border: #334155;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-text-main);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Custom Typography for Magazine Reader */
+.prose-magazine {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: inherit;
+}
+
+.prose-magazine p {
+  margin-bottom: 1.5rem;
+}
+
+.prose-magazine h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.025em;
+  color: var(--color-primary);
+}
+
+.prose-magazine h3 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-magazine ul, .prose-magazine ol {
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.prose-magazine li {
+  margin-bottom: 0.5rem;
+}
+
+.prose-magazine blockquote {
+  border-left: 4px solid var(--color-primary);
+  padding-left: 1.25rem;
+  font-style: italic;
+  margin: 1.75rem 0;
+  color: var(--color-text-muted);
+}
+
+/* Hide scrollbar for horizontal pills swipe */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Shimmer Loading Skeleton */
+.shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

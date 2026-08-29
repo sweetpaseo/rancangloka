@@ -1,0 +1,43 @@
+---
+// Breadcrumbs Navigation with Schema.org BreadcrumbList Microdata
+interface BreadcrumbItem {
+  name: string;
+  url: string;
+}
+
+interface Props {
+  items: BreadcrumbItem[];
+}
+
+const { items = [] } = Astro.props;
+---
+
+<nav aria-label="Breadcrumb" class="mb-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+  <ol class="flex flex-wrap items-center gap-1.5" itemscope itemtype="https://schema.org/BreadcrumbList">
+    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="flex items-center gap-1.5">
+      <a href="/" itemprop="item" class="hover:text-primary transition flex items-center gap-1">
+        <span itemprop="name">Beranda</span>
+      </a>
+      <meta itemprop="position" content="1" />
+      <span class="text-slate-300 dark:text-slate-600">/</span>
+    </li>
+
+    {items.map((item, index) => (
+      <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="flex items-center gap-1.5">
+        {index === items.length - 1 ? (
+          <span itemprop="name" class="text-slate-800 dark:text-slate-200 line-clamp-1 max-w-[200px] md:max-w-md font-semibold">
+            {item.name}
+          </span>
+        ) : (
+          <>
+            <a href={item.url} itemprop="item" class="hover:text-primary transition">
+              <span itemprop="name">{item.name}</span>
+            </a>
+            <span class="text-slate-300 dark:text-slate-600">/</span>
+          </>
+        )}
+        <meta itemprop="position" content={String(index + 2)} />
+      </li>
+    ))}
+  </ol>
+</nav>

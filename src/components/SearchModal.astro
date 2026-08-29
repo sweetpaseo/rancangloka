@@ -1,0 +1,117 @@
+---
+// Instant Search Modal Component
+---
+
+<div id="search-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm transition-opacity">
+  <div class="fixed inset-x-4 top-16 mx-auto max-w-2xl rounded-2xl bg-white p-4 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 md:top-24">
+    <div class="flex items-center gap-3 border-b border-slate-200 pb-3 dark:border-slate-800">
+      <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <input
+        id="search-input"
+        type="text"
+        placeholder="Cari artikel, topik, atau kata kunci..."
+        class="w-full bg-transparent text-base text-slate-900 placeholder-slate-400 focus:outline-none dark:text-slate-100"
+        autocomplete="off"
+      />
+      <button id="close-search-btn" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Tutup Pencarian">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Search Results Container -->
+    <div id="search-results" class="mt-3 max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+      <p class="py-6 text-center text-sm text-slate-500 dark:text-slate-400">Ketik untuk mulai mencari artikel...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('search-modal');
+  const input = document.getElementById('search-input') as HTMLInputElement;
+  const resultsContainer = document.getElementById('search-results');
+  const closeBtn = document.getElementById('close-search-btn');
+
+  function openSearch() {
+    if (modal && input) {
+      modal.classList.remove('hidden');
+      input.focus();
+    }
+  }
+
+  function closeSearch() {
+    if (modal) {
+      modal.classList.add('hidden');
+      if (input) input.value = '';
+      if (resultsContainer) {
+        resultsContainer.innerHTML = '<p class="py-6 text-center text-sm text-slate-500 dark:text-slate-400">Ketik untuk mulai mencari artikel...</p>';
+      }
+    }
+  }
+
+  // Trigger buttons
+  document.querySelectorAll('[data-search-trigger]').forEach(btn => {
+    btn.addEventListener('click', openSearch);
+  });
+
+  closeBtn?.addEventListener('click', closeSearch);
+
+  // Close on backdrop click
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) closeSearch();
+  });
+
+  // Close on Escape
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSearch();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      openSearch();
+    }
+  });
+
+  // Search input handler with debounce
+  let timeout: any;
+  input?.addEventListener('input', () => {
+    clearTimeout(timeout);
+    const query = input.value.trim();
+    if (!query) {
+      if (resultsContainer) {
+        resultsContainer.innerHTML = '<p class="py-6 text-center text-sm text-slate-500 dark:text-slate-400">Ketik untuk mulai mencari artikel...</p>';
+      }
+      return;
+    }
+
+    timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search.json?q=${encodeURIComponent(query)}`);
+        const articles = await res.json();
+
+        if (!articles || articles.length === 0) {
+          if (resultsContainer) {
+            resultsContainer.innerHTML = '<p class="py-6 text-center text-sm text-slate-500">Tidak ada artikel yang cocok.</p>';
+          }
+          return;
+        }
+
+        if (resultsContainer) {
+          resultsContainer.innerHTML = articles.map((a: any) => `
+            <a href="/${a.slug}" class="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+              <img src="${a.featured_image}" alt="${a.title}" class="w-12 h-12 rounded object-cover flex-shrink-0" />
+              <div class="min-w-0">
+                <span class="text-xs font-semibold text-primary uppercase">${a.category_name || 'Artikel'}</span>
+                <h4 class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">${a.title}</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 truncate">${a.description || ''}</p>
+              </div>
+            </a>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+      }
+    }, 200);
+  });
+</script>

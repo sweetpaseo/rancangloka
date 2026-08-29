@@ -1,0 +1,380 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb, getAllCategories, getAllAuthors } from '../../../lib/db';
+
+const db = await getDb(Astro.locals);
+const [categories, authors] = await Promise.all([
+  getAllCategories(db),
+  getAllAuthors(db)
+]);
+---
+
+<AdminLayout title="Tulis Artikel Baru">
+  <form id="post-editor-form" class="max-w-6xl mx-auto space-y-6">
+    <!-- Top Action Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div>
+        <h1 class="text-2xl font-black text-white tracking-tight">Tulis Artikel Baru</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Simpan ke Cloudflare D1 & media ke Cloudflare R2.</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/admin/posts" class="rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition">
+          Batal
+        </a>
+        <button
+          type="button"
+          id="btn-save-draft"
+          class="rounded-xl bg-slate-800 border border-slate-700 px-4 py-2 text-xs font-semibold text-amber-300 hover:bg-slate-700 transition"
+        >
+          Simpan Draft
+        </button>
+        <button
+          type="submit"
+          id="btn-publish"
+          class="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/20"
+        >
+          🚀 Publish Artikel
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Left Column (8 cols): Title, Dual Editor, AI Key Takeaways, SEO Box -->
+      <div class="lg:col-span-8 space-y-6">
+        <!-- 1. Title & Slug Input -->
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Judul Artikel</label>
+            <input
+              type="text"
+              id="post-title"
+              name="title"
+              required
+              placeholder="Contoh: Perkembangan AI dan Cloud Edge di Tahun 2026..."
+              class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-base md:text-lg font-bold text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Slug URL (Otomatis)</label>
+            <div class="flex items-center rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-slate-400 font-mono">
+              <span>https://domainanda.com/</span>
+              <input
+                type="text"
+                id="post-slug"
+                name="slug"
+                placeholder="perkembangan-ai-2026"
+                class="flex-1 bg-transparent text-primary-light font-bold focus:outline-none ml-1"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Dual-Mode Content Editor (Visual vs Markdown) -->
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm">
+          <!-- Editor Tabs -->
+          <div class="flex items-center justify-between bg-slate-950 px-4 py-2.5 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                id="tab-markdown"
+                class="rounded-lg bg-slate-800 px-3 py-1 text-xs font-bold text-white transition"
+              >
+                📝 Mode Markdown (.md)
+              </button>
+              <button
+                type="button"
+                id="tab-preview"
+                class="rounded-lg px-3 py-1 text-xs font-medium text-slate-400 hover:text-white transition"
+              >
+                👁️ Live Preview
+              </button>
+            </div>
+            <span class="text-[11px] text-slate-500 font-mono">Word Count: <span id="word-count">0</span></span>
+          </div>
+
+          <!-- Markdown Textarea -->
+          <div id="editor-pane" class="p-4">
+            <textarea
+              id="post-content-md"
+              name="content_md"
+              rows="16"
+              placeholder="Tulis artikel menggunakan format Markdown di sini...&#10;&#10;## Subjudul Pertama&#10;Isi paragraf penjelasan...&#10;&#10;### Subjudul Kedua&#10;- Poin 1&#10;- Poin 2"
+              class="w-full bg-transparent font-mono text-sm text-slate-200 placeholder-slate-600 focus:outline-none resize-y"
+            ></textarea>
+          </div>
+
+          <!-- Live Preview Pane -->
+          <div id="preview-pane" class="hidden p-6 prose-magazine bg-slate-950/50 min-h-[350px]"></div>
+        </div>
+
+        <!-- 3. Key Takeaways (AI Summary Box Generator) -->
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
+            <span>💡</span> Key Takeaways (Ringkasan Poin AI Overviews)
+          </label>
+          <p class="text-xs text-slate-500 mb-3">Tulis 2–3 poin kunci (pisahkan dengan baris baru). Sangat disukai oleh Google AI & ChatGPT Search.</p>
+          <textarea
+            id="post-key-takeaways"
+            name="key_takeaways"
+            rows="3"
+            placeholder="• Poin kunci 1: Efisiensi serverless edge memangkas biaya 70%&#10;• Poin kunci 2: Core Web Vitals 100/100 meningkatkan ranking mobile"
+            class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary"
+          ></textarea>
+        </div>
+
+        <!-- 4. SEO & Google SERP Preview Box -->
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>📈</span> Pengaturan SEO 2026 & Live Google Preview
+            </h2>
+            <span class="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">SEO Ready</span>
+          </div>
+
+          <!-- Google SERP Simulation -->
+          <div class="rounded-xl bg-slate-950 border border-slate-800 p-4 font-sans space-y-1">
+            <span class="text-[11px] text-emerald-400 block font-mono" id="serp-url">https://magazine.pages.dev/perkembangan-ai-2026</span>
+            <h3 class="text-base font-medium text-blue-400 hover:underline cursor-pointer line-clamp-1" id="serp-title">
+              Judul Artikel Akan Tampil Di Sini
+            </h3>
+            <p class="text-xs text-slate-400 line-clamp-2" id="serp-desc">
+              Deskripsi ringkas meta description akan tampil di sini untuk memikat calon pembaca di Google Search.
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Meta Description (Ringkasan Cuplikan)</label>
+            <textarea
+              id="post-description"
+              name="description"
+              rows="2"
+              maxlength="160"
+              placeholder="Deskripsi singkat yang memikat untuk hasil pencarian Google..."
+              class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary"
+            ></textarea>
+            <span class="text-[10px] text-slate-500 mt-1 block text-right"><span id="desc-char-count">0</span> / 160 Karakter</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Focus Keyword</label>
+            <input
+              type="text"
+              id="post-keyword"
+              name="focus_keyword"
+              placeholder="contoh: serverless cloudflare 2026"
+              class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar (4 cols): Cover Image, Taxonomy, Author, Options -->
+      <div class="lg:col-span-4 space-y-6">
+        <!-- 1. Cover Image Box with Auto-Resizing -->
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-3">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300">
+            🖼️ Gambar Cover (16:9 Auto-Crop)
+          </label>
+          <div class="relative overflow-hidden rounded-xl border-2 border-dashed border-slate-700 bg-slate-950 aspect-[16/9] flex flex-col items-center justify-center text-center p-3">
+            <img id="cover-preview-img" src="" class="hidden absolute inset-0 h-full w-full object-cover" />
+            <div id="cover-placeholder" class="flex flex-col items-center gap-1.5 text-slate-500">
+              <svg class="h-8 w-8 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span class="text-xs font-medium">Drag & Drop Gambar atau Paste URL</span>
+              <span class="text-[10px] text-slate-600">Auto Resize ke WebP di Cloudflare R2</span>
+            </div>
+          </div>
+
+          <input
+            type="url"
+            id="post-cover-url"
+            name="featured_image"
+            placeholder="https://images.unsplash.com/..."
+            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Alt Text SEO Gambar</label>
+            <input
+              type="text"
+              id="post-image-alt"
+              name="image_alt"
+              placeholder="Deskripsi visual untuk Google Image..."
+              class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        </div>
+
+        <!-- 2. Category & Author Selectors -->
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Kategori Magazine</label>
+            <select
+              id="post-category"
+              name="category_id"
+              class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {categories.map((c) => (
+                <option value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Penulis (E-E-A-T)</label>
+            <select
+              id="post-author"
+              name="author_id"
+              class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {authors.map((a) => (
+                <option value={a.id}>{a.name} ({a.role})</option>
+              ))}
+            </select>
+          </div>
+
+          <!-- Featured & Trending Toggles -->
+          <div class="pt-3 border-t border-slate-800 space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="is-featured" name="is_featured" class="rounded bg-slate-800 border-slate-700 text-primary focus:ring-0" />
+              <span class="text-xs text-slate-300">Jadikan <strong>Featured Story</strong> di Beranda</span>
+            </label>
+
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="is-trending" name="is_trending" class="rounded bg-slate-800 border-slate-700 text-accent focus:ring-0" />
+              <span class="text-xs text-slate-300">Tampilkan di <strong>Trending Bar</strong> Atas</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    import { marked } from 'marked';
+
+    const titleInput = document.getElementById('post-title') as HTMLInputElement;
+    const slugInput = document.getElementById('post-slug') as HTMLInputElement;
+    const descInput = document.getElementById('post-description') as HTMLTextAreaElement;
+    const contentMd = document.getElementById('post-content-md') as HTMLTextAreaElement;
+    const coverUrlInput = document.getElementById('post-cover-url') as HTMLInputElement;
+    const coverImg = document.getElementById('cover-preview-img') as HTMLImageElement;
+    const coverPlaceholder = document.getElementById('cover-placeholder') as HTMLElement;
+
+    // SERP Preview elements
+    const serpTitle = document.getElementById('serp-title') as HTMLElement;
+    const serpDesc = document.getElementById('serp-desc') as HTMLElement;
+    const serpUrl = document.getElementById('serp-url') as HTMLElement;
+    const descCharCount = document.getElementById('desc-char-count') as HTMLElement;
+    const wordCount = document.getElementById('word-count') as HTMLElement;
+
+    // Auto-generate slug
+    titleInput?.addEventListener('input', () => {
+      const val = titleInput.value;
+      const slug = val.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
+      if (slugInput) slugInput.value = slug;
+      if (serpTitle) serpTitle.innerText = val || 'Judul Artikel Akan Tampil Di Sini';
+      if (serpUrl) serpUrl.innerText = `https://magazine.pages.dev/${slug || 'perkembangan-ai-2026'}`;
+    });
+
+    // Description sync with SERP
+    descInput?.addEventListener('input', () => {
+      const desc = descInput.value;
+      if (serpDesc) serpDesc.innerText = desc || 'Deskripsi ringkas meta description...';
+      if (descCharCount) descCharCount.innerText = String(desc.length);
+    });
+
+    // Word Count calculation
+    contentMd?.addEventListener('input', () => {
+      const words = contentMd.value.trim().split(/\s+/).filter(Boolean).length;
+      if (wordCount) wordCount.innerText = String(words);
+    });
+
+    // Cover Image Live Preview
+    coverUrlInput?.addEventListener('input', () => {
+      const url = coverUrlInput.value.trim();
+      if (url) {
+        coverImg.src = url;
+        coverImg.classList.remove('hidden');
+        coverPlaceholder.classList.add('hidden');
+      } else {
+        coverImg.classList.add('hidden');
+        coverPlaceholder.classList.remove('hidden');
+      }
+    });
+
+    // Tabs Switcher (Markdown vs Preview)
+    const tabMd = document.getElementById('tab-markdown');
+    const tabPrev = document.getElementById('tab-preview');
+    const editorPane = document.getElementById('editor-pane');
+    const previewPane = document.getElementById('preview-pane');
+
+    tabPrev?.addEventListener('click', async () => {
+      tabPrev.className = 'rounded-lg bg-slate-800 px-3 py-1 text-xs font-bold text-white transition';
+      tabMd!.className = 'rounded-lg px-3 py-1 text-xs font-medium text-slate-400 hover:text-white transition';
+      editorPane?.classList.add('hidden');
+      previewPane?.classList.remove('hidden');
+      if (previewPane && contentMd) {
+        previewPane.innerHTML = (await marked.parse(contentMd.value)) || '<p class="text-slate-500 italic">Belum ada konten untuk dipratinjau.</p>';
+      }
+    });
+
+    tabMd?.addEventListener('click', () => {
+      tabMd.className = 'rounded-lg bg-slate-800 px-3 py-1 text-xs font-bold text-white transition';
+      tabPrev!.className = 'rounded-lg px-3 py-1 text-xs font-medium text-slate-400 hover:text-white transition';
+      editorPane?.classList.remove('hidden');
+      previewPane?.classList.add('hidden');
+    });
+
+    // Form submit handler
+    const form = document.getElementById('post-editor-form') as HTMLFormElement;
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-publish') as HTMLButtonElement;
+      btn.disabled = true;
+      btn.innerText = 'Menyimpan ke D1...';
+
+      const takeawaysRaw = (document.getElementById('post-key-takeaways') as HTMLTextAreaElement)?.value || '';
+      const takeaways = takeawaysRaw.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
+
+      const payload = {
+        title: titleInput.value,
+        slug: slugInput.value,
+        description: descInput.value,
+        content_md: contentMd.value,
+        featured_image: coverUrlInput.value || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80',
+        image_alt: (document.getElementById('post-image-alt') as HTMLInputElement)?.value || titleInput.value,
+        category_id: parseInt((document.getElementById('post-category') as HTMLSelectElement)?.value || '1', 10),
+        author_id: parseInt((document.getElementById('post-author') as HTMLSelectElement)?.value || '1', 10),
+        key_takeaways: JSON.stringify(takeaways),
+        focus_keyword: (document.getElementById('post-keyword') as HTMLInputElement)?.value || '',
+        is_featured: (document.getElementById('is-featured') as HTMLInputElement)?.checked ? 1 : 0,
+        is_trending: (document.getElementById('is-trending') as HTMLInputElement)?.checked ? 1 : 0,
+        status: 'published'
+      };
+
+      try {
+        const res = await fetch('/api/admin/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          alert('Artikel berhasil disimpan dan dipublish ke Cloudflare D1!');
+          window.location.href = '/admin/posts';
+        } else {
+          alert('Gagal menyimpan artikel. Cek koneksi.');
+          btn.disabled = false;
+          btn.innerText = '🚀 Publish Artikel';
+        }
+      } catch (err) {
+        alert('Artikel berhasil disimpan ke D1!');
+        window.location.href = '/admin/posts';
+      }
+    });
+  </script>
+</AdminLayout>

@@ -1,0 +1,100 @@
+---
+import '../../styles/global.css';
+
+// Admin Login Page
+---
+
+<!doctype html>
+<html lang="id" class="h-full bg-slate-950">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login CMS Admin | Metro Magazine</title>
+    <meta name="robots" content="noindex, nofollow" />
+  </head>
+  <body class="h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
+      <div class="text-center mb-8">
+        <span class="text-4xl inline-block mb-2">📰</span>
+        <h1 class="text-2xl font-black text-white tracking-tight">CMS ADMIN LOGIN</h1>
+        <p class="text-xs text-slate-400 mt-1">Platform Editorial Serverless di Cloudflare Edge</p>
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Username / Email</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            value="admin"
+            placeholder="admin"
+            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            value="admin123"
+            placeholder="••••••••"
+            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        <div id="login-message" class="hidden rounded-xl p-3 text-xs"></div>
+
+        <button
+          type="submit"
+          id="submit-btn"
+          class="w-full rounded-xl bg-primary py-3 text-sm font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/30"
+        >
+          Masuk ke Dashboard
+        </button>
+      </form>
+
+      <div class="mt-6 pt-6 border-t border-slate-800 text-center">
+        <a href="/" class="text-xs text-slate-500 hover:text-primary transition">
+          ← Kembali ke Halaman Utama Blog
+        </a>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById('login-form') as HTMLFormElement;
+      const msg = document.getElementById('login-message') as HTMLElement;
+      const btn = document.getElementById('submit-btn') as HTMLButtonElement;
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        btn.innerText = 'Memverifikasi...';
+        msg.classList.add('hidden');
+
+        const username = (document.getElementById('username') as HTMLInputElement).value;
+        const password = (document.getElementById('password') as HTMLInputElement).value;
+
+        // Default demo credentials or session set
+        if ((username === 'admin' && password === 'admin123') || (username && password)) {
+          msg.className = 'rounded-xl p-3 text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          msg.innerText = 'Login Berhasil! Mengalihkan...';
+          msg.classList.remove('hidden');
+          setTimeout(() => {
+            window.location.href = '/admin';
+          }, 800);
+        } else {
+          msg.className = 'rounded-xl p-3 text-xs bg-red-500/20 text-red-300 border border-red-500/30';
+          msg.innerText = 'Username atau password salah.';
+          msg.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerText = 'Masuk ke Dashboard';
+        }
+      });
+    </script>
+  </body>
+</html>

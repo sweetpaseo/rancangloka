@@ -1,0 +1,73 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+
+const db = await getDb(Astro.locals);
+const [articles, categories, siteSettings] = await Promise.all([
+  getAllArticles(db, 4, 0, 'published'),
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+---
+
+<BaseLayout
+  title="404 - Halaman Tidak Ditemukan"
+  description="Maaf, halaman atau artikel yang Anda cari tidak ditemukan."
+  categories={categories}
+  siteSettings={siteSettings}
+>
+  <div class="max-w-3xl mx-auto my-16 text-center space-y-6">
+    <div class="inline-flex h-24 w-24 items-center justify-center rounded-3xl bg-primary/10 text-primary text-5xl">
+      📰
+    </div>
+
+    <h1 class="font-display text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
+      404: Halaman Tidak Ditemukan
+    </h1>
+
+    <p class="text-base text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+      Artikel yang Anda tuju mungkin telah dipindahkan, diubah tautannya, atau sedang tidak tersedia.
+    </p>
+
+    <!-- Search Button -->
+    <div class="pt-2 flex justify-center gap-3">
+      <button
+        data-search-trigger
+        class="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/20 flex items-center gap-2"
+      >
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        Cari Artikel Lain
+      </button>
+
+      <a
+        href="/"
+        class="rounded-xl bg-slate-100 dark:bg-slate-800 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+      >
+        Ke Beranda
+      </a>
+    </div>
+
+    <!-- Recommended Articles -->
+    <div class="mt-16 text-left pt-12 border-t border-slate-200 dark:border-slate-800">
+      <h2 class="text-base font-bold text-slate-900 dark:text-white mb-4">
+        Rekomendasi Berita Populer untuk Anda:
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {articles.map((article) => (
+          <a
+            href={`/${article.slug}`}
+            class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 hover:shadow-sm transition"
+          >
+            <img src={article.featured_image} alt={article.title} class="h-12 w-16 rounded-lg object-cover bg-slate-800 flex-shrink-0" />
+            <div class="min-w-0">
+              <span class="text-[10px] font-bold text-primary uppercase">{article.category_name}</span>
+              <h3 class="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">{article.title}</h3>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+</BaseLayout>

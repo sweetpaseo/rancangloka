@@ -1,0 +1,175 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import AuthorCard from '../components/AuthorCard.astro';
+import RelatedArticles from '../components/RelatedArticles.astro';
+import SocialShareBar from '../components/SocialShareBar.astro';
+import { getDb, getArticleBySlug, getRelatedArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import { extractTableOfContents, injectHeadingIds, generateArticleSchema } from '../lib/seo';
+
+const { slug } = Astro.params;
+const db = await getDb(Astro.locals);
+
+const [article, categories, siteSettings] = await Promise.all([
+  getArticleBySlug(db, slug || ''),
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+
+if (!article) {
+  return Astro.redirect('/404');
+}
+
+const relatedArticles = await getRelatedArticles(db, article.id, article.category_id, 3);
+const siteUrl = siteSettings.site_url || 'https://magazine.pages.dev';
+
+// Parse Table of Contents & inject IDs into Headings
+const toc = extractTableOfContents(article.content_html);
+const processedHtml = injectHeadingIds(article.content_html);
+
+// Parse Key Takeaways
+let keyTakeaways: string[] = [];
+if (article.key_takeaways) {
+  try {
+    keyTakeaways = JSON.parse(article.key_takeaways);
+  } catch (e) {}
+}
+
+// Generate JSON-LD Schema
+const authorObj = {
+  name: article.author_name,
+  avatar: article.author_avatar,
+  role: article.author_role,
+  slug: article.author_name ? article.author_name.toLowerCase().replace(/\s+/g, '-') : 'redaksi'
+};
+const jsonLdSchema = generateArticleSchema(article, siteUrl, authorObj, siteSettings);
+
+const breadcrumbItems = [
+  { name: article.category_name || 'Artikel', url: `/category/${article.category_slug || 'all'}` },
+  { name: article.title, url: `/${article.slug}` }
+];
+---
+
+<BaseLayout
+  title={article.title}
+  description={article.description}
+  ogImage={article.featured_image}
+  canonicalUrl={`${siteUrl}/${article.slug}`}
+  categories={categories}
+  siteSettings={siteSettings}
+  isArticlePage={true}
+  jsonLdSchema={jsonLdSchema}
+>
+  <!-- Sticky Reading Progress Bar (Top) -->
+  <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-primary z-50 transition-all duration-75" style="width: 0%;"></div>
+
+  <article class="max-w-4xl mx-auto">
+    <!-- 1. Breadcrumbs -->
+    <Breadcrumbs items={breadcrumbItems} />
+
+    <!-- 2. Header Metadata & Title -->
+    <header class="mb-6">
+      <div class="flex items-center gap-2 mb-3">
+        <a
+          href={`/category/${article.category_slug || 'all'}`}
+          class="rounded-full px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-white"
+          style={`background-color: ${article.category_color || '#2563eb'};`}
+        >
+          {article.category_name || 'Berita'}
+        </a>
+        <span class="text-xs text-slate-400">
+          ⏱️ {article.reading_time_minutes} min read
+        </span>
+      </div>
+
+      <h1 class="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+        {article.title}
+      </h1>
+
+      <p class="mt-4 text-base md:text-lg text-slate-600 dark:text-slate-300 leading-relaxed font-serif">
+        {article.description}
+      </p>
+
+      <!-- Author and Date Meta Line -->
+      <div class="mt-6 flex items-center justify-between border-y border-slate-100 py-3 dark:border-slate-800 text-xs md:text-sm text-slate-500 dark:text-slate-400">
+        <div class="flex items-center gap-3">
+          <img
+            src={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+            alt={article.author_name || 'Redaksi'}
+            class="h-9 w-9 rounded-full object-cover ring-2 ring-primary/20"
+          />
+          <div>
+            <span class="font-bold text-slate-900 dark:text-white block">{article.author_name || 'Redaksi Utama'}</span>
+            <span class="text-xs">{article.author_role || 'Senior Editor'}</span>
+          </div>
+        </div>
+
+        <div class="text-right">
+          <time datetime={article.published_at}>
+            {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </time>
+          <span class="block text-[11px] text-slate-400">Terakhir diperbarui</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 3. Featured Cover Image (16:9 Aspect Ratio) -->
+    <div class="my-8 overflow-hidden rounded-3xl bg-slate-100 dark:bg-slate-800 aspect-[16/9] shadow-lg">
+      <img
+        src={article.featured_image}
+        alt={article.image_alt || article.title}
+        class="h-full w-full object-cover"
+        fetchpriority="high"
+        loading="eager"
+      />
+    </div>
+
+    <!-- 4. Key Takeaways / AI Summary Box (Sangat Disukai AI Engine & SGE) -->
+    {keyTakeaways.length > 0 && (
+      <div class="my-8 rounded-2xl border-l-4 border-primary bg-primary-light/40 dark:bg-primary-dark/20 p-5 dark:border-primary">
+        <h3 class="flex items-center gap-2 text-sm md:text-base font-bold text-slate-900 dark:text-white mb-2">
+          <span class="text-primary">💡</span>
+          Poin Kunci & Ringkasan Cepat (Key Takeaways):
+        </h3>
+        <ul class="space-y-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-300 list-disc list-inside">
+          {keyTakeaways.map((item) => (
+            <li>{item}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    <!-- 5. Table of Contents -->
+    {toc.length > 0 && (
+      <TableOfContents toc={toc} />
+    )}
+
+    <!-- 6. Main Prose Article Body -->
+    <div class="prose-magazine font-serif text-slate-800 dark:text-slate-200 mt-8" set:html={processedHtml} />
+
+    <!-- 7. Social Share Bar -->
+    <SocialShareBar title={article.title} />
+
+    <!-- 8. E-E-A-T Author Card -->
+    <AuthorCard
+      authorName={article.author_name}
+      authorAvatar={article.author_avatar}
+      authorRole={article.author_role}
+    />
+
+    <!-- 9. Related Articles Grid -->
+    <RelatedArticles articles={relatedArticles} />
+  </article>
+
+  <!-- Reading Progress Script -->
+  <script>
+    window.addEventListener('scroll', () => {
+      const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      const bar = document.getElementById('reading-progress');
+      if (bar) bar.style.width = scrolled + '%';
+    });
+  </script>
+</BaseLayout>
