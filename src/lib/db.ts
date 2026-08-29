@@ -366,6 +366,46 @@ export async function getAllAuthors(db: any): Promise<Author[]> {
   return MOCK_AUTHORS;
 }
 
+export async function insertAuthor(db: any, author: Partial<Author>): Promise<Author> {
+  const newId = MOCK_AUTHORS.length > 0 ? Math.max(...MOCK_AUTHORS.map(a => a.id)) + 1 : 1;
+  const newAuthor: Author = {
+    id: newId,
+    name: author.name || 'Penulis Baru',
+    slug: author.slug || `author-${newId}`,
+    bio: author.bio || '',
+    avatar: author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    role: author.role || 'Contributor',
+    social_links: author.social_links || '{}'
+  };
+
+  if (db) {
+    try {
+      await db
+        .prepare('INSERT INTO authors (name, slug, bio, avatar, role, social_links) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(newAuthor.name, newAuthor.slug, newAuthor.bio, newAuthor.avatar, newAuthor.role, newAuthor.social_links)
+        .run();
+    } catch (e) {
+      console.warn('D1 Insert Author fallback:', e);
+    }
+  }
+
+  MOCK_AUTHORS.push(newAuthor);
+  return newAuthor;
+}
+
+export async function deleteAuthor(db: any, id: number): Promise<void> {
+  const idx = MOCK_AUTHORS.findIndex(a => a.id === id);
+  if (idx !== -1) MOCK_AUTHORS.splice(idx, 1);
+
+  if (db) {
+    try {
+      await db.prepare('DELETE FROM authors WHERE id = ?').bind(id).run();
+    } catch (e) {
+      console.warn('D1 Delete Author fallback:', e);
+    }
+  }
+}
+
 export async function getSiteSettings(db: any): Promise<Record<string, string>> {
   if (db) {
     try {

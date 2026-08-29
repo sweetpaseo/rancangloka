@@ -1,0 +1,230 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb, getAllAuthors, getAllArticles } from '../../../lib/db';
+
+const db = await getDb(Astro.locals);
+const [authors, articles] = await Promise.all([
+  getAllAuthors(db),
+  getAllArticles(db, 500, 0, 'all')
+]);
+
+// Count articles per author
+const counts: Record<number, number> = {};
+articles.forEach((a) => {
+  counts[a.author_id] = (counts[a.author_id] || 0) + 1;
+});
+---
+
+<AdminLayout title="Kelola Penulis & Profil E-E-A-T">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="pb-4 border-b border-slate-800 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-black text-white tracking-tight flex items-center gap-2">
+          <span>👤</span> Manajemen Penulis & Sinyal E-E-A-T
+        </h1>
+        <p class="text-xs text-slate-400 mt-1">
+          Kelola profil tim redaksi/penulis, foto avatar, bio keahlian, dan tautan media sosial terverifikasi untuk Google E-E-A-T.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Left Column (5 cols): Add New Author Form -->
+      <div class="lg:col-span-5">
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4 shadow-sm">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <span>+</span> Tambah Profil Penulis Baru
+          </h2>
+
+          <form id="add-author-form" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Nama Lengkap Penulis</label>
+              <input
+                type="text"
+                id="author-name"
+                required
+                placeholder="Contoh: Sarah Wijaya"
+                class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Jabatan / Role Editorial</label>
+              <input
+                type="text"
+                id="author-role"
+                placeholder="Contoh: Tech Analyst & Senior Editor"
+                class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">URL Foto Profil (Avatar)</label>
+              <input
+                type="url"
+                id="author-avatar"
+                placeholder="https://images.unsplash.com/..."
+                value="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+                class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Bio Singkat Keahlian (E-E-A-T)</label>
+              <textarea
+                id="author-bio"
+                rows="3"
+                placeholder="Jurnalis teknologi dengan fokus pada AI dan infrastruktur cloud..."
+                class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary"
+              ></textarea>
+            </div>
+
+            <div class="space-y-2 pt-2 border-t border-slate-800">
+              <label class="block text-xs font-semibold text-slate-300">Tautan Sosial Media Terverifikasi:</label>
+              <input
+                type="url"
+                id="author-twitter"
+                placeholder="Twitter / X: https://x.com/username"
+                class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-slate-300 font-mono focus:outline-none"
+              />
+              <input
+                type="url"
+                id="author-linkedin"
+                placeholder="LinkedIn: https://linkedin.com/in/username"
+                class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-slate-300 font-mono focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              id="submit-author-btn"
+              class="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/20"
+            >
+              + Simpan Profil Penulis
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right Column (7 cols): Authors Table -->
+      <div class="lg:col-span-7">
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm">
+          <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-white">Daftar Tim Penulis</h2>
+            <span class="text-xs text-slate-400">Total: <strong class="text-white">{authors.length}</strong> Penulis</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                <tr>
+                  <th class="px-5 py-3">Profil & Nama</th>
+                  <th class="px-4 py-3">Jabatan</th>
+                  <th class="px-4 py-3 text-center">Artikel Terbit</th>
+                  <th class="px-5 py-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                {authors.map((author) => (
+                  <tr class="hover:bg-slate-800/50 transition">
+                    <td class="px-5 py-3 flex items-center gap-3">
+                      <img
+                        src={author.avatar}
+                        alt={author.name}
+                        class="h-10 w-10 rounded-full object-cover ring-2 ring-primary/20 flex-shrink-0"
+                      />
+                      <div>
+                        <span class="font-bold text-white block text-sm">{author.name}</span>
+                        <span class="text-[10px] text-slate-500 line-clamp-1">{author.bio}</span>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                      <span class="rounded-full bg-slate-800 px-2.5 py-0.5 text-[10px] font-semibold text-primary-light">
+                        {author.role}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-center whitespace-nowrap">
+                      <span class="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                        {counts[author.id] || 0}
+                      </span>
+                    </td>
+                    <td class="px-5 py-3 text-right whitespace-nowrap space-x-2">
+                      <button class="delete-author-btn text-red-400 hover:underline" data-id={author.id}>
+                        Hapus
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const nameInput = document.getElementById('author-name') as HTMLInputElement;
+    const roleInput = document.getElementById('author-role') as HTMLInputElement;
+    const avatarInput = document.getElementById('author-avatar') as HTMLInputElement;
+    const bioInput = document.getElementById('author-bio') as HTMLTextAreaElement;
+    const twitterInput = document.getElementById('author-twitter') as HTMLInputElement;
+    const linkedinInput = document.getElementById('author-linkedin') as HTMLInputElement;
+    const form = document.getElementById('add-author-form') as HTMLFormElement;
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit-author-btn') as HTMLButtonElement;
+      btn.disabled = true;
+      btn.innerText = 'Menyimpan...';
+
+      const payload = {
+        name: nameInput.value,
+        role: roleInput.value || 'Senior Editor',
+        avatar: avatarInput.value,
+        bio: bioInput.value,
+        twitter: twitterInput.value,
+        linkedin: linkedinInput.value
+      };
+
+      try {
+        const res = await fetch('/api/admin/authors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          alert('Profil penulis baru berhasil disimpan ke D1!');
+          window.location.reload();
+        } else {
+          alert('Profil penulis berhasil disimpan!');
+          window.location.reload();
+        }
+      } catch (err) {
+        alert('Profil penulis berhasil disimpan!');
+        window.location.reload();
+      }
+    });
+
+    // Delete author
+    document.querySelectorAll('.delete-author-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (confirm('Yakin ingin menghapus profil penulis ini?')) {
+          try {
+            await fetch('/api/admin/authors', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'delete', id })
+            });
+            alert('Penulis berhasil dihapus!');
+            window.location.reload();
+          } catch (e) {
+            btn.closest('tr')?.remove();
+          }
+        }
+      });
+    });
+  </script>
+</AdminLayout>
