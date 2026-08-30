@@ -149,18 +149,31 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 15: Implementasi 6 Fitur World-Class Editorial Media (Engagement & Visual Interactivity)
+* **Gejala:** Dibutuhkan peningkatan pengalaman membaca, retensi pembaca, eksplorasi visual arsitektur, dan produktivitas editor di level standar media internasional (ArchDaily/Dezeen/Kinfolk).
+* **Solusi:**
+  1. **Native Photo Lightbox Zoom:** [`src/components/ImageLightbox.astro`](file:///src/components/ImageLightbox.astro) memungkinkan pembaca mengetuk gambar untuk mode full-screen HD dengan tombol unduh dan caption.
+  2. **Interactive Before-After Slider:** [`src/components/BeforeAfterSlider.astro`](file:///src/components/BeforeAfterSlider.astro) komponen interaktif perbandingan renovasi ruangan yang dapat digeser mulus via touch/mouse.
+  3. **Inspiration Bookmarks (Client-Side):** [`src/components/BookmarkDrawer.astro`](file:///src/components/BookmarkDrawer.astro) pembaca dapat menyimpan artikel favorit ke browser via tombol 🔖 tanpa login.
+  4. **Enhanced Search Modal:** [`src/components/SearchModal.astro`](file:///src/components/SearchModal.astro) kini menyajikan tag tren (`#Japandi`, `#FasadTropis`, dll.) saat input masih kosong.
+  5. **Newsletter Box & D1 Database:** [`src/components/NewsletterBox.astro`](file:///src/components/NewsletterBox.astro) dan API [`src/pages/api/newsletter/subscribe.ts`](file:///src/pages/api/newsletter/subscribe.ts) yang menyimpan data email ke tabel `subscribers` di D1.
+  6. **Realtime SEO Live Scorecard:** Pasang checklist SEO otomatis di sidebar editor [`src/pages/admin/posts/new.astro`](file:///src/pages/admin/posts/new.astro) untuk panduan instan penulis.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, dark mode, dynamic styling. |
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main`. |
-| **D1 Database & Skema** | ✅ Selesai (Aktif) | 7 tabel inti + kolom `is_sponsored` & settings kustomisasi. |
+| **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + kolom monetisasi. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
 | **Manajemen Halaman Statis (Pages)** | ✅ Selesai (Aktif) | Page Writer CMS, template kontak interaktif, & sitemap pages aktif. |
 | **Sirkulasi Internal Linking Otomatis** | ✅ Selesai (Aktif) | Dateline, Auto-Keywords, In-Article BACA JUGA, & Paid Review Toggle. |
 | **Social Share & Footer Manager** | ✅ Selesai (Aktif) | Kontrol penuh tombol share artikel & medsos resmi footer di Admin. |
 | **Stealth Mode (Anti-Detector)** | ✅ Selesai (Aktif) | Path aset disamarkan ke `/assets/`, HTML minified, zero meta generator. |
+| **6 Fitur World-Class Editorial** | ✅ Selesai (Aktif) | Lightbox, Before-After, Bookmarks, Search Tags, Newsletter, SEO Card. |
 | **SEO & Feed** | ✅ Selesai | Google News XML, Sitemap XML, RSS feed, Schema.org aktif. |
 | **Keamanan Level Kode** | ✅ Selesai | Hashing PBKDF2, session token acak 24-byte, SQL parameterization. |
 | **Cloudflare Zero Trust (Access)** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
