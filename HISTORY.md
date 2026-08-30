@@ -161,6 +161,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 16: Full-Width Breakout Grid Artikel Terkait & Redesain Author Card Mewah
+* **Gejala:** Seksi Artikel Terkait di bawah artikel terjepit di kolom sempit `max-w-3xl` (~768px), membuat 3 kartu artikel terlihat menciut dan menyisakan ruang hampa putih yang terlalu lebar di layar desktop.
+* **Solusi:**
+  - Memisahkan `<RelatedArticles />` ke luar kontainer sempit `<article>` agar melebar penuh (*Full-Width Breakout*) hingga **`max-w-7xl` (1280px)** dengan latar belakang halus (*Soft Canvas Backdrop* `bg-slate-50/70 py-16`).
+  - Memperbarui [`src/components/RelatedArticles.astro`](file:///src/components/RelatedArticles.astro) dengan kartu beresolusi foto lega `aspect-[16/10]`, badge topik melayang, dan efek hover transisi 700ms.
+  - Memperbarui [`src/components/AuthorCard.astro`](file:///src/components/AuthorCard.astro) dengan gaya *Apple Squircle Box* (`rounded-[2rem]`), ring avatar tebal, badge verifikasi editor, dan tombol profil media sosial.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
