@@ -327,13 +327,39 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
-### Masalah 33: Penegakan Total Kredibilitas Editorial & Integritas Sumber (Phase 1 Trust P0)
-* **Gejala:** Kebutuhan akan penegakan kredibilitas absolut, pembasmian seluruh alamat kantor fiktif, integrasi referensi SNI/PUPR, dan transparansi kebijakan koreksi terbuka.
+### Masalah 34: Epistemic Rigor, Eliminasi Overclaim, & Metodologi Transparan
+* **Gejala:** Klaim performa seperti `+38% Cahaya Alami`, `36m² -> 55m² Persepsi Ruang`, `terbukti bekerja`, dan kata absolut seperti `isolator terbaik` membuat website terdengar overclaim tanpa pembuktian lab.
 * **Solusi:**
-  - **Eradikasi Alamat Kantor Fiktif:** Mengganti seluruh referensi alamat dekoratif di [`src/lib/db.ts`](file:///src/lib/db.ts) menjadi pernyataan operasional independen dan terdistribusi dari Indonesia yang jujur dan transparan.
-  - **Otoritas Penulis Nyata:** Menyatukan seluruh peran penulis menjadi `Dewan Redaksi Spasial RancangLoka` dan `Tim Riset Materialitas RancangLoka`.
-  - **Integrasi Kotak Sumber & Referensi Teknis:** Menyematkan bagian *Sources & Editorial Citations* (SNI 03-6572, Panduan Selubung Bangunan Tropis Kementerian PUPR) di setiap artikel pada [`src/pages/[slug].astro`](file:///src/pages/[slug].astro).
-  - **Kebijakan Hak Jawab & Koreksi Transparan:** Mempertegas piagam integritas dan mekanisme ralat di halaman Kontak, Tentang Kami, dan Pedoman Media Siber.
+  - **Visual Study Framing:** Mengubah metrik semu di [`src/pages/index.astro`](file:///src/pages/index.astro) menjadi deskriptor kualitatif (*Pencahayaan: Optimal, Sirkulasi: +1 Sumbu, Persepsi: Open-Plan, Materialitas: Kayu Ulin & Andesit*) dengan label `🟡 Conceptual Study`.
+  - **Eradikasi Bahasa Pemasaran:** Mengganti seluruh frasa `terbukti` menjadi `kemungkinan akar masalah & strategi desain yang relevan`, `isolator terbaik` menjadi `potensi insulasi termal tinggi`, dan `anti karat` menjadi `tahan korosi & anti rayap`.
+  - **Standarisasi Entitas Penulis:** Menyatukan author di [`src/lib/db.ts`](file:///src/lib/db.ts) dan template menjadi `RancangLoka Editorial Desk` (*Kurasi & Riset Spasial Tropis*) dan `RancangLoka Research Desk`.
+
+---
+
+### Masalah 35: Transformasi Decision Support Engine 3-Sumbu (Design Explorer)
+* **Gejala:** Deskripsi halaman menjanjikan filter materialitas, tetapi antarmuka hanya menyediakan filter Masalah dan Zona Ruang.
+* **Solusi:**
+  - **3-Way Multi-Filter Interaktif ([`src/pages/explore.astro`](file:///src/pages/explore.astro)):** Menambahkan baris filter ketiga (*Preferensi Material: Kayu Ulin/Jati, UPVC, Batu Alam, Bata Terakota*) dan menyinkronkan logika client-side multi-filtering secara real-time (*Tantangan Ruang x Zona Ruang x Materialitas*).
+
+---
+
+### Masalah 36: Transparansi Metodologi Komparasi (How We Score 25/20/20/15/20 & Rujukan SNI/ISO/BPHH)
+* **Gejala:** Rating bintang pada matriks komparasi material terlihat seperti data lab objektif tanpa dasar pembobotan yang jelas.
+* **Solusi:**
+  - **Panel "How We Score" ([`src/pages/komparasi.astro`](file:///src/pages/komparasi.astro)):** Menampilkan kotak metodologi terbuka dengan pembobotan persentase resmi: Termal (25%), Akustik (20%), Durabilitas (20%), Perawatan (15%), dan Biaya (20%).
+  - **Rujukan Standar Bangunan:** Menautkan dasar penilaian ke standar SNI 03-6572 (Sistem Ventilasi), ISO 10140 / ASTM E90 (Assembly Kaca Akustik), dan Balai Penelitian Hasil Hutan (BPHH).
+  - **Halaman Metodologi Khusus ([`src/pages/metodologi.astro`](file:///src/pages/metodologi.astro)):** Membuat dokumentasi lengkap standar riset spasial dan fisika bangunan tropis.
+
+---
+
+### Masalah 37: Penerapan Sistem Badge Bukti Visual (Evidence Status Badge System)
+* **Gejala:** Pengguna kesulitan membedakan antara fakta standar industri, telaah redaksi, simulasi konseptual, dan panduan umum.
+* **Solusi:**
+  - **Evidence Status Badges:** Menyematkan badge berkode warna:
+    - `🔵 Editorial Assessment`: Pada kartu komparasi material (*evaluasi kurasi independen*).
+    - `🟡 Conceptual Study / Simulation`: Pada studi visual dan eksplorasi rekayasa ruang.
+    - `⚪ General Guidance`: Pada panduan diagnosis Problem Solver.
+  - **Sinkronisasi Buletin Mingguan:** Menyelaraskan matematika 7 item pada [`src/components/NewsletterBox.astro`](file:///src/components/NewsletterBox.astro) (*3 Studi Kasus + 2 Bedah Material + 1 Detail Spasial + 1 Wawasan Tropis = 7 Gagasan Terpilih*).
 
 ---
 
@@ -342,17 +368,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, dark mode, dynamic styling. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main`. |
-| **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + kolom monetisasi. |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main` (*Version ID: `92d5fc64`*). |
+| **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + fallback 20 in-memory authoritative articles. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
-| **Manajemen Halaman Statis (Pages)** | ✅ Selesai (Aktif) | Page Writer CMS, template kontak interaktif, & sitemap pages aktif. |
-| **Sirkulasi Internal Linking Otomatis** | ✅ Selesai (Aktif) | Dateline, Auto-Keywords, In-Article BACA JUGA, & Paid Review Toggle. |
-| **Social Share & Footer Manager** | ✅ Selesai (Aktif) | Kontrol penuh tombol share artikel & medsos resmi footer di Admin. |
-| **Stealth Mode (Anti-Detector)** | ✅ Selesai (Aktif) | Path aset disamarkan ke `/assets/`, HTML minified, zero meta generator. |
-| **6 Fitur World-Class Editorial** | ✅ Selesai (Aktif) | Lightbox, Before-After, Bookmarks, Search Tags, Newsletter, SEO Card. |
-| **SEO & Feed** | ✅ Selesai | Google News XML, Sitemap XML, RSS feed, Schema.org aktif. |
-| **Keamanan Level Kode** | ✅ Selesai | Hashing PBKDF2, session token acak 24-byte, SQL parameterization. |
-| **Cloudflare Zero Trust (Access)** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
+| **Design Problem Solver & Explorer** | ✅ Selesai (Aktif) | Alat diagnosis berbasis kemungkinan penyebab umum & 3-way multi-filter aktif. |
+| **Material Comparison Matrix** | ✅ Selesai (Aktif) | Matriks komparasi + box *How We Score* (25%/20%/20%/15%/20%) + Evidence Badges. |
+| **Editorial Standards & Metodologi** | ✅ Selesai (Aktif) | Piagam redaksi independen (`/editorial-standards`) & standar pengujian (`/metodologi`). |
+| **Stealth Mode & Clean Engine** | ✅ Selesai (Aktif) | Path aset disamarkan ke `/assets/`, HTML minified, zero meta generator. |
+| **SEO, News Sitemap & RSS** | ✅ Selesai (Aktif) | Google News XML, Sitemap XML, RSS syndication, Schema.org terverifikasi. |
+| **Keamanan & Cloudflare Zero Trust** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
 | **Custom Domain** | ⏳ Siap Dipasang | Menunggu pengguna menghubungkan domain kustom via tab *Domains*. |
 
 ---
