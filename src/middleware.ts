@@ -16,9 +16,9 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   const response = await next();
 
   // 3. Inject Proprietary RancangLoka Headers & Security Standards
-  response.headers.set('X-Powered-By', 'RancangLoka HyperEngine v1.0');
-  response.headers.set('Server', 'RancangLoka-Edge-Gateway/2026');
-  response.headers.set('X-Engine', 'RancangLoka Proprietary High-Performance Core');
+  response.headers.set('X-Powered-By', 'RancangLoka Editorial Engine');
+  response.headers.set('Server', 'RancangLoka-Edge-Gateway');
+  response.headers.set('X-Engine', 'RancangLoka Publishing Core');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-XSS-Protection', '1; mode=block');
