@@ -327,6 +327,16 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 33: Penegakan Total Kredibilitas Editorial & Integritas Sumber (Phase 1 Trust P0)
+* **Gejala:** Kebutuhan akan penegakan kredibilitas absolut, pembasmian seluruh alamat kantor fiktif, integrasi referensi SNI/PUPR, dan transparansi kebijakan koreksi terbuka.
+* **Solusi:**
+  - **Eradikasi Alamat Kantor Fiktif:** Mengganti seluruh referensi alamat dekoratif di [`src/lib/db.ts`](file:///src/lib/db.ts) menjadi pernyataan operasional independen dan terdistribusi dari Indonesia yang jujur dan transparan.
+  - **Otoritas Penulis Nyata:** Menyatukan seluruh peran penulis menjadi `Dewan Redaksi Spasial RancangLoka` dan `Tim Riset Materialitas RancangLoka`.
+  - **Integrasi Kotak Sumber & Referensi Teknis:** Menyematkan bagian *Sources & Editorial Citations* (SNI 03-6572, Panduan Selubung Bangunan Tropis Kementerian PUPR) di setiap artikel pada [`src/pages/[slug].astro`](file:///src/pages/[slug].astro).
+  - **Kebijakan Hak Jawab & Koreksi Transparan:** Mempertegas piagam integritas dan mekanisme ralat di halaman Kontak, Tentang Kami, dan Pedoman Media Siber.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
