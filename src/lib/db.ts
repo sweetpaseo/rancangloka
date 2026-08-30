@@ -892,6 +892,11 @@ export function sanitizePage(p: Page): Page {
 }
 
 export async function getAllArticles(db: any, limit = 50, offset = 0, status = 'published'): Promise<Article[]> {
+  const inMemFiltered = inMemoryArticles
+    .filter(a => status === 'all' || a.status === status)
+    .map(sanitizeArticle);
+
+  let dbArticles: Article[] = [];
   if (db) {
     try {
       const { results } = await db
@@ -903,34 +908,36 @@ export async function getAllArticles(db: any, limit = 50, offset = 0, status = '
           LEFT JOIN authors au ON a.author_id = au.id
           WHERE (? IS NULL OR a.status = ?)
           ORDER BY a.published_at DESC
-          LIMIT ? OFFSET ?
         `)
-        .bind(status === 'all' ? null : status, status === 'all' ? null : status, limit, offset)
+        .bind(status === 'all' ? null : status, status === 'all' ? null : status)
         .all();
-      if (results && results.length > 0) return (results as Article[]).map(sanitizeArticle);
+      if (results && results.length > 0) {
+        dbArticles = (results as Article[]).map(sanitizeArticle);
+      }
     } catch (e) {
       console.warn('D1 Query fallback to mock:', e);
     }
   }
-  return inMemoryArticles.filter(a => status === 'all' || a.status === status).slice(offset, offset + limit).map(sanitizeArticle);
+
+  // Combine: inMemoryArticles are authoritative, plus any new dynamic DB articles
+  const inMemSlugs = new Set(inMemFiltered.map(a => a.slug));
+  const newFromDb = dbArticles.filter(a => !inMemSlugs.has(a.slug));
+  const combined = [...inMemFiltered, ...newFromDb];
+
+  return combined.slice(offset, offset + limit);
 }
 
 export async function getTotalArticlesCount(db: any, status = 'published'): Promise<number> {
-  if (db) {
-    try {
-      const result = await db
-        .prepare('SELECT COUNT(*) as count FROM articles WHERE (? IS NULL OR status = ?)')
-        .bind(status === 'all' ? null : status, status === 'all' ? null : status)
-        .first();
-      if (result && typeof result.count === 'number') return result.count;
-    } catch (e) {
-      console.warn('D1 count fallback:', e);
-    }
-  }
-  return inMemoryArticles.filter(a => status === 'all' || a.status === status).length;
+  const all = await getAllArticles(db, 1000, 0, status);
+  return all.length;
 }
 
 export async function getArticleBySlug(db: any, slug: string): Promise<Article | null> {
+  const inMem = inMemoryArticles.find(a => a.slug === slug);
+  if (inMem) {
+    return sanitizeArticle(inMem);
+  }
+
   if (db) {
     try {
       const result = await db
@@ -950,8 +957,7 @@ export async function getArticleBySlug(db: any, slug: string): Promise<Article |
       console.warn('D1 Query fallback to mock:', e);
     }
   }
-  const item = inMemoryArticles.find(a => a.slug === slug);
-  return item ? sanitizeArticle(item) : null;
+  return null;
 }
 
 export async function getRelatedArticles(db: any, currentId: number, categoryId: number, limit = 4): Promise<Article[]> {
