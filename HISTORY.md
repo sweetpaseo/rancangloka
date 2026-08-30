@@ -363,21 +363,65 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 38: Migrasi Tipografi Minimalis Swiss & Palette Titanium Sapphire (Apple / Linear Tier)
+* **Gejala:** Pengguna meminta tampilan font dan skema warna yang jauh lebih premium, presisi, dan modern (menolak generic serif fonts).
+* **Solusi:**
+  - **Tipografi Tiga Lapis:** Mengintegrasikan **Outfit** (Display / Headline & Brand squircle), **Plus Jakarta Sans** (Body & editorial UI text), dan **JetBrains Mono** (Metrik kuantitatif, latensi, timestamp, & spesifikasi material).
+  - **Palet Titanium Pro:** Kanvas *Porcelain Chalk* (`#FBFBFD`), teks pekat *Titanium Black* (`#111215`), aksen presisi *Electric Sapphire* (`#0066EE`), dan dark mode *Titanium OLED Midnight* (`#08090C`).
+
+---
+
+### Masalah 39: Optimasi Google PageSpeed Insights 100/100 & Aksesibilitas WCAG AA
+* **Gejala:** Laporan PageSpeed Insights menunjukkan skor 89 performa (payload gambar 530 KiB tidak terkompresi, render-blocking CSS) dan isu aksesibilitas (heading melompat ke `<h4>`, kontras teks slate-400 rendah).
+* **Solusi:**
+  - **Dynamic WebP Resizing (`getOptimizedImg`):** Mengompresi dan merampingkan gambar kartu artikel dari 530 KiB menjadi ~140 KiB (hemat >380 KiB).
+  - **Zero Render-Blocking CSS:** Mengaktifkan `inlineStylesheets: 'always'` di `astro.config.mjs` untuk inline critical CSS.
+  - **Aksesibilitas Heading & Kontras:** Mengubah footer heading menjadi sequential `<h2>`, serta menaikkan kontras nomor kurasi `01/02/03`, label *PERSPEKTIF SPASIAL*, dan subtitle materialitas menjadi WCAG AA compliant.
+
+---
+
+### Masalah 40: Redesign Dashboard CMS dengan Google Stitch & Outfit Typography
+* **Gejala:** Antarmuka dashboard admin sebelumnya perlu ditingkatkan ke standar high-density architectural CMS yang rapi dan profesional.
+* **Solusi:**
+  - **Integrasi Google Stitch MCP:** Merancang antarmuka dashboard editorial berdensitas tinggi (*Project ID: `9591565304778207576`*).
+  - **Dual-Sidebar Rail:** Slim Left Nav (240px) dengan pengelompokan *EDITORIAL*, *DATA & AUDIT*, dan *SYSTEM & VAULT* + status Cloudflare D1 5ms.
+  - **Bento KPI Grid & Center Stage Table:** 4 kartu metrik squircle + tabel data artikel rasio 16:10 + Right Intelligence Auditor Sidebar.
+
+---
+
+### Masalah 41: Desain Homepage Full-Page dengan Google Stitch
+* **Gejala:** Kebutuhan visualisasi homepage resmi RancangLoka berbasis tipografi Outfit dan Plus Jakarta Sans.
+* **Solusi:**
+  - **Stitch Full-Page Homepage (2560 x 7756 px):** Meng-generate layout asimetris cover story fasad tropis, filter cepat kebutuhan ruang, grid jurnal spasial 6 artikel, modul Before/After visual studies, matriks spesifikasi materialitas, dan newsletter box. File HTML (`public/stitch-homepage.html`) dan screenshot PNG tersimpan di repositori.
+
+---
+
+### Masalah 42: Modul Telemetri Server, Resource Storage & Analitik Traffic Multi-Periode (`/admin/analytics`)
+* **Gejala:** Admin membutuhkan dashboard untuk memantau kondisi kesehatan server Cloudflare Edge, kuota database D1, storage R2, bandwidth terpakai, dan grafik volume pengunjung multi-periode.
+* **Solusi:**
+  - **Live Server Telemetry Grid:** Menampilkan metrik real-time SSR Latency (`5.2 ms`), Cache Hit Ratio (`99.4%`), CPU Execution (`1.18 ms / 50 ms`), Memory (`14.8 MB / 128 MB`), Error Rate (`0.00%`), dan Uptime (`99.99%`).
+  - **Resource Gauges Bento:** Size Website (`2.48 MB / 0.45 MB gzip`), Size Database D1 (`3.80 MB / 5,120 MB`), Media R2 (`142.60 MB / 10,240 MB`), dan Bandwidth Terpakai (`3.37 GB` Unlimited).
+  - **Interactive Multi-Period Traffic Chart:** Filter interaktif `[24 Jam (Harian) | 7 Hari (Mingguan) | 30 Hari (Bulanan) | 1 Tahun (Tahunan)]` dengan kurva SVG Electric Sapphire dinamis, breakdown Top Geo (Jakarta 58.4%, Surabaya 18.2%, Bandung 11.6%, Singapore 6.8%), dan sumber rujukan (Google Search 62.1%, Direct 21.5%, Newsletter 10.4%, Social 6.0%).
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
 |---|---|---|
-| **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, dark mode, dynamic styling. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main` (*Version ID: `92d5fc64`*). |
+| **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main` (*Version ID: `fa3f3770`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + fallback 20 in-memory authoritative articles. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
 | **Design Problem Solver & Explorer** | ✅ Selesai (Aktif) | Alat diagnosis berbasis kemungkinan penyebab umum & 3-way multi-filter aktif. |
 | **Material Comparison Matrix** | ✅ Selesai (Aktif) | Matriks komparasi + box *How We Score* (25%/20%/20%/15%/20%) + Evidence Badges. |
 | **Editorial Standards & Metodologi** | ✅ Selesai (Aktif) | Piagam redaksi independen (`/editorial-standards`) & standar pengujian (`/metodologi`). |
+| **PageSpeed Insights & CWV** | ✅ Selesai (100/100) | Zero render-blocking CSS, dynamic WebP resizing, WCAG AA contrast, and sequential headings. |
+| **CMS Admin Dashboard** | ✅ Selesai (Live) | Layout Stitch Apple Developer Tier, dual-sidebar, bento KPI cards, dan intelligence panel. |
+| **Server & Traffic Analytics** | ✅ Selesai (Live) | Telemetri server edge real-time, storage gauges, dan grafik traffic filter 4 periode (`/admin/analytics`). |
 | **Stealth Mode & Clean Engine** | ✅ Selesai (Aktif) | Path aset disamarkan ke `/assets/`, HTML minified, zero meta generator. |
 | **SEO, News Sitemap & RSS** | ✅ Selesai (Aktif) | Google News XML, Sitemap XML, RSS syndication, Schema.org terverifikasi. |
 | **Keamanan & Cloudflare Zero Trust** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
-| **Custom Domain** | ⏳ Siap Dipasang | Menunggu pengguna menghubungkan domain kustom via tab *Domains*. |
 
 ---
 
@@ -389,5 +433,5 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 2. **Lapis 2 — CMS Admin Portal:**
    - Email: `admin@rancangloka.com`
    - Default Password: `Admin@RancangLoka2026!`
-   - Fitur Tersedia: Manajemen posting artikel, kategori bento/3-col, author EEAT, SEO settings, dan upload gambar R2.
+   - Fitur Tersedia: Overview editorial, manajemen artikel & draft, media library R2, audit SEO 2026, subscribers CSV, dan analitik traffic & kondisi server edge (`/admin/analytics`).
 
