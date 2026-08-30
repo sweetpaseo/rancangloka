@@ -11,11 +11,11 @@ if (!featuredArticle) return null;
 ---
 
 <section class="mb-16 relative">
-  <!-- Subtle Ambient Glow -->
-  <div class="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 -z-10 h-72 w-full max-w-5xl bg-gradient-to-r from-blue-500/10 via-emerald-500/10 to-purple-500/10 blur-3xl opacity-70 dark:opacity-40"></div>
+  <!-- Subtle Ambient Architectural Glow -->
+  <div class="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 -z-10 h-80 w-full max-w-6xl bg-gradient-to-r from-blue-500/10 via-amber-500/5 to-purple-500/10 blur-3xl opacity-60 dark:opacity-30"></div>
 
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-    <!-- 1. Big Cinematic Featured Story (7 cols) -->
+    <!-- 1. Full-Bleed Dramatic Feature Story (7 cols) -->
     <div class="lg:col-span-7">
       <article class="group relative flex flex-col justify-end overflow-hidden rounded-[2.5rem] bg-slate-950 aspect-[16/11] md:aspect-[16/10] shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition duration-700 hover:shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
         <img
@@ -27,16 +27,16 @@ if (!featuredArticle) return null;
           sizes="(max-width: 768px) 100vw, 750px"
           onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80'"
         />
-        <!-- Apple Soft Cinematic Gradient -->
+        <!-- Cinematic Depth Gradient -->
         <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent"></div>
 
         <div class="relative z-10 p-7 sm:p-9 md:p-11">
-          <div class="flex items-center gap-2.5 mb-4">
-            <span class="rounded-full bg-[#0071e3] px-3.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-md">
-              ★ {featuredArticle.category_name || 'Sorotan Utama'}
+          <div class="flex items-center gap-3 mb-4">
+            <span class="rounded-full bg-white/20 backdrop-blur-md px-3.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-white border border-white/20">
+              {featuredArticle.category_name || 'Sorotan Spasial'}
             </span>
-            <span class="text-xs text-white/80 font-semibold backdrop-blur-md bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
-              ⏱️ {featuredArticle.reading_time_minutes} min read
+            <span class="text-xs text-white/80 font-medium">
+              {featuredArticle.reading_time_minutes} menit baca
             </span>
           </div>
 
@@ -46,14 +46,14 @@ if (!featuredArticle) return null;
             </a>
           </h1>
 
-          <p class="mt-3.5 text-xs sm:text-sm text-white/80 line-clamp-2 hidden sm:block font-normal leading-relaxed">
+          <p class="mt-3.5 text-xs sm:text-sm text-slate-200 line-clamp-2 hidden sm:block font-normal leading-relaxed">
             {featuredArticle.description}
           </p>
 
           <div class="mt-6 flex items-center justify-between text-xs text-white/70 pt-4 border-t border-white/15">
-            <div class="flex items-center gap-2.5">
-              <span class="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
-              <span class="font-semibold text-white/90">Oleh {featuredArticle.author_name || 'Dewan Redaksi'}</span>
+            <div class="flex items-center gap-2">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+              <span class="font-semibold text-white/90">{featuredArticle.author_name || 'Tim Kurasi RancangLoka'}</span>
             </div>
             <span>{new Date(featuredArticle.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
           </div>
@@ -61,21 +61,28 @@ if (!featuredArticle) return null;
       </article>
     </div>
 
-    <!-- 2. Editor's Picks Column (5 cols) -->
+    <!-- 2. Editor's Curated Stories Column (5 cols) -->
     <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
-      <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-2.5">
-        <h2 class="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-          <span class="h-2 w-2 rounded-full bg-[#0071e3]"></span>
-          Pilihan Editor Hari Ini
+      <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-3">
+        <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+          <span>✦</span>
+          <span>CATATAN KURASI REDAKSI</span>
         </h2>
-        <span class="text-[11px] text-slate-400 font-semibold">Kurasi Eksklusif</span>
+        <span class="text-[11px] font-mono text-slate-400">Edisi Minggu Ini</span>
       </div>
 
       {secondaryArticles.slice(0, 3).map((article, idx) => {
         const num = (idx + 1).toString().padStart(2, '0');
+        const editorialLabels = [
+          'MATERIAL MINGGU INI',
+          'DETAIL ARSITEKTUR',
+          'KENYAMANAN SPASIAL'
+        ];
+        const label = editorialLabels[idx] || 'KURASI SPASIAL';
+
         return (
           <article class="apple-card group flex items-center gap-4 p-4.5 rounded-[1.75rem] border border-black/[0.05] dark:border-white/[0.08] bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition duration-500">
-            <span class="font-mono text-xl font-black text-[#0071e3] opacity-50 group-hover:opacity-100 transition pl-1">
+            <span class="font-mono text-lg font-black text-[#0071e3] opacity-60 group-hover:opacity-100 transition pl-1">
               {num}
             </span>
 
@@ -91,18 +98,18 @@ if (!featuredArticle) return null;
             </a>
 
             <div class="flex flex-1 flex-col justify-center min-w-0 pr-1">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-[#0071e3] mb-1">
-                {article.category_name || 'Topik'}
+              <span class="text-[9px] font-mono font-bold uppercase tracking-wider text-[#0071e3] mb-1">
+                {label}
               </span>
               <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-[#0071e3] transition-colors leading-snug tracking-tight">
                 <a href={`/${article.slug}`}>
                   {article.title}
                 </a>
               </h3>
-              <div class="mt-2.5 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              <div class="mt-2 flex items-center gap-2 text-[11px] text-slate-400 font-medium">
                 <span class="truncate">{article.author_name || 'Redaksi'}</span>
                 <span>•</span>
-                <span class="whitespace-nowrap">⏱️ {article.reading_time_minutes}m</span>
+                <span class="whitespace-nowrap">{article.reading_time_minutes} mnt</span>
               </div>
             </div>
           </article>

@@ -147,48 +147,40 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
     </main>
 
     <!-- Footer -->
-    <footer class="mt-20 border-t border-black/[0.05] dark:border-white/[0.08] bg-slate-100/50 dark:bg-slate-950/80 py-16 text-slate-600 dark:text-slate-400">
+    <footer class="mt-24 border-t border-black/[0.06] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-950 py-16 text-slate-600 dark:text-slate-400">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-5 gap-10">
-        <!-- Col 1: Brand & Socials (2 cols on md) -->
+        <!-- Col 1: Brand & Manifesto (2 cols on md) -->
         <div class="md:col-span-2 space-y-4">
-          <div class="flex items-center gap-2">
-            <span class="text-xl">🏡</span>
-            <span class="text-xl font-black text-slate-900 dark:text-white tracking-tight">{siteTitle}</span>
+          <div class="flex items-center gap-2.5">
+            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-serif font-bold text-xs tracking-tighter shadow-xs">
+              R
+            </span>
+            <span class="text-xl font-black text-slate-900 dark:text-white tracking-tight font-sans uppercase">{siteTitle}</span>
           </div>
-          <p class="text-xs md:text-sm leading-relaxed max-w-sm text-slate-600 dark:text-slate-400">
-            {siteSettings.footer_description || siteSettings.site_description || 'Platform media digital independen untuk inspirasi desain interior, inovasi smart home, dan arsitektur hunian modern.'}
+          <p class="text-xs md:text-sm leading-relaxed max-w-sm text-slate-600 dark:text-slate-400 font-normal">
+            Jurnal kurasi independen yang mendokumentasikan evolusi arsitektur tropis kontemporer, inovasi materialitas, dan kenyamanan spasial hunian modern.
           </p>
 
-          <!-- Official Social Media Links -->
-          <div class="pt-1 flex items-center gap-2.5">
+          <!-- Official Social Media Links (Minimalist Text Badges) -->
+          <div class="pt-2 flex items-center gap-2">
             {siteSettings.social_instagram && (
-              <a href={siteSettings.social_instagram} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-pink-600 hover:border-pink-300 transition shadow-2xs text-xs font-bold" title="Instagram">
-                📸
-              </a>
-            )}
-            {siteSettings.social_tiktok && (
-              <a href={siteSettings.social_tiktok} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-slate-400 transition shadow-2xs text-xs font-bold" title="TikTok">
-                🎵
+              <a href={siteSettings.social_instagram} target="_blank" rel="noopener noreferrer" class="rounded-lg px-2.5 py-1 bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-[#0071e3] transition shadow-2xs">
+                Instagram
               </a>
             )}
             {siteSettings.social_x && (
-              <a href={siteSettings.social_x} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 transition shadow-2xs text-xs font-bold" title="X (Twitter)">
+              <a href={siteSettings.social_x} target="_blank" rel="noopener noreferrer" class="rounded-lg px-2.5 py-1 bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-[#0071e3] transition shadow-2xs">
                 𝕏
               </a>
             )}
-            {siteSettings.social_youtube && (
-              <a href={siteSettings.social_youtube} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-red-600 hover:border-red-300 transition shadow-2xs text-xs font-bold" title="YouTube">
-                ▶️
-              </a>
-            )}
             {siteSettings.social_pinterest && (
-              <a href={siteSettings.social_pinterest} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-red-600 hover:border-red-300 transition shadow-2xs text-xs font-bold" title="Pinterest">
-                📌
+              <a href={siteSettings.social_pinterest} target="_blank" rel="noopener noreferrer" class="rounded-lg px-2.5 py-1 bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-[#0071e3] transition shadow-2xs">
+                Pinterest
               </a>
             )}
             {siteSettings.social_linkedin && (
-              <a href={siteSettings.social_linkedin} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:border-blue-300 transition shadow-2xs text-xs font-bold" title="LinkedIn">
-                💼
+              <a href={siteSettings.social_linkedin} target="_blank" rel="noopener noreferrer" class="rounded-lg px-2.5 py-1 bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-[#0071e3] transition shadow-2xs">
+                LinkedIn
               </a>
             )}
           </div>
@@ -196,7 +188,7 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
 
         <!-- Col 2: Categories -->
         <div>
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-4">Kategori Liputan</h4>
+          <h4 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Kategori Liputan</h4>
           <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
             {categories.map((c) => (
               <li>
@@ -208,7 +200,7 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
 
         <!-- Col 3: Static Pages -->
         <div>
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-4">Halaman & Redaksi</h4>
+          <h4 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Halaman & Redaksi</h4>
           <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
             <li><a href="/tentang-kami" class="hover:text-[#0071e3] transition text-slate-700 dark:text-slate-300 font-medium">Tentang RancangLoka</a></li>
             <li><a href="/kontak" class="hover:text-[#0071e3] transition text-slate-700 dark:text-slate-300 font-medium">Hubungi Redaksi</a></li>
@@ -219,7 +211,7 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
 
         <!-- Col 4: Feeds & XML -->
         <div>
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-4">Informasi & Feed</h4>
+          <h4 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Sindikasi & Feed</h4>
           <ul class="space-y-2.5 text-xs">
             <li><a href="/sitemap.xml" class="hover:text-[#0071e3] transition text-slate-700 dark:text-slate-300 font-medium">Sitemap Index (XML)</a></li>
             <li><a href="/sitemap-news.xml" class="hover:text-[#0071e3] transition text-slate-700 dark:text-slate-300 font-medium">Google News Feed</a></li>
@@ -228,8 +220,9 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
         </div>
       </div>
 
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-black/[0.04] dark:border-white/[0.06] text-center text-xs text-slate-500 dark:text-slate-400">
-        <p>{siteSettings.footer_copyright || `© 2026 ${siteTitle}. All rights reserved. Kurasi editorial independen seputar dunia desain dan hunian modern.`}</p>
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 font-mono">
+        <p>{siteSettings.footer_copyright || `© 2026 ${siteTitle}. All rights reserved. Kurasi editorial independen.`}</p>
+        <span class="text-[11px] text-slate-400">RancangLoka HyperEngine • Edisi Digital</span>
       </div>
     </footer>
 

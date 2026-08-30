@@ -275,6 +275,19 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 28: Transformasi Jiwa Produk (Editorial Soul), Kredibilitas Jurnal, & Ritme Visual Beranda
+* **Gejala:** Website sebelumnya terasa terlalu berformula SEO/AI, banyak emoji dekoratif, kartu artikel berulang-ulang (*repetitive listing*), dan belum mencerminkan wibawa jurnal arsitektur papan atas.
+* **Solusi:**
+  - **Human Editorial Voice:** Mengganti judul-judul rumus SEO klise menjadi narasi jurnal berwibawa (*"Kenapa Rumah Japandi Terasa Begitu Menenangkan?"*, *"Rumah Tropis yang Tidak Takut Matahari"*).
+  - **Author Credibility (E-E-A-T):** Mengganti persona menjadi *"Dewan Redaksi Spasial"* & *"Tim Kurasi RancangLoka"*.
+  - **Hero Statement & Catatan Redaksi:** Membangun ulang [`src/components/HeroMagazine.astro`](file:///src/components/HeroMagazine.astro) dengan 1 Cerita Utama Sinematik + 3 Catatan Kurasi Redaksi Bernomor (`01 Material Minggu Ini`, `02 Detail Arsitektur`, `03 Kenyamanan Spasial`).
+  - **Space Transformed (Data Metrics):** Menyematkan metrik arsitektur nyata pada Before/After Slider (`+38% Cahaya Alami`, `+1 Sumbu Sirkulasi`, `36m² ➔ 55m² Persepsi Spasial`).
+  - **The Design & Material Index:** Membangun komponen eksplorasi visual baru [`src/components/DesignIndex.astro`](file:///src/components/DesignIndex.astro) (Kayu Ulin, Beton Ekspos, Batu Andesit, Kaca Low-E, Secondary Skin, Void 5 Meter).
+  - **RancangLoka Weekly Product:** Memperbarui [`src/components/NewsletterBox.astro`](file:///src/components/NewsletterBox.astro) menjadi produk buletin mingguan nyata dengan 3 pilar kurasi tiap Jumat.
+  - **Pembersihan Total Emoji:** Mengeliminasi seluruh emoji dekoratif non-standar demi estetika majalah arsitektur murni.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |

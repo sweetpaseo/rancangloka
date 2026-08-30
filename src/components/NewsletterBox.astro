@@ -5,47 +5,56 @@ interface Props {
 }
 
 const {
-  title = 'Inspirasi Ruang & Tren Arsitektur di Kotak Masuk Anda',
-  subtitle = 'Bergabunglah dengan ribuan pemilik rumah & profesional desain. Dapatkan kurasi tren interior dan panduan renovasi eksklusif setiap Jumat pagi.'
+  title = 'RANCANGLOKA WEEKLY',
+  subtitle = '7 gagasan desain, wawasan material, dan studi proyek arsitektur terpilih yang layak Anda simpan. Terbit setiap Jumat pagi langsung ke kotak masuk Anda.'
 } = Astro.props;
 ---
 
-<div class="my-16 overflow-hidden rounded-[2.5rem] border border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-amber-50/50 p-8 sm:p-12 shadow-sm dark:border-blue-900/30 dark:from-slate-900 dark:via-slate-900/90 dark:to-blue-950/40">
-  <div class="mx-auto max-w-2xl text-center space-y-4">
-    <div class="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-3.5 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-      <span>📬</span> Buletin Kurasi Mingguan
+<div class="my-20 overflow-hidden rounded-[2.5rem] border border-black/[0.08] bg-slate-900 text-white p-8 sm:p-14 shadow-2xl relative">
+  <div class="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl"></div>
+
+  <div class="mx-auto max-w-2xl text-center space-y-5 relative z-10">
+    <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-[11px] font-mono font-bold uppercase tracking-widest text-[#0071e3] border border-white/15">
+      <span>✦</span> JURNAL KURASI MINGGUAN
     </div>
 
-    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug">
+    <h2 class="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
       {title}
     </h2>
 
-    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl mx-auto">
+    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl mx-auto font-normal">
       {subtitle}
     </p>
 
+    <!-- Curated Value Highlights -->
+    <div class="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-400 font-mono py-2">
+      <span class="flex items-center gap-1.5"><span class="text-[#0071e3]">✦</span> 3 Studi Kasus Hunian</span>
+      <span class="flex items-center gap-1.5"><span class="text-[#0071e3]">✦</span> 2 Bedah Material</span>
+      <span class="flex items-center gap-1.5"><span class="text-[#0071e3]">✦</span> 1 Detail Spasial</span>
+    </div>
+
     <!-- Subscription Form -->
-    <form id="newsletter-form" class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2.5 max-w-md mx-auto">
+    <form id="newsletter-form" class="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
       <input
         type="email"
         id="newsletter-email"
-        placeholder="Ketik alamat email Anda..."
+        placeholder="Alamat email Anda..."
         required
-        class="w-full sm:flex-1 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3 text-xs sm:text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs transition"
+        class="w-full sm:flex-1 rounded-2xl bg-white/10 border border-white/20 px-4 py-3.5 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0071e3] shadow-inner transition"
       />
       <button
         type="submit"
         id="newsletter-btn"
-        class="w-full sm:w-auto rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold px-6 py-3 text-xs sm:text-sm hover:opacity-90 transition shadow-md whitespace-nowrap"
+        class="w-full sm:w-auto rounded-2xl bg-[#0071e3] hover:bg-blue-600 text-white font-bold px-6 py-3.5 text-xs sm:text-sm transition shadow-lg shadow-blue-500/25 whitespace-nowrap"
       >
-        Berlangganan Gratis
+        Kirim ke Inbox Saya →
       </button>
     </form>
 
     <div id="newsletter-msg" class="hidden text-xs font-semibold pt-2 transition"></div>
 
-    <p class="text-[11px] text-slate-400 dark:text-slate-500 pt-1">
-      🔒 Kami menghargai privasi Anda. Tanpa spam, berhenti berlangganan kapan saja.
+    <p class="text-[11px] font-mono text-slate-500 pt-2">
+      Bebas spam. Berhenti berlangganan kapan saja dalam satu klik.
     </p>
   </div>
 </div>
@@ -71,24 +80,24 @@ const {
       const res = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'homepage_box' })
+        body: JSON.stringify({ email, source: 'homepage_weekly' })
       });
       const data = await res.json();
 
       if (res.ok) {
-        msg.innerText = data.message || 'Berhasil berlangganan!';
-        msg.className = 'text-xs font-semibold pt-2 text-emerald-600 dark:text-emerald-400 block';
+        msg.innerText = data.message || 'Terima kasih! Anda telah terdaftar di RancangLoka Weekly.';
+        msg.className = 'text-xs font-semibold pt-2 text-emerald-400 block';
         emailInput.value = '';
       } else {
         msg.innerText = data.error || 'Terjadi kesalahan.';
-        msg.className = 'text-xs font-semibold pt-2 text-red-500 block';
+        msg.className = 'text-xs font-semibold pt-2 text-red-400 block';
       }
     } catch (err) {
       msg.innerText = 'Terjadi kesalahan koneksi.';
-      msg.className = 'text-xs font-semibold pt-2 text-red-500 block';
+      msg.className = 'text-xs font-semibold pt-2 text-red-400 block';
     } finally {
       btn.disabled = false;
-      btn.innerText = 'Berlangganan Gratis';
+      btn.innerText = 'Kirim ke Inbox Saya →';
     }
   });
 </script>
