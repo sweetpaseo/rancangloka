@@ -5,6 +5,10 @@ import tailwind from '@astrojs/tailwind';
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
+  build: {
+    assets: 'assets'
+  },
+  compressHTML: true,
   adapter: cloudflare({
     imageService: 'passthrough',
     mode: 'advanced'
