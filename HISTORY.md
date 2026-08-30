@@ -201,6 +201,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 20: Pembangunan Halaman Media Library & R2 Asset Manager (/admin/media)
+* **Gejala:** Admin kesulitan memantau, mencari, dan menyalin tautan aset gambar yang pernah diunggah ke penyimpanan Cloudflare R2.
+* **Solusi:**
+  - Membangun halaman galeri aset [`src/pages/admin/media.astro`](file:///src/pages/admin/media.astro) yang terhubung langsung ke Cloudflare R2 Bucket (`rancangloka-media`).
+  - Menyediakan kotak Bulk Drag & Drop Uploader (Auto WebP), live search filter berdasarkan nama file, tombol "📋 Salin Link" instan ke clipboard, dan tombol "🔍 Buka HD".
+  - Menambahkan menu **Media Library (R2)** pada sidebar navigasi Admin di [`src/layouts/AdminLayout.astro`](file:///src/layouts/AdminLayout.astro).
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
