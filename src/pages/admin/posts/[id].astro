@@ -26,111 +26,247 @@ if (article.key_takeaways) {
 ---
 
 <AdminLayout title={`Edit Artikel: ${article.title}`}>
-  <form id="post-editor-form" class="max-w-6xl mx-auto space-y-6">
+  <form id="post-editor-form" class="max-w-7xl mx-auto space-y-6">
     <!-- Top Action Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
       <div>
-        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Edit Artikel</h1>
-        <p class="text-xs text-slate-500 mt-0.5">Memperbarui data di Cloudflare D1.</p>
+        <div class="flex items-center gap-2">
+          <a href="/admin/posts" class="text-xs text-slate-400 hover:text-slate-600 transition">← Kembali ke Semua Artikel</a>
+          <span class="text-slate-300">/</span>
+          <span class="text-xs font-bold text-primary">Edit Post #{article.id}</span>
+        </div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight mt-1">Edit Artikel & Visual Magazine</h1>
+        <p class="text-xs text-slate-500 mt-0.5">Memperbarui data konten langsung di Cloudflare D1 & R2.</p>
       </div>
 
       <div class="flex items-center gap-3">
-        <a href="/admin/posts" class="rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-sm">
+        <a href="/admin/posts" class="rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-sm">
           Batal
         </a>
         <button
-          type="submit"
-          id="btn-update"
-          class="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/20"
+          type="button"
+          id="btn-save-draft"
+          class="rounded-xl bg-slate-100 border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition"
         >
-          💾 Simpan Perubahan
+          Simpan sebagai Draft
+        </button>
+        <button
+          type="submit"
+          id="btn-publish"
+          class="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/20 flex items-center gap-1.5"
+        >
+          <span>💾</span>
+          <span>Simpan Perubahan</span>
         </button>
       </div>
     </div>
 
-    <!-- Main Grid -->
+    <!-- Main Grid (8 cols main editor + 4 cols sidebar) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Left Column (8 cols): Content & SEO Engine -->
       <div class="lg:col-span-8 space-y-6">
         <!-- Title & Slug -->
         <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-sm">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Judul Artikel</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              Judul Artikel (Headline)
+            </label>
             <input
               type="text"
               id="post-title"
               name="title"
               required
               value={article.title}
-              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-base md:text-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-base md:text-lg font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Slug URL</label>
-            <input
-              type="text"
-              id="post-slug"
-              name="slug"
-              value={article.slug}
-              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-primary font-mono font-bold focus:outline-none"
-            />
+            <label class="block text-xs font-medium text-slate-500 mb-1">
+              Slug URL (Permalink Publik)
+            </label>
+            <div class="flex items-center rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600 font-mono">
+              <span class="text-slate-400 select-none">rancangloka.com/</span>
+              <input
+                type="text"
+                id="post-slug"
+                name="slug"
+                required
+                value={article.slug}
+                class="flex-1 bg-transparent text-primary font-bold focus:outline-none ml-0.5"
+              />
+            </div>
           </div>
         </div>
 
-        <!-- Markdown Editor -->
-        <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Konten Markdown (.md)</label>
-          <textarea
-            id="post-content-md"
-            name="content_md"
-            rows="16"
-            class="w-full bg-slate-50 rounded-xl border border-slate-200 p-4 font-mono text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white resize-y leading-relaxed"
-          >{article.content_md}</textarea>
+        <!-- Markdown Editor with Live Preview Tabs -->
+        <div class="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-2.5">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                id="tab-markdown"
+                class="rounded-lg bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm transition"
+              >
+                📝 Tulis Markdown (.md)
+              </button>
+              <button
+                type="button"
+                id="tab-preview"
+                class="rounded-lg px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition"
+              >
+                👁️ Live Visual Preview
+              </button>
+            </div>
+
+            <div class="flex items-center gap-3 text-xs text-slate-500">
+              <span>📊 <span id="word-count" class="font-bold text-slate-700">0</span> Kata</span>
+            </div>
+          </div>
+
+          <!-- Markdown Textarea -->
+          <div id="editor-pane" class="p-4">
+            <textarea
+              id="post-content-md"
+              name="content_md"
+              rows="18"
+              required
+              class="w-full bg-slate-50 rounded-xl border border-slate-200 p-4 font-mono text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white resize-y leading-relaxed"
+            >{article.content_md}</textarea>
+          </div>
+
+          <!-- Live HTML Preview Container -->
+          <div id="preview-pane" class="hidden p-6 max-h-[600px] overflow-y-auto bg-white prose-magazine">
+            <div id="preview-html-content" class="text-slate-800 leading-relaxed">
+              <!-- Rendered dynamically via Marked JS -->
+            </div>
+          </div>
         </div>
 
-        <!-- Key Takeaways -->
-        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">💡 Key Takeaways (Poin Kunci)</label>
+        <!-- Key Takeaways (Poin Kunci) -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              💡 Key Takeaways (Poin Kunci Ringkasan)
+            </label>
+            <span class="text-[10px] text-slate-400">1 Poin per baris</span>
+          </div>
           <textarea
             id="post-key-takeaways"
             name="key_takeaways"
             rows="3"
-            class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white leading-relaxed"
           >{keyTakeawaysList.map(k => `• ${k}`).join('\n')}</textarea>
         </div>
 
-        <!-- Description -->
-        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Meta Description</label>
-          <textarea
-            id="post-description"
-            name="description"
-            rows="3"
-            class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
-          >{article.description}</textarea>
+        <!-- SEO Meta Description & Focus Keyword -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-sm">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">
+            🔍 Snippet Hasil Pencarian Google (SERP Preview)
+          </h3>
+
+          <!-- SERP Box Simulation -->
+          <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-4 font-sans text-xs space-y-1">
+            <div class="text-[11px] text-slate-500 truncate" id="serp-url">https://rancangloka.com/{article.slug}</div>
+            <div class="text-base text-blue-700 font-medium hover:underline cursor-pointer truncate" id="serp-title">
+              {article.title}
+            </div>
+            <div class="text-xs text-slate-600 line-clamp-2 leading-snug" id="serp-desc">
+              {article.description}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Meta Description</label>
+            <textarea
+              id="post-description"
+              name="description"
+              rows="2"
+              maxlength="160"
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
+            >{article.description}</textarea>
+            <span class="text-[10px] text-slate-400 mt-1 block text-right"><span id="desc-char-count">{article.description?.length || 0}</span> / 160 Karakter</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Focus Keyword</label>
+            <input
+              type="text"
+              id="post-keyword"
+              name="focus_keyword"
+              value={article.focus_keyword || ''}
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
+            />
+          </div>
         </div>
       </div>
 
-      <!-- Right Sidebar -->
+      <!-- Right Sidebar (4 cols): Cover Image, Taxonomy, Author, Options -->
       <div class="lg:col-span-4 space-y-6">
-        <!-- Cover Image -->
+        <!-- 1. Cover Image Box with Drag & Drop Auto-WebP Uploader to Cloudflare R2 -->
         <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 shadow-sm">
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">🖼️ Cover Image URL</label>
-          <img src={article.featured_image} class="rounded-xl aspect-[16/9] object-cover w-full bg-slate-100 border border-slate-200" />
-          <input
-            type="url"
-            id="post-cover-url"
-            name="featured_image"
-            value={article.featured_image}
-            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
-          />
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              🖼️ Gambar Cover (Upload R2)
+            </label>
+            <span id="upload-status-badge" class={`${article.featured_image ? '' : 'hidden'} text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800`}>
+              ✅ Cover Terpasang
+            </span>
+          </div>
+
+          <!-- Drag & Drop Zone -->
+          <div
+            id="cover-dropzone"
+            class="relative overflow-hidden rounded-xl border-2 border-dashed border-slate-300 hover:border-primary bg-slate-50 aspect-[16/9] flex flex-col items-center justify-center text-center p-3 cursor-pointer transition group"
+          >
+            <input type="file" id="cover-file-input" accept="image/png, image/jpeg, image/webp, image/avif, image/jpg" class="hidden" />
+            <img id="cover-preview-img" src={article.featured_image} class={`${article.featured_image ? '' : 'hidden'} absolute inset-0 h-full w-full object-cover`} />
+            <div id="cover-placeholder" class={`${article.featured_image ? 'hidden' : ''} flex flex-col items-center gap-1.5 text-slate-400 group-hover:text-primary transition`}>
+              <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span class="text-xs font-semibold text-slate-700 group-hover:text-primary">Drag & Drop Gambar Baru ke Sini</span>
+              <span class="text-[10px] text-slate-400">Atau klik untuk pilih file • Auto Convert ke WebP</span>
+            </div>
+            <!-- Uploading overlay -->
+            <div id="cover-uploading" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+              <div class="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+              <span class="text-xs font-bold text-slate-700">Mengonversi ke WebP & Upload ke R2...</span>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <label class="block text-[11px] text-slate-500">Atau Edit URL Gambar Langsung</label>
+            <input
+              type="url"
+              id="post-cover-url"
+              name="featured_image"
+              value={article.featured_image}
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+            />
+          </div>
+
+          <div>
+            <label class="block text-[11px] text-slate-500 mb-1">Alt Text SEO Gambar</label>
+            <input
+              type="text"
+              id="post-image-alt"
+              name="image_alt"
+              value={article.image_alt || article.title}
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
         </div>
 
-        <!-- Category & Author -->
+        <!-- 2. Category & Author Selectors -->
         <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-sm">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Kategori</label>
-            <select id="post-category" name="category_id" class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Kategori Magazine</label>
+            <select
+              id="post-category"
+              name="category_id"
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
               {categories.map((c) => (
                 <option value={c.id} selected={c.id === article.category_id}>{c.name}</option>
               ))}
@@ -138,24 +274,397 @@ if (article.key_takeaways) {
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Penulis</label>
-            <select id="post-author" name="author_id" class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Penulis (E-E-A-T)</label>
+            <select
+              id="post-author"
+              name="author_id"
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
               {authors.map((a) => (
                 <option value={a.id} selected={a.id === article.author_id}>{a.name}</option>
               ))}
             </select>
           </div>
         </div>
+
+        <!-- 3. Realtime Live SEO 2026 Scorecard -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <span>🎯</span> Realtime SEO Score
+            </h3>
+            <span id="seo-score-badge" class="px-2 py-0.5 text-xs font-extrabold rounded-full bg-slate-100 text-slate-700">
+              0%
+            </span>
+          </div>
+
+          <ul class="space-y-2 text-xs">
+            <li id="chk-title" class="flex items-center gap-2 text-slate-400">
+              <span class="chk-icon">⚪</span>
+              <span>Panjang Judul Optimal (40–65 Karakter)</span>
+            </li>
+            <li id="chk-keyword" class="flex items-center gap-2 text-slate-400">
+              <span class="chk-icon">⚪</span>
+              <span>Focus Keyword Terisi</span>
+            </li>
+            <li id="chk-desc" class="flex items-center gap-2 text-slate-400">
+              <span class="chk-icon">⚪</span>
+              <span>Meta Description Lengkap (100–160 Karakter)</span>
+            </li>
+            <li id="chk-cover" class="flex items-center gap-2 text-slate-400">
+              <span class="chk-icon">⚪</span>
+              <span>Gambar Cover HD Terpasang</span>
+            </li>
+            <li id="chk-content" class="flex items-center gap-2 text-slate-400">
+              <span class="chk-icon">⚪</span>
+              <span>Kedalaman Artikel (Minimal 300 Kata)</span>
+            </li>
+            <li id="chk-takeaways" class="flex items-center gap-2 text-slate-400">
+              <span class="chk-icon">⚪</span>
+              <span>Key Takeaways (Poin Kunci Terisi)</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </form>
 
   <script>
+    import { marked } from 'marked';
+
+    const articleId = parseInt(window.location.pathname.split('/').filter(Boolean).pop() || '1', 10);
+    const titleInput = document.getElementById('post-title') as HTMLInputElement;
+    const slugInput = document.getElementById('post-slug') as HTMLInputElement;
+    const descInput = document.getElementById('post-description') as HTMLTextAreaElement;
+    const contentMd = document.getElementById('post-content-md') as HTMLTextAreaElement;
+    const coverUrlInput = document.getElementById('post-cover-url') as HTMLInputElement;
+    const wordCount = document.getElementById('word-count');
+    const descCharCount = document.getElementById('desc-char-count');
+    const serpTitle = document.getElementById('serp-title');
+    const serpUrl = document.getElementById('serp-url');
+    const serpDesc = document.getElementById('serp-desc');
+    const coverImg = document.getElementById('cover-preview-img') as HTMLImageElement;
+    const coverPlaceholder = document.getElementById('cover-placeholder') as HTMLElement;
+    const dropzone = document.getElementById('cover-dropzone');
+    const fileInput = document.getElementById('cover-file-input') as HTMLInputElement;
+    const uploadOverlay = document.getElementById('cover-uploading');
+    const statusBadge = document.getElementById('upload-status-badge');
+
+    // Title sync with SERP
+    titleInput?.addEventListener('input', () => {
+      const val = titleInput.value;
+      if (serpTitle) serpTitle.innerText = val || 'Judul Artikel...';
+      updateSeoScore();
+    });
+
+    // Slug sync with SERP
+    slugInput?.addEventListener('input', () => {
+      const slug = slugInput.value;
+      if (serpUrl) serpUrl.innerText = `https://rancangloka.com/${slug || 'artikel'}`;
+    });
+
+    // Description sync with SERP
+    descInput?.addEventListener('input', () => {
+      const desc = descInput.value;
+      if (serpDesc) serpDesc.innerText = desc || 'Deskripsi ringkas meta description...';
+      if (descCharCount) descCharCount.innerText = String(desc.length);
+      updateSeoScore();
+    });
+
+    // Word Count calculation
+    contentMd?.addEventListener('input', () => {
+      const words = contentMd.value.trim().split(/\s+/).filter(Boolean).length;
+      if (wordCount) wordCount.innerText = String(words);
+      updateSeoScore();
+    });
+
+    // Cover Image Live Preview
+    coverUrlInput?.addEventListener('input', () => {
+      const url = coverUrlInput.value.trim();
+      if (url) {
+        coverImg.src = url;
+        coverImg.classList.remove('hidden');
+        coverPlaceholder.classList.add('hidden');
+      } else {
+        coverImg.classList.add('hidden');
+        coverPlaceholder.classList.remove('hidden');
+      }
+      updateSeoScore();
+    });
+
+    // --- Drag & Drop Image Uploader to Cloudflare R2 ---
+    dropzone?.addEventListener('click', () => {
+      fileInput?.click();
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone?.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('border-primary', 'bg-blue-50/50');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone?.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('border-primary', 'bg-blue-50/50');
+      });
+    });
+
+    dropzone?.addEventListener('drop', (e) => {
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        processAndUploadImage(files[0]);
+      }
+    });
+
+    fileInput?.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files.length > 0) {
+        processAndUploadImage(fileInput.files[0]);
+      }
+    });
+
+    // Convert any image (PNG, JPG, etc.) to optimized WebP in Browser
+    async function processAndUploadImage(file: File) {
+      if (!file.type.startsWith('image/')) {
+        alert('File harus berupa gambar (JPG, PNG, WebP, dll.)');
+        return;
+      }
+
+      uploadOverlay?.classList.remove('hidden');
+
+      try {
+        const imageBitmap = await createImageBitmap(file);
+        const maxDimension = 1200;
+        let width = imageBitmap.width;
+        let height = imageBitmap.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(imageBitmap, 0, 0, width, height);
+
+        // Convert canvas to WebP Blob (Quality: 82% - Golden standard for editorial)
+        canvas.toBlob(async (blob) => {
+          if (!blob) throw new Error('Gagal mengonversi gambar ke WebP.');
+
+          const cleanSlug = slugInput?.value || 'cover';
+          const filename = `${cleanSlug}-${Date.now().toString().slice(-4)}.webp`;
+
+          const formData = new FormData();
+          formData.append('file', blob, filename);
+          formData.append('filename', filename);
+
+          const res = await fetch('/api/admin/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          const data = await res.json();
+          if (res.ok && data.url) {
+            coverUrlInput.value = data.url;
+            coverImg.src = data.url;
+            coverImg.classList.remove('hidden');
+            coverPlaceholder.classList.add('hidden');
+            statusBadge?.classList.remove('hidden');
+            uploadOverlay?.classList.add('hidden');
+            updateSeoScore();
+          } else {
+            throw new Error(data.message || 'Gagal mengunggah ke Cloudflare R2.');
+          }
+        }, 'image/webp', 0.82);
+      } catch (err: any) {
+        alert(`Gagal memproses gambar: ${err.message}`);
+        uploadOverlay?.classList.add('hidden');
+      }
+    }
+
+    // Tabs Switcher (Markdown vs Preview)
+    const tabMd = document.getElementById('tab-markdown');
+    const tabPrev = document.getElementById('tab-preview');
+    const editorPane = document.getElementById('editor-pane');
+    const previewPane = document.getElementById('preview-pane');
+    const previewHtmlContent = document.getElementById('preview-html-content');
+
+    tabPrev?.addEventListener('click', async () => {
+      tabPrev.className = 'rounded-lg bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm transition';
+      tabMd!.className = 'rounded-lg px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition';
+      editorPane?.classList.add('hidden');
+      previewPane?.classList.remove('hidden');
+      if (previewHtmlContent && contentMd) {
+        previewHtmlContent.innerHTML = await marked.parse(contentMd.value || '*Belum ada konten.*');
+      }
+    });
+
+    tabMd?.addEventListener('click', () => {
+      tabMd.className = 'rounded-lg bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm transition';
+      tabPrev!.className = 'rounded-lg px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition';
+      editorPane?.classList.remove('hidden');
+      previewPane?.classList.add('hidden');
+    });
+
+    // --- Realtime Live SEO 2026 Scorecard Engine ---
+    const keywordInput = document.getElementById('post-keyword') as HTMLInputElement;
+    const takeawaysInput = document.getElementById('post-key-takeaways') as HTMLTextAreaElement;
+    const scoreBadge = document.getElementById('seo-score-badge');
+
+    function updateSeoScore() {
+      let score = 0;
+      const title = titleInput?.value.trim() || '';
+      const keyword = keywordInput?.value.trim() || '';
+      const desc = descInput?.value.trim() || '';
+      const cover = coverUrlInput?.value.trim() || '';
+      const content = contentMd?.value.trim() || '';
+      const takeaways = takeawaysInput?.value.trim() || '';
+
+      // 1. Title Length Check (40-65 chars)
+      const chkTitle = document.getElementById('chk-title');
+      if (title.length >= 40 && title.length <= 65) {
+        score += 20;
+        if (chkTitle) { chkTitle.className = 'flex items-center gap-2 text-emerald-600 font-semibold'; chkTitle.querySelector('.chk-icon')!.textContent = '✅'; }
+      } else {
+        if (chkTitle) { chkTitle.className = 'flex items-center gap-2 text-slate-400'; chkTitle.querySelector('.chk-icon')!.textContent = '⚪'; }
+      }
+
+      // 2. Focus Keyword
+      const chkKeyword = document.getElementById('chk-keyword');
+      if (keyword.length > 2) {
+        score += 20;
+        if (chkKeyword) { chkKeyword.className = 'flex items-center gap-2 text-emerald-600 font-semibold'; chkKeyword.querySelector('.chk-icon')!.textContent = '✅'; }
+      } else {
+        if (chkKeyword) { chkKeyword.className = 'flex items-center gap-2 text-slate-400'; chkKeyword.querySelector('.chk-icon')!.textContent = '⚪'; }
+      }
+
+      // 3. Meta Description (100-160 chars)
+      const chkDesc = document.getElementById('chk-desc');
+      if (desc.length >= 100 && desc.length <= 160) {
+        score += 20;
+        if (chkDesc) { chkDesc.className = 'flex items-center gap-2 text-emerald-600 font-semibold'; chkDesc.querySelector('.chk-icon')!.textContent = '✅'; }
+      } else {
+        if (chkDesc) { chkDesc.className = 'flex items-center gap-2 text-slate-400'; chkDesc.querySelector('.chk-icon')!.textContent = '⚪'; }
+      }
+
+      // 4. Cover Image
+      const chkCover = document.getElementById('chk-cover');
+      if (cover.length > 5) {
+        score += 15;
+        if (chkCover) { chkCover.className = 'flex items-center gap-2 text-emerald-600 font-semibold'; chkCover.querySelector('.chk-icon')!.textContent = '✅'; }
+      } else {
+        if (chkCover) { chkCover.className = 'flex items-center gap-2 text-slate-400'; chkCover.querySelector('.chk-icon')!.textContent = '⚪'; }
+      }
+
+      // 5. Content Depth (300+ words)
+      const words = content.split(/\s+/).filter(Boolean).length;
+      const chkContent = document.getElementById('chk-content');
+      if (words >= 300) {
+        score += 15;
+        if (chkContent) { chkContent.className = 'flex items-center gap-2 text-emerald-600 font-semibold'; chkContent.querySelector('.chk-icon')!.textContent = '✅'; }
+      } else {
+        if (chkContent) { chkContent.className = 'flex items-center gap-2 text-slate-400'; chkContent.querySelector('.chk-icon')!.textContent = '⚪'; }
+      }
+
+      // 6. Key Takeaways
+      const chkTakeaways = document.getElementById('chk-takeaways');
+      if (takeaways.length > 15) {
+        score += 10;
+        if (chkTakeaways) { chkTakeaways.className = 'flex items-center gap-2 text-emerald-600 font-semibold'; chkTakeaways.querySelector('.chk-icon')!.textContent = '✅'; }
+      } else {
+        if (chkTakeaways) { chkTakeaways.className = 'flex items-center gap-2 text-slate-400'; chkTakeaways.querySelector('.chk-icon')!.textContent = '⚪'; }
+      }
+
+      // Update Badge
+      if (scoreBadge) {
+        scoreBadge.textContent = `${score}%`;
+        if (score >= 80) {
+          scoreBadge.className = 'px-2.5 py-0.5 text-xs font-extrabold rounded-full bg-emerald-100 text-emerald-800';
+        } else if (score >= 50) {
+          scoreBadge.className = 'px-2.5 py-0.5 text-xs font-extrabold rounded-full bg-amber-100 text-amber-800';
+        } else {
+          scoreBadge.className = 'px-2.5 py-0.5 text-xs font-extrabold rounded-full bg-slate-100 text-slate-600';
+        }
+      }
+    }
+
+    // Initial trigger
+    const initialWords = contentMd?.value.trim().split(/\s+/).filter(Boolean).length || 0;
+    if (wordCount) wordCount.innerText = String(initialWords);
+    updateSeoScore();
+
+    // Helper function to submit update
+    async function submitUpdate(targetStatus: 'published' | 'draft') {
+      const btnPublish = document.getElementById('btn-publish') as HTMLButtonElement;
+      const btnDraft = document.getElementById('btn-save-draft') as HTMLButtonElement;
+      
+      btnPublish.disabled = true;
+      btnDraft.disabled = true;
+      btnPublish.innerText = 'Menyimpan ke D1...';
+
+      const takeawaysRaw = takeawaysInput?.value || '';
+      const takeaways = takeawaysRaw.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
+
+      const payload = {
+        id: articleId,
+        title: titleInput.value,
+        slug: slugInput.value,
+        description: descInput.value,
+        content_md: contentMd.value,
+        featured_image: coverUrlInput.value || '',
+        image_alt: (document.getElementById('post-image-alt') as HTMLInputElement)?.value || titleInput.value,
+        category_id: parseInt((document.getElementById('post-category') as HTMLSelectElement)?.value || '1', 10),
+        author_id: parseInt((document.getElementById('post-author') as HTMLSelectElement)?.value || '1', 10),
+        key_takeaways: JSON.stringify(takeaways),
+        focus_keyword: keywordInput?.value || '',
+        status: targetStatus
+      };
+
+      try {
+        const res = await fetch('/api/admin/posts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          alert('🎉 Perubahan artikel berhasil disimpan ke Cloudflare D1!');
+          window.location.href = '/admin/posts';
+        } else {
+          const data = await res.json();
+          alert(`Gagal menyimpan artikel: ${data.message || 'Cek koneksi database.'}`);
+          btnPublish.disabled = false;
+          btnDraft.disabled = false;
+          btnPublish.innerText = '💾 Simpan Perubahan';
+        }
+      } catch (err: any) {
+        alert(`Terjadi kesalahan: ${err.message}`);
+        btnPublish.disabled = false;
+        btnDraft.disabled = false;
+        btnPublish.innerText = '💾 Simpan Perubahan';
+      }
+    }
+
+    // Form submit handler
     const form = document.getElementById('post-editor-form') as HTMLFormElement;
-    form?.addEventListener('submit', (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      alert('Perubahan artikel berhasil disimpan ke D1!');
-      window.location.href = '/admin/posts';
+      await submitUpdate('published');
+    });
+
+    const btnDraft = document.getElementById('btn-save-draft');
+    btnDraft?.addEventListener('click', async () => {
+      await submitUpdate('draft');
     });
   </script>
 </AdminLayout>
