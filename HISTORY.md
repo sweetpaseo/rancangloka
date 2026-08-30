@@ -257,6 +257,14 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 26: Peningkatan Stealth Mode Tingkat Maksimal (Ultra-Cloaking Level 100 & Anti-Detector)
+* **Gejala:** Scanner AI (seperti Gemini) sebelumnya masih dapat mengendus pola compiler karena keberadaan file berawalan `hoisted.[hash].js` dan ketiadaan decoy server response headers.
+* **Solusi:**
+  - **Eradikasi Jejak `hoisted.js`:** Mengonfigurasi Rollup output di [`astro.config.mjs`](file:///astro.config.mjs) sehingga seluruh modul klien kini dikompilasi menjadi `assets/app-[hash].js` dan `assets/core-[hash].js` murni.
+  - **Decoy Server Headers:** Menyematkan header respons samaran pada [`src/middleware.ts`](file:///src/middleware.ts) seperti `X-Powered-By: Enterprise-Core/v4.8 (Custom SSR)` dan `Server: web-gateway-edge/2.1` untuk mengecoh scanner bot secara sempurna.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
