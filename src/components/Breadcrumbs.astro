@@ -10,6 +10,7 @@ interface Props {
 }
 
 const { items = [] } = Astro.props;
+const cleanItems = items.filter(item => item.url !== '/' && item.name.toLowerCase() !== 'beranda');
 ---
 
 <nav aria-label="Breadcrumb" class="mb-4 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -22,7 +23,7 @@ const { items = [] } = Astro.props;
       <span class="text-slate-300 dark:text-slate-600">/</span>
     </li>
 
-    {items.map((item, index) => (
+    {cleanItems.map((item, index) => (
       <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="flex items-center gap-1.5">
         {index === items.length - 1 ? (
           <span itemprop="name" class="text-slate-800 dark:text-slate-200 line-clamp-1 max-w-[200px] md:max-w-md font-semibold">
