@@ -170,6 +170,19 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 17: Mesin XML Sitemap Visual XSLT Bergaya Rank Math WordPress & Google Image SEO
+* **Gejala:** Sitemap XML bawaan berupa teks mentah polos dan belum menyertakan visual XSLT stylesheet serta tag Google Image SEO (`<image:image>`) seperti plugin Rank Math di WordPress.
+* **Solusi:**
+  - Membuat stylesheet XSLT interaktif di [`public/main-sitemap.xsl`](file:///public/main-sitemap.xsl) yang mengubah XML mentah menjadi tabel dashboard modern di browser pengunjung.
+  - Membangun struktur hierarki multi-sitemap Rank Math:
+    - `/sitemap_index.xml` & `/sitemap.xml`: Master Sitemap Index.
+    - `/post-sitemap.xml`: Khusus artikel dengan `<image:image>` tags untuk Google Image indexing.
+    - `/page-sitemap.xml`: Khusus halaman statis.
+    - `/category-sitemap.xml`: Khusus arsip kategori.
+    - `/news-sitemap.xml`: Khusus Google News 48 jam.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
