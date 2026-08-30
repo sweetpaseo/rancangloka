@@ -126,9 +126,18 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Solusi:**
   - Membangun modul *Internal Linking Engine* di [`src/lib/seo.ts`](file:///src/lib/seo.ts):
     1. **Dateline Source Branding:** Otomatis menyematkan `RANCANGLOKA.COM – ` di `<p>` pertama artikel dan feed RSS.
-    2. **In-Article "BACA JUGA":** Menyematkan callout kartu rekomendasi artikel terkait tepat sebelum `<h2>` kedua.
+    2. **In-Article "BACA JUGA":** Menyematkan callout kartu rekomendasi artikel terkait tepat sebelum `<h2>` kedua/ketiga.
     3. **Auto-Keyword Linker:** Memindai kata kunci fokus artikel lain dan otomatis mengubahnya menjadi anchor link kontekstual (maks 2 per artikel).
   - Menambahkan field `is_sponsored` & `disable_internal_links` di D1 dan switch toggle di Admin Editor [`src/pages/admin/posts/new.astro`](file:///src/pages/admin/posts/new.astro) & frontmatter Markdown. Jika aktif, internal links dan widget "BACA JUGA" otomatis dinonaktifkan khusus untuk artikel sponsor tersebut.
+
+---
+
+### Masalah 13: Social Share Bar Customizer & Footer Manager di Dashboard Admin
+* **Gejala:** Admin belum bisa mengatur tombol share media sosial apa saja yang aktif di artikel serta belum bisa mengatur profil tautan media sosial resmi dan deskripsi di footer secara dinamis.
+* **Solusi:**
+  - Menambahkan panel kustomisasi **Social Share Bar** di [`src/pages/admin/settings.astro`](file:///src/pages/admin/settings.astro) (Master Toggle, per-platform on/off: WhatsApp, X/Twitter, Facebook, LinkedIn, Telegram, Copy Link, serta Twitter handle).
+  - Menambahkan panel **Footer Manager & Official Socials** di [`src/pages/admin/settings.astro`](file:///src/pages/admin/settings.astro) (Deskripsi footer, tautan medsos resmi: Instagram, TikTok, X, YouTube, Pinterest, LinkedIn, dan teks Copyright).
+  - Memperbarui [`src/components/SocialShareBar.astro`](file:///src/components/SocialShareBar.astro) dan [`src/layouts/BaseLayout.astro`](file:///src/layouts/BaseLayout.astro) agar merender tampilan footer dan share bar dinamis berbasis database D1.
 
 ---
 
@@ -138,10 +147,11 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, dark mode, dynamic styling. |
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main`. |
-| **D1 Database & Skema** | ✅ Selesai (Aktif) | 7 tabel inti + kolom `is_sponsored` & `disable_internal_links`. |
+| **D1 Database & Skema** | ✅ Selesai (Aktif) | 7 tabel inti + kolom `is_sponsored` & settings kustomisasi. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
 | **Manajemen Halaman Statis (Pages)** | ✅ Selesai (Aktif) | Page Writer CMS, template kontak interaktif, & sitemap pages aktif. |
 | **Sirkulasi Internal Linking Otomatis** | ✅ Selesai (Aktif) | Dateline, Auto-Keywords, In-Article BACA JUGA, & Paid Review Toggle. |
+| **Social Share & Footer Manager** | ✅ Selesai (Aktif) | Kontrol penuh tombol share artikel & medsos resmi footer di Admin. |
 | **SEO & Feed** | ✅ Selesai | Google News XML, Sitemap XML, RSS feed, Schema.org aktif. |
 | **Keamanan Level Kode** | ✅ Selesai | Hashing PBKDF2, session token acak 24-byte, SQL parameterization. |
 | **Cloudflare Zero Trust (Access)** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
