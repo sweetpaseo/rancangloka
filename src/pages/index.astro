@@ -56,14 +56,14 @@ const websiteSchema = {
   <!-- 2. Intent-Based Fast Navigation (Tactile Luxury Pills) -->
   <div class="mb-16 overflow-x-auto no-scrollbar py-4 flex items-center gap-3 border-y border-black/[0.06] dark:border-white/[0.08]">
     <span class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white whitespace-nowrap pl-1">
-      <span class="text-[#0066ee]">✦</span>
+      <span class="text-[#c46849]">✦</span>
       <span>Pencarian Cepat Kebutuhan:</span>
     </span>
     <div class="flex items-center gap-2.5">
       {userIntents.map((intent) => (
         <a
           href={intent.link}
-          class="pill-tactile rounded-full bg-white dark:bg-slate-900 hover:bg-[#0066ee] hover:text-white dark:hover:bg-[#0066ee] dark:hover:text-white px-4 py-2 text-xs font-medium text-slate-800 dark:text-slate-200 transition border border-black/[0.06] dark:border-white/[0.08] whitespace-nowrap shadow-xs font-mono"
+          class="pill-tactile rounded-full bg-white dark:bg-slate-900 hover:bg-[#c46849] hover:text-white dark:hover:bg-[#c46849] dark:hover:text-white px-4 py-2 text-xs font-medium text-slate-800 dark:text-slate-200 transition border border-black/[0.06] dark:border-white/[0.08] whitespace-nowrap shadow-xs font-mono"
         >
           {intent.label}
         </a>
@@ -76,7 +76,7 @@ const websiteSchema = {
     <section class="my-20">
       <div class="mb-10 flex flex-col sm:flex-row sm:items-end justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-5 gap-4">
         <div>
-          <span class="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-1.5">
+          <span class="text-[11px] font-mono font-bold uppercase tracking-widest text-[#c46849] block mb-1.5">
             ✦ JURNAL SPASIAL TERKINI
           </span>
           <h2 class="font-sans text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
@@ -85,7 +85,7 @@ const websiteSchema = {
         </div>
         <a
           href="/explore"
-          class="text-xs font-mono font-semibold text-[#0066ee] hover:underline flex items-center gap-1.5 group self-start sm:self-auto"
+          class="text-xs font-mono font-semibold text-[#c46849] hover:underline flex items-center gap-1.5 group self-start sm:self-auto"
         >
           <span>Eksplorasi Seluruh 20 Artikel</span>
           <span class="transition-transform group-hover:translate-x-1">→</span>
@@ -94,7 +94,7 @@ const websiteSchema = {
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {latestArticles.map((art) => (
-          <article class="apple-card group flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900/80 rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] hover:border-[#0066ee]/40 transition duration-500">
+          <article class="apple-card group flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900/80 rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] hover:border-[#c46849]/40 transition duration-500">
             <a href={`/${art.slug}`} class="relative block overflow-hidden aspect-[16/10] bg-slate-100 dark:bg-slate-800">
               <img
                 src={art.featured_image}
@@ -105,13 +105,13 @@ const websiteSchema = {
               />
               <span
                 class="absolute top-4 left-4 px-3 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-widest text-white shadow-md backdrop-blur-md border border-white/20"
-                style={`background-color: ${art.category_color || '#0066ee'}ee;`}
+                style={`background-color: ${art.category_color || '#c46849'}ee;`}
               >
                 {art.category_name}
               </span>
             </a>
             <div class="flex flex-1 flex-col p-6 sm:p-7">
-              <h3 class="font-sans text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-[#0066ee] transition leading-snug line-clamp-2">
+              <h3 class="font-sans text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-[#c46849] transition leading-snug line-clamp-2">
                 <a href={`/${art.slug}`}>{art.title}</a>
               </h3>
               <p class="mt-3 text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed flex-1 font-normal">
@@ -134,7 +134,7 @@ const websiteSchema = {
 
     <div class="max-w-3xl mb-10">
       <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-[11px] font-mono font-bold uppercase tracking-widest text-white border border-white/15 mb-3.5">
-        <span class="text-[#0066ee]">✦</span>
+        <span class="text-[#c46849]">✦</span>
         <span>VISUAL STUDY & REKAYASA SPASIAL</span>
       </span>
       <h2 class="font-sans text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
@@ -183,20 +183,20 @@ const websiteSchema = {
   <section class="my-20 grid grid-cols-1 md:grid-cols-2 gap-8">
     <a
       href="/solusi"
-      class="apple-card p-8 sm:p-10 rounded-[2.25rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/90 hover:border-[#0066ee]/50 transition group flex flex-col justify-between"
+      class="apple-card p-8 sm:p-10 rounded-[2.25rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/90 hover:border-[#c46849]/50 transition group flex flex-col justify-between"
     >
       <div>
-        <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-2.5">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#c46849] block mb-2.5">
           ✦ ALAT DIAGNOSIS
         </span>
-        <h3 class="font-sans text-2xl font-bold text-slate-900 dark:text-white group-hover:text-[#0066ee] transition">
+        <h3 class="font-sans text-2xl font-bold text-slate-900 dark:text-white group-hover:text-[#c46849] transition">
           Design Problem Solver →
         </h3>
         <p class="mt-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
           Mendiagnosis masalah rumah panas, lahan mungil sempit, ruang gelap, atau bising dan menemukan strategi spasial yang relevan.
         </p>
       </div>
-      <div class="mt-8 pt-4 border-t border-black/[0.05] dark:border-white/[0.06] text-xs font-mono font-semibold text-[#0066ee] flex items-center justify-between">
+      <div class="mt-8 pt-4 border-t border-black/[0.05] dark:border-white/[0.06] text-xs font-mono font-semibold text-[#c46849] flex items-center justify-between">
         <span>Mulai Diagnosis Ruang</span>
         <span class="transition-transform group-hover:translate-x-1">→</span>
       </div>
@@ -204,20 +204,20 @@ const websiteSchema = {
 
     <a
       href="/komparasi"
-      class="apple-card p-8 sm:p-10 rounded-[2.25rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/90 hover:border-[#0066ee]/50 transition group flex flex-col justify-between"
+      class="apple-card p-8 sm:p-10 rounded-[2.25rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/90 hover:border-[#c46849]/50 transition group flex flex-col justify-between"
     >
       <div>
-        <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-2.5">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#c46849] block mb-2.5">
           ✦ MATRIKS OBJEKTIF
         </span>
-        <h3 class="font-sans text-2xl font-bold text-slate-900 dark:text-white group-hover:text-[#0066ee] transition">
+        <h3 class="font-sans text-2xl font-bold text-slate-900 dark:text-white group-hover:text-[#c46849] transition">
           Comparison Matrix →
         </h3>
         <p class="mt-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
           Perbandingan spesifikasi teknis material: Aluminium vs UPVC, Kayu Ulin vs Louver, dilengkapi rincian bobot How We Score.
         </p>
       </div>
-      <div class="mt-8 pt-4 border-t border-black/[0.05] dark:border-white/[0.06] text-xs font-mono font-semibold text-[#0066ee] flex items-center justify-between">
+      <div class="mt-8 pt-4 border-t border-black/[0.05] dark:border-white/[0.06] text-xs font-mono font-semibold text-[#c46849] flex items-center justify-between">
         <span>Buka Matriks Komparasi</span>
         <span class="transition-transform group-hover:translate-x-1">→</span>
       </div>

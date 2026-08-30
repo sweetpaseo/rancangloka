@@ -9,7 +9,7 @@ const { isArticlePage = false } = Astro.props;
 <div class="fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 md:hidden pointer-events-none">
   <nav class="pointer-events-auto flex items-center justify-around gap-8 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl px-7 py-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.6)] border border-black/[0.08] dark:border-white/[0.15] transition-all">
     <!-- 1. Home -->
-    <a href="/" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-[#0071e3] dark:text-slate-200 dark:hover:text-white transition">
+    <a href="/" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-[#c46849] dark:text-slate-200 dark:hover:text-white transition">
       <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
       </svg>
@@ -17,7 +17,7 @@ const { isArticlePage = false } = Astro.props;
     </a>
 
     <!-- 2. Search Trigger -->
-    <button data-search-trigger class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-[#0071e3] dark:text-slate-200 dark:hover:text-white transition">
+    <button data-search-trigger class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-[#c46849] dark:text-slate-200 dark:hover:text-white transition">
       <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
@@ -26,7 +26,7 @@ const { isArticlePage = false } = Astro.props;
 
     {isArticlePage ? (
       <!-- 3. Quick Share on Article Pages -->
-      <button id="mobile-quick-share" class="flex flex-col items-center justify-center gap-1 text-[#0071e3] font-bold transition">
+      <button id="mobile-quick-share" class="flex flex-col items-center justify-center gap-1 text-[#c46849] font-bold transition">
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
         </svg>
@@ -34,7 +34,7 @@ const { isArticlePage = false } = Astro.props;
       </button>
     ) : (
       <!-- 3. Dark Mode Toggle -->
-      <button class="theme-toggle-btn flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-[#0071e3] dark:text-slate-200 dark:hover:text-white transition">
+      <button class="theme-toggle-btn flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-[#c46849] dark:text-slate-200 dark:hover:text-white transition">
         <svg class="h-5 w-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>

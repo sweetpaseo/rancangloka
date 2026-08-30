@@ -23,7 +23,7 @@ const displayArticles = articles.slice(0, 3);
     <a
       href={`/category/${category.slug}`}
       aria-label={`Lihat semua artikel kategori ${category.name}`}
-      class="text-xs font-semibold tracking-wide text-[#0071e3] hover:underline flex items-center gap-1 group"
+      class="text-xs font-semibold tracking-wide text-[#c46849] hover:underline flex items-center gap-1 group"
     >
       Lihat Semua ({articles.length}) <span class="transition-transform group-hover:translate-x-0.5">→</span>
     </a>
@@ -43,7 +43,7 @@ const displayArticles = articles.slice(0, 3);
           />
         </a>
         <div class="flex flex-1 flex-col p-6">
-          <h3 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-[#0071e3] transition-colors line-clamp-2 leading-snug">
+          <h3 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-[#c46849] transition-colors line-clamp-2 leading-snug">
             <a href={`/${article.slug}`}>
               {article.title}
             </a>
