@@ -17,7 +17,7 @@ const exploreEntities = [
     space: 'fasad',
     material: 'kayu',
     budget: 'mid',
-    summary: 'Mereduksi silau matahari sore hingga 60% dan menjaga suhu dinding tetap dingin secara pasif.',
+    summary: 'Mereduksi radiasi langsung matahari sore melalui pembiasan bayangan pasif dan menjaga suhu dinding tetap dingin.',
     specs: 'Kayu Ulin Grade 1 • Rangka Aluminium Hollow Hitam • Jarak kisi 8 cm',
     link: '/search?q=secondary+skin'
   },
@@ -28,7 +28,7 @@ const exploreEntities = [
     space: 'keluarga',
     material: 'beton',
     budget: 'mid',
-    summary: 'Melipatgandakan persepsi luas hunian tipe 36/60 dan mengalirkan udara hangat keluar rumah.',
+    summary: 'Menciptakan kontinuitas visual vertikal hunian tipe 36/60 dan mendorong pelepasan udara hangat ke luar rumah.',
     specs: 'Tinggi plafon 5.2m • Bukaan kisi ventilasi atas • Skylight kaca laminated 8mm',
     link: '/search?q=void'
   },
@@ -39,7 +39,7 @@ const exploreEntities = [
     space: 'keluarga',
     material: 'batu',
     budget: 'low',
-    summary: 'Menyediakan pasokan cahaya matahari alami dan sirkulasi udara bagi rumah yang terhimpit tetangga.',
+    summary: 'Menyediakan pasokan cahaya matahari alami dan sirkulasi udara bagi rumah yang terhimpit dinding tetangga.',
     specs: 'Lahan 2x2 meter • Batu koral sikat & andesit • Tanaman peneduh indoor',
     link: '/search?q=taman'
   },
@@ -50,8 +50,8 @@ const exploreEntities = [
     space: 'kamar',
     material: 'upvc',
     budget: 'high',
-    summary: 'Meredam kebisingan jalan raya hingga 40 desibel untuk kualitas tidur optimal di malam hari.',
-    specs: 'Rangka UPVC 6 chamber • Kaca ganda 6mm + 12mm air gap + 6mm • EPDM Rubber seal',
+    summary: 'Mereduksi transmisi kebisingan jalan raya secara signifikan pada sistem kaca ganda berongga kedap udara.',
+    specs: 'Rangka UPVC multi-chamber • Kaca ganda 6mm + 12mm air gap + 6mm • Seal EPDM',
     link: '/komparasi'
   },
   {
@@ -61,7 +61,7 @@ const exploreEntities = [
     space: 'kamar',
     material: 'kayu',
     budget: 'mid',
-    summary: 'Meredam pantulan gema suara sekaligus menciptakan suasana tenang wabi-sabi.',
+    summary: 'Meredam pantulan gema akustik sekaligus menghadirkan tekstur taktil alami yang hangat pada ruang tidur.',
     specs: 'Kayu Jati Perhutani • Lampu cove 2700K warm white • Finishing matte water-based',
     link: '/search?q=plafon'
   },
@@ -72,7 +72,7 @@ const exploreEntities = [
     space: 'fasad',
     material: 'terakota',
     budget: 'low',
-    summary: 'Solusi selubung bernapas yang hemat biaya untuk memecah terpaan angin kencang dan hujan.',
+    summary: 'Solusi selubung bernapas yang efisien untuk memecah terpaan angin dan membiaskan sinar matahari langsung.',
     specs: 'Bata terakota bakar 20x20 cm • Pembesian angkur struktur • Coating water repellent',
     link: '/search?q=terakota'
   }
@@ -95,7 +95,7 @@ const exploreEntities = [
         Eksplorasi Ide, Material, & Solusi Ruang
       </h1>
       <p class="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
-        Filter solusi arsitektur berdasarkan tantangan rumah Anda, ruang yang ingin dirancang, atau preferensi materialitas.
+        Filter solusi arsitektur secara terpadu berdasarkan tantangan spesifik, zona ruangan, atau pilihan materialitas.
       </p>
     </div>
 
@@ -145,6 +145,30 @@ const exploreEntities = [
           </button>
         </div>
       </div>
+
+      <!-- 3. Material Utama -->
+      <div class="border-t border-black/[0.04] dark:border-white/[0.06] pt-4">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-2.5">
+          3. Preferensi Material:
+        </span>
+        <div class="flex flex-wrap gap-2" id="filter-material">
+          <button type="button" data-filter="all" class="filter-btn active-filter rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
+            Semua Material
+          </button>
+          <button type="button" data-filter="kayu" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
+            Kayu Ulin / Jati
+          </button>
+          <button type="button" data-filter="upvc" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
+            UPVC Profil
+          </button>
+          <button type="button" data-filter="batu" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
+            Batu Alam / Andesit
+          </button>
+          <button type="button" data-filter="terakota" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
+            Bata Roster Terakota
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Explorer Results Grid -->
@@ -181,20 +205,14 @@ const exploreEntities = [
             </div>
           </div>
 
-          <div class="pt-4 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
+          <div class="pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between text-xs font-mono">
+            <span class="text-slate-400">Kategori: {item.material.toUpperCase()}</span>
             <a
               href={item.link}
-              class="text-xs font-mono font-bold text-[#0071e3] hover:underline"
+              class="font-bold text-[#0071e3] hover:underline"
             >
-              Lihat Analisis Detail →
+              Lihat Studi Kasus →
             </a>
-            <button
-              type="button"
-              class="text-xs font-mono text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              onclick="alert('Ide berhasil disimpan ke Moodboard inspirasi Anda!')"
-            >
-              + Simpan Ide
-            </button>
           </div>
         </article>
       ))}
@@ -221,20 +239,24 @@ const exploreEntities = [
   <script>
     let activeProblem = 'all';
     let activeSpace = 'all';
+    let activeMaterial = 'all';
 
     const problemBtns = document.querySelectorAll('#filter-problem .filter-btn');
     const spaceBtns = document.querySelectorAll('#filter-space .filter-btn');
+    const materialBtns = document.querySelectorAll('#filter-material .filter-btn');
     const cards = document.querySelectorAll('.explore-card');
 
     function applyFilters() {
       cards.forEach((card) => {
         const cardProblem = card.getAttribute('data-problem');
         const cardSpace = card.getAttribute('data-space');
+        const cardMaterial = card.getAttribute('data-material');
 
         const matchProblem = activeProblem === 'all' || cardProblem === activeProblem;
         const matchSpace = activeSpace === 'all' || cardSpace === activeSpace;
+        const matchMaterial = activeMaterial === 'all' || cardMaterial === activeMaterial;
 
-        if (matchProblem && matchSpace) {
+        if (matchProblem && matchSpace && matchMaterial) {
           (card as HTMLElement).style.display = 'flex';
         } else {
           (card as HTMLElement).style.display = 'none';
@@ -256,6 +278,15 @@ const exploreEntities = [
         spaceBtns.forEach((b) => b.classList.remove('active-filter'));
         btn.classList.add('active-filter');
         activeSpace = btn.getAttribute('data-filter') || 'all';
+        applyFilters();
+      });
+    });
+
+    materialBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        materialBtns.forEach((b) => b.classList.remove('active-filter'));
+        btn.classList.add('active-filter');
+        activeMaterial = btn.getAttribute('data-filter') || 'all';
         applyFilters();
       });
     });

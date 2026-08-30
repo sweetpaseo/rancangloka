@@ -864,9 +864,9 @@ export function sanitizeArticle(a: Article): Article {
   // Enforce authentic author
   let author_name = a.author_name;
   let author_role = a.author_role;
-  if (!author_name || author_name.includes('Dimas') || author_name.includes('Clarissa')) {
-    author_name = 'Dewan Redaksi Spasial RancangLoka';
-    author_role = 'Kurator Utama Tata Ruang Tropis';
+  if (!author_name || author_name.includes('Dimas') || author_name.includes('Clarissa') || author_name.includes('Dewan')) {
+    author_name = 'RancangLoka Editorial Desk';
+    author_role = 'Kurasi & Riset Spasial Tropis';
   }
 
   return {
