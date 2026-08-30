@@ -1,0 +1,177 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb, getSubscribers } from '../../../lib/db';
+
+const db = await getDb(Astro.locals);
+const subscribers = await getSubscribers(db);
+const totalSubscribers = subscribers.length;
+const activeCount = subscribers.filter(s => s.status === 'active').length;
+---
+
+<AdminLayout title="Kelola Subscriber Newsletter">
+  <div class="max-w-6xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">👥</span>
+          <h1 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Subscriber Newsletter</h1>
+        </div>
+        <p class="text-xs md:text-sm text-slate-500 mt-1">
+          Daftar pembaca yang mendaftar buletin mingguan kurasi arsitektur & desain interior RancangLoka.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a
+          href="/api/admin/subscribers/export"
+          class="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-bold transition shadow-md shadow-emerald-600/20 flex items-center gap-2"
+          download
+        >
+          <span>📥</span>
+          <span>Unduh CSV Pendaftar</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Email Terdaftar</span>
+        <p class="text-3xl font-black text-slate-900 mt-2">{totalSubscribers}</p>
+        <span class="text-[11px] text-slate-400 mt-1 block">Tersimpan di D1 Database</span>
+      </div>
+
+      <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Status Aktif</span>
+        <p class="text-3xl font-black text-emerald-600 mt-2">{activeCount}</p>
+        <span class="text-[11px] text-emerald-600 font-semibold mt-1 block">Siap Menerima Email</span>
+      </div>
+
+      <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Kompatibilitas Ekspor</span>
+        <p class="text-sm font-bold text-slate-800 mt-2">CSV / Excel Ready</p>
+        <span class="text-[11px] text-slate-400 mt-1 block">Mailchimp, Brevo, & Substack</span>
+      </div>
+    </div>
+
+    <!-- Subscriber Table Card -->
+    <div class="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm">
+      <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 class="text-sm font-bold text-slate-900">Daftar Kontak ({totalSubscribers})</h2>
+        <div class="relative w-full sm:w-72">
+          <input
+            type="text"
+            id="search-subscriber"
+            placeholder="Cari email subscriber..."
+            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:border-primary focus:outline-none transition"
+          />
+        </div>
+      </div>
+
+      {subscribers.length === 0 ? (
+        <div class="p-12 text-center text-slate-400 space-y-3">
+          <span class="text-4xl block">📬</span>
+          <p class="text-sm font-semibold text-slate-700">Belum ada email pendaftar newsletter.</p>
+          <p class="text-xs text-slate-400">Pengunjung yang mendaftar via kotak buletin di beranda atau footer akan otomatis muncul di sini.</p>
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-600">
+            <thead class="bg-slate-50 text-[11px] uppercase font-bold text-slate-500 border-b border-slate-200">
+              <tr>
+                <th class="px-5 py-3">No</th>
+                <th class="px-5 py-3">Alamat Email</th>
+                <th class="px-5 py-3">Status</th>
+                <th class="px-5 py-3">Sumber Pendaftaran</th>
+                <th class="px-5 py-3">Tanggal Bergabung</th>
+                <th class="px-5 py-3 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="subscriber-table-body" class="divide-y divide-slate-100">
+              {subscribers.map((sub, index) => (
+                <tr class="hover:bg-slate-50/80 transition subscriber-row" data-email={sub.email}>
+                  <td class="px-5 py-3.5 font-mono text-slate-400 font-bold">{index + 1}</td>
+                  <td class="px-5 py-3.5 font-bold text-slate-900 flex items-center gap-2">
+                    <span>📧</span>
+                    <span>{sub.email}</span>
+                  </td>
+                  <td class="px-5 py-3.5">
+                    <span class={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${sub.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+                      {sub.status === 'active' ? '✅ Aktif' : 'Unsubscribed'}
+                    </span>
+                  </td>
+                  <td class="px-5 py-3.5 font-medium text-slate-500">
+                    <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                      {sub.source || 'homepage'}
+                    </span>
+                  </td>
+                  <td class="px-5 py-3.5 text-slate-500 whitespace-nowrap">
+                    {new Date(sub.created_at || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td class="px-5 py-3.5 text-right">
+                    <button
+                      type="button"
+                      class="btn-delete-sub rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                      data-id={sub.id}
+                      data-email={sub.email}
+                      title="Hapus subscriber"
+                    >
+                      🗑️
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
+
+  <script>
+    // Search filter
+    const searchInput = document.getElementById('search-subscriber') as HTMLInputElement;
+    const rows = document.querySelectorAll('.subscriber-row');
+
+    searchInput?.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      rows.forEach((row) => {
+        const email = row.getAttribute('data-email')?.toLowerCase() || '';
+        if (email.includes(q)) {
+          (row as HTMLElement).style.display = '';
+        } else {
+          (row as HTMLElement).style.display = 'none';
+        }
+      });
+    });
+
+    // Delete handler
+    const deleteButtons = document.querySelectorAll('.btn-delete-sub');
+    deleteButtons.forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const id = target.getAttribute('data-id');
+        const email = target.getAttribute('data-email');
+
+        if (!confirm(`Hapus email ${email} dari daftar newsletter?`)) return;
+
+        try {
+          const res = await fetch('/api/admin/subscribers', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            target.closest('tr')?.remove();
+          } else {
+            alert(data.message || 'Gagal menghapus subscriber.');
+          }
+        } catch (err: any) {
+          alert(`Error: ${err.message}`);
+        }
+      });
+    });
+  </script>
+</AdminLayout>

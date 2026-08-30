@@ -1,0 +1,304 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb, getAllArticles } from '../../lib/db';
+
+const db = await getDb(Astro.locals);
+const articles = await getAllArticles(db, 1000, 0, 'all');
+
+// Compute SEO Audit Metrics for each article
+const auditedArticles = articles.map((article) => {
+  const content = article.content_md || '';
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const desc = article.description || '';
+  const title = article.title || '';
+  const hasCover = Boolean(article.featured_image);
+  const isR2Cover = hasCover && article.featured_image.includes('/media/');
+  const h2Count = (content.match(/^##\s+/gm) || []).length;
+  const focusKeyword = article.focus_keyword || '';
+
+  let score = 0;
+  // 1. Title Length
+  if (title.length >= 30 && title.length <= 70) score += 20;
+  else if (title.length > 0) score += 10;
+
+  // 2. Meta Description Length
+  if (desc.length >= 100 && desc.length <= 160) score += 20;
+  else if (desc.length > 0) score += 10;
+
+  // 3. Word Count
+  if (words >= 600) score += 25;
+  else if (words >= 300) score += 15;
+  else if (words > 0) score += 5;
+
+  // 4. Cover Image
+  if (hasCover) score += 15;
+  if (isR2Cover) score += 5;
+
+  // 5. Structure (H2 Headings)
+  if (h2Count >= 2) score += 15;
+  else if (h2Count >= 1) score += 8;
+
+  score = Math.min(100, score);
+
+  let status: 'perfect' | 'good' | 'poor' = 'poor';
+  if (score >= 85) status = 'perfect';
+  else if (score >= 70) status = 'good';
+
+  return {
+    ...article,
+    words,
+    descLength: desc.length,
+    h2Count,
+    hasCover,
+    isR2Cover,
+    seoScore: score,
+    seoStatus: status
+  };
+});
+
+const totalCount = auditedArticles.length;
+const perfectCount = auditedArticles.filter(a => a.seoStatus === 'perfect').length;
+const goodCount = auditedArticles.filter(a => a.seoStatus === 'good').length;
+const poorCount = auditedArticles.filter(a => a.seoStatus === 'poor').length;
+const avgScore = totalCount > 0 ? Math.round(auditedArticles.reduce((acc, a) => acc + a.seoScore, 0) / totalCount) : 0;
+---
+
+<AdminLayout title="Audit Kesehatan SEO Konten">
+  <div class="max-w-6xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">📊</span>
+          <h1 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Audit Kesehatan SEO 2026</h1>
+        </div>
+        <p class="text-xs md:text-sm text-slate-500 mt-1">
+          Pemeriksaan menyeluruh seluruh artikel terhadap standar Google Search, E-E-A-T, kerapian meta, dan optimasi gambar.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a
+          href="/admin/posts/new"
+          class="rounded-xl bg-primary hover:bg-primary-hover text-white px-4 py-2.5 text-xs font-bold transition shadow-md shadow-primary/20 flex items-center gap-2"
+        >
+          <span>✍️</span>
+          <span>Tulis Artikel Baru</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Health Metrics Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <!-- 1. Average Score -->
+      <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Rata-rata Skor SEO</span>
+        <div class="flex items-baseline gap-2 mt-2">
+          <p class="text-3xl font-black text-[#0071e3]">{avgScore}</p>
+          <span class="text-xs text-slate-400 font-bold">/ 100</span>
+        </div>
+        <span class="text-[11px] text-slate-400 mt-1 block">Standar Editorial 2026</span>
+      </div>
+
+      <!-- 2. Perfect (>=85) -->
+      <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+        <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">✅ Sempurna (&ge;85%)</span>
+        <p class="text-3xl font-black text-emerald-600 mt-2">{perfectCount}</p>
+        <span class="text-[11px] text-slate-400 mt-1 block">Artikel Siap Page 1</span>
+      </div>
+
+      <!-- 3. Good (70-84) -->
+      <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-600">⚠️ Cukup Baik (70-84%)</span>
+        <p class="text-3xl font-black text-amber-600 mt-2">{goodCount}</p>
+        <span class="text-[11px] text-slate-400 mt-1 block">Butuh Sedikit Poles</span>
+      </div>
+
+      <!-- 4. Poor (<70) -->
+      <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+        <span class="text-xs font-bold uppercase tracking-wider text-red-600">❌ Butuh Optimasi</span>
+        <p class="text-3xl font-black text-red-600 mt-2">{poorCount}</p>
+        <span class="text-[11px] text-slate-400 mt-1 block">Perlu Dilengkapi</span>
+      </div>
+    </div>
+
+    <!-- Audit Filter & Table Card -->
+    <div class="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm">
+      <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="filter-btn active rounded-lg px-3 py-1.5 text-xs font-bold bg-slate-900 text-white transition"
+            data-filter="all"
+          >
+            Semua ({totalCount})
+          </button>
+          <button
+            type="button"
+            class="filter-btn rounded-lg px-3 py-1.5 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+            data-filter="poor"
+          >
+            ❌ Butuh Optimasi ({poorCount})
+          </button>
+          <button
+            type="button"
+            class="filter-btn rounded-lg px-3 py-1.5 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+            data-filter="perfect"
+          >
+            ✅ Sempurna ({perfectCount})
+          </button>
+        </div>
+
+        <div class="relative w-full sm:w-64">
+          <input
+            type="text"
+            id="search-audit"
+            placeholder="Filter judul artikel..."
+            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:border-primary focus:outline-none transition"
+          />
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-50 text-[11px] uppercase font-bold text-slate-500 border-b border-slate-200">
+            <tr>
+              <th class="px-5 py-3">Skor</th>
+              <th class="px-5 py-3">Judul Artikel & Kategori</th>
+              <th class="px-5 py-3 text-center">Kata</th>
+              <th class="px-5 py-3 text-center">Cover R2</th>
+              <th class="px-5 py-3 text-center">Sub-Bab (H2)</th>
+              <th class="px-5 py-3 text-center">Meta Desc</th>
+              <th class="px-5 py-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {auditedArticles.map((article) => {
+              const scoreBadgeClass =
+                article.seoScore >= 85
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : article.seoScore >= 70
+                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                  : 'bg-red-100 text-red-800 border-red-300';
+
+              return (
+                <tr class="hover:bg-slate-50/80 transition audit-row" data-status={article.seoStatus} data-title={article.title}>
+                  <!-- Score Pill -->
+                  <td class="px-5 py-4 whitespace-nowrap">
+                    <span class={`inline-flex items-center justify-center font-black text-xs px-2.5 py-1 rounded-full border ${scoreBadgeClass}`}>
+                      {article.seoScore}%
+                    </span>
+                  </td>
+
+                  <!-- Title & Category -->
+                  <td class="px-5 py-4 min-w-[280px]">
+                    <span class="block text-slate-900 font-bold line-clamp-1 text-sm">{article.title}</span>
+                    <div class="flex items-center gap-2 mt-1">
+                      <span class="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                        {article.category_name || 'Uncategorized'}
+                      </span>
+                      <span class="text-[10px] text-slate-400">
+                        {article.focus_keyword ? `🎯 ${article.focus_keyword}` : '⚠️ Tanpa Keyword'}
+                      </span>
+                    </div>
+                  </td>
+
+                  <!-- Word Count -->
+                  <td class="px-5 py-4 text-center whitespace-nowrap font-medium">
+                    <span class={article.words >= 600 ? 'text-emerald-600 font-bold' : article.words >= 300 ? 'text-amber-600' : 'text-red-500 font-bold'}>
+                      {article.words} kata
+                    </span>
+                  </td>
+
+                  <!-- Cover Status -->
+                  <td class="px-5 py-4 text-center whitespace-nowrap">
+                    {article.isR2Cover ? (
+                      <span class="text-emerald-600 font-semibold" title="R2 WebP Active">✅ R2 WebP</span>
+                    ) : article.hasCover ? (
+                      <span class="text-amber-600 font-semibold" title="External URL">⚠️ External</span>
+                    ) : (
+                      <span class="text-red-500 font-bold" title="Missing Cover">❌ Kosong</span>
+                    )}
+                  </td>
+
+                  <!-- H2 Count -->
+                  <td class="px-5 py-4 text-center whitespace-nowrap font-medium">
+                    <span class={article.h2Count >= 2 ? 'text-emerald-600 font-semibold' : 'text-amber-600'}>
+                      {article.h2Count} Sub-bab
+                    </span>
+                  </td>
+
+                  <!-- Meta Desc -->
+                  <td class="px-5 py-4 text-center whitespace-nowrap">
+                    {article.descLength >= 100 && article.descLength <= 160 ? (
+                      <span class="text-emerald-600 font-semibold">{article.descLength} ch</span>
+                    ) : article.descLength > 0 ? (
+                      <span class="text-amber-600">{article.descLength} ch</span>
+                    ) : (
+                      <span class="text-red-500 font-bold">❌ Kosong</span>
+                    )}
+                  </td>
+
+                  <!-- Action Edit Button -->
+                  <td class="px-5 py-4 text-right whitespace-nowrap">
+                    <a
+                      href={`/admin/posts/${article.id}`}
+                      class="rounded-xl bg-slate-100 hover:bg-[#0071e3] hover:text-white px-3 py-1.5 text-xs font-bold text-slate-700 transition inline-flex items-center gap-1 shadow-2xs"
+                    >
+                      <span>✏️</span>
+                      <span>Optimasi</span>
+                    </a>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const searchInput = document.getElementById('search-audit') as HTMLInputElement;
+    const rows = document.querySelectorAll('.audit-row');
+
+    let currentFilter = 'all';
+
+    function applyFilters() {
+      const q = searchInput?.value.toLowerCase().trim() || '';
+
+      rows.forEach((row) => {
+        const status = row.getAttribute('data-status') || '';
+        const title = row.getAttribute('data-title')?.toLowerCase() || '';
+
+        const matchesStatus = currentFilter === 'all' || status === currentFilter;
+        const matchesQuery = !q || title.includes(q);
+
+        if (matchesStatus && matchesQuery) {
+          (row as HTMLElement).style.display = '';
+        } else {
+          (row as HTMLElement).style.display = 'none';
+        }
+      });
+    }
+
+    filterButtons.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        filterButtons.forEach((b) => {
+          b.classList.remove('bg-slate-900', 'text-white', 'font-bold');
+          b.classList.add('bg-slate-100', 'text-slate-600', 'font-semibold');
+        });
+
+        const target = e.currentTarget as HTMLElement;
+        target.classList.remove('bg-slate-100', 'text-slate-600', 'font-semibold');
+        target.classList.add('bg-slate-900', 'text-white', 'font-bold');
+
+        currentFilter = target.getAttribute('data-filter') || 'all';
+        applyFilters();
+      });
+    });
+
+    searchInput?.addEventListener('input', applyFilters);
+  </script>
+</AdminLayout>

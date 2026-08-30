@@ -934,3 +934,21 @@ export async function getSubscribers(db: any): Promise<Subscriber[]> {
   }
   return inMemorySubscribers;
 }
+
+export async function deleteSubscriber(db: any, id: number): Promise<boolean> {
+  if (db) {
+    try {
+      await db.prepare('DELETE FROM subscribers WHERE id = ?').bind(id).run();
+    } catch (e) {
+      console.warn('D1 deleteSubscriber fallback:', e);
+    }
+  }
+
+  const idx = inMemorySubscribers.findIndex(s => s.id === id);
+  if (idx !== -1) {
+    inMemorySubscribers.splice(idx, 1);
+    return true;
+  }
+  return true;
+}
+
