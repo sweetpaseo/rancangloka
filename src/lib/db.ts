@@ -357,6 +357,51 @@ export async function getDb(locals?: any) {
   return locals?.runtime?.env?.DB || null;
 }
 
+export function sanitizeArticle(a: Article): Article {
+  if (!a) return a;
+  let content = a.content_html || '';
+  // Clean unverified brand insertions
+  content = content.replace(/Erihome/gi, 'RancangLoka');
+  content = content.replace(/solusi hunian modern di Erihome/gi, 'solusi hunian modern yang proporsional');
+  content = content.replace(/panduan rekomendasi Erihome/gi, 'panduan kurasi editorial');
+  // Clean unverified 35% claims
+  content = content.replace(/hingga 35%/gi, 'secara terukur');
+  content = content.replace(/memangkas tagihan listrik hingga 35%/gi, 'mengoptimalkan efisiensi energi hunian');
+  content = content.replace(/memastikan kompatibilitas/gi, 'dirancang untuk meningkatkan interoperabilitas');
+  
+  let title = (a.title || '').replace(/hingga 35%/gi, 'Secara Efisien');
+  let desc = (a.description || '').replace(/hingga 35%/gi, 'secara terukur');
+
+  // Enforce authentic author
+  let author_name = a.author_name;
+  let author_role = a.author_role;
+  if (!author_name || author_name.includes('Dimas') || author_name.includes('Clarissa')) {
+    author_name = 'Dewan Redaksi Spasial RancangLoka';
+    author_role = 'Kurator Utama Tata Ruang Tropis';
+  }
+
+  return {
+    ...a,
+    title,
+    description: desc,
+    content_html: content,
+    author_name,
+    author_role
+  };
+}
+
+export function sanitizePage(p: Page): Page {
+  if (!p) return p;
+  let content = p.content_html || '';
+  content = content.replace(/Cyber 2 Tower, Kuningan, Jakarta Selatan/gi, 'Beroperasi secara independen & terdistribusi dari Indonesia');
+  content = content.replace(/RancangLoka Media Network/gi, 'RancangLoka Editorial Collective');
+  content = content.replace(/dalam 1x24 jam kerja/gi, 'secepatnya');
+  return {
+    ...p,
+    content_html: content
+  };
+}
+
 export async function getAllArticles(db: any, limit = 50, offset = 0, status = 'published'): Promise<Article[]> {
   if (db) {
     try {
@@ -373,12 +418,12 @@ export async function getAllArticles(db: any, limit = 50, offset = 0, status = '
         `)
         .bind(status === 'all' ? null : status, status === 'all' ? null : status, limit, offset)
         .all();
-      if (results && results.length > 0) return results as Article[];
+      if (results && results.length > 0) return (results as Article[]).map(sanitizeArticle);
     } catch (e) {
       console.warn('D1 Query fallback to mock:', e);
     }
   }
-  return inMemoryArticles.filter(a => status === 'all' || a.status === status).slice(offset, offset + limit);
+  return inMemoryArticles.filter(a => status === 'all' || a.status === status).slice(offset, offset + limit).map(sanitizeArticle);
 }
 
 export async function getTotalArticlesCount(db: any, status = 'published'): Promise<number> {
@@ -411,12 +456,13 @@ export async function getArticleBySlug(db: any, slug: string): Promise<Article |
         `)
         .bind(slug)
         .first();
-      if (result) return result as Article;
+      if (result) return sanitizeArticle(result as Article);
     } catch (e) {
       console.warn('D1 Query fallback to mock:', e);
     }
   }
-  return inMemoryArticles.find(a => a.slug === slug) || null;
+  const item = inMemoryArticles.find(a => a.slug === slug);
+  return item ? sanitizeArticle(item) : null;
 }
 
 export async function getRelatedArticles(db: any, currentId: number, categoryId: number, limit = 4): Promise<Article[]> {
@@ -435,7 +481,7 @@ export async function getRelatedArticles(db: any, currentId: number, categoryId:
         `)
         .bind(currentId, categoryId, limit)
         .all();
-      if (results && results.length > 0) return results as Article[];
+      if (results && results.length > 0) return (results as Article[]).map(sanitizeArticle);
     } catch (e) {
       console.warn('D1 Query fallback:', e);
     }
@@ -443,9 +489,9 @@ export async function getRelatedArticles(db: any, currentId: number, categoryId:
   const related = inMemoryArticles.filter(a => a.id !== currentId && a.category_id === categoryId && a.status === 'published');
   if (related.length < limit) {
     const others = inMemoryArticles.filter(a => a.id !== currentId && a.category_id !== categoryId && a.status === 'published');
-    return [...related, ...others].slice(0, limit);
+    return [...related, ...others].slice(0, limit).map(sanitizeArticle);
   }
-  return related.slice(0, limit);
+  return related.slice(0, limit).map(sanitizeArticle);
 }
 
 export async function getAllCategories(db: any): Promise<Category[]> {
@@ -743,7 +789,7 @@ export async function getPageBySlug(db: any, slug: string): Promise<Page | null>
       if (page) {
         // Increment views
         db.prepare('UPDATE pages SET views = views + 1 WHERE slug = ?').bind(slug).run().catch(() => {});
-        return page as Page;
+        return sanitizePage(page as Page);
       }
     } catch (e) {
       console.warn('D1 getPageBySlug fallback to in-memory:', e);
@@ -753,7 +799,7 @@ export async function getPageBySlug(db: any, slug: string): Promise<Page | null>
   const found = inMemoryPages.find(p => p.slug === slug);
   if (found) {
     found.views += 1;
-    return found;
+    return sanitizePage(found);
   }
   return null;
 }
