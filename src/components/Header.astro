@@ -12,24 +12,34 @@ const siteTitle = siteSettings.site_title || 'RancangLoka';
 const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Arsitektur & Smart Living';
 const siteLogo = siteSettings.site_logo || '';
 const siteFavicon = siteSettings.site_favicon || '🏡';
+
+const todayFormatted = new Intl.DateTimeFormat('id-ID', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric'
+}).format(new Date());
 ---
 
 <header class="relative z-40 w-full apple-glass transition-colors">
-  <!-- 1. Top Minimalist Bar: Live Date & Admin Access -->
-  <div class="hidden md:flex h-8 items-center justify-between border-b border-black/[0.04] dark:border-white/[0.06] px-6 text-[11px] text-slate-500 dark:text-slate-400">
+  <!-- 1. Top Minimalist Bar: Live Date & Editorial Edition -->
+  <div class="hidden md:flex h-9 items-center justify-between border-b border-black/[0.04] dark:border-white/[0.06] px-6 text-[11px] text-slate-500 dark:text-slate-400">
     <div class="flex items-center gap-3 overflow-hidden">
-      <span class="flex items-center gap-1.5 font-semibold text-[#0071e3] tracking-wide">
+      <span class="flex items-center gap-1.5 font-bold text-[#0071e3] tracking-wide">
         <span class="h-1.5 w-1.5 rounded-full bg-[#0071e3] animate-pulse"></span>
-        Curated Living
+        Curated Architecture & Living
       </span>
       <span class="text-slate-300 dark:text-slate-700">/</span>
       <span class="text-slate-600 dark:text-slate-400 font-medium">
-        Solusi Hunian Nyaman & Desain Berkelanjutan
+        Jurnal Desain, Fasad Tropis & Smart Living
       </span>
     </div>
 
     <div class="flex items-center gap-3 text-[11px]">
-      <span class="font-semibold text-slate-600 dark:text-slate-300">Sabtu, 29 Agustus 2026</span>
+      <span class="font-semibold text-slate-700 dark:text-slate-300">{todayFormatted}</span>
+      <span class="rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200/50">
+        Edisi Digital
+      </span>
     </div>
   </div>
 

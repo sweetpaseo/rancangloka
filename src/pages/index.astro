@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroMagazine from '../components/HeroMagazine.astro';
 import CategoryBentoGrid from '../components/CategoryBentoGrid.astro';
 import CategoryThreeColGrid from '../components/CategoryThreeColGrid.astro';
+import BeforeAfterSlider from '../components/BeforeAfterSlider.astro';
 import NewsletterBox from '../components/NewsletterBox.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 
@@ -15,29 +16,40 @@ const [articles, categories, siteSettings] = await Promise.all([
 
 const featuredArticle = articles.find((a) => a.is_featured === 1) || articles[0];
 const secondaryArticles = articles.filter((a) => a.id !== featuredArticle?.id).slice(0, 3);
-const heroIds = new Set([featuredArticle?.id, ...secondaryArticles.map(a => a.id)].filter(Boolean));
 
 // Filter & sort categories configured to appear on homepage
 const homeCategories = categories
   .filter((c) => c.show_on_home !== 0)
   .sort((a, b) => (a.display_order || 99) - (b.display_order || 99));
 
+// Trending topics for quick search
+const trendingTopics = [
+  '#FasadTropis',
+  '#JapandiModern',
+  '#SmartHome2026',
+  '#DapurMinimalis',
+  '#PlafonKayu',
+  '#RenovasiTipe36',
+  '#TamanIndoor',
+  '#PencahayaanAlami'
+];
+
 // JSON-LD Schema for Website
 const websiteSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: siteSettings.site_title || 'Metro Magazine',
-  url: siteSettings.site_url || 'https://magazine.pages.dev',
+  name: siteSettings.site_title || 'RancangLoka',
+  url: siteSettings.site_url || 'https://rancangloka.com',
   potentialAction: {
     '@type': 'SearchAction',
-    target: `${siteSettings.site_url || 'https://magazine.pages.dev'}/search?q={search_term_string}`,
+    target: `${siteSettings.site_url || 'https://rancangloka.com'}/search?q={search_term_string}`,
     'query-input': 'required name=search_term_string'
   }
 };
 ---
 
 <BaseLayout
-  title="Berita Terkini & Wawasan Masa Depan"
+  title="Kurasi Arsitektur, Desain Interior & Inovasi Hunian Tropis"
   categories={categories}
   siteSettings={siteSettings}
   jsonLdSchema={websiteSchema}
@@ -47,7 +59,25 @@ const websiteSchema = {
     <HeroMagazine featuredArticle={featuredArticle} secondaryArticles={secondaryArticles} />
   )}
 
-  <!-- 2. Dynamic Homepage Sections based on Admin Category Configuration -->
+  <!-- 2. Trending Topic Marquee Pills (Quick Filter) -->
+  <div class="mb-14 -mt-4 overflow-x-auto no-scrollbar py-2 flex items-center gap-2.5 border-y border-black/[0.04] dark:border-white/[0.06]">
+    <span class="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 whitespace-nowrap pl-1">
+      <span class="text-[#0071e3]">🔥</span>
+      <span>Tren Hunian:</span>
+    </span>
+    <div class="flex items-center gap-2">
+      {trendingTopics.map((topic) => (
+        <a
+          href={`/search?q=${encodeURIComponent(topic.replace('#', ''))}`}
+          class="rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-[#0071e3] hover:text-white dark:hover:bg-[#0071e3] dark:hover:text-white px-3.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 transition border border-black/[0.03] dark:border-white/[0.05] whitespace-nowrap shadow-2xs"
+        >
+          {topic}
+        </a>
+      ))}
+    </div>
+  </div>
+
+  <!-- 3. Dynamic Homepage Sections based on Admin Category Configuration -->
   {homeCategories.map((category) => {
     const categoryArticles = articles.filter((a) => a.category_id === category.id);
     if (categoryArticles.length === 0) return null;
@@ -60,19 +90,48 @@ const websiteSchema = {
     return <CategoryBentoGrid category={category} articles={categoryArticles} />;
   })}
 
-  <!-- 3. Latest Feed Section (Bottom) -->
+  <!-- 4. Interactive Before & After Renovation Makeover Showcase -->
+  <section class="my-16 overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white p-8 sm:p-12 shadow-2xl border border-slate-800 relative">
+    <div class="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"></div>
+
+    <div class="max-w-3xl mb-8">
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-[#0071e3]/20 border border-[#0071e3]/40 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-blue-300 mb-3">
+        <span>✨</span>
+        <span>Studi Transformasi Ruang</span>
+      </span>
+      <h2 class="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white leading-tight">
+        Sebelum & Sesudah: Renovasi Rumah Tropis Modern
+      </h2>
+      <p class="mt-3 text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
+        Geser garis pembatas untuk melihat bagaimana pencahayaan alami, material kayu jati, dan bukaan sirkulasi udara merevolusi kenyamanan hunian secara dramatis.
+      </p>
+    </div>
+
+    <BeforeAfterSlider
+      beforeImage="https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1200&auto=format&fit=crop&q=80"
+      afterImage="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80"
+      beforeAlt="Kondisi Rumah Sebelum Renovasi"
+      afterAlt="Kondisi Rumah Sesudah Renovasi Modern"
+      beforeLabel="SEBELUM"
+      afterLabel="SESUDAH"
+      caption="Proyek Revitalisasi Ruang Keluarga & Fasad Belakang • Geser ke kiri dan kanan"
+    />
+  </section>
+
+  <!-- 5. Latest Feed Section (Bottom) -->
   {articles.length > 0 && (
     <section class="my-16">
-      <div class="mb-7 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.08] pb-3.5">
-        <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+      <div class="mb-8 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.08] pb-4">
+        <h2 class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
           <span class="h-6 w-2 rounded-full bg-[#0071e3]"></span>
-          Kabar Terhangat & Rangkuman Terkini
+          <span>Kabar Terhangat & Rangkuman Terkini</span>
         </h2>
+        <span class="text-xs font-semibold text-slate-400">Edisi Minggu Ini</span>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
         {articles.slice(0, 6).map((article) => (
-          <article class="apple-card group flex flex-col overflow-hidden">
+          <article class="apple-card group flex flex-col overflow-hidden rounded-[2rem] border border-black/[0.05] dark:border-white/[0.08] bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition duration-500">
             <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/10] bg-slate-100 dark:bg-slate-800">
               <img
                 src={article.featured_image}
@@ -80,7 +139,7 @@ const websiteSchema = {
                 class="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-106"
                 loading="lazy"
               />
-              <span class="absolute top-3.5 left-3.5 rounded-full bg-black/60 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md border border-white/20">
+              <span class="absolute top-3.5 left-3.5 rounded-full bg-black/60 px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white backdrop-blur-md border border-white/20">
                 {article.category_name || 'Artikel'}
               </span>
             </a>
@@ -94,7 +153,7 @@ const websiteSchema = {
                 {article.description}
               </p>
               <div class="mt-5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-black/[0.04] dark:border-white/[0.06] pt-3.5 font-medium">
-                <span class="font-semibold text-slate-700 dark:text-slate-300">{article.author_name || 'Redaksi'}</span>
+                <span class="font-bold text-slate-700 dark:text-slate-300">Oleh {article.author_name || 'Redaksi'}</span>
                 <span>⏱️ {article.reading_time_minutes} min read</span>
               </div>
             </div>
@@ -104,6 +163,6 @@ const websiteSchema = {
     </section>
   )}
 
-  <!-- Newsletter Subscription Box -->
+  <!-- 6. Newsletter Subscription Box -->
   <NewsletterBox />
 </BaseLayout>
