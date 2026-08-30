@@ -219,6 +219,14 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 22: Perbaikan Sorotan Aktif Menu Navigasi Sidebar Admin (Dynamic Route Highlighting)
+* **Gejala:** Menu "Import Markdown (.md)" dan "Tulis Artikel Baru" di sidebar kiri memiliki styling warna oranye/biru statis yang salah menyala saat pengguna sedang berada di halaman lain (seperti Media Library).
+* **Solusi:**
+  - Memperbarui [`src/layouts/AdminLayout.astro`](file:///src/layouts/AdminLayout.astro) dengan sistem penentu status rute aktif dinamis (`Astro.url.pathname`).
+  - Menu aktif kini mendapatkan sorotan biru elegan `bg-[#0071e3] text-white` secara presisi 100% mengikuti halaman yang sedang dibuka, dan menu lain tetap dalam kondisi netral.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
