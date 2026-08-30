@@ -273,12 +273,12 @@ if (article) {
       authorAvatar={article.author_avatar}
       authorRole={article.author_role}
     />
-
-    <!-- 8. Related Articles Grid (Organik Only) -->
-    {article.is_sponsored !== 1 && relatedArticles.length > 0 && (
-      <RelatedArticles articles={relatedArticles} />
-    )}
   </article>
+
+  <!-- 8. Full-Width Breakout Related Articles Grid (Organik Only) -->
+  {article.is_sponsored !== 1 && relatedArticles.length > 0 && (
+    <RelatedArticles articles={relatedArticles} />
+  )}
   )}
 
   <!-- Reading Progress & Bookmark Script -->
