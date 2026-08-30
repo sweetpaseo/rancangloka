@@ -1,0 +1,187 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getDb, getAllCategories, getSiteSettings } from '../lib/db';
+
+const db = await getDb(Astro.locals);
+const [categories, siteSettings] = await Promise.all([
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+
+const comparisons = [
+  {
+    category: 'Sistem Kusen Jendela & Pintu',
+    title: 'Aluminium Powder Coating vs UPVC vs Kayu Jati Solid',
+    description: 'Menilai performa kekedapan suara, insulasi panas tropis, dan ketahanan terhadap cuaca ekstrem.',
+    items: [
+      {
+        name: 'Aluminium Powder Coating',
+        price: '$$',
+        thermal: '★★★☆☆ (Cepat rambat panas)',
+        acoustic: '★★★☆☆ (Standar)',
+        durability: '★★★★★ (Anti rayap & karat)',
+        maintenance: '★★★★★ (Sangat rendah)',
+        bestFor: 'Hunian modern minimalis dengan budget efisien dan bukaan kaca besar.'
+      },
+      {
+        name: 'UPVC (Double Glazing)',
+        price: '$$$',
+        thermal: '★★★★★ (Isolator panas terbaik)',
+        acoustic: '★★★★★ (Kedap suara tinggi)',
+        durability: '★★★★☆ (Tahan cuaca & presisi)',
+        maintenance: '★★★★☆ (Rendah)',
+        bestFor: 'Kamar tidur di pinggir jalan raya yang membutuhkan ketenangan akustik dan ruangan full AC.'
+      },
+      {
+        name: 'Kayu Jati / Kamper Solid',
+        price: '$$$$',
+        thermal: '★★★★☆ (Alami sejuk)',
+        acoustic: '★★★★☆ (Solid meredam)',
+        durability: '★★★★☆ (Tahan lama jika oven kering)',
+        maintenance: '★★☆☆☆ (Perlu re-coating berkala)',
+        bestFor: 'Pintu utama prestisius dan villa bernuansa hangat tropis wabi-sabi.'
+      }
+    ]
+  },
+  {
+    category: 'Material Penutup Fasad (Secondary Skin)',
+    title: 'Kisi Kayu Ulin vs Aluminium Louver vs Bata Roster',
+    description: 'Perbandingan pembiasan radiasi matahari sore dan kemudahan perawatan di iklim tropis lembap.',
+    items: [
+      {
+        name: 'Kisi Kayu Ulin (Ironwood)',
+        price: '$$$$',
+        thermal: '★★★★★ (Menyerap panas alami)',
+        acoustic: '★★★☆☆',
+        durability: '★★★★★ (Kayu besi tahan 30+ tahun)',
+        maintenance: '★★★☆☆ (Warna menua jadi abu keperakan)',
+        bestFor: 'Fasad mewah dengan estetika hangat yang menyatu dengan lanskap hijau.'
+      },
+      {
+        name: 'Aluminium Louver Vertikal',
+        price: '$$$',
+        thermal: '★★★★☆ (Reflektif pembias)',
+        acoustic: '★★★☆☆',
+        durability: '★★★★★ (Bebas lapuk & rayap)',
+        maintenance: '★★★★★ (Cukup disemprot air)',
+        bestFor: 'Fasad kontemporer presisi tinggi dengan bobot struktur gantung yang ringan.'
+      },
+      {
+        name: 'Bata Roster Terakota',
+        price: '$',
+        thermal: '★★★★☆ (Pori-pori bernapas)',
+        acoustic: '★★☆☆☆',
+        durability: '★★★★☆ (Kuat jika diaci rapi)',
+        maintenance: '★★★☆☆ (Rentan lumut di musim hujan)',
+        bestFor: 'Pagar semi-transparan dan dinding bernapas ramah kantong.'
+      }
+    ]
+  }
+];
+---
+
+<BaseLayout
+  title="Material & Spatial Comparison Engine: Panduan Komparasi Objektif"
+  description="Matriks perbandingan spesifikasi material arsitektural independen: Aluminium vs UPVC, Kayu Ulin vs Louver, dan analisa kecocokan iklim tropis."
+  categories={categories}
+  siteSettings={siteSettings}
+>
+  <div class="mx-auto max-w-5xl py-6 sm:py-10">
+    <!-- Header Badge -->
+    <div class="text-center space-y-4 mb-14">
+      <span class="inline-flex items-center gap-2 rounded-full bg-[#0071e3]/10 dark:bg-[#0071e3]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#0071e3]">
+        ✦ COMPARISON ENGINE
+      </span>
+      <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+        Komparasi Spesifikasi Material & Sistem
+      </h1>
+      <p class="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
+        Evaluasi independen tanpa bias komersial. Ketahui kelebihan, kelemahan, estimasi biaya, dan tingkat perawatan material sebelum Anda memutuskan untuk membangun.
+      </p>
+    </div>
+
+    <!-- Comparison Tables -->
+    <div class="space-y-16">
+      {comparisons.map((comp) => (
+        <section class="rounded-[2.5rem] border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 sm:p-10 shadow-lg">
+          <div class="border-b border-black/[0.06] dark:border-white/[0.08] pb-4 mb-8">
+            <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0071e3] block mb-1">
+              {comp.category}
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              {comp.title}
+            </h2>
+            <p class="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-normal">
+              {comp.description}
+            </p>
+          </div>
+
+          <!-- Responsive Comparison Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {comp.items.map((item, iIdx) => (
+              <div class="apple-card rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-950/60 p-6 flex flex-col justify-between space-y-5">
+                <div>
+                  <div class="flex items-center justify-between mb-3 border-b border-black/[0.04] dark:border-white/[0.06] pb-3">
+                    <span class="font-mono text-xs font-bold text-[#0071e3]">
+                      OPSI 0{iIdx + 1}
+                    </span>
+                    <span class="font-mono text-xs font-bold bg-white dark:bg-slate-800 px-2.5 py-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.08]">
+                      Biaya: {item.price}
+                    </span>
+                  </div>
+
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight mb-4">
+                    {item.name}
+                  </h3>
+
+                  <div class="space-y-3 text-xs text-slate-600 dark:text-slate-300 font-mono">
+                    <div>
+                      <span class="text-slate-400 block text-[10px] uppercase">Insulasi Termal Panas:</span>
+                      <span class="font-semibold text-slate-800 dark:text-slate-200">{item.thermal}</span>
+                    </div>
+                    <div>
+                      <span class="text-slate-400 block text-[10px] uppercase">Peredaman Akustik Suara:</span>
+                      <span class="font-semibold text-slate-800 dark:text-slate-200">{item.acoustic}</span>
+                    </div>
+                    <div>
+                      <span class="text-slate-400 block text-[10px] uppercase">Daya Tahan Cuaca Tropis:</span>
+                      <span class="font-semibold text-slate-800 dark:text-slate-200">{item.durability}</span>
+                    </div>
+                    <div>
+                      <span class="text-slate-400 block text-[10px] uppercase">Kebutuhan Perawatan:</span>
+                      <span class="font-semibold text-slate-800 dark:text-slate-200">{item.maintenance}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 p-3.5 border border-blue-100 dark:border-blue-900/40 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <strong class="font-bold text-[#0071e3] block text-[10px] uppercase tracking-wider mb-1">
+                    ✦ Rekomendasi Kasus:
+                  </strong>
+                  {item.bestFor}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <!-- Bottom CTA to Problem Solver -->
+    <div class="mt-16 text-center rounded-3xl bg-slate-900 text-white p-8 sm:p-10 border border-slate-800">
+      <h3 class="text-xl font-bold tracking-tight mb-2">
+        Masih Ragu Memilih Material yang Tepat?
+      </h3>
+      <p class="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto mb-6">
+        Gunakan alat diagnosis masalah ruang untuk mencocokkan kondisi denah rumah Anda secara otomatis.
+      </p>
+      <a
+        href="/solusi"
+        class="inline-flex items-center gap-2 rounded-2xl bg-[#0071e3] hover:bg-blue-600 px-6 py-3 text-xs sm:text-sm font-bold text-white transition shadow-lg shadow-blue-500/25"
+      >
+        <span>Buka Design Problem Solver</span>
+        <span>→</span>
+      </a>
+    </div>
+  </div>
+</BaseLayout>

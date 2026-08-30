@@ -142,6 +142,30 @@ const todayFormatted = new Intl.DateTimeFormat('id-ID', {
             </a>
           );
         })}
+
+        <div class="h-4 w-px bg-slate-300 dark:bg-slate-700 flex-shrink-0 mx-1"></div>
+
+        <a
+          href="/solusi"
+          class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold tracking-tight transition ${
+            Astro.url.pathname === '/solusi' || Astro.url.pathname === '/solusi/'
+              ? 'bg-[#0071e3] text-white shadow-2xs'
+              : 'text-[#0071e3] bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+          }`}
+        >
+          ✦ Problem Solver
+        </a>
+
+        <a
+          href="/komparasi"
+          class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold tracking-tight transition ${
+            Astro.url.pathname === '/komparasi' || Astro.url.pathname === '/komparasi/'
+              ? 'bg-[#0071e3] text-white shadow-2xs'
+              : 'text-slate-700 dark:text-slate-300 hover:text-[#0071e3] hover:bg-black/[0.04] dark:hover:bg-white/[0.08]'
+          }`}
+        >
+          Komparasi Material
+        </a>
       </div>
     </div>
   </nav>

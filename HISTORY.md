@@ -298,6 +298,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 30: Peluncuran Alat Interaktif "Design Problem Solver" & "Material Comparison Engine"
+* **Gejala:** RancangLoka memerlukan alat keputusan desain interaktif (*Decision Tools*) agar pengguna tidak hanya membaca artikel pasif, melainkan dapat mendiagnosis masalah rumahnya dan membandingkan material secara objektif.
+* **Solusi:**
+  - **Design Problem Solver ([`src/pages/solusi.astro`](file:///src/pages/solusi.astro)):** Alat diagnosis masalah ruang (Rumah Panas & Pengap, Lahan Tipe 36 Sempit, Ruang Dalam Gelap, Bising Jalanan) yang memetakan masalah ke akar penyebab dan solusi materialitas spesifik.
+  - **Material & Spatial Comparison Engine ([`src/pages/komparasi.astro`](file:///src/pages/komparasi.astro)):** Matriks perbandingan objektif tanpa bias komersial (Aluminium vs UPVC vs Kayu Jati, Kisi Ulin vs Louver vs Roster).
+  - **Navigasi Global:** Menautkan kedua alat interaktif pada header segmented bar dan footer global.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
