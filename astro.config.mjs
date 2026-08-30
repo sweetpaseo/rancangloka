@@ -21,5 +21,16 @@ export default defineConfig({
     tailwind({
       applyBaseStyles: false
     })
-  ]
+  ],
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          entryFileNames: 'assets/app-[hash].js',
+          chunkFileNames: 'assets/core-[hash].js',
+          assetFileNames: 'assets/static-[hash].[ext]'
+        }
+      }
+    }
+  }
 });

@@ -15,8 +15,9 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   // 2. Process the request
   const response = await next();
 
-  // 3. Inject Enterprise-Grade Security Headers (A+ Security Grade)
-  response.headers.delete('X-Powered-By');
+  // 3. Inject Decoy & Enterprise Security Headers (Anti-Detector Level 100)
+  response.headers.set('X-Powered-By', 'Enterprise-Core/v4.8 (Custom SSR)');
+  response.headers.set('Server', 'web-gateway-edge/2.1');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-XSS-Protection', '1; mode=block');
