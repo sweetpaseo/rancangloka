@@ -15,6 +15,8 @@ const [articles, categories, siteSettings] = await Promise.all([
 
 const featuredArticle = articles.find((a) => a.is_featured === 1) || articles[0];
 const secondaryArticles = articles.filter((a) => a.id !== featuredArticle?.id).slice(0, 3);
+const heroIds = new Set([featuredArticle?.id, ...secondaryArticles.map((a) => a.id)]);
+const latestArticles = articles.filter((a) => !heroIds.has(a.id)).slice(0, 6);
 
 // Exploration by User Intent
 const userIntents = [
@@ -68,6 +70,63 @@ const websiteSchema = {
       ))}
     </div>
   </div>
+
+  <!-- 3. Latest Stories (6 Clean Editorial Cards without Repetition) -->
+  {latestArticles.length > 0 && (
+    <section class="my-16">
+      <div class="mb-8 flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.08] pb-4">
+        <div>
+          <span class="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0071e3] block mb-1">
+            ✦ JURNAL SPASIAL TERKINI
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+            Kajian & Kurasi Terbaru
+          </h2>
+        </div>
+        <a
+          href="/explore"
+          class="text-xs font-mono font-semibold text-[#0071e3] hover:underline flex items-center gap-1.5 group"
+        >
+          <span>Eksplorasi Seluruh 20 Artikel</span>
+          <span class="transition-transform group-hover:translate-x-1">→</span>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+        {latestArticles.map((art) => (
+          <article class="apple-card group flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900/60 rounded-[1.75rem] border border-black/[0.05] dark:border-white/[0.06] hover:border-[#0071e3]/40 transition duration-300">
+            <a href={`/${art.slug}`} class="relative block overflow-hidden aspect-[16/10] bg-slate-100 dark:bg-slate-800">
+              <img
+                src={art.featured_image}
+                alt={art.image_alt || art.title}
+                class="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105"
+                loading="lazy"
+                onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop&q=80'"
+              />
+              <span
+                class="absolute top-3.5 left-3.5 px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider text-white shadow-md backdrop-blur-md"
+                style={`background-color: ${art.category_color || '#0071e3'}ee;`}
+              >
+                {art.category_name}
+              </span>
+            </a>
+            <div class="flex flex-1 flex-col p-6">
+              <h3 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-[#0071e3] transition leading-snug line-clamp-2">
+                <a href={`/${art.slug}`}>{art.title}</a>
+              </h3>
+              <p class="mt-2.5 text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed flex-1 font-normal">
+                {art.description}
+              </p>
+              <div class="mt-5 pt-3.5 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                <span class="font-medium text-slate-700 dark:text-slate-300">{art.author_name}</span>
+                <span>⏱️ {art.reading_time_minutes} min</span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )}
 
   <!-- 3. Signature Feature: Space Transformed (Before/After with Spatial Metrics) -->
   <section class="my-16 overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-8 sm:p-14 shadow-2xl border border-slate-800 relative">
