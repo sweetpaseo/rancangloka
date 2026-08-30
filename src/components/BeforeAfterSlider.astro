@@ -1,0 +1,119 @@
+---
+interface Props {
+  beforeImage: string;
+  afterImage: string;
+  beforeAlt?: string;
+  afterAlt?: string;
+  beforeLabel?: string;
+  afterLabel?: string;
+  caption?: string;
+}
+
+const {
+  beforeImage,
+  afterImage,
+  beforeAlt = 'Kondisi Sebelum Renovasi',
+  afterAlt = 'Kondisi Sesudah Renovasi',
+  beforeLabel = 'SEBELUM',
+  afterLabel = 'SESUDAH',
+  caption = 'Geser garis tengah untuk melihat perbandingan transformasi ruang.'
+} = Astro.props;
+
+const sliderId = `ba-slider-${Math.random().toString(36).substring(2, 9)}`;
+---
+
+<div class="my-8 select-none">
+  <div
+    id={sliderId}
+    class="before-after-container relative overflow-hidden rounded-[2rem] aspect-[16/10] bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg cursor-ew-resize group"
+  >
+    <!-- After Image (Base Layer) -->
+    <img
+      src={afterImage}
+      alt={afterAlt}
+      class="absolute inset-0 h-full w-full object-cover pointer-events-none"
+      loading="lazy"
+    />
+    <span class="absolute top-4 right-4 z-10 rounded-full bg-slate-950/70 backdrop-blur-md px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 border border-emerald-500/30">
+      {afterLabel}
+    </span>
+
+    <!-- Before Image (Clipped Overlay Layer) -->
+    <div class="before-image-layer absolute inset-0 overflow-hidden w-1/2 pointer-events-none">
+      <img
+        src={beforeImage}
+        alt={beforeAlt}
+        class="absolute inset-0 h-full w-full object-cover max-w-none pointer-events-none"
+        style="width: 100%; height: 100%;"
+        loading="lazy"
+      />
+      <span class="absolute top-4 left-4 z-10 rounded-full bg-slate-950/70 backdrop-blur-md px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-400 border border-amber-500/30">
+        {beforeLabel}
+      </span>
+    </div>
+
+    <!-- Dividing Handle Bar -->
+    <div class="slider-handle absolute top-0 bottom-0 left-1/2 -ml-0.5 w-1 bg-white shadow-[0_0_15px_rgba(0,0,0,0.5)] z-20 pointer-events-none">
+      <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-1/2 h-10 w-10 rounded-full bg-white/90 backdrop-blur-md border border-slate-300 dark:border-slate-600 shadow-xl flex items-center justify-center text-slate-800 transition group-hover:scale-110">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l-4 3 4 3m8-6l4 3-4 3" />
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  {caption && (
+    <p class="mt-2.5 text-center text-xs text-slate-500 dark:text-slate-400 italic">
+      ✨ {caption}
+    </p>
+  )}
+</div>
+
+<script define:vars={{ sliderId }}>
+  const container = document.getElementById(sliderId);
+  if (container) {
+    const beforeLayer = container.querySelector('.before-image-layer');
+    const handle = container.querySelector('.slider-handle');
+    let isDown = false;
+
+    function updateSlider(clientX) {
+      const rect = container.getBoundingClientRect();
+      let offsetX = clientX - rect.left;
+      if (offsetX < 0) offsetX = 0;
+      if (offsetX > rect.width) offsetX = rect.width;
+      const percentage = (offsetX / rect.width) * 100;
+
+      if (beforeLayer) beforeLayer.style.width = percentage + '%';
+      if (handle) handle.style.left = percentage + '%';
+    }
+
+    container.addEventListener('mousedown', (e) => {
+      isDown = true;
+      updateSlider(e.clientX);
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDown = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      updateSlider(e.clientX);
+    });
+
+    // Touch events for mobile
+    container.addEventListener('touchstart', (e) => {
+      isDown = true;
+      if (e.touches[0]) updateSlider(e.touches[0].clientX);
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      isDown = false;
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!isDown || !e.touches[0]) return;
+      updateSlider(e.touches[0].clientX);
+    }, { passive: true });
+  }
+</script>

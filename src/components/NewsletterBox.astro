@@ -1,0 +1,94 @@
+---
+interface Props {
+  title?: string;
+  subtitle?: string;
+}
+
+const {
+  title = 'Inspirasi Ruang & Tren Arsitektur di Kotak Masuk Anda',
+  subtitle = 'Bergabunglah dengan ribuan pemilik rumah & profesional desain. Dapatkan kurasi tren interior dan panduan renovasi eksklusif setiap Jumat pagi.'
+} = Astro.props;
+---
+
+<div class="my-16 overflow-hidden rounded-[2.5rem] border border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-amber-50/50 p-8 sm:p-12 shadow-sm dark:border-blue-900/30 dark:from-slate-900 dark:via-slate-900/90 dark:to-blue-950/40">
+  <div class="mx-auto max-w-2xl text-center space-y-4">
+    <div class="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-3.5 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+      <span>📬</span> Buletin Kurasi Mingguan
+    </div>
+
+    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug">
+      {title}
+    </h2>
+
+    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl mx-auto">
+      {subtitle}
+    </p>
+
+    <!-- Subscription Form -->
+    <form id="newsletter-form" class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2.5 max-w-md mx-auto">
+      <input
+        type="email"
+        id="newsletter-email"
+        placeholder="Ketik alamat email Anda..."
+        required
+        class="w-full sm:flex-1 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3 text-xs sm:text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs transition"
+      />
+      <button
+        type="submit"
+        id="newsletter-btn"
+        class="w-full sm:w-auto rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold px-6 py-3 text-xs sm:text-sm hover:opacity-90 transition shadow-md whitespace-nowrap"
+      >
+        Berlangganan Gratis
+      </button>
+    </form>
+
+    <div id="newsletter-msg" class="hidden text-xs font-semibold pt-2 transition"></div>
+
+    <p class="text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+      🔒 Kami menghargai privasi Anda. Tanpa spam, berhenti berlangganan kapan saja.
+    </p>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById('newsletter-form') as HTMLFormElement;
+  const emailInput = document.getElementById('newsletter-email') as HTMLInputElement;
+  const btn = document.getElementById('newsletter-btn') as HTMLButtonElement;
+  const msg = document.getElementById('newsletter-msg') as HTMLElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!emailInput || !btn || !msg) return;
+
+    const email = emailInput.value.trim();
+    if (!email) return;
+
+    btn.disabled = true;
+    btn.innerText = 'Mendaftarkan...';
+    msg.classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'homepage_box' })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        msg.innerText = data.message || 'Berhasil berlangganan!';
+        msg.className = 'text-xs font-semibold pt-2 text-emerald-600 dark:text-emerald-400 block';
+        emailInput.value = '';
+      } else {
+        msg.innerText = data.error || 'Terjadi kesalahan.';
+        msg.className = 'text-xs font-semibold pt-2 text-red-500 block';
+      }
+    } catch (err) {
+      msg.innerText = 'Terjadi kesalahan koneksi.';
+      msg.className = 'text-xs font-semibold pt-2 text-red-500 block';
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'Berlangganan Gratis';
+    }
+  });
+</script>

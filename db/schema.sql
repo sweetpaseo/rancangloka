@@ -92,6 +92,15 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 7. Table: Newsletter Subscribers
+CREATE TABLE IF NOT EXISTS subscribers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  status TEXT DEFAULT 'active' CHECK(status IN ('active', 'unsubscribed')),
+  source TEXT DEFAULT 'website',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indices for Fast Querying
 CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
 CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC);

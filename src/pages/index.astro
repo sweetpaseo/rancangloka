@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroMagazine from '../components/HeroMagazine.astro';
 import CategoryBentoGrid from '../components/CategoryBentoGrid.astro';
 import CategoryThreeColGrid from '../components/CategoryThreeColGrid.astro';
+import NewsletterBox from '../components/NewsletterBox.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 
 const db = await getDb(Astro.locals);
@@ -102,4 +103,7 @@ const websiteSchema = {
       </div>
     </section>
   )}
+
+  <!-- Newsletter Subscription Box -->
+  <NewsletterBox />
 </BaseLayout>

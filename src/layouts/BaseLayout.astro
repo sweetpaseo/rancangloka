@@ -2,6 +2,8 @@
 import Header from '../components/Header.astro';
 import MobileBottomNav from '../components/MobileBottomNav.astro';
 import SearchModal from '../components/SearchModal.astro';
+import BookmarkDrawer from '../components/BookmarkDrawer.astro';
+import ImageLightbox from '../components/ImageLightbox.astro';
 import type { Category } from '../lib/db';
 import '../styles/global.css';
 
@@ -234,6 +236,12 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
 
     <!-- Instant Search Modal -->
     <SearchModal />
+
+    <!-- Bookmark Collection Drawer -->
+    <BookmarkDrawer />
+
+    <!-- Photo Lightbox Zoom Modal -->
+    <ImageLightbox />
 
     <!-- Global Theme Switcher Script -->
     <script>

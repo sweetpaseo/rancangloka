@@ -1,0 +1,179 @@
+---
+// Bookmark Drawer Component (Client-Side LocalStorage)
+---
+
+<div id="bookmark-drawer" class="fixed inset-0 z-50 hidden transition-opacity">
+  <!-- Backdrop -->
+  <div id="bookmark-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"></div>
+
+  <!-- Slide-Over Panel -->
+  <div class="fixed inset-y-0 right-0 max-w-full flex pl-10 z-10">
+    <div class="w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
+      <!-- Drawer Header -->
+      <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🔖</span>
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">Koleksi Inspirasi Anda</h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Tersimpan di browser perangkat ini</p>
+          </div>
+        </div>
+        <button id="close-bookmark-btn" class="rounded-xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition" aria-label="Tutup Koleksi">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Bookmarks List -->
+      <div id="bookmark-list" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Drawer Footer -->
+      <div class="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex items-center justify-between">
+        <button
+          type="button"
+          id="clear-bookmarks-btn"
+          class="text-xs text-red-500 hover:text-red-600 font-medium transition"
+        >
+          Hapus Semua Koleksi
+        </button>
+        <span id="bookmark-count-text" class="text-xs text-slate-500 font-medium">0 artikel</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  interface BookmarkItem {
+    slug: string;
+    title: string;
+    image?: string;
+    category?: string;
+  }
+
+  const STORAGE_KEY = 'rancangloka_saved_bookmarks';
+  const drawer = document.getElementById('bookmark-drawer');
+  const backdrop = document.getElementById('bookmark-backdrop');
+  const closeBtn = document.getElementById('close-bookmark-btn');
+  const clearBtn = document.getElementById('clear-bookmarks-btn');
+  const listContainer = document.getElementById('bookmark-list');
+  const countText = document.getElementById('bookmark-count-text');
+
+  function getBookmarks(): BookmarkItem[] {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  function saveBookmarks(items: BookmarkItem[]) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    updateBadges();
+  }
+
+  function updateBadges() {
+    const items = getBookmarks();
+    const count = items.length;
+    document.querySelectorAll('.bookmark-badge').forEach(badge => {
+      badge.textContent = count.toString();
+      if (count > 0) {
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    });
+    if (countText) countText.innerText = `${count} inspirasi tersimpan`;
+  }
+
+  function renderList() {
+    if (!listContainer) return;
+    const items = getBookmarks();
+
+    if (items.length === 0) {
+      listContainer.innerHTML = `
+        <div class="py-16 text-center space-y-3">
+          <span class="text-4xl block">🛋️</span>
+          <h4 class="text-sm font-bold text-slate-800 dark:text-white">Belum Ada Inspirasi Tersimpan</h4>
+          <p class="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+            Klik tombol 🔖 pada artikel arsitektur atau desain yang Anda sukai untuk menyimpannya ke koleksi ini.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    listContainer.innerHTML = items.map((item, idx) => `
+      <div class="flex items-center gap-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 group">
+        <img src="${item.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150'}" alt="${item.title}" class="h-14 w-16 rounded-xl object-cover flex-shrink-0 bg-slate-200" />
+        <div class="flex-1 min-w-0">
+          <span class="text-[10px] font-bold text-primary uppercase">${item.category || 'Inspirasi'}</span>
+          <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">
+            <a href="/${item.slug}" class="hover:text-primary transition">${item.title}</a>
+          </h4>
+        </div>
+        <button type="button" class="delete-bookmark-btn p-1.5 text-slate-400 hover:text-red-500 transition" data-index="${idx}" title="Hapus dari koleksi">
+          ✕
+        </button>
+      </div>
+    `).join('');
+
+    // Attach delete handlers
+    listContainer.querySelectorAll('.delete-bookmark-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.getAttribute('data-index') || '0', 10);
+        const current = getBookmarks();
+        current.splice(idx, 1);
+        saveBookmarks(current);
+        renderList();
+      });
+    });
+  }
+
+  function openDrawer() {
+    renderList();
+    drawer?.classList.remove('hidden');
+  }
+
+  function closeDrawer() {
+    drawer?.classList.add('hidden');
+  }
+
+  // Global Triggers
+  document.querySelectorAll('[data-bookmark-trigger]').forEach(btn => {
+    btn.addEventListener('click', openDrawer);
+  });
+
+  closeBtn?.addEventListener('click', closeDrawer);
+  backdrop?.addEventListener('click', closeDrawer);
+
+  clearBtn?.addEventListener('click', () => {
+    if (confirm('Hapus semua artikel dari koleksi inspirasi Anda?')) {
+      saveBookmarks([]);
+      renderList();
+    }
+  });
+
+  // Global toggle save function attached to window
+  (window as any).toggleSaveBookmark = function(item: BookmarkItem) {
+    const items = getBookmarks();
+    const existingIndex = items.findIndex(i => i.slug === item.slug);
+
+    if (existingIndex !== -1) {
+      items.splice(existingIndex, 1);
+      saveBookmarks(items);
+      alert('Artikel dihapus dari koleksi inspirasi.');
+      return false;
+    } else {
+      items.unshift(item);
+      saveBookmarks(items);
+      alert('✨ Artikel berhasil disimpan ke koleksi inspirasi Anda!');
+      return true;
+    }
+  };
+
+  // Initial badge update
+  updateBadges();
+</script>

@@ -71,6 +71,21 @@ const siteFavicon = siteSettings.site_favicon || '🏡';
         <kbd class="hidden md:inline rounded-md bg-white dark:bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-slate-400 border border-slate-200 dark:border-slate-800 shadow-2xs">⌘K</kbd>
       </button>
 
+      <!-- Bookmark Collection Trigger -->
+      <button
+        data-bookmark-trigger
+        class="relative rounded-full p-2.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition"
+        aria-label="Koleksi Inspirasi Tersimpan"
+        title="Koleksi Inspirasi Tersimpan"
+      >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+        </svg>
+        <span class="bookmark-badge hidden absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-extrabold text-white">
+          0
+        </span>
+      </button>
+
       <!-- Theme Switcher -->
       <button
         class="theme-toggle-btn rounded-full p-2.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition"

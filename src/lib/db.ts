@@ -858,3 +858,64 @@ export async function deletePage(db: any, id: number): Promise<boolean> {
   }
   return false;
 }
+
+// ----------------------------------------------------
+// NEWSLETTER SUBSCRIBERS
+// ----------------------------------------------------
+export interface Subscriber {
+  id: number;
+  email: string;
+  status: 'active' | 'unsubscribed';
+  source?: string;
+  created_at: string;
+}
+
+let inMemorySubscribers: Subscriber[] = [];
+
+export async function addSubscriber(db: any, email: string, source: string = 'website'): Promise<{ success: boolean; message: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return { success: false, message: 'Format email tidak valid.' };
+  }
+
+  if (db) {
+    try {
+      await db
+        .prepare('INSERT OR IGNORE INTO subscribers (email, status, source) VALUES (?, ?, ?)')
+        .bind(cleanEmail, 'active', source)
+        .run();
+      return { success: true, message: 'Terima kasih! Anda berhasil berlangganan buletin RancangLoka.' };
+    } catch (e: any) {
+      if (e.message && e.message.includes('UNIQUE')) {
+        return { success: true, message: 'Email Anda sudah terdaftar di buletin kami.' };
+      }
+      console.warn('D1 addSubscriber fallback:', e);
+    }
+  }
+
+  const exists = inMemorySubscribers.some(s => s.email === cleanEmail);
+  if (!exists) {
+    inMemorySubscribers.push({
+      id: inMemorySubscribers.length + 1,
+      email: cleanEmail,
+      status: 'active',
+      source,
+      created_at: new Date().toISOString()
+    });
+  }
+  return { success: true, message: 'Terima kasih! Anda berhasil berlangganan buletin RancangLoka.' };
+}
+
+export async function getSubscribers(db: any): Promise<Subscriber[]> {
+  if (db) {
+    try {
+      const { results } = await db
+        .prepare('SELECT * FROM subscribers ORDER BY created_at DESC')
+        .all();
+      return results as Subscriber[];
+    } catch (e) {
+      console.warn('D1 getSubscribers fallback:', e);
+    }
+  }
+  return inMemorySubscribers;
+}

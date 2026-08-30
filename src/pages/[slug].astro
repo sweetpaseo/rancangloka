@@ -187,6 +187,20 @@ if (article) {
         <span class="text-xs text-slate-400 font-medium">
           ⏱️ {article.reading_time_minutes} min read
         </span>
+
+        <!-- Save Inspiration Button -->
+        <button
+          id="article-bookmark-btn"
+          type="button"
+          class="ml-auto inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition shadow-2xs"
+          data-slug={article.slug}
+          data-title={article.title}
+          data-image={article.featured_image}
+          data-category={article.category_name}
+        >
+          <span>🔖</span>
+          <span id="bookmark-btn-text">Simpan Inspirasi</span>
+        </button>
       </div>
 
       <h1 class="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.18]">
@@ -225,7 +239,7 @@ if (article) {
       <img
         src={article.featured_image}
         alt={article.image_alt || article.title}
-        class="h-full w-full object-cover"
+        class="article-cover-img h-full w-full object-cover"
         fetchpriority="high"
         loading="eager"
         onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80'"
@@ -267,14 +281,30 @@ if (article) {
   </article>
   )}
 
-  <!-- Reading Progress Script -->
+  <!-- Reading Progress & Bookmark Script -->
   <script>
+    // Reading Progress
     window.addEventListener('scroll', () => {
       const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
       const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       const scrolled = (winScroll / height) * 100;
       const bar = document.getElementById('reading-progress');
       if (bar) bar.style.width = scrolled + '%';
+    });
+
+    // Bookmark Toggle Button
+    const bookmarkBtn = document.getElementById('article-bookmark-btn');
+    bookmarkBtn?.addEventListener('click', () => {
+      const slug = bookmarkBtn.getAttribute('data-slug') || '';
+      const title = bookmarkBtn.getAttribute('data-title') || '';
+      const image = bookmarkBtn.getAttribute('data-image') || '';
+      const category = bookmarkBtn.getAttribute('data-category') || '';
+
+      if (typeof (window as any).toggleSaveBookmark === 'function') {
+        const isSaved = (window as any).toggleSaveBookmark({ slug, title, image, category });
+        const textSpan = document.getElementById('bookmark-btn-text');
+        if (textSpan) textSpan.innerText = isSaved ? 'Tersimpan ✓' : 'Simpan Inspirasi';
+      }
     });
   </script>
 </BaseLayout>
