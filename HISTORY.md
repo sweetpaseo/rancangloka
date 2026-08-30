@@ -141,6 +141,14 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 14: Stealth Mode & Obfuscation Identitas Framework (Anti-Detector Wappalyzer/Competitor)
+* **Gejala:** Folder aset bawaan framework (`/_astro/...`) berpotensi diekspos ke publik dan dideteksi oleh ekstensi kompetitor (Wappalyzer / BuiltWith).
+* **Solusi:**
+  - Memodifikasi [`astro.config.mjs`](file:///astro.config.mjs) dengan `build: { assets: 'assets' }` dan `compressHTML: true`.
+  - Semua file JS/CSS hasil kompilasi kini disajikan dalam path anonim `/assets/xxx.js` dan kode HTML terminifikasi rapat tanpa komentar bawaan generator, menyamarkan arsitektur internal sepenuhnya menjadi web *custom-built*.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
@@ -152,6 +160,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **Manajemen Halaman Statis (Pages)** | ✅ Selesai (Aktif) | Page Writer CMS, template kontak interaktif, & sitemap pages aktif. |
 | **Sirkulasi Internal Linking Otomatis** | ✅ Selesai (Aktif) | Dateline, Auto-Keywords, In-Article BACA JUGA, & Paid Review Toggle. |
 | **Social Share & Footer Manager** | ✅ Selesai (Aktif) | Kontrol penuh tombol share artikel & medsos resmi footer di Admin. |
+| **Stealth Mode (Anti-Detector)** | ✅ Selesai (Aktif) | Path aset disamarkan ke `/assets/`, HTML minified, zero meta generator. |
 | **SEO & Feed** | ✅ Selesai | Google News XML, Sitemap XML, RSS feed, Schema.org aktif. |
 | **Keamanan Level Kode** | ✅ Selesai | Hashing PBKDF2, session token acak 24-byte, SQL parameterization. |
 | **Cloudflare Zero Trust (Access)** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
