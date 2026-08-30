@@ -25,110 +25,119 @@ const editorialCurations = [
 ];
 ---
 
-<section class="mb-14 relative">
-  <!-- Issue Header Line -->
-  <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-3 mb-6">
+<section class="mb-16 relative">
+  <!-- Issue Architectural Header Line -->
+  <div class="flex items-center justify-between border-b border-black/[0.07] dark:border-white/[0.08] pb-3.5 mb-8">
     <div class="flex items-center gap-3">
-      <span class="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider">
+      <span class="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest shadow-xs">
         ISSUE #04
       </span>
-      <span class="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
-        Fokus: Fasad, Materialitas & Hunian Tropis Bernapas
+      <span class="text-xs font-mono font-medium text-slate-700 dark:text-slate-300">
+        Kajian: Fasad, Materialitas & Resonansi Spasial Tropis
       </span>
     </div>
-    <span class="hidden sm:inline text-xs font-mono text-slate-400">Terbitan Mingguan</span>
+    <div class="hidden sm:flex items-center gap-2 text-[11px] font-mono text-slate-400">
+      <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>Edisi Digital Terbit</span>
+    </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-    <!-- 1. Full-Bleed Dramatic Feature Story (7 cols) -->
-    <div class="lg:col-span-7">
-      <article class="group relative flex flex-col justify-end overflow-hidden rounded-[2.5rem] bg-slate-950 aspect-[16/11] md:aspect-[16/10] shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition duration-700 hover:shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-        <img
-          src={featuredArticle.featured_image}
-          alt={featuredArticle.image_alt || featuredArticle.title}
-          class="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-1000 ease-out group-hover:scale-105"
-          fetchpriority="high"
-          loading="eager"
-          sizes="(max-width: 768px) 100vw, 750px"
-          onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80'"
-        />
-        <!-- Cinematic Depth Gradient -->
-        <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent"></div>
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+    <!-- 1. Architectural Cover Story Monograph (7 cols) -->
+    <div class="lg:col-span-7 flex">
+      <div class="double-bezel w-full flex">
+        <article class="double-bezel-inner group relative flex flex-1 flex-col justify-end overflow-hidden bg-slate-950 min-h-[380px] sm:min-h-[460px] shadow-[0_16px_50px_rgba(0,0,0,0.12)]">
+          <img
+            src={featuredArticle.featured_image}
+            alt={featuredArticle.image_alt || featuredArticle.title}
+            class="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+            fetchpriority="high"
+            loading="eager"
+            sizes="(max-width: 768px) 100vw, 750px"
+            onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80'"
+          />
+          <!-- Multi-Stage Luxury Gradient Vignette -->
+          <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent"></div>
+          <div class="absolute inset-0 bg-radial-at-t from-transparent via-transparent to-black/30 pointer-events-none"></div>
 
-        <div class="relative z-10 p-7 sm:p-9 md:p-11">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="rounded-full bg-white/20 backdrop-blur-md px-3.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-white border border-white/20">
-              COVER STORY
-            </span>
-            <span class="text-xs text-white/80 font-mono">
-              {featuredArticle.reading_time_minutes} menit baca
-            </span>
-          </div>
-
-          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white leading-snug line-clamp-2 md:line-clamp-3 group-hover:text-blue-200 transition-colors">
-            <a href={`/${featuredArticle.slug}`}>
-              {featuredArticle.title}
-            </a>
-          </h1>
-
-          <p class="mt-3.5 text-xs sm:text-sm text-slate-200 line-clamp-2 hidden sm:block font-normal leading-relaxed">
-            {featuredArticle.description}
-          </p>
-
-          <div class="mt-6 flex items-center justify-between text-xs text-white/70 pt-4 border-t border-white/15 font-mono">
-            <div class="flex items-center gap-2">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-              <span class="font-semibold text-white/90">{featuredArticle.author_name || 'RancangLoka Editorial Desk'}</span>
+          <div class="relative z-10 p-7 sm:p-10 md:p-12 flex flex-col justify-end">
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+              <span class="rounded-full bg-white/20 backdrop-blur-md px-3.5 py-1 text-[10px] font-mono font-bold uppercase tracking-widest text-white border border-white/25 shadow-xs">
+                ✦ COVER STORY
+              </span>
+              <span class="text-xs text-white/80 font-mono flex items-center gap-1.5">
+                <span class="opacity-60">•</span>
+                <span>{featuredArticle.reading_time_minutes} mnt bacaan mendalam</span>
+              </span>
             </div>
-            <span>Edisi Terbit</span>
+
+            <h1 class="font-editorial-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.12] line-clamp-2 md:line-clamp-3 group-hover:text-amber-100 transition-colors">
+              <a href={`/${featuredArticle.slug}`}>
+                {featuredArticle.title}
+              </a>
+            </h1>
+
+            <p class="mt-4 text-xs sm:text-sm text-slate-200 line-clamp-2 hidden sm:block font-normal leading-relaxed max-w-xl">
+              {featuredArticle.description}
+            </p>
+
+            <div class="mt-8 flex items-center justify-between text-xs text-white/80 pt-4 border-t border-white/15 font-mono">
+              <div class="flex items-center gap-2">
+                <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                <span class="font-semibold text-white/95">{featuredArticle.author_name || 'RancangLoka Editorial Desk'}</span>
+              </div>
+              <span class="text-white/60 text-[11px]">Kurasi Terverifikasi</span>
+            </div>
           </div>
-        </div>
-      </article>
+        </article>
+      </div>
     </div>
 
     <!-- 2. Editor's Curated Stories Column with Explicit Reasons (5 cols) -->
-    <div class="lg:col-span-5 flex flex-col justify-between space-y-3.5">
-      <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-2">
+    <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+      <div class="flex items-center justify-between border-b border-black/[0.07] dark:border-white/[0.08] pb-2">
         <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
-          <span>✦</span>
+          <span class="text-[#0066ee]">✦</span>
           <span>CATATAN KURASI REDAKSI</span>
         </h2>
-        <span class="text-[11px] font-mono text-slate-400">Alasan Kurasi</span>
+        <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Perspektif Spasial</span>
       </div>
 
-      {secondaryArticles.slice(0, 3).map((article, idx) => {
-        const num = (idx + 1).toString().padStart(2, '0');
-        const curation = editorialCurations[idx] || { label: 'KURASI SPASIAL', reason: 'Studi kasus pilihan redaksi.' };
+      <div class="flex-1 flex flex-col justify-between space-y-3.5">
+        {secondaryArticles.slice(0, 3).map((article, idx) => {
+          const num = (idx + 1).toString().padStart(2, '0');
+          const curation = editorialCurations[idx] || { label: 'KURASI SPASIAL', reason: 'Studi kasus pilihan redaksi.' };
 
-        return (
-          <article class="apple-card group flex items-start gap-4 p-4 rounded-[1.5rem] border border-black/[0.05] dark:border-white/[0.08] bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition duration-500">
-            <span class="font-mono text-base font-black text-[#0071e3] opacity-60 group-hover:opacity-100 transition pt-1">
-              {num}
-            </span>
+          return (
+            <article class="apple-card group flex items-start gap-4 p-5 rounded-[1.75rem] border border-black/[0.05] dark:border-white/[0.07] bg-white dark:bg-slate-900/90 shadow-xs hover:shadow-md transition duration-500">
+              <span class="font-mono text-lg font-black text-[#0066ee] opacity-50 group-hover:opacity-100 transition pt-0.5">
+                {num}
+              </span>
 
-            <div class="flex flex-1 flex-col min-w-0">
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-[9px] font-mono font-bold uppercase tracking-wider text-[#0071e3]">
-                  {curation.label}
-                </span>
-                <span class="text-[10px] font-mono text-slate-400">
-                  {article.reading_time_minutes} mnt
-                </span>
+              <div class="flex flex-1 flex-col min-w-0">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[9px] font-mono font-bold uppercase tracking-widest text-[#0066ee] bg-blue-500/10 dark:bg-blue-500/20 px-2 py-0.5 rounded-md border border-blue-500/15">
+                    {curation.label}
+                  </span>
+                  <span class="text-[10px] font-mono text-slate-400">
+                    {article.reading_time_minutes} mnt
+                  </span>
+                </div>
+
+                <h3 class="font-editorial-display text-sm sm:text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-[#0066ee] transition-colors leading-snug tracking-tight mb-2">
+                  <a href={`/${article.slug}`}>
+                    {article.title}
+                  </a>
+                </h3>
+
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 italic font-serif leading-relaxed">
+                  “{curation.reason}”
+                </p>
               </div>
-
-              <h3 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-[#0071e3] transition-colors leading-snug tracking-tight mb-1.5">
-                <a href={`/${article.slug}`}>
-                  {article.title}
-                </a>
-              </h3>
-
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 italic font-serif">
-                “{curation.reason}”
-              </p>
-            </div>
-          </article>
-        );
-      })}
+            </article>
+          );
+        })}
+      </div>
     </div>
   </div>
 </section>
