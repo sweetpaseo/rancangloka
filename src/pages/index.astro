@@ -1,8 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroMagazine from '../components/HeroMagazine.astro';
-import CategoryBentoGrid from '../components/CategoryBentoGrid.astro';
-import CategoryThreeColGrid from '../components/CategoryThreeColGrid.astro';
 import BeforeAfterSlider from '../components/BeforeAfterSlider.astro';
 import DesignIndex from '../components/DesignIndex.astro';
 import NewsletterBox from '../components/NewsletterBox.astro';
@@ -18,21 +16,14 @@ const [articles, categories, siteSettings] = await Promise.all([
 const featuredArticle = articles.find((a) => a.is_featured === 1) || articles[0];
 const secondaryArticles = articles.filter((a) => a.id !== featuredArticle?.id).slice(0, 3);
 
-// Filter & sort categories configured to appear on homepage
-const homeCategories = categories
-  .filter((c) => c.show_on_home !== 0)
-  .sort((a, b) => (a.display_order || 99) - (b.display_order || 99));
-
-// Architectural focus topics
-const focusTopics = [
-  'Fasad Tropis',
-  'Secondary Skin',
-  'Japandi Modern',
-  'Void & Skylight',
-  'Kayu Ulin',
-  'Batu Andesit',
-  'Pencahayaan Alami',
-  'Renovasi Tipe 36'
+// Exploration by User Intent
+const userIntents = [
+  { label: 'Rumah Terlalu Panas', link: '/solusi' },
+  { label: 'Lahan Sempit 36/60', link: '/solusi' },
+  { label: 'Ruang Gelap & Tertutup', link: '/solusi' },
+  { label: 'Bising Jalan Raya', link: '/solusi' },
+  { label: 'Aluminium vs UPVC', link: '/komparasi' },
+  { label: 'Kayu Ulin vs Jati', link: '/komparasi' }
 ];
 
 // JSON-LD Schema for Website
@@ -55,44 +46,31 @@ const websiteSchema = {
   siteSettings={siteSettings}
   jsonLdSchema={websiteSchema}
 >
-  <!-- 1. Hero Magazine Section: Full-Bleed Dramatic Feature + Catatan Kurasi Redaksi -->
+  <!-- 1. Hero Magazine: Issue #04 + Cover Story + Curated Reasons -->
   {featuredArticle && (
     <HeroMagazine featuredArticle={featuredArticle} secondaryArticles={secondaryArticles} />
   )}
 
-  <!-- 2. Architectural Focus Topic Pills -->
-  <div class="mb-14 -mt-6 overflow-x-auto no-scrollbar py-3 flex items-center gap-3 border-y border-black/[0.05] dark:border-white/[0.08]">
+  <!-- 2. Intent-Based Fast Navigation (User Intent Exploration) -->
+  <div class="mb-14 overflow-x-auto no-scrollbar py-3.5 flex items-center gap-3 border-y border-black/[0.05] dark:border-white/[0.08]">
     <span class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white whitespace-nowrap pl-1">
       <span class="text-[#0071e3]">✦</span>
-      <span>Fokus Topik:</span>
+      <span>Pencarian Cepat Kebutuhan:</span>
     </span>
     <div class="flex items-center gap-2">
-      {focusTopics.map((topic) => (
+      {userIntents.map((intent) => (
         <a
-          href={`/search?q=${encodeURIComponent(topic)}`}
-          class="rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 px-4 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 transition border border-black/[0.04] dark:border-white/[0.06] whitespace-nowrap shadow-2xs"
+          href={intent.link}
+          class="rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-[#0071e3] hover:text-white dark:hover:bg-[#0071e3] dark:hover:text-white px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 transition border border-black/[0.04] dark:border-white/[0.06] whitespace-nowrap shadow-2xs font-mono"
         >
-          {topic}
+          {intent.label}
         </a>
       ))}
     </div>
   </div>
 
-  <!-- 3. Dynamic Homepage Category Sections -->
-  {homeCategories.map((category) => {
-    const categoryArticles = articles.filter((a) => a.category_id === category.id);
-    if (categoryArticles.length === 0) return null;
-
-    if (category.layout_style === 'grid3') {
-      return <CategoryThreeColGrid category={category} articles={categoryArticles} />;
-    }
-
-    // Default to Bento Grid (1 Big + 3 Side Articles)
-    return <CategoryBentoGrid category={category} articles={categoryArticles} />;
-  })}
-
-  <!-- 4. Signature Feature: Space Transformed (Before/After with Spatial Metrics) -->
-  <section class="my-20 overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-8 sm:p-14 shadow-2xl border border-slate-800 relative">
+  <!-- 3. Signature Feature: Space Transformed (Before/After with Spatial Metrics) -->
+  <section class="my-16 overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-8 sm:p-14 shadow-2xl border border-slate-800 relative">
     <div class="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"></div>
 
     <div class="max-w-3xl mb-8">
@@ -119,7 +97,7 @@ const websiteSchema = {
         </div>
         <div class="space-y-0.5">
           <span class="font-mono text-lg font-black text-purple-400">36m² ➔ 55m²</span>
-          <span class="block text-[11px] text-slate-400 font-medium">Persepsi Kelapangan Ruang</span>
+          <span class="block text-[11px] text-slate-400 font-medium">Persepsi Kelapangan</span>
         </div>
         <div class="space-y-0.5">
           <span class="font-mono text-xs font-bold text-amber-300">Kayu Ulin & Andesit</span>
@@ -139,58 +117,52 @@ const websiteSchema = {
     />
   </section>
 
-  <!-- 5. The Design & Material Index Component -->
+  <!-- 4. The Design & Material Index Component -->
   <DesignIndex />
 
-  <!-- 6. Latest Stories Grid -->
-  {articles.length > 0 && (
-    <section class="my-20">
-      <div class="mb-8 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-4">
-        <div>
-          <span class="text-[11px] font-mono font-bold tracking-widest text-[#0071e3] uppercase block mb-1">
-            LATEST CURATION
-          </span>
-          <h2 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-            Wawasan Terkini & Dokumentasi Spasial
-          </h2>
-        </div>
-        <span class="text-xs font-mono text-slate-400">Edisi Digital</span>
+  <!-- 5. Decision Tools Quick Dock -->
+  <section class="my-16 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <a
+      href="/solusi"
+      class="apple-card p-8 rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 hover:border-[#0071e3]/50 transition group flex flex-col justify-between"
+    >
+      <div>
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0071e3] block mb-2">
+          ✦ ALAT DIAGNOSIS
+        </span>
+        <h3 class="text-xl font-bold text-slate-900 dark:text-white group-hover:text-[#0071e3] transition">
+          Design Problem Solver →
+        </h3>
+        <p class="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
+          Mendiagnosis masalah rumah panas, lahan mungil sempit, ruang gelap, atau bising dan menemukan solusi materialitas presisi.
+        </p>
       </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {articles.slice(0, 6).map((article) => (
-          <article class="apple-card group flex flex-col overflow-hidden rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition duration-500">
-            <a href={`/${article.slug}`} class="relative block overflow-hidden aspect-[16/10] bg-slate-100 dark:bg-slate-800">
-              <img
-                src={article.featured_image}
-                alt={article.image_alt || article.title}
-                class="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-106"
-                loading="lazy"
-              />
-              <span class="absolute top-4 left-4 rounded-full bg-slate-950/70 px-3.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-white backdrop-blur-md border border-white/20">
-                {article.category_name || 'Kurasi'}
-              </span>
-            </a>
-            <div class="flex flex-1 flex-col p-6 sm:p-7">
-              <h3 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white line-clamp-2 group-hover:text-[#0071e3] transition-colors leading-snug">
-                <a href={`/${article.slug}`}>
-                  {article.title}
-                </a>
-              </h3>
-              <p class="mt-3 text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 flex-1 leading-relaxed">
-                {article.description}
-              </p>
-              <div class="mt-6 flex items-center justify-between text-xs text-slate-400 border-t border-black/[0.05] dark:border-white/[0.06] pt-4 font-medium">
-                <span class="font-semibold text-slate-700 dark:text-slate-300">{article.author_name || 'Tim Kurasi'}</span>
-                <span>{article.reading_time_minutes} mnt baca</span>
-              </div>
-            </div>
-          </article>
-        ))}
+      <div class="mt-6 pt-4 border-t border-black/[0.04] dark:border-white/[0.06] text-xs font-mono font-semibold text-[#0071e3]">
+        Mulai Diagnosis Ruang →
       </div>
-    </section>
-  )}
+    </a>
 
-  <!-- 7. RancangLoka Weekly Content Product (Newsletter) -->
+    <a
+      href="/komparasi"
+      class="apple-card p-8 rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 hover:border-[#0071e3]/50 transition group flex flex-col justify-between"
+    >
+      <div>
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0071e3] block mb-2">
+          ✦ MATRIKS OBJEKTIF
+        </span>
+        <h3 class="text-xl font-bold text-slate-900 dark:text-white group-hover:text-[#0071e3] transition">
+          Comparison Engine →
+        </h3>
+        <p class="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
+          Perbandingan spesifikasi teknis material: Aluminium vs UPVC, Kayu Ulin vs Louver, dan evaluasi daya tahan tropis.
+        </p>
+      </div>
+      <div class="mt-6 pt-4 border-t border-black/[0.04] dark:border-white/[0.06] text-xs font-mono font-semibold text-[#0071e3]">
+        Buka Matriks Komparasi →
+      </div>
+    </a>
+  </section>
+
+  <!-- 6. RancangLoka Weekly Newsletter Product -->
   <NewsletterBox />
 </BaseLayout>

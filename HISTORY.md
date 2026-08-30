@@ -307,6 +307,16 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 31: Pembersihan P0 (Eradikasi Duplikasi Konten, Issue Cadence, & Alasan Kurasi Nyata)
+* **Gejala:** Homepage sebelumnya mengulang-ulang 4 artikel yang sama di berbagai bagian sehingga terasa seperti demo kosong (*padded content*).
+* **Solusi:**
+  - **Eradikasi Duplikasi Kartu:** Menghapus grid "Latest Stories" dan perulangan kategori repetitif pada [`src/pages/index.astro`](file:///src/pages/index.astro), memberikan ruang bernapas (*whitespace*) mewah.
+  - **Issue-Based Publishing Header:** Menyematkan identitas kurasi terstruktur `ISSUE #04 • Fasad, Materialitas & Hunian Tropis` pada [`src/components/HeroMagazine.astro`](file:///src/components/HeroMagazine.astro).
+  - **Explicit Editorial Curation Reasons:** Memberikan alasan kurasi jujur di balik setiap artikel pilihan editor (*"Dipilih karena efisiensi pembiasan panas & ketahanan cuaca lembap"*).
+  - **Quick Intent Bar:** Mengganti hashtag taxoniomi menjadi pencarian berbasis niat dan masalah nyata (*Rumah Panas, Lahan Sempit 36/60, Ruang Gelap*).
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
