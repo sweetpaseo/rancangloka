@@ -248,6 +248,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 25: Pembangunan Fitur Vital Admin CMS: Manajemen Subscriber (Export CSV) & Audit Kesehatan SEO 2026
+* **Gejala:** Admin sebelumnya tidak memiliki antarmuka untuk melihat daftar email pendaftar newsletter, mengekspornya ke CSV, atau memantau skor kesehatan SEO seluruh artikel secara cepat.
+* **Solusi:**
+  - **Subscribers Management & CSV Export:** Membangun halaman [`src/pages/admin/subscribers/index.astro`](file:///src/pages/admin/subscribers/index.astro) dan API [`src/pages/api/admin/subscribers/export.ts`](file:///src/pages/api/admin/subscribers/export.ts) untuk melihat daftar email dan mengekspornya dalam 1 klik ke format CSV/Excel.
+  - **SEO 2026 Health Audit Screen:** Membangun [`src/pages/admin/seo-audit.astro`](file:///src/pages/admin/seo-audit.astro) yang menginspeksi seluruh artikel terhadap standar Google Search (skor 0-100%, panjang kata, kelengkapan meta desc, status cover R2 WebP, dan tombol 1-klik optimasi).
+  - **Elevasi Dashboard Utama:** Memperbarui [`src/pages/admin/index.astro`](file:///src/pages/admin/index.astro) dengan Launchpad Aksi Cepat (*Quick Actions Dock*), penghitung subscriber aktif, dan barometer kesehatan SEO.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
