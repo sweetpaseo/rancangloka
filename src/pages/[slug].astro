@@ -46,7 +46,8 @@ if (article) {
     article,
     allArticles,
     relatedArticles[0],
-    siteSettings
+    siteSettings,
+    toc
   );
 
   if (article.key_takeaways) {
@@ -231,8 +232,8 @@ if (article) {
       />
     </div>
 
-    <!-- 4. Key Takeaways / AI Summary Box (Apple Frosted Box) -->
-    {keyTakeaways.length > 0 && (
+    <!-- 4. Key Takeaways / AI Summary Box (Apple Frosted Box - Organik Only) -->
+    {article.is_sponsored !== 1 && keyTakeaways.length > 0 && (
       <div class="my-8 rounded-3xl border border-blue-100 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-6 sm:p-7 shadow-2xs">
         <h3 class="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">
           <span class="text-[#0071e3]">💡</span>
@@ -246,26 +247,23 @@ if (article) {
       </div>
     )}
 
-    <!-- 5. Table of Contents -->
-    {toc.length > 0 && (
-      <TableOfContents toc={toc} />
-    )}
+    <!-- 5. Main Prose Article Body (With In-Article TOC, Dateline, and BACA JUGA) -->
+    <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-6" set:html={processedHtml} />
 
-    <!-- 6. Main Prose Article Body -->
-    <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-9" set:html={processedHtml} />
-
-    <!-- 7. Social Share Bar -->
+    <!-- 6. Social Share Bar -->
     <SocialShareBar title={article.title} />
 
-    <!-- 8. E-E-A-T Author Card -->
+    <!-- 7. E-E-A-T Author Card -->
     <AuthorCard
       authorName={article.author_name}
       authorAvatar={article.author_avatar}
       authorRole={article.author_role}
     />
 
-    <!-- 9. Related Articles Grid -->
-    <RelatedArticles articles={relatedArticles} />
+    <!-- 8. Related Articles Grid (Organik Only) -->
+    {article.is_sponsored !== 1 && relatedArticles.length > 0 && (
+      <RelatedArticles articles={relatedArticles} />
+    )}
   </article>
   )}
 

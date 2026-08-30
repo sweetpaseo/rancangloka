@@ -1,0 +1,110 @@
+# ==============================================================================
+# 📄 TEMPLATE STANDAR ARTIKEL MARKDOWN RANCANGLOKA.COM (SEO 2026 READY)
+# ==============================================================================
+# File ini memuat 2 contoh struktur:
+# 1. TIPE A: Artikel Editorial Organik (Lengkap dengan Key Takeaways & Internal Linking)
+# 2. TIPE B: Artikel Berbayar / Sponsored Review (Internal Linking & TOC Nonaktif)
+# ==============================================================================
+
+
+# ==============================================================================
+# 🌟 TIPE A: CONTOH ARTIKEL EDITORIAL ORGANIK
+# ==============================================================================
+---
+title: "Panduan Desain Fasad Rumah Tropis Modern 2026: Kisi-Kisi Kayu & Sirkulasi Alami"
+slug: "panduan-desain-fasad-rumah-tropis-modern-2026"
+description: "Eksplorasi material secondary skin, kisi-kisi kayu ulin, dan bukaan silang untuk rumah tropis hemat energi yang sejuk dan estetik."
+category_id: 3
+author_id: 1
+status: "draft"
+focus_keyword: "fasad rumah tropis modern 2026"
+featured_image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=720&auto=format&fit=crop&q=75"
+image_alt: "Fasad rumah tropis modern 2 lantai dengan kisi-kisi kayu ulin dan tanaman rambat"
+is_featured: 0
+is_trending: 1
+is_sponsored: 0
+disable_internal_links: 0
+key_takeaways:
+  - "Secondary skin kisi kayu mereduksi radiasi panas matahari siang hari hingga 40%."
+  - "Desain kantilever dan teritisan lebar melindungi dinding dari tampias hujan lebat tropis."
+  - "Cross ventilation alami menjaga suhu ruangan tetap dingin tanpa pendingin udara (AC) menyala seharian."
+---
+
+# Panduan Desain Fasad Rumah Tropis Modern 2026: Kisi-Kisi Kayu & Sirkulasi Alami
+
+Iklim tropis Indonesia dengan intensitas matahari tinggi dan curah hujan lebat membutuhkan pendekatan desain fasad yang tidak hanya indah dipandang, tetapi juga responsif terhadap iklim lingkungan.
+
+Penerapan konsep rumah bernapas (*breathing house*) menjadi solusi cerdas untuk meminimalkan konsumsi energi listrik sekaligus menciptakan kenyamanan termal maksimal bagi seluruh anggota keluarga.
+
+## 1. Peran Penting Secondary Skin (Kulit Ganda Fasad)
+Penggunaan material kisi-kisi kayu, panel aluminium perforasi, atau roster modern berfungsi sebagai perisai panas pertama sebelum terik matahari menyentuh dinding kaca utama rumah.
+
+* **Material Rekomendasi:** Kayu Ulin tahan cuaca, WPC (Wood Plastic Composite), atau GRC Board.
+* **Efisiensi Termal:** Mereduksi temperatur indoor hingga 3–5 derajat Celcius saat siang hari.
+
+## 2. Bukaan Silang & Teritisan Lebar
+Membuat bukaan vertikal di bagian depan dan ventilasi di bagian belakang menciptakan aliran angin alami (*stack effect*) yang mendinginkan area tengah rumah.
+
+Teritisan atap dengan lebar minimal 1,2 meter sangat dianjurkan untuk menghalau terik matahari langsung dan mencegah air hujan tampias ke area jendela kamar tidur.
+
+## 3. Integrasi Tanaman Rambat & Vegetasi Penyejuk
+Menambahkan vegetasi seperti Lee Kuan Yew (*Vernonia elliptica*) pada balkon lantai dua tidak hanya mempercantik tampilan fasad, tetapi juga menyaring debu perkotaan dan menyerap kelembapan udara.
+
+---
+
+### 🎨 AI Image Generator Prompt (Cover Image)
+> **Midjourney v6 / DALL-E 3 Prompt:**
+> `Ultra-modern 2-story tropical luxury minimalist house exterior facade, beautiful natural teak wood vertical louvers secondary skin, large floor-to-ceiling glass windows with warm indoor evening lighting, lush tropical landscaped garden with monstera and frangipani trees, exposed smooth concrete finish, architectural photography, shot on Hasselblad H6D-100c, 35mm lens, golden hour warm lighting, 8k resolution, cinematic, editorial magazine aesthetic --ar 16:9 --style raw`
+
+
+# ==============================================================================
+# 🌟 TIPE B: CONTOH ARTIKEL BERBAYAR (SPONSORED REVIEW / ADVERTORIAL)
+# ==============================================================================
+# Catatan: Ketika "is_sponsored: 1" diaktifkan:
+# - Box "Key Takeaways" & "Daftar Isi (TOC)" otomatis NONAKTIF.
+# - Box "BACA JUGA" & "Auto-Keyword Linker" otomatis NONAKTIF.
+# - Seluruh fokus pembaca & link equity 100% tertuju pada produk klien sponsor.
+# ==============================================================================
+---
+title: "Review Smart Door Lock X-Pro 2026: Keamanan Biometrik Maksimal untuk Rumah Modern"
+slug: "review-smart-door-lock-x-pro-2026"
+description: "Ulasan mendalam smart lock X-Pro dengan sensor sidik jari 3D, integrasi aplikasi smartphone, dan baterai tahan 12 bulan."
+category_id: 2
+author_id: 2
+status: "draft"
+focus_keyword: "review smart door lock x-pro"
+featured_image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=720&auto=format&fit=crop&q=75"
+image_alt: "Instalasi smart door lock X-Pro pada pintu kayu solid minimalis"
+is_featured: 0
+is_trending: 0
+is_sponsored: 1
+disable_internal_links: 1
+---
+
+# Review Smart Door Lock X-Pro 2026: Keamanan Biometrik Maksimal untuk Rumah Modern
+
+Kebutuhan akan sistem keamanan hunian pintar (*smart home security*) semakin menjadi prioritas utama pemilik rumah masa kini. Salah satu perangkat yang menarik perhatian redaksi kami adalah **Smart Door Lock X-Pro**.
+
+Setelah pengujian intensif selama dua minggu, perangkat ini membuktikan keunggulannya dalam menggabungkan estetika desain minimalis dengan teknologi enkripsi militer.
+
+## Desain & Kualitas Material
+X-Pro menggunakan material bodi *aviation-grade aluminum alloy* dengan sentuhan akhir *matte black* yang anti-gores dan tahan terhadap cipratan air hujan (IP65).
+
+Sensor sidik jari biometrik 3D terintegrasi langsung di gagang pintu, memungkinkan pengguna membuka kunci hanya dalam waktu 0,3 detik dengan akurasi pengenalan hingga 99,8%.
+
+## Fitur Konektivitas & Aplikasi Mobile
+Melalui aplikasi pendamping, pemilik rumah dapat:
+* Memberikan PIN sementara untuk tamu atau asisten rumah tangga.
+* Memantau log akses masuk secara real-time dari mana saja.
+* Menerima notifikasi darurat saat terjadi upaya pembongkaran paksa.
+
+## Kesimpulan & Informasi Pembelian
+Bagi Anda yang sedang merenovasi pintu utama atau membangun hunian bergaya modern kontemporer, Smart Door Lock X-Pro adalah investasi keamanan yang sangat layak dipertimbangkan.
+
+Kunjungi situs resmi distributor untuk penawaran garansi resmi 3 tahun: [Klik di sini untuk info promo X-Pro](https://example-sponsor.com/x-pro).
+
+---
+
+### 🎨 AI Image Generator Prompt (Cover Image)
+> **Midjourney v6 / DALL-E 3 Prompt:**
+> `High-end luxury smart door lock with glowing blue biometric fingerprint scanner installed on a sleek matte dark oak front door, ambient warm hallway interior lighting, ultra-modern apartment entrance, clean architectural details, product photography, 85mm lens, f/1.8, sharp focus, 8k resolution, photorealistic, cinematic --ar 16:9 --style raw`

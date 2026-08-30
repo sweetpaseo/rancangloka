@@ -155,7 +155,53 @@ export function injectEditorialDateline(html: string, siteUrl: string = 'https:/
 }
 
 /**
- * 2. Injects In-Article "BACA JUGA" Related Article Box before the 2nd H2 heading (or after 3rd paragraph).
+ * 2. Injects In-Article Table of Contents (TOC) before the FIRST H2 heading.
+ * Ensures the opening paragraphs flow naturally before any navigation box appears.
+ */
+export function injectTableOfContents(html: string, toc: TableOfContentItem[]): string {
+  if (!toc || toc.length < 2) return html;
+
+  const listItems = toc
+    .map(
+      (item) =>
+        `<li class="${item.level === 3 ? 'ml-4 list-disc' : 'font-medium'}">
+          <a href="#${item.id}" class="hover:text-primary transition line-clamp-1">${item.text}</a>
+        </li>`
+    )
+    .join('\n');
+
+  const tocHtml = `
+<div class="my-7 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+  <details class="group" open>
+    <summary class="flex cursor-pointer items-center justify-between font-semibold text-slate-900 dark:text-slate-100 text-xs sm:text-sm list-none">
+      <span class="flex items-center gap-2">
+        <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+        </svg>
+        Daftar Isi Artikel (TOC)
+      </span>
+      <svg class="h-4 w-4 transform text-slate-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </summary>
+    <ul class="mt-3 space-y-1.5 border-t border-slate-200 pt-3 text-xs md:text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+      ${listItems}
+    </ul>
+  </details>
+</div>
+`;
+
+  // Insert before the 1st <h2>
+  if (/<h2/i.test(html)) {
+    return html.replace(/<h2/i, `${tocHtml}<h2`);
+  }
+
+  return `${tocHtml}${html}`;
+}
+
+/**
+ * 3. Injects In-Article "BACA JUGA" Related Article Box in the middle of the article.
+ * Spaced out naturally (before 2nd or 3rd H2).
  */
 export function injectInArticleRelated(html: string, relatedArticle?: any): string {
   if (!relatedArticle || !relatedArticle.slug || !relatedArticle.title) {
@@ -163,7 +209,7 @@ export function injectInArticleRelated(html: string, relatedArticle?: any): stri
   }
 
   const calloutHtml = `
-<div class="my-7 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-4 transition hover:border-primary/50 shadow-2xs">
+<div class="my-8 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-4 transition hover:border-primary/50 shadow-2xs">
   <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary mb-1">
     <span>📖</span>
     <span>BACA JUGA:</span>
@@ -174,28 +220,26 @@ export function injectInArticleRelated(html: string, relatedArticle?: any): stri
 </div>
 `;
 
-  // Strategy A: Insert before 2nd <h2>
+  // Count total <h2>
+  const totalH2 = (html.match(/<h2/gi) || []).length;
+  const targetH2Index = totalH2 >= 3 ? 3 : 2;
+
   let h2Count = 0;
   const withH2 = html.replace(/<h2/gi, (match) => {
     h2Count++;
-    if (h2Count === 2) {
+    if (h2Count === targetH2Index) {
       return `${calloutHtml}${match}`;
     }
     return match;
   });
 
-  if (h2Count >= 2) return withH2;
+  if (h2Count >= targetH2Index) return withH2;
 
-  // Strategy B: If only one <h2> exists, insert before it
-  if (h2Count === 1) {
-    return html.replace(/<h2/i, `${calloutHtml}<h2`);
-  }
-
-  // Strategy C: Fallback after 3rd </p>
+  // Fallback: after 4th </p>
   let pCount = 0;
   return html.replace(/<\/p>/gi, (match) => {
     pCount++;
-    if (pCount === 3) {
+    if (pCount === 4) {
       return `${match}${calloutHtml}`;
     }
     return match;
@@ -203,7 +247,7 @@ export function injectInArticleRelated(html: string, relatedArticle?: any): stri
 }
 
 /**
- * 3. Smart Contextual Auto-Keyword Linker
+ * 4. Smart Contextual Auto-Keyword Linker
  * Finds focus keywords of other published articles and creates internal anchor links in text.
  * Max 2-3 links per article, first match only, ignoring existing <a>, <h1-h6>, <code> tags.
  */
@@ -252,15 +296,17 @@ export function injectAutoKeywordLinks(
 }
 
 /**
- * 4. Master Content Processor
- * Combines Heading IDs, Dateline, Auto-Keywords, and In-Article BACA JUGA based on Sponsored status.
+ * 5. Master Content Processor
+ * Combines Heading IDs, Dateline, In-Article TOC, Auto-Keywords, and In-Article BACA JUGA.
+ * For Sponsored Articles (is_sponsored === 1): TOC, BACA JUGA, and Auto-Keywords are cleanly disabled!
  */
 export function processArticleContent(
   rawHtml: string,
   article: any,
   allArticles: any[] = [],
   relatedArticle?: any,
-  siteSettings: Record<string, string> = {}
+  siteSettings: Record<string, string> = {},
+  toc: TableOfContentItem[] = []
 ): string {
   // Step 1: Inject Heading IDs for smooth TOC scrolling
   let html = injectHeadingIds(rawHtml);
@@ -271,19 +317,24 @@ export function processArticleContent(
   html = injectEditorialDateline(html, siteUrl, siteTitle);
 
   // Step 3: Check if article is Sponsored / Paid Review or Internal Links are Disabled
-  const isInternalLinksDisabled = article.is_sponsored === 1 || article.disable_internal_links === 1;
+  const isSponsoredOrDisabled = article.is_sponsored === 1 || article.disable_internal_links === 1;
 
-  if (isInternalLinksDisabled) {
-    // Return early: Clean text without in-article BACA JUGA or auto-keyword links
+  if (isSponsoredOrDisabled) {
+    // Return early: Clean text without in-article TOC, BACA JUGA, or auto-keyword links
     return html;
   }
 
-  // Step 4: Inject In-Article BACA JUGA Box
+  // Step 4: Inject Table of Contents before the FIRST H2 (after opening paragraphs)
+  if (toc && toc.length >= 2) {
+    html = injectTableOfContents(html, toc);
+  }
+
+  // Step 5: Inject In-Article BACA JUGA Box in mid-article
   if (relatedArticle) {
     html = injectInArticleRelated(html, relatedArticle);
   }
 
-  // Step 5: Inject Auto-Keyword Contextual Internal Links
+  // Step 6: Inject Auto-Keyword Contextual Internal Links
   html = injectAutoKeywordLinks(html, article.id, allArticles, 2);
 
   return html;
