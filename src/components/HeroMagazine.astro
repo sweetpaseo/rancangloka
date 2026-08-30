@@ -71,7 +71,7 @@ const editorialCurations = [
               </span>
             </div>
 
-            <h1 class="font-editorial-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.12] line-clamp-2 md:line-clamp-3 group-hover:text-amber-100 transition-colors">
+            <h1 class="font-sans text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.1] line-clamp-2 md:line-clamp-3 group-hover:text-blue-100 transition-colors">
               <a href={`/${featuredArticle.slug}`}>
                 {featuredArticle.title}
               </a>
@@ -124,14 +124,14 @@ const editorialCurations = [
                   </span>
                 </div>
 
-                <h3 class="font-editorial-display text-sm sm:text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-[#0066ee] transition-colors leading-snug tracking-tight mb-2">
+                <h3 class="font-sans text-sm sm:text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-[#0066ee] transition-colors leading-snug tracking-tight mb-2">
                   <a href={`/${article.slug}`}>
                     {article.title}
                   </a>
                 </h3>
 
-                <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 italic font-serif leading-relaxed">
-                  “{curation.reason}”
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 font-normal leading-relaxed">
+                  "{curation.reason}"
                 </p>
               </div>
             </article>
