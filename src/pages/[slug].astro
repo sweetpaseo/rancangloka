@@ -5,64 +5,148 @@ import TableOfContents from '../components/TableOfContents.astro';
 import AuthorCard from '../components/AuthorCard.astro';
 import RelatedArticles from '../components/RelatedArticles.astro';
 import SocialShareBar from '../components/SocialShareBar.astro';
-import { getDb, getArticleBySlug, getRelatedArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import { getDb, getArticleBySlug, getPageBySlug, getRelatedArticles, getAllCategories, getSiteSettings } from '../lib/db';
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema } from '../lib/seo';
 
 const { slug } = Astro.params;
 const db = await getDb(Astro.locals);
 
-const [article, categories, siteSettings] = await Promise.all([
+const [article, page, categories, siteSettings] = await Promise.all([
   getArticleBySlug(db, slug || ''),
+  getPageBySlug(db, slug || ''),
   getAllCategories(db),
   getSiteSettings(db)
 ]);
 
-if (!article) {
+if (!article && !page) {
   return Astro.redirect('/404');
 }
 
-const relatedArticles = await getRelatedArticles(db, article.id, article.category_id, 3);
-const siteUrl = siteSettings.site_url || 'https://magazine.pages.dev';
+const isStaticPage = !article && !!page;
+const siteUrl = siteSettings.site_url || 'https://rancangloka.com';
 
-// Parse Table of Contents & inject IDs into Headings
-const toc = extractTableOfContents(article.content_html);
-const processedHtml = injectHeadingIds(article.content_html);
-
-// Parse Key Takeaways
+// If Article Page
+let relatedArticles: any[] = [];
+let toc: any[] = [];
+let processedHtml = '';
 let keyTakeaways: string[] = [];
-if (article.key_takeaways) {
-  try {
-    keyTakeaways = JSON.parse(article.key_takeaways);
-  } catch (e) {}
+let jsonLdSchema: any = null;
+let breadcrumbItems: any[] = [];
+
+if (article) {
+  relatedArticles = await getRelatedArticles(db, article.id, article.category_id, 3);
+  toc = extractTableOfContents(article.content_html);
+  processedHtml = injectHeadingIds(article.content_html);
+
+  if (article.key_takeaways) {
+    try {
+      keyTakeaways = JSON.parse(article.key_takeaways);
+    } catch (e) {}
+  }
+
+  const authorObj = {
+    name: article.author_name,
+    avatar: article.author_avatar,
+    role: article.author_role,
+    slug: article.author_name ? article.author_name.toLowerCase().replace(/\s+/g, '-') : 'redaksi'
+  };
+  jsonLdSchema = generateArticleSchema(article, siteUrl, authorObj, siteSettings);
+
+  breadcrumbItems = [
+    { name: article.category_name || 'Artikel', url: `/category/${article.category_slug || 'all'}` },
+    { name: article.title, url: `/${article.slug}` }
+  ];
+} else if (page) {
+  processedHtml = injectHeadingIds(page.content_html);
+  breadcrumbItems = [
+    { name: 'Beranda', url: '/' },
+    { name: page.title, url: `/${page.slug}` }
+  ];
 }
-
-// Generate JSON-LD Schema
-const authorObj = {
-  name: article.author_name,
-  avatar: article.author_avatar,
-  role: article.author_role,
-  slug: article.author_name ? article.author_name.toLowerCase().replace(/\s+/g, '-') : 'redaksi'
-};
-const jsonLdSchema = generateArticleSchema(article, siteUrl, authorObj, siteSettings);
-
-const breadcrumbItems = [
-  { name: article.category_name || 'Artikel', url: `/category/${article.category_slug || 'all'}` },
-  { name: article.title, url: `/${article.slug}` }
-];
 ---
 
 <BaseLayout
-  title={article.title}
-  description={article.description}
-  ogImage={article.featured_image}
-  canonicalUrl={`${siteUrl}/${article.slug}`}
+  title={article ? article.title : page!.title}
+  description={article ? article.description : page!.description}
+  ogImage={article ? article.featured_image : page!.featured_image || siteSettings.seo_default_og_image}
+  canonicalUrl={`${siteUrl}/${article ? article.slug : page!.slug}`}
   categories={categories}
   siteSettings={siteSettings}
-  isArticlePage={true}
+  isArticlePage={!isStaticPage}
   jsonLdSchema={jsonLdSchema}
 >
   <!-- Apple-Style Dynamic Reading Progress Bar (Top) -->
   <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-[#0071e3] z-50 transition-all duration-100 ease-out" style="width: 0%;"></div>
+
+  <!-- 🅰️ RENDER AS STATIC PAGE -->
+  {isStaticPage && page && (
+    <div class="max-w-3xl mx-auto px-4 sm:px-0 py-4">
+      <div class="mb-6">
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
+
+      <header class="mb-8 border-b border-black/[0.05] dark:border-white/[0.08] pb-6">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.2]">
+          {page.title}
+        </h1>
+        {page.description && (
+          <p class="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
+            {page.description}
+          </p>
+        )}
+      </header>
+
+      {page.featured_image && (
+        <div class="my-8 overflow-hidden rounded-[2rem] bg-slate-100 dark:bg-slate-800 aspect-[16/10] shadow-[0_10px_30px_rgba(0,0,0,0.06)] border border-black/[0.04] dark:border-white/[0.06]">
+          <img src={page.featured_image} alt={page.title} class="h-full w-full object-cover" />
+        </div>
+      )}
+
+      <!-- Page Content -->
+      <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-6" set:html={processedHtml} />
+
+      <!-- Optional Interactive Contact Form for template === 'contact' -->
+      {page.template === 'contact' && (
+        <div class="mt-10 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
+          <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+            <span>✉️</span>
+            Kirim Pesan ke Redaksi
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Tim redaksi RancangLoka akan merespons pesan Anda dalam 1x24 jam kerja.</p>
+
+          <form id="contact-form" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nama Lengkap</label>
+                <input type="text" required placeholder="Nama Anda" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Alamat Email</label>
+                <input type="email" required placeholder="email@domain.com" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Subjek Pesan</label>
+              <input type="text" required placeholder="Topik: Kemitraan Media / Rilis Karya / Pertanyaan" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Isi Pesan</label>
+              <textarea rows="4" required placeholder="Tuliskan pesan atau detail kolaborasi Anda di sini..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+            </div>
+
+            <button type="submit" class="rounded-xl bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-sm">
+              Kirim Pesan Sekarang 🚀
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  )}
+
+  <!-- 🅱️ RENDER AS MAGAZINE ARTICLE -->
+  {!isStaticPage && article && (
 
   <article class="max-w-3xl mx-auto px-2 sm:px-0">
     <!-- 1. Breadcrumbs -->
@@ -164,6 +248,7 @@ const breadcrumbItems = [
     <!-- 9. Related Articles Grid -->
     <RelatedArticles articles={relatedArticles} />
   </article>
+  )}
 
   <!-- Reading Progress Script -->
   <script>

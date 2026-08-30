@@ -1,0 +1,392 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb, getPageById } from '../../../lib/db';
+
+const { id } = Astro.params;
+const pageId = parseInt(id || '', 10);
+const db = await getDb(Astro.locals);
+const page = await getPageById(db, pageId);
+
+if (!page) {
+  return Astro.redirect('/admin/pages');
+}
+---
+
+<AdminLayout title={`Edit Halaman: ${page.title}`}>
+  <form id="page-editor-form" class="max-w-6xl mx-auto space-y-6">
+    <input type="hidden" id="page-id" value={page.id} />
+
+    <!-- Top Action Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+          <span>✏️</span>
+          Edit Halaman
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">Mengubah konten statis untuk: <span class="font-bold text-slate-700">/{page.slug}</span></p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/admin/pages" class="rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-sm">
+          Kembali
+        </a>
+        <a
+          href={`/${page.slug}`}
+          target="_blank"
+          class="rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-sm flex items-center gap-1.5"
+        >
+          👁️ Lihat
+        </a>
+        <button
+          type="button"
+          id="btn-save-draft"
+          class="rounded-xl bg-white border border-amber-300 px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 transition shadow-sm"
+        >
+          Simpan Draft
+        </button>
+        <button
+          type="submit"
+          id="btn-publish"
+          class="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/20"
+        >
+          💾 Perbarui Halaman
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Left Column (8 cols): Title, Dual Editor, Description -->
+      <div class="lg:col-span-8 space-y-6">
+        <!-- 1. Title & Slug Input -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-sm">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Judul Halaman</label>
+            <input
+              type="text"
+              id="page-title"
+              name="title"
+              required
+              value={page.title}
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-base md:text-lg font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">Slug URL Halaman</label>
+            <div class="flex items-center rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-500 font-mono">
+              <span>https://rancangloka.com/</span>
+              <input
+                type="text"
+                id="page-slug"
+                name="slug"
+                value={page.slug}
+                class="flex-1 bg-transparent text-primary font-bold focus:outline-none ml-1"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Dual Markdown / Preview Editor -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                id="tab-markdown"
+                class="rounded-lg bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm transition"
+              >
+                ✏️ Markdown Editor
+              </button>
+              <button
+                type="button"
+                id="tab-preview"
+                class="rounded-lg px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition"
+              >
+                👁️ Live Pratinjau
+              </button>
+            </div>
+
+            <div class="text-[11px] text-slate-400 font-medium">
+              <span id="word-count">0</span> Kata
+            </div>
+          </div>
+
+          <!-- Markdown Textarea -->
+          <div id="editor-pane">
+            <textarea
+              id="page-content-md"
+              name="content_md"
+              rows="16"
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 p-4 font-mono text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white resize-y leading-relaxed"
+            >{page.content_md}</textarea>
+          </div>
+
+          <!-- Live HTML Preview -->
+          <div id="preview-pane" class="hidden min-h-[350px] rounded-xl bg-slate-50 border border-slate-200 p-6 prose prose-slate max-w-none text-sm leading-relaxed"></div>
+        </div>
+
+        <!-- 3. Meta Description Box -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm space-y-3">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+            🔍 Meta Deskripsi Halaman (SEO)
+          </label>
+          <textarea
+            id="page-description"
+            name="description"
+            rows="2"
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
+          >{page.description}</textarea>
+        </div>
+      </div>
+
+      <!-- Right Column (4 cols): Template, Cover, Status -->
+      <div class="lg:col-span-4 space-y-6">
+        <!-- 1. Page Template & Layout -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-sm">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+            ⚙️ Pengaturan Halaman
+          </label>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1.5">Template Layout</label>
+            <select
+              id="page-template"
+              name="template"
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="default" selected={page.template === 'default'}>📄 Standar (Dokumen & Artikel Statis)</option>
+              <option value="contact" selected={page.template === 'contact'}>📬 Formulir Kontak Interaktif</option>
+              <option value="fullwidth" selected={page.template === 'fullwidth'}>↔️ Full Width (Lebar Penuh)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 2. Cover Image / Header Banner (Optional) -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 shadow-sm">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              🖼️ Banner Header (Opsional)
+            </label>
+            <span id="upload-status-badge" class={`${page.featured_image ? '' : 'hidden'} text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800`}>
+              ✅ WebP Ready
+            </span>
+          </div>
+
+          <!-- Drag & Drop Zone -->
+          <div
+            id="cover-dropzone"
+            class="relative overflow-hidden rounded-xl border-2 border-dashed border-slate-300 hover:border-primary bg-slate-50 aspect-[16/9] flex flex-col items-center justify-center text-center p-3 cursor-pointer transition group"
+          >
+            <input type="file" id="cover-file-input" accept="image/png, image/jpeg, image/webp, image/avif, image/jpg" class="hidden" />
+            <img id="cover-preview-img" src={page.featured_image || ''} class={`${page.featured_image ? '' : 'hidden'} absolute inset-0 h-full w-full object-cover`} />
+            <div id="cover-placeholder" class={`${page.featured_image ? 'hidden' : ''} flex flex-col items-center gap-1.5 text-slate-400 group-hover:text-primary transition`}>
+              <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span class="text-xs font-semibold text-slate-700 group-hover:text-primary">Drag & Drop Banner</span>
+              <span class="text-[10px] text-slate-400">Auto Convert ke WebP</span>
+            </div>
+            <!-- Uploading overlay -->
+            <div id="cover-uploading" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+              <div class="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+              <span class="text-xs font-bold text-slate-700">Mengonversi ke WebP...</span>
+            </div>
+          </div>
+
+          <input
+            type="url"
+            id="page-cover-url"
+            name="featured_image"
+            value={page.featured_image || ''}
+            placeholder="https://images.unsplash.com/... atau /media/..."
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+          />
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    import { marked } from 'marked';
+
+    const pageId = (document.getElementById('page-id') as HTMLInputElement).value;
+    const titleInput = document.getElementById('page-title') as HTMLInputElement;
+    const slugInput = document.getElementById('page-slug') as HTMLInputElement;
+    const contentMd = document.getElementById('page-content-md') as HTMLTextAreaElement;
+    const descInput = document.getElementById('page-description') as HTMLTextAreaElement;
+    const templateSelect = document.getElementById('page-template') as HTMLSelectElement;
+    const coverUrlInput = document.getElementById('page-cover-url') as HTMLInputElement;
+    const coverImg = document.getElementById('cover-preview-img') as HTMLImageElement;
+    const coverPlaceholder = document.getElementById('cover-placeholder') as HTMLElement;
+    const wordCount = document.getElementById('word-count') as HTMLElement;
+
+    function updateWordCount() {
+      if (contentMd && wordCount) {
+        const words = contentMd.value.trim().split(/\s+/).filter(Boolean).length;
+        wordCount.innerText = String(words);
+      }
+    }
+    updateWordCount();
+    contentMd?.addEventListener('input', updateWordCount);
+
+    // Cover preview
+    coverUrlInput?.addEventListener('input', () => {
+      const url = coverUrlInput.value.trim();
+      if (url) {
+        coverImg.src = url;
+        coverImg.classList.remove('hidden');
+        coverPlaceholder.classList.add('hidden');
+      } else {
+        coverImg.classList.add('hidden');
+        coverPlaceholder.classList.remove('hidden');
+      }
+    });
+
+    // Drag & Drop WebP Uploader
+    const dropzone = document.getElementById('cover-dropzone');
+    const fileInput = document.getElementById('cover-file-input') as HTMLInputElement;
+    const uploadOverlay = document.getElementById('cover-uploading');
+    const statusBadge = document.getElementById('upload-status-badge');
+
+    dropzone?.addEventListener('click', () => fileInput?.click());
+    ['dragenter', 'dragover'].forEach(name => {
+      dropzone?.addEventListener(name, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('border-primary', 'bg-blue-50/50');
+      });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      dropzone?.addEventListener(name, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('border-primary', 'bg-blue-50/50');
+      });
+    });
+    dropzone?.addEventListener('drop', (e) => {
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) processAndUploadImage(files[0]);
+    });
+    fileInput?.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files.length > 0) processAndUploadImage(fileInput.files[0]);
+    });
+
+    async function processAndUploadImage(file: File) {
+      if (!file.type.startsWith('image/')) return alert('File harus berupa gambar');
+      uploadOverlay?.classList.remove('hidden');
+      try {
+        const bmp = await createImageBitmap(file);
+        const maxD = 1200;
+        let w = bmp.width, h = bmp.height;
+        if (w > maxD || h > maxD) {
+          if (w > h) { h = Math.round((h * maxD) / w); w = maxD; }
+          else { w = Math.round((w * maxD) / h); h = maxD; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(bmp, 0, 0, w, h);
+        canvas.toBlob(async (blob) => {
+          if (!blob) throw new Error('Konversi WebP gagal');
+          const cleanSlug = slugInput?.value || 'page-banner';
+          const filename = `${cleanSlug}-${Date.now().toString().slice(-4)}.webp`;
+          const fd = new FormData();
+          fd.append('file', blob, filename);
+          fd.append('filename', filename);
+          const res = await fetch('/api/admin/upload', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (res.ok && data.url) {
+            coverUrlInput.value = data.url;
+            coverImg.src = data.url;
+            coverImg.classList.remove('hidden');
+            coverPlaceholder.classList.add('hidden');
+            statusBadge?.classList.remove('hidden');
+            uploadOverlay?.classList.add('hidden');
+          } else {
+            throw new Error(data.message || 'Gagal upload R2');
+          }
+        }, 'image/webp', 0.82);
+      } catch (err: any) {
+        alert(`Error: ${err.message}`);
+        uploadOverlay?.classList.add('hidden');
+      }
+    }
+
+    // Tab switcher
+    const tabMd = document.getElementById('tab-markdown');
+    const tabPrev = document.getElementById('tab-preview');
+    const editorPane = document.getElementById('editor-pane');
+    const previewPane = document.getElementById('preview-pane');
+
+    tabPrev?.addEventListener('click', async () => {
+      tabPrev.className = 'rounded-lg bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm transition';
+      tabMd!.className = 'rounded-lg px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition';
+      editorPane?.classList.add('hidden');
+      previewPane?.classList.remove('hidden');
+      if (previewPane && contentMd) {
+        previewPane.innerHTML = (await marked.parse(contentMd.value)) || '<p class="text-slate-500 italic">Belum ada konten untuk dipratinjau.</p>';
+      }
+    });
+
+    tabMd?.addEventListener('click', () => {
+      tabMd.className = 'rounded-lg bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm transition';
+      tabPrev!.className = 'rounded-lg px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition';
+      editorPane?.classList.remove('hidden');
+      previewPane?.classList.add('hidden');
+    });
+
+    // Form submission
+    async function submitPage(targetStatus: 'published' | 'draft') {
+      const btnPublish = document.getElementById('btn-publish') as HTMLButtonElement;
+      const btnDraft = document.getElementById('btn-save-draft') as HTMLButtonElement;
+      btnPublish.disabled = true;
+      btnDraft.disabled = true;
+
+      const payload = {
+        title: titleInput.value.trim(),
+        slug: slugInput.value.trim(),
+        description: descInput.value.trim(),
+        content_md: contentMd.value,
+        template: templateSelect.value,
+        featured_image: coverUrlInput.value.trim(),
+        status: targetStatus
+      };
+
+      if (!payload.title) {
+        alert('Judul halaman wajib diisi.');
+        btnPublish.disabled = false;
+        btnDraft.disabled = false;
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/pages/${pageId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('💾 Halaman berhasil diperbarui!');
+          window.location.href = '/admin/pages';
+        } else {
+          alert(`Gagal memperbarui halaman: ${data.message || 'Error'}`);
+          btnPublish.disabled = false;
+          btnDraft.disabled = false;
+        }
+      } catch (err: any) {
+        alert(`Terjadi kesalahan: ${err.message}`);
+        btnPublish.disabled = false;
+        btnDraft.disabled = false;
+      }
+    }
+
+    document.getElementById('page-editor-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await submitPage('published');
+    });
+
+    document.getElementById('btn-save-draft')?.addEventListener('click', async () => {
+      await submitPage('draft');
+    });
+  </script>
+</AdminLayout>

@@ -52,6 +52,21 @@ export interface Author {
   social_links?: string;
 }
 
+export interface Page {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  content_md: string;
+  content_html: string;
+  featured_image?: string;
+  template: 'default' | 'contact' | 'fullwidth';
+  status: 'published' | 'draft';
+  views: number;
+  created_at: string;
+  updated_at: string;
+}
+
 /// In-Memory Fallback Demo Data for Local Testing & Initial State (Erihome Living Ecosystem)
 const MOCK_CATEGORIES: Category[] = [
   { id: 1, name: 'Desain Interior & Estetika', slug: 'interior-design', color_badge: '#059669', description: 'Inspirasi tata ruang, gaya Japandi, palet warna, dan dekorasi estetik untuk hunian nyaman', show_on_home: 1, display_order: 1, layout_style: 'bento' },
@@ -257,6 +272,65 @@ let inMemoryArticles: Article[] = [
     is_trending: 1,
     published_at: new Date(Date.now() - 3600000 * 24).toISOString(),
     updated_at: new Date(Date.now() - 3600000 * 24).toISOString()
+  }
+];
+
+let inMemoryPages: Page[] = [
+  {
+    id: 1,
+    slug: 'tentang-kami',
+    title: 'Tentang RancangLoka',
+    description: 'Mengenal visi RancangLoka sebagai platform media kurasi arsitektur, desain interior estetik, dan solusi hunian modern Indonesia.',
+    content_md: `## Visi Kami\n\n**RancangLoka** adalah media editorial independen yang didedikasikan untuk menginspirasi masyarakat Indonesia dalam mewujudkan hunian impian yang fungsional, bernilai estetika tinggi, dan selaras dengan alam.\n\n## Pendekatan Editorial\n\nKami mengkurasi tren arsitektur tropis, filosofi desain Japandi, inovasi rumah pintar (*smart home*), dan panduan renovasi terukur melalui kolaborasi dengan arsitek berlisensi serta desainer interior profesional.\n\n## Komitmen Kualitas (E-E-A-T)\n\nSetiap artikel yang kami terbitkan melalui riset mendalam, verifikasi data teknis material, dan penulisan berbasis pengalaman (*hands-on expertise*) untuk memberikan nilai guna nyata bagi para pemilik rumah.`,
+    content_html: `<h2>Visi Kami</h2><p><strong>RancangLoka</strong> adalah media editorial independen yang didedikasikan untuk menginspirasi masyarakat Indonesia dalam mewujudkan hunian impian yang fungsional, bernilai estetika tinggi, dan selaras dengan alam.</p><h2>Pendekatan Editorial</h2><p>Kami mengkurasi tren arsitektur tropis, filosofi desain Japandi, inovasi rumah pintar (<em>smart home</em>), dan panduan renovasi terukur melalui kolaborasi dengan arsitek berlisensi serta desainer interior profesional.</p><h2>Komitmen Kualitas (E-E-A-T)</h2><p>Setiap artikel yang kami terbitkan melalui riset mendalam, verifikasi data teknis material, dan penulisan berbasis pengalaman (<em>hands-on expertise</em>) untuk memberikan nilai guna nyata bagi para pemilik rumah.</p>`,
+    featured_image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=720&auto=format&fit=crop&q=75',
+    template: 'default',
+    status: 'published',
+    views: 850,
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 48).toISOString()
+  },
+  {
+    id: 2,
+    slug: 'kontak',
+    title: 'Hubungi Redaksi RancangLoka',
+    description: 'Saluran komunikasi resmi redaksi RancangLoka untuk pertanyaan editorial, kolaborasi, pengiriman karya arsitektur, dan kemitraan media.',
+    content_md: `## Hubungi Tim Redaksi\n\nKami selalu terbuka untuk kolaborasi editorial, liputan karya arsitektur/interior, rilis pers, dan kerja sama kemitraan.\n\n### Alamat Kantor Editorial\n**RancangLoka Media Network**  \nCyber 2 Tower, Kuningan, Jakarta Selatan, Indonesia  \nEmail: **redaksi@rancangloka.com**  \nKerja Sama & Iklan: **partner@rancangloka.com**\n\n---\n\nSilakan kirimkan pesan Anda melalui formulir di bawah ini:`,
+    content_html: `<h2>Hubungi Tim Redaksi</h2><p>Kami selalu terbuka untuk kolaborasi editorial, liputan karya arsitektur/interior, rilis pers, dan kerja sama kemitraan.</p><h3>Alamat Kantor Editorial</h3><p><strong>RancangLoka Media Network</strong><br>Cyber 2 Tower, Kuningan, Jakarta Selatan, Indonesia<br>Email: <strong>redaksi@rancangloka.com</strong><br>Kerja Sama &amp; Iklan: <strong>partner@rancangloka.com</strong></p><hr><p>Silakan kirimkan pesan Anda melalui formulir di bawah ini:</p>`,
+    featured_image: '',
+    template: 'contact',
+    status: 'published',
+    views: 420,
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 48).toISOString()
+  },
+  {
+    id: 3,
+    slug: 'pedoman-media-siber',
+    title: 'Pedoman Pemberitaan Media Siber',
+    description: 'Komitmen kepatuhan standar kode etik jurnalistik dan pedoman pemberitaan media siber RancangLoka.',
+    content_md: `Kemerdekaan berpendapat, kemerdekaan berekspresi, dan kemerdekaan pers adalah hak asasi manusia yang dilindungi Pancasila, Undang-Undang Dasar 1945, dan Deklarasi Universal Hak Asasi Manusia PBB.\n\n**RancangLoka** menjunjung tinggi Kode Etik Jurnalistik dan Pedoman Pemberitaan Media Siber dalam menyajikan seluruh informasi arsitektur, properti, dan hunian secara akurat, berimbang, dan bertanggung jawab.`,
+    content_html: `<p>Kemerdekaan berpendapat, kemerdekaan berekspresi, dan kemerdekaan pers adalah hak asasi manusia yang dilindungi Pancasila, Undang-Undang Dasar 1945, dan Deklarasi Universal Hak Asasi Manusia PBB.</p><p><strong>RancangLoka</strong> menjunjung tinggi Kode Etik Jurnalistik dan Pedoman Pemberitaan Media Siber dalam menyajikan seluruh informasi arsitektur, properti, dan hunian secara akurat, berimbang, dan bertanggung jawab.</p>`,
+    featured_image: '',
+    template: 'default',
+    status: 'published',
+    views: 290,
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 48).toISOString()
+  },
+  {
+    id: 4,
+    slug: 'kebijakan-privasi',
+    title: 'Kebijakan Privasi (Privacy Policy)',
+    description: 'Kebijakan perlindungan data dan privasi pengguna di platform RancangLoka.',
+    content_md: `Di **RancangLoka**, privasi pengunjung kami adalah hal yang sangat penting. Dokumen Kebijakan Privasi ini menguraikan jenis informasi pribadi yang diterima dan dikumpulkan oleh RancangLoka serta bagaimana informasi tersebut digunakan secara aman.`,
+    content_html: `<p>Di <strong>RancangLoka</strong>, privasi pengunjung kami adalah hal yang sangat penting. Dokumen Kebijakan Privasi ini menguraikan jenis informasi pribadi yang diterima dan dikumpulkan oleh RancangLoka serta bagaimana informasi tersebut digunakan secara aman.</p>`,
+    featured_image: '',
+    template: 'default',
+    status: 'published',
+    views: 310,
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 48).toISOString()
   }
 ];
 
@@ -591,4 +665,174 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
 
   inMemoryArticles.unshift(fullArticle);
   return fullArticle;
+}
+
+// ==========================================
+// 📄 STATIC PAGES OPERATIONS (WordPress-Style)
+// ==========================================
+
+export async function getAllPages(db: any, status?: 'published' | 'draft'): Promise<Page[]> {
+  if (db) {
+    try {
+      let query = 'SELECT * FROM pages ORDER BY created_at DESC';
+      if (status) {
+        query = 'SELECT * FROM pages WHERE status = ? ORDER BY created_at DESC';
+        const res = await db.prepare(query).bind(status).all();
+        if (res?.results && res.results.length > 0) {
+          return res.results as Page[];
+        }
+      } else {
+        const res = await db.prepare(query).all();
+        if (res?.results && res.results.length > 0) {
+          return res.results as Page[];
+        }
+      }
+    } catch (e) {
+      console.warn('D1 getAllPages fallback to in-memory:', e);
+    }
+  }
+
+  if (status) {
+    return inMemoryPages.filter(p => p.status === status);
+  }
+  return inMemoryPages;
+}
+
+export async function getPageBySlug(db: any, slug: string): Promise<Page | null> {
+  if (db) {
+    try {
+      const page = await db.prepare('SELECT * FROM pages WHERE slug = ? LIMIT 1').bind(slug).first();
+      if (page) {
+        // Increment views
+        db.prepare('UPDATE pages SET views = views + 1 WHERE slug = ?').bind(slug).run().catch(() => {});
+        return page as Page;
+      }
+    } catch (e) {
+      console.warn('D1 getPageBySlug fallback to in-memory:', e);
+    }
+  }
+
+  const found = inMemoryPages.find(p => p.slug === slug);
+  if (found) {
+    found.views += 1;
+    return found;
+  }
+  return null;
+}
+
+export async function getPageById(db: any, id: number): Promise<Page | null> {
+  if (db) {
+    try {
+      const page = await db.prepare('SELECT * FROM pages WHERE id = ? LIMIT 1').bind(id).first();
+      if (page) return page as Page;
+    } catch (e) {
+      console.warn('D1 getPageById fallback:', e);
+    }
+  }
+  return inMemoryPages.find(p => p.id === id) || null;
+}
+
+export async function insertPage(db: any, page: Partial<Page>): Promise<Page> {
+  const newId = inMemoryPages.length > 0 ? Math.max(...inMemoryPages.map(p => p.id)) + 1 : 1;
+  const fullPage: Page = {
+    id: newId,
+    slug: page.slug || `page-${newId}`,
+    title: page.title || 'Untitled Page',
+    description: page.description || '',
+    content_md: page.content_md || '',
+    content_html: page.content_html || '',
+    featured_image: page.featured_image || '',
+    template: page.template || 'default',
+    status: page.status || 'published',
+    views: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  if (db) {
+    try {
+      await db
+        .prepare(`
+          INSERT INTO pages (slug, title, description, content_md, content_html, featured_image, template, status, views, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          fullPage.slug,
+          fullPage.title,
+          fullPage.description,
+          fullPage.content_md,
+          fullPage.content_html,
+          fullPage.featured_image,
+          fullPage.template,
+          fullPage.status,
+          fullPage.views,
+          fullPage.created_at,
+          fullPage.updated_at
+        )
+        .run();
+    } catch (e) {
+      console.warn('D1 insertPage fallback to in-memory:', e);
+    }
+  }
+
+  inMemoryPages.unshift(fullPage);
+  return fullPage;
+}
+
+export async function updatePage(db: any, id: number, page: Partial<Page>): Promise<Page | null> {
+  const existing = await getPageById(db, id);
+  if (!existing) return null;
+
+  const updated: Page = {
+    ...existing,
+    ...page,
+    updated_at: new Date().toISOString()
+  };
+
+  if (db) {
+    try {
+      await db
+        .prepare(`
+          UPDATE pages SET slug = ?, title = ?, description = ?, content_md = ?, content_html = ?, featured_image = ?, template = ?, status = ?, updated_at = ?
+          WHERE id = ?
+        `)
+        .bind(
+          updated.slug,
+          updated.title,
+          updated.description,
+          updated.content_md,
+          updated.content_html,
+          updated.featured_image || '',
+          updated.template,
+          updated.status,
+          updated.updated_at,
+          id
+        )
+        .run();
+    } catch (e) {
+      console.warn('D1 updatePage fallback:', e);
+    }
+  }
+
+  const idx = inMemoryPages.findIndex(p => p.id === id);
+  if (idx !== -1) inMemoryPages[idx] = updated;
+
+  return updated;
+}
+
+export async function deletePage(db: any, id: number): Promise<boolean> {
+  if (db) {
+    try {
+      await db.prepare('DELETE FROM pages WHERE id = ?').bind(id).run();
+    } catch (e) {
+      console.warn('D1 deletePage fallback:', e);
+    }
+  }
+
+  const idx = inMemoryPages.findIndex(p => p.id === id);
+  if (idx !== -1) {
+    inMemoryPages.splice(idx, 1);
+    return true;
+  }
+  return false;
 }
