@@ -26,9 +26,9 @@ export default defineConfig({
     build: {
       rollupOptions: {
         output: {
-          entryFileNames: 'assets/app-[hash].js',
-          chunkFileNames: 'assets/core-[hash].js',
-          assetFileNames: 'assets/static-[hash].[ext]'
+          entryFileNames: 'assets/rancangloka-app-[hash].js',
+          chunkFileNames: 'assets/rancangloka-core-[hash].js',
+          assetFileNames: 'assets/rancangloka-[name]-[hash].[ext]'
         }
       }
     }

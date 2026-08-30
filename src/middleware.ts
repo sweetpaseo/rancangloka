@@ -15,9 +15,10 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   // 2. Process the request
   const response = await next();
 
-  // 3. Inject Decoy & Enterprise Security Headers (Anti-Detector Level 100)
-  response.headers.set('X-Powered-By', 'Enterprise-Core/v4.8 (Custom SSR)');
-  response.headers.set('Server', 'web-gateway-edge/2.1');
+  // 3. Inject Proprietary RancangLoka Headers & Security Standards
+  response.headers.set('X-Powered-By', 'RancangLoka HyperEngine v1.0');
+  response.headers.set('Server', 'RancangLoka-Edge-Gateway/2026');
+  response.headers.set('X-Engine', 'RancangLoka Proprietary High-Performance Core');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-XSS-Protection', '1; mode=block');
