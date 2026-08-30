@@ -50,7 +50,7 @@
 .prose-magazine {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
   font-size: 1.125rem;
-  line-height: 1.85;
+  line-height: 1.88;
   color: #333336;
 }
 
@@ -58,59 +58,119 @@
   color: #d2d2d7;
 }
 
+/* 1. Signature Editorial Drop Cap (First paragraph initial letter) */
+.prose-magazine > p:first-of-type::first-letter {
+  font-family: 'Plus Jakarta Sans', Georgia, serif;
+  font-size: 3.6rem;
+  font-weight: 900;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.85rem;
+  margin-top: 0.2rem;
+  color: #0f172a;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.dark .prose-magazine > p:first-of-type::first-letter {
+  color: #f8fafc;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
+}
+
 .prose-magazine p {
-  margin-bottom: 1.65rem;
+  margin-bottom: 1.75rem;
   font-weight: 400;
 }
 
+.prose-magazine strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dark .prose-magazine strong {
+  color: #ffffff;
+}
+
+/* 2. Enhanced Headings Rhythm (Breathing Room) */
 .prose-magazine h2 {
-  font-size: 1.875rem;
-  font-weight: 800;
-  margin-top: 3rem;
-  margin-bottom: 1.25rem;
+  font-size: 1.85rem;
+  font-weight: 900;
+  margin-top: 3.75rem;
+  margin-bottom: 1.35rem;
   letter-spacing: -0.03em;
   line-height: 1.25;
-  color: #1d1d1f;
+  color: #0f172a;
+  padding-bottom: 0.5rem;
 }
 
 .dark .prose-magazine h2 {
-  color: #f5f5f7;
+  color: #ffffff;
 }
 
 .prose-magazine h3 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-top: 2.25rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin-top: 2.5rem;
   margin-bottom: 0.85rem;
   letter-spacing: -0.02em;
-  color: #1d1d1f;
+  color: #1e293b;
 }
 
 .dark .prose-magazine h3 {
-  color: #f5f5f7;
+  color: #f1f5f9;
 }
 
-.prose-magazine ul, .prose-magazine ol {
-  margin-bottom: 1.75rem;
-  padding-left: 1.5rem;
+/* 3. Styled Lists */
+.prose-magazine ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 2rem;
 }
 
-.prose-magazine li {
-  margin-bottom: 0.65rem;
+.prose-magazine ul > li {
+  position: relative;
+  padding-left: 1.75rem;
+  margin-bottom: 0.75rem;
   line-height: 1.75;
 }
 
-.prose-magazine blockquote {
-  border-left: 3px solid #0071e3;
+.prose-magazine ul > li::before {
+  content: "•";
+  position: absolute;
+  left: 0.25rem;
+  top: -0.1rem;
+  color: #0071e3;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.prose-magazine ol {
+  margin-bottom: 2rem;
   padding-left: 1.5rem;
+}
+
+.prose-magazine ol > li {
+  margin-bottom: 0.75rem;
+  line-height: 1.75;
+  padding-left: 0.25rem;
+}
+
+/* 4. Luxury Pull-Quotes / Blockquotes */
+.prose-magazine blockquote {
+  position: relative;
+  border-left: 4px solid #0071e3;
+  background: rgba(0, 113, 227, 0.04);
+  border-radius: 0 1.25rem 1.25rem 0;
+  padding: 1.5rem 2rem;
   font-style: italic;
-  font-size: 1.2rem;
-  margin: 2rem 0;
-  color: #6e6e73;
+  font-size: 1.25rem;
+  line-height: 1.7;
+  margin: 2.5rem 0;
+  color: #334155;
 }
 
 .dark .prose-magazine blockquote {
-  color: #a1a1a6;
+  background: rgba(0, 113, 227, 0.08);
+  color: #cbd5e1;
 }
 
 /* Apple Floating Dock & Glass Effects */

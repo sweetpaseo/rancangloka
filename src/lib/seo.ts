@@ -161,32 +161,41 @@ export function injectEditorialDateline(html: string, siteUrl: string = 'https:/
 export function injectTableOfContents(html: string, toc: TableOfContentItem[]): string {
   if (!toc || toc.length < 2) return html;
 
+  let h2Index = 0;
   const listItems = toc
-    .map(
-      (item) =>
-        `<li class="${item.level === 3 ? 'ml-4 list-disc' : 'font-medium'}">
-          <a href="#${item.id}" class="hover:text-primary transition line-clamp-1">${item.text}</a>
-        </li>`
-    )
+    .map((item) => {
+      if (item.level === 2) {
+        h2Index++;
+        const num = h2Index.toString().padStart(2, '0');
+        return `<li class="flex items-start gap-3 group/item py-0.5">
+          <span class="font-mono text-[11px] font-extrabold text-[#0071e3] bg-[#0071e3]/10 px-1.5 py-0.5 rounded-md mt-0.5">${num}</span>
+          <a href="#${item.id}" class="text-slate-700 dark:text-slate-300 font-semibold group-hover/item:text-[#0071e3] group-hover/item:translate-x-1 transition-all line-clamp-1">${item.text}</a>
+        </li>`;
+      } else {
+        return `<li class="ml-9 flex items-center gap-2 group/item text-xs text-slate-500 dark:text-slate-400 py-0.5">
+          <span class="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+          <a href="#${item.id}" class="hover:text-[#0071e3] transition line-clamp-1">${item.text}</a>
+        </li>`;
+      }
+    })
     .join('\n');
 
   const tocHtml = `
-<div class="my-7 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+<div class="my-10 overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-slate-50/70 dark:border-white/[0.08] dark:bg-slate-900/60 p-5 sm:p-6 backdrop-blur-md shadow-2xs">
   <details class="group" open>
-    <summary class="flex cursor-pointer items-center justify-between font-semibold text-slate-900 dark:text-slate-100 text-xs sm:text-sm list-none">
-      <span class="flex items-center gap-2">
-        <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-        </svg>
-        Daftar Isi Artikel (TOC)
+    <summary class="flex cursor-pointer items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm list-none">
+      <span class="flex items-center gap-2.5">
+        <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-[#0071e3]/10 text-[#0071e3] text-xs">📑</span>
+        <span class="tracking-tight">Daftar Isi & Navigasi Bab</span>
       </span>
-      <svg class="h-4 w-4 transform text-slate-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-      </svg>
+      <span class="text-xs text-slate-400 font-medium group-open:hidden">Buka +</span>
+      <span class="text-xs text-slate-400 font-medium hidden group-open:inline">Tutup −</span>
     </summary>
-    <ul class="mt-3 space-y-1.5 border-t border-slate-200 pt-3 text-xs md:text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
-      ${listItems}
-    </ul>
+    <nav class="mt-4 border-t border-black/[0.04] dark:border-white/[0.06] pt-3">
+      <ul class="space-y-1.5 text-xs sm:text-sm">
+        ${listItems}
+      </ul>
+    </nav>
   </details>
 </div>
 `;

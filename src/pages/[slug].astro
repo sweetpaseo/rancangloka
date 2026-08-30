@@ -203,11 +203,11 @@ if (article) {
         </button>
       </div>
 
-      <h1 class="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.18]">
+      <h1 class="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.16]">
         {article.title}
       </h1>
 
-      <p class="mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+      <p class="mt-5 text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
         {article.description}
       </p>
 
@@ -217,7 +217,7 @@ if (article) {
           <img
             src={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
             alt={article.author_name || 'Redaksi'}
-            class="h-11 w-11 rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10"
+            class="h-11 w-11 rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10 shadow-sm"
           />
           <div>
             <span class="font-bold text-slate-900 dark:text-white block text-sm">{article.author_name || 'Redaksi Utama'}</span>
@@ -226,7 +226,7 @@ if (article) {
         </div>
 
         <div class="text-right">
-          <time datetime={article.published_at} class="font-medium text-slate-700 dark:text-slate-300">
+          <time datetime={article.published_at} class="font-semibold text-slate-800 dark:text-slate-200">
             {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </time>
           <span class="block text-[11px] text-slate-400 mt-0.5">Edisi Digital Terverifikasi</span>
@@ -234,26 +234,30 @@ if (article) {
       </div>
     </header>
 
-    <!-- 3. Featured Cover Image (Apple Squircle) -->
-    <div class="my-8 overflow-hidden rounded-[2rem] bg-slate-100 dark:bg-slate-800 aspect-[16/10] shadow-[0_10px_30px_rgba(0,0,0,0.06)] border border-black/[0.04] dark:border-white/[0.06]">
+    <!-- 3. Featured Cover Image (Apple Squircle with HD Zoom Overlay) -->
+    <div class="group relative my-8 overflow-hidden rounded-[2.25rem] bg-slate-100 dark:bg-slate-800 aspect-[16/10] shadow-[0_12px_35px_rgba(0,0,0,0.07)] border border-black/[0.04] dark:border-white/[0.06] cursor-pointer">
       <img
         src={article.featured_image}
         alt={article.image_alt || article.title}
-        class="article-cover-img h-full w-full object-cover"
+        class="article-cover-img h-full w-full object-cover transition duration-700 ease-out group-hover:scale-103"
         fetchpriority="high"
         loading="eager"
         onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80'"
       />
+      <div class="pointer-events-none absolute bottom-4 right-4 rounded-full bg-slate-950/75 backdrop-blur-md px-4 py-1.5 text-xs font-bold text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-2 shadow-xl transform translate-y-1 group-hover:translate-y-0">
+        <span>🔍</span>
+        <span>Ketuk untuk Zoom HD</span>
+      </div>
     </div>
 
     <!-- 4. Key Takeaways / AI Summary Box (Apple Frosted Box - Organik Only) -->
     {article.is_sponsored !== 1 && keyTakeaways.length > 0 && (
-      <div class="my-8 rounded-3xl border border-blue-100 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-6 sm:p-7 shadow-2xs">
-        <h3 class="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">
-          <span class="text-[#0071e3]">💡</span>
-          Poin Kunci & Ringkasan Cepat (Key Takeaways):
+      <div class="my-9 rounded-[2rem] border border-blue-100 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-6 sm:p-7 shadow-2xs">
+        <h3 class="flex items-center gap-2.5 text-sm sm:text-base font-black text-slate-900 dark:text-white mb-3">
+          <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-[#0071e3] text-white text-xs">💡</span>
+          <span>Poin Kunci & Ringkasan Cepat (Key Takeaways):</span>
         </h3>
-        <ul class="space-y-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300 list-disc list-inside leading-relaxed">
+        <ul class="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 list-disc list-inside leading-relaxed">
           {keyTakeaways.map((item) => (
             <li>{item}</li>
           ))}
@@ -273,6 +277,39 @@ if (article) {
       authorAvatar={article.author_avatar}
       authorRole={article.author_role}
     />
+
+    <!-- Desktop Floating Action Capsule (Medium / Substack Style) -->
+    <aside class="hidden xl:flex fixed left-8 2xl:left-12 top-1/2 -translate-y-1/2 flex-col items-center gap-3 z-30 rounded-full border border-black/[0.08] bg-white/80 p-2 shadow-xl backdrop-blur-xl dark:border-white/[0.1] dark:bg-slate-900/80">
+      <!-- Quick Bookmark -->
+      <button
+        type="button"
+        id="floating-bookmark-btn"
+        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+        title="Simpan Inspirasi"
+      >
+        <span id="floating-bookmark-icon" class="text-base">🔖</span>
+      </button>
+
+      <!-- Copy Link -->
+      <button
+        type="button"
+        id="floating-copy-btn"
+        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+        title="Salin Tautan Artikel"
+      >
+        <span id="floating-copy-icon" class="text-base">🔗</span>
+      </button>
+
+      <!-- Scroll to Top -->
+      <button
+        type="button"
+        id="floating-top-btn"
+        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+        title="Kembali ke Atas"
+      >
+        <span class="text-xs font-black">↑</span>
+      </button>
+    </aside>
   </article>
 
   <!-- 8. Full-Width Breakout Related Articles Grid (Organik Only) -->
@@ -292,19 +329,47 @@ if (article) {
       if (bar) bar.style.width = scrolled + '%';
     });
 
-    // Bookmark Toggle Button
+    // Bookmark Toggle Button (Header / Inline / Floating)
     const bookmarkBtn = document.getElementById('article-bookmark-btn');
-    bookmarkBtn?.addEventListener('click', () => {
-      const slug = bookmarkBtn.getAttribute('data-slug') || '';
-      const title = bookmarkBtn.getAttribute('data-title') || '';
-      const image = bookmarkBtn.getAttribute('data-image') || '';
-      const category = bookmarkBtn.getAttribute('data-category') || '';
+    const floatBookmarkBtn = document.getElementById('floating-bookmark-btn');
+
+    function triggerBookmark() {
+      const slug = bookmarkBtn?.getAttribute('data-slug') || '';
+      const title = bookmarkBtn?.getAttribute('data-title') || '';
+      const image = bookmarkBtn?.getAttribute('data-image') || '';
+      const category = bookmarkBtn?.getAttribute('data-category') || '';
 
       if (typeof (window as any).toggleSaveBookmark === 'function') {
         const isSaved = (window as any).toggleSaveBookmark({ slug, title, image, category });
         const textSpan = document.getElementById('bookmark-btn-text');
+        const floatIcon = document.getElementById('floating-bookmark-icon');
         if (textSpan) textSpan.innerText = isSaved ? 'Tersimpan ✓' : 'Simpan Inspirasi';
+        if (floatIcon) floatIcon.innerText = isSaved ? '✅' : '🔖';
       }
+    }
+
+    bookmarkBtn?.addEventListener('click', triggerBookmark);
+    floatBookmarkBtn?.addEventListener('click', triggerBookmark);
+
+    // Floating Copy Link
+    const floatCopyBtn = document.getElementById('floating-copy-btn');
+    floatCopyBtn?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        const icon = document.getElementById('floating-copy-icon');
+        if (icon) {
+          icon.innerText = '✅';
+          setTimeout(() => { icon.innerText = '🔗'; }, 2000);
+        }
+      } catch (e) {
+        prompt('Salin link artikel:', window.location.href);
+      }
+    });
+
+    // Floating Scroll Top
+    const floatTopBtn = document.getElementById('floating-top-btn');
+    floatTopBtn?.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   </script>
 </BaseLayout>
