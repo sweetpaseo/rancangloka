@@ -380,6 +380,21 @@ export async function getAllArticles(db: any, limit = 50, offset = 0, status = '
   return inMemoryArticles.filter(a => status === 'all' || a.status === status).slice(offset, offset + limit);
 }
 
+export async function getTotalArticlesCount(db: any, status = 'published'): Promise<number> {
+  if (db) {
+    try {
+      const result = await db
+        .prepare('SELECT COUNT(*) as count FROM articles WHERE (? IS NULL OR status = ?)')
+        .bind(status === 'all' ? null : status, status === 'all' ? null : status)
+        .first();
+      if (result && typeof result.count === 'number') return result.count;
+    } catch (e) {
+      console.warn('D1 count fallback:', e);
+    }
+  }
+  return inMemoryArticles.filter(a => status === 'all' || a.status === status).length;
+}
+
 export async function getArticleBySlug(db: any, slug: string): Promise<Article | null> {
   if (db) {
     try {
