@@ -1,0 +1,112 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { getDb, getAllCategories, getSiteSettings } from '../lib/db';
+
+const db = await getDb(Astro.locals);
+const [categories, siteSettings] = await Promise.all([
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+
+const breadcrumbItems = [
+  { name: 'Beranda', url: '/' },
+  { name: 'Metodologi & Standar Evaluasi', url: '/metodologi' }
+];
+---
+
+<BaseLayout
+  title="Metodologi & Standar Evaluasi Spasial"
+  description="Transparansi metode penilaian materialitas, pengujian termal & akustik, serta kriteria kurasi independen RancangLoka."
+  categories={categories}
+  siteSettings={siteSettings}
+>
+  <div class="mx-auto max-w-4xl py-6 sm:py-10">
+    <Breadcrumbs items={breadcrumbItems} />
+
+    <header class="my-8 rounded-[2.5rem] bg-slate-950 p-8 sm:p-14 text-white relative overflow-hidden shadow-xl border border-slate-800">
+      <div class="relative z-10 max-w-2xl">
+        <span class="rounded-full bg-[#0071e3]/20 text-[#0071e3] px-3.5 py-1 text-[11px] font-mono font-bold uppercase tracking-wider mb-4 inline-block border border-[#0071e3]/30">
+          ✦ TRANSPARANSI RISET
+        </span>
+        <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+          Metodologi Evaluasi & Standar Riset
+        </h1>
+        <p class="mt-4 text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
+          Bagaimana RancangLoka menganalisis performa material, rekayasa iklim tropis, dan menjaga objektivitas kurasi editorial secara bertanggung jawab.
+        </p>
+      </div>
+      <div class="absolute -right-12 -bottom-12 h-64 w-64 rounded-full bg-[#0071e3]/20 blur-3xl pointer-events-none"></div>
+    </header>
+
+    <div class="space-y-12 my-12 text-slate-700 dark:text-slate-300 leading-relaxed text-sm sm:text-base">
+      <!-- Pillar 1 -->
+      <section class="rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-7 sm:p-9 space-y-4 shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 text-[#0071e3] font-mono font-bold text-xs">
+            01
+          </span>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">
+            Evaluasi Performa Termal & Insulasi Radiasi
+          </h2>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+          Penilaian efektivitas penghalauan panas (seperti secondary skin, kaca Low-E, dan void sirkulasi) didasarkan pada prinsip fisika bangunan tropis, standar SNI 03-6572 mengenai tata cara perancangan sistem ventilasi, serta lintasan azimuth matahari di wilayah Indonesia (lintang ekuator).
+        </p>
+        <div class="rounded-2xl bg-slate-50 dark:bg-slate-950/60 p-4 border border-black/[0.04] dark:border-white/[0.06] text-xs font-mono text-slate-600 dark:text-slate-400">
+          <strong class="text-slate-900 dark:text-white block mb-1">Catatan Akurasi:</strong>
+          Persentase reduksi radiasi merupakan estimasi berbasis perbandingan koefisien peneduh (*Shading Coefficient*) material dan sudut datang radiasi matahari sore, bukan hasil pengujian laboratorium tunggal sepihak.
+        </div>
+      </section>
+
+      <!-- Pillar 2 -->
+      <section class="rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-7 sm:p-9 space-y-4 shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 text-[#0071e3] font-mono font-bold text-xs">
+            02
+          </span>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">
+            Pengukuran Peredaman Akustik (Decibel / dB)
+          </h2>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+          Kemampuan peredaman suara pada sistem pintu dan jendela (misalnya UPVC vs Aluminium) dinilai berdasarkan konfigurasi rongga udara (*air gap*), penggunaan kaca laminasi ganda (*double glazing*), dan kerapatan perapat karet EPDM (*weatherstrip*).
+        </p>
+        <div class="rounded-2xl bg-slate-50 dark:bg-slate-950/60 p-4 border border-black/[0.04] dark:border-white/[0.06] text-xs font-mono text-slate-600 dark:text-slate-400">
+          <strong class="text-slate-900 dark:text-white block mb-1">Faktor Lapangan:</strong>
+          Nilai Sound Transmission Class (STC) aktual di hunian sangat dipengaruhi oleh presisi seal karet kusen, ketebalan dinding samping, dan keberadaan ventilasi udara terbuka di sekitar ruangan.
+        </div>
+      </section>
+
+      <!-- Pillar 3 -->
+      <section class="rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-7 sm:p-9 space-y-4 shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 text-[#0071e3] font-mono font-bold text-xs">
+            03
+          </span>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">
+            Durabilitas Siklus Hidup & Estimasi Biaya
+          </h2>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+          Simbol estimasi biaya ($ hingga $$$$) dihitung berdasarkan rentang harga material mentah, ongkos fabrikasi, dan kompleksitas instalasi umum di kota-kota besar Indonesia per tahun 2026. Durabilitas dinilai dari ketahanan alami terhadap rayap, kelembapan mikro, dan paparan curah hujan tinggi.
+        </p>
+      </section>
+
+      <!-- Pillar 4 -->
+      <section class="rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-7 sm:p-9 space-y-4 shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 text-[#0071e3] font-mono font-bold text-xs">
+            04
+          </span>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">
+            Independensi & Transparansi Kemitraan
+          </h2>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+          RancangLoka tidak menerima pembayaran untuk memanipulasi penilaian materialitas atau mempromosikan produk yang tidak memenuhi standar kelayakan arsitektural. Artikel kemitraan kurasi selalu diberi label "✦ Kemitraan Kurasi" secara terbuka.
+        </p>
+      </section>
+    </div>
+  </div>
+</BaseLayout>

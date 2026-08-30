@@ -263,55 +263,57 @@ if (article) {
       </div>
     </div>
 
-    <!-- 4. SIGNATURE FEATURE: Design Intelligence Scoreboard (Editorial Framework) -->
+    <!-- 4. SIGNATURE FEATURE: "Editorial Spatial Assessment" -->
     {article.is_sponsored !== 1 && (
-      <div class="my-9 rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-slate-50/90 dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm">
-        <div class="flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.06] pb-3 mb-5">
+      <div class="my-9 rounded-[2rem] border border-black/[0.08] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-900/60 p-6 sm:p-8 shadow-sm">
+        <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-3 mb-6">
           <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0071e3] flex items-center gap-1.5">
-            <span>✦</span> DESIGN INTELLIGENCE MATRIX
+            <span>✦</span> EVALUASI SPASIAL REDAKSI
           </span>
-          <span class="text-[11px] font-mono text-slate-400">Evaluasi Kurasi Redaksi</span>
+          <a href="/metodologi" class="text-[11px] font-mono text-slate-400 hover:text-[#0071e3] transition underline">
+            Metodologi Penilaian →
+          </a>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="space-y-1.5">
-            <div class="flex justify-between text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
-              <span>Pencahayaan Alami (Daylight)</span>
-              <span>88%</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
+            <div>
+              <span class="block text-slate-500 dark:text-slate-400 text-[10px] uppercase">Pencahayaan Alami (Daylight)</span>
+              <span class="font-bold text-slate-900 dark:text-white text-sm">Optimal</span>
             </div>
-            <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-amber-400 rounded-full" style="width: 88%;"></div>
-            </div>
+            <span class="px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-200/60">
+              Grade A
+            </span>
           </div>
 
-          <div class="space-y-1.5">
-            <div class="flex justify-between text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
-              <span>Ventilasi Silang (Airflow)</span>
-              <span>82%</span>
+          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
+            <div>
+              <span class="block text-slate-500 dark:text-slate-400 text-[10px] uppercase">Ventilasi Silang (Airflow)</span>
+              <span class="font-bold text-slate-900 dark:text-white text-sm">Kuat</span>
             </div>
-            <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-blue-500 rounded-full" style="width: 82%;"></div>
-            </div>
+            <span class="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-200/60">
+              Efektif
+            </span>
           </div>
 
-          <div class="space-y-1.5">
-            <div class="flex justify-between text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
-              <span>Kenyamanan Termal Pasif</span>
-              <span>85%</span>
+          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
+            <div>
+              <span class="block text-slate-500 dark:text-slate-400 text-[10px] uppercase">Kenyamanan Termal Pasif</span>
+              <span class="font-bold text-slate-900 dark:text-white text-sm">Tinggi</span>
             </div>
-            <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-emerald-500 rounded-full" style="width: 85%;"></div>
-            </div>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/60">
+              Tropis
+            </span>
           </div>
 
-          <div class="space-y-1.5">
-            <div class="flex justify-between text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
-              <span>Efisiensi Spasial (Utility)</span>
-              <span>92%</span>
+          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
+            <div>
+              <span class="block text-slate-500 dark:text-slate-400 text-[10px] uppercase">Efisiensi Spasial (Utility)</span>
+              <span class="font-bold text-slate-900 dark:text-white text-sm">Maksimal</span>
             </div>
-            <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-purple-500 rounded-full" style="width: 92%;"></div>
-            </div>
+            <span class="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200/60">
+              Kompak
+            </span>
           </div>
         </div>
       </div>
@@ -343,7 +345,7 @@ if (article) {
             <span class="font-mono font-bold text-[#0071e3] text-sm">03</span>
             <div>
               <strong class="font-bold text-slate-900 dark:text-white block mb-0.5">Kejujuran Materialitas Alami:</strong>
-              Tekstur serat kayu dan batu berpori memberi keseimbangan taktil yang menenangkan jiwa penghuni secara psikologis.
+              Tekstur serat kayu dan batu berpori memberi keseimbangan taktil yang mereduksi kontras visual tajam pada ruang privat.
             </div>
           </div>
         </div>
