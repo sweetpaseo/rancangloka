@@ -4,29 +4,29 @@
 
 @layer base {
   :root {
-    --color-primary: #0f1a15; /* Deep Forest Obsidian */
-    --color-primary-hover: #c46849; /* Architectural Copper */
-    --color-primary-light: #eef3f0;
-    --color-primary-dark: #080d0b;
-    --color-accent: #c46849; /* Warm Architectural Copper */
-    --color-accent-hover: #a85336;
-    --color-accent-light: #faeee9;
-    --color-surface: #f9f7f2; /* Japanese Washi Paper Canvas */
-    --color-surface-muted: #f0ede4; /* Muted Washi Bone Tint */
+    --color-primary: #111215; /* Deep Titanium Black */
+    --color-primary-hover: #0066ee; /* Electric Sapphire Blue */
+    --color-primary-light: #eff6ff;
+    --color-primary-dark: #08090c;
+    --color-accent: #0066ee; /* Precision Sapphire */
+    --color-accent-hover: #0052cc;
+    --color-accent-light: #eff6ff;
+    --color-surface: #fbfbfd; /* Crisp Porcelain Chalk Canvas */
+    --color-surface-muted: #f3f4f6; /* Muted Titanium Fog */
     --color-surface-card: #ffffff;
-    --color-text-main: #0f1a15; /* Deep Forest Obsidian Text */
-    --color-text-muted: #5c665f; /* Mineral Moss Graphite */
-    --color-border: rgba(15, 26, 21, 0.08);
+    --color-text-main: #111215; /* Deep Titanium Black */
+    --color-text-muted: #5b616e; /* Cool Slate Mist */
+    --color-border: rgba(17, 18, 21, 0.07);
   }
 
   .dark {
-    --color-surface: #080d0b; /* Midnight Evergreen Black */
-    --color-surface-muted: #121c17;
-    --color-surface-card: #0f1a15;
-    --color-text-main: #f3f4f1;
-    --color-text-muted: #9aa69f;
-    --color-accent: #e07a58; /* Luminous Warm Copper */
-    --color-border: rgba(243, 244, 241, 0.08);
+    --color-surface: #08090c; /* Titanium OLED Midnight */
+    --color-surface-muted: #13161f;
+    --color-surface-card: #0e1118;
+    --color-text-main: #f8fafc;
+    --color-text-muted: #94a3b8;
+    --color-accent: #3b82f6; /* Luminous Electric Blue */
+    --color-border: rgba(255, 255, 255, 0.08);
   }
 
   html {
@@ -139,7 +139,7 @@
   position: absolute;
   left: 0.25rem;
   top: 0;
-  color: #c46849;
+  color: #0066ee;
   font-size: 0.85rem;
   line-height: 1.75;
 }
@@ -155,64 +155,64 @@
   padding-left: 0.25rem;
 }
 
-/* 4. Luxury Tokyo Modernist Pull-Quotes / Blockquotes */
+/* 4. Luxury Titanium Sapphire Pull-Quotes / Blockquotes */
 .prose-magazine blockquote {
   position: relative;
-  border-left: 3px solid #c46849;
-  background: rgba(196, 104, 73, 0.05);
+  border-left: 3px solid #0066ee;
+  background: rgba(0, 102, 238, 0.04);
   border-radius: 0 1.25rem 1.25rem 0;
   padding: 1.5rem 2rem;
   font-size: 1.15rem;
   font-weight: 500;
   line-height: 1.7;
   margin: 2.5rem 0;
-  color: #0f1a15;
+  color: #111215;
   letter-spacing: -0.015em;
 }
 
 .dark .prose-magazine blockquote {
-  border-left-color: #e07a58;
-  background: rgba(224, 122, 88, 0.08);
-  color: #f3f4f1;
+  border-left-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+  color: #f8fafc;
 }
 
 /* Luxury Architectural Cards & Doppelrand (Double-Bezel) Architecture */
 .double-bezel {
   padding: 0.375rem;
   border-radius: 2.25rem;
-  background: rgba(15, 26, 21, 0.03);
-  border: 1px solid rgba(15, 26, 21, 0.06);
+  background: rgba(17, 18, 21, 0.03);
+  border: 1px solid rgba(17, 18, 21, 0.06);
 }
 
 .dark .double-bezel {
-  background: rgba(243, 244, 241, 0.03);
-  border: 1px solid rgba(243, 244, 241, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .double-bezel-inner {
   border-radius: calc(2.25rem - 0.375rem);
   background: #ffffff;
-  border: 1px solid rgba(15, 26, 21, 0.05);
+  border: 1px solid rgba(17, 18, 21, 0.05);
 }
 
 .dark .double-bezel-inner {
-  background: #0f1a15;
-  border: 1px solid rgba(243, 244, 241, 0.07);
+  background: #0e1118;
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 /* Apple Floating Dock & Glass Effects */
 .apple-glass {
-  background-color: rgba(249, 247, 242, 0.85);
+  background-color: rgba(251, 251, 253, 0.85);
   backdrop-filter: blur(24px) saturate(190%);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(15, 26, 21, 0.06);
+  border: 1px solid rgba(17, 18, 21, 0.06);
 }
 
 .dark .apple-glass {
-  background-color: rgba(8, 13, 11, 0.85);
+  background-color: rgba(8, 9, 12, 0.85);
   backdrop-filter: blur(24px) saturate(190%);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(243, 244, 241, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Luxury Smooth Squircle Cards */

@@ -88,7 +88,7 @@ const exploreEntities = [
   <div class="mx-auto max-w-6xl py-6 sm:py-10">
     <!-- Header Badge -->
     <div class="text-center space-y-4 mb-12">
-      <span class="inline-flex items-center gap-2 rounded-full bg-[#c46849]/10 dark:bg-[#c46849]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#c46849]">
+      <span class="inline-flex items-center gap-2 rounded-full bg-[#0066ee]/10 dark:bg-[#0066ee]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee]">
         ✦ RANCANGLOKA DESIGN EXPLORER
       </span>
       <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
@@ -175,7 +175,7 @@ const exploreEntities = [
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="explorer-grid">
       {exploreEntities.map((item) => (
         <article
-          class="explore-card apple-card rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 sm:p-7 flex flex-col justify-between space-y-4 hover:border-[#c46849]/40 transition duration-500 shadow-sm"
+          class="explore-card apple-card rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 sm:p-7 flex flex-col justify-between space-y-4 hover:border-[#0066ee]/40 transition duration-500 shadow-sm"
           data-problem={item.problem}
           data-space={item.space}
           data-material={item.material}
@@ -183,7 +183,7 @@ const exploreEntities = [
         >
           <div>
             <div class="flex items-center justify-between mb-3">
-              <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#c46849] bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-md">
+              <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#0066ee] bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-md">
                 {item.space.toUpperCase()}
               </span>
               <span class="text-xs font-mono text-slate-400">
@@ -209,7 +209,7 @@ const exploreEntities = [
             <span class="text-slate-400">Kategori: {item.material.toUpperCase()}</span>
             <a
               href={item.link}
-              class="font-bold text-[#c46849] hover:underline"
+              class="font-bold text-[#0066ee] hover:underline"
             >
               Lihat Studi Kasus →
             </a>
@@ -230,9 +230,9 @@ const exploreEntities = [
       color: #94a3b8;
     }
     .filter-btn.active-filter {
-      background-color: #c46849 !important;
+      background-color: #0066ee !important;
       color: #ffffff !important;
-      border-color: #c46849 !important;
+      border-color: #0066ee !important;
     }
   </style>
 

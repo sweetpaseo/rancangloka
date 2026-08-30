@@ -6,38 +6,38 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: 'var(--color-primary, #0f1a15)',
-          hover: 'var(--color-primary-hover, #1d3329)',
-          light: 'var(--color-primary-light, #eef3f0)',
-          dark: 'var(--color-primary-dark, #080d0b)'
+          DEFAULT: 'var(--color-primary, #111215)',
+          hover: 'var(--color-primary-hover, #0066ee)',
+          light: 'var(--color-primary-light, #eff6ff)',
+          dark: 'var(--color-primary-dark, #08090c)'
         },
         accent: {
-          DEFAULT: 'var(--color-accent, #c46849)',
-          hover: 'var(--color-accent-hover, #a85336)',
-          light: 'var(--color-accent-light, #faeee9)',
-          dark: 'var(--color-accent-dark, #8c3e24)'
+          DEFAULT: 'var(--color-accent, #0066ee)',
+          hover: 'var(--color-accent-hover, #0052cc)',
+          light: 'var(--color-accent-light, #eff6ff)',
+          dark: 'var(--color-accent-dark, #003d99)'
         },
-        copper: {
-          DEFAULT: '#c46849',
-          hover: '#a85336',
-          light: '#faeee9',
-          dark: '#8c3e24'
+        sapphire: {
+          DEFAULT: '#0066ee',
+          hover: '#0052cc',
+          light: '#eff6ff',
+          dark: '#003d99'
         },
-        forest: {
-          DEFAULT: '#0f1a15',
-          light: '#1d3329',
-          pine: '#2d5a46',
-          mist: '#3d6352'
+        titanium: {
+          DEFAULT: '#111215',
+          light: '#1f232b',
+          fog: '#f3f4f6',
+          mist: '#5b616e'
         },
-        washi: {
-          DEFAULT: '#f9f7f2',
-          muted: '#f0ede4',
+        porcelain: {
+          DEFAULT: '#fbfbfd',
+          muted: '#f3f4f6',
           card: '#ffffff'
         },
         surface: {
-          DEFAULT: 'var(--color-surface, #f9f7f2)',
-          muted: 'var(--color-surface-muted, #f0ede4)',
-          dark: 'var(--color-surface-dark, #080d0b)',
+          DEFAULT: 'var(--color-surface, #fbfbfd)',
+          muted: 'var(--color-surface-muted, #f3f4f6)',
+          dark: 'var(--color-surface-dark, #08090c)',
           card: 'var(--color-surface-card, #ffffff)'
         }
       },

@@ -133,7 +133,7 @@ const problems = [
   <div class="mx-auto max-w-5xl py-6 sm:py-10">
     <!-- Header Badge -->
     <div class="text-center space-y-4 mb-14">
-      <span class="inline-flex items-center gap-2 rounded-full bg-[#c46849]/10 dark:bg-[#c46849]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#c46849]">
+      <span class="inline-flex items-center gap-2 rounded-full bg-[#0066ee]/10 dark:bg-[#0066ee]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee]">
         ✦ DESIGN PROBLEM SOLVER
       </span>
       <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
@@ -152,8 +152,8 @@ const problems = [
           data-target={p.id}
           class={`problem-tab text-left p-5 rounded-2xl border transition-all duration-300 ${
             idx === 0
-              ? 'border-[#c46849] bg-blue-50/70 dark:bg-slate-900 shadow-md ring-2 ring-[#c46849]/30'
-              : 'border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/60 hover:border-[#c46849]/40'
+              ? 'border-[#0066ee] bg-blue-50/70 dark:bg-slate-900 shadow-md ring-2 ring-[#0066ee]/30'
+              : 'border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/60 hover:border-[#0066ee]/40'
           }`}
         >
           <span class="text-2xl block mb-2">{p.icon}</span>
@@ -175,7 +175,7 @@ const problems = [
         >
           <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-6 mb-8 gap-4">
             <div>
-              <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#c46849] block mb-1">
+              <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-1">
                 ANALISIS MASALAH
               </span>
               <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -209,21 +209,21 @@ const problems = [
 
             <!-- Right: Architectural Solutions (7 cols) -->
             <div class="lg:col-span-7 space-y-4">
-              <h3 class="text-xs font-mono font-bold uppercase tracking-widest text-[#c46849] mb-2 flex items-center gap-1.5">
+              <h3 class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] mb-2 flex items-center gap-1.5">
                 <span>✦</span>
                 <span>REKOMENDASI SOLUSI SPASIAL & MATERIAL</span>
               </h3>
 
               {p.solutions.map((sol, sIdx) => (
-                <div class="p-5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-slate-50/50 dark:bg-slate-800/40 hover:border-[#c46849]/40 transition group">
+                <div class="p-5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-slate-50/50 dark:bg-slate-800/40 hover:border-[#0066ee]/40 transition group">
                   <div class="flex items-center justify-between mb-1.5">
-                    <h4 class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#c46849] transition">
-                      <span class="font-mono text-xs text-[#c46849] mr-1.5">0{sIdx + 1}</span>
+                    <h4 class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#0066ee] transition">
+                      <span class="font-mono text-xs text-[#0066ee] mr-1.5">0{sIdx + 1}</span>
                       {sol.name}
                     </h4>
                     <a
                       href={sol.link}
-                      class="text-xs font-mono font-bold text-[#c46849] hover:underline"
+                      class="text-xs font-mono font-bold text-[#0066ee] hover:underline"
                     >
                       Eksplorasi →
                     </a>
@@ -242,7 +242,7 @@ const problems = [
     <!-- Editorial Disclaimer Box -->
     <div class="mt-12 rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/60 p-6 sm:p-8 text-xs text-slate-500 dark:text-slate-400 space-y-2 font-mono">
       <div class="flex items-center gap-2 font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
-        <span class="text-[#c46849]">✦</span> Catatan Editorial & Batasan Asesmen
+        <span class="text-[#0066ee]">✦</span> Catatan Editorial & Batasan Asesmen
       </div>
       <p class="leading-relaxed font-normal">
         Diagnosis dan rekomendasi di halaman ini merupakan panduan konseptual awal berdasarkan prinsip fisika bangunan tropis, bukan pengganti pemeriksaan arsitek, insinyur struktur, atau kontraktor berlisensi di lokasi proyek aktual. Kondisi orientasi lahan, iklim mikro, dan struktur eksisting dapat menghasilkan diagnosis teknis yang berbeda.
@@ -260,11 +260,11 @@ const problems = [
 
         // Reset all tabs
         tabs.forEach((t) => {
-          t.className = 'problem-tab text-left p-5 rounded-2xl border transition-all duration-300 border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/60 hover:border-[#c46849]/40';
+          t.className = 'problem-tab text-left p-5 rounded-2xl border transition-all duration-300 border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/60 hover:border-[#0066ee]/40';
         });
 
         // Set active tab
-        tab.className = 'problem-tab text-left p-5 rounded-2xl border transition-all duration-300 border-[#c46849] bg-blue-50/70 dark:bg-slate-900 shadow-md ring-2 ring-[#c46849]/30';
+        tab.className = 'problem-tab text-left p-5 rounded-2xl border transition-all duration-300 border-[#0066ee] bg-blue-50/70 dark:bg-slate-900 shadow-md ring-2 ring-[#0066ee]/30';
 
         // Toggle panels
         panels.forEach((p) => {
