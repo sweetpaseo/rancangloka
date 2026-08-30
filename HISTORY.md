@@ -227,6 +227,17 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 23: Peningkatan Tipografi Majalah Mewah & Fitur Interaktif Halaman Artikel (Drop Cap, Numbered TOC, Cover Zoom, & Floating Tools)
+* **Gejala:** Tampilan single post artikel memerlukan sentuhan editorial level dunia (*World-Class Magazine Aesthetic*) agar tidak terlihat seperti blog biasa.
+* **Solusi:**
+  - **Editorial Drop Cap:** Menambahkan inisial huruf pertama berukuran besar dan anggun pada paragraf pembuka artikel di [`src/styles/global.css`](file:///src/styles/global.css).
+  - **Slim Numbered TOC:** Mendesain ulang kotak Daftar Isi artikel di [`src/lib/seo.ts`](file:///src/lib/seo.ts) dengan badge penomoran elegan (`01`, `02`, `03`) dan transisi hover mulus.
+  - **Breathing Room Heading & Luxury Pull-Quotes:** Memberikan margin vertikal lega pada `<h2>` & `<h3>`, custom bullet points biru, dan kartu kutipan berbingkai kaca (*frosted blockquote*).
+  - **Cover Image Hover HD Badge:** Menambahkan indikator visual `[ 🔍 Ketuk untuk Zoom HD ]` di atas foto cover artikel pada [`src/pages/[slug].astro`](file:///src/pages/%5Bslug%5D.astro).
+  - **Desktop Floating Action Capsule:** Menyematkan toolbar melayang ramping di sisi kiri layar desktop (*Medium/Substack style*) untuk akses cepat Simpan Bookmark 🔖, Salin Link 🔗, dan Scroll to Top ↑.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
