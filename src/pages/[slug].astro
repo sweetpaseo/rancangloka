@@ -251,7 +251,7 @@ if (article) {
     <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-6" set:html={processedHtml} />
 
     <!-- 6. Social Share Bar -->
-    <SocialShareBar title={article.title} />
+    <SocialShareBar title={article.title} siteSettings={siteSettings} />
 
     <!-- 7. E-E-A-T Author Card -->
     <AuthorCard

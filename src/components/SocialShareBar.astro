@@ -2,9 +2,22 @@
 interface Props {
   title: string;
   url?: string;
+  siteSettings?: Record<string, string>;
 }
 
-const { title, url = '' } = Astro.props;
+const { title, url = '', siteSettings = {} } = Astro.props;
+
+// If master toggle is disabled, hide component
+const isBarEnabled = siteSettings.share_bar_enabled !== 'false';
+if (!isBarEnabled) return null;
+
+const enableWa = siteSettings.share_enable_wa !== 'false';
+const enableX = siteSettings.share_enable_x !== 'false';
+const enableFb = siteSettings.share_enable_facebook !== 'false';
+const enableIn = siteSettings.share_enable_linkedin !== 'false';
+const enableTg = siteSettings.share_enable_telegram !== 'false';
+const enableCopy = siteSettings.share_enable_copy !== 'false';
+const twitterHandle = siteSettings.share_twitter_handle || '';
 ---
 
 <div class="my-6 border-y border-slate-200 py-3 dark:border-slate-800">
@@ -16,52 +29,86 @@ const { title, url = '' } = Astro.props;
       Bagikan Artikel:
     </span>
 
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <!-- WhatsApp -->
-      <a
-        id="share-wa"
-        href="#"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-500 hover:text-white transition dark:bg-emerald-500/20 dark:text-emerald-400"
-      >
-        <span>WhatsApp</span>
-      </a>
+      {enableWa && (
+        <a
+          id="share-wa"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-500 hover:text-white transition dark:bg-emerald-500/20 dark:text-emerald-400"
+        >
+          <span>WhatsApp</span>
+        </a>
+      )}
 
       <!-- X / Twitter -->
-      <a
-        id="share-x"
-        href="#"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-900 hover:text-white transition dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-      >
-        <span>X (Twitter)</span>
-      </a>
+      {enableX && (
+        <a
+          id="share-x"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-900 hover:text-white transition dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          <span>X (Twitter)</span>
+        </a>
+      )}
+
+      <!-- Facebook -->
+      {enableFb && (
+        <a
+          id="share-fb"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded-full bg-blue-600/10 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-600 hover:text-white transition dark:bg-blue-600/20 dark:text-blue-300"
+        >
+          <span>Facebook</span>
+        </a>
+      )}
 
       <!-- LinkedIn -->
-      <a
-        id="share-linkedin"
-        href="#"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-600 hover:text-white transition dark:bg-blue-500/20 dark:text-blue-400"
-      >
-        <span>LinkedIn</span>
-      </a>
+      {enableIn && (
+        <a
+          id="share-linkedin"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-600 hover:text-white transition dark:bg-blue-500/20 dark:text-blue-400"
+        >
+          <span>LinkedIn</span>
+        </a>
+      )}
+
+      <!-- Telegram -->
+      {enableTg && (
+        <a
+          id="share-tg"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-500 hover:text-white transition dark:bg-sky-500/20 dark:text-sky-400"
+        >
+          <span>Telegram</span>
+        </a>
+      )}
 
       <!-- Copy Link Button -->
-      <button
-        id="copy-link-btn"
-        class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition"
-      >
-        <span id="copy-btn-text">Salin Tautan</span>
-      </button>
+      {enableCopy && (
+        <button
+          id="copy-link-btn"
+          class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition"
+        >
+          <span id="copy-btn-text">Salin Tautan</span>
+        </button>
+      )}
     </div>
   </div>
 </div>
 
-<script define:vars={{ title }}>
+<script define:vars={{ title, twitterHandle }}>
   const currentUrl = encodeURIComponent(window.location.href);
   const encodedTitle = encodeURIComponent(title);
 
@@ -69,10 +116,19 @@ const { title, url = '' } = Astro.props;
   if (waBtn) waBtn.href = `https://api.whatsapp.com/send?text=${encodedTitle}%20${currentUrl}`;
 
   const xBtn = document.getElementById('share-x');
-  if (xBtn) xBtn.href = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${currentUrl}`;
+  if (xBtn) {
+    const viaParam = twitterHandle ? `&via=${encodeURIComponent(twitterHandle.replace(/^@/, ''))}` : '';
+    xBtn.href = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${currentUrl}${viaParam}`;
+  }
+
+  const fbBtn = document.getElementById('share-fb');
+  if (fbBtn) fbBtn.href = `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`;
 
   const inBtn = document.getElementById('share-linkedin');
   if (inBtn) inBtn.href = `https://www.linkedin.com/sharing/share-offsite/?url=${currentUrl}`;
+
+  const tgBtn = document.getElementById('share-tg');
+  if (tgBtn) tgBtn.href = `https://t.me/share/url?url=${currentUrl}&text=${encodedTitle}`;
 
   const copyBtn = document.getElementById('copy-link-btn');
   const copyText = document.getElementById('copy-btn-text');

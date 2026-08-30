@@ -144,17 +144,53 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
 
     <!-- Footer -->
     <footer class="mt-20 border-t border-black/[0.05] dark:border-white/[0.08] bg-slate-100/50 dark:bg-slate-950/80 py-16 text-slate-600 dark:text-slate-400">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-10">
-        <div class="md:col-span-2 space-y-3">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-5 gap-10">
+        <!-- Col 1: Brand & Socials (2 cols on md) -->
+        <div class="md:col-span-2 space-y-4">
           <div class="flex items-center gap-2">
             <span class="text-xl">🏡</span>
             <span class="text-xl font-black text-slate-900 dark:text-white tracking-tight">{siteTitle}</span>
           </div>
           <p class="text-xs md:text-sm leading-relaxed max-w-sm text-slate-600 dark:text-slate-400">
-            {siteSettings.site_description || 'Platform media digital independen untuk inspirasi desain interior, inovasi smart home, dan arsitektur hunian modern.'}
+            {siteSettings.footer_description || siteSettings.site_description || 'Platform media digital independen untuk inspirasi desain interior, inovasi smart home, dan arsitektur hunian modern.'}
           </p>
+
+          <!-- Official Social Media Links -->
+          <div class="pt-1 flex items-center gap-2.5">
+            {siteSettings.social_instagram && (
+              <a href={siteSettings.social_instagram} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-pink-600 hover:border-pink-300 transition shadow-2xs text-xs font-bold" title="Instagram">
+                📸
+              </a>
+            )}
+            {siteSettings.social_tiktok && (
+              <a href={siteSettings.social_tiktok} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-slate-400 transition shadow-2xs text-xs font-bold" title="TikTok">
+                🎵
+              </a>
+            )}
+            {siteSettings.social_x && (
+              <a href={siteSettings.social_x} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 transition shadow-2xs text-xs font-bold" title="X (Twitter)">
+                𝕏
+              </a>
+            )}
+            {siteSettings.social_youtube && (
+              <a href={siteSettings.social_youtube} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-red-600 hover:border-red-300 transition shadow-2xs text-xs font-bold" title="YouTube">
+                ▶️
+              </a>
+            )}
+            {siteSettings.social_pinterest && (
+              <a href={siteSettings.social_pinterest} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-red-600 hover:border-red-300 transition shadow-2xs text-xs font-bold" title="Pinterest">
+                📌
+              </a>
+            )}
+            {siteSettings.social_linkedin && (
+              <a href={siteSettings.social_linkedin} target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:border-blue-300 transition shadow-2xs text-xs font-bold" title="LinkedIn">
+                💼
+              </a>
+            )}
+          </div>
         </div>
 
+        <!-- Col 2: Categories -->
         <div>
           <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-4">Kategori Liputan</h4>
           <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
@@ -166,6 +202,7 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
           </ul>
         </div>
 
+        <!-- Col 3: Static Pages -->
         <div>
           <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-4">Halaman & Redaksi</h4>
           <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
@@ -176,6 +213,7 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
           </ul>
         </div>
 
+        <!-- Col 4: Feeds & XML -->
         <div>
           <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-4">Informasi & Feed</h4>
           <ul class="space-y-2.5 text-xs">
@@ -187,7 +225,7 @@ const accentColor = siteSettings.theme_accent_color || '#f59e0b';
       </div>
 
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-black/[0.04] dark:border-white/[0.06] text-center text-xs text-slate-500 dark:text-slate-400">
-        <p>© 2026 {siteTitle}. All rights reserved. Kurasi editorial independen seputar dunia desain dan hunian modern.</p>
+        <p>{siteSettings.footer_copyright || `© 2026 ${siteTitle}. All rights reserved. Kurasi editorial independen seputar dunia desain dan hunian modern.`}</p>
       </div>
     </footer>
 

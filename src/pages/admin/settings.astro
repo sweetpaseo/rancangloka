@@ -258,6 +258,131 @@ const settings = await getSiteSettings(db);
         />
       </div>
     </div>
+
+    <!-- 4. Social Share Bar Customizer -->
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <span>📱</span> Pengaturan Tombol Bagikan (Social Share Bar)
+        </h2>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            id="share-bar-enabled"
+            checked={settings.share_bar_enabled !== 'false'}
+            class="rounded bg-slate-100 border-slate-300 text-primary focus:ring-0"
+          />
+          <span class="text-xs font-bold text-slate-800">Aktifkan Share Bar</span>
+        </label>
+      </div>
+
+      <div class="space-y-3">
+        <label class="block text-xs font-semibold text-slate-700">Pilih Media Sosial yang Ditampilkan:</label>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+            <input type="checkbox" id="share-enable-wa" checked={settings.share_enable_wa !== 'false'} class="rounded text-emerald-600 focus:ring-0" />
+            <span class="text-xs font-semibold text-slate-800">🟢 WhatsApp</span>
+          </label>
+
+          <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+            <input type="checkbox" id="share-enable-x" checked={settings.share_enable_x !== 'false'} class="rounded text-slate-900 focus:ring-0" />
+            <span class="text-xs font-semibold text-slate-800">⚫ X (Twitter)</span>
+          </label>
+
+          <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+            <input type="checkbox" id="share-enable-fb" checked={settings.share_enable_facebook !== 'false'} class="rounded text-blue-600 focus:ring-0" />
+            <span class="text-xs font-semibold text-slate-800">🔵 Facebook</span>
+          </label>
+
+          <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+            <input type="checkbox" id="share-enable-in" checked={settings.share_enable_linkedin !== 'false'} class="rounded text-blue-600 focus:ring-0" />
+            <span class="text-xs font-semibold text-slate-800">🔷 LinkedIn</span>
+          </label>
+
+          <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+            <input type="checkbox" id="share-enable-tg" checked={settings.share_enable_telegram !== 'false'} class="rounded text-sky-500 focus:ring-0" />
+            <span class="text-xs font-semibold text-slate-800">✈️ Telegram</span>
+          </label>
+
+          <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+            <input type="checkbox" id="share-enable-copy" checked={settings.share_enable_copy !== 'false'} class="rounded text-slate-600 focus:ring-0" />
+            <span class="text-xs font-semibold text-slate-800">📋 Salin Tautan</span>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Official Twitter/X Handle (Opsional untuk via @handle saat share)</label>
+        <input
+          type="text"
+          id="share-twitter-handle"
+          value={settings.share_twitter_handle || '@RancangLoka'}
+          placeholder="@RancangLoka"
+          class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
+        />
+      </div>
+    </div>
+
+    <!-- 5. Footer & Official Social Links Manager -->
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+        <span>🦶</span> Kustomisasi Footer & Media Sosial Resmi Redaksi
+      </h2>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Deskripsi / Slogan Footer</label>
+        <textarea
+          id="footer-description"
+          rows="2"
+          class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
+        >{settings.footer_description || settings.site_description}</textarea>
+      </div>
+
+      <div class="space-y-3">
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">Tautan Media Sosial Resmi Redaksi (Muncul di Footer)</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">📸 Instagram URL</label>
+            <input type="url" id="social-instagram" value={settings.social_instagram || ''} placeholder="https://instagram.com/..." class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">🎵 TikTok URL</label>
+            <input type="url" id="social-tiktok" value={settings.social_tiktok || ''} placeholder="https://tiktok.com/@..." class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">𝕏 X (Twitter) URL</label>
+            <input type="url" id="social-x" value={settings.social_x || ''} placeholder="https://x.com/..." class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">▶️ YouTube URL</label>
+            <input type="url" id="social-youtube" value={settings.social_youtube || ''} placeholder="https://youtube.com/@..." class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">📌 Pinterest URL</label>
+            <input type="url" id="social-pinterest" value={settings.social_pinterest || ''} placeholder="https://pinterest.com/..." class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1">💼 LinkedIn URL</label>
+            <input type="url" id="social-linkedin" value={settings.social_linkedin || ''} placeholder="https://linkedin.com/company/..." class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Teks Hak Cipta (Copyright Notice)</label>
+        <input
+          type="text"
+          id="footer-copyright"
+          value={settings.footer_copyright || '© 2026 RancangLoka. All rights reserved. Kurasi editorial independen seputar dunia desain dan hunian modern.'}
+          class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
+        />
+      </div>
+    </div>
   </div>
 
   <script>
@@ -341,7 +466,25 @@ const settings = await getSiteSettings(db);
         theme_accent_color: accentHex?.value || '#d97706',
         google_search_console_code: gscInput?.value || '',
         google_analytics_id: gaInput?.value || '',
-        seo_default_og_image: ogInput?.value || ''
+        seo_default_og_image: ogInput?.value || '',
+        // Social Share Bar Toggles
+        share_bar_enabled: (document.getElementById('share-bar-enabled') as HTMLInputElement)?.checked ? 'true' : 'false',
+        share_enable_wa: (document.getElementById('share-enable-wa') as HTMLInputElement)?.checked ? 'true' : 'false',
+        share_enable_x: (document.getElementById('share-enable-x') as HTMLInputElement)?.checked ? 'true' : 'false',
+        share_enable_facebook: (document.getElementById('share-enable-fb') as HTMLInputElement)?.checked ? 'true' : 'false',
+        share_enable_linkedin: (document.getElementById('share-enable-in') as HTMLInputElement)?.checked ? 'true' : 'false',
+        share_enable_telegram: (document.getElementById('share-enable-tg') as HTMLInputElement)?.checked ? 'true' : 'false',
+        share_enable_copy: (document.getElementById('share-enable-copy') as HTMLInputElement)?.checked ? 'true' : 'false',
+        share_twitter_handle: (document.getElementById('share-twitter-handle') as HTMLInputElement)?.value?.trim() || '@RancangLoka',
+        // Footer & Social Links
+        footer_description: (document.getElementById('footer-description') as HTMLTextAreaElement)?.value?.trim() || '',
+        social_instagram: (document.getElementById('social-instagram') as HTMLInputElement)?.value?.trim() || '',
+        social_tiktok: (document.getElementById('social-tiktok') as HTMLInputElement)?.value?.trim() || '',
+        social_x: (document.getElementById('social-x') as HTMLInputElement)?.value?.trim() || '',
+        social_youtube: (document.getElementById('social-youtube') as HTMLInputElement)?.value?.trim() || '',
+        social_pinterest: (document.getElementById('social-pinterest') as HTMLInputElement)?.value?.trim() || '',
+        social_linkedin: (document.getElementById('social-linkedin') as HTMLInputElement)?.value?.trim() || '',
+        footer_copyright: (document.getElementById('footer-copyright') as HTMLInputElement)?.value?.trim() || ''
       };
 
       try {
@@ -351,7 +494,7 @@ const settings = await getSiteSettings(db);
           body: JSON.stringify(payload)
         });
         if (res.ok) {
-          alert('Pengaturan identitas website, logo, dan tema berhasil disimpan!');
+          alert('Pengaturan identitas website, tema, tombol share, dan footer berhasil disimpan!');
         } else {
           alert('Pengaturan berhasil diperbarui!');
         }

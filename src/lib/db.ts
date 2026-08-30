@@ -113,7 +113,23 @@ const MOCK_SETTINGS: Record<string, string> = {
   google_analytics_id: '',
   google_search_console_code: '',
   allow_indexing: 'true',
-  articles_per_sitemap: '1000'
+  articles_per_sitemap: '1000',
+  share_bar_enabled: 'true',
+  share_enable_wa: 'true',
+  share_enable_x: 'true',
+  share_enable_facebook: 'true',
+  share_enable_linkedin: 'true',
+  share_enable_telegram: 'true',
+  share_enable_copy: 'true',
+  share_twitter_handle: '@RancangLoka',
+  footer_description: 'Platform media digital independen untuk inspirasi desain interior, inovasi smart home, dan arsitektur hunian modern.',
+  social_instagram: 'https://instagram.com/rancangloka',
+  social_tiktok: 'https://tiktok.com/@rancangloka',
+  social_x: 'https://x.com/rancangloka',
+  social_youtube: '',
+  social_pinterest: '',
+  social_linkedin: '',
+  footer_copyright: '© 2026 RancangLoka. All rights reserved. Kurasi editorial independen seputar dunia desain dan hunian modern.'
 };
 
 let inMemoryArticles: Article[] = [
