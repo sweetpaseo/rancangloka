@@ -238,6 +238,16 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 24: Redesain Beranda (Homepage) Menyeluruh Berstandar Editorial Dunia (Kinfolk & Dezeen Benchmark)
+* **Gejala:** Halaman utama memerlukan penyegaran arsitektural visual dari Header, Hero Bento, Ticker Tren, hingga Showcase Interaktif.
+* **Solusi:**
+  - **Header & Masthead Dinamis:** Menambahkan kalender edisi digital otomatis (`Intl.DateTimeFormat`) dan sub-tagline jurnalisme arsitektur di [`src/components/Header.astro`](file:///src/components/Header.astro).
+  - **Asymmetric Bento Hero & Ambient Glow:** Membangun ulang [`src/components/HeroMagazine.astro`](file:///src/components/HeroMagazine.astro) dengan 1 Cerita Sinematik Raksasa + 3 Pilihan Editor Bernomor Emas/Biru (`01`, `02`, `03`).
+  - **Trending Topics Marquee:** Menambahkan deretan pill topik hangat yang dapat digeser di [`src/pages/index.astro`](file:///src/pages/index.astro).
+  - **Showcase Interaktif Transformasi Ruang:** Menyematkan komponen *Before & After Renovation Slider* di tengah beranda dengan backdrop gradasi gelap mewah.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
