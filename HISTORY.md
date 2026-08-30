@@ -121,15 +121,27 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 12: Sirkulasi Internal Linking Otomatis & Toggle Artikel Berbayar (Sponsored Review)
+* **Gejala:** Belum ada sistem sirkulasi backlink internal otomatis (Dateline Branding, In-Article "BACA JUGA", Auto-Keyword Linker), serta belum ada opsi untuk menonaktifkan sirkulasi ini khusus artikel pesanan berbayar (*Paid Review / Advertorial*) agar fokus pada link klien sponsor.
+* **Solusi:**
+  - Membangun modul *Internal Linking Engine* di [`src/lib/seo.ts`](file:///src/lib/seo.ts):
+    1. **Dateline Source Branding:** Otomatis menyematkan `RANCANGLOKA.COM – ` di `<p>` pertama artikel dan feed RSS.
+    2. **In-Article "BACA JUGA":** Menyematkan callout kartu rekomendasi artikel terkait tepat sebelum `<h2>` kedua.
+    3. **Auto-Keyword Linker:** Memindai kata kunci fokus artikel lain dan otomatis mengubahnya menjadi anchor link kontekstual (maks 2 per artikel).
+  - Menambahkan field `is_sponsored` & `disable_internal_links` di D1 dan switch toggle di Admin Editor [`src/pages/admin/posts/new.astro`](file:///src/pages/admin/posts/new.astro) & frontmatter Markdown. Jika aktif, internal links dan widget "BACA JUGA" otomatis dinonaktifkan khusus untuk artikel sponsor tersebut.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, dark mode, dynamic styling. |
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main`. |
-| **D1 Database & Skema** | ✅ Selesai (Aktif) | 7 tabel inti (Articles, Pages, Categories, Authors, Settings, Users, Sessions). |
+| **D1 Database & Skema** | ✅ Selesai (Aktif) | 7 tabel inti + kolom `is_sponsored` & `disable_internal_links`. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
 | **Manajemen Halaman Statis (Pages)** | ✅ Selesai (Aktif) | Page Writer CMS, template kontak interaktif, & sitemap pages aktif. |
+| **Sirkulasi Internal Linking Otomatis** | ✅ Selesai (Aktif) | Dateline, Auto-Keywords, In-Article BACA JUGA, & Paid Review Toggle. |
 | **SEO & Feed** | ✅ Selesai | Google News XML, Sitemap XML, RSS feed, Schema.org aktif. |
 | **Keamanan Level Kode** | ✅ Selesai | Hashing PBKDF2, session token acak 24-byte, SQL parameterization. |
 | **Cloudflare Zero Trust (Access)** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
