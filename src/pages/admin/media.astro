@@ -1,0 +1,348 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb, getAllArticles, getAllPages } from '../../lib/db';
+
+const db = await getDb(Astro.locals);
+const env = (Astro.locals as any).runtime?.env || (globalThis as any).process?.env;
+const bucket = env?.MEDIA_BUCKET;
+
+interface MediaItem {
+  key: string;
+  url: string;
+  size: number;
+  uploadedAt: string;
+  source: 'r2' | 'article' | 'page';
+}
+
+const mediaMap = new Map<string, MediaItem>();
+
+// 1. Fetch real objects from Cloudflare R2 bucket if available
+if (bucket && typeof bucket.list === 'function') {
+  try {
+    const listResult = await bucket.list({ limit: 100 });
+    if (listResult && listResult.objects) {
+      for (const obj of listResult.objects) {
+        mediaMap.set(obj.key, {
+          key: obj.key,
+          url: `/media/${obj.key}`,
+          size: obj.size || 0,
+          uploadedAt: obj.uploaded ? new Date(obj.uploaded).toISOString() : new Date().toISOString(),
+          source: 'r2'
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('R2 list fallback:', e);
+  }
+}
+
+// 2. Fetch images linked in Articles and Pages (for comprehensive gallery)
+const [articles, pages] = await Promise.all([
+  getAllArticles(db, 100, 0, 'all'),
+  getAllPages(db, 'all')
+]);
+
+for (const a of articles) {
+  if (a.featured_image && !mediaMap.has(a.featured_image)) {
+    const key = a.featured_image.split('/').pop() || a.slug;
+    mediaMap.set(a.featured_image, {
+      key: key,
+      url: a.featured_image,
+      size: 1024 * 120, // Approx ~120KB
+      uploadedAt: a.created_at || a.published_at || new Date().toISOString(),
+      source: 'article'
+    });
+  }
+}
+
+for (const p of pages) {
+  if (p.featured_image && !mediaMap.has(p.featured_image)) {
+    const key = p.featured_image.split('/').pop() || p.slug;
+    mediaMap.set(p.featured_image, {
+      key: key,
+      url: p.featured_image,
+      size: 1024 * 95,
+      uploadedAt: p.created_at || new Date().toISOString(),
+      source: 'page'
+    });
+  }
+}
+
+const mediaList = Array.from(mediaMap.values()).sort((a, b) => 
+  new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+);
+---
+
+<AdminLayout title="Media Library & R2 Asset Manager">
+  <div class="max-w-7xl mx-auto space-y-8">
+    <!-- Top Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+          <span>📁</span>
+          <span>Media Library & R2 Storage</span>
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">
+          Pusat penyimpanan gambar teroptimasi WebP di Cloudflare R2 Bucket (<code class="text-primary font-bold">rancangloka-media</code>).
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span class="rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-bold text-[#0071e3]">
+          Total: {mediaList.length} Gambar
+        </span>
+      </div>
+    </div>
+
+    <!-- Quick Drag & Drop Uploader Box -->
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm space-y-4">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+        <span>⚡</span> Unggah Gambar Baru (Auto WebP Converter)
+      </h2>
+
+      <div
+        id="media-dropzone"
+        class="relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 hover:border-primary bg-slate-50 p-8 flex flex-col items-center justify-center text-center cursor-pointer transition group"
+      >
+        <input type="file" id="media-file-input" accept="image/png, image/jpeg, image/webp, image/avif, image/jpg" class="hidden" multiple />
+        <div class="flex flex-col items-center gap-2 text-slate-400 group-hover:text-primary transition">
+          <div class="h-12 w-12 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-2xl group-hover:scale-110 transition">
+            🖼️
+          </div>
+          <span class="text-sm font-bold text-slate-800 group-hover:text-primary">
+            Tarik & Lepas Foto ke Sini untuk Upload Cepat
+          </span>
+          <span class="text-xs text-slate-500">
+            JPG, PNG, atau WebP ukuran apa pun • Otomatis dikompresi ke format WebP ringan & diunggah ke R2
+          </span>
+        </div>
+
+        <!-- Uploading overlay -->
+        <div id="media-uploading" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+          <div class="h-8 w-8 animate-spin rounded-full border-3 border-primary border-t-transparent"></div>
+          <span class="text-xs font-bold text-slate-800">Mengonversi ke WebP & Mengunggah ke Cloudflare R2...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="relative flex-1 max-w-md">
+        <input
+          type="text"
+          id="media-search"
+          placeholder="Cari gambar berdasarkan nama file..."
+          class="w-full rounded-xl bg-white border border-slate-200 pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+        />
+        <svg class="absolute left-3.5 top-3 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Media Grid Gallery -->
+    <div id="media-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+      {mediaList.map((item) => (
+        <div class="media-card group flex flex-col overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-lg transition-all" data-filename={item.key.toLowerCase()}>
+          <!-- Image Box -->
+          <div class="relative overflow-hidden aspect-[16/10] bg-slate-100">
+            <img
+              src={item.url}
+              alt={item.key}
+              class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              loading="lazy"
+              onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&auto=format&fit=crop&q=80'"
+            />
+            <span class="absolute top-2 right-2 rounded-md bg-slate-950/70 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-mono text-white">
+              {item.key.endsWith('.webp') ? 'WEBP' : 'IMG'}
+            </span>
+          </div>
+
+          <!-- Info & Actions -->
+          <div class="flex flex-1 flex-col p-3.5 space-y-2">
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-slate-900 truncate" title={item.key}>
+                {item.key}
+              </p>
+              <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                <span>{(item.size / 1024).toFixed(0)} KB</span>
+                <span>{new Date(item.uploadedAt).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-2 border-t border-slate-100 flex items-center gap-1.5">
+              <button
+                type="button"
+                class="copy-url-btn flex-1 rounded-lg bg-slate-100 hover:bg-primary hover:text-white px-2 py-1 text-[11px] font-bold text-slate-700 transition"
+                data-url={item.url}
+              >
+                📋 Salin Link
+              </button>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="rounded-lg bg-slate-100 hover:bg-slate-200 p-1 text-slate-600 transition"
+                title="Buka Gambar HD"
+              >
+                🔍
+              </a>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {mediaList.length === 0 && (
+      <div class="text-center py-16 bg-white rounded-2xl border border-slate-200">
+        <span class="text-4xl">🖼️</span>
+        <h3 class="text-sm font-bold text-slate-900 mt-2">Belum Ada Media di Storage</h3>
+        <p class="text-xs text-slate-500 mt-1">Tarik dan lepas gambar di kotak atas untuk mengunggah ke Cloudflare R2.</p>
+      </div>
+    )}
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('media-dropzone');
+    const fileInput = document.getElementById('media-file-input') as HTMLInputElement;
+    const uploadOverlay = document.getElementById('media-uploading');
+    const searchInput = document.getElementById('media-search') as HTMLInputElement;
+    const mediaCards = document.querySelectorAll('.media-card');
+
+    // Search filter
+    searchInput?.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      mediaCards.forEach((card) => {
+        const fn = card.getAttribute('data-filename') || '';
+        if (fn.includes(q)) {
+          (card as HTMLElement).style.display = '';
+        } else {
+          (card as HTMLElement).style.display = 'none';
+        }
+      });
+    });
+
+    // Copy URL to clipboard
+    document.querySelectorAll('.copy-url-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-url') || '';
+        const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
+        try {
+          await navigator.clipboard.writeText(fullUrl);
+          const originalText = btn.innerHTML;
+          btn.innerHTML = '✅ Tersalin!';
+          btn.classList.add('bg-emerald-600', 'text-white');
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-emerald-600', 'text-white');
+          }, 2000);
+        } catch (e) {
+          prompt('Salin link gambar manual:', fullUrl);
+        }
+      });
+    });
+
+    // Drag & Drop Upload
+    dropzone?.addEventListener('click', () => {
+      fileInput?.click();
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone?.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('border-primary', 'bg-blue-50/50');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone?.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('border-primary', 'bg-blue-50/50');
+      });
+    });
+
+    dropzone?.addEventListener('drop', (e) => {
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        uploadFiles(files);
+      }
+    });
+
+    fileInput?.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files.length > 0) {
+        uploadFiles(fileInput.files);
+      }
+    });
+
+    async function uploadFiles(files: FileList) {
+      uploadOverlay?.classList.remove('hidden');
+      let successCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+
+        try {
+          const imageBitmap = await createImageBitmap(file);
+          const maxDimension = 1200;
+          let width = imageBitmap.width;
+          let height = imageBitmap.height;
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(imageBitmap, 0, 0, width, height);
+
+          await new Promise<void>((resolve, reject) => {
+            canvas.toBlob(async (blob) => {
+              if (!blob) { reject(new Error('Gagal kompresi')); return; }
+              const rawName = file.name.replace(/\.[^/.]+$/, '').toLowerCase().replace(/[^a-z0-9]/g, '-');
+              const filename = `media-${rawName}-${Date.now().toString().slice(-4)}.webp`;
+
+              const formData = new FormData();
+              formData.append('file', blob, filename);
+              formData.append('filename', filename);
+
+              try {
+                const res = await fetch('/api/admin/upload', {
+                  method: 'POST',
+                  body: formData
+                });
+                if (res.ok) {
+                  successCount++;
+                  resolve();
+                } else {
+                  reject(new Error('Upload error'));
+                }
+              } catch (e) {
+                reject(e);
+              }
+            }, 'image/webp', 0.82);
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      uploadOverlay?.classList.add('hidden');
+      if (successCount > 0) {
+        alert(`🎉 Berhasil mengunggah & mengonversi ${successCount} gambar ke Cloudflare R2!`);
+        window.location.reload();
+      }
+    }
+  </script>
+</AdminLayout>
