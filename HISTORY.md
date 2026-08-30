@@ -210,6 +210,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 21: Prosedur Penghapusan Gambar R2 & Tombol Reset "Hapus/Ganti Gambar" di Form Artikel
+* **Gejala:** Belum ada mekanisme untuk menghapus gambar yang tidak terpakai dari Cloudflare R2, serta tidak ada tombol reset jika admin salah melakukan drag & drop gambar saat menulis/mengedit artikel.
+* **Solusi:**
+  - Membuat API endpoint [`src/pages/api/admin/media.ts`](file:///src/pages/api/admin/media.ts) dengan metode `DELETE` yang memanggil `bucket.delete(filename)` di R2.
+  - Menambahkan tombol hapus `🗑️` pada setiap kartu gambar di halaman Media Library (`/admin/media`) lengkap dengan dialog konfirmasi keamanan.
+  - Menambahkan tombol interaktif `🗑️ Hapus / Ganti Gambar Ini` di bawah kotak pratinjau cover di halaman Tulis Baru (`/admin/posts/new`) dan Edit Post (`/admin/posts/[id]`) untuk mereset dropzone dan membersihkan file sampah secara otomatis.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
