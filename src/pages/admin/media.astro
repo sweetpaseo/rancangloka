@@ -188,6 +188,14 @@ const mediaList = Array.from(mediaMap.values()).sort((a, b) =>
               >
                 🔍
               </a>
+              <button
+                type="button"
+                class="delete-media-btn rounded-lg bg-red-50 hover:bg-red-600 hover:text-white p-1 text-red-500 transition"
+                title="Hapus dari Cloudflare R2"
+                data-filename={item.key}
+              >
+                🗑️
+              </button>
             </div>
           </div>
         </div>
@@ -209,6 +217,47 @@ const mediaList = Array.from(mediaMap.values()).sort((a, b) =>
     const uploadOverlay = document.getElementById('media-uploading');
     const searchInput = document.getElementById('media-search') as HTMLInputElement;
     const mediaCards = document.querySelectorAll('.media-card');
+
+    // Delete Media from R2
+    document.querySelectorAll('.delete-media-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const filename = btn.getAttribute('data-filename') || '';
+        if (!filename) return;
+
+        if (confirm(`Apakah Anda yakin ingin menghapus gambar "${filename}" dari Cloudflare R2?\n\nPerhatian: Jika gambar ini dipakai di artikel, tampilannya akan menjadi broken image.`)) {
+          const card = btn.closest('.media-card') as HTMLElement;
+          btn.innerHTML = '⏳';
+          (btn as HTMLButtonElement).disabled = true;
+
+          try {
+            const res = await fetch('/api/admin/media', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ filename })
+            });
+
+            if (res.ok) {
+              if (card) {
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.9)';
+                setTimeout(() => card.remove(), 300);
+              }
+            } else {
+              const data = await res.json();
+              alert(`Gagal menghapus: ${data.message || 'Error server'}`);
+              btn.innerHTML = '🗑️';
+              (btn as HTMLButtonElement).disabled = false;
+            }
+          } catch (err: any) {
+            alert(`Terjadi kesalahan: ${err.message}`);
+            btn.innerHTML = '🗑️';
+            (btn as HTMLButtonElement).disabled = false;
+          }
+        }
+      });
+    });
 
     // Search filter
     searchInput?.addEventListener('input', () => {

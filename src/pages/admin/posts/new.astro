@@ -205,6 +205,16 @@ const [categories, authors] = await Promise.all([
             </div>
           </div>
 
+          <!-- Remove / Reset Image Button (If Wrong Image Dragged) -->
+          <button
+            type="button"
+            id="btn-remove-cover"
+            class="hidden w-full rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 transition flex items-center justify-center gap-1.5"
+          >
+            <span>🗑️</span>
+            <span>Hapus / Ganti Gambar Ini</span>
+          </button>
+
           <div class="space-y-1">
             <label class="block text-[11px] text-slate-500">Atau Gunakan URL Gambar Langsung</label>
             <input
@@ -355,16 +365,45 @@ const [categories, authors] = await Promise.all([
     });
 
     // Cover Image Live Preview
-    coverUrlInput?.addEventListener('input', () => {
-      const url = coverUrlInput.value.trim();
+    const btnRemoveCover = document.getElementById('btn-remove-cover');
+
+    function syncCoverState() {
+      const url = coverUrlInput?.value.trim() || '';
       if (url) {
         coverImg.src = url;
         coverImg.classList.remove('hidden');
         coverPlaceholder.classList.add('hidden');
+        btnRemoveCover?.classList.remove('hidden');
       } else {
+        coverImg.src = '';
         coverImg.classList.add('hidden');
+        coverPlaceholder.classList.remove('hidden');
+        btnRemoveCover?.classList.add('hidden');
       }
       updateSeoScore();
+    }
+
+    coverUrlInput?.addEventListener('input', syncCoverState);
+
+    btnRemoveCover?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const currentUrl = coverUrlInput?.value || '';
+      coverUrlInput.value = '';
+      fileInput.value = '';
+      statusBadge?.classList.add('hidden');
+      syncCoverState();
+
+      // Optionally call delete if it was an uploaded R2 image
+      if (currentUrl.includes('/media/')) {
+        const filename = currentUrl.split('/media/')[1]?.split('?')[0];
+        if (filename) {
+          fetch('/api/admin/media', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+          }).catch(() => {});
+        }
+      }
     });
 
     // --- Realtime Live SEO 2026 Scorecard Engine ---
