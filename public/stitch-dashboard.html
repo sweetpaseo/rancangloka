@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Editorial Dashboard - RANCANGLOKA CMS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Outfit:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-tertiary": "#ffffff",
+                "on-tertiary-fixed-variant": "#38485d",
+                "on-surface": "#1a1c1d",
+                "error-container": "#ffdad6",
+                "on-error-container": "#93000a",
+                "surface-container-lowest": "#ffffff",
+                "secondary": "#565e74",
+                "primary-container": "#0066ee",
+                "on-primary": "#ffffff",
+                "surface": "#f9f9fb",
+                "inverse-primary": "#b1c5ff",
+                "outline-variant": "#c2c6d7",
+                "on-tertiary-fixed": "#0b1c30",
+                "on-secondary-fixed-variant": "#3f465c",
+                "on-background": "#1a1c1d",
+                "surface-bright": "#f9f9fb",
+                "on-tertiary-container": "#eef3ff",
+                "surface-container": "#edeef0",
+                "surface-container-highest": "#e2e2e4",
+                "error": "#ba1a1a",
+                "on-secondary": "#ffffff",
+                "surface-container-high": "#e8e8ea",
+                "primary": "#004fbd",
+                "outline": "#727786",
+                "primary-fixed": "#dae2ff",
+                "surface-variant": "#e2e2e4",
+                "on-primary-fixed": "#001946",
+                "tertiary-container": "#607087",
+                "on-primary-container": "#f0f2ff",
+                "on-surface-variant": "#424655",
+                "tertiary": "#48586d",
+                "background": "#f9f9fb",
+                "inverse-on-surface": "#f0f0f2",
+                "tertiary-fixed-dim": "#b7c8e1",
+                "surface-dim": "#d9dadc",
+                "on-error": "#ffffff",
+                "on-secondary-fixed": "#131b2e",
+                "secondary-fixed": "#dae2fd",
+                "on-primary-fixed-variant": "#00419d",
+                "secondary-container": "#dae2fd",
+                "inverse-surface": "#2f3132",
+                "primary-fixed-dim": "#b1c5ff",
+                "surface-container-low": "#f3f3f5",
+                "surface-tint": "#0057cd",
+                "secondary-fixed-dim": "#bec6e0",
+                "tertiary-fixed": "#d3e4fe",
+                "on-secondary-container": "#5c647a"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "container-max": "1440px",
+                "gutter": "16px",
+                "margin-desktop": "40px",
+                "unit": "4px",
+                "margin-mobile": "16px"
+        },
+        "fontFamily": {
+                "body-sm": [
+                        "Plus Jakarta Sans"
+                ],
+                "data-table": [
+                        "JetBrains Mono"
+                ],
+                "label-mono": [
+                        "JetBrains Mono"
+                ],
+                "body-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "display-lg": [
+                        "Outfit"
+                ],
+                "headline-lg": [
+                        "Outfit"
+                ],
+                "headline-md": [
+                        "Outfit"
+                ]
+        },
+        "fontSize": {
+                "body-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "1.5",
+                                "fontWeight": "400"
+                        }
+                ],
+                "data-table": [
+                        "13px",
+                        {
+                                "lineHeight": "1.4",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-mono": [
+                        "12px",
+                        {
+                                "lineHeight": "1.0",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "500"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "15px",
+                        {
+                                "lineHeight": "1.5",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "1.1",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "1.3",
+                                "fontWeight": "500"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+  body {
+    background-color: #FBFBFD; /* Porcelain Chalk */
+  }
+  .precision-shadow {
+    box-shadow: 0 4px 20px -2px rgba(0, 102, 238, 0.08);
+  }
+  .glassmorphism {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+</style>
+</head>
+<body class="text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container font-body-md overflow-x-hidden">
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-screen w-[240px] flex flex-col h-full border-r border-outline-variant bg-surface px-4 py-6 z-40">
+<div class="mb-10">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container font-display-lg text-lg">R</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-black text-primary leading-none tracking-tight">RANCANGLOKA CMS</h1>
+<span class="font-label-mono text-label-mono text-outline">Editor-in-Chief</span>
+</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col gap-2">
+<!-- Active: Editorial -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-label-mono text-label-mono">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary font-bold border-r-2 border-primary bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit_note</span>
+<span class="font-label-mono text-label-mono">Editorial</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">database</span>
+<span class="font-label-mono text-label-mono">Data</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">construction</span>
+<span class="font-label-mono text-label-mono">Tools</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-label-mono text-label-mono">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">terminal</span>
+<span class="font-label-mono text-label-mono">Logs</span>
+</a>
+</div>
+<div class="mt-auto">
+<div class="px-4 py-3 mb-4 rounded-lg bg-surface-container-low border border-outline-variant/50">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+<span class="font-label-mono text-label-mono text-on-surface-variant">Cloudflare D1: Active</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-label-mono text-label-mono">Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-mono text-label-mono">Sign Out</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 ml-[240px] flex flex-col h-full overflow-hidden">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 w-full glassmorphism flex justify-between items-center px-gutter py-2 h-16 border-b border-outline-variant shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/10">
+<div class="flex items-center gap-8">
+<div class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight">RANCANGLOKA</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-label-mono text-label-mono text-on-surface-variant hover:text-primary transition-all" href="#">Analytics</a>
+<a class="font-label-mono text-label-mono text-on-surface-variant hover:text-primary transition-all" href="#">Performance</a>
+<a class="font-label-mono text-label-mono text-on-surface-variant hover:text-primary transition-all" href="#">Status</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border border-outline-variant rounded-full text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none w-64 transition-all" placeholder="Search architecture database..." type="text"/>
+</div>
+<span class="font-label-mono text-label-mono text-tertiary px-3 py-1 bg-surface-container rounded-full hidden xl:block">D1: Connected</span>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-full font-label-mono text-label-mono hover:-translate-y-[2px] transition-transform precision-shadow">
+          Buat Artikel Baru
+        </button>
+<div class="flex items-center gap-2 border-l border-outline-variant pl-4 ml-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-low text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">dark_mode</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-low text-on-surface-variant transition-colors relative">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full border border-surface"></span>
+</button>
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-outline-variant ml-2 object-cover" data-alt="A professional headshot of an architect with a confident expression, soft natural lighting illuminating a modern studio background with blueprints and minimalist decor. The color palette features neutral tones with subtle sapphire blue accents. High-quality corporate portrait photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvVZ7dBKzUyKV2umUU7YndSsDzqMEYMgl9pYi74eeez2DQwYHT2jUoeHlTM_x-JG_Hz-Mlc3toJyei8M0fiBwZfQy0YgUWksSYzgE8VU5lDUhGeQQzau4qBcVvjr5ic8x4dhWScHfb5N3fDFm5r9EzLIHnorX9FD_KusvEXmzKqfCLQ4a_stgLHftGzqPqqQSdCrigJlgFooYiKPW2u50WXDftP0g3awkvK41RerB9bgloz4X8uWrrxLlMSK-dWSZYKNbJp_JRVNw"/>
+</div>
+</div>
+</header>
+<!-- Content Area (Center + Right Column) -->
+<main class="flex-1 overflow-y-auto flex">
+<!-- Center Canvas -->
+<div class="flex-1 p-8 max-w-container-max mx-auto w-full">
+<div class="mb-8">
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface mb-2 tracking-tight">Editorial Hub</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">High-density overview of architectural content performance and publishing metrics.</p>
+</div>
+<!-- Bento KPI Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-3xl p-6 relative overflow-hidden group hover:border-primary transition-colors">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="font-label-mono text-label-mono text-outline uppercase tracking-wider mb-4">TOTAL ARTIKEL LIVE</div>
+<div class="flex items-end gap-3">
+<div class="font-display-lg text-display-lg text-on-surface font-black">20</div>
+<div class="font-data-table text-data-table text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded mb-2">+3 minggu ini</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-3xl p-6 relative overflow-hidden group hover:border-primary transition-colors">
+<div class="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="font-label-mono text-label-mono text-outline uppercase tracking-wider mb-4">PAGESPEED INSIGHTS</div>
+<div class="flex items-end gap-3">
+<div class="font-display-lg text-display-lg text-on-surface font-black">100<span class="text-outline/50 text-2xl">/100</span></div>
+<div class="font-data-table text-data-table text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded mb-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Passed
+              </div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-3xl p-6 relative overflow-hidden group hover:border-primary transition-colors">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="font-label-mono text-label-mono text-outline uppercase tracking-wider mb-4">NEWSLETTER SUBSCRIBERS</div>
+<div class="flex items-end gap-3">
+<div class="font-display-lg text-display-lg text-on-surface font-black">1,420</div>
+<div class="font-data-table text-data-table text-primary bg-primary-container/20 px-2 py-0.5 rounded mb-2">+14.2% MoM</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-3xl p-6 relative overflow-hidden group hover:border-primary transition-colors">
+<div class="absolute top-0 right-0 w-32 h-32 bg-tertiary/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="font-label-mono text-label-mono text-outline uppercase tracking-wider mb-4">MATERIAL COMPARISON</div>
+<div class="flex items-end gap-3">
+<div class="font-display-lg text-display-lg text-on-surface font-black">840</div>
+<div class="font-data-table text-data-table text-tertiary bg-surface-container px-2 py-0.5 rounded mb-2">queries/day</div>
+</div>
+<div class="font-label-mono text-[10px] text-outline mt-2">Top: Alu vs UPVC</div>
+</div>
+</div>
+<!-- Center Stage Table -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-3xl overflow-hidden precision-shadow">
+<div class="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight">Architectural Articles</h3>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 rounded-full border border-primary bg-primary/5 text-primary font-label-mono text-label-mono transition-colors">Semua (20)</button>
+<button class="px-4 py-1.5 rounded-full border border-outline-variant hover:border-outline text-on-surface-variant font-label-mono text-label-mono transition-colors bg-white">Fasad Tropis</button>
+<button class="px-4 py-1.5 rounded-full border border-outline-variant hover:border-outline text-on-surface-variant font-label-mono text-label-mono transition-colors bg-white">Smart Home</button>
+</div>
+</div>
+<div class="w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant bg-surface">
+<th class="py-3 px-6 font-data-table text-data-table text-outline uppercase tracking-wider font-semibold">Thumbnail</th>
+<th class="py-3 px-6 font-data-table text-data-table text-outline uppercase tracking-wider font-semibold">Title</th>
+<th class="py-3 px-6 font-data-table text-data-table text-outline uppercase tracking-wider font-semibold">Category</th>
+<th class="py-3 px-6 font-data-table text-data-table text-outline uppercase tracking-wider font-semibold text-right">Views</th>
+<th class="py-3 px-6 font-data-table text-data-table text-outline uppercase tracking-wider font-semibold w-16"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant bg-white">
+<tr class="hover:bg-[#F0F7FF] transition-colors group h-16">
+<td class="py-3 px-6">
+<img alt="Thumbnail" class="w-20 h-12 object-cover rounded shadow-sm border border-outline-variant/30" data-alt="A modern contemporary tropical brick facade design, featuring perforated terracotta blocks creating intricate light and shadow patterns on a sunlit afternoon. Lush green tropical plants frame the edges, highlighting sustainable architecture principles in a bright, modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHyIR_pBbVSulD3hF692c2_qMGXHj4NSPGbQQneqMB0k7ToGertfPoQgPQ0DHYGhBL-YOxwUc7_keBuu6NvRP8NaXmV0hX4RXRQ736yIz5tEtuHvY44UdeCCRukGoojpHN8GTvKaGbtz60dJK4uugviRJnJBz767wJX046lm_kJSNQlreoENKz1hChYaS39qQ_OEtu4CBje3E9GJ_tz0rCIFrccbrFfTL0jAmn5fnFZigAhIceY3kXY3Hrmo0Pfgc9QaD3ruNLVaY"/>
+</td>
+<td class="py-3 px-6 font-body-sm text-body-sm font-semibold text-on-surface">Evolusi Fasad Bata Tropis Kontemporer</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container text-tertiary font-label-mono text-label-mono">Fasad Tropis</span>
+</td>
+<td class="py-3 px-6 font-data-table text-data-table text-on-surface-variant text-right">4,201</td>
+<td class="py-3 px-6 text-right">
+<button class="text-outline hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-[#F0F7FF] transition-colors group h-16">
+<td class="py-3 px-6">
+<img alt="Thumbnail" class="w-20 h-12 object-cover rounded shadow-sm border border-outline-variant/30" data-alt="Interior view of a compact smart home living room, showcasing sleek minimalist furniture, integrated LED lighting strips along architectural coves, and a prominent futuristic glass smart-home control panel on the wall. The scene is illuminated by crisp, cool artificial lighting mixed with natural daylight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFccaAaOU9awlNImRdusfLihckEgY15A-kxPS3u0lC7Zobxhh4IYgRV6PgUuciTlCBpGp4-aFVW_VbHqS_VD7B_irX9enlSlEahK1XKDYptDyQ99Ovw9_EjSz88jZ4jhJUY6feR3Vpv2nmZS8_e1lZ8JTt4TF4Ucxv_7pNnp7JoFzGYJp56hkNPcMAilscubiCQok6OVxi1x7c91kkJ62vXrlWJJIFu_QzY9fpZIeFhPTCJNmWam6_ff75DobP3wbPpysdoLLeEQA"/>
+</td>
+<td class="py-3 px-6 font-body-sm text-body-sm font-semibold text-on-surface">Integrasi IoT pada Hunian Kompak</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container text-tertiary font-label-mono text-label-mono">Smart Home</span>
+</td>
+<td class="py-3 px-6 font-data-table text-data-table text-on-surface-variant text-right">3,190</td>
+<td class="py-3 px-6 text-right">
+<button class="text-outline hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Intelligence Sidebar (Right Column) -->
+<aside class="w-[320px] bg-white border-l border-outline-variant flex flex-col h-full sticky top-0 shrink-0">
+<div class="p-6 border-b border-outline-variant bg-surface-bright glassmorphism">
+<div class="font-label-mono text-[10px] text-outline uppercase tracking-[0.2em] mb-1">INTELLIGENCE</div>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+            Live Diagnosis
+          </h3>
+</div>
+<div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+<!-- Section 1 -->
+<div>
+<button class="w-full flex items-center justify-between text-left font-label-mono text-label-mono font-semibold text-on-surface mb-4 pb-2 border-b border-outline-variant hover:text-primary transition-colors">
+<span>SEO Scorecard</span>
+<span class="material-symbols-outlined text-[16px]">expand_less</span>
+</button>
+<div class="flex flex-col gap-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-emerald-500 text-[18px] mt-0.5">check_circle</span>
+<div>
+<div class="font-body-sm text-body-sm font-medium text-on-surface">SNI References Cited</div>
+<div class="font-data-table text-[11px] text-outline">Verified structural codes</div>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-emerald-500 text-[18px] mt-0.5">check_circle</span>
+<div>
+<div class="font-body-sm text-body-sm font-medium text-on-surface">Alt text present</div>
+<div class="font-data-table text-[11px] text-outline">12/12 images optimized</div>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-amber-500 text-[18px] mt-0.5">warning</span>
+<div>
+<div class="font-body-sm text-body-sm font-medium text-on-surface">Schema JSON-LD</div>
+<div class="font-data-table text-[11px] text-outline">Missing Article property</div>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-emerald-500 text-[18px] mt-0.5">check_circle</span>
+<div>
+<div class="font-body-sm text-body-sm font-medium text-on-surface">&gt;800 words</div>
+<div class="font-data-table text-[11px] text-outline">Long-form editorial criteria met</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2 -->
+<div>
+<button class="w-full flex items-center justify-between text-left font-label-mono text-label-mono font-semibold text-on-surface mb-2 pb-2 border-b border-outline-variant hover:text-primary transition-colors">
+<span>Spatial Rigor</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+<!-- Section 3 -->
+<div>
+<button class="w-full flex items-center justify-between text-left font-label-mono text-label-mono font-semibold text-on-surface mb-2 pb-2 border-b border-outline-variant hover:text-primary transition-colors">
+<span>Quick Diagnosis</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+<!-- Section 4 -->
+<div>
+<button class="w-full flex items-center justify-between text-left font-label-mono text-label-mono font-semibold text-on-surface mb-2 pb-2 border-b border-outline-variant hover:text-primary transition-colors">
+<span>Asset Audit</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+</div>
+<div class="p-6 border-t border-outline-variant bg-surface-container-lowest">
+<button class="w-full bg-surface text-on-surface border border-outline-variant px-4 py-2 rounded-lg font-label-mono text-label-mono hover:border-primary hover:text-primary transition-all text-center">
+            Run Full Audit
+          </button>
+</div>
+</aside>
+</main>
+</div>
+</div>
+</body></html>
