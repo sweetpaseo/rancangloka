@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RancangLoka - Jurnal Spasial &amp; Rekayasa Tropis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#004fbd",
+                        "outline-variant": "#c2c6d7",
+                        "on-surface": "#1a1c1d",
+                        "surface-variant": "#e2e2e4",
+                        "tertiary": "#55565a",
+                        "surface-bright": "#f9f9fb",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "primary-fixed-dim": "#b1c5ff",
+                        "inverse-surface": "#2f3132",
+                        "secondary-fixed": "#e5e2e1",
+                        "on-secondary-fixed-variant": "#474646",
+                        "primary-container": "#0066ee",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "surface-container-low": "#f3f3f5",
+                        "surface": "#f9f9fb",
+                        "background": "#f9f9fb",
+                        "on-primary-container": "#f0f2ff",
+                        "tertiary-fixed-dim": "#c7c6cb",
+                        "on-primary": "#ffffff",
+                        "on-background": "#1a1c1d",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d9dadc",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#424655",
+                        "inverse-primary": "#b1c5ff",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#6e6e73",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#f3f2f7",
+                        "on-tertiary-fixed-variant": "#46464b",
+                        "on-primary-fixed": "#001946",
+                        "surface-container-highest": "#e2e2e4",
+                        "secondary-container": "#e5e2e1",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#5f5e5e",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#656464",
+                        "on-tertiary": "#ffffff",
+                        "inverse-on-surface": "#f0f0f2",
+                        "surface-tint": "#0057cd",
+                        "surface-container": "#edeef0",
+                        "tertiary-fixed": "#e3e2e7",
+                        "on-primary-fixed-variant": "#00419d",
+                        "primary-fixed": "#dae2ff",
+                        "surface-container-high": "#e8e8ea",
+                        "on-tertiary-fixed": "#1a1b1f",
+                        "outline": "#727786"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "2rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px",
+                        "margin-desktop": "64px",
+                        "gutter": "24px",
+                        "unit": "8px",
+                        "section-gap": "128px"
+                    },
+                    "fontFamily": {
+                        "subheading": ["Outfit"],
+                        "body-large": ["Plus Jakarta Sans"],
+                        "spec-label": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Outfit"],
+                        "display-xl": ["Outfit"],
+                        "body-base": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Outfit"]
+                    },
+                    "fontSize": {
+                        "subheading": ["20px", { "lineHeight": "1.4", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "body-large": ["18px", { "lineHeight": "1.7", "letterSpacing": "0px", "fontWeight": "400" }],
+                        "spec-label": ["12px", { "lineHeight": "1.0", "letterSpacing": "0.1em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-xl": ["80px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                        "body-base": ["16px", { "lineHeight": "1.6", "letterSpacing": "0px", "fontWeight": "400" }],
+                        "headline-lg": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FBFBFD;
+        }
+        .hairline-b { border-bottom: 1px solid #E1E1E1; }
+        .hairline-t { border-top: 1px solid #E1E1E1; }
+        .hairline-r { border-right: 1px solid #E1E1E1; }
+        .ambient-shadow { box-shadow: 0px 4px 24px rgba(0,0,0,0.04); }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 w-full bg-surface/70 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm transition-all duration-300">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 w-full max-w-[1440px] mx-auto">
+<!-- Brand -->
+<a class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold tracking-tighter text-on-surface" href="#">RANCANGLOKA</a>
+<!-- Navigation -->
+<nav class="hidden md:flex items-center gap-gutter">
+<a class="text-primary border-b border-primary pb-1 font-spec-label text-spec-label tracking-widest uppercase opacity-80 scale-95 transition-all" href="#">Jurnal</a>
+<a class="text-on-surface-variant font-spec-label text-spec-label tracking-widest uppercase hover:text-primary transition-colors duration-300" href="#">Solusi Masalah</a>
+<a class="text-on-surface-variant font-spec-label text-spec-label tracking-widest uppercase hover:text-primary transition-colors duration-300" href="#">Komparasi Material</a>
+<a class="text-on-surface-variant font-spec-label text-spec-label tracking-widest uppercase hover:text-primary transition-colors duration-300" href="#">Visual Studies</a>
+<a class="text-on-surface-variant font-spec-label text-spec-label tracking-widest uppercase hover:text-primary transition-colors duration-300" href="#">Piagam Editorial</a>
+</nav>
+<!-- Actions -->
+<div class="flex items-center gap-4">
+<button class="hidden md:flex items-center justify-center text-on-surface hover:text-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="hidden md:flex items-center justify-center text-on-surface hover:text-primary transition-colors">
+<span class="material-symbols-outlined">contrast</span>
+</button>
+<button class="bg-[#111111] text-white px-6 py-2 rounded-full font-spec-label text-spec-label uppercase tracking-widest hover:bg-primary transition-colors duration-300">Langganan</button>
+</div>
+</div>
+</header>
+<main class="flex-grow w-full max-w-[1440px] mx-auto">
+<!-- Hero Cover Story -->
+<section class="px-margin-mobile md:px-margin-desktop py-12 md:py-24">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Left: Featured Story -->
+<div class="md:col-span-8 flex flex-col gap-6">
+<div class="relative w-full h-[60vh] rounded-3xl overflow-hidden ambient-shadow bg-white p-1 border border-[#E1E1E1]">
+<img alt="Hero Cover" class="w-full h-full object-cover rounded-[1.4rem]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBq0MrqvLkoh2sF0R4Q5DK-2TQ7lmtyMPtJOy8NK-6s3zq8zt1OIsSkiOLIviXz1iOdYwWWkRO0dwOCtR_vYVRCN74NAyEwe5K-5KOVb-Nt5rJtx-sGC21hNC7Nn4nt1_lPq9YroY7GncJoX4-xOIwrCvbzCDkxGHwH1-YZVgT8cgs1cnlZnEYgYE7n5BN4AlgufZ_l8G2c64DA5_jgboFnj0gfbvnlqRnvPVGS8EHxfainaw310ebSMckO-DWpRsl71G2jQLolm1E"/>
+<div class="absolute top-6 left-6 bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-[#E1E1E1]">
+<span class="font-spec-label text-spec-label text-primary">FASAD TROPIS</span>
+</div>
+</div>
+<div class="flex flex-col gap-4 pl-2">
+<h1 class="font-display-xl text-display-xl text-on-surface leading-tight">Evolusi Fasad Bata Tropis: Ventilasi Silang &amp; Efisiensi Termal di Iklim Lembap</h1>
+<div class="flex items-center gap-4 font-spec-label text-spec-label text-tertiary uppercase">
+<span>Oleh Ir. Baskoro Tedjo</span>
+<span class="w-1 h-1 bg-tertiary rounded-full"></span>
+<span>6 min baca</span>
+</div>
+</div>
+</div>
+<!-- Right: Curated List -->
+<div class="md:col-span-4 flex flex-col gap-8 md:pl-8 md:border-l border-[#E1E1E1]">
+<h2 class="font-spec-label text-spec-label text-on-surface-variant uppercase tracking-widest hairline-b pb-4">Kurasi Editorial</h2>
+<div class="flex flex-col gap-8">
+<article class="flex gap-4 group cursor-pointer">
+<span class="font-display-xl text-4xl text-primary opacity-20 group-hover:opacity-100 transition-opacity">01</span>
+<div class="flex flex-col gap-2">
+<h3 class="font-subheading text-subheading text-on-surface group-hover:text-primary transition-colors">Menata Ulang Pencahayaan Alami di Rumah Lahan Sempit</h3>
+<p class="font-spec-label text-spec-label text-tertiary">INTERIOR · 4 MIN</p>
+</div>
+</article>
+<article class="flex gap-4 group cursor-pointer">
+<span class="font-display-xl text-4xl text-primary opacity-20 group-hover:opacity-100 transition-opacity">02</span>
+<div class="flex flex-col gap-2">
+<h3 class="font-subheading text-subheading text-on-surface group-hover:text-primary transition-colors">Resiliensi Material Bambu Lapis untuk Struktur Atap</h3>
+<p class="font-spec-label text-spec-label text-tertiary">STRUKTUR · 8 MIN</p>
+</div>
+</article>
+<article class="flex gap-4 group cursor-pointer">
+<span class="font-display-xl text-4xl text-primary opacity-20 group-hover:opacity-100 transition-opacity">03</span>
+<div class="flex flex-col gap-2">
+<h3 class="font-subheading text-subheading text-on-surface group-hover:text-primary transition-colors">Kanopi Ekstensif: Ambang Batas Ruang Dalam &amp; Luar</h3>
+<p class="font-spec-label text-spec-label text-tertiary">EKSTERIOR · 5 MIN</p>
+</div>
+</article>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Needs (Horizontal Scroll) -->
+<section class="py-8 hairline-t hairline-b bg-surface-bright overflow-hidden">
+<div class="px-margin-mobile md:px-margin-desktop flex items-center gap-6 overflow-x-auto no-scrollbar whitespace-nowrap">
+<span class="font-spec-label text-spec-label text-on-surface-variant uppercase shrink-0">Pencarian Cepat:</span>
+<button class="shrink-0 px-6 py-2 rounded-full border border-[#E1E1E1] bg-white hover:border-primary hover:text-primary transition-colors font-body-base text-body-base">Ruang Panas Menghadap Barat</button>
+<button class="shrink-0 px-6 py-2 rounded-full border border-[#E1E1E1] bg-white hover:border-primary hover:text-primary transition-colors font-body-base text-body-base">Dinding Lembap &amp; Rembes</button>
+<button class="shrink-0 px-6 py-2 rounded-full border border-[#E1E1E1] bg-white hover:border-primary hover:text-primary transition-colors font-body-base text-body-base">Ventilasi Void Terbatas</button>
+<button class="shrink-0 px-6 py-2 rounded-full border border-[#E1E1E1] bg-white hover:border-primary hover:text-primary transition-colors font-body-base text-body-base">Pemilihan Kusen Tropis</button>
+</div>
+</section>
+<!-- Jurnal Spasial (Grid) -->
+<section class="px-margin-mobile md:px-margin-desktop py-section-gap">
+<div class="flex justify-between items-end mb-12 hairline-b pb-4">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Jurnal Spasial</h2>
+<a class="font-spec-label text-spec-label text-primary uppercase hover:underline underline-offset-4" href="#">Lihat Indeks Lengkap</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Card 1 -->
+<article class="bg-white rounded-3xl p-2 border border-[#E1E1E1] ambient-shadow group cursor-pointer flex flex-col">
+<div class="w-full h-64 rounded-2xl overflow-hidden mb-4 relative">
+<img alt="Jurnal Image 1" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGvg4-g5yXB4mQBPO6dexow_UoFJpAxeJ_K0xVQdefKVBIkB4f4QFdgUgnX0LOePwqQx_mUug3VccoLo1aP286AlGqgPT2AoJVylS3OBW8dnGuzKnY6fIBHU1RDrntcoT3MxHXop9U5BhxxeI_zyB9GTQ-uMxHEQ8E1TieuNZFX9ofZ1BwhaTSUIkYHNAVOfxiR4csFD5Fyq6k9RYit7bnO_hfuwU2vSYGAxb53VONZp4l79gipv1ochuZdBWL_CFJzpAGsbjTi6k"/>
+</div>
+<div class="px-4 pb-4 flex flex-col gap-3 flex-grow">
+<span class="font-spec-label text-spec-label text-tertiary uppercase">Studi Kasus</span>
+<h3 class="font-subheading text-subheading text-on-surface group-hover:text-primary transition-colors">Batas Ambigu: Meleburkan Ruang Dalam &amp; Luar</h3>
+<p class="font-body-base text-body-base text-on-surface-variant line-clamp-3">Analisis mendalam tentang penggunaan partisi kaca dan elemen kayu untuk menciptakan transisi mulus pada hunian tropis kontemporer.</p>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="bg-white rounded-3xl p-2 border border-[#E1E1E1] ambient-shadow group cursor-pointer flex flex-col">
+<div class="w-full h-64 rounded-2xl overflow-hidden mb-4 relative">
+<img alt="Jurnal Image 2" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBq0MrqvLkoh2sF0R4Q5DK-2TQ7lmtyMPtJOy8NK-6s3zq8zt1OIsSkiOLIviXz1iOdYwWWkRO0dwOCtR_vYVRCN74NAyEwe5K-5KOVb-Nt5rJtx-sGC21hNC7Nn4nt1_lPq9YroY7GncJoX4-xOIwrCvbzCDkxGHwH1-YZVgT8cgs1cnlZnEYgYE7n5BN4AlgufZ_l8G2c64DA5_jgboFnj0gfbvnlqRnvPVGS8EHxfainaw310ebSMckO-DWpRsl71G2jQLolm1E"/>
+</div>
+<div class="px-4 pb-4 flex flex-col gap-3 flex-grow">
+<span class="font-spec-label text-spec-label text-tertiary uppercase">Teknik Fasad</span>
+<h3 class="font-subheading text-subheading text-on-surface group-hover:text-primary transition-colors">Estetika Fungsional Bata Roster</h3>
+<p class="font-body-base text-body-base text-on-surface-variant line-clamp-3">Bagaimana penyusunan bata ekspos tidak hanya memberikan karakter visual kuat, tetapi juga memfasilitasi aliran udara optimal.</p>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="bg-white rounded-3xl p-2 border border-[#E1E1E1] ambient-shadow group cursor-pointer flex flex-col">
+<div class="w-full h-64 rounded-2xl overflow-hidden mb-4 relative bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant text-4xl">image</span>
+</div>
+<div class="px-4 pb-4 flex flex-col gap-3 flex-grow">
+<span class="font-spec-label text-spec-label text-tertiary uppercase">Materialitas</span>
+<h3 class="font-subheading text-subheading text-on-surface group-hover:text-primary transition-colors">Beton Ekspos di Iklim Tropis</h3>
+<p class="font-body-base text-body-base text-on-surface-variant line-clamp-3">Mitigasi risiko pelapukan dan noda air pada permukaan beton ekspos melalui pelapisan penetran yang tepat.</p>
+</div>
+</article>
+</div>
+</section>
+<!-- Material Matrix -->
+<section class="px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-low rounded-[3rem] mx-4 md:mx-8 mb-section-gap">
+<div class="flex flex-col md:flex-row gap-12">
+<div class="md:w-1/3 flex flex-col gap-6">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Panduan Spesifikasi Materialitas</h2>
+<p class="font-body-large text-body-large text-on-surface-variant">Direktori komparatif material berkinerja tinggi untuk aplikasi arsitektur tropis, diuji terhadap durabilitas iklim dan efisiensi termal.</p>
+<div class="mt-4 rounded-3xl overflow-hidden border border-[#E1E1E1]">
+<img alt="Material Detail Reference" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEHs8zGuiRET16jkNpDw8PKtgaJ2tg5pbnrn2EDqX2vKmxJHWOzWwgQulIE3PzC04X2K20XP-G9641kWZrQEyFtYJWBBYETysobmg9EyBt5JgTK71ZXx6jCyAY8wU_bVAieJ5-w7zsP2txsNqQdzYj6fTMSTwycX0ob__FQg31-KTDHS9oKTl2l0Kk4EKnKmO_0FfChzbdHLlAqnRAsl1H4_fWOX2gk8XEGpfm09-JKd6q8EKtyejlEXg4Pei-d8EprXKhGf9Lp5E"/>
+</div>
+</div>
+<div class="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Matrix Card 1 -->
+<div class="bg-white rounded-3xl p-8 border border-[#E1E1E1] hover:border-primary transition-colors cursor-pointer group flex flex-col gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">forest</span>
+</div>
+<h3 class="font-subheading text-subheading text-on-surface">Kayu Ulin vs Bangkirai</h3>
+<p class="font-body-base text-body-base text-tertiary">Komparasi densitas, resistensi rayap, dan patinasi jangka panjang untuk area decking outdoor.</p>
+</div>
+<!-- Matrix Card 2 -->
+<div class="bg-white rounded-3xl p-8 border border-[#E1E1E1] hover:border-primary transition-colors cursor-pointer group flex flex-col gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">window</span>
+</div>
+<h3 class="font-subheading text-subheading text-on-surface">Kusen Aluminium Thermal Break vs UPVC</h3>
+<p class="font-body-base text-body-base text-tertiary">Evaluasi insulasi panas dan ketahanan struktural untuk bukaan fasad bentang lebar.</p>
+</div>
+<!-- Matrix Card 3 -->
+<div class="bg-white rounded-3xl p-8 border border-[#E1E1E1] hover:border-primary transition-colors cursor-pointer group flex flex-col gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">grid_view</span>
+</div>
+<h3 class="font-subheading text-subheading text-on-surface">Bata Ringan vs Bata Merah Ekspos</h3>
+<p class="font-body-base text-body-base text-tertiary">Analisis massa termal, kecepatan konstruksi, dan estetika vernacular kontemporer.</p>
+</div>
+<!-- Matrix Card 4 -->
+<div class="bg-white rounded-3xl p-8 border border-[#E1E1E1] hover:border-primary transition-colors cursor-pointer group flex flex-col gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">light_mode</span>
+</div>
+<h3 class="font-subheading text-subheading text-on-surface">Kaca Low-E Tropis</h3>
+<p class="font-body-base text-body-base text-tertiary">Spesifikasi transmitansi cahaya tampak (VLT) vs penolakan panas (SHGC) ideal.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-bright border-t border-outline-variant/30">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter px-margin-mobile md:px-margin-desktop py-section-gap w-full max-w-[1440px] mx-auto">
+<div class="md:col-span-1 flex flex-col gap-4">
+<span class="font-headline-lg text-headline-lg font-bold tracking-tighter text-on-surface">RANCANGLOKA</span>
+<p class="font-body-base text-body-base text-on-surface">Jurnal Spasial &amp; Rekayasa Tropis.</p>
+</div>
+<div class="md:col-span-2 grid grid-cols-2 gap-4">
+<a class="font-spec-label text-spec-label text-on-surface-variant hover:text-primary underline decoration-1 underline-offset-4 transition-all duration-200 ease-in-out" href="#">Manifesto Editorial</a>
+<a class="font-spec-label text-spec-label text-on-surface-variant hover:text-primary underline decoration-1 underline-offset-4 transition-all duration-200 ease-in-out" href="#">D1 Database</a>
+<a class="font-spec-label text-spec-label text-on-surface-variant hover:text-primary underline decoration-1 underline-offset-4 transition-all duration-200 ease-in-out" href="#">Material Specs</a>
+<a class="font-spec-label text-spec-label text-on-surface-variant hover:text-primary underline decoration-1 underline-offset-4 transition-all duration-200 ease-in-out" href="#">Arsip Visual</a>
+<a class="font-spec-label text-spec-label text-on-surface-variant hover:text-primary underline decoration-1 underline-offset-4 transition-all duration-200 ease-in-out" href="#">Studi Kasus</a>
+<a class="font-spec-label text-spec-label text-on-surface-variant hover:text-primary underline decoration-1 underline-offset-4 transition-all duration-200 ease-in-out" href="#">Kontak Spesifikasi</a>
+</div>
+<div class="md:col-span-1 flex flex-col gap-4">
+<span class="font-spec-label text-spec-label text-on-surface-variant uppercase">Newsletter</span>
+<div class="flex flex-col gap-2">
+<input class="bg-transparent border-0 border-b border-[#E1E1E1] focus:border-primary focus:ring-0 font-spec-label text-spec-label px-0 py-2 placeholder:text-outline-variant uppercase" placeholder="ALAMAT EMAIL" type="email"/>
+<button class="bg-[#111111] text-white px-6 py-2 rounded-full font-spec-label text-spec-label uppercase tracking-widest hover:bg-primary transition-colors duration-300 w-max mt-4">Berlangganan</button>
+</div>
+</div>
+<div class="md:col-span-4 mt-12 pt-8 hairline-t">
+<p class="font-body-base text-body-base text-on-surface-variant">© 2024 RancangLoka. Jurnal Spasial &amp; Rekayasa Tropis. Bebas promosi berbayar tanpa penandaan.</p>
+</div>
+</div>
+</footer>
+</body></html>
