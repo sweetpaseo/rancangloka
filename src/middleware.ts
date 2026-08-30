@@ -26,7 +26,14 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 
-  // 4. Hide Admin and API from Search Engines entirely
+  // 4. Cache-Control for Real-Time Freshness on HTML Pages
+  if (!pathname.startsWith('/assets/') && !pathname.startsWith('/_astro/')) {
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+  }
+
+  // 5. Hide Admin and API from Search Engines entirely
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
   }
