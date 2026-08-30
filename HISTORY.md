@@ -192,6 +192,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 19: Paritas Editor Lengkap di Halaman Edit Artikel (Drag & Drop R2 Cover + Live Preview + Scorecard)
+* **Gejala:** Halaman Edit Artikel sebelumnya hanya memiliki input URL teks polos untuk cover gambar tanpa kotak drag & drop upload R2, tab visual live preview, dan SEO scorecard seperti pada halaman Tulis Baru.
+* **Solusi:**
+  - Memperbarui [`src/pages/admin/posts/[id].astro`](file:///src/pages/admin/posts/%5Bid%5D.astro) dengan menyematkan komponen drag-and-drop auto WebP converter ke Cloudflare R2 bucket.
+  - Menambahkan tab switcher antara "📝 Tulis Markdown" dan "👁️ Live Visual Preview" (dengan rendering Marked.js).
+  - Menambahkan Realtime SEO 2026 Scorecard (0–100%) dan Google SERP Simulator.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
