@@ -8,7 +8,7 @@ export const GET: APIRoute = async ({ locals }) => {
     getSiteSettings(db)
   ]);
 
-  const siteUrl = settings.site_url || 'https://magazine.pages.dev';
+  const siteUrl = settings.site_url || 'https://rancangloka.com';
   const now = new Date().toISOString();
 
   const urls = categories
@@ -23,6 +23,7 @@ export const GET: APIRoute = async ({ locals }) => {
     .join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="/main-sitemap.xsl"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${siteUrl}</loc>
@@ -35,7 +36,7 @@ ${urls}
 
   return new Response(xml, {
     headers: {
-      'Content-Type': 'application/xml',
+      'Content-Type': 'application/xml; charset=utf-8',
       'Cache-Control': 'public, max-age=3600, s-maxage=86400'
     }
   });

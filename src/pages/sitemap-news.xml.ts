@@ -24,6 +24,7 @@ export const GET: APIRoute = async ({ locals }) => {
       const pubDate = new Date(a.published_at).toISOString();
       return `  <url>
     <loc>${siteUrl}/${a.slug}</loc>
+    <lastmod>${pubDate}</lastmod>
     <news:news>
       <news:publication>
         <news:name>${siteTitle}</news:name>
@@ -37,6 +38,7 @@ export const GET: APIRoute = async ({ locals }) => {
     .join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="/main-sitemap.xsl"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
 ${urls}
@@ -44,7 +46,7 @@ ${urls}
 
   return new Response(xml, {
     headers: {
-      'Content-Type': 'application/xml',
+      'Content-Type': 'application/xml; charset=utf-8',
       'Cache-Control': 'public, max-age=600, s-maxage=3600'
     }
   });

@@ -4,22 +4,23 @@ import { getDb, getSiteSettings } from '../lib/db';
 export const GET: APIRoute = async ({ locals }) => {
   const db = await getDb(locals);
   const settings = await getSiteSettings(db);
-  const siteUrl = settings.site_url || 'https://magazine.pages.dev';
+  const siteUrl = settings.site_url || 'https://rancangloka.com';
   const now = new Date().toISOString();
 
-  // Generate Sitemap Index containing sub-sitemaps
+  // Generate Rank Math Style Sitemap Index with XSLT Stylesheet
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="/main-sitemap.xsl"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
-    <loc>${siteUrl}/sitemap-posts-1.xml</loc>
+    <loc>${siteUrl}/post-sitemap.xml</loc>
     <lastmod>${now}</lastmod>
   </sitemap>
   <sitemap>
-    <loc>${siteUrl}/sitemap-pages.xml</loc>
+    <loc>${siteUrl}/page-sitemap.xml</loc>
     <lastmod>${now}</lastmod>
   </sitemap>
   <sitemap>
-    <loc>${siteUrl}/sitemap-categories.xml</loc>
+    <loc>${siteUrl}/category-sitemap.xml</loc>
     <lastmod>${now}</lastmod>
   </sitemap>
   <sitemap>
@@ -30,7 +31,7 @@ export const GET: APIRoute = async ({ locals }) => {
 
   return new Response(xml, {
     headers: {
-      'Content-Type': 'application/xml',
+      'Content-Type': 'application/xml; charset=utf-8',
       'Cache-Control': 'public, max-age=3600, s-maxage=86400'
     }
   });

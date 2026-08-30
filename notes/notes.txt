@@ -1,0 +1,17 @@
+D1SQLite Database: 3a86e9ad-410f-4440-884e-2eb813ec4cf7
+R2 Object Storage: rancangloka-media
+					https://a8e6d11d45dc2d14fe49fe3b84958ee8.r2.cloudflarestorage.com/rancangloka-media
+					
+1. Uji Coba Proteksi Cloudflare Access
+Buka tab baru di browser Anda menggunakan mode Incognito / Private Window.
+Akses halaman admin: 👉 https://rancangloka.chandrajoyko.workers.dev/admin
+Anda akan melihat halaman proteksi Cloudflare:
+Masukkan email Anda: chandrajoyko@gmail.com
+Buka inbox Gmail Anda dan salin 6-digit kode OTP dari Cloudflare.
+Masukkan kode OTP tersebut.
+Halaman admin berhasil terbuka aman!
+2. Login ke Dashboard CMS RancangLoka
+Setelah melewati proteksi Cloudflare di atas, Anda akan masuk ke form login CMS:
+
+Email: admin@rancangloka.com
+Password: Admin@RancangLoka2026! (Kredensial ini nanti bisa Anda ubah langsung di menu Pengaturan Akun).

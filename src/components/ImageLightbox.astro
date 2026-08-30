@@ -1,0 +1,93 @@
+---
+// Native Architecture & Interior Photo Lightbox Zoom
+---
+
+<div id="image-lightbox" class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-md transition-all select-none">
+  <!-- Top Bar Controls -->
+  <div class="absolute top-4 right-4 z-20 flex items-center gap-3">
+    <a
+      id="lightbox-hd-link"
+      href="#"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold text-white transition border border-white/20"
+      title="Buka Gambar Asli (HD)"
+    >
+      🔍 Buka HD
+    </a>
+    <button
+      id="close-lightbox-btn"
+      type="button"
+      class="rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md p-2 text-white transition border border-white/20"
+      aria-label="Tutup Lightbox (ESC)"
+    >
+      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Center Image Canvas -->
+  <div class="flex h-full w-full items-center justify-center p-4 sm:p-8">
+    <img
+      id="lightbox-img"
+      src=""
+      alt="Preview HD"
+      class="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl transition-transform duration-300"
+    />
+  </div>
+
+  <!-- Bottom Caption -->
+  <div class="absolute bottom-6 inset-x-4 text-center pointer-events-none">
+    <p id="lightbox-caption" class="inline-block rounded-full bg-black/60 backdrop-blur-md px-4 py-1.5 text-xs font-medium text-white/90 border border-white/10 max-w-xl truncate">
+      <!-- Injected Caption -->
+    </p>
+  </div>
+</div>
+
+<script>
+  const lightbox = document.getElementById('image-lightbox');
+  const lbImg = document.getElementById('lightbox-img') as HTMLImageElement;
+  const lbCaption = document.getElementById('lightbox-caption');
+  const lbHdLink = document.getElementById('lightbox-hd-link') as HTMLAnchorElement;
+  const closeBtn = document.getElementById('close-lightbox-btn');
+
+  function openLightbox(src: string, alt: string) {
+    if (!lightbox || !lbImg) return;
+    lbImg.src = src;
+    if (lbCaption) lbCaption.innerText = alt || 'Kurasi Visual RancangLoka';
+    if (lbHdLink) lbHdLink.href = src;
+    lightbox.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    if (!lightbox) return;
+    lightbox.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  closeBtn?.addEventListener('click', closeLightbox);
+  lightbox?.addEventListener('click', (e) => {
+    if (e.target === lightbox || (e.target as HTMLElement).tagName === 'DIV') {
+      closeLightbox();
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeLightbox();
+  });
+
+  // Attach click listener to article images and cover image
+  document.addEventListener('DOMContentLoaded', () => {
+    const images = document.querySelectorAll('.prose-magazine img, .article-cover-img');
+    images.forEach((img) => {
+      (img as HTMLElement).style.cursor = 'zoom-in';
+      img.addEventListener('click', () => {
+        const src = (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src;
+        const alt = (img as HTMLImageElement).alt || '';
+        openLightbox(src, alt);
+      });
+    });
+  });
+</script>
