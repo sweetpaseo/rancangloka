@@ -188,7 +188,7 @@ const accentColor = siteSettings.theme_accent_color || '#0066ee';
 
         <!-- Col 2: Categories -->
         <div>
-          <h4 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Kategori Liputan</h4>
+          <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Kategori Liputan</h2>
           <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
             {categories.map((c) => (
               <li>
@@ -200,7 +200,7 @@ const accentColor = siteSettings.theme_accent_color || '#0066ee';
 
         <!-- Col 3: Static Pages -->
         <div>
-          <h4 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Halaman & Redaksi</h4>
+          <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Halaman & Redaksi</h2>
           <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
             <li><a href="/editorial-standards" class="hover:text-[#0066ee] transition text-[#0066ee] font-bold">✦ Standar Editorial & Integritas</a></li>
             <li><a href="/metodologi" class="hover:text-[#0066ee] transition text-[#0066ee] font-bold">✦ Metodologi Riset Spasial</a></li>
@@ -213,7 +213,7 @@ const accentColor = siteSettings.theme_accent_color || '#0066ee';
 
         <!-- Col 4: Tools & Index -->
         <div>
-          <h4 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Alat & Riset Ruang</h4>
+          <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Alat & Riset Ruang</h2>
           <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
             <li><a href="/explore" class="hover:text-[#0066ee] transition text-[#0066ee] font-bold">✦ Design Explorer</a></li>
             <li><a href="/solusi" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">Problem Solver</a></li>
@@ -224,9 +224,9 @@ const accentColor = siteSettings.theme_accent_color || '#0066ee';
         </div>
       </div>
 
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 font-mono">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400 font-mono">
         <p>{siteSettings.footer_copyright || `© 2026 ${siteTitle}. All rights reserved. Kurasi editorial independen.`}</p>
-        <span class="text-[11px] text-slate-400">RancangLoka • Jurnal Kurasi Arsitektur & Hunian Tropis</span>
+        <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">RancangLoka • Jurnal Kurasi Arsitektur & Hunian Tropis</span>
       </div>
     </footer>
 

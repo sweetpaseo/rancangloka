@@ -6,6 +6,9 @@ import tailwind from '@astrojs/tailwind';
 export default defineConfig({
   output: 'server',
   compressHTML: true,
+  build: {
+    inlineStylesheets: 'always'
+  },
   adapter: cloudflare({
     imageService: 'passthrough',
     mode: 'advanced'
