@@ -111,14 +111,25 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 11: Sistem Halaman Statis & Page Writer (WordPress-Style Pages)
+* **Gejala:** Belum ada pemisahan entitas antara artikel blog/majalah (Posts) dengan halaman informasi statis (Pages) seperti *Tentang Kami*, *Kontak*, *Pedoman Media Siber*, dan *Kebijakan Privasi*.
+* **Solusi:**
+  - Membuat tabel `pages` di database D1 [`db/schema.sql`](file:///db/schema.sql) dan data layer [`src/lib/db.ts`](file:///src/lib/db.ts).
+  - Menambahkan menu **"Halaman (Pages)"** di Admin CMS [`src/layouts/AdminLayout.astro`](file:///src/layouts/AdminLayout.astro).
+  - Membangun halaman listing [`src/pages/admin/pages/index.astro`](file:///src/pages/admin/pages/index.astro) dan editor penulisan halaman [`src/pages/admin/pages/new.astro`](file:///src/pages/admin/pages/new.astro) & [`src/pages/admin/pages/[id].astro`](file:///src/pages/admin/pages/%5Bid%5D.astro).
+  - Mendukung template halaman (Standar, Formulir Kontak Interaktif, Full Width) serta auto-sitemap di [`src/pages/sitemap-pages.xml.ts`](file:///src/pages/sitemap-pages.xml.ts).
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, dark mode, dynamic styling. |
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main`. |
-| **D1 Database & Skema** | ✅ Selesai (Aktif) | 6 tabel inti dan data seed awal kategori & penulis sudah aktif. |
+| **D1 Database & Skema** | ✅ Selesai (Aktif) | 7 tabel inti (Articles, Pages, Categories, Authors, Settings, Users, Sessions). |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
+| **Manajemen Halaman Statis (Pages)** | ✅ Selesai (Aktif) | Page Writer CMS, template kontak interaktif, & sitemap pages aktif. |
 | **SEO & Feed** | ✅ Selesai | Google News XML, Sitemap XML, RSS feed, Schema.org aktif. |
 | **Keamanan Level Kode** | ✅ Selesai | Hashing PBKDF2, session token acak 24-byte, SQL parameterization. |
 | **Cloudflare Zero Trust (Access)** | ✅ Selesai (Aktif) | Proteksi OTP email `chandrajoyko@gmail.com` aktif untuk rute `/admin*`. |
