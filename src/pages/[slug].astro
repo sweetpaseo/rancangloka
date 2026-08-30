@@ -5,8 +5,8 @@ import TableOfContents from '../components/TableOfContents.astro';
 import AuthorCard from '../components/AuthorCard.astro';
 import RelatedArticles from '../components/RelatedArticles.astro';
 import SocialShareBar from '../components/SocialShareBar.astro';
-import { getDb, getArticleBySlug, getPageBySlug, getRelatedArticles, getAllCategories, getSiteSettings } from '../lib/db';
-import { extractTableOfContents, injectHeadingIds, generateArticleSchema } from '../lib/seo';
+import { getDb, getArticleBySlug, getPageBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
 
 const { slug } = Astro.params;
 const db = await getDb(Astro.locals);
@@ -34,9 +34,20 @@ let jsonLdSchema: any = null;
 let breadcrumbItems: any[] = [];
 
 if (article) {
-  relatedArticles = await getRelatedArticles(db, article.id, article.category_id, 3);
+  const [fetchedRelated, allArticles] = await Promise.all([
+    getRelatedArticles(db, article.id, article.category_id, 3),
+    getAllArticles(db, 'published')
+  ]);
+
+  relatedArticles = fetchedRelated;
   toc = extractTableOfContents(article.content_html);
-  processedHtml = injectHeadingIds(article.content_html);
+  processedHtml = processArticleContent(
+    article.content_html,
+    article,
+    allArticles,
+    relatedArticles[0],
+    siteSettings
+  );
 
   if (article.key_takeaways) {
     try {
@@ -156,7 +167,7 @@ if (article) {
 
     <!-- 2. Header Metadata & Headline -->
     <header class="mb-8">
-      <div class="flex items-center gap-2.5 mb-4">
+      <div class="flex flex-wrap items-center gap-2.5 mb-4">
         <a
           href={`/category/${article.category_slug || 'all'}`}
           class="rounded-full px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-2xs"
@@ -164,6 +175,14 @@ if (article) {
         >
           {article.category_name || 'Hunian'}
         </a>
+
+        {article.is_sponsored === 1 && (
+          <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700/60 px-3 py-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+            <span>🏷️</span>
+            Kemitraan / Advertorial
+          </span>
+        )}
+
         <span class="text-xs text-slate-400 font-medium">
           ⏱️ {article.reading_time_minutes} min read
         </span>

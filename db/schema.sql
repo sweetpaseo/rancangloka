@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS articles (
   content_hash TEXT, -- SHA-256 for duplicate detection
   is_featured INTEGER DEFAULT 0, -- 1 for Featured Hero Story
   is_trending INTEGER DEFAULT 0, -- 1 for Trending Bar
+  is_sponsored INTEGER DEFAULT 0, -- 1 for Sponsored Post / Paid Review
+  disable_internal_links INTEGER DEFAULT 0, -- 1 to disable auto-keyword & in-article related links
   published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

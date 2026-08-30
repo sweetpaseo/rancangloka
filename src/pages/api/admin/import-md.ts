@@ -84,8 +84,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
       focus_keyword: frontmatter.focus_keyword || '',
       content_hash: contentHash,
       key_takeaways: frontmatter.key_takeaways || '[]',
-      is_featured: frontmatter.is_featured === 'true' || frontmatter.is_featured === '1' ? 1 : 0,
-      is_trending: frontmatter.is_trending === 'true' || frontmatter.is_trending === '1' ? 1 : 0
+      is_featured: frontmatter.is_featured === 'true' || frontmatter.is_featured === '1' || frontmatter.is_featured === true ? 1 : 0,
+      is_trending: frontmatter.is_trending === 'true' || frontmatter.is_trending === '1' || frontmatter.is_trending === true ? 1 : 0,
+      is_sponsored: frontmatter.is_sponsored === 'true' || frontmatter.is_sponsored === '1' || frontmatter.is_sponsored === true ? 1 : 0,
+      disable_internal_links: frontmatter.disable_internal_links === 'true' || frontmatter.disable_internal_links === '1' || frontmatter.disable_internal_links === true || frontmatter.is_sponsored === true || frontmatter.is_sponsored === 'true' ? 1 : 0
     });
 
     return new Response(

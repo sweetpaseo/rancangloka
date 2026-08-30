@@ -128,3 +128,164 @@ export async function generateContentHash(content: string): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
+// ============================================================================
+// 🔗 AUTOMATED INTERNAL LINKING & EDITORIAL SYNDICATION ENGINE (SEO 2026)
+// ============================================================================
+
+/**
+ * 1. Injects Dateline Source Branding (e.g. RANCANGLOKA.COM – ) at the beginning of the first paragraph.
+ * Protects content from scrapers and generates automatic source backlinks when syndicated.
+ */
+export function injectEditorialDateline(html: string, siteUrl: string = 'https://rancangloka.com', brandName: string = 'RANCANGLOKA.COM'): string {
+  const firstPRegex = /(<p[^>]*>)([\s\S]*?)(<\/p>)/i;
+  const match = html.match(firstPRegex);
+  if (!match) return html;
+
+  const innerText = match[2].trim();
+  // If dateline already exists, do not duplicate
+  if (/rancangloka\.com/i.test(innerText.slice(0, 50)) || /^[A-Z\s]+–/i.test(innerText.slice(0, 30))) {
+    return html;
+  }
+
+  const datelineHtml = `<strong><a href="${siteUrl}" class="font-bold text-slate-900 dark:text-white hover:text-primary transition">${brandName}</a></strong> &ndash; `;
+  const updatedP = `${match[1]}${datelineHtml}${match[2]}${match[3]}`;
+
+  return html.replace(firstPRegex, updatedP);
+}
+
+/**
+ * 2. Injects In-Article "BACA JUGA" Related Article Box before the 2nd H2 heading (or after 3rd paragraph).
+ */
+export function injectInArticleRelated(html: string, relatedArticle?: any): string {
+  if (!relatedArticle || !relatedArticle.slug || !relatedArticle.title) {
+    return html;
+  }
+
+  const calloutHtml = `
+<div class="my-7 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-4 transition hover:border-primary/50 shadow-2xs">
+  <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary mb-1">
+    <span>📖</span>
+    <span>BACA JUGA:</span>
+  </div>
+  <a href="/${relatedArticle.slug}" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white hover:text-primary transition line-clamp-2">
+    ${relatedArticle.title}
+  </a>
+</div>
+`;
+
+  // Strategy A: Insert before 2nd <h2>
+  let h2Count = 0;
+  const withH2 = html.replace(/<h2/gi, (match) => {
+    h2Count++;
+    if (h2Count === 2) {
+      return `${calloutHtml}${match}`;
+    }
+    return match;
+  });
+
+  if (h2Count >= 2) return withH2;
+
+  // Strategy B: If only one <h2> exists, insert before it
+  if (h2Count === 1) {
+    return html.replace(/<h2/i, `${calloutHtml}<h2`);
+  }
+
+  // Strategy C: Fallback after 3rd </p>
+  let pCount = 0;
+  return html.replace(/<\/p>/gi, (match) => {
+    pCount++;
+    if (pCount === 3) {
+      return `${match}${calloutHtml}`;
+    }
+    return match;
+  });
+}
+
+/**
+ * 3. Smart Contextual Auto-Keyword Linker
+ * Finds focus keywords of other published articles and creates internal anchor links in text.
+ * Max 2-3 links per article, first match only, ignoring existing <a>, <h1-h6>, <code> tags.
+ */
+export function injectAutoKeywordLinks(
+  html: string,
+  currentArticleId: number,
+  allArticles: any[] = [],
+  maxLinks: number = 2
+): string {
+  if (!allArticles || allArticles.length === 0) return html;
+
+  // Filter candidate articles that have focus_keyword or clean title
+  const candidates: { keyword: string; slug: string }[] = [];
+
+  for (const art of allArticles) {
+    if (art.id === currentArticleId || art.status !== 'published') continue;
+
+    if (art.focus_keyword && art.focus_keyword.trim().length >= 4) {
+      candidates.push({ keyword: art.focus_keyword.trim(), slug: art.slug });
+    }
+  }
+
+  // Sort keywords by length descending so longer phrases match first
+  candidates.sort((a, b) => b.keyword.length - a.keyword.length);
+
+  let linkCount = 0;
+  let resultHtml = html;
+
+  for (const { keyword, slug } of candidates) {
+    if (linkCount >= maxLinks) break;
+
+    // Escape regex special chars
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Regex that matches keyword only inside text (not inside HTML tags or attributes)
+    const regex = new RegExp(`(?<!<[^>]*)(\\b${escaped}\\b)(?![^<]*>)(?![^<]*<\\/a>)`, 'i');
+
+    if (regex.test(resultHtml)) {
+      resultHtml = resultHtml.replace(regex, (matched) => {
+        linkCount++;
+        return `<a href="/${slug}" class="text-primary font-semibold underline underline-offset-2 hover:text-primary-hover transition">${matched}</a>`;
+      });
+    }
+  }
+
+  return resultHtml;
+}
+
+/**
+ * 4. Master Content Processor
+ * Combines Heading IDs, Dateline, Auto-Keywords, and In-Article BACA JUGA based on Sponsored status.
+ */
+export function processArticleContent(
+  rawHtml: string,
+  article: any,
+  allArticles: any[] = [],
+  relatedArticle?: any,
+  siteSettings: Record<string, string> = {}
+): string {
+  // Step 1: Inject Heading IDs for smooth TOC scrolling
+  let html = injectHeadingIds(rawHtml);
+
+  // Step 2: Inject Dateline Source Branding
+  const siteUrl = siteSettings.site_url || 'https://rancangloka.com';
+  const siteTitle = (siteSettings.site_title || 'RANCANGLOKA.COM').toUpperCase();
+  html = injectEditorialDateline(html, siteUrl, siteTitle);
+
+  // Step 3: Check if article is Sponsored / Paid Review or Internal Links are Disabled
+  const isInternalLinksDisabled = article.is_sponsored === 1 || article.disable_internal_links === 1;
+
+  if (isInternalLinksDisabled) {
+    // Return early: Clean text without in-article BACA JUGA or auto-keyword links
+    return html;
+  }
+
+  // Step 4: Inject In-Article BACA JUGA Box
+  if (relatedArticle) {
+    html = injectInArticleRelated(html, relatedArticle);
+  }
+
+  // Step 5: Inject Auto-Keyword Contextual Internal Links
+  html = injectAutoKeywordLinks(html, article.id, allArticles, 2);
+
+  return html;
+}
+

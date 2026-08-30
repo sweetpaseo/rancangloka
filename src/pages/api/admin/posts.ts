@@ -55,7 +55,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
       focus_keyword: body.focus_keyword || '',
       content_hash: contentHash,
       is_featured: body.is_featured ? 1 : 0,
-      is_trending: body.is_trending ? 1 : 0
+      is_trending: body.is_trending ? 1 : 0,
+      is_sponsored: body.is_sponsored ? 1 : 0,
+      disable_internal_links: body.disable_internal_links ? 1 : (body.is_sponsored ? 1 : 0)
     });
 
     return new Response(JSON.stringify({ status: 'success', article }), { status: 200 });

@@ -256,8 +256,7 @@ const [categories, authors] = await Promise.all([
             </select>
           </div>
 
-          <!-- Featured & Trending Toggles -->
-          <div class="pt-3 border-t border-slate-100 space-y-2">
+          <div class="pt-3 border-t border-slate-100 space-y-2.5">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="is-featured" name="is_featured" class="rounded bg-slate-100 border-slate-300 text-primary focus:ring-0" />
               <span class="text-xs text-slate-700">Jadikan <strong>Featured Story</strong> di Beranda</span>
@@ -266,6 +265,14 @@ const [categories, authors] = await Promise.all([
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="is-trending" name="is_trending" class="rounded bg-slate-100 border-slate-300 text-accent focus:ring-0" />
               <span class="text-xs text-slate-700">Tampilkan di <strong>Trending Bar</strong> Atas</span>
+            </label>
+
+            <label class="flex items-start gap-2 cursor-pointer pt-2 border-t border-slate-100">
+              <input type="checkbox" id="is-sponsored" name="is_sponsored" class="rounded bg-slate-100 border-amber-300 text-amber-600 focus:ring-0 mt-0.5" />
+              <div>
+                <span class="text-xs font-bold text-amber-900 block">🏷️ Sponsored / Paid Review</span>
+                <span class="text-[10px] text-slate-500 block leading-tight">Matikan auto-internal link & box "BACA JUGA" agar pembaca fokus pada produk klien.</span>
+              </div>
             </label>
           </div>
         </div>
@@ -482,6 +489,8 @@ const [categories, authors] = await Promise.all([
         focus_keyword: (document.getElementById('post-keyword') as HTMLInputElement)?.value || '',
         is_featured: (document.getElementById('is-featured') as HTMLInputElement)?.checked ? 1 : 0,
         is_trending: (document.getElementById('is-trending') as HTMLInputElement)?.checked ? 1 : 0,
+        is_sponsored: (document.getElementById('is-sponsored') as HTMLInputElement)?.checked ? 1 : 0,
+        disable_internal_links: (document.getElementById('is-sponsored') as HTMLInputElement)?.checked ? 1 : 0,
         status: targetStatus
       };
 

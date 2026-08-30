@@ -15,11 +15,12 @@ export const GET: APIRoute = async ({ locals }) => {
   const items = articles
     .map((a) => {
       const pubDate = new Date(a.published_at).toUTCString();
+      const brandedDesc = `${siteTitle.toUpperCase()} – ${a.description} (Sumber: <a href="${siteUrl}/${a.slug}">${siteUrl}/${a.slug}</a>)`;
       return `    <item>
       <title><![CDATA[${a.title}]]></title>
       <link>${siteUrl}/${a.slug}</link>
       <guid isPermaLink="true">${siteUrl}/${a.slug}</guid>
-      <description><![CDATA[${a.description}]]></description>
+      <description><![CDATA[${brandedDesc}]]></description>
       <category><![CDATA[${a.category_name || 'Berita'}]]></category>
       <pubDate>${pubDate}</pubDate>
     </item>`;

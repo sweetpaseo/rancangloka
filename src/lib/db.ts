@@ -27,6 +27,8 @@ export interface Article {
   content_hash?: string;
   is_featured: number;
   is_trending: number;
+  is_sponsored?: number;
+  disable_internal_links?: number;
   published_at: string;
   updated_at: string;
 }
@@ -626,6 +628,8 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
     content_hash: article.content_hash || '',
     is_featured: article.is_featured || 0,
     is_trending: article.is_trending || 0,
+    is_sponsored: article.is_sponsored || 0,
+    disable_internal_links: article.disable_internal_links || 0,
     published_at: article.published_at || new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
@@ -634,8 +638,8 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
     try {
       await db
         .prepare(`
-          INSERT INTO articles (slug, title, description, content_md, content_html, featured_image, image_alt, category_id, author_id, status, reading_time_minutes, key_takeaways, focus_keyword, content_hash, is_featured, is_trending, published_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO articles (slug, title, description, content_md, content_html, featured_image, image_alt, category_id, author_id, status, reading_time_minutes, key_takeaways, focus_keyword, content_hash, is_featured, is_trending, is_sponsored, disable_internal_links, published_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         .bind(
           fullArticle.slug,
@@ -654,6 +658,8 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
           fullArticle.content_hash,
           fullArticle.is_featured,
           fullArticle.is_trending,
+          fullArticle.is_sponsored,
+          fullArticle.disable_internal_links,
           fullArticle.published_at,
           fullArticle.updated_at
         )
