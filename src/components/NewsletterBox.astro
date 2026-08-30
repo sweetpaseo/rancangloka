@@ -6,7 +6,7 @@ interface Props {
 
 const {
   title = 'RANCANGLOKA WEEKLY',
-  subtitle = 'Kurasi gagasan desain, wawasan material, dan studi proyek arsitektur tropis terpilih yang layak Anda simpan. Terbit setiap Jumat pagi langsung ke inbox Anda.'
+  subtitle = '7 gagasan desain, wawasan material, dan studi proyek arsitektur tropis terpilih yang layak Anda simpan. Terbit setiap Jumat pagi langsung ke inbox Anda.'
 } = Astro.props;
 ---
 
@@ -26,11 +26,12 @@ const {
       {subtitle}
     </p>
 
-    <!-- Curated Value Highlights -->
-    <div class="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-400 font-mono py-2">
-      <span class="flex items-center gap-1.5"><span class="text-[#0071e3]">✦</span> 3 Studi Kasus Hunian</span>
+    <!-- Curated Value Highlights (3+2+1+1 = 7 Items) -->
+    <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs text-slate-400 font-mono py-2">
+      <span class="flex items-center gap-1.5"><span class="text-[#0071e3]">✦</span> 3 Studi Kasus</span>
       <span class="flex items-center gap-1.5"><span class="text-[#0071e3]">✦</span> 2 Bedah Material</span>
       <span class="flex items-center gap-1.5"><span class="text-[#0071e3]">✦</span> 1 Detail Spasial</span>
+      <span class="flex items-center gap-1.5"><span class="text-[#0071e3]">✦</span> 1 Wawasan Tropis</span>
     </div>
 
     <!-- Subscription Form -->
