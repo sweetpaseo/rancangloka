@@ -236,6 +236,17 @@ if (article) {
       </div>
     </header>
 
+    <!-- 2.5 TL;DR Quick Decision Summary (45-sec scan) -->
+    <div class="my-6 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-black/[0.05] dark:border-white/[0.08] p-5">
+      <div class="flex items-center gap-2 mb-1.5 text-xs font-mono font-bold uppercase tracking-widest text-[#0071e3]">
+        <span>✦</span>
+        <span>TL;DR · RINGKASAN KEPUTUSAN (45 DETIK)</span>
+      </div>
+      <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
+        {article.description} Kunci utamanya terletak pada kontrol orientasi bukaan, rekayasa sumbu ventilasi silang, dan pemilihan materialitas berpori alami.
+      </p>
+    </div>
+
     <!-- 3. Featured Cover Image (Apple Squircle with HD Zoom Overlay) -->
     <div class="group relative my-8 overflow-hidden rounded-[2.25rem] bg-slate-100 dark:bg-slate-800 aspect-[16/10] shadow-[0_12px_35px_rgba(0,0,0,0.07)] border border-black/[0.04] dark:border-white/[0.06] cursor-pointer">
       <img
@@ -351,6 +362,40 @@ if (article) {
       authorAvatar={article.author_avatar}
       authorRole={article.author_role}
     />
+
+    <!-- 7.5 Next Action Loop: Practical Spatial Decision Next Steps -->
+    <div class="my-10 rounded-3xl bg-slate-900 text-white p-7 sm:p-9 border border-slate-800 shadow-xl">
+      <div class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-[#0071e3] mb-2">
+        <span>✦</span>
+        <span>LANGKAH KEPUTUSAN DESAIN SELANJUTNYA</span>
+      </div>
+      <h3 class="text-xl font-bold tracking-tight mb-3">
+        Ingin Menerapkan Pendekatan Serupa Pada Rumah Anda?
+      </h3>
+      <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal mb-6">
+        Jangan berhenti hanya membaca. Gunakan alat riset keputusan ruang kami untuk mencocokkan denah rumah Anda atau membandingkan spesifikasi materialitasnya secara presisi.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a
+          href="/solusi"
+          class="rounded-2xl bg-[#0071e3] hover:bg-blue-600 px-5 py-2.5 text-xs font-mono font-bold text-white transition shadow-md"
+        >
+          ✦ Buka Problem Solver →
+        </a>
+        <a
+          href="/komparasi"
+          class="rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 px-5 py-2.5 text-xs font-mono font-bold text-white transition"
+        >
+          Bandingkan Material →
+        </a>
+        <a
+          href="/explore"
+          class="rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 px-5 py-2.5 text-xs font-mono font-bold text-white transition"
+        >
+          Design Explorer →
+        </a>
+      </div>
+    </div>
 
     <!-- Desktop Floating Action Capsule (Medium / Substack Style) -->
     <aside class="hidden xl:flex fixed left-8 2xl:left-12 top-1/2 -translate-y-1/2 flex-col items-center gap-3 z-30 rounded-full border border-black/[0.08] bg-white/80 p-2 shadow-xl backdrop-blur-xl dark:border-white/[0.1] dark:bg-slate-900/80">

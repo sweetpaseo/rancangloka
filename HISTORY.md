@@ -317,6 +317,16 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 32: Peluncuran "RancangLoka Design Explorer" & Next Action Decision Loop
+* **Gejala:** Kebutuhan akan satu antarmuka eksplorasi terpadu yang menghubungkan masalah, ruang, material, dan solusi, serta menghilangkan *dead-end* di akhir artikel.
+* **Solusi:**
+  - **RancangLoka Design Explorer ([`src/pages/explore.astro`](file:///src/pages/explore.astro)):** Dashboard filter interaktif multi-dimensi (Tantangan Ruang: Panas, Sempit, Gelap, Bising x Zona Ruang: Fasad, Ruang Keluarga, Kamar Tidur x Spesifikasi Materialitas).
+  - **Information Scent (TL;DR):** Menyematkan ringkasan cepat 45 detik di awal artikel pada [`src/pages/[slug].astro`](file:///src/pages/[slug].astro) untuk pembaca mobile yang sibuk.
+  - **Next Action Loop:** Menyematkan modul keputusan praktis di akhir artikel yang mengarahkan pembaca ke Problem Solver, Comparison Engine, dan Design Explorer.
+  - **Navigasi Terkemuka:** Menautkan `✦ Design Explorer` di Header top category bar dan footer global.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
