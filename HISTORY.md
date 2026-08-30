@@ -183,6 +183,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 18: Auto-Pagination Dinamis Sub-Sitemap Postingan (Batas 1.000 Artikel / Sitemap)
+* **Gejala:** Jika jumlah artikel mencapai ribuan (misal 20.000 artikel), sitemap tidak boleh disajikan dalam 1 file raksasa karena berisiko timeout dan membebani memori Cloudflare Worker.
+* **Solusi:**
+  - Menambahkan fungsi `getTotalArticlesCount()` di [`src/lib/db.ts`](file:///src/lib/db.ts) untuk membaca total postingan published.
+  - Mengimplementasikan auto-pagination di [`src/pages/sitemap.xml.ts`](file:///src/pages/sitemap.xml.ts) berbasis rumus `Math.ceil(totalArticles / 1000)`.
+  - Master index kini otomatis mendaftarkan `/sitemap-posts-1.xml`, `/sitemap-posts-2.xml`, dst. secara dinamis mengikuti pertumbuhan database.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
