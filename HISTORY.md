@@ -288,6 +288,16 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 29: Peluncuran Halaman Standar Editorial & Modul Signature "Design Intelligence" + "Why This Works"
+* **Gejala:** Kebutuhan akan transparansi integritas media independen dan diferensiasi konten yang mengajarkan pembaca cara mengevaluasi keputusan spasial arsitektur.
+* **Solusi:**
+  - **Halaman Standar Editorial Resmi ([`src/pages/editorial-standards.astro`](file:///src/pages/editorial-standards.astro)):** Membangun piagam 5 pilar redaksi (Bukti empiris di atas hype, pembedaan tegas foto proyek asli vs konsep 3D render, siklus pembaruan freshness log, independensi kurasi, dan kebijakan koreksi terbuka).
+  - **Design Intelligence Scoreboard:** Menyematkan matriks evaluasi 4 pilar di [`src/pages/[slug].astro`](file:///src/pages/%5Bslug%5D.astro) (Pencahayaan Alami 88%, Ventilasi Silang 82%, Kenyamanan Termal 85%, Efisiensi Spasial 92%).
+  - **Why This Works (3 Pilar Analisis Spasial):** Menghadirkan kotak wawasan arsitektur mendalam di setiap artikel (Orientasi & Pembiasan Panas, Hirarki Visual, Kejujuran Materialitas).
+  - **Content Freshness Timestamp:** Menampilkan tanggal terbit, status edisi terverifikasi, dan penautan piagam redaksi di footer global.
+
+---
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
