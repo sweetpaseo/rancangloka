@@ -1,0 +1,88 @@
+---
+import type { Article } from '../lib/db';
+
+interface Props {
+  articles: Article[];
+}
+
+const { articles = [] } = Astro.props;
+
+const fallbackCurations = [
+  {
+    index: '01',
+    tag: 'MATERIAL OF THE WEEK',
+    title: 'Mengapa rumah tropis menghadap barat selalu menyimpan panas?',
+    slug: articles[0]?.slug || '#',
+    time: '04 MIN'
+  },
+  {
+    index: '02',
+    tag: 'ARCHITECTURAL DETAIL',
+    title: 'Efek cerobong alami pada void ganda dan ventilasi silang',
+    slug: articles[1]?.slug || '#',
+    time: '05 MIN'
+  },
+  {
+    index: '03',
+    tag: 'SPATIAL COMFORT',
+    title: 'Menjadikan bias cahaya alami sebagai material konstruktif ruang',
+    slug: articles[2]?.slug || '#',
+    time: '04 MIN'
+  }
+];
+
+const items = articles.length >= 3 ? articles.slice(0, 3).map((art, idx) => ({
+  index: `0${idx + 1}`,
+  tag: art.category_name?.toUpperCase() || (idx === 0 ? 'MATERIAL OF THE WEEK' : idx === 1 ? 'ARCHITECTURAL DETAIL' : 'SPATIAL STUDY'),
+  title: art.title,
+  slug: art.slug,
+  time: `0${art.reading_time_minutes || 4} MIN`
+})) : fallbackCurations;
+---
+
+<section class="w-full py-16 md:py-24 border-b border-stone dark:border-stone/20">
+  <div class="mx-auto max-w-[1280px]">
+    <!-- Section Header -->
+    <div class="flex items-center justify-between mb-10 pb-4 border-b border-stone dark:border-stone/20">
+      <span class="text-[11px] font-mono font-bold uppercase tracking-[0.14em] text-ink dark:text-paper">
+        THE EDITOR'S CURATION
+      </span>
+      <span class="text-[11px] font-mono text-muted dark:text-stone/60">
+        WEEKLY INTELLECTUAL DIGEST
+      </span>
+    </div>
+
+    <!-- Numbered Index Items with 1px stone divider -->
+    <div class="divide-y divide-stone dark:divide-stone/20">
+      {items.map((item) => (
+        <a
+          href={`/${item.slug}`}
+          class="group grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8 py-8 md:py-10 transition-colors hover:bg-stone/10 dark:hover:bg-stone/5 px-2 md:px-4 -mx-2 md:-mx-4"
+        >
+          <!-- Number Index & Tag -->
+          <div class="md:col-span-4 flex items-baseline gap-4">
+            <span class="font-mono text-xl md:text-2xl font-bold text-ink dark:text-paper">
+              {item.index}
+            </span>
+            <span class="text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-muted dark:text-stone">
+              {item.tag}
+            </span>
+          </div>
+
+          <!-- Headline Title in Instrument Serif / Geist -->
+          <div class="md:col-span-6">
+            <h3 class="font-serif text-2xl md:text-3xl text-ink dark:text-paper leading-snug group-hover:text-accent transition-colors">
+              {item.title}
+            </h3>
+          </div>
+
+          <!-- Time & Arrow Indicator -->
+          <div class="md:col-span-2 flex items-center justify-start md:justify-end gap-2 text-xs font-mono text-muted group-hover:text-ink dark:group-hover:text-paper transition-colors">
+            <span>{item.time}</span>
+            <span class="transition-transform group-hover:translate-x-1.5 font-bold">→</span>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>

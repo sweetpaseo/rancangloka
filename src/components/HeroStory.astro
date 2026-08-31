@@ -1,0 +1,77 @@
+---
+import type { Article } from '../lib/db';
+
+interface Props {
+  article: Article;
+  issueTag?: string;
+}
+
+const { article, issueTag = 'ISSUE 04 · SPATIAL STUDY' } = Astro.props;
+
+function getHeroImg(url?: string) {
+  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1280&auto=format&fit=crop&q=85&fm=webp';
+  if (url.includes('images.unsplash.com')) {
+    const base = url.split('?')[0];
+    return `${base}?w=1280&auto=format&fit=crop&q=85&fm=webp`;
+  }
+  return url;
+}
+---
+
+<section class="w-full pt-6 md:pt-10 pb-16 md:pb-24 border-b border-stone dark:border-stone/20">
+  <div class="mx-auto max-w-[1280px]">
+    <!-- 1. Massive 2:1 Architectural Image (0px sharp radius) -->
+    <a href={`/${article.slug}`} class="group block overflow-hidden bg-stone/20 aspect-[16/10] sm:aspect-[2/1] relative">
+      <img
+        src={getHeroImg(article.featured_image)}
+        alt={article.image_alt || article.title}
+        width="1280"
+        height="640"
+        class="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.015]"
+        loading="eager"
+        fetchpriority="high"
+        decoding="async"
+      />
+    </a>
+
+    <!-- 2. Typography Composition (Image -> Whitespace -> Typography) -->
+    <div class="mt-8 md:mt-12 max-w-4xl">
+      <!-- Technical Metadata -->
+      <div class="flex items-center gap-3 text-[11px] md:text-[12px] font-mono uppercase tracking-[0.1em] text-muted dark:text-stone mb-4">
+        <span>{issueTag}</span>
+        <span>·</span>
+        <span>{article.category_name || 'ARCHITECTURAL RESILIENCE'}</span>
+        <span>·</span>
+        <span>⏱️ {article.reading_time_minutes || 5} MIN READ</span>
+      </div>
+
+      <!-- Display Editorial Headline (Instrument Serif) -->
+      <h1 class="font-serif text-3xl sm:text-5xl md:text-[68px] lg:text-[72px] font-normal leading-[1.02] tracking-[-0.03em] text-ink dark:text-paper hover:text-accent transition-colors">
+        <a href={`/${article.slug}`}>
+          {article.title}
+        </a>
+      </h1>
+
+      <!-- Excerpt / Subtitle -->
+      {article.description && (
+        <p class="mt-5 md:mt-6 text-base md:text-xl font-normal leading-relaxed text-muted dark:text-stone/90 max-w-2xl">
+          {article.description}
+        </p>
+      )}
+
+      <!-- Clean Action Row -->
+      <div class="mt-8 flex items-center gap-6">
+        <a
+          href={`/${article.slug}`}
+          class="inline-flex items-center gap-2 text-xs md:text-sm font-medium tracking-wider uppercase text-ink dark:text-paper hover:text-accent border-b border-ink dark:border-paper pb-0.5 transition-colors group"
+        >
+          <span>Read Story</span>
+          <span class="transition-transform group-hover:translate-x-1">→</span>
+        </a>
+        <span class="text-xs font-mono text-muted dark:text-stone/60">
+          Curated by {article.author_name || 'Dewan Redaksi Spasial'}
+        </span>
+      </div>
+    </div>
+  </div>
+</section>

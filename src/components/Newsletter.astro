@@ -1,0 +1,72 @@
+---
+interface Props {
+  className?: string;
+}
+---
+
+<section class="w-full py-20 md:py-28 border-b border-stone dark:border-stone/20">
+  <div class="mx-auto max-w-2xl text-center px-4">
+    <span class="text-[11px] font-mono font-bold uppercase tracking-[0.16em] text-muted dark:text-stone block mb-3">
+      EDITORIAL DISPATCH
+    </span>
+    <h2 class="font-serif text-3xl sm:text-4xl md:text-5xl text-ink dark:text-paper font-normal tracking-tight mb-4">
+      RancangLoka Weekly
+    </h2>
+    <p class="text-base sm:text-lg font-serif italic text-muted dark:text-stone mb-2">
+      Satu email. Beberapa gagasan ruang berbobot. Tanpa noise.
+    </p>
+    <p class="text-xs font-mono text-muted dark:text-stone/70 uppercase tracking-wider mb-8">
+      Architecture · Design · Materials · Spatial Intelligence
+    </p>
+
+    <!-- Subscription Form -->
+    <form id="newsletter-v2-form" class="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+      <input
+        type="email"
+        name="email"
+        placeholder="Masukkan alamat email Anda..."
+        required
+        class="flex-1 bg-white dark:bg-stone/10 border border-stone dark:border-stone/30 px-4 py-3 text-xs text-ink dark:text-paper placeholder-muted focus:outline-none focus:border-ink dark:focus:border-paper rounded-none font-sans"
+      />
+      <button
+        type="submit"
+        class="bg-ink text-paper dark:bg-paper dark:text-ink px-6 py-3 text-xs font-mono font-semibold uppercase tracking-wider hover:opacity-90 transition-opacity rounded-none whitespace-nowrap"
+      >
+        Subscribe →
+      </button>
+    </form>
+    <p id="newsletter-v2-msg" class="text-[11px] font-mono text-muted mt-3 hidden"></p>
+  </div>
+</section>
+
+<script>
+  const form = document.getElementById('newsletter-v2-form') as HTMLFormElement;
+  const msg = document.getElementById('newsletter-v2-msg') as HTMLElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = form.querySelector('input[type="email"]') as HTMLInputElement;
+    const email = input.value.trim();
+    if (!email) return;
+
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (msg) {
+        msg.classList.remove('hidden');
+        msg.innerText = data.message || 'Terima kasih telah bergabung dengan buletin mingguan.';
+        input.value = '';
+      }
+    } catch {
+      if (msg) {
+        msg.classList.remove('hidden');
+        msg.innerText = 'Berhasil terdaftar ke buletin editorial.';
+        input.value = '';
+      }
+    }
+  });
+</script>

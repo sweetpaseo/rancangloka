@@ -2,181 +2,121 @@
 import type { Category } from '../lib/db';
 
 interface Props {
-  categories: Category[];
-  siteSettings: Record<string, string>;
-  trendingArticles?: Array<{ slug: string; title: string }>;
+  categories?: Category[];
+  siteSettings?: Record<string, string>;
 }
 
-const { categories = [], siteSettings = {}, trendingArticles = [] } = Astro.props;
-const siteTitle = siteSettings.site_title || 'RancangLoka';
-const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Arsitektur & Smart Living';
+const { categories = [], siteSettings = {} } = Astro.props;
+const siteTitle = siteSettings.site_title || 'RANCANGLOKA';
 const siteLogo = siteSettings.site_logo || '';
-const siteFavicon = siteSettings.site_favicon || '🏡';
-
-const todayFormatted = new Intl.DateTimeFormat('id-ID', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric'
-}).format(new Date());
 ---
 
-<header class="relative z-40 w-full apple-glass transition-colors border-b border-black/[0.04] dark:border-white/[0.06]">
-  <!-- 1. Dedicated Top Utility Bar: Status/Date & Quick Action Icons (Search, Bookmark, Theme) -->
-  <div class="border-b border-black/[0.04] dark:border-white/[0.06] bg-slate-100/70 dark:bg-slate-900/70 backdrop-blur-md">
-    <div class="mx-auto flex h-10 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 text-[11px]">
-      <!-- Left: Edition Tag & Live Date -->
-      <div class="flex items-center gap-2.5 overflow-hidden">
-        <span class="flex items-center gap-1.5 font-bold text-[#0066ee] tracking-tight whitespace-nowrap">
-          <span class="h-2 w-2 rounded-full bg-[#0066ee] animate-pulse"></span>
-          <span class="hidden sm:inline">RancangLoka •</span> Edisi Digital
+<header class="sticky top-0 z-40 w-full bg-paper/95 dark:bg-ink/95 backdrop-blur-sm border-b border-stone dark:border-stone/20 transition-colors">
+  <div class="mx-auto max-w-[1280px] px-5 sm:px-8 lg:px-12 flex h-[64px] md:h-[76px] items-center justify-between">
+    <!-- Brand Logo / Title -->
+    <a href="/" class="flex items-center gap-3 group text-ink dark:text-paper">
+      {siteLogo ? (
+        <img src={siteLogo} alt={siteTitle} class="h-6 md:h-7 w-auto object-contain" />
+      ) : (
+        <span class="flex h-7 w-7 md:h-8 md:w-8 items-center justify-center bg-ink text-paper dark:bg-paper dark:text-ink font-sans font-bold text-xs md:text-sm tracking-tight">
+          R
         </span>
-        <span class="hidden md:inline text-slate-300 dark:text-slate-700">|</span>
-        <span class="hidden md:inline font-medium text-slate-500 dark:text-slate-400 truncate">
-          {todayFormatted}
-        </span>
-      </div>
-
-      <!-- Right: Dedicated Utility Cluster (Search, Bookmark, Theme Switcher) -->
-      <div class="flex items-center gap-1 sm:gap-2">
-        <!-- 1. Search Trigger -->
-        <button
-          data-search-trigger
-          class="flex items-center gap-2 rounded-full bg-white/80 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-800 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 border border-black/[0.06] dark:border-white/[0.08] shadow-2xs transition"
-          aria-label="Cari artikel atau material"
-        >
-          <svg class="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span class="hidden sm:inline font-medium text-[11px]">Cari inspirasi...</span>
-          <kbd class="hidden lg:inline rounded bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 border border-slate-200 dark:border-slate-800">⌘K</kbd>
-        </button>
-
-        <!-- 2. Bookmark Collection Trigger -->
-        <button
-          data-bookmark-trigger
-          class="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/80 dark:bg-slate-800/90 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white border border-black/[0.06] dark:border-white/[0.08] hover:bg-white dark:hover:bg-slate-800 shadow-2xs transition"
-          aria-label="Koleksi Inspirasi Tersimpan"
-          title="Koleksi Inspirasi Tersimpan"
-        >
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-          </svg>
-          <span class="bookmark-badge hidden absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-extrabold text-white ring-2 ring-white dark:ring-slate-900">
-            0
-          </span>
-        </button>
-
-        <!-- 3. Theme Switcher (Dark / Light) -->
-        <button
-          class="theme-toggle-btn flex h-8 w-8 items-center justify-center rounded-full bg-white/80 dark:bg-slate-800/90 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white border border-black/[0.06] dark:border-white/[0.08] hover:bg-white dark:hover:bg-slate-800 shadow-2xs transition"
-          aria-label="Ganti Mode Gelap/Terang"
-          title="Ganti Mode Gelap/Terang"
-        >
-          <!-- Sun icon (shown in dark mode) -->
-          <svg class="h-4 w-4 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <!-- Moon icon (shown in light mode) -->
-          <svg class="h-4 w-4 block dark:hidden text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 2. Main Brand Bar (Spacious, Elegant & Never Squeezed) -->
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8">
-    <!-- Brand Title / Logo with generous width -->
-    <a href="/" class="group flex flex-col transition space-y-1">
-      <div class="flex items-center gap-3">
-        {siteLogo ? (
-          <img
-            src={siteLogo}
-            alt={siteTitle}
-            class="h-8 sm:h-10 md:h-11 w-auto max-w-[220px] object-contain"
-          />
-        ) : (
-          <span class="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-sans font-black text-lg sm:text-xl tracking-tight shadow-sm">
-            R
-          </span>
-        )}
-        <span class="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white group-hover:text-[#0066ee] transition-colors font-sans uppercase">
-          {siteTitle}
-        </span>
-      </div>
-      <span class="text-xs sm:text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400 pl-12 sm:pl-13">
-        {siteTagline || 'Jurnal Kurasi Arsitektur, Desain Interior & Ruang Tropis'}
+      )}
+      <span class="font-sans font-bold text-sm md:text-base tracking-[0.08em] uppercase text-ink dark:text-paper group-hover:text-accent transition-colors">
+        {siteTitle}
       </span>
     </a>
+
+    <!-- Desktop Navigation (Quiet Luxury 12-13px) -->
+    <nav class="hidden md:flex items-center gap-8 text-[12px] font-medium tracking-[0.06em] text-ink dark:text-paper uppercase">
+      <a href="/" class="hover:text-accent transition-colors">Journal</a>
+      <a href="/explore" class="hover:text-accent transition-colors">Explore</a>
+      <a href="/solusi" class="hover:text-accent transition-colors">Intelligence</a>
+      <a href="/komparasi" class="hover:text-accent transition-colors">Material Matrix</a>
+      <a href="/tentang-kami" class="hover:text-accent transition-colors">About</a>
+    </nav>
+
+    <!-- Header Actions (Search, Bookmark, Theme) -->
+    <div class="flex items-center gap-2 sm:gap-3 text-ink dark:text-paper">
+      <!-- Search Trigger -->
+      <button
+        data-search-trigger
+        class="flex items-center gap-2 p-2 hover:text-accent transition text-ink dark:text-paper"
+        aria-label="Cari artikel atau material"
+        title="Search (⌘K)"
+      >
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </button>
+
+      <!-- Bookmark Collection Trigger -->
+      <button
+        data-bookmark-trigger
+        class="relative p-2 hover:text-accent transition text-ink dark:text-paper"
+        aria-label="Saved Inspiration"
+        title="Saved Inspiration"
+      >
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+        </svg>
+        <span class="bookmark-badge hidden absolute top-1 right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-ink text-paper dark:bg-paper dark:text-ink px-1 text-[8px] font-bold">
+          0
+        </span>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button
+        class="theme-toggle-btn p-2 hover:text-accent transition text-ink dark:text-paper"
+        aria-label="Toggle Theme"
+        title="Toggle Theme"
+      >
+        <svg class="h-4 w-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <svg class="h-4 w-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+
+      <!-- Mobile Menu Toggle Button -->
+      <button
+        id="mobile-menu-btn"
+        class="md:hidden p-2 hover:text-accent transition text-ink dark:text-paper ml-1"
+        aria-label="Open Navigation Menu"
+      >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
   </div>
 
-  <!-- 3. Apple-style Swipeable Segmented Category Bar with more breathing room -->
-  <nav class="border-t border-black/[0.04] dark:border-white/[0.06] bg-slate-50/50 dark:bg-black/20">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center gap-2 overflow-x-auto py-3 no-scrollbar scroll-smooth">
-        <a
-          href="/"
-          class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold tracking-tight transition ${
-            Astro.url.pathname === '/' || Astro.url.pathname === ''
-              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-black/[0.04] dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08]'
-          }`}
-        >
-          Beranda
-        </a>
-
-        <a
-          href="/explore"
-          class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold tracking-tight transition ${
-            Astro.url.pathname === '/explore' || Astro.url.pathname === '/explore/'
-              ? 'bg-[#0066ee] text-white shadow-2xs'
-              : 'text-[#0066ee] bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50'
-          }`}
-        >
-          ✦ Design Explorer
-        </a>
-        {categories.map((cat) => {
-          const isCatActive = Astro.url.pathname === `/category/${cat.slug}` || Astro.url.pathname === `/category/${cat.slug}/`;
-          return (
-            <a
-              href={`/category/${cat.slug}`}
-              class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-medium tracking-tight transition ${
-                isCatActive
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-black/[0.04] dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08]'
-              }`}
-            >
-              {cat.name}
-            </a>
-          );
-        })}
-
-        <div class="h-4 w-px bg-slate-300 dark:bg-slate-700 flex-shrink-0 mx-1"></div>
-
-        <a
-          href="/solusi"
-          class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold tracking-tight transition ${
-            Astro.url.pathname === '/solusi' || Astro.url.pathname === '/solusi/'
-              ? 'bg-[#0066ee] text-white shadow-2xs'
-              : 'text-[#0066ee] bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50'
-          }`}
-        >
-          ✦ Problem Solver
-        </a>
-
-        <a
-          href="/komparasi"
-          class={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold tracking-tight transition ${
-            Astro.url.pathname === '/komparasi' || Astro.url.pathname === '/komparasi/'
-              ? 'bg-[#0066ee] text-white shadow-2xs'
-              : 'text-slate-700 dark:text-slate-300 hover:text-[#0066ee] hover:bg-black/[0.04] dark:hover:bg-white/[0.08]'
-          }`}
-        >
-          Komparasi Material
-        </a>
+  <!-- Mobile Dropdown Navigation Menu -->
+  <div id="mobile-nav-panel" class="hidden md:hidden border-t border-stone dark:border-stone/20 bg-paper dark:bg-ink px-6 py-6 space-y-4 text-xs uppercase tracking-widest font-medium">
+    <a href="/" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">Journal</a>
+    <a href="/explore" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">✦ Explore & Archive</a>
+    <a href="/solusi" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">Problem Solver</a>
+    <a href="/komparasi" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">Material Matrix</a>
+    <a href="/tentang-kami" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">Editorial & About</a>
+    
+    <div class="pt-2">
+      <span class="text-[10px] text-muted block mb-2 font-mono">KATEGORI LIPUTAN</span>
+      <div class="flex flex-wrap gap-2">
+        {categories.map((c) => (
+          <a href={`/category/${c.slug}`} class="px-2.5 py-1 text-[10px] border border-stone dark:border-stone/20 rounded-xs hover:border-ink dark:hover:border-paper">
+            {c.name}
+          </a>
+        ))}
       </div>
     </div>
-  </nav>
+  </div>
 </header>
+
+<script>
+  const mobileBtn = document.getElementById('mobile-menu-btn');
+  const mobileNav = document.getElementById('mobile-nav-panel');
+  mobileBtn?.addEventListener('click', () => {
+    mobileNav?.classList.toggle('hidden');
+  });
+</script>

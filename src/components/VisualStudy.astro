@@ -1,0 +1,54 @@
+---
+interface Props {
+  title?: string;
+  subtitle?: string;
+  image?: string;
+  link?: string;
+}
+
+const {
+  title = 'How Architecture Responds to Tropical Climate',
+  subtitle = 'Kajian mendalam mengenai rekayasa orientasi fasad, kisi ulin pasif, dan termal ventilasi di lintang khatulistiwa.',
+  image = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1280&auto=format&fit=crop&q=85&fm=webp',
+  link = '/metodologi'
+} = Astro.props;
+---
+
+<section class="w-full bg-ink text-paper py-20 md:py-28 my-12 border-y border-ink">
+  <div class="mx-auto max-w-[1280px] px-5 sm:px-8 lg:px-12">
+    <!-- Header Inside Dark Surface -->
+    <div class="max-w-3xl mb-12">
+      <span class="text-[11px] font-mono font-bold uppercase tracking-[0.16em] text-accent block mb-3">
+        FEATURED VISUAL STUDY · 04
+      </span>
+      <h2 class="font-serif text-3xl sm:text-5xl md:text-6xl font-normal leading-[1.05] tracking-tight mb-4">
+        {title}
+      </h2>
+      <p class="text-sm md:text-base font-normal text-paper/70 leading-relaxed max-w-2xl">
+        {subtitle}
+      </p>
+    </div>
+
+    <!-- Architectural Monolith Image -->
+    <a href={link} class="group block overflow-hidden bg-stone/10 aspect-[16/9] sm:aspect-[21/9]">
+      <img
+        src={image}
+        alt={title}
+        width="1280"
+        height="550"
+        class="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.015]"
+        loading="lazy"
+        decoding="async"
+      />
+    </a>
+
+    <!-- Footer Action -->
+    <div class="mt-8 flex items-center justify-between text-xs font-mono text-paper/60 border-t border-paper/10 pt-6">
+      <span>DOKUMENTASI RISET LAPANGAN</span>
+      <a href={link} class="text-paper hover:text-accent font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-colors">
+        <span>BACA METODOLOGI RISET LENGKAP</span>
+        <span>→</span>
+      </a>
+    </div>
+  </div>
+</section>

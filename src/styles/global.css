@@ -1,49 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --color-primary: #111215; /* Deep Titanium Black */
-    --color-primary-hover: #0066ee; /* Electric Sapphire Blue */
-    --color-primary-light: #eff6ff;
-    --color-primary-dark: #08090c;
-    --color-accent: #0066ee; /* Precision Sapphire */
-    --color-accent-hover: #0052cc;
-    --color-accent-light: #eff6ff;
-    --color-surface: #fbfbfd; /* Crisp Porcelain Chalk Canvas */
-    --color-surface-muted: #f3f4f6; /* Muted Titanium Fog */
-    --color-surface-card: #ffffff;
-    --color-text-main: #111215; /* Deep Titanium Black */
-    --color-text-muted: #5b616e; /* Cool Slate Mist */
-    --color-border: rgba(17, 18, 21, 0.07);
+    --color-paper: #F6F5F1;
+    --color-ink: #11110F;
+    --color-stone: #D9D7D0;
+    --color-muted: #77766F;
+    --color-soft: #EAE8E1;
+    --color-accent: #6B705C;
+    --color-surface: #F6F5F1;
+    --color-surface-card: #FFFFFF;
+    --color-text-main: #11110F;
+    --color-text-muted: #77766F;
+    --color-border: #D9D7D0;
   }
 
   .dark {
-    --color-surface: #08090c; /* Titanium OLED Midnight */
-    --color-surface-muted: #13161f;
-    --color-surface-card: #0e1118;
-    --color-text-main: #f8fafc;
-    --color-text-muted: #94a3b8;
-    --color-accent: #3b82f6; /* Luminous Electric Blue */
-    --color-border: rgba(255, 255, 255, 0.08);
+    --color-paper: #11110F;
+    --color-ink: #F6F5F1;
+    --color-stone: #2A2A28;
+    --color-muted: #9E9D95;
+    --color-soft: #1A1A18;
+    --color-accent: #8E9480;
+    --color-surface: #11110F;
+    --color-surface-card: #181816;
+    --color-text-main: #F6F5F1;
+    --color-text-muted: #9E9D95;
+    --color-border: #2A2A28;
   }
 
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-    letter-spacing: -0.02em;
-    background-color: var(--color-surface);
+    font-family: 'Geist', 'Plus Jakarta Sans', system-ui, sans-serif;
+    letter-spacing: -0.015em;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
   }
 
   body {
-    background-color: var(--color-surface);
-    color: var(--color-text-main);
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 

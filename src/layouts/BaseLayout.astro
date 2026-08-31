@@ -1,5 +1,6 @@
 ---
 import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
 import MobileBottomNav from '../components/MobileBottomNav.astro';
 import SearchModal from '../components/SearchModal.astro';
 import BookmarkDrawer from '../components/BookmarkDrawer.astro';
@@ -137,101 +138,22 @@ const accentColor = siteSettings.theme_accent_color || '#0066ee';
     )}
   </head>
 
-  <body class="min-h-screen flex flex-col pb-28 md:pb-0">
+  <body class="min-h-screen flex flex-col bg-paper text-ink dark:bg-paper dark:text-ink">
     <!-- Header -->
     <Header categories={categories} siteSettings={siteSettings} />
 
-    <!-- Main Content with generous breathing room -->
-    <main class="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    <!-- Main Content -->
+    <main class="flex-1 w-full">
       <slot />
     </main>
 
-    <!-- Footer -->
-    <footer class="mt-24 border-t border-black/[0.06] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-950 py-16 text-slate-600 dark:text-slate-400">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-5 gap-10">
-        <!-- Col 1: Brand & Manifesto (2 cols on md) -->
-        <div class="md:col-span-2 space-y-4">
-          <div class="flex items-center gap-2.5">
-            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-sans font-black text-xs tracking-tight shadow-xs">
-              R
-            </span>
-            <span class="text-xl font-black text-slate-900 dark:text-white tracking-tight font-sans uppercase">{siteTitle}</span>
-          </div>
-          <p class="text-xs md:text-sm leading-relaxed max-w-sm text-slate-600 dark:text-slate-400 font-normal">
-            Jurnal kurasi independen yang mendokumentasikan evolusi arsitektur tropis kontemporer, inovasi materialitas, dan kenyamanan spasial hunian modern.
-          </p>
+    <!-- V2 Footer -->
+    <Footer siteTitle={siteTitle} copyright={siteSettings.footer_copyright} />
 
-          <!-- Official Social Media Links (Minimalist Text Badges) -->
-          <div class="pt-2 flex items-center gap-2">
-            {siteSettings.social_instagram && (
-              <a href={siteSettings.social_instagram} target="_blank" rel="noopener noreferrer" class="rounded-lg px-2.5 py-1 bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-[#0066ee] transition shadow-2xs">
-                Instagram
-              </a>
-            )}
-            {siteSettings.social_x && (
-              <a href={siteSettings.social_x} target="_blank" rel="noopener noreferrer" class="rounded-lg px-2.5 py-1 bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-[#0066ee] transition shadow-2xs">
-                𝕏
-              </a>
-            )}
-            {siteSettings.social_pinterest && (
-              <a href={siteSettings.social_pinterest} target="_blank" rel="noopener noreferrer" class="rounded-lg px-2.5 py-1 bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-[#0066ee] transition shadow-2xs">
-                Pinterest
-              </a>
-            )}
-            {siteSettings.social_linkedin && (
-              <a href={siteSettings.social_linkedin} target="_blank" rel="noopener noreferrer" class="rounded-lg px-2.5 py-1 bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-[#0066ee] transition shadow-2xs">
-                LinkedIn
-              </a>
-            )}
-          </div>
-        </div>
-
-        <!-- Col 2: Categories -->
-        <div>
-          <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Kategori Liputan</h2>
-          <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
-            {categories.map((c) => (
-              <li>
-                <a href={`/category/${c.slug}`} class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">{c.name}</a>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <!-- Col 3: Static Pages -->
-        <div>
-          <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Halaman & Redaksi</h2>
-          <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
-            <li><a href="/editorial-standards" class="hover:text-[#0066ee] transition text-[#0066ee] font-bold">✦ Standar Editorial & Integritas</a></li>
-            <li><a href="/metodologi" class="hover:text-[#0066ee] transition text-[#0066ee] font-bold">✦ Metodologi Riset Spasial</a></li>
-            <li><a href="/tentang-kami" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">Tentang RancangLoka</a></li>
-            <li><a href="/kontak" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">Hubungi Redaksi</a></li>
-            <li><a href="/pedoman-media-siber" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">Pedoman Media Siber</a></li>
-            <li><a href="/kebijakan-privasi" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">Kebijakan Privasi</a></li>
-          </ul>
-        </div>
-
-        <!-- Col 4: Tools & Index -->
-        <div>
-          <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white mb-4">Alat & Riset Ruang</h2>
-          <ul class="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
-            <li><a href="/explore" class="hover:text-[#0066ee] transition text-[#0066ee] font-bold">✦ Design Explorer</a></li>
-            <li><a href="/solusi" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">Problem Solver</a></li>
-            <li><a href="/komparasi" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">Komparasi Material</a></li>
-            <li><a href="/sitemap.xml" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">Sitemap Index (XML)</a></li>
-            <li><a href="/rss.xml" class="hover:text-[#0066ee] transition text-slate-700 dark:text-slate-300 font-medium">RSS Syndication</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400 font-mono">
-        <p>{siteSettings.footer_copyright || `© 2026 ${siteTitle}. All rights reserved. Kurasi editorial independen.`}</p>
-        <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">RancangLoka • Jurnal Kurasi Arsitektur & Hunian Tropis</span>
-      </div>
-    </footer>
-
-    <!-- App-Like Mobile Bottom Nav -->
-    <MobileBottomNav isArticlePage={isArticlePage} />
+    <!-- App-Like Mobile Bottom Nav only on article pages if needed -->
+    {isArticlePage && (
+      <MobileBottomNav isArticlePage={isArticlePage} />
+    )}
 
     <!-- Instant Search Modal -->
     <SearchModal />

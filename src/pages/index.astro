@@ -1,9 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import HeroMagazine from '../components/HeroMagazine.astro';
-import BeforeAfterSlider from '../components/BeforeAfterSlider.astro';
-import DesignIndex from '../components/DesignIndex.astro';
-import NewsletterBox from '../components/NewsletterBox.astro';
+import HeroStory from '../components/HeroStory.astro';
+import EditorialCuration from '../components/EditorialCuration.astro';
+import ProblemDiscovery from '../components/ProblemDiscovery.astro';
+import LatestJournal from '../components/LatestJournal.astro';
+import VisualStudy from '../components/VisualStudy.astro';
+import MaterialIndex from '../components/MaterialIndex.astro';
+import DesignIntelligence from '../components/DesignIntelligence.astro';
+import Newsletter from '../components/Newsletter.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 
 const db = await getDb(Astro.locals);
@@ -13,29 +17,19 @@ const [articles, categories, siteSettings] = await Promise.all([
   getSiteSettings(db)
 ]);
 
+// 1. Featured Cover Story
 const featuredArticle = articles.find((a) => a.is_featured === 1) || articles[0];
-const secondaryArticles = articles.filter((a) => a.id !== featuredArticle?.id).slice(0, 3);
-const heroIds = new Set([featuredArticle?.id, ...secondaryArticles.map((a) => a.id)]);
-const latestArticles = articles.filter((a) => !heroIds.has(a.id)).slice(0, 6);
 
-// Exploration by User Intent
-const userIntents = [
-  { label: 'Rumah Terlalu Panas', link: '/solusi' },
-  { label: 'Lahan Sempit 36/60', link: '/solusi' },
-  { label: 'Ruang Gelap & Tertutup', link: '/solusi' },
-  { label: 'Bising Jalan Raya', link: '/solusi' },
-  { label: 'Aluminium vs UPVC', link: '/komparasi' },
-  { label: 'Kayu Ulin vs Jati', link: '/komparasi' }
-];
+// 2. Editorial Curation (3 articles)
+const remainingAfterHero = articles.filter((a) => a.id !== featuredArticle?.id);
+const curationArticles = remainingAfterHero.slice(0, 3);
 
-function getOptimizedImg(url: string, width = 680, quality = 75) {
-  if (!url) return `https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=${width}&auto=format&fit=crop&q=${quality}&fm=webp`;
-  if (url.includes('images.unsplash.com')) {
-    const base = url.split('?')[0];
-    return `${base}?w=${width}&auto=format&fit=crop&q=${quality}&fm=webp`;
-  }
-  return url;
-}
+// 3. Latest Journal (1 + 2 articles)
+const remainingAfterCuration = remainingAfterHero.filter((a) => !curationArticles.some((c) => c.id === a.id));
+const journalArticles = remainingAfterCuration.slice(0, 3);
+
+// Fallback if database has fewer articles
+const safeJournalArticles = journalArticles.length > 0 ? journalArticles : articles.slice(0, 3);
 
 // JSON-LD Schema for Website
 const websiteSchema = {
@@ -57,185 +51,37 @@ const websiteSchema = {
   siteSettings={siteSettings}
   jsonLdSchema={websiteSchema}
 >
-  <!-- 1. Hero Magazine: Issue #04 + Cover Story + Curated Reasons -->
-  {featuredArticle && (
-    <HeroMagazine featuredArticle={featuredArticle} secondaryArticles={secondaryArticles} />
-  )}
+  <div class="px-5 sm:px-8 lg:px-12">
+    <!-- 1. Hero / Cover Story (1280px × 650px 2:1 Architecture Monolith) -->
+    {featuredArticle && (
+      <HeroStory article={featuredArticle} issueTag="ISSUE 04 · SPATIAL STUDY" />
+    )}
 
-  <!-- 2. Intent-Based Fast Navigation (Tactile Luxury Pills) -->
-  <div class="mb-16 overflow-x-auto no-scrollbar py-4 flex items-center gap-3 border-y border-black/[0.06] dark:border-white/[0.08]">
-    <span class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-slate-900 dark:text-white whitespace-nowrap pl-1">
-      <span class="text-[#0066ee]">✦</span>
-      <span>Pencarian Cepat Kebutuhan:</span>
-    </span>
-    <div class="flex items-center gap-2.5">
-      {userIntents.map((intent) => (
-        <a
-          href={intent.link}
-          class="pill-tactile rounded-full bg-white dark:bg-slate-900 hover:bg-[#0066ee] hover:text-white dark:hover:bg-[#0066ee] dark:hover:text-white px-4 py-2 text-xs font-medium text-slate-800 dark:text-slate-200 transition border border-black/[0.06] dark:border-white/[0.08] whitespace-nowrap shadow-xs font-mono"
-        >
-          {intent.label}
-        </a>
-      ))}
-    </div>
+    <!-- 2. The Editor's Curation (01, 02, 03 Numbered Index) -->
+    <EditorialCuration articles={curationArticles.length > 0 ? curationArticles : articles.slice(0, 3)} />
+
+    <!-- 3. What Are You Trying To Solve? (Design Intelligence Diagnostic) -->
+    <ProblemDiscovery />
+
+    <!-- 4. Latest Journal (Editorial Asymmetric 1 + 2 Layout) -->
+    <LatestJournal articles={safeJournalArticles} />
   </div>
 
-  <!-- 3. Latest Stories (6 Clean Luxury Editorial Cards) -->
-  {latestArticles.length > 0 && (
-    <section class="my-20">
-      <div class="mb-10 flex flex-col sm:flex-row sm:items-end justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-5 gap-4">
-        <div>
-          <span class="text-[11px] font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-1.5">
-            ✦ JURNAL SPASIAL TERKINI
-          </span>
-          <h2 class="font-sans text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-            Kajian & Kurasi Terbaru
-          </h2>
-        </div>
-        <a
-          href="/explore"
-          class="text-xs font-mono font-semibold text-[#0066ee] hover:underline flex items-center gap-1.5 group self-start sm:self-auto"
-        >
-          <span>Eksplorasi Seluruh 20 Artikel</span>
-          <span class="transition-transform group-hover:translate-x-1">→</span>
-        </a>
-      </div>
+  <!-- 5. Featured Visual Study (Dark Monolith Interruption #11110F) -->
+  <VisualStudy
+    title="How Architecture Responds to Tropical Climate"
+    subtitle="Dokumentasi riset lapangan mengenai orientasi fasad terhadap radiasi matahari siang, efisiensi termal material ulin & batu alam, serta ventilasi silang alami."
+    link="/metodologi"
+  />
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {latestArticles.map((art) => (
-          <article class="apple-card group flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900/80 rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] hover:border-[#0066ee]/40 transition duration-500">
-            <a href={`/${art.slug}`} class="relative block overflow-hidden aspect-[16/10] bg-slate-100 dark:bg-slate-800">
-              <img
-                src={getOptimizedImg(art.featured_image, 680, 75)}
-                alt={art.image_alt || art.title}
-                width="680"
-                height="425"
-                class="h-full w-full object-cover transition duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-                loading="lazy"
-                decoding="async"
-                onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=680&auto=format&fit=crop&q=75&fm=webp'"
-              />
-              <span
-                class="absolute top-4 left-4 px-3 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-widest text-white shadow-md backdrop-blur-md border border-white/20"
-                style={`background-color: ${art.category_color || '#0066ee'}ee;`}
-              >
-                {art.category_name}
-              </span>
-            </a>
-            <div class="flex flex-1 flex-col p-6 sm:p-7">
-              <h3 class="font-sans text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-[#0066ee] transition leading-snug line-clamp-2">
-                <a href={`/${art.slug}`}>{art.title}</a>
-              </h3>
-              <p class="mt-3 text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed flex-1 font-normal">
-                {art.description}
-              </p>
-              <div class="mt-6 pt-4 border-t border-black/[0.05] dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-600 dark:text-slate-400">
-                <span class="font-medium text-slate-700 dark:text-slate-300">{art.author_name}</span>
-                <span class="flex items-center gap-1 font-medium">⏱️ {art.reading_time_minutes} mnt</span>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  )}
+  <div class="px-5 sm:px-8 lg:px-12">
+    <!-- 6. Material & Component Directory Index -->
+    <MaterialIndex />
 
-  <!-- 4. Signature Feature: Space Transformed (Before/After with Spatial Metrics) -->
-  <section class="my-20 overflow-hidden rounded-[2.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-8 sm:p-14 shadow-2xl border border-slate-800 relative">
-    <div class="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"></div>
+    <!-- 7. Design Intelligence Hub (Problem Solver + Material Matrix) -->
+    <DesignIntelligence />
 
-    <div class="max-w-3xl mb-10">
-      <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-[11px] font-mono font-bold uppercase tracking-widest text-white border border-white/15 mb-3.5">
-        <span class="text-[#0066ee]">✦</span>
-        <span>VISUAL STUDY & REKAYASA SPASIAL</span>
-      </span>
-      <h2 class="font-sans text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
-        Visual Study: Rekayasa Fasad & Pencahayaan Hunian Tropis
-      </h2>
-      <p class="mt-3.5 text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
-        Komparasi visual konseptual: bagaimana pembongkaran sekat masif, kanopi peneduh, dan bukaan kaca selebar 6 meter melipatgandakan kenyamanan termal dan distribusi cahaya alami.
-      </p>
-
-      <!-- Spatial Impact Highlights Bar -->
-      <div class="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-white/15 pt-6">
-        <div class="space-y-0.5">
-          <span class="font-mono text-base font-black text-emerald-400">Optimal</span>
-          <span class="block text-[11px] text-slate-400 font-medium">Cahaya Alami Siang Hari</span>
-        </div>
-        <div class="space-y-0.5">
-          <span class="font-mono text-base font-black text-blue-400">+1 Sumbu</span>
-          <span class="block text-[11px] text-slate-400 font-medium">Sirkulasi Silang</span>
-        </div>
-        <div class="space-y-0.5">
-          <span class="font-mono text-base font-black text-purple-400">Open-Plan</span>
-          <span class="block text-[11px] text-slate-400 font-medium">Persepsi Kelapangan</span>
-        </div>
-        <div class="space-y-0.5">
-          <span class="font-mono text-xs font-bold text-amber-300">Kayu Ulin & Andesit</span>
-          <span class="block text-[11px] text-slate-400 font-medium">Palet Materialitas</span>
-        </div>
-      </div>
-    </div>
-
-    <BeforeAfterSlider
-      beforeImage="https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format&fit=crop&q=75&fm=webp"
-      afterImage="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop&q=75&fm=webp"
-      beforeAlt="Visual Studi Kondisi Ruang Sebelum Rekayasa"
-      afterAlt="Visual Studi Kondisi Ruang Sesudah Rekayasa"
-      beforeLabel="SEBELUM"
-      afterLabel="SESUDAH"
-      caption="Visual Study Konseptual • Komparasi ilustratif rekayasa bukaan dan pencahayaan"
-    />
-  </section>
-
-  <!-- 5. The Design & Material Index Component -->
-  <DesignIndex />
-
-  <!-- 6. Decision Tools Quick Dock -->
-  <section class="my-20 grid grid-cols-1 md:grid-cols-2 gap-8">
-    <a
-      href="/solusi"
-      class="apple-card p-8 sm:p-10 rounded-[2.25rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/90 hover:border-[#0066ee]/50 transition group flex flex-col justify-between"
-    >
-      <div>
-        <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-2.5">
-          ✦ ALAT DIAGNOSIS
-        </span>
-        <h3 class="font-sans text-2xl font-bold text-slate-900 dark:text-white group-hover:text-[#0066ee] transition">
-          Design Problem Solver →
-        </h3>
-        <p class="mt-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-          Mendiagnosis masalah rumah panas, lahan mungil sempit, ruang gelap, atau bising dan menemukan strategi spasial yang relevan.
-        </p>
-      </div>
-      <div class="mt-8 pt-4 border-t border-black/[0.05] dark:border-white/[0.06] text-xs font-mono font-semibold text-[#0066ee] flex items-center justify-between">
-        <span>Mulai Diagnosis Ruang</span>
-        <span class="transition-transform group-hover:translate-x-1">→</span>
-      </div>
-    </a>
-
-    <a
-      href="/komparasi"
-      class="apple-card p-8 sm:p-10 rounded-[2.25rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/90 hover:border-[#0066ee]/50 transition group flex flex-col justify-between"
-    >
-      <div>
-        <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-2.5">
-          ✦ MATRIKS OBJEKTIF
-        </span>
-        <h3 class="font-sans text-2xl font-bold text-slate-900 dark:text-white group-hover:text-[#0066ee] transition">
-          Comparison Matrix →
-        </h3>
-        <p class="mt-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-          Perbandingan spesifikasi teknis material: Aluminium vs UPVC, Kayu Ulin vs Louver, dilengkapi rincian bobot How We Score.
-        </p>
-      </div>
-      <div class="mt-8 pt-4 border-t border-black/[0.05] dark:border-white/[0.06] text-xs font-mono font-semibold text-[#0066ee] flex items-center justify-between">
-        <span>Buka Matriks Komparasi</span>
-        <span class="transition-transform group-hover:translate-x-1">→</span>
-      </div>
-    </a>
-  </section>
-
-  <!-- 7. RancangLoka Weekly Newsletter Product -->
-  <NewsletterBox />
+    <!-- 8. RancangLoka Weekly Newsletter -->
+    <Newsletter />
+  </div>
 </BaseLayout>

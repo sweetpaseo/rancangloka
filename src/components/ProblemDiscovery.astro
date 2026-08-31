@@ -1,0 +1,83 @@
+---
+interface Props {
+  className?: string;
+}
+
+const problems = [
+  {
+    title: 'RUMAH TERLALU PANAS',
+    desc: 'Orientasi fasad barat, isolasi atap & shading pasif',
+    link: '/solusi?q=panas'
+  },
+  {
+    title: 'RUANG TERLALU GELAP',
+    desc: 'Rekayasa skylight, inner courtyard & void terbuka',
+    link: '/solusi?q=gelap'
+  },
+  {
+    title: 'LAHAN SEMPIT TROPIS',
+    desc: 'Zonasi split-level, storage vertikal & sirkulasi bebas',
+    link: '/solusi?q=sempit'
+  },
+  {
+    title: 'BISING JALAN RAYA',
+    desc: 'Buffer vegetasi, double-glazing & akustik dinding',
+    link: '/solusi?q=bising'
+  },
+  {
+    title: 'MATERIAL SELEKSI',
+    desc: 'Analisis durabilitas ulin, baja ringan, beton & UPVC',
+    link: '/komparasi'
+  },
+  {
+    title: 'VENTILASI & KELEMBAPAN',
+    desc: 'Cross-ventilation, kisi-kisi angin & pencegahan jamur',
+    link: '/solusi?q=ventilasi'
+  }
+];
+---
+
+<section class="w-full py-16 md:py-24 border-b border-stone dark:border-stone/20">
+  <div class="mx-auto max-w-[1280px]">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-baseline justify-between mb-10 gap-2">
+      <div>
+        <span class="text-[11px] font-mono font-bold uppercase tracking-[0.14em] text-muted dark:text-stone block mb-2">
+          DESIGN INTELLIGENCE · DIAGNOSTIC
+        </span>
+        <h2 class="font-serif text-3xl sm:text-4xl md:text-5xl text-ink dark:text-paper font-normal tracking-tight">
+          What Are You Trying To Solve?
+        </h2>
+      </div>
+      <a
+        href="/solusi"
+        class="text-xs font-mono font-semibold uppercase tracking-wider text-ink dark:text-paper hover:text-accent flex items-center gap-1.5"
+      >
+        <span>Lihat Semua Problem Solver</span>
+        <span>→</span>
+      </a>
+    </div>
+
+    <!-- 6 Problem Grid Boxes (1px border default, solid #11110F on hover) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      {problems.map((prob) => (
+        <a
+          href={prob.link}
+          class="group block p-6 sm:p-7 bg-transparent border border-stone dark:border-stone/30 hover:border-ink hover:bg-ink hover:text-paper dark:hover:border-paper dark:hover:bg-paper dark:hover:text-ink transition-all duration-200"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <span class="font-sans font-bold text-xs md:text-sm tracking-[0.08em] uppercase text-ink dark:text-paper group-hover:text-paper dark:group-hover:text-ink">
+              {prob.title}
+            </span>
+            <span class="text-xs font-mono text-muted group-hover:text-paper/80 dark:group-hover:text-ink/80 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1">
+              ↗
+            </span>
+          </div>
+          <p class="text-xs leading-relaxed text-muted dark:text-stone/80 group-hover:text-paper/80 dark:group-hover:text-ink/80">
+            {prob.desc}
+          </p>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>

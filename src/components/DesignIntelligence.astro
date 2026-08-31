@@ -1,0 +1,78 @@
+---
+interface Props {
+  className?: string;
+}
+---
+
+<section class="w-full py-16 md:py-24 border-b border-stone dark:border-stone/20">
+  <div class="mx-auto max-w-[1280px]">
+    <!-- Header -->
+    <div class="mb-10">
+      <span class="text-[11px] font-mono font-bold uppercase tracking-[0.14em] text-muted dark:text-stone block mb-1">
+        RESEARCH ECOSYSTEM
+      </span>
+      <h2 class="font-serif text-3xl sm:text-4xl text-ink dark:text-paper font-normal">
+        Design Intelligence
+      </h2>
+    </div>
+
+    <!-- 2-Column Modular Hub on Soft Background -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- Col 1: Problem Solver -->
+      <div class="p-8 sm:p-10 bg-soft dark:bg-stone/10 border border-stone dark:border-stone/30 flex flex-col justify-between">
+        <div>
+          <span class="text-[10px] font-mono font-bold uppercase tracking-[0.16em] text-muted dark:text-stone block mb-3">
+            INTERACTIVE TOOL 01
+          </span>
+          <h3 class="font-serif text-2xl sm:text-3xl text-ink dark:text-paper mb-4">
+            Spatial Problem Solver
+          </h3>
+          <p class="text-xs sm:text-sm text-ink/80 dark:text-paper/80 leading-relaxed mb-6 font-normal">
+            Diagnosa masalah hunian tropis spesifik: penurunan suhu ruangan alami, optimalisasi ventilasi silang, dan privasi fasad tanpa mengorbankan cahaya.
+          </p>
+          <ul class="space-y-2 text-xs font-mono text-muted dark:text-stone mb-8">
+            <li class="flex items-center gap-2"><span>—</span> <span>Rumah Menghadap Barat</span></li>
+            <li class="flex items-center gap-2"><span>—</span> <span>Ruangan Pengap Tanpa Jendela Luar</span></li>
+            <li class="flex items-center gap-2"><span>—</span> <span>Bising Jalan Raya Utama</span></li>
+          </ul>
+        </div>
+
+        <a
+          href="/solusi"
+          class="inline-flex items-center justify-between w-full p-4 bg-ink text-paper dark:bg-paper dark:text-ink text-xs font-mono font-semibold uppercase tracking-wider hover:opacity-90 transition-opacity"
+        >
+          <span>Mulai Diagnosa Ruang</span>
+          <span>→</span>
+        </a>
+      </div>
+
+      <!-- Col 2: Material Matrix -->
+      <div class="p-8 sm:p-10 bg-soft dark:bg-stone/10 border border-stone dark:border-stone/30 flex flex-col justify-between">
+        <div>
+          <span class="text-[10px] font-mono font-bold uppercase tracking-[0.16em] text-muted dark:text-stone block mb-3">
+            INTERACTIVE TOOL 02
+          </span>
+          <h3 class="font-serif text-2xl sm:text-3xl text-ink dark:text-paper mb-4">
+            Material Comparison Matrix
+          </h3>
+          <p class="text-xs sm:text-sm text-ink/80 dark:text-paper/80 leading-relaxed mb-6 font-normal">
+            Perbandingan objektif spek teknis material bangunan: biaya per m², konduktivitas termal (U-value), dan estimasi masa pakai dalam iklim tropis.
+          </p>
+          <ul class="space-y-2 text-xs font-mono text-muted dark:text-stone mb-8">
+            <li class="flex items-center gap-2"><span>—</span> <span>Aluminium vs UPVC (Kusen & Jendela)</span></li>
+            <li class="flex items-center gap-2"><span>—</span> <span>Kayu Ulin vs Kayu Jati Perhutani</span></li>
+            <li class="flex items-center gap-2"><span>—</span> <span>Low-E Glass vs Kaca Panasap Biasa</span></li>
+          </ul>
+        </div>
+
+        <a
+          href="/komparasi"
+          class="inline-flex items-center justify-between w-full p-4 bg-ink text-paper dark:bg-paper dark:text-ink text-xs font-mono font-semibold uppercase tracking-wider hover:opacity-90 transition-opacity"
+        >
+          <span>Buka Matriks Komparasi</span>
+          <span>→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>

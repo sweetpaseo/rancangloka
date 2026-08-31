@@ -1,0 +1,99 @@
+---
+interface Props {
+  className?: string;
+}
+
+const materials = [
+  {
+    num: '01',
+    name: 'KAYU ULIN KALIMANTAN',
+    studies: '12 STUDIES',
+    desc: 'Ketahanan kelas I terhadap cuaca ekstrem & rayap untuk decking dan kisi fasad.',
+    link: '/komparasi'
+  },
+  {
+    num: '02',
+    name: 'BATU ALAM ANDESIT',
+    studies: '08 STUDIES',
+    desc: 'Porositas rendah, tekstur bakar alami untuk dinding perimeter penolak panas.',
+    link: '/komparasi'
+  },
+  {
+    num: '03',
+    name: 'EXPOSED CONCRETE (BETON EXPOSE)',
+    studies: '15 STUDIES',
+    desc: 'Kapasitas termal tinggi untuk meredam fluktuasi suhu siang dan malam.',
+    link: '/komparasi'
+  },
+  {
+    num: '04',
+    name: 'LOW-E DOUBLE GLASS',
+    studies: '09 STUDIES',
+    desc: 'Lapisan mikroskopis penepis sinar inframerah tanpa mengurangi transparansi visual.',
+    link: '/komparasi'
+  },
+  {
+    num: '05',
+    name: 'ALUMINIUM POWDER COATING',
+    studies: '11 STUDIES',
+    desc: 'Profil kusen kedap udara anti-muai susut untuk iklim berkelembapan tinggi.',
+    link: '/komparasi'
+  }
+];
+---
+
+<section class="w-full py-16 md:py-24 border-b border-stone dark:border-stone/20">
+  <div class="mx-auto max-w-[1280px]">
+    <!-- Header -->
+    <div class="flex items-end justify-between mb-10 pb-4 border-b border-stone dark:border-stone/20">
+      <div>
+        <span class="text-[11px] font-mono font-bold uppercase tracking-[0.14em] text-muted dark:text-stone block mb-1">
+          MATERIAL & COMPONENT DIRECTORY
+        </span>
+        <h2 class="font-serif text-3xl sm:text-4xl text-ink dark:text-paper font-normal">
+          Material Index
+        </h2>
+      </div>
+      <a
+        href="/komparasi"
+        class="text-xs font-mono font-semibold uppercase tracking-wider text-ink dark:text-paper hover:text-accent flex items-center gap-1.5"
+      >
+        <span>Lihat Matriks Lengkap</span>
+        <span>→</span>
+      </a>
+    </div>
+
+    <!-- Rows / Grid -->
+    <div class="divide-y divide-stone dark:divide-stone/20 border-b border-stone dark:border-stone/20">
+      {materials.map((mat) => (
+        <a
+          href={mat.link}
+          class="group flex flex-col md:flex-row md:items-center justify-between py-6 md:py-8 px-2 md:px-4 -mx-2 md:-mx-4 hover:bg-stone/10 dark:hover:bg-stone/5 transition-colors gap-3 md:gap-6"
+        >
+          <div class="flex items-baseline gap-4 md:gap-6">
+            <span class="font-mono text-xs md:text-sm text-muted font-bold">
+              {mat.num}
+            </span>
+            <div>
+              <h3 class="font-serif text-2xl sm:text-3xl text-ink dark:text-paper group-hover:text-accent transition-colors">
+                {mat.name}
+              </h3>
+              <p class="mt-1 text-xs text-muted dark:text-stone/80 line-clamp-1 max-w-xl font-normal">
+                {mat.desc}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-6 justify-between md:justify-end pl-8 md:pl-0">
+            <span class="text-[11px] font-mono font-semibold uppercase tracking-wider text-muted dark:text-stone">
+              {mat.studies}
+            </span>
+            <span class="text-xs font-mono text-ink dark:text-paper group-hover:translate-x-1.5 transition-transform font-bold">
+              →
+            </span>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>
