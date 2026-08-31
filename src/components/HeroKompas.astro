@@ -1,0 +1,82 @@
+---
+import type { Article } from '../lib/db';
+
+interface Props {
+  articles: Article[];
+}
+
+const { articles = [] } = Astro.props;
+const heroArticles = articles.slice(0, 3);
+
+function getHeroThumb(url?: string) {
+  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80';
+  if (url.includes('images.unsplash.com')) {
+    return `${url.split('?')[0]}?w=600&auto=format&fit=crop&q=80`;
+  }
+  return url;
+}
+---
+
+<section class="my-6">
+  <div class="rounded-xl bg-[#0B132B] dark:bg-slate-900 text-white p-6 sm:p-8 shadow-md">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+      <!-- Left Column: Topic Focus & Manifesto (Col 1-4) -->
+      <div class="lg:col-span-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/10 pb-6 lg:pb-0 lg:pr-6">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="h-2 w-2 rounded-full bg-blue-400"></span>
+            <span class="text-[11px] font-bold uppercase tracking-widest text-blue-300">
+              LIPUTAN KHUSUS REDAKSI
+            </span>
+          </div>
+
+          <h2 class="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-white leading-tight mb-4">
+            Rekayasa Spasial & Termal Hunian Tropis
+          </h2>
+
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
+            Kajian mendalam mengenai strategi arsitektur dalam memitigasi radiasi matahari, rekayasa ventilasi silang alami, dan seleksi materialitas ramah iklim lembap.
+          </p>
+        </div>
+
+        <div class="mt-6 pt-4">
+          <a
+            href="/explore"
+            class="inline-flex items-center gap-2 text-xs font-bold text-white hover:text-blue-300 transition group"
+          >
+            <span>Selengkapnya</span>
+            <span class="transition-transform group-hover:translate-x-1">❯</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Right Column: 3 Headline News Cards (Col 5-12) -->
+      <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {heroArticles.map((art) => (
+          <article class="group flex flex-col justify-between">
+            <a href={`/${art.slug}`} class="block overflow-hidden rounded-md aspect-[16/10] bg-slate-800 mb-3 relative">
+              <img
+                src={getHeroThumb(art.featured_image)}
+                alt={art.image_alt || art.title}
+                width="600"
+                height="375"
+                class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                loading="eager"
+              />
+            </a>
+
+            <div class="flex flex-1 flex-col justify-between">
+              <h3 class="font-serif text-sm sm:text-base font-bold leading-snug text-white group-hover:text-blue-300 transition line-clamp-3 mb-2">
+                <a href={`/${art.slug}`}>{art.title}</a>
+              </h3>
+
+              <div class="text-[11px] text-slate-400 flex items-center gap-2 font-mono">
+                <span>⏱️ {art.reading_time_minutes || 4} mnt baca</span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

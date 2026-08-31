@@ -1,12 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import HeroStory from '../components/HeroStory.astro';
-import EditorialCuration from '../components/EditorialCuration.astro';
-import ProblemDiscovery from '../components/ProblemDiscovery.astro';
-import LatestJournal from '../components/LatestJournal.astro';
+import TrendingTopics from '../components/TrendingTopics.astro';
+import HeroKompas from '../components/HeroKompas.astro';
+import SidebarPopular from '../components/SidebarPopular.astro';
 import VisualStudy from '../components/VisualStudy.astro';
-import MaterialIndex from '../components/MaterialIndex.astro';
-import DesignIntelligence from '../components/DesignIntelligence.astro';
 import Newsletter from '../components/Newsletter.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 
@@ -17,19 +14,23 @@ const [articles, categories, siteSettings] = await Promise.all([
   getSiteSettings(db)
 ]);
 
-// 1. Featured Cover Story
-const featuredArticle = articles.find((a) => a.is_featured === 1) || articles[0];
+// 1. Hero articles (top 3)
+const heroArticles = articles.slice(0, 3);
+const heroIds = new Set(heroArticles.map((a) => a.id));
 
-// 2. Editorial Curation (3 articles)
-const remainingAfterHero = articles.filter((a) => a.id !== featuredArticle?.id);
-const curationArticles = remainingAfterHero.slice(0, 3);
+// 2. Feed stream articles
+const feedArticles = articles.filter((a) => !heroIds.has(a.id));
 
-// 3. Latest Journal (1 + 2 articles)
-const remainingAfterCuration = remainingAfterHero.filter((a) => !curationArticles.some((c) => c.id === a.id));
-const journalArticles = remainingAfterCuration.slice(0, 3);
+// 3. Popular articles (by views or top order)
+const popularArticles = [...articles].sort((a, b) => (b.views || 0) - (a.views || 0));
 
-// Fallback if database has fewer articles
-const safeJournalArticles = journalArticles.length > 0 ? journalArticles : articles.slice(0, 3);
+function getFeedThumb(url?: string) {
+  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&auto=format&fit=crop&q=75';
+  if (url.includes('images.unsplash.com')) {
+    return `${url.split('?')[0]}?w=400&auto=format&fit=crop&q=75`;
+  }
+  return url;
+}
 
 // JSON-LD Schema for Website
 const websiteSchema = {
@@ -51,37 +52,94 @@ const websiteSchema = {
   siteSettings={siteSettings}
   jsonLdSchema={websiteSchema}
 >
-  <div class="px-5 sm:px-8 lg:px-12">
-    <!-- 1. Hero / Cover Story (1280px × 650px 2:1 Architecture Monolith) -->
-    {featuredArticle && (
-      <HeroStory article={featuredArticle} issueTag="ISSUE 04 · SPATIAL STUDY" />
-    )}
+  <!-- 1. Topik Pilihan Bar (Kompas.id Style) -->
+  <TrendingTopics />
 
-    <!-- 2. The Editor's Curation (01, 02, 03 Numbered Index) -->
-    <EditorialCuration articles={curationArticles.length > 0 ? curationArticles : articles.slice(0, 3)} />
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <!-- 2. Hero Sorotan Utama Berlatar Gelap (Kompas.id Dark Monolith) -->
+    <HeroKompas articles={heroArticles.length > 0 ? heroArticles : articles.slice(0, 3)} />
 
-    <!-- 3. What Are You Trying To Solve? (Design Intelligence Diagnostic) -->
-    <ProblemDiscovery />
+    <!-- 3. Main 2-Column Layout (Left Stream + Right Sidebar) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 my-10 items-start">
+      <!-- Left Column: Article Stream Feed (Col 1-8: 65%) -->
+      <main class="lg:col-span-8 space-y-8">
+        <!-- Section Header -->
+        <div class="flex items-center justify-between pb-3 border-b-2 border-[#003366] dark:border-blue-400">
+          <h2 class="font-sans text-base sm:text-lg font-black uppercase tracking-wider text-[#003366] dark:text-blue-400">
+            Kajian Terkini
+          </h2>
+          <a href="/explore" class="text-xs font-bold text-slate-500 hover:text-[#003366] dark:hover:text-blue-400 flex items-center gap-1">
+            <span>Lihat Semua Arsip</span>
+            <span>❯</span>
+          </a>
+        </div>
 
-    <!-- 4. Latest Journal (Editorial Asymmetric 1 + 2 Layout) -->
-    <LatestJournal articles={safeJournalArticles} />
+        <!-- Feed List: Kompas.id Horizontal Cards -->
+        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+          {feedArticles.map((art) => (
+            <article class="py-6 first:pt-0 flex flex-col sm:flex-row gap-5 group">
+              <!-- Content Left (60-70%) -->
+              <div class="flex-1 flex flex-col justify-between order-2 sm:order-1">
+                <div>
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      {art.category_name || 'ARSITEKTUR'}
+                    </span>
+                    <span class="text-slate-400 text-xs">•</span>
+                    <span class="text-[11px] font-mono text-slate-400">
+                      ⏱️ {art.reading_time_minutes || 4} mnt baca
+                    </span>
+                  </div>
+
+                  <h3 class="font-serif text-lg sm:text-xl font-bold leading-snug text-slate-900 dark:text-white group-hover:text-[#003366] dark:group-hover:text-blue-400 transition mb-2">
+                    <a href={`/${art.slug}`}>{art.title}</a>
+                  </h3>
+
+                  {art.description && (
+                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 font-normal">
+                      {art.description}
+                    </p>
+                  )}
+                </div>
+
+                <div class="mt-4 text-[11px] text-slate-400 font-mono flex items-center gap-2">
+                  <span>Oleh {art.author_name || 'Dewan Redaksi Spasial'}</span>
+                </div>
+              </div>
+
+              <!-- Thumbnail Right (30-40%) -->
+              <a
+                href={`/${art.slug}`}
+                class="w-full sm:w-52 h-44 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 order-1 sm:order-2"
+              >
+                <img
+                  src={getFeedThumb(art.featured_image)}
+                  alt={art.title}
+                  class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+              </a>
+            </article>
+          ))}
+        </div>
+      </main>
+
+      <!-- Right Column: Sidebar (Col 9-12: 35%) -->
+      <div class="lg:col-span-4">
+        <SidebarPopular popularArticles={popularArticles} />
+      </div>
+    </div>
   </div>
 
-  <!-- 5. Featured Visual Study (Dark Monolith Interruption #11110F) -->
+  <!-- 4. Featured Visual Study Monolith -->
   <VisualStudy
-    title="How Architecture Responds to Tropical Climate"
-    subtitle="Dokumentasi riset lapangan mengenai orientasi fasad terhadap radiasi matahari siang, efisiensi termal material ulin & batu alam, serta ventilasi silang alami."
+    title="Dokumentasi Visual & Riset Spasial Tropis"
+    subtitle="Kajian lapangan mengenai performa fasad ulin, efisiensi termal bata ekspos, dan ventilasi silang hunian di Indonesia."
     link="/metodologi"
   />
 
-  <div class="px-5 sm:px-8 lg:px-12">
-    <!-- 6. Material & Component Directory Index -->
-    <MaterialIndex />
-
-    <!-- 7. Design Intelligence Hub (Problem Solver + Material Matrix) -->
-    <DesignIntelligence />
-
-    <!-- 8. RancangLoka Weekly Newsletter -->
+  <!-- 5. Newsletter Section -->
+  <div id="newsletter-section" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
     <Newsletter />
   </div>
 </BaseLayout>

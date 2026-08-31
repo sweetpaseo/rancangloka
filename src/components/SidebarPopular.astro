@@ -1,0 +1,102 @@
+---
+import type { Article } from '../lib/db';
+
+interface Props {
+  popularArticles: Article[];
+}
+
+const { popularArticles = [] } = Astro.props;
+const topArticles = popularArticles.slice(0, 5);
+
+function getThumb(url?: string) {
+  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150&auto=format&fit=crop&q=75';
+  if (url.includes('images.unsplash.com')) {
+    return `${url.split('?')[0]}?w=150&auto=format&fit=crop&q=75`;
+  }
+  return url;
+}
+---
+
+<aside class="space-y-8">
+  <!-- 1. Terpopuler Box (Kompas.id Numbered Ranking) -->
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-lg">
+    <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
+      <h3 class="font-sans text-sm font-black uppercase tracking-wider text-[#003366] dark:text-blue-400">
+        Terpopuler
+      </h3>
+      <span class="text-[10px] font-mono text-slate-400">24 JAM TERAKHIR</span>
+    </div>
+
+    <div class="divide-y divide-slate-100 dark:divide-slate-800/80">
+      {topArticles.map((art, idx) => (
+        <article class="py-3 flex items-start gap-3.5 group">
+          <!-- Rank Number (1-5 in bold navy) -->
+          <span class="font-serif text-2xl font-black text-[#003366] dark:text-blue-400 w-5 flex-shrink-0 leading-none pt-0.5">
+            {idx + 1}
+          </span>
+
+          <!-- Title & Metadata -->
+          <div class="flex-1">
+            <h4 class="font-serif text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#003366] dark:group-hover:text-blue-400 leading-snug line-clamp-2">
+              <a href={`/${art.slug}`}>{art.title}</a>
+            </h4>
+            <span class="text-[10px] text-slate-400 block mt-1 font-mono">
+              {art.reading_time_minutes || 4} mnt baca
+            </span>
+          </div>
+
+          <!-- Thumbnail -->
+          <a href={`/${art.slug}`} class="h-12 w-12 rounded overflow-hidden flex-shrink-0 bg-slate-100">
+            <img
+              src={getThumb(art.featured_image)}
+              alt={art.title}
+              class="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </a>
+        </article>
+      ))}
+    </div>
+  </div>
+
+  <!-- 2. Diagnostic Widget: Problem Solver -->
+  <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-lg">
+    <span class="text-[10px] font-bold font-mono uppercase tracking-wider text-[#003366] dark:text-blue-400 block mb-1.5">
+      ✦ ALAT RISET
+    </span>
+    <h3 class="font-serif text-base font-bold text-slate-900 dark:text-white mb-2">
+      Spatial Problem Solver
+    </h3>
+    <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+      Diagnosa cepat permasalahan tata ruang: suhu panas fasad, ruang pengap tanpa jendela, dan polusi suara jalan raya.
+    </p>
+    <a
+      href="/solusi"
+      class="block w-full text-center py-2 bg-[#003366] hover:bg-[#002244] dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded text-xs font-bold transition"
+    >
+      Mulai Diagnosa Ruang →
+    </a>
+  </div>
+
+  <!-- 3. Material Matrix Quick Card -->
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-lg">
+    <span class="text-[10px] font-bold font-mono uppercase tracking-wider text-[#003366] dark:text-blue-400 block mb-1.5">
+      ✦ SPESIFIKASI
+    </span>
+    <h3 class="font-serif text-base font-bold text-slate-900 dark:text-white mb-2">
+      Matriks Komparasi Material
+    </h3>
+    <ul class="space-y-2 text-xs text-slate-600 dark:text-slate-400 mb-4">
+      <li class="flex items-center gap-1.5"><span>•</span> <a href="/komparasi" class="hover:underline">Aluminium vs UPVC</a></li>
+      <li class="flex items-center gap-1.5"><span>•</span> <a href="/komparasi" class="hover:underline">Kayu Ulin vs Jati Perhutani</a></li>
+      <li class="flex items-center gap-1.5"><span>•</span> <a href="/komparasi" class="hover:underline">Low-E Glass vs Kaca Panasap</a></li>
+    </ul>
+    <a
+      href="/komparasi"
+      class="text-xs font-bold text-[#003366] dark:text-blue-400 hover:underline flex items-center gap-1"
+    >
+      <span>Buka Komparasi Material</span>
+      <span>→</span>
+    </a>
+  </div>
+</aside>

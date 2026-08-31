@@ -8,115 +8,233 @@ interface Props {
 
 const { categories = [], siteSettings = {} } = Astro.props;
 const siteTitle = siteSettings.site_title || 'RANCANGLOKA';
-const siteLogo = siteSettings.site_logo || '';
+const siteTagline = siteSettings.site_tagline || 'JURNAL KURASI ARSITEKTUR, DESAIN INTERIOR & RUANG TROPIS';
+
+const todayFormatted = new Intl.DateTimeFormat('id-ID', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric'
+}).format(new Date());
 ---
 
-<header class="sticky top-0 z-40 w-full bg-paper/95 dark:bg-ink/95 backdrop-blur-sm border-b border-stone dark:border-stone/20 transition-colors">
-  <div class="mx-auto max-w-[1280px] px-5 sm:px-8 lg:px-12 flex h-[64px] md:h-[76px] items-center justify-between">
-    <!-- Brand Logo / Title -->
-    <a href="/" class="flex items-center gap-3 group text-ink dark:text-paper">
-      {siteLogo ? (
-        <img src={siteLogo} alt={siteTitle} class="h-6 md:h-7 w-auto object-contain" />
-      ) : (
-        <span class="flex h-7 w-7 md:h-8 md:w-8 items-center justify-center bg-ink text-paper dark:bg-paper dark:text-ink font-sans font-bold text-xs md:text-sm tracking-tight">
-          R
+<header class="w-full bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 transition-colors">
+  <!-- 1. Top Utility Row (Kompas.id Style: Menu, Cari, Edisi, Bookmark, Theme, Subscribe) -->
+  <div class="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-10 items-center justify-between text-xs">
+      <!-- Left: Menu, Cari, Edisi -->
+      <div class="flex items-center gap-4 sm:gap-6 text-slate-700 dark:text-slate-300">
+        <button
+          id="kompas-menu-toggle"
+          class="flex items-center gap-1.5 font-bold hover:text-[#003366] dark:hover:text-blue-400 transition"
+          aria-label="Buka Menu"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <span class="hidden sm:inline">Menu</span>
+        </button>
+
+        <button
+          data-search-trigger
+          class="flex items-center gap-1.5 font-bold hover:text-[#003366] dark:hover:text-blue-400 transition"
+          aria-label="Pencarian"
+        >
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span class="hidden sm:inline">Cari</span>
+        </button>
+
+        <span class="hidden md:flex items-center gap-1.5 font-semibold text-[#003366] dark:text-blue-400 text-[11px]">
+          <span class="h-2 w-2 rounded-full bg-[#003366] dark:bg-blue-400 animate-pulse"></span>
+          Edisi Digital
         </span>
-      )}
-      <span class="font-sans font-bold text-sm md:text-base tracking-[0.08em] uppercase text-ink dark:text-paper group-hover:text-accent transition-colors">
-        {siteTitle}
-      </span>
-    </a>
+      </div>
 
-    <!-- Desktop Navigation (Quiet Luxury 12-13px) -->
-    <nav class="hidden md:flex items-center gap-8 text-[12px] font-medium tracking-[0.06em] text-ink dark:text-paper uppercase">
-      <a href="/" class="hover:text-accent transition-colors">Journal</a>
-      <a href="/explore" class="hover:text-accent transition-colors">Explore</a>
-      <a href="/solusi" class="hover:text-accent transition-colors">Intelligence</a>
-      <a href="/komparasi" class="hover:text-accent transition-colors">Material Matrix</a>
-      <a href="/tentang-kami" class="hover:text-accent transition-colors">About</a>
-    </nav>
-
-    <!-- Header Actions (Search, Bookmark, Theme) -->
-    <div class="flex items-center gap-2 sm:gap-3 text-ink dark:text-paper">
-      <!-- Search Trigger -->
-      <button
-        data-search-trigger
-        class="flex items-center gap-2 p-2 hover:text-accent transition text-ink dark:text-paper"
-        aria-label="Cari artikel atau material"
-        title="Search (⌘K)"
-      >
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      </button>
-
-      <!-- Bookmark Collection Trigger -->
-      <button
-        data-bookmark-trigger
-        class="relative p-2 hover:text-accent transition text-ink dark:text-paper"
-        aria-label="Saved Inspiration"
-        title="Saved Inspiration"
-      >
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-        </svg>
-        <span class="bookmark-badge hidden absolute top-1 right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-ink text-paper dark:bg-paper dark:text-ink px-1 text-[8px] font-bold">
-          0
+      <!-- Right: Date, Bookmark, Theme Switcher, Subscribe Button -->
+      <div class="flex items-center gap-3 sm:gap-4 text-slate-600 dark:text-slate-400 text-xs">
+        <span class="hidden lg:inline text-[11px] font-medium text-slate-500 dark:text-slate-400">
+          {todayFormatted}
         </span>
-      </button>
 
-      <!-- Theme Switcher -->
-      <button
-        class="theme-toggle-btn p-2 hover:text-accent transition text-ink dark:text-paper"
-        aria-label="Toggle Theme"
-        title="Toggle Theme"
-      >
-        <svg class="h-4 w-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-        <svg class="h-4 w-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-      </button>
+        <!-- Bookmark -->
+        <button
+          data-bookmark-trigger
+          class="relative p-1.5 hover:text-[#003366] dark:hover:text-white transition"
+          aria-label="Koleksi Tersimpan"
+          title="Koleksi Tersimpan"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+          <span class="bookmark-badge hidden absolute -top-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[#003366] text-white px-1 text-[8px] font-bold">
+            0
+          </span>
+        </button>
 
-      <!-- Mobile Menu Toggle Button -->
-      <button
-        id="mobile-menu-btn"
-        class="md:hidden p-2 hover:text-accent transition text-ink dark:text-paper ml-1"
-        aria-label="Open Navigation Menu"
-      >
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+        <!-- Theme Switcher -->
+        <button
+          class="theme-toggle-btn p-1.5 hover:text-[#003366] dark:hover:text-white transition"
+          aria-label="Mode Gelap/Terang"
+          title="Mode Gelap/Terang"
+        >
+          <svg class="h-4 w-4 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg class="h-4 w-4 block dark:hidden text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+
+        <!-- Newsletter Subscribe Button (Kompas Blue Pill) -->
+        <a
+          href="#newsletter-section"
+          class="rounded-md bg-[#003366] hover:bg-[#002244] dark:bg-blue-600 dark:hover:bg-blue-700 px-3 py-1 text-[11px] font-bold text-white transition shadow-2xs"
+        >
+          Berlangganan
+        </a>
+      </div>
     </div>
   </div>
 
-  <!-- Mobile Dropdown Navigation Menu -->
-  <div id="mobile-nav-panel" class="hidden md:hidden border-t border-stone dark:border-stone/20 bg-paper dark:bg-ink px-6 py-6 space-y-4 text-xs uppercase tracking-widest font-medium">
-    <a href="/" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">Journal</a>
-    <a href="/explore" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">✦ Explore & Archive</a>
-    <a href="/solusi" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">Problem Solver</a>
-    <a href="/komparasi" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">Material Matrix</a>
-    <a href="/tentang-kami" class="block py-2 border-b border-stone/50 dark:border-stone/10 hover:text-accent">Editorial & About</a>
-    
-    <div class="pt-2">
-      <span class="text-[10px] text-muted block mb-2 font-mono">KATEGORI LIPUTAN</span>
-      <div class="flex flex-wrap gap-2">
-        {categories.map((c) => (
-          <a href={`/category/${c.slug}`} class="px-2.5 py-1 text-[10px] border border-stone dark:border-stone/20 rounded-xs hover:border-ink dark:hover:border-paper">
-            {c.name}
-          </a>
-        ))}
+  <!-- 2. Centered Grand Masthead Row (Kompas.id Style) -->
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 md:py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+    <!-- Left Sublinks (Desktop) -->
+    <div class="hidden md:flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+      <a href="/metodologi" class="hover:text-[#003366] dark:hover:text-white transition">Metodologi</a>
+      <span>·</span>
+      <a href="/editorial-standards" class="hover:text-[#003366] dark:hover:text-white transition">Integritas</a>
+    </div>
+
+    <!-- Center Masthead Logo -->
+    <a href="/" class="group flex flex-col items-center text-center">
+      <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#003366] dark:text-white uppercase transition group-hover:opacity-90">
+        {siteTitle}
+      </h1>
+      <span class="text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 mt-1">
+        {siteTagline}
+      </span>
+    </a>
+
+    <!-- Right Sublinks (Desktop) -->
+    <div class="hidden md:flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+      <a href="/solusi" class="hover:text-[#003366] dark:hover:text-white transition font-semibold text-[#003366] dark:text-blue-400">✦ Problem Solver</a>
+      <span>·</span>
+      <a href="/komparasi" class="hover:text-[#003366] dark:hover:text-white transition">Material Matrix</a>
+    </div>
+  </div>
+
+  <!-- 3. Category Navigation Bar (Clean Border & Active Line) -->
+  <nav class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center gap-6 overflow-x-auto no-scrollbar py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+        <a
+          href="/"
+          class={`pb-1 whitespace-nowrap transition border-b-2 ${
+            Astro.url.pathname === '/' || Astro.url.pathname === ''
+              ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
+              : 'border-transparent hover:text-[#003366] dark:hover:text-white'
+          }`}
+        >
+          Beranda
+        </a>
+
+        {categories.map((cat) => {
+          const isCatActive = Astro.url.pathname === `/category/${cat.slug}` || Astro.url.pathname === `/category/${cat.slug}/`;
+          return (
+            <a
+              href={`/category/${cat.slug}`}
+              class={`pb-1 whitespace-nowrap transition border-b-2 ${
+                isCatActive
+                  ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
+                  : 'border-transparent hover:text-[#003366] dark:hover:text-white'
+              }`}
+            >
+              {cat.name}
+            </a>
+          );
+        })}
+
+        <a
+          href="/solusi"
+          class={`pb-1 whitespace-nowrap transition border-b-2 ${
+            Astro.url.pathname === '/solusi'
+              ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
+              : 'border-transparent hover:text-[#003366] dark:hover:text-white'
+          }`}
+        >
+          Problem Solver
+        </a>
+
+        <a
+          href="/komparasi"
+          class={`pb-1 whitespace-nowrap transition border-b-2 ${
+            Astro.url.pathname === '/komparasi'
+              ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
+              : 'border-transparent hover:text-[#003366] dark:hover:text-white'
+          }`}
+        >
+          Komparasi Material
+        </a>
+
+        <a
+          href="/explore"
+          class={`pb-1 whitespace-nowrap transition border-b-2 ${
+            Astro.url.pathname === '/explore'
+              ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
+              : 'border-transparent hover:text-[#003366] dark:hover:text-white'
+          }`}
+        >
+          Arsip Lengkap
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Slide-out Menu Panel -->
+  <div id="kompas-menu-panel" class="hidden border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-6 py-8">
+    <div class="mx-auto max-w-7xl grid grid-cols-2 md:grid-cols-4 gap-8 text-xs">
+      <div>
+        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-3">Kategori Liputan</span>
+        <ul class="space-y-2">
+          {categories.map((c) => (
+            <li><a href={`/category/${c.slug}`} class="hover:text-[#003366] dark:hover:text-blue-400 font-medium">{c.name}</a></li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-3">Alat & Riset</span>
+        <ul class="space-y-2 font-medium">
+          <li><a href="/solusi" class="hover:text-[#003366] dark:hover:text-blue-400">Problem Solver</a></li>
+          <li><a href="/komparasi" class="hover:text-[#003366] dark:hover:text-blue-400">Komparasi Material</a></li>
+          <li><a href="/explore" class="hover:text-[#003366] dark:hover:text-blue-400">Eksplorasi Arsip</a></li>
+        </ul>
+      </div>
+      <div>
+        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-3">Redaksi & Standar</span>
+        <ul class="space-y-2 font-medium">
+          <li><a href="/editorial-standards" class="hover:text-[#003366] dark:hover:text-blue-400">Standar Editorial</a></li>
+          <li><a href="/metodologi" class="hover:text-[#003366] dark:hover:text-blue-400">Metodologi Riset</a></li>
+          <li><a href="/tentang-kami" class="hover:text-[#003366] dark:hover:text-blue-400">Tentang RancangLoka</a></li>
+          <li><a href="/kontak" class="hover:text-[#003366] dark:hover:text-blue-400">Hubungi Kami</a></li>
+        </ul>
+      </div>
+      <div>
+        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-3">Sindikasi</span>
+        <ul class="space-y-2 font-medium">
+          <li><a href="/rss.xml" class="hover:text-[#003366] dark:hover:text-blue-400">RSS Feed</a></li>
+          <li><a href="/sitemap.xml" class="hover:text-[#003366] dark:hover:text-blue-400">Sitemap Index</a></li>
+        </ul>
       </div>
     </div>
   </div>
 </header>
 
 <script>
-  const mobileBtn = document.getElementById('mobile-menu-btn');
-  const mobileNav = document.getElementById('mobile-nav-panel');
-  mobileBtn?.addEventListener('click', () => {
-    mobileNav?.classList.toggle('hidden');
+  const toggleBtn = document.getElementById('kompas-menu-toggle');
+  const panel = document.getElementById('kompas-menu-panel');
+  toggleBtn?.addEventListener('click', () => {
+    panel?.classList.toggle('hidden');
   });
 </script>
