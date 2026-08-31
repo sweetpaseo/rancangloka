@@ -396,12 +396,23 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
-### Masalah 42: Modul Telemetri Server, Resource Storage & Analitik Traffic Multi-Periode (`/admin/analytics`)
-* **Gejala:** Admin membutuhkan dashboard untuk memantau kondisi kesehatan server Cloudflare Edge, kuota database D1, storage R2, bandwidth terpakai, dan grafik volume pengunjung multi-periode.
+### Masalah 43: Dokumentasi Taksonomi & 13 Pilar Konten Materi Artikel RancangLoka pada Blueprint Master
+* **Gejala:** Dibutuhkan blueprint cakupan materi editorial yang terstruktur dan komprehensif agar arah penulisan artikel RancangLoka konsisten mencakup seluruh spektrum arsitektur, konstruksi, interior, dan tata kelola properti.
 * **Solusi:**
-  - **Live Server Telemetry Grid:** Menampilkan metrik real-time SSR Latency (`5.2 ms`), Cache Hit Ratio (`99.4%`), CPU Execution (`1.18 ms / 50 ms`), Memory (`14.8 MB / 128 MB`), Error Rate (`0.00%`), dan Uptime (`99.99%`).
-  - **Resource Gauges Bento:** Size Website (`2.48 MB / 0.45 MB gzip`), Size Database D1 (`3.80 MB / 5,120 MB`), Media R2 (`142.60 MB / 10,240 MB`), dan Bandwidth Terpakai (`3.37 GB` Unlimited).
-  - **Interactive Multi-Period Traffic Chart:** Filter interaktif `[24 Jam (Harian) | 7 Hari (Mingguan) | 30 Hari (Bulanan) | 1 Tahun (Tahunan)]` dengan kurva SVG Electric Sapphire dinamis, breakdown Top Geo (Jakarta 58.4%, Surabaya 18.2%, Bandung 11.6%, Singapore 6.8%), dan sumber rujukan (Google Search 62.1%, Direct 21.5%, Newsletter 10.4%, Social 6.0%).
+  - **Dokumentasi 13 Pilar Materi di [`docs/BLUEPRINT.md`](file:///docs/BLUEPRINT.md):**
+    1. 🏠 **Rumah** (Hunian tapak, tropis, compact house, villa, townhouse, renovasi).
+    2. 🏢 **Gedung** (High-rise, mid-rise, perkantoran, apartemen, mixed-use, utilitas).
+    3. 🏪 **Ruko** (Ruko/rukan, transformasi fasad, tata ruang usaha, kavling komersial).
+    4. 🏨 **Hotel** (Hospitality, resort, boutique hotel, homestay, glamping).
+    5. 🏬 **Retail** (Outlet komersial, coffee shop, resto, showroom, customer experience).
+    6. 🛋️ **Interior** (Tata ruang, ergonomi, furnitur, Japandi, Scandinavian, Industrial, Wabi-sabi).
+    7. 🪟 **Jendela & Pintu** (Bukaan, ventilasi silang, kusen UPVC/aluminium/kayu, pivot/sliding, insulasi).
+    8. 🧱 **Material Bangunan** (Struktur & finishing, beton ekspos, baja ringan, bata, granit/marmer, kayu sintetis).
+    9. 💡 **Lighting** (Tata cahaya arsitektural ambient/task/accent, Kelvin warm/cool, efisiensi LED).
+    10. 🌿 **Landscape** (Taman tropis, rooftop/vertical garden, hardscape/softscape, kolam, drainase).
+    11. 🏗️ **Teknologi Konstruksi** (Struktur gempa, prefab/modular, Smart Home, IoT, BIM).
+    12. 📐 **Arsitektur** (Teori & konsep, denah sirkulasi, fasad kontemporer, orientasi iklim mikro).
+    13. 💰 **Biaya & Perencanaan** (RAB, estimasi m², efisiensi budget, manajemen kontrak, timeline).
 
 ---
 
@@ -413,6 +424,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main` (*Version ID: `fa3f3770`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + fallback 20 in-memory authoritative articles. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
+| **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
 | **Design Problem Solver & Explorer** | ✅ Selesai (Aktif) | Alat diagnosis berbasis kemungkinan penyebab umum & 3-way multi-filter aktif. |
 | **Material Comparison Matrix** | ✅ Selesai (Aktif) | Matriks komparasi + box *How We Score* (25%/20%/20%/15%/20%) + Evidence Badges. |
 | **Editorial Standards & Metodologi** | ✅ Selesai (Aktif) | Piagam redaksi independen (`/editorial-standards`) & standar pengujian (`/metodologi`). |

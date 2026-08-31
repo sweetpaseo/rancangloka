@@ -24,6 +24,25 @@
 * **Prinsip Desain:** *Apple-Aesthetic Editorial Style* (Tipografi tegas, transisi halus, *breathing room* lega, *dark mode* bawaan, *zero layout shift*).
 * **Filosofi Teknis:** *Zero Server Maintenance*, *Ultra-Fast Edge Delivery (<0.5s)*, *Zero Cost Egress Bandwidth*, dan *High-Security Zero Trust*.
 
+### 📚 Pilar Konten & Cakupan Materi Artikel (*Editorial Taxonomy & Scope*):
+RancangLoka menyajikan kurasi materi komprehensif seputar arsitektur, konstruksi, tata ruang, dan manajemen properti yang terbagi ke dalam **13 pilar materi utama**:
+
+| No | Pilar Materi | Ikon | Fokus Pembahasan & Cakupan Materi |
+|:---:|:---|:---:|:---|
+| 1 | **Rumah** | 🏠 | Desain hunian tapak, rumah tinggal tropis, *compact house*, villa, *townhouse*, dan studi kasus renovasi rumah tinggal. |
+| 2 | **Gedung** | 🏢 | Arsitektur perkantoran (*high-rise & mid-rise*), apartemen, gedung komersial, fasad modern, dan utilitas bangunan tinggi. |
+| 3 | **Ruko** | 🏪 | Desain rumah toko & rukan fungsional, transformasi fasad komersial, efisiensi tata ruang usaha, dan optimalisasi kavling. |
+| 4 | **Hotel** | 🏨 | Desain *hospitality*, resort, *boutique hotel*, *homestay*, *glamping*, serta standar estetika dan kenyamanan tamu. |
+| 5 | **Retail** | 🏬 | Desain ruang komersial, outlet ritel, *coffee shop*, kafe, restoran, *showroom*, *visual merchandising*, dan *customer experience space*. |
+| 6 | **Interior** | 🛋️ | Tata ruang dalam, pemilihan furnitur, ergonomi, eksplorasi gaya (*Japandi, Scandinavian, Modern Classic, Industrial, Wabi-sabi*), dan dekorasi. |
+| 7 | **Jendela & Pintu** | 🪟 | Desain bukaan, ventilasi silang (*cross-ventilation*), sistem kusen (UPVC, aluminium, kayu solid), pintu pivot/sliding, serta insulasi termal & akustik. |
+| 8 | **Material Bangunan** | 🧱 | Eksplorasi material struktur & finishing (beton ekspos, baja ringan, bata ringan, granit/marmer, kayu sintetis, insulasi, dan cat ramah lingkungan). |
+| 9 | **Lighting** | 💡 | Desain tata cahaya arsitektural (*ambient, task, accent lighting*), temperatur warna (warm/cool), efisiensi energi LED, dan *natural daylighting*. |
+| 10 | **Landscape** | 🌿 | Desain taman tropis, *rooftop garden*, *vertical garden*, *hardscape*, *softscape*, kolam renang/ikan, serta tata kelola drainase & resapan air. |
+| 11 | **Teknologi Konstruksi** | 🏗️ | Inovasi metode konstruksi, struktur tahan gempa, prefabrikasi/modular, integrasi *Smart Home*, IoT, dan *Building Information Modeling* (BIM). |
+| 12 | **Arsitektur** | 📐 | Teori, konsep & estetika arsitektur, denah/layout sirkulasi ruang, fasad bangunan kontemporer, orientasi iklim mikro, dan karya arsitek terkemuka. |
+| 13 | **Biaya & Perencanaan** | 💰 | Rencana Anggaran Biaya (RAB), estimasi biaya bangun per m², tips efisiensi anggaran, manajemen kontrak/kontraktor, serta *timeline* proyek. |
+
 ### 🛠️ Stack Teknologi Inti:
 ```
 ┌───────────────────────────────────────────────────────────────┐

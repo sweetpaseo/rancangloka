@@ -15,3 +15,7 @@ Setelah melewati proteksi Cloudflare di atas, Anda akan masuk ke form login CMS:
 
 Email: admin@rancangloka.com
 Password: Admin@RancangLoka2026! (Kredensial ini nanti bisa Anda ubah langsung di menu Pengaturan Akun).
+
+Live Production URL: https://rancangloka.chandrajoyko.workers.dev
+Dashboard CMS: https://rancangloka.chandrajoyko.workers.dev/admin
+Server & Traffic Analytics: https://rancangloka.chandrajoyko.workers.dev/admin/analytics

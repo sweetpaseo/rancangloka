@@ -21,41 +21,84 @@ const todayFormatted = new Intl.DateTimeFormat('id-ID', {
 }).format(new Date());
 ---
 
-<header class="relative z-40 w-full apple-glass transition-colors">
-  <!-- 1. Top Minimalist Bar: Live Date & Editorial Edition -->
-  <div class="hidden md:flex h-9 items-center justify-between border-b border-black/[0.04] dark:border-white/[0.06] px-6 text-[11px] text-slate-500 dark:text-slate-400">
-    <div class="flex items-center gap-3 overflow-hidden">
-      <span class="flex items-center gap-1.5 font-bold text-[#0066ee] tracking-wide">
-        <span class="h-1.5 w-1.5 rounded-full bg-[#0066ee] animate-pulse"></span>
-        Curated Architecture & Living
-      </span>
-      <span class="text-slate-300 dark:text-slate-700">/</span>
-      <span class="text-slate-600 dark:text-slate-400 font-medium">
-        Jurnal Desain, Fasad Tropis & Smart Living
-      </span>
-    </div>
+<header class="relative z-40 w-full apple-glass transition-colors border-b border-black/[0.04] dark:border-white/[0.06]">
+  <!-- 1. Dedicated Top Utility Bar: Status/Date & Quick Action Icons (Search, Bookmark, Theme) -->
+  <div class="border-b border-black/[0.04] dark:border-white/[0.06] bg-slate-100/70 dark:bg-slate-900/70 backdrop-blur-md">
+    <div class="mx-auto flex h-10 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 text-[11px]">
+      <!-- Left: Edition Tag & Live Date -->
+      <div class="flex items-center gap-2.5 overflow-hidden">
+        <span class="flex items-center gap-1.5 font-bold text-[#0066ee] tracking-tight whitespace-nowrap">
+          <span class="h-2 w-2 rounded-full bg-[#0066ee] animate-pulse"></span>
+          <span class="hidden sm:inline">RancangLoka •</span> Edisi Digital
+        </span>
+        <span class="hidden md:inline text-slate-300 dark:text-slate-700">|</span>
+        <span class="hidden md:inline font-medium text-slate-500 dark:text-slate-400 truncate">
+          {todayFormatted}
+        </span>
+      </div>
 
-    <div class="flex items-center gap-3 text-[11px]">
-      <span class="font-semibold text-slate-700 dark:text-slate-300">{todayFormatted}</span>
-      <span class="rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200/50">
-        Edisi Digital
-      </span>
+      <!-- Right: Dedicated Utility Cluster (Search, Bookmark, Theme Switcher) -->
+      <div class="flex items-center gap-1 sm:gap-2">
+        <!-- 1. Search Trigger -->
+        <button
+          data-search-trigger
+          class="flex items-center gap-2 rounded-full bg-white/80 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-800 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 border border-black/[0.06] dark:border-white/[0.08] shadow-2xs transition"
+          aria-label="Cari artikel atau material"
+        >
+          <svg class="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span class="hidden sm:inline font-medium text-[11px]">Cari inspirasi...</span>
+          <kbd class="hidden lg:inline rounded bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 border border-slate-200 dark:border-slate-800">⌘K</kbd>
+        </button>
+
+        <!-- 2. Bookmark Collection Trigger -->
+        <button
+          data-bookmark-trigger
+          class="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/80 dark:bg-slate-800/90 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white border border-black/[0.06] dark:border-white/[0.08] hover:bg-white dark:hover:bg-slate-800 shadow-2xs transition"
+          aria-label="Koleksi Inspirasi Tersimpan"
+          title="Koleksi Inspirasi Tersimpan"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+          <span class="bookmark-badge hidden absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-extrabold text-white ring-2 ring-white dark:ring-slate-900">
+            0
+          </span>
+        </button>
+
+        <!-- 3. Theme Switcher (Dark / Light) -->
+        <button
+          class="theme-toggle-btn flex h-8 w-8 items-center justify-center rounded-full bg-white/80 dark:bg-slate-800/90 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white border border-black/[0.06] dark:border-white/[0.08] hover:bg-white dark:hover:bg-slate-800 shadow-2xs transition"
+          aria-label="Ganti Mode Gelap/Terang"
+          title="Ganti Mode Gelap/Terang"
+        >
+          <!-- Sun icon (shown in dark mode) -->
+          <svg class="h-4 w-4 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <!-- Moon icon (shown in light mode) -->
+          <svg class="h-4 w-4 block dark:hidden text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- 2. Main Brand Bar with generous luxurious spacing -->
-  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 py-7 sm:py-9 md:py-10">
-    <!-- Brand Title / Logo -->
+  <!-- 2. Main Brand Bar (Spacious, Elegant & Never Squeezed) -->
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 sm:py-7 md:py-8">
+    <!-- Brand Title / Logo with generous width -->
     <a href="/" class="group flex flex-col transition space-y-1">
       <div class="flex items-center gap-3">
         {siteLogo ? (
           <img
             src={siteLogo}
             alt={siteTitle}
-            class="h-8 sm:h-10 md:h-11 w-auto max-w-[200px] object-contain"
+            class="h-8 sm:h-10 md:h-11 w-auto max-w-[220px] object-contain"
           />
         ) : (
-          <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-sans font-black text-lg tracking-tight shadow-sm">
+          <span class="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-sans font-black text-lg sm:text-xl tracking-tight shadow-sm">
             R
           </span>
         )}
@@ -63,54 +106,10 @@ const todayFormatted = new Intl.DateTimeFormat('id-ID', {
           {siteTitle}
         </span>
       </div>
-      <span class="text-xs sm:text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400 pl-12">
-        Jurnal Kurasi Arsitektur, Desain Interior & Ruang Tropis
+      <span class="text-xs sm:text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400 pl-12 sm:pl-13">
+        {siteTagline || 'Jurnal Kurasi Arsitektur, Desain Interior & Ruang Tropis'}
       </span>
     </a>
-
-    <!-- Action Buttons -->
-    <div class="flex items-center gap-3 sm:gap-4">
-      <!-- Search Trigger (Apple Pill Style) -->
-      <button
-        data-search-trigger
-        class="flex items-center gap-3 rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 px-4 py-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 transition border border-black/[0.04] dark:border-white/[0.06] shadow-2xs"
-        aria-label="Cari proyek atau material"
-      >
-        <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <span class="hidden sm:inline font-medium">Cari proyek, material, solusi...</span>
-        <kbd class="hidden md:inline rounded-md bg-white dark:bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-slate-400 border border-slate-200 dark:border-slate-800 shadow-2xs">⌘K</kbd>
-      </button>
-
-      <!-- Bookmark Collection Trigger -->
-      <button
-        data-bookmark-trigger
-        class="relative rounded-full p-2.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition"
-        aria-label="Koleksi Inspirasi Tersimpan"
-        title="Koleksi Inspirasi Tersimpan"
-      >
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-        </svg>
-        <span class="bookmark-badge hidden absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-extrabold text-white">
-          0
-        </span>
-      </button>
-
-      <!-- Theme Switcher -->
-      <button
-        class="theme-toggle-btn rounded-full p-2.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition"
-        aria-label="Ganti Mode Gelap/Terang"
-      >
-        <svg class="h-5 w-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-        <svg class="h-5 w-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-      </button>
-    </div>
   </div>
 
   <!-- 3. Apple-style Swipeable Segmented Category Bar with more breathing room -->
