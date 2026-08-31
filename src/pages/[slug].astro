@@ -160,99 +160,96 @@ if (article) {
   <!-- 🅱️ RENDER AS MAGAZINE ARTICLE -->
   {!isStaticPage && article && (
 
-  <article class="max-w-3xl mx-auto px-2 sm:px-0">
+  <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <!-- 1. Breadcrumbs -->
-    <div class="mb-4">
+    <div class="mb-6">
       <Breadcrumbs items={breadcrumbItems} />
     </div>
 
     <!-- 2. Header Metadata & Headline -->
-    <header class="mb-8">
-      <div class="flex flex-wrap items-center gap-2.5 mb-4">
+    <header class="mb-10">
+      <div class="flex flex-wrap items-center gap-3 mb-5">
         <a
           href={`/category/${article.category_slug || 'all'}`}
-          class="rounded-full px-3.5 py-1 text-[11px] font-mono font-bold uppercase tracking-wider text-white shadow-2xs"
-          style={`background-color: ${article.category_color || '#059669'};`}
+          class="border border-stone dark:border-stone/30 px-3 py-1 text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-ink dark:text-paper hover:bg-stone/10 transition"
         >
-          {article.category_name || 'Hunian'}
+          {article.category_name || 'SPATIAL STUDY'}
         </a>
 
         {article.is_sponsored === 1 && (
-          <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700/60 px-3 py-1 text-[10px] font-mono font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
-            ✦ Kemitraan Kurasi
+          <span class="border border-accent px-2.5 py-1 text-[10px] font-mono font-bold text-accent uppercase tracking-wider">
+            ✦ SPONSORED STUDY
           </span>
         )}
 
-        <span class="text-xs font-mono text-slate-400 font-medium">
-          {article.reading_time_minutes} menit baca
+        <span class="text-xs font-mono text-muted dark:text-stone/70">
+          ⏱️ {article.reading_time_minutes} MIN READ
         </span>
 
         <!-- Save Inspiration Button -->
         <button
           id="article-bookmark-btn"
           type="button"
-          class="ml-auto inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition shadow-2xs"
+          class="ml-auto inline-flex items-center gap-1.5 border border-stone dark:border-stone/30 hover:border-ink dark:hover:border-paper px-3.5 py-1 text-xs font-mono font-medium text-ink dark:text-paper transition"
           data-slug={article.slug}
           data-title={article.title}
           data-image={article.featured_image}
           data-category={article.category_name}
         >
-          <span class="text-xs font-black">✦</span>
-          <span id="bookmark-btn-text">Simpan ke Moodboard</span>
+          <span>✦</span>
+          <span id="bookmark-btn-text">Save Inspiration</span>
         </button>
       </div>
 
-      <h1 class="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.16]">
+      <h1 class="font-serif text-3xl sm:text-5xl md:text-[56px] lg:text-[60px] font-normal tracking-[-0.03em] text-ink dark:text-paper leading-[1.04]">
         {article.title}
       </h1>
 
-      <p class="mt-5 text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-        {article.description}
-      </p>
+      {article.description && (
+        <p class="mt-6 text-lg sm:text-xl text-muted dark:text-stone leading-relaxed font-normal">
+          {article.description}
+        </p>
+      )}
 
       <!-- Author and Content Freshness Line -->
-      <div class="mt-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-y border-black/[0.05] py-4 dark:border-white/[0.08] text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-        <div class="flex items-center gap-3.5">
+      <div class="mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-y border-stone dark:border-stone/20 py-4 text-xs font-mono text-muted dark:text-stone/80">
+        <div class="flex items-center gap-3">
           <img
             src={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
             alt={article.author_name || 'Redaksi'}
-            class="h-11 w-11 rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10 shadow-sm"
+            class="h-9 w-9 rounded-full object-cover grayscale"
           />
           <div>
-            <span class="font-bold text-slate-900 dark:text-white block text-sm">{article.author_name || 'Tim Kurasi RancangLoka'}</span>
-            <span class="text-xs text-slate-400">{article.author_role || 'Kurasi & Riset Spasial Tropis'}</span>
+            <span class="font-bold text-ink dark:text-paper block uppercase tracking-wider">{article.author_name || 'Dewan Redaksi Spasial'}</span>
+            <span class="text-[10px] text-muted dark:text-stone/60">{article.author_role || 'Editor Spesifikasi & Tata Ruang'}</span>
           </div>
         </div>
 
-        <div class="text-left sm:text-right font-mono text-xs">
-          <div class="text-slate-700 dark:text-slate-300 font-semibold">
+        <div class="text-left sm:text-right text-[11px]">
+          <div>
             Diterbitkan {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </div>
-          <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium flex items-center sm:justify-end gap-1.5 font-mono">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-            <span>Diperbarui {new Date(article.updated_at || article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • Standar Jurnal</span>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- 2.5 TL;DR Quick Decision Summary (45-sec scan) -->
-    <div class="my-6 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-black/[0.05] dark:border-white/[0.08] p-5">
-      <div class="flex items-center gap-2 mb-1.5 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee]">
+    <!-- 2.5 TL;DR Quick Decision Summary (Quiet Luxury Box) -->
+    <div class="my-8 bg-soft dark:bg-stone/10 border border-stone dark:border-stone/30 p-6 md:p-8">
+      <div class="flex items-center gap-2 mb-2 text-xs font-mono font-bold uppercase tracking-[0.14em] text-accent">
         <span>✦</span>
-        <span>TL;DR · RINGKASAN KEPUTUSAN (45 DETIK)</span>
+        <span>EXECUTIVE SUMMARY · KEY TAKEAWAYS</span>
       </div>
-      <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
-        {article.description} Kunci utamanya terletak pada kontrol orientasi bukaan, rekayasa sumbu ventilasi silang, dan pemilihan materialitas berpori alami.
+      <p class="text-xs sm:text-sm text-ink/90 dark:text-paper/90 leading-relaxed font-normal">
+        {article.description}
       </p>
     </div>
 
-    <!-- 3. Featured Cover Image (Apple Squircle with HD Zoom Overlay) -->
-    <div class="group relative my-8 overflow-hidden rounded-[2.25rem] bg-slate-100 dark:bg-slate-800 aspect-[16/10] shadow-[0_12px_35px_rgba(0,0,0,0.07)] border border-black/[0.04] dark:border-white/[0.06] cursor-pointer">
+    <!-- 3. Featured Cover Image (0px Sharp Architectural Monolith) -->
+    <div class="group relative my-8 overflow-hidden bg-stone/20 aspect-[16/10] border border-stone dark:border-stone/20 cursor-pointer">
       <img
         src={article.featured_image}
         alt={article.image_alt || article.title}
-        class="article-cover-img h-full w-full object-cover transition duration-700 ease-out group-hover:scale-103"
+        class="article-cover-img h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.015]"
         fetchpriority="high"
         loading="eager"
         onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80'"
