@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://rancangloka.com/sitemap.xml
+Sitemap: https://rancangloka.com/post-sitemap.xml
+Sitemap: https://rancangloka.com/page-sitemap.xml
+Sitemap: https://rancangloka.com/category-sitemap.xml
+Sitemap: https://rancangloka.com/sitemap-news.xml
