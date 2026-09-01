@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,38 +6,38 @@
 
 @layer base {
   :root {
-    --color-paper: #F6F5F1;
-    --color-ink: #11110F;
-    --color-stone: #D9D7D0;
-    --color-muted: #77766F;
-    --color-soft: #EAE8E1;
+    --color-paper: #F8F7F4;
+    --color-ink: #18181B;
+    --color-stone: #E4E4E7;
+    --color-muted: #71717A;
+    --color-soft: #F4F4F5;
     --color-accent: #6B705C;
-    --color-surface: #F6F5F1;
+    --color-surface: #F8F7F4;
     --color-surface-card: #FFFFFF;
-    --color-text-main: #11110F;
-    --color-text-muted: #77766F;
-    --color-border: #D9D7D0;
+    --color-text-main: #18181B;
+    --color-text-muted: #71717A;
+    --color-border: #E4E4E7;
   }
 
   .dark {
-    --color-paper: #11110F;
-    --color-ink: #F6F5F1;
-    --color-stone: #2A2A28;
-    --color-muted: #9E9D95;
-    --color-soft: #1A1A18;
+    --color-paper: #09090B;
+    --color-ink: #F4F4F5;
+    --color-stone: #27272A;
+    --color-muted: #A1A1AA;
+    --color-soft: #18181B;
     --color-accent: #8E9480;
-    --color-surface: #11110F;
-    --color-surface-card: #181816;
-    --color-text-main: #F6F5F1;
-    --color-text-muted: #9E9D95;
-    --color-border: #2A2A28;
+    --color-surface: #09090B;
+    --color-surface-card: #121215;
+    --color-text-main: #F4F4F5;
+    --color-text-muted: #A1A1AA;
+    --color-border: #27272A;
   }
 
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Geist', 'Plus Jakarta Sans', system-ui, sans-serif;
-    letter-spacing: -0.015em;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.012em;
     background-color: var(--color-paper);
     color: var(--color-ink);
   }
@@ -48,35 +48,40 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.025em;
+  }
 }
 
-/* Apple-style Custom Typography for Editorial Reading */
+/* Modern Architectural Editorial Typography for Article Reading */
 .prose-magazine {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
   font-size: 1.125rem;
-  line-height: 1.88;
-  color: #333336;
+  line-height: 1.82;
+  color: #27272a;
 }
 
 .dark .prose-magazine {
-  color: #d2d2d7;
+  color: #e4e4e7;
 }
 
 /* 1. Signature Editorial Drop Cap (First paragraph initial letter) */
 .prose-magazine > p:first-of-type::first-letter {
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'Outfit', sans-serif;
   font-size: 3.4rem;
-  font-weight: 900;
+  font-weight: 800;
   float: left;
   line-height: 0.8;
   margin-right: 0.75rem;
   margin-top: 0.2rem;
-  color: #121316;
+  color: #18181b;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .dark .prose-magazine > p:first-of-type::first-letter {
-  color: #f8fafc;
+  color: #f4f4f5;
   text-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
 }
 
@@ -86,23 +91,24 @@
 }
 
 .prose-magazine strong {
-  font-weight: 800;
-  color: #121316;
+  font-weight: 700;
+  color: #18181b;
 }
 
 .dark .prose-magazine strong {
   color: #ffffff;
 }
 
-/* 2. Enhanced Headings Rhythm (Swiss Heavy Display) */
+/* 2. Enhanced Headings Rhythm */
 .prose-magazine h2 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   font-size: 1.85rem;
-  font-weight: 900;
-  margin-top: 3.75rem;
-  margin-bottom: 1.35rem;
-  letter-spacing: -0.035em;
-  line-height: 1.2;
-  color: #121316;
+  font-weight: 800;
+  margin-top: 3.5rem;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  color: #18181b;
   padding-bottom: 0.5rem;
 }
 
@@ -111,16 +117,17 @@
 }
 
 .prose-magazine h3 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   font-size: 1.35rem;
-  font-weight: 800;
-  margin-top: 2.5rem;
-  margin-bottom: 0.85rem;
-  letter-spacing: -0.025em;
-  color: #1e293b;
+  font-weight: 700;
+  margin-top: 2.25rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+  color: #27272a;
 }
 
 .dark .prose-magazine h3 {
-  color: #f1f5f9;
+  color: #f4f4f5;
 }
 
 /* 3. Styled Lists */
@@ -142,7 +149,7 @@
   position: absolute;
   left: 0.25rem;
   top: 0;
-  color: #0066ee;
+  color: var(--color-accent, #6B705C);
   font-size: 0.85rem;
   line-height: 1.75;
 }
@@ -158,25 +165,27 @@
   padding-left: 0.25rem;
 }
 
-/* 4. Luxury Titanium Sapphire Pull-Quotes / Blockquotes */
+/* 4. Luxury Editorial Pull-Quotes / Blockquotes */
 .prose-magazine blockquote {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
   position: relative;
-  border-left: 3px solid #0066ee;
-  background: rgba(0, 102, 238, 0.04);
+  border-left: 3px solid var(--color-accent, #6B705C);
+  background: rgba(107, 112, 92, 0.05);
   border-radius: 0 1.25rem 1.25rem 0;
   padding: 1.5rem 2rem;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 500;
-  line-height: 1.7;
+  line-height: 1.65;
   margin: 2.5rem 0;
-  color: #111215;
-  letter-spacing: -0.015em;
+  color: #18181b;
+  letter-spacing: -0.01em;
 }
 
 .dark .prose-magazine blockquote {
-  border-left-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.08);
-  color: #f8fafc;
+  border-left-color: #8E9480;
+  background: rgba(142, 148, 128, 0.08);
+  color: #f4f4f5;
 }
 
 /* Luxury Architectural Cards & Doppelrand (Double-Bezel) Architecture */
@@ -252,9 +261,9 @@
 
 /* Luxury Swiss Display Heavy Typography */
 .font-display-heavy {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 900;
-  letter-spacing: -0.035em;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
 /* Hide scrollbar for category pills */

@@ -38,9 +38,10 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['"Geist"', '"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
-        display: ['"Instrument Serif"', 'Georgia', 'serif'],
+        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        display: ['"Outfit"', '"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
+        heading: ['"Outfit"', '"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
+        serif: ['"Newsreader"', 'Georgia', 'serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
       },
       aspectRatio: {
