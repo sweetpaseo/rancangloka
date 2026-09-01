@@ -406,23 +406,22 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
-### Masalah 43: Dokumentasi Taksonomi & 13 Pilar Konten Materi Artikel RancangLoka pada Blueprint Master
-* **Gejala:** Dibutuhkan blueprint cakupan materi editorial yang terstruktur dan komprehensif agar arah penulisan artikel RancangLoka konsisten mencakup seluruh spektrum arsitektur, konstruksi, interior, dan tata kelola properti.
+### Masalah 44: Upgrade Sistem Tipografi Editorial (Outfit + Plus Jakarta Sans + Newsreader)
+* **Gejala:** Penggunaan font awal (Geist & Plus Jakarta Sans tanpa hierarki yang jelas) terasa kaku dan cepat melelahkan mata saat membaca artikel panjang.
 * **Solusi:**
-  - **Dokumentasi 13 Pilar Materi di [`docs/BLUEPRINT.md`](file:///docs/BLUEPRINT.md):**
-    1. 🏠 **Rumah** (Hunian tapak, tropis, compact house, villa, townhouse, renovasi).
-    2. 🏢 **Gedung** (High-rise, mid-rise, perkantoran, apartemen, mixed-use, utilitas).
-    3. 🏪 **Ruko** (Ruko/rukan, transformasi fasad, tata ruang usaha, kavling komersial).
-    4. 🏨 **Hotel** (Hospitality, resort, boutique hotel, homestay, glamping).
-    5. 🏬 **Retail** (Outlet komersial, coffee shop, resto, showroom, customer experience).
-    6. 🛋️ **Interior** (Tata ruang, ergonomi, furnitur, Japandi, Scandinavian, Industrial, Wabi-sabi).
-    7. 🪟 **Jendela & Pintu** (Bukaan, ventilasi silang, kusen UPVC/aluminium/kayu, pivot/sliding, insulasi).
-    8. 🧱 **Material Bangunan** (Struktur & finishing, beton ekspos, baja ringan, bata, granit/marmer, kayu sintetis).
-    9. 💡 **Lighting** (Tata cahaya arsitektural ambient/task/accent, Kelvin warm/cool, efisiensi LED).
-    10. 🌿 **Landscape** (Taman tropis, rooftop/vertical garden, hardscape/softscape, kolam, drainase).
-    11. 🏗️ **Teknologi Konstruksi** (Struktur gempa, prefab/modular, Smart Home, IoT, BIM).
-    12. 📐 **Arsitektur** (Teori & konsep, denah sirkulasi, fasad kontemporer, orientasi iklim mikro).
-    13. 💰 **Biaya & Perencanaan** (RAB, estimasi m², efisiensi budget, manajemen kontrak, timeline).
+  - **Headings & Display:** Menggunakan font **Outfit** (`wght@600;700;800`) untuk karakter arsitektur kontemporer yang elegan.
+  - **Body Text:** Mengunci **Plus Jakarta Sans** dengan line-height `1.82`, letter-spacing proporsional, dan warna teks arang lembut (`#27272a` / `zinc-800` pada light mode dan `#e4e4e7` pada dark mode).
+  - **Editorial Accent & Quotes:** Memasang **Newsreader Italic** untuk kutipan (*pull quotes*) dan intisari (*key takeaways*).
+
+---
+
+### Masalah 45: Optimasi Lanjutan PageSpeed CWV, Aksesibilitas Kontras WCAG AA & Stealth Mode
+* **Gejala:** Laporan audit PageSpeed Insights menunjukkan bobot Google Fonts 332 KiB, render delay LCP gambar hero, kontras warna label slate-400 rendah, dan direktori bawaan framework terbaca publik.
+* **Solusi:**
+  - **Pemangkasan Payload Font (-80%):** Membatasi request Google Fonts hanya pada variasi *weights* esensial sehingga ukuran turun drastis dari 332 KiB menjadi <60 KiB.
+  - **LCP Optimization & Compression:** Menyematkan `fetchpriority="high"` dan `loading="eager"` pada Hero image pertama, serta mengompresi thumbnail Unsplash ke `q=70` dengan dimensi proporsional.
+  - **Perbaikan Kontras WCAG AA:** Mengubah seluruh label metadata dan pembaca waktu menjadi `text-slate-600 dark:text-slate-400 font-medium` (kontras rasio >4.5:1) dan merapikan hierarki heading di Footer.
+  - **Stealth Mode (Zero Framework Trace):** Mengalihkan output direktori aset dari `_astro/` ke folder netral `assets/` melalui `build.assets: 'assets'` di `astro.config.mjs`.
 
 ---
 
