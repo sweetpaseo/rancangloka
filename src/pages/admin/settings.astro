@@ -231,43 +231,87 @@ const settings = await getSiteSettings(db);
     </div>
 
     <!-- 3. Webmaster & SEO 2026 -->
-    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
-      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-        <span>📈</span> SEO & Integrasi Webmaster
-      </h2>
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-5 shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <span>📈</span> SEO & Integrasi Webmaster (Search Console & Analytics)
+        </h2>
+        <span class="text-[10px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded font-semibold uppercase">Auto Head Injection</span>
+      </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Google Search Console Verification Code</label>
+      <div class="space-y-4">
+        <!-- Google Search Console -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <span>🔍</span> Google Search Console (Kode Verifikasi Pemilik Situs)
+            </label>
+            {settings.google_search_console_code ? (
+              <span class="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">✓ Terpasang di &lt;head&gt;</span>
+            ) : (
+              <span class="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-bold">Belum Terpasang</span>
+            )}
+          </div>
           <input
             type="text"
             id="gsc-code"
             value={settings.google_search_console_code || ''}
-            placeholder="google-site-verification=..."
-            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
+            placeholder='Tempel kode verifikasi Google atau seluruh tag: <meta name="google-site-verification" content="..." />'
+            class="w-full rounded-xl bg-white border border-slate-200 px-3.5 py-2.5 text-xs text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
           />
+          <p class="text-[11px] text-slate-500 leading-relaxed">
+            💡 <strong>Panduan:</strong> Di Google Search Console, pilih metode verifikasi <strong>Tag HTML</strong>. Anda bisa langsung menempelkan seluruh kode tag <code class="bg-slate-200/60 px-1 py-0.5 rounded text-[10px]">&lt;meta name="google-site-verification" content="..." /&gt;</code> atau hanya string kodenya saja. Sistem akan otomatis membersihkan dan menginjeksinya ke dalam <code class="bg-slate-200/60 px-1 py-0.5 rounded text-[10px]">&lt;head&gt;</code> website.
+          </p>
         </div>
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Bing Webmaster -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Bing / Microsoft Webmaster (msvalidate.01)</label>
+            <input
+              type="text"
+              id="bing-code"
+              value={settings.bing_webmaster_code || ''}
+              placeholder="msvalidate.01=... atau kode verifikasi Bing"
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
+            />
+          </div>
+
+          <!-- GA4 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Google Analytics (GA4) Measurement ID</label>
+            <input
+              type="text"
+              id="ga-id"
+              value={settings.google_analytics_id || ''}
+              placeholder="G-XXXXXXXXXX"
+              class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
+            />
+          </div>
+        </div>
+
+        <!-- Default OG -->
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Google Analytics (GA4) ID</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Default OpenGraph Image URL (Fallback Medsos Share)</label>
           <input
-            type="text"
-            id="ga-id"
-            value={settings.google_analytics_id || ''}
-            placeholder="G-XXXXXXXXXX"
-            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
+            type="url"
+            id="default-og"
+            value={settings.seo_default_og_image || ''}
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
           />
         </div>
-      </div>
 
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">Default OpenGraph Image URL (Fallback Medsos Share)</label>
-        <input
-          type="url"
-          id="default-og"
-          value={settings.seo_default_og_image || ''}
-          class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
-        />
+        <!-- Custom Head Scripts -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Custom Head Scripts & Meta Tags (Advanced HTML Injection)</label>
+          <textarea
+            id="custom-head-scripts"
+            rows="3"
+            placeholder="<!-- Tempel script Google AdSense, GTM, atau meta tag kustom di sini. Akan diinjeksi langsung ke <head> publik -->"
+            class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white"
+          >{settings.custom_head_scripts || ''}</textarea>
+          <p class="text-[10px] text-slate-400 mt-1">Gunakan untuk kode Google AdSense, Google Tag Manager, atau meta tag verifikasi kustom.</p>
+        </div>
       </div>
     </div>
 
@@ -410,8 +454,10 @@ const settings = await getSiteSettings(db);
     const siteUrlInput = document.getElementById('site-url') as HTMLInputElement;
     const siteDescInput = document.getElementById('site-description') as HTMLTextAreaElement;
     const gscInput = document.getElementById('gsc-code') as HTMLInputElement;
+    const bingInput = document.getElementById('bing-code') as HTMLInputElement;
     const gaInput = document.getElementById('ga-id') as HTMLInputElement;
     const ogInput = document.getElementById('default-og') as HTMLInputElement;
+    const customHeadInput = document.getElementById('custom-head-scripts') as HTMLTextAreaElement;
     const previewContainer = document.getElementById('logo-preview-container') as HTMLElement;
 
     // Live Logo & Favicon Preview
@@ -478,9 +524,11 @@ const settings = await getSiteSettings(db);
         site_description: siteDescInput?.value?.trim() || '',
         theme_primary_color: primaryHex?.value || '#1e3a8a',
         theme_accent_color: accentHex?.value || '#d97706',
-        google_search_console_code: gscInput?.value || '',
-        google_analytics_id: gaInput?.value || '',
-        seo_default_og_image: ogInput?.value || '',
+        google_search_console_code: gscInput?.value?.trim() || '',
+        bing_webmaster_code: bingInput?.value?.trim() || '',
+        google_analytics_id: gaInput?.value?.trim() || '',
+        seo_default_og_image: ogInput?.value?.trim() || '',
+        custom_head_scripts: customHeadInput?.value || '',
         // Social Share Bar Toggles
         share_bar_enabled: (document.getElementById('share-bar-enabled') as HTMLInputElement)?.checked ? 'true' : 'false',
         share_enable_wa: (document.getElementById('share-enable-wa') as HTMLInputElement)?.checked ? 'true' : 'false',

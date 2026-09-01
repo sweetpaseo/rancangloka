@@ -423,6 +423,13 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - **Perbaikan Kontras WCAG AA:** Mengubah seluruh label metadata dan pembaca waktu menjadi `text-slate-600 dark:text-slate-400 font-medium` (kontras rasio >4.5:1) dan merapikan hierarki heading di Footer.
   - **Stealth Mode (Zero Framework Trace):** Mengalihkan output direktori aset dari `_astro/` ke folder netral `assets/` melalui `build.assets: 'assets'` di `astro.config.mjs`.
 
+### Masalah 46: Fitur Pengaturan Meta Verifikasi Google Search Console & Webmaster Tools
+* **Gejala:** Pengelola website memerlukan cara mudah untuk memasukkan kode verifikasi Google Search Console (HTML tag meta) dan Bing Webmaster tanpa perlu mengedit kode sumber.
+* **Solusi:**
+  - **Antarmuka Admin CMS ([`src/pages/admin/settings.astro`](file:///src/pages/admin/settings.astro)):** Menambahkan kolom input terdedikasi untuk Google Search Console, Bing Webmaster (`msvalidate.01`), dan Custom Head Scripts/Meta Tags. Dilengkapi status badge dan panduan copy-paste.
+  - **Smart Tag Sanitizer & Extraction ([`src/layouts/BaseLayout.astro`](file:///src/layouts/BaseLayout.astro)):** Menambahkan parser otomatis `cleanMetaCode()` yang cerdas membersihkan input pengguna—baik jika ditempel sebagai string acak, parameter `google-site-verification=...`, maupun seluruh tag HTML `<meta name="google-site-verification" content="..." />`.
+  - **Live Injeksi `<head>` Publik:** Otomatis merender tag meta verifikasi dan skrip kustom di seluruh halaman website secara instan dan tersimpan di database D1.
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)

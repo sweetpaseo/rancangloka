@@ -40,6 +40,22 @@ const currentCanonical = canonicalUrl || Astro.url.href;
 // Dynamic CSS Variables from Site Settings (Titanium Monochrome & Electric Sapphire)
 const primaryColor = siteSettings.theme_primary_color || '#111215';
 const accentColor = siteSettings.theme_accent_color || '#0066ee';
+
+// Smart Webmaster Meta Tag Extraction
+function cleanMetaCode(raw?: string) {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  const match = trimmed.match(/content=["']([^"']+)["']/i);
+  if (match && match[1]) return match[1].trim();
+  if (trimmed.includes('=')) {
+    return trimmed.split('=').pop()?.replace(/^["']|["']$/g, '').trim() || trimmed;
+  }
+  return trimmed;
+}
+
+const gscVerificationCode = cleanMetaCode(siteSettings.google_search_console_code);
+const bingVerificationCode = cleanMetaCode(siteSettings.bing_webmaster_code);
+const customHeadScripts = siteSettings.custom_head_scripts || '';
 ---
 
 <!doctype html>
@@ -97,8 +113,14 @@ const accentColor = siteSettings.theme_accent_color || '#0066ee';
     <meta name="twitter:image" content={metaImage} />
 
     <!-- Webmaster Verification -->
-    {siteSettings.google_search_console_code && (
-      <meta name="google-site-verification" content={siteSettings.google_search_console_code} />
+    {gscVerificationCode && (
+      <meta name="google-site-verification" content={gscVerificationCode} />
+    )}
+    {bingVerificationCode && (
+      <meta name="msvalidate.01" content={bingVerificationCode} />
+    )}
+    {customHeadScripts && (
+      <Fragment set:html={customHeadScripts} />
     )}
 
     <!-- Dynamic Theme Colors Injected into Head (Anti-FOUC) -->
