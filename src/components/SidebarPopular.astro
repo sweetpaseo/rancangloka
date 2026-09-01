@@ -9,9 +9,9 @@ const { popularArticles = [] } = Astro.props;
 const topArticles = popularArticles.slice(0, 5);
 
 function getThumb(url?: string) {
-  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150&auto=format&fit=crop&q=75';
+  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=96&fm=webp&auto=format&fit=crop&q=55';
   if (url.includes('images.unsplash.com')) {
-    return `${url.split('?')[0]}?w=150&auto=format&fit=crop&q=75`;
+    return `${url.split('?')[0]}?w=96&fm=webp&auto=format&fit=crop&q=55`;
   }
   return url;
 }

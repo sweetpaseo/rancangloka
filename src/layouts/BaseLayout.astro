@@ -13,6 +13,7 @@ interface Props {
   description?: string;
   ogImage?: string;
   canonicalUrl?: string;
+  preloadImage?: string;
   categories?: Category[];
   siteSettings?: Record<string, string>;
   isArticlePage?: boolean;
@@ -24,6 +25,7 @@ const {
   description,
   ogImage,
   canonicalUrl,
+  preloadImage,
   categories = [],
   siteSettings = {},
   isArticlePage = false,
@@ -75,6 +77,11 @@ const customHeadScripts = siteSettings.custom_head_scripts || '';
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://images.unsplash.com" />
+
+    <!-- LCP Image Preload Hint for Sub-Second Rendering -->
+    {preloadImage && (
+      <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />
+    )}
 
     <!-- Non-Blocking Lightweight Google Fonts Loading: Modern Architectural Editorial (Outfit, Plus Jakarta Sans, Newsreader & JetBrains Mono) -->
     <link

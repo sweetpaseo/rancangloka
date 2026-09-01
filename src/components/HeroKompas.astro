@@ -9,9 +9,9 @@ const { articles = [] } = Astro.props;
 const heroArticles = articles.slice(0, 3);
 
 function getHeroThumb(url?: string) {
-  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500&auto=format&fit=crop&q=70';
+  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=450&fm=webp&auto=format&fit=crop&q=60';
   if (url.includes('images.unsplash.com')) {
-    return `${url.split('?')[0]}?w=500&auto=format&fit=crop&q=70`;
+    return `${url.split('?')[0]}?w=450&fm=webp&auto=format&fit=crop&q=60`;
   }
   return url;
 }
