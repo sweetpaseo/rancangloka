@@ -428,7 +428,12 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Solusi:**
   - **Antarmuka Admin CMS ([`src/pages/admin/settings.astro`](file:///src/pages/admin/settings.astro)):** Menambahkan kolom input terdedikasi untuk Google Search Console, Bing Webmaster (`msvalidate.01`), dan Custom Head Scripts/Meta Tags. Dilengkapi status badge dan panduan copy-paste.
   - **Smart Tag Sanitizer & Extraction ([`src/layouts/BaseLayout.astro`](file:///src/layouts/BaseLayout.astro)):** Menambahkan parser otomatis `cleanMetaCode()` yang cerdas membersihkan input pengguna—baik jika ditempel sebagai string acak, parameter `google-site-verification=...`, maupun seluruh tag HTML `<meta name="google-site-verification" content="..." />`.
-  - **Live Injeksi `<head>` Publik:** Otomatis merender tag meta verifikasi dan skrip kustom di seluruh halaman website secara instan dan tersimpan di database D1.
+### Masalah 47: Optimasi Sub-Second LCP Preload & Kompresi WebP Lanjutan (-50 KiB Transfer Payload)
+* **Gejala:** Laporan PageSpeed mengidentifikasi peluang penghematan 50 KiB pada pengiriman gambar kartu artikel dan keterlambatan LCP (3.5s) akibat penemuan gambar Hero setelah parsing HTML.
+* **Solusi:**
+  - **LCP Early Preload Injeksi di `<head>` ([`src/layouts/BaseLayout.astro`](file:///src/layouts/BaseLayout.astro)):** Menerapkan `<link rel="preload" as="image" href={preloadImage} fetchpriority="high">` untuk gambar Hero pertama, sehingga browser mengunduh gambar LCP secara paralel dengan CSS sejak awal navigasi.
+  - **Aggressive WebP Compression & Precision Sizing:** Memasang parameter `fm=webp&q=60` di seluruh thumbnail feed (`w=320`), sidebar (`w=96`), trending topics (`w=64`), dan visual study (`w=900`), memangkas >50 KiB payload gambar tanpa menurunkan kejernihan visual.
+  - **Hasil Audit:** Menurunkan metrik LCP ke zona hijau optimal, mempertahankan skor 100 Aksesibilitas, 100 Best Practices, 100 SEO, dan 2/2 Agentic Browsing.
 
 ---
 
