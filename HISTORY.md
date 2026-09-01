@@ -17,13 +17,23 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
-### Masalah 1: Build Error 10000 (Authentication Error) pada Cloudflare Pages
-* **Gejala:** Deploy gagal dengan error `Authentication error [code: 10000]`.
-* **Penyebab:** Pada dashboard Cloudflare, opsi *Build command* terisi perintah deployment `npx wrangler pages deploy dist` alih-alih perintah kompilasi `npm run build`.
-* **Solusi:** 
-  - Mengubah konfigurasi build dashboard menjadi:
+### Masalah 1: Konfigurasi Deployment Cloudflare Workers Builds CI
+* **Gejala:** Deploy gagal dengan error `Authentication error [code: 10000]` atau `It looks like you've run a Workers-specific command in a Pages project`.
+* **Penyebab:** 
+  1. `wrangler.toml` sebelumnya menggunakan direktif `pages_build_output_dir = "dist"`.
+  2. Perintah deploy dan token API belum memiliki permission `Cloudflare Pages: Edit` atau diselaraskan dengan Cloudflare Workers Builds CI.
+* **Solusi:**
+  - Mengupdate [`wrangler.toml`](file:///wrangler.toml) ke mode **Cloudflare Workers with Assets**:
+    ```toml
+    name = "rancangloka"
+    main = "dist/_worker.js/index.js"
+    assets = { directory = "dist" }
+    ```
+  - Menghapus package deprecated `lucide-astro` dan beralih ke `@lucide/astro`.
+  - Menggunakan konfigurasi build:
     - **Build command:** `npm run build`
     - **Deploy command:** `npx wrangler deploy`
+  - **Hasil:** Deploy berhasil 100% dan live di `https://rancangloka.chandrajoyko.workers.dev`.
 
 ---
 
