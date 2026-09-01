@@ -1,8 +1,14 @@
 # 📰 Metro Magazine - Cloudflare Serverless Platform
 
-Platform blog dan portal berita bergaya **Magazine** modern yang berjalan **100% Gratis di atas ekosistem Serverless Cloudflare** (Cloudflare Pages, Cloudflare D1 SQL Database, dan Cloudflare R2 Object Storage).
+Platform blog dan portal berita bergaya **Magazine** modern yang berjalan **100% Gratis di atas ekosistem Serverless Cloudflare** (Cloudflare Workers with Static Assets, Cloudflare D1 SQL Database, dan Cloudflare R2 Object Storage).
 
 Dibangun dengan arsitektur **Mobile-First (App-like UX)**, mematuhi standar **SEO 2026**, dilengkapi **Theme Color Customizer (Anti-FOUC)**, **Smart Markdown Importer dengan Deteksi Duplikat**, dan **Admin CMS Dashboard ala WordPress**.
+
+---
+
+## 📖 Panduan Deployment Khusus
+Untuk panduan lengkap setup dan troubleshooting Cloudflare, baca:
+👉 **[`CLOUDFLARE_DEPLOYMENT_GUIDE.md`](file:///CLOUDFLARE_DEPLOYMENT_GUIDE.md)**
 
 ---
 
@@ -42,45 +48,35 @@ Dibangun dengan arsitektur **Mobile-First (App-like UX)**, mematuhi standar **SE
 - **Styling:** Tailwind CSS + CSS Custom Properties
 - **Database:** Cloudflare D1 (Serverless SQLite on Edge)
 - **Media Storage:** Cloudflare R2 (S3-compatible Object Storage, 0 Egress)
-- **CDN & Compute:** Cloudflare Pages & Workers
+- **CDN & Compute:** Cloudflare Workers (with Assets)
 
 ---
 
 ## 🚀 Panduan Menjalankan Lokal
 
 ```bash
-# 1. Masuk ke direktori
-cd cloudflare
-
-# 2. Install dependencies (jika belum)
+# 1. Install dependencies
 npm install
 
-# 3. Jalankan development server
+# 2. Jalankan development server
 npm run dev
 ```
 
-Buka browser di `http://localhost:4321` untuk melihat halaman publik magazine, dan `http://localhost:4321/admin` untuk membuka Dashboard CMS (Login default: `admin` / `admin123`).
+Buka browser di `http://localhost:4321` untuk melihat halaman publik magazine, dan `http://localhost:4321/admin` untuk membuka Dashboard CMS.
 
 ---
 
-## ☁️ Panduan Deploy ke Cloudflare Pages & D1
+## ☁️ Panduan Deploy ke Cloudflare Workers
 
-### Langkah 1: Buat Database D1 di Cloudflare
-Jalankan perintah berikut di terminal:
-```bash
-npx wrangler d1 create magazine_blog_db
-```
-Salin `database_id` yang muncul ke file `wrangler.toml`.
+Project ini menggunakan **Cloudflare Workers with Static Assets**:
 
-### Langkah 2: Inisialisasi Skema Database
 ```bash
-npx wrangler d1 execute magazine_blog_db --file=./db/schema.sql
-```
-
-### Langkah 3: Deploy ke Cloudflare Pages
-```bash
+# 1. Build project
 npm run build
-npx wrangler pages deploy dist
+
+# 2. Deploy ke Cloudflare Workers
+npm run deploy
+# (Menjalankan: astro build && wrangler deploy)
 ```
 
 ---
