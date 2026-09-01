@@ -9,9 +9,9 @@ const { articles = [] } = Astro.props;
 const heroArticles = articles.slice(0, 3);
 
 function getHeroThumb(url?: string) {
-  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80';
+  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500&auto=format&fit=crop&q=70';
   if (url.includes('images.unsplash.com')) {
-    return `${url.split('?')[0]}?w=600&auto=format&fit=crop&q=80`;
+    return `${url.split('?')[0]}?w=500&auto=format&fit=crop&q=70`;
   }
   return url;
 }
@@ -52,16 +52,18 @@ function getHeroThumb(url?: string) {
 
       <!-- Right Column: 3 Headline News Cards (Col 5-12) -->
       <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {heroArticles.map((art) => (
+        {heroArticles.map((art, idx) => (
           <article class="group flex flex-col justify-between">
             <a href={`/${art.slug}`} class="block overflow-hidden rounded-md aspect-[16/10] bg-slate-800 mb-3 relative">
               <img
                 src={getHeroThumb(art.featured_image)}
                 alt={art.image_alt || art.title}
-                width="600"
-                height="375"
+                width="500"
+                height="312"
                 class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                loading="eager"
+                loading={idx === 0 ? "eager" : "lazy"}
+                fetchpriority={idx === 0 ? "high" : "auto"}
+                decoding={idx === 0 ? "sync" : "async"}
               />
             </a>
 
@@ -70,7 +72,7 @@ function getHeroThumb(url?: string) {
                 <a href={`/${art.slug}`}>{art.title}</a>
               </h3>
 
-              <div class="text-[11px] text-slate-400 flex items-center gap-2 font-mono">
+              <div class="text-[11px] text-slate-300 flex items-center gap-2 font-mono font-medium">
                 <span>⏱️ {art.reading_time_minutes || 4} mnt baca</span>
               </div>
             </div>

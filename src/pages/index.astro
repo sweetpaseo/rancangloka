@@ -25,9 +25,9 @@ const feedArticles = articles.filter((a) => !heroIds.has(a.id));
 const popularArticles = [...articles].sort((a, b) => (b.views || 0) - (a.views || 0));
 
 function getFeedThumb(url?: string) {
-  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&auto=format&fit=crop&q=75';
+  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=360&auto=format&fit=crop&q=70';
   if (url.includes('images.unsplash.com')) {
-    return `${url.split('?')[0]}?w=400&auto=format&fit=crop&q=75`;
+    return `${url.split('?')[0]}?w=360&auto=format&fit=crop&q=70`;
   }
   return url;
 }
@@ -68,7 +68,7 @@ const websiteSchema = {
           <h2 class="font-sans text-base sm:text-lg font-black uppercase tracking-wider text-[#003366] dark:text-blue-400">
             Kajian Terkini
           </h2>
-          <a href="/explore" class="text-xs font-bold text-slate-500 hover:text-[#003366] dark:hover:text-blue-400 flex items-center gap-1">
+          <a href="/explore" class="text-xs font-bold text-[#003366] dark:text-blue-400 hover:underline flex items-center gap-1">
             <span>Lihat Semua Arsip</span>
             <span>❯</span>
           </a>
@@ -82,11 +82,11 @@ const websiteSchema = {
               <div class="flex-1 flex flex-col justify-between order-2 sm:order-1">
                 <div>
                   <div class="flex items-center gap-2 mb-2">
-                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
                       {art.category_name || 'ARSITEKTUR'}
                     </span>
-                    <span class="text-slate-400 text-xs">•</span>
-                    <span class="text-[11px] font-mono text-slate-400">
+                    <span class="text-slate-600 dark:text-slate-400 text-xs">•</span>
+                    <span class="text-[11px] font-mono font-medium text-slate-600 dark:text-slate-400">
                       ⏱️ {art.reading_time_minutes || 4} mnt baca
                     </span>
                   </div>
@@ -96,13 +96,13 @@ const websiteSchema = {
                   </h3>
 
                   {art.description && (
-                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 font-normal">
+                    <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2 font-normal">
                       {art.description}
                     </p>
                   )}
                 </div>
 
-                <div class="mt-4 text-[11px] text-slate-400 font-mono flex items-center gap-2">
+                <div class="mt-4 text-[11px] text-slate-600 dark:text-slate-400 font-mono font-medium flex items-center gap-2">
                   <span>Oleh {art.author_name || 'Dewan Redaksi Spasial'}</span>
                 </div>
               </div>
@@ -115,8 +115,11 @@ const websiteSchema = {
                 <img
                   src={getFeedThumb(art.featured_image)}
                   alt={art.title}
+                  width="360"
+                  height="225"
                   class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   loading="lazy"
+                  decoding="async"
                 />
               </a>
             </article>

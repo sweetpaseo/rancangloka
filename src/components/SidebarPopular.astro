@@ -24,7 +24,7 @@ function getThumb(url?: string) {
       <h3 class="font-sans text-sm font-black uppercase tracking-wider text-[#003366] dark:text-blue-400">
         Terpopuler
       </h3>
-      <span class="text-[10px] font-mono text-slate-400">24 JAM TERAKHIR</span>
+      <span class="text-[10px] font-mono text-slate-600 dark:text-slate-400 font-semibold">24 JAM TERAKHIR</span>
     </div>
 
     <div class="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -40,18 +40,21 @@ function getThumb(url?: string) {
             <h4 class="font-serif text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#003366] dark:group-hover:text-blue-400 leading-snug line-clamp-2">
               <a href={`/${art.slug}`}>{art.title}</a>
             </h4>
-            <span class="text-[10px] text-slate-400 block mt-1 font-mono">
+            <span class="text-[10px] text-slate-600 dark:text-slate-400 block mt-1 font-mono font-medium">
               {art.reading_time_minutes || 4} mnt baca
             </span>
           </div>
 
           <!-- Thumbnail -->
-          <a href={`/${art.slug}`} class="h-12 w-12 rounded overflow-hidden flex-shrink-0 bg-slate-100">
+          <a href={`/${art.slug}`} class="h-12 w-12 rounded overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-800">
             <img
               src={getThumb(art.featured_image)}
               alt={art.title}
+              width="48"
+              height="48"
               class="h-full w-full object-cover"
               loading="lazy"
+              decoding="async"
             />
           </a>
         </article>

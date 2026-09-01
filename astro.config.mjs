@@ -8,6 +8,7 @@ export default defineConfig({
   output: 'server',
   compressHTML: true,
   build: {
+    assets: 'assets',
     inlineStylesheets: 'always'
   },
   adapter: cloudflare({
