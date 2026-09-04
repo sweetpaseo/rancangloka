@@ -130,6 +130,21 @@ function createMockD1Database(options = {}) {
           return null;
         },
         async all() {
+          if (sql.includes('FROM authors')) {
+            return {
+              results: [
+                {
+                  id: 1,
+                  name: 'RancangLoka Editorial Desk',
+                  slug: 'dewan-redaksi-spasial',
+                  bio: 'Tim editorial RancangLoka.',
+                  avatar: null,
+                  role: 'Editorial Desk',
+                  social_links: null
+                }
+              ]
+            };
+          }
           return { results: [] };
         },
         async run() {

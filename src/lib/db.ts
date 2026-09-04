@@ -1141,9 +1141,10 @@ export async function getAllAuthors(db: any): Promise<Author[]> {
   if (db) {
     try {
       const { results } = await db.prepare('SELECT * FROM authors ORDER BY id ASC').all();
-      if (results && results.length > 0) return results as Author[];
+      return (results || []) as Author[];
     } catch (e) {
-      console.warn('D1 Query fallback:', e);
+      console.error('D1 Query Error (getAllAuthors):', e);
+      throw e;
     }
   }
   return MOCK_AUTHORS;
