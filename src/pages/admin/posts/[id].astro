@@ -43,6 +43,14 @@ if (article.key_takeaways) {
         <a href="/admin/posts" class="rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-sm">
           Batal
         </a>
+        <a
+          href={`/admin/preview/${article.slug}`}
+          target="_blank"
+          class="rounded-xl bg-slate-100 border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition flex items-center gap-1.5"
+        >
+          <span>👁️</span>
+          <span>Pratinjau</span>
+        </a>
         <button
           type="button"
           id="btn-save-draft"

@@ -1,0 +1,9 @@
+---
+import { getAdminLogoutCookieOptions } from '../../lib/auth';
+
+// Server-side admin session invalidation & logout
+const isProduction = import.meta.env.PROD || process.env.NODE_ENV === 'production';
+Astro.cookies.set('admin_session', '', getAdminLogoutCookieOptions(isProduction));
+
+return Astro.redirect('/admin/login', 302);
+---

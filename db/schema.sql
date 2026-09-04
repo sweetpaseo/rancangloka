@@ -111,10 +111,14 @@ CREATE INDEX IF NOT EXISTS idx_pages_slug ON pages(slug);
 
 -- Initial Seed Data: Categories
 INSERT OR IGNORE INTO categories (id, name, slug, color_badge, description, show_on_home, display_order, layout_style) VALUES
-(1, 'Desain Interior & Estetika', 'interior-design', '#059669', 'Inspirasi tata ruang, gaya Japandi, palet warna, dan dekorasi estetik untuk hunian nyaman.', 1, 1, 'bento'),
-(2, 'Smart Home & Otomasi', 'smart-home', '#2563eb', 'Teknologi IoT rumah tangga, efisiensi energi listrik, dan sistem keamanan pintar.', 1, 2, 'grid3'),
-(3, 'Arsitektur & Renovasi', 'arsitektur-renovasi', '#d97706', 'Panduan renovasi hemat bujet, denah rumah open-space, dan material bangunan ramah lingkungan.', 1, 3, 'bento'),
-(4, 'Gaya Hidup & Hunian', 'lifestyle-hunian', '#7c3aed', 'Home office ergonomis, tanaman indoor, dan tips menciptakan suasana rumah bebas stres.', 1, 4, 'grid3');
+(1, 'Interior & Tata Ruang', 'interior-design', '#059669', 'Inspirasi tata ruang, gaya arsitektural interior tropis, palet material, dan penataan ruang hunian proporsional.', 1, 2, 'bento'),
+(2, 'Smart Home & Otomasi', 'smart-home', '#2563eb', 'Teknologi IoT rumah tangga, efisiensi energi listrik, dan sistem keamanan pintar.', 0, 7, 'grid3'),
+(3, 'Arsitektur & Renovasi', 'arsitektur-renovasi', '#d97706', 'Panduan renovasi hemat bujet, denah rumah open-space, dan material bangunan ramah lingkungan.', 1, 1, 'bento'),
+(4, 'Gaya Hidup & Hunian', 'lifestyle-hunian', '#7c3aed', 'Home office ergonomis, tanaman indoor, dan tips menciptakan suasana rumah bebas stres.', 0, 8, 'grid3'),
+(5, 'Material & Finishing', 'material-finishing', '#0891b2', 'Eksplorasi materialitas, spesifikasi teknis, durabilitas, dan finishing permukaan bangunan tropis.', 1, 3, 'grid3'),
+(6, 'Kenyamanan Rumah', 'kenyamanan-rumah', '#16a34a', 'Sains kenyamanan termal, ventilasi silang, isolasi akustik, dan kualitas udara dalam ruang hunian.', 1, 4, 'bento'),
+(7, 'Eksterior & Lanskap', 'eksterior-lanskap', '#84cc16', 'Desain fasad tropis, secondary skin, teras, kanopi, dan integrasi lanskap alami luar ruang.', 1, 5, 'grid3'),
+(8, 'Sistem & Konstruksi Rumah', 'sistem-konstruksi-rumah', '#ea580c', 'Rekayasa struktur, utilitas MEP, drainase, pondasi, dan proteksi kelembapan bangunan.', 1, 6, 'bento');
 
 -- Initial Seed Data: Authors
 INSERT OR IGNORE INTO authors (id, name, slug, bio, avatar, role, social_links) VALUES

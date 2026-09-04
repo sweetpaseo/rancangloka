@@ -5,21 +5,24 @@ import TableOfContents from '../components/TableOfContents.astro';
 import AuthorCard from '../components/AuthorCard.astro';
 import RelatedArticles from '../components/RelatedArticles.astro';
 import SocialShareBar from '../components/SocialShareBar.astro';
-import { getDb, getArticleBySlug, getPageBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
+import { sanitizeArticleHtml } from '../lib/article/renderer.ts';
 
 const { slug } = Astro.params;
 const db = await getDb(Astro.locals);
 
 const [article, page, categories, siteSettings] = await Promise.all([
-  getArticleBySlug(db, slug || ''),
+  getPublishedArticleBySlug(db, slug || ''),
   getPageBySlug(db, slug || ''),
   getAllCategories(db),
   getSiteSettings(db)
 ]);
 
+let notFoundArticles: any[] = [];
 if (!article && !page) {
-  return Astro.redirect('/404');
+  Astro.response.status = 404;
+  notFoundArticles = await getAllArticles(db, 4, 0, 'published');
 }
 
 const isStaticPage = !article && !!page;
@@ -40,9 +43,10 @@ if (article) {
   ]);
 
   relatedArticles = fetchedRelated;
-  toc = extractTableOfContents(article.content_html);
+  const safeArticleHtml = sanitizeArticleHtml(article.content_html);
+  toc = extractTableOfContents(safeArticleHtml);
   processedHtml = processArticleContent(
-    article.content_html,
+    safeArticleHtml,
     article,
     allArticles,
     relatedArticles[0],
@@ -69,7 +73,8 @@ if (article) {
     { name: article.title, url: `/${article.slug}` }
   ];
 } else if (page) {
-  processedHtml = injectHeadingIds(page.content_html);
+  const safePageHtml = sanitizeArticleHtml(page.content_html);
+  processedHtml = injectHeadingIds(safePageHtml);
   breadcrumbItems = [
     { name: 'Beranda', url: '/' },
     { name: page.title, url: `/${page.slug}` }
@@ -77,16 +82,81 @@ if (article) {
 }
 ---
 
-<BaseLayout
-  title={article ? article.title : page!.title}
-  description={article ? article.description : page!.description}
-  ogImage={article ? article.featured_image : page!.featured_image || siteSettings.seo_default_og_image}
-  canonicalUrl={`${siteUrl}/${article ? article.slug : page!.slug}`}
-  categories={categories}
-  siteSettings={siteSettings}
-  isArticlePage={!isStaticPage}
-  jsonLdSchema={jsonLdSchema}
->
+{(!article && !page) ? (
+  <BaseLayout
+    title="404 - Halaman Tidak Ditemukan"
+    description="Maaf, halaman atau artikel yang Anda cari tidak ditemukan."
+    categories={categories}
+    siteSettings={siteSettings}
+  >
+    <div class="max-w-3xl mx-auto my-16 text-center space-y-6">
+      <div class="inline-flex h-24 w-24 items-center justify-center rounded-3xl bg-primary/10 text-primary text-5xl">
+        📰
+      </div>
+
+      <h1 class="font-display text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
+        404: Halaman Tidak Ditemukan
+      </h1>
+
+      <p class="text-base text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+        Artikel yang Anda tuju mungkin telah dipindahkan, diubah tautannya, atau sedang tidak tersedia.
+      </p>
+
+      <!-- Search Button -->
+      <div class="pt-2 flex justify-center gap-3">
+        <button
+          data-search-trigger
+          class="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white hover:bg-primary-hover transition shadow-lg shadow-primary/20 flex items-center gap-2"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          Cari Artikel Lain
+        </button>
+
+        <a
+          href="/"
+          class="rounded-xl bg-slate-100 dark:bg-slate-800 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+        >
+          Ke Beranda
+        </a>
+      </div>
+
+      <!-- Recommended Articles -->
+      {notFoundArticles.length > 0 && (
+        <div class="mt-16 text-left pt-12 border-t border-slate-200 dark:border-slate-800">
+          <h2 class="text-base font-bold text-slate-900 dark:text-white mb-4">
+            Rekomendasi Berita Populer untuk Anda:
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {notFoundArticles.map((art) => (
+              <a
+                href={`/${art.slug}`}
+                class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 hover:shadow-sm transition"
+              >
+                <img src={art.featured_image} alt={art.title} class="h-12 w-16 rounded-lg object-cover bg-slate-800 flex-shrink-0" />
+                <div class="min-w-0">
+                  <span class="text-[10px] font-bold text-primary uppercase">{art.category_name}</span>
+                  <h3 class="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">{art.title}</h3>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </BaseLayout>
+) : (
+  <BaseLayout
+    title={article ? article.title : page!.title}
+    description={article ? article.description : page!.description}
+    ogImage={article ? article.featured_image : page!.featured_image || siteSettings.seo_default_og_image}
+    canonicalUrl={`${siteUrl}/${article ? article.slug : page!.slug}`}
+    categories={categories}
+    siteSettings={siteSettings}
+    isArticlePage={!isStaticPage}
+    jsonLdSchema={jsonLdSchema}
+  >
   <!-- Apple-Style Dynamic Reading Progress Bar (Top) -->
   <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-[#0066ee] z-50 transition-all duration-100 ease-out" style="width: 0%;"></div>
 
@@ -504,3 +574,4 @@ if (article) {
     });
   </script>
 </BaseLayout>
+)}

@@ -2,6 +2,8 @@
  * SEO & In-Article Parsing Utilities (2026 Ready)
  */
 
+import { sanitizeArticleHtml } from './article/renderer.ts';
+
 export interface TableOfContentItem {
   id: string;
   text: string;
@@ -317,8 +319,8 @@ export function processArticleContent(
   siteSettings: Record<string, string> = {},
   toc: TableOfContentItem[] = []
 ): string {
-  // Step 1: Inject Heading IDs for smooth TOC scrolling
-  let html = injectHeadingIds(rawHtml);
+  // Step 1: Sanitize raw HTML and inject Heading IDs for smooth TOC scrolling
+  let html = injectHeadingIds(sanitizeArticleHtml(rawHtml));
 
   // Step 2: Inject Dateline Source Branding
   const siteUrl = siteSettings.site_url || 'https://rancangloka.com';
@@ -330,7 +332,7 @@ export function processArticleContent(
 
   if (isSponsoredOrDisabled) {
     // Return early: Clean text without in-article TOC, BACA JUGA, or auto-keyword links
-    return html;
+    return sanitizeArticleHtml(html);
   }
 
   // Step 4: Inject Table of Contents before the FIRST H2 (after opening paragraphs)
@@ -346,6 +348,6 @@ export function processArticleContent(
   // Step 6: Inject Auto-Keyword Contextual Internal Links
   html = injectAutoKeywordLinks(html, article.id, allArticles, 2);
 
-  return html;
+  return sanitizeArticleHtml(html);
 }
 

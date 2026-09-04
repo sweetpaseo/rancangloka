@@ -17,3 +17,12 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Hermes workspace runtime files
+workspace/generated/*
+!workspace/generated/.gitkeep
+workspace/rejected/*
+!workspace/rejected/.gitkeep
+workspace/logs/*
+!workspace/logs/.gitkeep
+

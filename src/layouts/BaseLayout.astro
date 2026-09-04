@@ -18,6 +18,7 @@ interface Props {
   siteSettings?: Record<string, string>;
   isArticlePage?: boolean;
   jsonLdSchema?: any;
+  noindex?: boolean;
 }
 
 const {
@@ -29,7 +30,8 @@ const {
   categories = [],
   siteSettings = {},
   isArticlePage = false,
-  jsonLdSchema
+  jsonLdSchema,
+  noindex = false
 } = Astro.props;
 
 const siteTitle = siteSettings.site_title || 'RancangLoka';
@@ -67,9 +69,9 @@ const customHeadScripts = siteSettings.custom_head_scripts || '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <meta name="generator" content="RancangLoka Custom Publishing Engine 2026" />
     <meta name="author" content="RancangLoka Editorial Team" />
-    <meta name="robots" content={siteSettings.allow_indexing === 'false' ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'} />
+    <meta name="robots" content={noindex || siteSettings.allow_indexing === 'false' ? 'noindex, nofollow, noarchive, nosnippet' : 'index, follow, max-image-preview:large'} />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230f172a'/><text x='50%' y='68%' font-family='system-ui, -apple-system, sans-serif' font-weight='900' font-size='62' fill='%23ffffff' text-anchor='middle'>R</text></svg>" />
-    <link rel="canonical" href={currentCanonical} />
+    {!noindex && <link rel="canonical" href={currentCanonical} />}
     <link rel="alternate" type="application/rss+xml" title={`${siteTitle} RSS Feed`} href="/rss.xml" />
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 

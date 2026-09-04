@@ -112,9 +112,15 @@ const [articles, categories] = await Promise.all([
                   <a href={`/admin/posts/${article.id}`} class="text-primary hover:underline font-semibold">
                     Edit
                   </a>
-                  <a href={`/${article.slug}`} target="_blank" class="text-slate-400 hover:text-slate-700">
-                    Lihat ↗
-                  </a>
+                  {article.status === 'published' ? (
+                    <a href={`/${article.slug}`} target="_blank" class="text-slate-400 hover:text-slate-700">
+                      Lihat ↗
+                    </a>
+                  ) : (
+                    <a href={`/admin/preview/${article.slug}`} target="_blank" class="text-amber-600 hover:text-amber-800 font-semibold">
+                      Preview ↗
+                    </a>
+                  )}
                   <button
                     class="delete-post-btn text-red-600 hover:underline"
                     data-id={article.id}

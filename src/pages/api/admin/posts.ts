@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { marked } from 'marked';
-import { getDb, insertArticle } from '../../../lib/db';
+import { getDb, insertArticle, updateArticle } from '../../../lib/db';
 import { generateContentHash, calculateReadingTime, slugifyText } from '../../../lib/seo';
+import { renderArticleMarkdownSafely } from '../../../lib/article/renderer.ts';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
@@ -11,7 +11,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const title = body.title || 'Untitled';
     const slug = body.slug ? slugifyText(body.slug) : slugifyText(title);
     const contentMd = body.content_md || '';
-    const contentHtml = await marked.parse(contentMd);
+    const contentHtml = await renderArticleMarkdownSafely(contentMd);
     const readingTime = calculateReadingTime(contentMd);
     const contentHash = await generateContentHash(contentMd);
 
@@ -60,6 +60,45 @@ export const POST: APIRoute = async ({ request, locals }) => {
       disable_internal_links: body.disable_internal_links ? 1 : (body.is_sponsored ? 1 : 0)
     });
 
+    return new Response(JSON.stringify({ status: 'success', article }), { status: 200 });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ status: 'error', message: err.message }), { status: 500 });
+  }
+};
+
+export const PUT: APIRoute = async ({ request, locals }) => {
+  try {
+    const body = await request.json();
+    const db = await getDb(locals);
+    const id = parseInt(body.id, 10);
+
+    if (isNaN(id)) {
+      return new Response(JSON.stringify({ status: 'error', message: 'ID artikel tidak valid' }), { status: 400 });
+    }
+
+    const updates: any = {};
+    if (body.title !== undefined) updates.title = body.title;
+    if (body.slug !== undefined) updates.slug = slugifyText(body.slug);
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.content_md !== undefined) {
+      updates.content_md = body.content_md;
+      updates.content_html = await renderArticleMarkdownSafely(body.content_md);
+      updates.reading_time_minutes = calculateReadingTime(body.content_md);
+      updates.content_hash = await generateContentHash(body.content_md);
+    }
+    if (body.featured_image !== undefined) updates.featured_image = body.featured_image;
+    if (body.image_alt !== undefined) updates.image_alt = body.image_alt;
+    if (body.category_id !== undefined) updates.category_id = parseInt(body.category_id, 10);
+    if (body.author_id !== undefined) updates.author_id = parseInt(body.author_id, 10);
+    if (body.status !== undefined) updates.status = body.status;
+    if (body.key_takeaways !== undefined) updates.key_takeaways = body.key_takeaways;
+    if (body.focus_keyword !== undefined) updates.focus_keyword = body.focus_keyword;
+    if (body.is_featured !== undefined) updates.is_featured = body.is_featured ? 1 : 0;
+    if (body.is_trending !== undefined) updates.is_trending = body.is_trending ? 1 : 0;
+    if (body.is_sponsored !== undefined) updates.is_sponsored = body.is_sponsored ? 1 : 0;
+    if (body.disable_internal_links !== undefined) updates.disable_internal_links = body.disable_internal_links ? 1 : 0;
+
+    const article = await updateArticle(db, id, updates);
     return new Response(JSON.stringify({ status: 'success', article }), { status: 200 });
   } catch (err: any) {
     return new Response(JSON.stringify({ status: 'error', message: err.message }), { status: 500 });

@@ -1,0 +1,275 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
+import TableOfContents from '../../../components/TableOfContents.astro';
+import AuthorCard from '../../../components/AuthorCard.astro';
+import RelatedArticles from '../../../components/RelatedArticles.astro';
+import SocialShareBar from '../../../components/SocialShareBar.astro';
+import { getDb, getArticleBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../../../lib/db';
+import { extractTableOfContents, processArticleContent } from '../../../lib/seo';
+import { sanitizeArticleHtml } from '../../../lib/article/renderer.ts';
+import { isValidAdminSession, getSafeAdminRedirect } from '../../../lib/auth';
+
+// 1. Enforce Admin Authentication
+const sessionCookie = Astro.cookies.get('admin_session');
+const env = (Astro.locals as any)?.runtime?.env || (import.meta as any).env || {};
+const isAuthenticated = await isValidAdminSession(sessionCookie, env);
+if (!isAuthenticated) {
+  const safeRedirect = getSafeAdminRedirect(Astro.url.pathname);
+  return Astro.redirect(`/admin/login?redirect=${encodeURIComponent(safeRedirect)}`, 302);
+}
+
+// 2. Strict Security & Cache Headers for Preview
+Astro.response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+Astro.response.headers.set('Pragma', 'no-cache');
+Astro.response.headers.set('Expires', '0');
+Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+const { slug } = Astro.params;
+const db = await getDb(Astro.locals);
+
+const [article, categories, siteSettings] = await Promise.all([
+  getArticleBySlug(db, slug || ''),
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+
+if (!article) {
+  Astro.response.status = 404;
+}
+
+const siteUrl = siteSettings.site_url || 'https://rancangloka.com';
+
+let relatedArticles: any[] = [];
+let toc: any[] = [];
+let processedHtml = '';
+let keyTakeaways: string[] = [];
+let breadcrumbItems: any[] = [];
+
+if (article) {
+  const [fetchedRelated, allArticles] = await Promise.all([
+    getRelatedArticles(db, article.id, article.category_id, 3),
+    getAllArticles(db, 50, 0, 'published')
+  ]);
+
+  relatedArticles = fetchedRelated;
+  const safeArticleHtml = sanitizeArticleHtml(article.content_html);
+  toc = extractTableOfContents(safeArticleHtml);
+  processedHtml = processArticleContent(
+    safeArticleHtml,
+    article,
+    allArticles,
+    relatedArticles[0],
+    siteSettings,
+    toc
+  );
+
+  if (article.key_takeaways) {
+    try {
+      keyTakeaways = JSON.parse(article.key_takeaways);
+    } catch (e) {}
+  }
+
+  breadcrumbItems = [
+    { name: article.category_name || 'Artikel', url: `/category/${article.category_slug || 'all'}` },
+    { name: article.title, url: `/admin/preview/${article.slug}` }
+  ];
+}
+---
+
+{!article ? (
+  <BaseLayout
+    title="404 - Artikel Tidak Ditemukan"
+    description="Artikel preview yang dicari tidak ditemukan."
+    categories={categories}
+    siteSettings={siteSettings}
+    noindex={true}
+  >
+    <div class="max-w-3xl mx-auto my-16 text-center space-y-6">
+      <div class="inline-flex h-24 w-24 items-center justify-center rounded-3xl bg-amber-50 text-amber-600 text-5xl">
+        🔍
+      </div>
+      <h1 class="font-display text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+        404: Artikel Preview Tidak Ditemukan
+      </h1>
+      <p class="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+        Tidak ada artikel (draft, scheduled, ataupun published) dengan slug <code>{slug}</code> di database.
+      </p>
+      <div class="pt-2 flex justify-center gap-3">
+        <a
+          href="/admin/posts"
+          class="rounded-xl bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-sm"
+        >
+          ← Kembali ke Daftar Post CMS
+        </a>
+      </div>
+    </div>
+  </BaseLayout>
+) : (
+  <BaseLayout
+    title={`[PREVIEW] ${article.title}`}
+    description={article.description}
+    ogImage={article.featured_image || siteSettings.seo_default_og_image}
+    canonicalUrl=""
+    categories={categories}
+    siteSettings={siteSettings}
+    isArticlePage={true}
+    noindex={true}
+  >
+    <!-- Top Sticky Admin Preview Control Bar -->
+    <div class="sticky top-0 z-50 bg-slate-900 text-white px-4 py-2.5 shadow-lg border-b border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2.5">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          CMS ADMIN PREVIEW
+        </span>
+        <span class="text-slate-300">|</span>
+        <span class="font-mono text-[11px] text-slate-300">
+          Status: <strong class={`uppercase ${article.status === 'published' ? 'text-emerald-400' : article.status === 'scheduled' ? 'text-blue-400' : 'text-amber-400'}`}>{article.status}</strong>
+        </span>
+        <span class="text-slate-500 hidden sm:inline">•</span>
+        <span class="text-slate-400 text-[11px] hidden sm:inline">
+          Halaman ini privat (noindex, no-store).
+        </span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a
+          href={`/admin/posts/${article.id}`}
+          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition"
+        >
+          <span>✏️</span>
+          <span>Edit di CMS</span>
+        </a>
+        <a
+          href="/admin/posts"
+          class="inline-flex items-center gap-1 text-slate-300 hover:text-white transition"
+        >
+          <span>← Semua Post</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Apple-Style Dynamic Reading Progress Bar (Top) -->
+    <div id="reading-progress" class="fixed top-10 left-0 h-1 bg-[#0066ee] z-40 transition-all duration-100 ease-out" style="width: 0%;"></div>
+
+    <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <!-- Breadcrumbs -->
+      <div class="mb-6">
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
+
+      <!-- Header Metadata & Headline -->
+      <header class="mb-10">
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+          <span class="border border-stone dark:border-stone/30 px-3 py-1 text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-ink dark:text-paper">
+            {article.category_name || 'SPATIAL STUDY'}
+          </span>
+          <span class="font-mono text-xs text-stone">/</span>
+          <span class="font-mono text-xs text-stone tracking-wide">
+            {article.reading_time_minutes} MENIT BACA
+          </span>
+          <span class="font-mono text-xs text-stone">/</span>
+          <time class="font-mono text-xs text-stone uppercase tracking-wide">
+            {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </time>
+          <span class={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${article.status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+            {article.status}
+          </span>
+        </div>
+
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.15] mb-6">
+          {article.title}
+        </h1>
+
+        {article.description && (
+          <p class="text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed font-serif italic border-l-2 border-primary/40 pl-4 py-1 mb-6">
+            {article.description}
+          </p>
+        )}
+
+        <!-- Author Byline -->
+        <div class="flex items-center gap-3 py-4 border-y border-stone/20 dark:border-stone/40">
+          <img
+            src={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+            alt={article.author_name || 'Redaksi'}
+            class="h-10 w-10 rounded-full object-cover border border-stone/30"
+          />
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              {article.author_name || 'Dewan Redaksi RancangLoka'}
+            </div>
+            <div class="text-[11px] text-slate-500 font-mono">
+              {article.author_role || 'Kurator Tata Ruang Tropis'}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Featured Image Hero -->
+      {article.featured_image && (
+        <figure class="my-8 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800 shadow-sm border border-black/5 dark:border-white/5">
+          <img
+            src={article.featured_image}
+            alt={article.image_alt || article.title}
+            class="w-full h-auto max-h-[520px] object-cover"
+          />
+          {article.image_alt && (
+            <figcaption class="px-4 py-2.5 text-xs text-slate-500 font-mono border-t border-slate-100 dark:border-slate-800">
+              📷 {article.image_alt}
+            </figcaption>
+          )}
+        </figure>
+      )}
+
+      <!-- Key Takeaways Box -->
+      {keyTakeaways.length > 0 && (
+        <div class="my-8 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-6">
+          <h2 class="text-xs font-mono font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-2">
+            <span>⚡</span>
+            POKOK KAJIAN UTAMA (KEY TAKEAWAYS)
+          </h2>
+          <ul class="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+            {keyTakeaways.map((item) => (
+              <li class="flex items-start gap-2">
+                <span class="text-primary font-bold">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <!-- Table of Contents -->
+      {toc.length > 1 && (
+        <div class="my-8">
+          <TableOfContents items={toc} />
+        </div>
+      )}
+
+      <!-- Article Content Body (Sanitized & Safe HTML) -->
+      <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-8 leading-relaxed" set:html={processedHtml} />
+
+      <!-- Author Card Section -->
+      <div class="mt-14 pt-8 border-t border-stone/20 dark:border-stone/40">
+        <AuthorCard
+          name={article.author_name || 'Dewan Redaksi RancangLoka'}
+          role={article.author_role || 'Kurator Utama Tata Ruang Tropis'}
+          avatar={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+          bio="Kurasi editorial RancangLoka untuk eksplorasi spasial, materialitas, dan kenyamanan hunian tropis kontemporer."
+        />
+      </div>
+    </article>
+
+    <!-- Reading Progress Script -->
+    <script>
+      window.addEventListener('scroll', () => {
+        const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = (winScroll / height) * 100;
+        const bar = document.getElementById('reading-progress');
+        if (bar) bar.style.width = scrolled + '%';
+      });
+    </script>
+  </BaseLayout>
+)}

@@ -2,6 +2,14 @@
  * Cloudflare D1 Database Client with Seamless Fallback for Local Dev
  */
 
+import {
+  DuplicateSlugError,
+  DuplicateContentError,
+  DatabaseWriteError,
+  DatabaseConstraintError,
+  ArticleNotFoundError
+} from './errors.ts';
+
 export interface Article {
   id: number;
   slug: string;
@@ -69,12 +77,16 @@ export interface Page {
   updated_at: string;
 }
 
-/// In-Memory Fallback Demo Data for Local Testing & Initial State (Erihome Living Ecosystem)
+/// In-Memory Fallback Demo Data for Local Testing & Initial State (RancangLoka Ecosystem)
 const MOCK_CATEGORIES: Category[] = [
-  { id: 1, name: 'Desain Interior & Estetika', slug: 'interior-design', color_badge: '#059669', description: 'Inspirasi tata ruang, gaya Japandi, palet warna, dan dekorasi estetik untuk hunian nyaman', show_on_home: 1, display_order: 1, layout_style: 'bento' },
-  { id: 2, name: 'Smart Home & Otomasi', slug: 'smart-home', color_badge: '#2563eb', description: 'Teknologi IoT rumah tangga, efisiensi energi listrik, dan sistem keamanan pintar', show_on_home: 1, display_order: 2, layout_style: 'grid3' },
-  { id: 3, name: 'Arsitektur & Renovasi', slug: 'arsitektur-renovasi', color_badge: '#d97706', description: 'Panduan renovasi hemat bujet, denah rumah open-space, dan material bangunan ramah lingkungan', show_on_home: 1, display_order: 3, layout_style: 'bento' },
-  { id: 4, name: 'Gaya Hidup & Hunian', slug: 'lifestyle-hunian', color_badge: '#7c3aed', description: 'Home office ergonomis, tanaman indoor, dan tips menciptakan suasana rumah bebas stres', show_on_home: 1, display_order: 4, layout_style: 'grid3' }
+  { id: 1, name: 'Interior & Tata Ruang', slug: 'interior-design', color_badge: '#059669', description: 'Inspirasi tata ruang, gaya arsitektural interior tropis, palet material, dan penataan ruang hunian proporsional.', show_on_home: 1, display_order: 2, layout_style: 'bento' },
+  { id: 2, name: 'Smart Home & Otomasi', slug: 'smart-home', color_badge: '#2563eb', description: 'Teknologi IoT rumah tangga, efisiensi energi listrik, dan sistem keamanan pintar', show_on_home: 0, display_order: 7, layout_style: 'grid3' },
+  { id: 3, name: 'Arsitektur & Renovasi', slug: 'arsitektur-renovasi', color_badge: '#d97706', description: 'Panduan renovasi hemat bujet, denah rumah open-space, dan material bangunan ramah lingkungan', show_on_home: 1, display_order: 1, layout_style: 'bento' },
+  { id: 4, name: 'Gaya Hidup & Hunian', slug: 'lifestyle-hunian', color_badge: '#7c3aed', description: 'Home office ergonomis, tanaman indoor, dan tips menciptakan suasana rumah bebas stres', show_on_home: 0, display_order: 8, layout_style: 'grid3' },
+  { id: 5, name: 'Material & Finishing', slug: 'material-finishing', color_badge: '#0891b2', description: 'Eksplorasi materialitas, spesifikasi teknis, durabilitas, dan finishing permukaan bangunan tropis.', show_on_home: 1, display_order: 3, layout_style: 'grid3' },
+  { id: 6, name: 'Kenyamanan Rumah', slug: 'kenyamanan-rumah', color_badge: '#16a34a', description: 'Sains kenyamanan termal, ventilasi silang, isolasi akustik, dan kualitas udara dalam ruang hunian.', show_on_home: 1, display_order: 4, layout_style: 'bento' },
+  { id: 7, name: 'Eksterior & Lanskap', slug: 'eksterior-lanskap', color_badge: '#84cc16', description: 'Desain fasad tropis, secondary skin, teras, kanopi, dan integrasi lanskap alami luar ruang.', show_on_home: 1, display_order: 5, layout_style: 'grid3' },
+  { id: 8, name: 'Sistem & Konstruksi Rumah', slug: 'sistem-konstruksi-rumah', color_badge: '#ea580c', description: 'Rekayasa struktur, utilitas MEP, drainase, pondasi, dan proteksi kelembapan bangunan.', show_on_home: 1, display_order: 6, layout_style: 'bento' }
 ];
 
 const MOCK_AUTHORS: Author[] = [
@@ -960,6 +972,68 @@ export async function getArticleBySlug(db: any, slug: string): Promise<Article |
   return null;
 }
 
+/**
+ * Retrieves an article strictly if its status is 'published'.
+ * Used by public routes to ensure draft and scheduled articles are never disclosed.
+ */
+export async function getPublishedArticleBySlug(db: any, slug: string): Promise<Article | null> {
+  const inMem = inMemoryArticles.find(a => a.slug === slug && a.status === 'published');
+  if (inMem) {
+    return sanitizeArticle(inMem);
+  }
+
+  if (db) {
+    try {
+      const result = await db
+        .prepare(`
+          SELECT a.*, c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
+                 au.name as author_name, au.avatar as author_avatar, au.role as author_role
+          FROM articles a
+          LEFT JOIN categories c ON a.category_id = c.id
+          LEFT JOIN authors au ON a.author_id = au.id
+          WHERE a.slug = ? AND a.status = 'published'
+          LIMIT 1
+        `)
+        .bind(slug)
+        .first();
+      if (result) return sanitizeArticle(result as Article);
+    } catch (e) {
+      console.warn('D1 Query fallback to mock:', e);
+    }
+  }
+  return null;
+}
+
+
+export async function getArticleById(db: any, id: number): Promise<Article | null> {
+  if (db) {
+    try {
+      const result = await db
+        .prepare(`
+          SELECT a.*, c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
+                 au.name as author_name, au.avatar as author_avatar, au.role as author_role
+          FROM articles a
+          LEFT JOIN categories c ON a.category_id = c.id
+          LEFT JOIN authors au ON a.author_id = au.id
+          WHERE a.id = ?
+          LIMIT 1
+        `)
+        .bind(id)
+        .first();
+      if (result) return sanitizeArticle(result as Article);
+      return null;
+    } catch (e: any) {
+      throw new DatabaseWriteError(`Gagal membaca artikel ID ${id} dari D1: ${e.message}`, e);
+    }
+  }
+
+  const inMem = inMemoryArticles.find(a => a.id === id);
+  if (inMem) {
+    return sanitizeArticle(inMem);
+  }
+  return null;
+}
+
 export async function getRelatedArticles(db: any, currentId: number, categoryId: number, limit = 4): Promise<Article[]> {
   if (db) {
     try {
@@ -1149,101 +1223,310 @@ export async function updateSiteSettings(db: any, newSettings: Record<string, st
   }
 }
 
-export async function checkDuplicateArticle(db: any, slug: string, contentHash?: string): Promise<{ isDuplicate: boolean; existingArticle?: Article; reason?: string }> {
+export async function checkDuplicateArticle(
+  db: any,
+  slug: string,
+  contentHash?: string
+): Promise<{ isDuplicate: boolean; existingArticle?: Article; reason?: string; duplicateType?: 'slug' | 'content' }> {
   if (db) {
     try {
       // 1. Check Slug match
       const bySlug = await db.prepare('SELECT * FROM articles WHERE slug = ? LIMIT 1').bind(slug).first();
       if (bySlug) {
-        return { isDuplicate: true, existingArticle: bySlug as Article, reason: 'Slug / Judul sudah ada di database' };
+        return {
+          isDuplicate: true,
+          existingArticle: sanitizeArticle(bySlug as Article),
+          reason: 'Slug / Judul sudah ada di database',
+          duplicateType: 'slug'
+        };
       }
       // 2. Check Content Hash match
       if (contentHash) {
         const byHash = await db.prepare('SELECT * FROM articles WHERE content_hash = ? LIMIT 1').bind(contentHash).first();
         if (byHash) {
-          return { isDuplicate: true, existingArticle: byHash as Article, reason: 'Konten sama persis dengan artikel yang sudah ada' };
+          return {
+            isDuplicate: true,
+            existingArticle: sanitizeArticle(byHash as Article),
+            reason: 'Konten sama persis dengan artikel yang sudah ada',
+            duplicateType: 'content'
+          };
         }
       }
-    } catch (e) {
-      console.warn('D1 Check Duplicate fallback:', e);
+      return { isDuplicate: false };
+    } catch (e: any) {
+      throw new DatabaseWriteError(`Pemeriksaan duplikasi D1 gagal: ${e.message}`, e);
     }
   }
 
+  // Explicit test/in-memory mode
   const foundBySlug = inMemoryArticles.find(a => a.slug === slug);
-  if (foundBySlug) return { isDuplicate: true, existingArticle: foundBySlug, reason: 'Slug / Judul sudah ada di database' };
+  if (foundBySlug) {
+    return {
+      isDuplicate: true,
+      existingArticle: sanitizeArticle(foundBySlug),
+      reason: 'Slug / Judul sudah ada di database',
+      duplicateType: 'slug'
+    };
+  }
 
   if (contentHash) {
     const foundByHash = inMemoryArticles.find(a => a.content_hash === contentHash);
-    if (foundByHash) return { isDuplicate: true, existingArticle: foundByHash, reason: 'Konten sama persis dengan artikel yang sudah ada' };
+    if (foundByHash) {
+      return {
+        isDuplicate: true,
+        existingArticle: sanitizeArticle(foundByHash),
+        reason: 'Konten sama persis dengan artikel yang sudah ada',
+        duplicateType: 'content'
+      };
+    }
   }
 
   return { isDuplicate: false };
 }
 
 export async function insertArticle(db: any, article: Partial<Article>): Promise<Article> {
-  const newId = inMemoryArticles.length > 0 ? Math.max(...inMemoryArticles.map(a => a.id)) + 1 : 1;
-  const fullArticle: Article = {
-    id: newId,
-    slug: article.slug || `article-${newId}`,
-    title: article.title || 'Untitled',
-    description: article.description || '',
-    content_md: article.content_md || '',
-    content_html: article.content_html || '',
-    featured_image: article.featured_image || MOCK_SETTINGS.seo_default_og_image,
-    image_alt: article.image_alt || article.title || '',
-    category_id: article.category_id || 1,
-    author_id: article.author_id || 1,
-    status: article.status || 'published',
-    views: 0,
-    reading_time_minutes: article.reading_time_minutes || 3,
-    key_takeaways: article.key_takeaways || '[]',
-    focus_keyword: article.focus_keyword || '',
-    content_hash: article.content_hash || '',
-    is_featured: article.is_featured || 0,
-    is_trending: article.is_trending || 0,
-    is_sponsored: article.is_sponsored || 0,
-    disable_internal_links: article.disable_internal_links || 0,
-    published_at: article.published_at || new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
+  const slug = article.slug || `article-${Date.now()}`;
+  const title = article.title || 'Untitled';
+  const description = article.description || '';
+  const content_md = article.content_md || '';
+  const content_html = article.content_html || '';
+  const featured_image = article.featured_image || MOCK_SETTINGS.seo_default_og_image;
+  const image_alt = article.image_alt || article.title || '';
+  const category_id = article.category_id || 1;
+  const author_id = article.author_id || 1;
+  const status = article.status || 'published';
+  const reading_time_minutes = article.reading_time_minutes || 3;
+  const key_takeaways = article.key_takeaways || '[]';
+  const focus_keyword = article.focus_keyword || '';
+  const content_hash = article.content_hash || '';
+  const is_featured = article.is_featured || 0;
+  const is_trending = article.is_trending || 0;
+  const is_sponsored = article.is_sponsored || 0;
+  const disable_internal_links = article.disable_internal_links || 0;
+  const published_at = article.published_at || new Date().toISOString();
+  const updated_at = article.updated_at || new Date().toISOString();
 
+  // Case A: Real D1 Database Binding exists
   if (db) {
+    let runResult: any;
     try {
-      await db
+      runResult = await db
         .prepare(`
-          INSERT INTO articles (slug, title, description, content_md, content_html, featured_image, image_alt, category_id, author_id, status, reading_time_minutes, key_takeaways, focus_keyword, content_hash, is_featured, is_trending, is_sponsored, disable_internal_links, published_at, updated_at)
+          INSERT INTO articles (
+            slug, title, description, content_md, content_html, featured_image, image_alt,
+            category_id, author_id, status, reading_time_minutes, key_takeaways,
+            focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
+            disable_internal_links, published_at, updated_at
+          )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         .bind(
-          fullArticle.slug,
-          fullArticle.title,
-          fullArticle.description,
-          fullArticle.content_md,
-          fullArticle.content_html,
-          fullArticle.featured_image,
-          fullArticle.image_alt,
-          fullArticle.category_id,
-          fullArticle.author_id,
-          fullArticle.status,
-          fullArticle.reading_time_minutes,
-          fullArticle.key_takeaways,
-          fullArticle.focus_keyword,
-          fullArticle.content_hash,
-          fullArticle.is_featured,
-          fullArticle.is_trending,
-          fullArticle.is_sponsored,
-          fullArticle.disable_internal_links,
-          fullArticle.published_at,
-          fullArticle.updated_at
+          slug,
+          title,
+          description,
+          content_md,
+          content_html,
+          featured_image,
+          image_alt,
+          category_id,
+          author_id,
+          status,
+          reading_time_minutes,
+          key_takeaways,
+          focus_keyword,
+          content_hash,
+          is_featured,
+          is_trending,
+          is_sponsored,
+          disable_internal_links,
+          published_at,
+          updated_at
         )
         .run();
-    } catch (e) {
-      console.warn('D1 insert failed, adding to memory:', e);
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      if (msg.includes('UNIQUE constraint failed') || msg.includes('PRIMARY KEY must be unique')) {
+        if (msg.includes('articles.slug') || msg.includes('slug')) {
+          throw new DuplicateSlugError(`Slug "${slug}" sudah terdaftar di database D1`, err);
+        }
+        if (msg.includes('articles.content_hash')) {
+          throw new DuplicateContentError(`Konten hash sudah terdaftar di database D1`, err);
+        }
+        throw new DatabaseConstraintError(`Pelanggaran constraint unik pada D1: ${msg}`, err);
+      }
+      throw new DatabaseWriteError(`Gagal melakukan INSERT artikel ke D1: ${msg}`, err);
     }
+
+    // Determine actual database-generated ID
+    let insertedId: number | undefined;
+    if (runResult?.meta?.last_row_id !== undefined && runResult.meta.last_row_id !== null) {
+      insertedId = Number(runResult.meta.last_row_id);
+    } else {
+      try {
+        const lastRow = await db.prepare('SELECT last_insert_rowid() as id').first();
+        if (lastRow?.id) {
+          insertedId = Number(lastRow.id);
+        }
+      } catch {
+        const bySlug = await db.prepare('SELECT id FROM articles WHERE slug = ? LIMIT 1').bind(slug).first();
+        if (bySlug?.id) {
+          insertedId = Number(bySlug.id);
+        }
+      }
+    }
+
+    if (!insertedId) {
+      throw new DatabaseWriteError('D1 INSERT berhasil tetapi gagal memperoleh ID baris yang dihasilkan database.');
+    }
+
+    const persisted = await getArticleById(db, insertedId);
+    if (!persisted) {
+      throw new DatabaseWriteError(`Artikel dengan ID ${insertedId} tidak dapat diverifikasi setelah INSERT.`);
+    }
+
+    return persisted;
   }
+
+  // Case B: Explicit test/in-memory adapter (db === null / undefined)
+  const existingSlug = inMemoryArticles.find(a => a.slug === slug);
+  if (existingSlug) {
+    throw new DuplicateSlugError(`Slug "${slug}" sudah terdaftar dalam in-memory mock.`);
+  }
+
+  const newId = inMemoryArticles.length > 0 ? Math.max(...inMemoryArticles.map(a => a.id)) + 1 : 1;
+  const fullArticle: Article = {
+    id: newId,
+    slug,
+    title,
+    description,
+    content_md,
+    content_html,
+    featured_image,
+    image_alt,
+    category_id,
+    author_id,
+    status: status as any,
+    views: 0,
+    reading_time_minutes,
+    key_takeaways,
+    focus_keyword,
+    content_hash,
+    is_featured,
+    is_trending,
+    is_sponsored,
+    disable_internal_links,
+    published_at,
+    updated_at
+  };
 
   inMemoryArticles.unshift(fullArticle);
   return fullArticle;
+}
+
+export async function updateArticle(db: any, id: number, article: Partial<Article>): Promise<Article> {
+  // Case A: Real D1 Database Binding exists
+  if (db) {
+    const existing = await getArticleById(db, id);
+    if (!existing) {
+      throw new ArticleNotFoundError(`Artikel dengan ID ${id} tidak ditemukan.`);
+    }
+
+    const updatedData = {
+      title: article.title !== undefined ? article.title : existing.title,
+      slug: article.slug !== undefined ? article.slug : existing.slug,
+      description: article.description !== undefined ? article.description : existing.description,
+      content_md: article.content_md !== undefined ? article.content_md : existing.content_md,
+      content_html: article.content_html !== undefined ? article.content_html : existing.content_html,
+      featured_image: article.featured_image !== undefined ? article.featured_image : existing.featured_image,
+      image_alt: article.image_alt !== undefined ? article.image_alt : existing.image_alt,
+      category_id: article.category_id !== undefined ? article.category_id : existing.category_id,
+      author_id: article.author_id !== undefined ? article.author_id : existing.author_id,
+      status: article.status !== undefined ? article.status : existing.status,
+      reading_time_minutes: article.reading_time_minutes !== undefined ? article.reading_time_minutes : existing.reading_time_minutes,
+      key_takeaways: article.key_takeaways !== undefined ? article.key_takeaways : existing.key_takeaways,
+      focus_keyword: article.focus_keyword !== undefined ? article.focus_keyword : existing.focus_keyword,
+      content_hash: article.content_hash !== undefined ? article.content_hash : existing.content_hash,
+      is_featured: article.is_featured !== undefined ? article.is_featured : existing.is_featured,
+      is_trending: article.is_trending !== undefined ? article.is_trending : existing.is_trending,
+      is_sponsored: article.is_sponsored !== undefined ? article.is_sponsored : existing.is_sponsored,
+      disable_internal_links: article.disable_internal_links !== undefined ? article.disable_internal_links : existing.disable_internal_links,
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      await db
+        .prepare(`
+          UPDATE articles SET
+            title = ?, slug = ?, description = ?, content_md = ?, content_html = ?,
+            featured_image = ?, image_alt = ?, category_id = ?, author_id = ?,
+            status = ?, reading_time_minutes = ?, key_takeaways = ?, focus_keyword = ?,
+            content_hash = ?, is_featured = ?, is_trending = ?, is_sponsored = ?,
+            disable_internal_links = ?, updated_at = ?
+          WHERE id = ?
+        `)
+        .bind(
+          updatedData.title,
+          updatedData.slug,
+          updatedData.description,
+          updatedData.content_md,
+          updatedData.content_html,
+          updatedData.featured_image,
+          updatedData.image_alt,
+          updatedData.category_id,
+          updatedData.author_id,
+          updatedData.status,
+          updatedData.reading_time_minutes,
+          updatedData.key_takeaways,
+          updatedData.focus_keyword,
+          updatedData.content_hash,
+          updatedData.is_featured,
+          updatedData.is_trending,
+          updatedData.is_sponsored,
+          updatedData.disable_internal_links,
+          updatedData.updated_at,
+          id
+        )
+        .run();
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      if (msg.includes('UNIQUE constraint failed') || msg.includes('PRIMARY KEY must be unique')) {
+        if (msg.includes('articles.slug') || msg.includes('slug')) {
+          throw new DuplicateSlugError(`Slug "${updatedData.slug}" sudah digunakan oleh artikel lain`, err);
+        }
+        throw new DatabaseConstraintError(`Pelanggaran constraint unik saat UPDATE: ${msg}`, err);
+      }
+      throw new DatabaseWriteError(`Gagal melakukan UPDATE artikel ID ${id} di D1: ${msg}`, err);
+    }
+
+    const updated = await getArticleById(db, id);
+    if (!updated) {
+      throw new DatabaseWriteError(`Gagal memuat artikel ID ${id} setelah UPDATE.`);
+    }
+    return updated;
+  }
+
+  // Case B: Explicit test/in-memory adapter (db === null / undefined)
+  const idx = inMemoryArticles.findIndex(a => a.id === id);
+  if (idx === -1) {
+    throw new ArticleNotFoundError(`Artikel ID ${id} tidak ditemukan dalam in-memory mock.`);
+  }
+
+  if (article.slug && article.slug !== inMemoryArticles[idx].slug) {
+    const slugCollision = inMemoryArticles.find(a => a.id !== id && a.slug === article.slug);
+    if (slugCollision) {
+      throw new DuplicateSlugError(`Slug "${article.slug}" sudah digunakan oleh artikel lain.`);
+    }
+  }
+
+  const updatedArticle: Article = {
+    ...inMemoryArticles[idx],
+    ...article,
+    id, // strictly preserve original id!
+    updated_at: new Date().toISOString()
+  };
+
+  inMemoryArticles[idx] = updatedArticle;
+  return updatedArticle;
 }
 
 // ==========================================
@@ -1493,4 +1776,191 @@ export async function deleteSubscriber(db: any, id: number): Promise<boolean> {
   }
   return true;
 }
+
+// ----------------------------------------------------
+// ARTICLE INGESTION RECEIPTS (HERMES MACHINE INGESTION)
+// ----------------------------------------------------
+export interface ArticleIngestReceipt {
+  job_id: string;
+  source: string;
+  source_article_id: string;
+  content_sha256: string;
+  article_content_hash: string;
+  article_id: number;
+  contract_version: number;
+  created_at: string;
+}
+
+/**
+ * Finds an existing receipt by job_id.
+ */
+export async function getReceiptByJobId(db: any, jobId: string): Promise<ArticleIngestReceipt | null> {
+  if (!db) return null;
+  try {
+    const row = await db.prepare('SELECT * FROM article_ingest_receipts WHERE job_id = ? LIMIT 1').bind(jobId).first();
+    return row ? (row as ArticleIngestReceipt) : null;
+  } catch (e: any) {
+    throw new DatabaseWriteError(`Gagal membaca receipt berdasarkan job_id: ${e.message}`, e);
+  }
+}
+
+/**
+ * Finds an existing receipt by source and source_article_id.
+ */
+export async function getReceiptBySourceArticleId(
+  db: any,
+  source: string,
+  sourceArticleId: string
+): Promise<ArticleIngestReceipt | null> {
+  if (!db) return null;
+  try {
+    const row = await db
+      .prepare('SELECT * FROM article_ingest_receipts WHERE source = ? AND source_article_id = ? LIMIT 1')
+      .bind(source, sourceArticleId)
+      .first();
+    return row ? (row as ArticleIngestReceipt) : null;
+  } catch (e: any) {
+    throw new DatabaseWriteError(`Gagal membaca receipt berdasarkan source_article_id: ${e.message}`, e);
+  }
+}
+
+/**
+ * Finds an existing receipt by exact Markdown hash (content_sha256) or body hash (article_content_hash).
+ */
+export async function getReceiptByContentHashes(
+  db: any,
+  contentSha256: string,
+  articleContentHash: string
+): Promise<ArticleIngestReceipt | null> {
+  if (!db) return null;
+  try {
+    const row = await db
+      .prepare('SELECT * FROM article_ingest_receipts WHERE content_sha256 = ? OR article_content_hash = ? LIMIT 1')
+      .bind(contentSha256, articleContentHash)
+      .first();
+    return row ? (row as ArticleIngestReceipt) : null;
+  } catch (e: any) {
+    throw new DatabaseWriteError(`Gagal membaca receipt berdasarkan hash: ${e.message}`, e);
+  }
+}
+
+/**
+ * Inserts article and ingestion receipt atomically into Cloudflare D1 using D1 batch.
+ * If either fails, the batch is rolled back automatically by SQLite.
+ */
+export async function insertHermesArticleAndReceipt(
+  db: any,
+  articleData: Omit<Article, 'id'>,
+  receiptData: Omit<ArticleIngestReceipt, 'article_id' | 'created_at'>
+): Promise<{ article: Article; receipt: ArticleIngestReceipt }> {
+  if (!db) {
+    throw new DatabaseWriteError('Database D1 tidak tersedia untuk machine ingestion Hermes.');
+  }
+
+  // 1. Prepare Article Insert Statement
+  const insertArticleStmt = db.prepare(`
+    INSERT INTO articles (
+      slug, title, description, content_md, content_html, featured_image, image_alt,
+      category_id, author_id, status, reading_time_minutes, key_takeaways,
+      focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
+      disable_internal_links, published_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    articleData.slug,
+    articleData.title,
+    articleData.description,
+    articleData.content_md,
+    articleData.content_html,
+    articleData.featured_image,
+    articleData.image_alt,
+    articleData.category_id,
+    articleData.author_id,
+    'draft', // Strictly FORCED DRAFT
+    articleData.reading_time_minutes,
+    articleData.key_takeaways,
+    articleData.focus_keyword,
+    articleData.content_hash,
+    0, // Not featured
+    0, // Not trending
+    0, // Not sponsored
+    0, // Default internal links
+    articleData.published_at || new Date().toISOString(),
+    articleData.updated_at || new Date().toISOString()
+  );
+
+  // 2. Prepare Receipt Insert Statement using last_insert_rowid()
+  const insertReceiptStmt = db.prepare(`
+    INSERT INTO article_ingest_receipts (
+      job_id, source, source_article_id, content_sha256, article_content_hash, article_id, contract_version
+    )
+    VALUES (?, ?, ?, ?, ?, last_insert_rowid(), ?)
+  `).bind(
+    receiptData.job_id,
+    receiptData.source,
+    receiptData.source_article_id,
+    receiptData.content_sha256,
+    receiptData.article_content_hash,
+    receiptData.contract_version
+  );
+
+  // 3. Execute atomic batch
+  let batchResults: any[];
+  try {
+    batchResults = await db.batch([insertArticleStmt, insertReceiptStmt]);
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    if (msg.includes('UNIQUE constraint failed') || msg.includes('SQLITE_CONSTRAINT')) {
+      if (msg.includes('article_ingest_receipts.job_id')) {
+        throw new DatabaseConstraintError('JOB_ID_CONFLICT: ID pekerjaan sudah terdaftar.', err);
+      }
+      if (msg.includes('article_ingest_receipts.source') || msg.includes('source_article_id')) {
+        throw new DatabaseConstraintError('ARTICLE_ID_CONFLICT: ID artikel sudah terdaftar.', err);
+      }
+      if (msg.includes('article_ingest_receipts.content_sha256') || msg.includes('article_ingest_receipts.article_content_hash')) {
+        throw new DatabaseConstraintError('DUPLICATE_CONTENT: Konten hash artikel sudah terdaftar.', err);
+      }
+      if (msg.includes('articles.slug')) {
+        throw new DuplicateSlugError(`Slug "${articleData.slug}" sudah terdaftar di database D1`, err);
+      }
+      throw new DatabaseConstraintError(`Pelanggaran constraint unik pada D1 batch: ${msg}`, err);
+    }
+    throw new DatabaseWriteError(`Gagal mengeksekusi D1 atomic batch: ${msg}`, err);
+  }
+
+  // 4. Verify batch results and extract generated article_id
+  const articleMeta = batchResults[0]?.meta;
+  let insertedArticleId: number | undefined;
+  if (articleMeta?.last_row_id !== undefined && articleMeta.last_row_id !== null) {
+    insertedArticleId = Number(articleMeta.last_row_id);
+  }
+
+  if (!insertedArticleId) {
+    // Fallback lookup by job_id from the receipt just inserted in the same batch
+    const savedReceipt = await db
+      .prepare('SELECT article_id FROM article_ingest_receipts WHERE job_id = ?')
+      .bind(receiptData.job_id)
+      .first();
+    if (savedReceipt?.article_id) {
+      insertedArticleId = Number(savedReceipt.article_id);
+    }
+  }
+
+  if (!insertedArticleId) {
+    throw new DatabaseWriteError('D1 batch berhasil namun ID artikel tidak dapat diverifikasi.');
+  }
+
+  const persistedArticle = await getArticleById(db, insertedArticleId);
+  const persistedReceipt = await getReceiptByJobId(db, receiptData.job_id);
+
+  if (!persistedArticle || !persistedReceipt) {
+    throw new DatabaseWriteError('Verifikasi konsistensi artikel dan receipt setelah commit batch gagal.');
+  }
+
+  return {
+    article: persistedArticle,
+    receipt: persistedReceipt
+  };
+}
+
 

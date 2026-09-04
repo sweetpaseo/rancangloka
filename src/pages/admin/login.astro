@@ -1,6 +1,12 @@
 ---
 import '../../styles/global.css';
 import { getDb, getSiteSettings } from '../../lib/db';
+import { 
+  verifyAdminCredentials, 
+  createAdminSessionToken, 
+  getAdminCookieOptions, 
+  getSafeAdminRedirect 
+} from '../../lib/auth';
 
 const db = await getDb(Astro.locals);
 const siteSettings = await getSiteSettings(db);
@@ -10,6 +16,64 @@ const siteTagline = siteSettings.site_tagline || 'Inspirasi Desain Interior, Ars
 const siteLogo = siteSettings.site_logo || '';
 const siteFavicon = siteSettings.site_favicon || '🏡';
 const primaryColor = siteSettings.theme_primary_color || '#1e3a8a';
+
+// Support server-side POST login
+if (Astro.request.method === 'POST') {
+  try {
+    const isJsonRequest = Astro.request.headers.get('Accept')?.includes('application/json') ||
+      Astro.request.headers.get('Content-Type')?.includes('application/json');
+
+    let username = '';
+    let password = '';
+
+    if (Astro.request.headers.get('Content-Type')?.includes('application/json')) {
+      const body = await Astro.request.json().catch(() => ({}));
+      username = body.username || '';
+      password = body.password || '';
+    } else {
+      const formData = await Astro.request.formData().catch(() => new FormData());
+      username = formData.get('username')?.toString() || '';
+      password = formData.get('password')?.toString() || '';
+    }
+
+    const env = (Astro.locals as any)?.runtime?.env || (import.meta as any).env || {};
+    const isValid = await verifyAdminCredentials(username, password, env);
+
+    if (isValid) {
+      const sessionToken = await createAdminSessionToken(env);
+      const isProd = (env.ENVIRONMENT || (import.meta as any).env?.MODE) === 'production';
+      const cookieOpts = getAdminCookieOptions(isProd);
+
+      Astro.cookies.set('admin_session', sessionToken, cookieOpts);
+
+      const rawRedirect = Astro.url.searchParams.get('redirect') || '/admin';
+      const safeRedirect = getSafeAdminRedirect(rawRedirect);
+
+      if (isJsonRequest) {
+        return new Response(JSON.stringify({ status: 'ok', redirect: safeRedirect }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      return Astro.redirect(safeRedirect, 302);
+    } else {
+      if (isJsonRequest) {
+        return new Response(JSON.stringify({ status: 'error', message: 'Kredensial tidak valid.' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+  } catch (e) {
+    if (Astro.request.headers.get('Accept')?.includes('application/json')) {
+      return new Response(JSON.stringify({ status: 'error', message: 'Terjadi kesalahan sistem.' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+}
 ---
 
 <!doctype html>
@@ -124,16 +188,38 @@ const primaryColor = siteSettings.theme_primary_color || '#1e3a8a';
         const username = (document.getElementById('username') as HTMLInputElement).value;
         const password = (document.getElementById('password') as HTMLInputElement).value;
 
-        if ((username === 'admin' && password === 'admin123') || (username && password)) {
-          msg.className = 'rounded-xl p-3 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-2';
-          msg.innerHTML = '<span>✅</span> Login Berhasil! Mengalihkan...';
-          msg.classList.remove('hidden');
-          setTimeout(() => {
-            window.location.href = '/admin';
-          }, 600);
-        } else {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const redirectParam = params.get('redirect') || '/admin';
+
+          const res = await fetch(`/admin/login?redirect=${encodeURIComponent(redirectParam)}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+          });
+
+          if (res.ok) {
+            const data = await res.json().catch(() => ({ redirect: '/admin' }));
+            msg.className = 'rounded-xl p-3 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-2';
+            msg.innerHTML = '<span>✅</span> Login Berhasil! Mengalihkan...';
+            msg.classList.remove('hidden');
+
+            setTimeout(() => {
+              window.location.href = data.redirect || '/admin';
+            }, 500);
+          } else {
+            msg.className = 'rounded-xl p-3 text-xs bg-red-50 text-red-800 border border-red-200 flex items-center gap-2';
+            msg.innerHTML = '<span>⚠️</span> Username atau password salah.';
+            msg.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerText = 'Masuk ke Dashboard';
+          }
+        } catch (err) {
           msg.className = 'rounded-xl p-3 text-xs bg-red-50 text-red-800 border border-red-200 flex items-center gap-2';
-          msg.innerHTML = '<span>⚠️</span> Username atau password salah.';
+          msg.innerHTML = '<span>⚠️</span> Terjadi gangguan jaringan saat login.';
           msg.classList.remove('hidden');
           btn.disabled = false;
           btn.innerText = 'Masuk ke Dashboard';

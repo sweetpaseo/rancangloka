@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 
+Astro.response.status = 404;
 const db = await getDb(Astro.locals);
 const [articles, categories, siteSettings] = await Promise.all([
   getAllArticles(db, 4, 0, 'published'),

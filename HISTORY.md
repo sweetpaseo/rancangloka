@@ -468,3 +468,53 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
    - Default Password: `Admin@RancangLoka2026!`
    - Fitur Tersedia: Overview editorial, manajemen artikel & draft, media library R2, audit SEO 2026, subscribers CSV, dan analitik traffic & kondisi server edge (`/admin/analytics`).
 
+---
+
+## 🔒 5. Keputusan Terkunci: Editorial Metadata, Taksonomi, & Roadmap Integrasi Hermes
+
+*Status: LOCKED & FINAL (Sebelum Memulai Phase 2A Development)*
+
+### A. Struktur Entitas Artikel & Sidecar Visual
+```text
+ARTICLE
+├── article_id        → identitas transit artikel sejak Hermes
+├── category          → tepat 1
+├── content_type      → tepat 1 (Problem Solver, Deep Guide, Material Breakdown, Case Study, dll.)
+├── tags              → 3–6 controlled tags
+├── risk_class        → workflow metadata
+├── evidence_mode     → workflow metadata
+├── article.md        → konten publik (frontmatter ramping, belum dipaksakan tags/content_type sampai audit D1)
+└── visual.json       → metadata workflow visual internal (sidecar, non-public)
+```
+
+### B. Taksonomi 6 Kategori Resmi (1 Artikel = Tepat 1 Kategori Primer)
+1. **Arsitektur & Renovasi**
+2. **Interior & Tata Ruang**
+3. **Material & Finishing**
+4. **Kenyamanan Rumah**
+5. **Eksterior & Lanskap**
+6. **Sistem & Konstruksi Rumah**
+*(Aturan: Dipilih berdasarkan masalah/keputusan utama pembaca).*
+
+### C. Controlled Tags (3–6 Tag per Artikel)
+- Berbasis *controlled vocabulary* terstruktur menurut dimensi: `PROBLEM`, `BUILDING ELEMENT`, `MATERIAL`, `SPACE`, `SYSTEM`, `CONTEXT`.
+- AI dilarang membuat tag bebas/diam-diam. Jika tag belum ada, Luna hanya boleh mengusulkan `TAG_CANDIDATE` untuk direview manusia sebelum masuk taksonomi resmi.
+
+### D. Hybrid Visual Workflow (Zero Image Gen Cost Otomatis)
+- `article.visual.json` memuat brief visual (hero prompt/concept + diagram inline).
+- Draft boleh masuk D1 tanpa cover (`featured_image: ""`).
+- Cover diisi via kurasi manual (foto sendiri, AI generator pilihan, atau SVG) lalu diunggah ke Cloudflare R2. Pre-publish gate mewajibkan cover sebelum artikel berstatus `published`.
+
+### E. Protokol Audit Skema D1 Sebelum Migrasi (Phase 2A First Step)
+Sebelum membuat file migrasi apa pun, wajib audit read-only skema D1 eksisting untuk:
+- `categories`, `tags`, `article_tags`, `content_type`, `article ID`, `slug uniqueness`, `content hash`.
+- Laporkan secara ketat: `ALREADY EXISTS`, `NEEDS MODIFICATION`, `SHOULD NOT BE ADDED YET`.
+
+### F. Urutan Roadmap Development
+1. **PHASE 2A:** Cloudflare Secure Receiver + Transit Identity + Idempotency + Retry Contract + Schema Audit.
+2. **PHASE 2B:** Hermes Durable Outbox + SQLite queue + HMAC Sender + Retry/backoff + Circuit breaker + Dead-letter.
+3. **PHASE 2C:** Category + Controlled tags persistence (jika schema membutuhkan).
+4. **PHASE 2D:** Hybrid Visual Workflow + visual.json + R2 upload + pre-publish gate.
+5. **PHASE 3:** Scheduler / Autopublish.
+6. **Konservasi Voice Hermes:** Tetap menggunakan `SKILL.md` editorial Hermes saat ini sebagai basis tanpa diubah karakternya; penyesuaian hanya injeksi `CATEGORY_TAXONOMY.md`, `TAG_TAXONOMY.md`, dan `VISUAL_DNA.md`.
+
