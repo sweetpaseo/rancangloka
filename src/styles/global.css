@@ -47,11 +47,37 @@
     color: var(--color-ink);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
     letter-spacing: -0.025em;
+  }
+}
+
+@layer components {
+  .rl-mobile-grid {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: clamp(16px, 4.8vw, 20px);
+  }
+
+  @media (min-width: 640px) {
+    .rl-mobile-grid {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .rl-mobile-grid {
+      padding-inline: 2rem;
+    }
+  }
+
+  .rl-safe-wrap {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 }
 
@@ -61,6 +87,8 @@
   font-size: 1.125rem;
   line-height: 1.82;
   color: #27272a;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .dark .prose-magazine {
@@ -88,6 +116,20 @@
 .prose-magazine p {
   margin-bottom: 1.75rem;
   font-weight: 400;
+}
+
+.prose-magazine img,
+.prose-magazine video,
+.prose-magazine iframe,
+.prose-magazine table,
+.prose-magazine pre,
+.prose-magazine code {
+  max-width: 100%;
+}
+
+.prose-magazine pre,
+.prose-magazine table {
+  overflow-x: auto;
 }
 
 .prose-magazine strong {
@@ -180,6 +222,35 @@
   margin: 2.5rem 0;
   color: #18181b;
   letter-spacing: -0.01em;
+}
+
+@media (max-width: 639px) {
+  .prose-magazine {
+    font-size: 1rem;
+    line-height: 1.78;
+  }
+
+  .prose-magazine > p:first-of-type::first-letter {
+    font-size: 2.8rem;
+    margin-right: 0.6rem;
+  }
+
+  .prose-magazine h2 {
+    font-size: 1.55rem;
+    line-height: 1.25;
+    margin-top: 2.6rem;
+  }
+
+  .prose-magazine h3 {
+    font-size: 1.2rem;
+  }
+
+  .prose-magazine blockquote {
+    margin: 2rem 0;
+    padding: 1.1rem 1.2rem;
+    font-size: 1.05rem;
+    border-radius: 0 0.9rem 0.9rem 0;
+  }
 }
 
 .dark .prose-magazine blockquote {

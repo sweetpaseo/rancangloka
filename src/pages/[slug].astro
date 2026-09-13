@@ -39,7 +39,7 @@ let breadcrumbItems: any[] = [];
 if (article) {
   const [fetchedRelated, allArticles] = await Promise.all([
     getRelatedArticles(db, article.id, article.category_id, 3),
-    getAllArticles(db, 'published')
+    getAllArticles(db, 1000, 0, 'published')
   ]);
 
   relatedArticles = fetchedRelated;
@@ -162,7 +162,7 @@ if (article) {
 
   <!-- 🅰️ RENDER AS STATIC PAGE -->
   {isStaticPage && page && (
-    <div class="max-w-3xl mx-auto px-4 sm:px-0 py-4">
+    <div class="rl-mobile-grid max-w-3xl mx-auto py-4">
       <div class="mb-6">
         <Breadcrumbs items={breadcrumbItems} />
       </div>
@@ -230,7 +230,7 @@ if (article) {
   <!-- 🅱️ RENDER AS MAGAZINE ARTICLE -->
   {!isStaticPage && article && (
 
-  <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <article class="rl-mobile-grid max-w-4xl mx-auto py-6 overflow-hidden">
     <!-- 1. Breadcrumbs -->
     <div class="mb-6">
       <Breadcrumbs items={breadcrumbItems} />
@@ -260,7 +260,7 @@ if (article) {
         <button
           id="article-bookmark-btn"
           type="button"
-          class="ml-auto inline-flex items-center gap-1.5 border border-stone dark:border-stone/30 hover:border-ink dark:hover:border-paper px-3.5 py-1 text-xs font-mono font-medium text-ink dark:text-paper transition"
+          class="sm:ml-auto inline-flex max-w-full items-center gap-1.5 border border-stone dark:border-stone/30 hover:border-ink dark:hover:border-paper px-3.5 py-1 text-xs font-mono font-medium text-ink dark:text-paper transition"
           data-slug={article.slug}
           data-title={article.title}
           data-image={article.featured_image}
@@ -271,7 +271,7 @@ if (article) {
         </button>
       </div>
 
-      <h1 class="font-serif text-3xl sm:text-5xl md:text-[56px] lg:text-[60px] font-normal tracking-[-0.03em] text-ink dark:text-paper leading-[1.04]">
+      <h1 class="rl-safe-wrap font-serif text-3xl sm:text-5xl md:text-[56px] lg:text-[60px] font-normal text-ink dark:text-paper leading-[1.08] sm:leading-[1.04]">
         {article.title}
       </h1>
 
@@ -304,7 +304,7 @@ if (article) {
     </header>
 
     <!-- 2.5 TL;DR Quick Decision Summary (Quiet Luxury Box) -->
-    <div class="my-8 bg-soft dark:bg-stone/10 border border-stone dark:border-stone/30 p-6 md:p-8">
+    <div class="my-8 bg-soft dark:bg-stone/10 border border-stone dark:border-stone/30 p-5 sm:p-6 md:p-8">
       <div class="flex items-center gap-2 mb-2 text-xs font-mono font-bold uppercase tracking-[0.14em] text-accent">
         <span>✦</span>
         <span>EXECUTIVE SUMMARY · KEY TAKEAWAYS</span>
@@ -315,7 +315,7 @@ if (article) {
     </div>
 
     <!-- 3. Featured Cover Image (0px Sharp Architectural Monolith) -->
-    <div class="group relative my-8 overflow-hidden bg-stone/20 aspect-[16/10] border border-stone dark:border-stone/20 cursor-pointer">
+    <div class="group relative my-8 max-w-full overflow-hidden bg-stone/20 aspect-[16/10] border border-stone dark:border-stone/20 cursor-pointer">
       <img
         src={article.featured_image}
         alt={article.image_alt || article.title}
@@ -332,7 +332,7 @@ if (article) {
 
     <!-- 4. SIGNATURE FEATURE: "Editorial Spatial Assessment" -->
     {article.is_sponsored !== 1 && (
-      <div class="my-9 rounded-[2rem] border border-black/[0.08] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-900/60 p-6 sm:p-8 shadow-sm">
+      <div class="my-9 rounded-2xl sm:rounded-[2rem] border border-black/[0.08] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-900/60 p-5 sm:p-8 shadow-sm">
         <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-3 mb-6">
           <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] flex items-center gap-1.5">
             <span>✦</span> EVALUASI SPASIAL REDAKSI
@@ -388,7 +388,7 @@ if (article) {
 
     <!-- 5. SIGNATURE FEATURE: "Why This Works?" (Kenapa Desain Ini Bekerja?) -->
     {article.is_sponsored !== 1 && (
-      <div class="my-9 rounded-[2rem] border border-blue-100 bg-blue-50/60 dark:border-blue-900/40 dark:bg-blue-950/20 p-6 sm:p-8 shadow-sm">
+      <div class="my-9 rounded-2xl sm:rounded-[2rem] border border-blue-100 bg-blue-50/60 dark:border-blue-900/40 dark:bg-blue-950/20 p-5 sm:p-8 shadow-sm">
         <h3 class="flex items-center gap-2 text-sm sm:text-base font-black text-slate-900 dark:text-white mb-4">
           <span class="text-[#0066ee] font-mono">✦</span>
           <span>Kenapa Keputusan Spasial Ini Berhasil? (Why This Works)</span>
@@ -423,8 +423,8 @@ if (article) {
     <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-6" set:html={processedHtml} />
 
     <!-- 6.5 Sources & Editorial Citations (Integrity & E-E-A-T) -->
-    <div class="my-8 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-black/[0.05] dark:border-white/[0.06] p-6 text-xs text-slate-500 dark:text-slate-400 font-mono space-y-2">
-      <div class="flex items-center justify-between border-b border-black/[0.04] dark:border-white/[0.06] pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+    <div class="my-8 max-w-full rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-black/[0.05] dark:border-white/[0.06] p-5 sm:p-6 text-xs text-slate-500 dark:text-slate-400 font-mono space-y-2 rl-safe-wrap">
+      <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-black/[0.04] dark:border-white/[0.06] pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
         <span class="flex items-center gap-1.5"><span class="text-[#0066ee]">✦</span> SUMBER & REFERENSI TEKNIS:</span>
         <span>Standar Terverifikasi</span>
       </div>
@@ -446,7 +446,7 @@ if (article) {
     />
 
     <!-- 7.5 Next Action Loop: Practical Spatial Decision Next Steps -->
-    <div class="my-10 rounded-3xl bg-slate-900 text-white p-7 sm:p-9 border border-slate-800 shadow-xl">
+    <div class="my-10 rounded-2xl sm:rounded-3xl bg-slate-900 text-white p-5 sm:p-9 border border-slate-800 shadow-xl">
       <div class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] mb-2">
         <span>✦</span>
         <span>LANGKAH KEPUTUSAN DESAIN SELANJUTNYA</span>

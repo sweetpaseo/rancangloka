@@ -17,6 +17,24 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### Masalah 2026-09-13: Standar Mobile Responsive Artikel Publik
+* **Gejala:** Dibutuhkan standar mobile yang ketat untuk halaman artikel RancangLoka, dengan referensi utama iPhone 11 `414 x 896`, minimum `360 x 800`, gutter kiri/kanan setara, tanpa horizontal overflow, dan alignment konsisten untuk cover, body, references, related articles, serta footer.
+* **Penyebab:** Halaman artikel publik memakai beberapa container dan breakpoint berbeda, sehingga perlu token grid mobile tunggal untuk menghindari nested-padding asymmetry dan elemen yang berpotensi melewati parent pada layar kecil.
+* **Solusi:**
+  - Menambahkan token `.rl-mobile-grid` di `src/styles/global.css` dengan `padding-inline: clamp(16px, 4.8vw, 20px)`.
+  - Menambahkan `.rl-safe-wrap`, guard `overflow-x: clip`, dan batas `max-width: 100%` untuk media, tabel, `pre`, dan konten prose.
+  - Menyamakan container artikel, halaman statis, related articles, dan footer ke grid mobile yang sama.
+  - Menyesuaikan spacing mobile untuk H1, cover, editorial cards, references, CTA, dan footer tanpa mengubah logic data, publikasi, media, atau schema.
+* **Verifikasi:**
+  - `node --test scripts/test-mobile-responsive-standard.js`: PASS.
+  - `tsc --noEmit`: PASS.
+  - `astro build`: PASS.
+  - Browser QA lokal pada `360 x 800`, `375 x 812`, `390 x 844`, `414 x 896`, `430 x 932`, `768 x 1024`, `1280 x 800`, dan `1440 x 900`: PASS untuk gutter equality, no horizontal overflow, cover/body/references/footer alignment.
+* **Checkpoint:** Detail lengkap tersimpan di `state/MOBILE_RESPONSIVE_CHECKPOINT.md`.
+* **Status:** Local validated. Belum deploy produksi karena prompt mobile responsive ini tidak menyertakan instruksi deployment.
+
+---
+
 ### Masalah 1: Konfigurasi Deployment Cloudflare Workers Builds CI
 * **Gejala:** Deploy gagal dengan error `Authentication error [code: 10000]` atau `It looks like you've run a Workers-specific command in a Pages project`.
 * **Penyebab:** 
