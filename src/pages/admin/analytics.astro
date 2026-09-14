@@ -32,7 +32,7 @@ const mediaUsagePercent = ((parseFloat(mediaStorageMB) / mediaQuotaMB) * 100).to
 const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
 ---
 
-<AdminLayout title="Server & Traffic Analytics">
+<AdminLayout title="Kesehatan Sistem">
   <div class="max-w-[1520px] mx-auto space-y-6">
     <!-- Top Header with Live PoP Edge Badge -->
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
@@ -40,13 +40,13 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
         <div class="flex items-center gap-2">
           <span class="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-mono text-[10px] font-bold uppercase tracking-wider border border-emerald-200/60 flex items-center gap-1.5">
             <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            ALL SYSTEMS OPERATIONAL
+            SISTEM AKTIF
           </span>
           <span class="text-slate-300">•</span>
-          <span class="text-xs font-mono text-slate-500">PoP: CGK/JKT (Jakarta) • Edge Node #1</span>
+          <span class="text-xs font-mono text-slate-500">Data live terbatas + estimasi kapasitas</span>
         </div>
         <h1 class="text-xl sm:text-2xl font-outfit font-black text-slate-900 tracking-tight mt-1.5">
-          Kondisi Server, Resource Storage & Analitik Traffic
+          Kesehatan Sistem & Estimasi Resource
         </h1>
       </div>
 
@@ -59,18 +59,18 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
           <svg class="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          <span>Refresh Telemetri</span>
+          <span>Refresh Data</span>
         </button>
         <a
           href="/admin/seo-audit"
           class="rounded-xl bg-[#0066ee] hover:bg-blue-600 px-4 py-2 text-xs font-outfit font-bold text-white transition flex items-center gap-1.5 shadow-xs"
         >
-          <span>Audit Web Vitals →</span>
+          <span>Audit SEO Konten →</span>
         </a>
       </div>
     </div>
 
-    <!-- 1. Server Health & Edge Infrastructure Telemetry Grid (6 Metrics) -->
+    <!-- 1. System Health Estimate Grid -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
       <!-- Node Latency -->
       <div class="rounded-2xl bg-white border border-slate-200/80 p-4 shadow-2xs">
@@ -79,7 +79,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
           <span class="text-2xl font-mono font-bold text-emerald-600">5.2</span>
           <span class="text-xs font-mono text-slate-500">ms avg</span>
         </div>
-        <span class="text-[10px] font-mono text-emerald-600 mt-1 block">Ultra-Fast Edge</span>
+        <span class="text-[10px] font-mono text-amber-600 mt-1 block">Estimasi, bukan telemetry live</span>
       </div>
 
       <!-- Cache Hit Ratio -->
@@ -88,7 +88,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
         <div class="flex items-baseline gap-1.5 mt-1.5">
           <span class="text-2xl font-mono font-bold text-[#0066ee]">99.4%</span>
         </div>
-        <span class="text-[10px] font-mono text-slate-400 mt-1 block">Tier 1 Edge Cache</span>
+        <span class="text-[10px] font-mono text-amber-600 mt-1 block">Estimasi konfigurasi</span>
       </div>
 
       <!-- CPU Execution Time -->
@@ -98,7 +98,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
           <span class="text-2xl font-mono font-bold text-slate-900">1.18</span>
           <span class="text-xs font-mono text-slate-500">/ 50ms</span>
         </div>
-        <span class="text-[10px] font-mono text-emerald-600 mt-1 block">2.3% limit safe</span>
+        <span class="text-[10px] font-mono text-amber-600 mt-1 block">Estimasi kapasitas</span>
       </div>
 
       <!-- Memory Allocation -->
@@ -108,7 +108,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
           <span class="text-2xl font-mono font-bold text-slate-900">14.8</span>
           <span class="text-xs font-mono text-slate-500">MB</span>
         </div>
-        <span class="text-[10px] font-mono text-slate-400 mt-1 block">Max 128 MB V8</span>
+        <span class="text-[10px] font-mono text-amber-600 mt-1 block">Estimasi runtime</span>
       </div>
 
       <!-- Error Rate (5xx) -->
@@ -117,7 +117,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
         <div class="flex items-baseline gap-1.5 mt-1.5">
           <span class="text-2xl font-mono font-bold text-emerald-600">0.00%</span>
         </div>
-        <span class="text-[10px] font-mono text-emerald-600 mt-1 block">200 OK Clean</span>
+        <span class="text-[10px] font-mono text-slate-400 mt-1 block">Live error log tidak tersedia</span>
       </div>
 
       <!-- Uptime SLA -->
@@ -126,7 +126,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
         <div class="flex items-baseline gap-1.5 mt-1.5">
           <span class="text-2xl font-mono font-bold text-slate-900">99.99%</span>
         </div>
-        <span class="text-[10px] font-mono text-emerald-600 mt-1 block">Zero Downtime</span>
+        <span class="text-[10px] font-mono text-slate-400 mt-1 block">SLA statis, bukan monitor live</span>
       </div>
     </div>
 
@@ -136,7 +136,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
       <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-2xs">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">SIZE WEBSITE (BUNDLE)</span>
-          <span class="px-2 py-0.5 rounded-md bg-blue-50 text-[#0066ee] text-[9px] font-mono font-bold">COMPRESSED</span>
+          <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[9px] font-mono font-bold">Estimasi</span>
         </div>
         <div class="mt-2.5 flex items-baseline gap-2">
           <span class="text-3xl font-mono font-bold text-slate-900">{websiteBundleMB}</span>
@@ -158,7 +158,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
       <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-2xs">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">SIZE DATABASE (D1)</span>
-          <span class="text-[10px] font-mono text-emerald-600 font-bold">{dbUsagePercent}% Quota</span>
+          <span class="text-[10px] font-mono text-amber-600 font-bold">Estimasi {dbUsagePercent}% Quota</span>
         </div>
         <div class="mt-2.5 flex items-baseline gap-2">
           <span class="text-3xl font-mono font-bold text-slate-900">{dbSizeMB}</span>
@@ -178,7 +178,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
       <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-2xs">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">MEDIA VAULT (R2)</span>
-          <span class="text-[10px] font-mono text-[#0066ee] font-bold">{mediaUsagePercent}% Quota</span>
+          <span class="text-[10px] font-mono text-amber-600 font-bold">Estimasi {mediaUsagePercent}% Quota</span>
         </div>
         <div class="mt-2.5 flex items-baseline gap-2">
           <span class="text-3xl font-mono font-bold text-slate-900">{mediaStorageMB}</span>
@@ -198,7 +198,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
       <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-2xs">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">BANDWIDTH TERPAKAI</span>
-          <span class="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[9px] font-mono font-bold">UNLIMITED</span>
+          <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[9px] font-mono font-bold">Estimasi</span>
         </div>
         <div class="mt-2.5 flex items-baseline gap-2">
           <span class="text-3xl font-mono font-bold text-purple-600">{estimatedBandwidthGB}</span>
@@ -211,7 +211,7 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
           </div>
           <div class="flex justify-between">
             <span class="text-slate-400">Cache Saving:</span>
-            <span class="text-[#0066ee] font-bold">99.4% Network Offload</span>
+            <span class="text-amber-600 font-bold">Estimasi, bukan telemetry live</span>
           </div>
         </div>
       </div>
@@ -223,13 +223,13 @@ const estimatedBandwidthGB = ((totalViews * 0.45) / 1024 + 1.2).toFixed(2);
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <div class="flex items-center gap-2">
-            <h2 class="text-lg font-outfit font-black text-slate-900">Grafik Traffic & Volume Pengunjung</h2>
+            <h2 class="text-lg font-outfit font-black text-slate-900">Grafik Estimasi Traffic & Volume Pengunjung</h2>
             <span class="px-2 py-0.5 rounded-full bg-[#0066ee]/10 text-[#0066ee] font-mono text-[10px] font-bold" id="current-period-badge">
               24 Jam Terakhir
             </span>
           </div>
           <p class="text-xs text-slate-500 mt-1">
-            Pilih rentang waktu untuk menganalisis tren pengunjung unik, pageviews, dan lonjakan permintaan.
+            Grafik ini memakai data tersimpan/estimasi lokal, bukan analytics live dari provider eksternal.
           </p>
         </div>
 

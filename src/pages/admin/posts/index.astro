@@ -3,31 +3,58 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { getDb, getAllArticles, getAllCategories } from '../../../lib/db';
 
 const db = await getDb(Astro.locals);
+const q = Astro.url.searchParams.get('q')?.trim() || '';
+const category = Astro.url.searchParams.get('category') || 'all';
+const sortParam = Astro.url.searchParams.get('sort');
+const sort = sortParam === 'oldest' ? 'oldest' : 'newest';
 const [articles, categories] = await Promise.all([
-  getAllArticles(db, 200, 0, 'all'),
+  getAllArticles(db, 200, 0, 'all', { q, category, sort }),
   getAllCategories(db)
 ]);
+
+const formatCreatedAtWib = (value?: string | null) => {
+  if (!value) return 'Belum diketahui';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Belum diketahui';
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZoneName: 'short'
+  }).format(date);
+};
+
+const formatStatusLabel = (status?: string | null) => {
+  if (status === 'published') return 'Published';
+  if (status === 'draft') return 'Draft';
+  return status || 'Unknown';
+};
 ---
 
 <AdminLayout title="Semua Artikel">
-  <div class="max-w-6xl mx-auto space-y-6">
+  <div class="max-w-7xl mx-auto space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Manajemen Artikel (All Posts)</h1>
-        <p class="text-xs text-slate-500 mt-1">Daftar seluruh artikel yang tersimpan di database D1.</p>
+        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">RancangLoka Admin</p>
+        <h1 class="mt-1 text-2xl font-black tracking-tight text-slate-950">Artikel & Jurnal</h1>
+        <p class="mt-1 text-sm text-slate-500">Kelola draft dan artikel terbit dari database D1.</p>
       </div>
 
       <div class="flex items-center gap-3">
         <a
           href="/admin/import"
-          class="rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-sm"
+          class="rounded-lg bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
         >
           📥 Import .MD
         </a>
         <a
           href="/admin/posts/new"
-          class="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover transition shadow-md shadow-primary/20"
+          class="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
         >
           + Tambah Artikel Baru
         </a>
@@ -35,101 +62,134 @@ const [articles, categories] = await Promise.all([
     </div>
 
     <!-- Filter & Search Bar -->
-    <div class="rounded-2xl bg-white border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
-      <div class="flex items-center gap-2 w-full sm:w-auto">
+    <form method="get" class="rounded-xl bg-white border border-slate-200 p-3.5 shadow-sm">
+      <div class="grid grid-cols-1 gap-2 md:grid-cols-[minmax(260px,1fr)_190px_180px_auto_auto] md:items-center">
+        <label class="sr-only" for="post-search">Cari artikel</label>
         <input
           id="post-search"
+          name="q"
           type="text"
           placeholder="Cari judul artikel..."
-          class="w-full sm:w-64 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary"
+          value={q}
+          class="h-10 w-full rounded-lg bg-slate-50 border border-slate-200 px-3.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:bg-white"
         />
+        <label class="sr-only" for="category-filter">Kategori</label>
         <select
           id="category-filter"
-          class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary"
+          name="category"
+          class="h-10 rounded-lg bg-slate-50 border border-slate-200 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:bg-white"
         >
-          <option value="all">Semua Kategori</option>
+          <option value="all" selected={category === 'all'}>Semua Kategori</option>
           {categories.map((c) => (
-            <option value={c.slug}>{c.name}</option>
+            <option value={c.slug} selected={category === c.slug}>{c.name}</option>
           ))}
         </select>
+        <label class="sr-only" for="sort-filter">Urutkan</label>
+        <select
+          id="sort-filter"
+          name="sort"
+          class="h-10 rounded-lg bg-slate-50 border border-slate-200 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:bg-white"
+        >
+          <option value="newest" selected={sort === 'newest'}>Urutkan: Terbaru</option>
+          <option value="oldest" selected={sort === 'oldest'}>Urutkan: Terlama</option>
+        </select>
+        <button type="submit" class="h-10 rounded-lg bg-slate-950 px-4 text-xs font-bold text-white hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition">
+          Terapkan
+        </button>
+        <span class="flex h-10 items-center justify-center rounded-lg bg-slate-50 px-3 text-xs font-semibold text-slate-500">
+          <strong class="mr-1 text-slate-950">{articles.length}</strong> Artikel
+        </span>
       </div>
-
-      <span class="text-xs text-slate-500">
-        Total: <strong class="text-slate-900">{articles.length}</strong> Artikel
-      </span>
-    </div>
+    </form>
 
     <!-- Posts Table -->
-    <div class="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm">
+    <div class="overflow-hidden rounded-xl bg-white border border-slate-200 shadow-sm">
       <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs text-slate-600">
-          <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-200">
+        <table class="w-full min-w-[920px] text-left text-xs text-slate-600">
+          <thead class="bg-slate-50/80 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-200">
             <tr>
-              <th class="px-6 py-3.5">Artikel & Cover</th>
-              <th class="px-4 py-3.5">Kategori</th>
+              <th class="w-[52%] px-5 py-3.5">Artikel</th>
               <th class="px-4 py-3.5">Status</th>
-              <th class="px-4 py-3.5">Est. Read</th>
-              <th class="px-4 py-3.5">Tanggal</th>
-              <th class="px-6 py-3.5 text-right">Aksi</th>
+              <th class="px-4 py-3.5">Dibuat</th>
+              <th class="px-4 py-3.5">Baca</th>
+              <th class="px-5 py-3.5 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody id="posts-table-body" class="divide-y divide-slate-100">
-            {articles.map((article) => (
-              <tr class="post-row hover:bg-slate-50/80 transition" data-title={article.title.toLowerCase()} data-category={article.category_slug || ''}>
-                <td class="px-6 py-3.5 flex items-center gap-3">
-                  <img
-                    src={article.featured_image}
-                    alt={article.title}
-                    class="h-12 w-16 rounded-lg object-cover flex-shrink-0 bg-slate-100 border border-slate-200"
-                  />
-                  <div class="min-w-0">
-                    <a href={`/admin/posts/${article.id}`} class="font-bold text-slate-900 hover:text-primary transition line-clamp-1 text-sm">
-                      {article.title}
-                    </a>
-                    <span class="text-[10px] text-slate-400 font-mono">/{article.slug}</span>
-                    {article.is_featured === 1 && (
-                      <span class="ml-2 inline-block rounded bg-primary/10 px-1.5 py-0.2 text-[9px] font-bold text-primary">Featured Hero</span>
-                    )}
+            {articles.length > 0 ? (
+              articles.map((article) => (
+                <tr class="post-row align-middle hover:bg-[#f8fafc] transition-colors">
+                  <td class="px-5 py-4">
+                    <div class="flex items-center gap-4">
+                      <div class="relative h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                        {article.featured_image ? (
+                          <img
+                            src={article.featured_image}
+                            alt={article.image_alt || article.title}
+                            loading="lazy"
+                            class="article-cover h-full w-full object-cover"
+                          />
+                        ) : null}
+                        <div class={`cover-fallback ${article.featured_image ? 'hidden' : ''} absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-100 text-slate-400`}>
+                          <span class="text-base" aria-hidden="true">▧</span>
+                          <span class="text-[10px] font-semibold">Belum ada cover</span>
+                        </div>
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <a href={`/admin/posts/${article.id}`} class="line-clamp-2 text-sm font-extrabold leading-snug text-slate-950 hover:text-primary focus:outline-none focus:underline">
+                          {article.title}
+                        </a>
+                        <div class="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                          <span class="max-w-[280px] truncate font-mono text-slate-400">/{article.slug}</span>
+                          <span class="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">{article.category_name || 'Umum'}</span>
+                          {article.is_featured === 1 && (
+                            <span class="rounded bg-primary/10 px-2 py-0.5 font-bold text-primary">Featured</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap">
+                    <span class={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${article.status === 'published' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : article.status === 'draft' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                      <span class={`h-1.5 w-1.5 rounded-full ${article.status === 'published' ? 'bg-emerald-500' : article.status === 'draft' ? 'bg-amber-500' : 'bg-slate-400'}`}></span>
+                      {formatStatusLabel(article.status)}
+                    </span>
+                  </td>
+                  <td class={`px-4 py-4 whitespace-nowrap text-xs ${article.created_at ? 'text-slate-600' : 'text-slate-400'}`}>
+                    {formatCreatedAtWib(article.created_at)}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-slate-500">
+                    {article.reading_time_minutes} menit
+                  </td>
+                  <td class="px-5 py-4 whitespace-nowrap text-right">
+                    <div class="flex items-center justify-end gap-3">
+                      <a href={`/admin/posts/${article.id}`} class="font-bold text-primary hover:underline focus:outline-none focus:underline">
+                        Edit
+                      </a>
+                      {article.status === 'published' ? (
+                        <a href={`/${article.slug}`} target="_blank" class="font-semibold text-slate-500 hover:text-slate-900 focus:outline-none focus:underline">
+                          Lihat
+                        </a>
+                      ) : (
+                        <a href={`/admin/preview/${article.slug}`} target="_blank" class="font-semibold text-slate-500 hover:text-slate-900 focus:outline-none focus:underline">
+                          Preview
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colspan="5" class="px-6 py-14 text-center">
+                  <div class="mx-auto max-w-sm">
+                    <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-slate-400">▧</div>
+                    <p class="text-sm font-bold text-slate-900">Tidak ada artikel ditemukan</p>
+                    <p class="mt-1 text-xs text-slate-500">Coba ubah kata kunci pencarian atau pilih kategori lain.</p>
                   </div>
                 </td>
-                <td class="px-4 py-3.5 whitespace-nowrap">
-                  <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700">
-                    {article.category_name || 'Umum'}
-                  </span>
-                </td>
-                <td class="px-4 py-3.5 whitespace-nowrap">
-                  <span class={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${article.status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                    {article.status}
-                  </span>
-                </td>
-                <td class="px-4 py-3.5 whitespace-nowrap text-slate-500">
-                  ⏱️ {article.reading_time_minutes}m
-                </td>
-                <td class="px-4 py-3.5 whitespace-nowrap text-slate-500">
-                  {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </td>
-                <td class="px-6 py-3.5 whitespace-nowrap text-right space-x-3">
-                  <a href={`/admin/posts/${article.id}`} class="text-primary hover:underline font-semibold">
-                    Edit
-                  </a>
-                  {article.status === 'published' ? (
-                    <a href={`/${article.slug}`} target="_blank" class="text-slate-400 hover:text-slate-700">
-                      Lihat ↗
-                    </a>
-                  ) : (
-                    <a href={`/admin/preview/${article.slug}`} target="_blank" class="text-amber-600 hover:text-amber-800 font-semibold">
-                      Preview ↗
-                    </a>
-                  )}
-                  <button
-                    class="delete-post-btn text-red-600 hover:underline"
-                    data-id={article.id}
-                  >
-                    Hapus
-                  </button>
-                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -137,42 +197,18 @@ const [articles, categories] = await Promise.all([
   </div>
 
   <script>
-    const searchInput = document.getElementById('post-search') as HTMLInputElement;
     const catFilter = document.getElementById('category-filter') as HTMLSelectElement;
-    const rows = document.querySelectorAll('.post-row') as NodeListOf<HTMLElement>;
+    const sortFilter = document.getElementById('sort-filter') as HTMLSelectElement;
+    catFilter?.addEventListener('change', () => catFilter.form?.requestSubmit());
+    sortFilter?.addEventListener('change', () => sortFilter.form?.requestSubmit());
 
-    function filterPosts() {
-      const q = searchInput?.value.toLowerCase() || '';
-      const cat = catFilter?.value || 'all';
-
-      rows.forEach((row) => {
-        const title = row.getAttribute('data-title') || '';
-        const category = row.getAttribute('data-category') || '';
-        const matchSearch = title.includes(q);
-        const matchCat = cat === 'all' || category === cat;
-
-        if (matchSearch && matchCat) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-    }
-
-    searchInput?.addEventListener('input', filterPosts);
-    catFilter?.addEventListener('change', filterPosts);
-
-    // Delete post listener
-    document.querySelectorAll('.delete-post-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (confirm('Apakah Anda yakin ingin menghapus artikel ini dari database D1?')) {
-          const row = btn.closest('tr');
-          if (row) {
-            row.remove();
-            alert('Artikel berhasil dihapus!');
-          }
-        }
-      });
+    document.querySelectorAll<HTMLImageElement>('.article-cover').forEach((img) => {
+      img.addEventListener('error', () => {
+        img.classList.add('hidden');
+        const fallback = img.parentElement?.querySelector('.cover-fallback');
+        fallback?.classList.remove('hidden');
+      }, { once: true });
     });
+
   </script>
 </AdminLayout>

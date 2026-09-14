@@ -15,16 +15,16 @@ articles.forEach((a) => {
 });
 ---
 
-<AdminLayout title="Kelola Penulis & Profil E-E-A-T">
+<AdminLayout title="Penulis & Editor">
   <div class="max-w-6xl mx-auto space-y-6">
     <!-- Header -->
     <div class="pb-4 border-b border-slate-200 flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-          <span>👤</span> Manajemen Penulis & Sinyal E-E-A-T
+          <span>👤</span> Penulis & Editor
         </h1>
         <p class="text-xs text-slate-500 mt-1">
-          Kelola profil tim redaksi/penulis, foto avatar, bio keahlian, dan tautan media sosial terverifikasi untuk Google E-E-A-T.
+          Tambah dan hapus data penulis yang dipakai artikel. Metadata E-E-A-T tetap disimpan untuk kebutuhan editorial.
         </p>
       </div>
     </div>
@@ -194,16 +194,18 @@ articles.forEach((a) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.status !== 'error') {
           alert('Profil penulis baru berhasil disimpan ke D1!');
           window.location.reload();
         } else {
-          alert('Profil penulis berhasil disimpan!');
-          window.location.reload();
+          alert(`Gagal menyimpan penulis: ${data.message || 'Server menolak perubahan.'}`);
         }
-      } catch (err) {
-        alert('Profil penulis berhasil disimpan!');
-        window.location.reload();
+      } catch (err: any) {
+        alert(`Gagal menyimpan penulis: ${err.message || 'Koneksi bermasalah.'}`);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '+ Simpan Profil Penulis';
       }
     });
 
@@ -213,15 +215,19 @@ articles.forEach((a) => {
         const id = btn.getAttribute('data-id');
         if (confirm('Yakin ingin menghapus profil penulis ini?')) {
           try {
-            await fetch('/api/admin/authors', {
+            const res = await fetch('/api/admin/authors', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'delete', id })
             });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.status === 'error') {
+              throw new Error(data.message || 'Server menolak penghapusan.');
+            }
             alert('Penulis berhasil dihapus!');
             window.location.reload();
-          } catch (e) {
-            btn.closest('tr')?.remove();
+          } catch (e: any) {
+            alert(`Gagal menghapus penulis: ${e.message || 'Koneksi bermasalah.'}`);
           }
         }
       });

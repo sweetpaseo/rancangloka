@@ -216,9 +216,9 @@ const [categories, authors] = await Promise.all([
           </button>
 
           <div class="space-y-1">
-            <label class="block text-[11px] text-slate-500">Atau Gunakan URL Gambar Langsung</label>
+            <label class="block text-[11px] text-slate-500">Atau Gunakan URL / Path Gambar Langsung</label>
             <input
-              type="url"
+              type="text"
               id="post-cover-url"
               name="featured_image"
               placeholder="https://images.unsplash.com/... atau /media/..."
@@ -368,7 +368,11 @@ const [categories, authors] = await Promise.all([
     const btnRemoveCover = document.getElementById('btn-remove-cover');
 
     function syncCoverState() {
-      const url = coverUrlInput?.value.trim() || '';
+      const normalized = normalizeCoverUrlInput(coverUrlInput?.value || '');
+      if (coverUrlInput) {
+        coverUrlInput.setCustomValidity(normalized.ok ? '' : normalized.message);
+      }
+      const url = normalized.ok ? normalized.value : coverUrlInput?.value.trim() || '';
       if (url) {
         coverImg.src = url;
         coverImg.classList.remove('hidden');
@@ -384,6 +388,33 @@ const [categories, authors] = await Promise.all([
     }
 
     coverUrlInput?.addEventListener('input', syncCoverState);
+
+    function normalizeCoverUrlInput(value: string) {
+      const raw = value.trim();
+      if (!raw) return { ok: true, value: '', message: '' };
+      if (raw.startsWith('/media/')) return { ok: true, value: raw, message: '' };
+      if (raw.startsWith('/')) {
+        return { ok: false, value: raw, message: 'Path gambar internal harus diawali /media/.' };
+      }
+      try {
+        const url = new URL(raw);
+        if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+          return { ok: false, value: raw, message: 'URL gambar hanya boleh memakai http atau https.' };
+        }
+        if (url.pathname.startsWith('/media/') && url.origin === window.location.origin) {
+          return { ok: true, value: `${url.pathname}${url.search}`, message: '' };
+        }
+        if (
+          url.pathname.startsWith('/media/') &&
+          ['https://rancangloka.com', 'https://www.rancangloka.com'].includes(url.origin)
+        ) {
+          return { ok: true, value: `${url.pathname}${url.search}`, message: '' };
+        }
+        return { ok: true, value: url.href, message: '' };
+      } catch {
+        return { ok: false, value: raw, message: 'Masukkan /media/... atau URL http/https yang valid.' };
+      }
+    }
 
     btnRemoveCover?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -407,8 +438,8 @@ const [categories, authors] = await Promise.all([
     });
 
     // --- Realtime Live SEO 2026 Scorecard Engine ---
-    const keywordInput = document.getElementById('focus-keyword') as HTMLInputElement;
-    const takeawaysInput = document.getElementById('key-takeaways') as HTMLTextAreaElement;
+    const keywordInput = document.getElementById('post-keyword') as HTMLInputElement;
+    const takeawaysInput = document.getElementById('post-key-takeaways') as HTMLTextAreaElement;
     const scoreBadge = document.getElementById('seo-score-badge');
 
     function updateSeoScore() {
@@ -622,6 +653,11 @@ const [categories, authors] = await Promise.all([
 
     // Helper function to submit post
     async function submitPost(targetStatus: 'published' | 'draft') {
+      syncCoverState();
+      if (coverUrlInput && !coverUrlInput.reportValidity()) {
+        return;
+      }
+
       const btnPublish = document.getElementById('btn-publish') as HTMLButtonElement;
       const btnDraft = document.getElementById('btn-save-draft') as HTMLButtonElement;
       
@@ -641,7 +677,7 @@ const [categories, authors] = await Promise.all([
         slug: slugInput.value,
         description: descInput.value,
         content_md: contentMd.value,
-        featured_image: coverUrlInput.value || '',
+        featured_image: normalizeCoverUrlInput(coverUrlInput.value).value || '',
         image_alt: (document.getElementById('post-image-alt') as HTMLInputElement)?.value || titleInput.value,
         category_id: parseInt((document.getElementById('post-category') as HTMLSelectElement)?.value || '1', 10),
         author_id: parseInt((document.getElementById('post-author') as HTMLSelectElement)?.value || '1', 10),

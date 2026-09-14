@@ -555,13 +555,14 @@ const settings = await getSiteSettings(db);
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.status !== 'error') {
           alert('Pengaturan identitas website, tema, tombol share, dan footer berhasil disimpan!');
         } else {
-          alert('Pengaturan berhasil diperbarui!');
+          alert(`Gagal menyimpan pengaturan: ${data.message || 'Server menolak perubahan.'}`);
         }
-      } catch (err) {
-        alert('Pengaturan berhasil diperbarui!');
+      } catch (err: any) {
+        alert(`Gagal menyimpan pengaturan: ${err.message || 'Koneksi bermasalah.'}`);
       } finally {
         saveBtn.disabled = false;
         saveBtn.innerText = '💾 Simpan Pengaturan';

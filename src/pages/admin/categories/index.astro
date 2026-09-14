@@ -282,16 +282,15 @@ articles.forEach((a) => {
             updates
           })
         });
-        if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.status !== 'error') {
           alert('Tata letak kolom & urutan kategori di Beranda berhasil diperbarui!');
           window.location.reload();
         } else {
-          alert('Tata letak beranda berhasil disimpan!');
-          window.location.reload();
+          alert(`Gagal menyimpan tata letak: ${data.message || 'Server menolak perubahan.'}`);
         }
-      } catch (err) {
-        alert('Tata letak beranda berhasil disimpan!');
-        window.location.reload();
+      } catch (err: any) {
+        alert(`Gagal menyimpan tata letak: ${err.message || 'Koneksi bermasalah.'}`);
       } finally {
         saveLayoutBtn.disabled = false;
         saveLayoutBtn.innerText = '💾 Simpan Tata Letak Beranda';
@@ -318,16 +317,18 @@ articles.forEach((a) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.status !== 'error') {
           alert('Kategori baru berhasil ditambahkan!');
           window.location.reload();
         } else {
-          alert('Kategori berhasil disimpan!');
-          window.location.reload();
+          alert(`Gagal menyimpan kategori: ${data.message || 'Server menolak perubahan.'}`);
         }
-      } catch (err) {
-        alert('Kategori berhasil disimpan!');
-        window.location.reload();
+      } catch (err: any) {
+        alert(`Gagal menyimpan kategori: ${err.message || 'Koneksi bermasalah.'}`);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '+ Simpan Kategori Baru';
       }
     });
 
@@ -337,15 +338,19 @@ articles.forEach((a) => {
         const id = btn.getAttribute('data-id');
         if (confirm('Yakin ingin menghapus kategori ini?')) {
           try {
-            await fetch('/api/admin/categories', {
+            const res = await fetch('/api/admin/categories', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'delete', id })
             });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.status === 'error') {
+              throw new Error(data.message || 'Server menolak penghapusan.');
+            }
             alert('Kategori berhasil dihapus!');
             window.location.reload();
-          } catch (e) {
-            btn.closest('tr')?.remove();
+          } catch (e: any) {
+            alert(`Gagal menghapus kategori: ${e.message || 'Koneksi bermasalah.'}`);
           }
         }
       });

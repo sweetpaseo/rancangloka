@@ -73,14 +73,14 @@ const mediaList = Array.from(mediaMap.values()).sort((a, b) =>
 );
 ---
 
-<AdminLayout title="Media Library & R2 Asset Manager">
+<AdminLayout title="Media Library">
   <div class="max-w-7xl mx-auto space-y-8">
     <!-- Top Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
       <div>
         <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
           <span>📁</span>
-          <span>Media Library & R2 Storage</span>
+          <span>Media Library</span>
         </h1>
         <p class="text-xs text-slate-500 mt-1">
           Pusat penyimpanan gambar teroptimasi WebP di Cloudflare R2 Bucket (<code class="text-primary font-bold">rancangloka-media</code>).
@@ -174,8 +174,9 @@ const mediaList = Array.from(mediaMap.values()).sort((a, b) =>
             <div class="pt-2 border-t border-slate-100 flex items-center gap-1.5">
               <button
                 type="button"
-                class="copy-url-btn flex-1 rounded-lg bg-slate-100 hover:bg-primary hover:text-white px-2 py-1 text-[11px] font-bold text-slate-700 transition"
+                class="copy-url-btn flex-1 rounded-lg bg-slate-100 hover:bg-primary hover:text-white px-2 py-1 text-[11px] font-bold text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-primary/30"
                 data-url={item.url}
+                aria-label={`Salin link ${item.key}`}
               >
                 📋 Salin Link
               </button>
@@ -183,19 +184,30 @@ const mediaList = Array.from(mediaMap.values()).sort((a, b) =>
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="rounded-lg bg-slate-100 hover:bg-slate-200 p-1 text-slate-600 transition"
+                class="rounded-lg bg-slate-100 hover:bg-slate-200 p-1 text-slate-600 transition focus:outline-none focus:ring-2 focus:ring-primary/30"
                 title="Buka Gambar HD"
+                aria-label={`Buka gambar ${item.key}`}
               >
                 🔍
               </a>
-              <button
-                type="button"
-                class="delete-media-btn rounded-lg bg-red-50 hover:bg-red-600 hover:text-white p-1 text-red-500 transition"
-                title="Hapus dari Cloudflare R2"
-                data-filename={item.key}
-              >
-                🗑️
-              </button>
+              {item.source === 'r2' ? (
+                <button
+                  type="button"
+                  class="delete-media-btn rounded-lg bg-red-50 hover:bg-red-600 hover:text-white p-1 text-red-500 transition focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                  title="Hapus dari Cloudflare R2"
+                  aria-label={`Hapus ${item.key} dari Cloudflare R2`}
+                  data-filename={item.key}
+                >
+                  🗑️
+                </button>
+              ) : (
+                <span
+                  class="rounded-lg bg-slate-50 p-1 text-[10px] font-semibold text-slate-400"
+                  title="Gambar ini hanya tertaut dari konten, bukan objek R2 yang terverifikasi"
+                >
+                  Tertaut
+                </span>
+              )}
             </div>
           </div>
         </div>
