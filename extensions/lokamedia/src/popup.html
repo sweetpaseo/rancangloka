@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="popup.css">
+    <title>LokaMedia</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <strong>LokaMedia</strong>
+        <span id="connection">offline</span>
+      </header>
+      <section class="stats">
+        <div><span id="total">0</span><small>Total</small></div>
+        <div><span id="active">0</span><small>Active</small></div>
+        <div><span id="waiting">0</span><small>Waiting</small></div>
+        <div><span id="complete">0</span><small>Done</small></div>
+      </section>
+      <section>
+        <label>Server <input id="server" type="url"></label>
+        <label>Device token <input id="token" type="password"></label>
+        <label class="inline"><input id="enabled" type="checkbox"> Enabled</label>
+      </section>
+      <footer>
+        <button id="save">Save</button>
+        <button id="tick">Run</button>
+      </footer>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

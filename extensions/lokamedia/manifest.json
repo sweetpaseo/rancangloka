@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "RancangLoka LokaMedia",
+  "version": "0.1.0",
+  "description": "Durable operator extension core for server-authoritative LokaMedia jobs.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": ["http://localhost/*", "https://rancangloka.com/*"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "LokaMedia"
+  }
+}

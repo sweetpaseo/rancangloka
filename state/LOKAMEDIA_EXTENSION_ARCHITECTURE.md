@@ -830,3 +830,93 @@ Phase 2C verification:
 - relevant Article tests pass.
 - TypeScript `--noEmit` passes.
 - Astro production build passes.
+
+## Phase 3 Implemented MV3 Durable Extension Core
+
+Implemented locally in `lokamedia-phase-2ab-checkpoint` only. No production deploy, no remote migration, no production D1 write, no production R2 write, no article mutation, no ChatGPT connection, no model call, and no provider DOM automation was performed.
+
+Extension root:
+
+- `extensions/lokamedia`
+
+Loadable unpacked MV3 build:
+
+- `manifest.json`
+- background service worker: `src/background.js`
+- popup/status UI: `src/popup.html`, `src/popup.css`, `src/popup.js`
+
+Version contracts:
+
+- `EXTENSION_VERSION=0.1.0`
+- `LOKAMEDIA_PROTOCOL_VERSION=1`
+- `STORAGE_SCHEMA_VERSION=1`
+
+MV3 permissions:
+
+- `storage`
+- `alarms`
+- host permissions limited to local development and the RancangLoka production host
+- no ChatGPT/OpenAI/provider host permissions are requested in Phase 3
+
+Durable local state:
+
+- small checkpoint state uses `chrome.storage.local` through `ExtensionStorage`
+- captured binaries use IndexedDB through `IndexedDbBlobStore`
+- tests use equivalent memory adapters without changing core behavior
+- large captured image data is not stored in `localStorage` or Base64 JSON
+
+Core modules:
+
+- `src/storage.js`: schema versioning, config, job checkpoints, queue, duplicate message memory.
+- `src/blob-store.js`: IndexedDB blob persistence plus memory test adapter.
+- `src/api-client.js`: server-authoritative Phase 2B/2C protocol client.
+- `src/controller.js`: startup recovery, next-job acquisition, generation/capture/upload orchestration.
+- `src/heartbeat-manager.js`: 60-second heartbeat plumbing for 300-second leases.
+- `src/reconciliation-manager.js`: reconcile-before-retry recovery and terminal receipt handling.
+- `src/upload-worker-pool.js`: upload concurrency of two with real byte progress fields.
+- `src/backpressure.js`: captured-asset and captured-byte acquisition guard.
+- `src/provider-adapter.js`: provider lane lock.
+- `src/mock-provider.js`: deterministic mock provider only; not a ChatGPT implementation.
+- `src/messages.js`: duplicate-safe runtime message protocol.
+
+Concurrency constants:
+
+- `PROVIDER_GENERATION_CONCURRENCY=1`
+- `IMAGE_CAPTURE_CONCURRENCY=1`
+- `UPLOAD_CONCURRENCY=2`
+- `MAX_PENDING_CAPTURED_ASSETS=4`
+- `MAX_PENDING_CAPTURED_BYTES=20971520`
+
+Recovery behavior:
+
+- service-worker/browser restart loads durable state, reconciles local jobs with the server, and only then resumes uploads
+- captured blobs survive restart through the blob store
+- lost upload responses recover through server receipt reconciliation
+- attachment-confirmed reconciliation clears stale upload queue entries and removes local blobs
+- missing blobs move the local job to a recovery-safe state instead of regenerating blindly
+- superseded and terminal server states stop local work
+- offline upload failures keep captured blobs for later online recovery
+
+Provider scope:
+
+- `CHATGPT_PROVIDER_IMPLEMENTED=NO`
+- `MOCK_PROVIDER_ONLY=YES`
+- no ChatGPT DOM selector, tab automation, credential, or host permission exists in Phase 3
+- generation progress remains indeterminate; the extension only records real upload byte progress
+
+Phase 3 verification:
+
+- MV3 manifest and version constants pass.
+- storage initialization and no-job handling pass.
+- job acquisition through mock generation/capture/upload/attachment pass.
+- heartbeat success and lease-loss handling pass.
+- protocol mismatch and auth-required handling pass.
+- restart and IndexedDB-style blob persistence pass.
+- missing blob recovery pass.
+- two upload workers and parallel pipeline pass.
+- same-upload replay and lost-response recovery pass.
+- backpressure threshold and clearing pass.
+- duplicate message and stale revision handling pass.
+- superseded/terminal stop and offline/online recovery pass.
+- multi-lane restart pass.
+- source scan confirms no hardcoded device/model secret, no ChatGPT provider, and no fake generation percentage.

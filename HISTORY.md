@@ -60,6 +60,21 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * `AUTO_PUBLISH=OFF`
 * `READY_FOR_PHASE_3_MV3_EXTENSION_CORE=YES`
 
+### LokaMedia Phase 3 MV3 Durable Extension Core 2026-09-15
+
+* **Scope:** local Chrome MV3 extension core only; no production deploy, no remote migration, no production D1/R2/article mutation, no ChatGPT/provider connection, and no model calls.
+* **Extension root:** added loadable unpacked extension at `extensions/lokamedia` with MV3 manifest, module service worker, popup/status UI, and README.
+* **Versions:** `EXTENSION_VERSION=0.1.0`, `LOKAMEDIA_PROTOCOL_VERSION=1`, and `STORAGE_SCHEMA_VERSION=1`.
+* **Permissions:** uses only `storage` and `alarms`, with host permissions limited to localhost and the RancangLoka host; no ChatGPT/OpenAI host permission is requested.
+* **Durability:** small checkpoints are stored in `chrome.storage.local`; captured binaries are stored in IndexedDB; no large Base64/localStorage blob path was introduced.
+* **Core workers:** added API client, scheduler/controller, heartbeat manager, reconciliation manager, upload worker pool, backpressure controller, message protocol, provider lane lock, and deterministic mock provider.
+* **Concurrency:** provider generation is locked to 1, image capture to 1, upload workers to 2, and captured-asset backpressure to 4 assets / 20 MiB.
+* **Recovery:** startup reconciles before retry, resumes captured uploads, handles lost upload responses through server receipts, clears stale queue entries after attachment confirmation, preserves blobs across restart, and stops superseded/terminal jobs.
+* **Provider boundary:** ChatGPT automation remains intentionally unimplemented; Phase 3 includes a mock provider only and does not infer fake generation percentages.
+* **Tests:** added `scripts/test-lokamedia-phase3-extension.js` covering startup/no-job, acquisition, heartbeat/loss, lease loss, protocol/auth failures, restart persistence, blob missing recovery, two upload workers, upload replay, lost response recovery, backpressure, duplicate messages, stale revisions, terminal/superseded state, offline/online recovery, parallel pipeline, and multi-lane restart.
+* `AUTO_PUBLISH=OFF`
+* `READY_FOR_PHASE_4_CHATGPT_PROVIDER_ADAPTER=YES`
+
 ---
 
 ### Masalah 2026-09-13: Standar Mobile Responsive Artikel Publik
