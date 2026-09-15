@@ -17,6 +17,33 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 2A Durable Job Foundation 2026-09-14
+
+* **Scope:** local schema/service/test implementation only; no production deploy, no remote D1 migration, no R2 mutation, and no production article mutation.
+* **Migration:** `db/migrations/0013_lokamedia_durable_jobs.sql`.
+* **Model:** `media_jobs.status` is the single canonical job lifecycle state.
+* **Server fields:** added durable readiness, priority, sequence, prompt version/hash, lease, heartbeat, retry/attempt, idempotency, submitted/completed, revision, and supersession fields.
+* **Active job guard:** one active job per `article_id + slot_key`, enforced by partial unique index plus service guard; terminal historical jobs can coexist.
+* **Receipts/events:** added `media_job_receipts` and `media_job_events` foundations with safe payload handling and idempotency support.
+* **Service primitives:** added media requirement creation, active-slot checks, canonical transitions, supersession, receipts, and event timeline helpers.
+* `AUTO_PUBLISH=OFF`
+* `READY_FOR_PHASE_2B=YES`
+
+### LokaMedia Phase 2B Server Control Plane 2026-09-14
+
+* **Scope:** local server scheduler/leasing/reconciliation implementation only; no production deploy, no remote D1 migration, no R2 mutation, no production article mutation, no extension/ChatGPT/provider automation.
+* **Protocol:** `LOKAMEDIA_PROTOCOL_VERSION=1`.
+* **Endpoints:** added next-job lease, heartbeat, reconcile, controlled release, progress event, and receipt lookup internal APIs under `/api/internal/v1/media/jobs`.
+* **Scheduler:** server-authoritative deterministic eligibility and fairness; priority first, then featured/pass fairness across articles, then required-for-readiness, sequence, created time, and job id.
+* **Lease model:** compare-and-swap acquisition using job revision; 300-second lease; heartbeat extends lease without incrementing attempt; expired leases recover to `RECOVERING`.
+* **Retry/release:** controlled release intents only; bounded retry policy with safe error codes and no infinite retries.
+* **Reconciliation:** read-only authoritative status response with latest receipt, attachment confirmation, lease relation, and bounded recommended action; extension must reconcile before retrying side effects.
+* **Security:** media device scope remains unable to publish, delete/edit articles arbitrarily, mutate settings, deploy, or choose arbitrary R2 paths.
+* `AUTO_PUBLISH=OFF`
+* `READY_FOR_PHASE_2C=YES`
+
+---
+
 ### Masalah 2026-09-13: Standar Mobile Responsive Artikel Publik
 * **Gejala:** Dibutuhkan standar mobile yang ketat untuk halaman artikel RancangLoka, dengan referensi utama iPhone 11 `414 x 896`, minimum `360 x 800`, gutter kiri/kanan setara, tanpa horizontal overflow, dan alignment konsisten untuk cover, body, references, related articles, serta footer.
 * **Penyebab:** Halaman artikel publik memakai beberapa container dan breakpoint berbeda, sehingga perlu token grid mobile tunggal untuk menghindari nested-padding asymmetry dan elemen yang berpotensi melewati parent pada layar kecil.
