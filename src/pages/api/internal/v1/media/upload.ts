@@ -106,6 +106,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let caption: string | undefined;
   let clientSuppliedKey: string | undefined;
   let jobId: string | undefined;
+  let slotKey: string | undefined;
+  let sourceType: string | undefined;
+  let protocolVersion: number | undefined;
+  let expectedJobRevision: number | undefined;
+  let sequence: number | undefined;
+  let promptVersion: number | undefined;
+  let promptHash: string | undefined;
+  let idempotencyKey: string | undefined;
+  let clientSha256: string | undefined;
   let imageBuffer: ArrayBuffer;
 
   const contentType = request.headers.get('content-type') || '';
@@ -142,6 +151,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
       const rawJobId = formData.get('job_id');
       if (rawJobId) jobId = String(rawJobId).trim();
+      slotKey = String(formData.get('slot_key') || '').trim() || undefined;
+      sourceType = String(formData.get('source_type') || '').trim() || undefined;
+      const rawProtocolVersion = formData.get('protocol_version');
+      if (rawProtocolVersion) protocolVersion = Number(rawProtocolVersion);
+      const rawRevision = formData.get('expected_job_revision');
+      if (rawRevision) expectedJobRevision = Number(rawRevision);
+      const rawSequence = formData.get('sequence');
+      if (rawSequence) sequence = Number(rawSequence);
+      const rawPromptVersion = formData.get('prompt_version');
+      if (rawPromptVersion) promptVersion = Number(rawPromptVersion);
+      promptHash = String(formData.get('prompt_hash') || '').trim() || undefined;
+      idempotencyKey = String(formData.get('idempotency_key') || '').trim() || undefined;
+      clientSha256 = String(formData.get('client_sha256') || '').trim() || undefined;
 
       imageBuffer = await file.arrayBuffer();
     } else {
@@ -166,6 +188,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
       clientSuppliedKey = url.searchParams.get('storage_key') || url.searchParams.get('key') || undefined;
       const rawJobId = url.searchParams.get('job_id');
       if (rawJobId) jobId = rawJobId.trim();
+      slotKey = url.searchParams.get('slot_key') || undefined;
+      sourceType = url.searchParams.get('source_type') || undefined;
+      const rawProtocolVersion = url.searchParams.get('protocol_version');
+      if (rawProtocolVersion) protocolVersion = Number(rawProtocolVersion);
+      const rawRevision = url.searchParams.get('expected_job_revision');
+      if (rawRevision) expectedJobRevision = Number(rawRevision);
+      const rawSequence = url.searchParams.get('sequence');
+      if (rawSequence) sequence = Number(rawSequence);
+      const rawPromptVersion = url.searchParams.get('prompt_version');
+      if (rawPromptVersion) promptVersion = Number(rawPromptVersion);
+      promptHash = url.searchParams.get('prompt_hash') || undefined;
+      idempotencyKey = url.searchParams.get('idempotency_key') || undefined;
+      clientSha256 = url.searchParams.get('client_sha256') || undefined;
 
       imageBuffer = await request.arrayBuffer();
     }
@@ -184,17 +219,29 @@ export const POST: APIRoute = async ({ request, locals }) => {
       {
         articleId,
         role,
+        slotKey,
+        sequence,
         imageBuffer,
         altText,
         caption,
-        clientSuppliedKey
+        clientSuppliedKey,
+        sourceType,
+        protocolVersion,
+        jobId,
+        expectedJobRevision,
+        promptVersion,
+        promptHash,
+        idempotencyKey,
+        clientSha256,
+        deviceId: auth.deviceId || null
       },
       db,
       bucket
     );
 
-    // If a media job_id was provided, update the job status to canonical COMPLETE.
-    if (jobId && db) {
+    // Legacy MEDIA-1 compatibility: old clients supplied only job_id. Phase 2C
+    // LokaMedia Extension uploads complete through processMediaUpload receipts.
+    if (jobId && db && sourceType !== 'lokamedia_extension') {
       try {
         await db
           .prepare("UPDATE media_jobs SET status = 'COMPLETE', completed_at = CURRENT_TIMESTAMP, job_revision = job_revision + 1, updated_at = CURRENT_TIMESTAMP WHERE job_id = ?")

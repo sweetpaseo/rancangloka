@@ -8,6 +8,7 @@ import SocialShareBar from '../components/SocialShareBar.astro';
 import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
 import { sanitizeArticleHtml } from '../lib/article/renderer.ts';
+import { renderMediaSlotAnchors } from '../lib/media/renderer.ts';
 
 const { slug } = Astro.params;
 const db = await getDb(Astro.locals);
@@ -43,7 +44,7 @@ if (article) {
   ]);
 
   relatedArticles = fetchedRelated;
-  const safeArticleHtml = sanitizeArticleHtml(article.content_html);
+  const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(article.content_html));
   toc = extractTableOfContents(safeArticleHtml);
   processedHtml = processArticleContent(
     safeArticleHtml,

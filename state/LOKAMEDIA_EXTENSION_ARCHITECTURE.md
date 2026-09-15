@@ -720,3 +720,113 @@ Phase 2B verification:
 - lease race tests pass for 2 workers / 1 job, 10 workers / 1 job, and 10 workers / many jobs.
 - heartbeat, lease expiry, controlled release, retry, reconciliation, receipt lookup, stale-client, progress event, and no-job tests pass.
 - Phase 2A tests still pass.
+
+## Phase 2C Implemented Server Media Pipeline Foundation
+
+Implemented locally in `lokamedia-phase-2ab-checkpoint` only. No remote migration, production D1 write, production R2 write, production article mutation, deployment, Chrome extension work, ChatGPT connection, or provider automation was performed.
+
+Canonical upload endpoint:
+
+- `POST /api/internal/v1/media/upload`
+- No parallel upload system was introduced.
+- Extension transport remains binary/multipart or direct binary body. Large Base64 JSON upload is not the canonical protocol.
+
+Phase 2C upload contract for `source_type=lokamedia_extension`:
+
+- `protocol_version`
+- `job_id`
+- `expected_job_revision`
+- `article_id`
+- `slot_key`
+- `role`
+- `sequence`
+- `prompt_version`
+- `prompt_hash`
+- `idempotency_key`
+- `client_sha256`
+- `alt_text`
+- binary file/body
+
+Server authority:
+
+- Client values are assertions only.
+- The server loads canonical `media_jobs` and verifies article, slot, role, sequence, prompt version/hash, terminal state, stale revision, and lease ownership where present.
+- Wrong article, wrong slot, wrong prompt hash/version, stale revision, cancelled job, superseded job, and terminal job fail closed.
+- Server computes SHA-256 from received binary and rejects client SHA mismatch.
+- Storage key remains server-derived: `media/images/<server_sha256>.<ext>`.
+- Client-supplied R2/storage keys remain blocked.
+
+Upload side effects:
+
+1. Validate protocol/job/article/slot contract.
+2. Validate image magic bytes, byte size, MIME, dimensions, and decodability from binary.
+3. Compute server SHA-256.
+4. Reuse existing `media_assets` by SHA where already validated.
+5. Write R2 only when no validated asset exists.
+6. Insert/reuse `media_assets`.
+7. Attach the asset to `article_media` for the canonical `article_id + slot_key`.
+8. Preserve one active winning attachment per slot.
+9. Preserve `articles.status`.
+10. Mirror featured slot to legacy `articles.featured_image` and `articles.image_alt` for existing frontend compatibility.
+11. Persist `media_job_receipts`.
+12. Complete the job only after `ATTACHMENT_CONFIRMED`.
+
+Receipts:
+
+- `UPLOAD_RECEIVED`
+- `ASSET_EXISTS`
+- `ATTACHMENT_CONFIRMED`
+- existing receipt types remain supported: `UPLOAD_ACCEPTED`, `REJECTED`, `RETRYABLE_ERROR`, `TERMINAL_ERROR`.
+
+Idempotency:
+
+- Canonical replay key is `job_id + idempotency_key`.
+- A completed replay returns the existing authoritative `ATTACHMENT_CONFIRMED` receipt result.
+- Lost response recovery is handled by `GET /api/internal/v1/media/jobs/[job_id]/reconcile`; attachment confirmation can be discovered without another R2 write.
+
+Slot attachment:
+
+- Canonical editorial identity is `article_id + slot_key`.
+- New migration `db/migrations/0014_lokamedia_phase2c_slot_attachment.sql` adds a partial unique active-slot guard on `article_media(article_id, slot_key) WHERE is_active = 1`.
+- Historical inactive bindings can remain.
+
+Readiness:
+
+- Articles with durable media requirements use multi-slot readiness.
+- Required slots need active `article_media` joined to `media_assets.status='VALIDATED'`.
+- `QUEUED` and unsatisfied required jobs map to `WAITING_MEDIA`.
+- active generation/capture/upload/attach states map to `MEDIA_IN_PROGRESS`.
+- `AUTH_REQUIRED`, `PROVIDER_BLOCKED`, `USER_ACTION_REQUIRED`, and `FAILED_TERMINAL` for required media map to `MEDIA_NEEDS_ATTENTION`.
+- Optional media does not block `READY_FOR_REVIEW`.
+- Articles without durable media requirements retain legacy featured-image readiness behavior.
+
+Renderer:
+
+- Public article rendering supports `{{media:<slot_key>}}`.
+- Slot keys must match lowercase canonical safe format.
+- Resolved slots render safe figure/image markup from active `article_media` + validated `media_assets`.
+- Unresolved or invalid slots render no broken image markup.
+- Articles without media anchors render through the legacy path.
+
+Concurrency:
+
+- There is no global upload lock.
+- Independent job uploads can proceed while another job remains in generation state.
+- Same operation replay is governed by `job_id + idempotency_key` and active-slot guards.
+
+Progress:
+
+- Existing `media_job_events` remains the durable progress foundation.
+- Upload progress payloads validate byte and percentage bounds and enforce payload-size limits.
+- Canonical state remains `media_jobs.status`; no competing `upload_state`, `provider_state`, or `capture_state` was introduced.
+
+Phase 2C verification:
+
+- Phase 2A tests pass.
+- Phase 2B tests pass.
+- existing LokaMedia tests pass.
+- new Phase 2C upload/readiness/renderer tests pass.
+- publication readiness and safety tests pass.
+- relevant Article tests pass.
+- TypeScript `--noEmit` passes.
+- Astro production build passes.

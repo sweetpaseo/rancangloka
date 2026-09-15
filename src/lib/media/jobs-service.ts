@@ -356,6 +356,21 @@ function safeJson(payload?: Record<string, any> | null): string | null {
   return JSON.stringify(scrubbed);
 }
 
+function validateProgressPayload(eventType: string, payload?: Record<string, any> | null): void {
+  if (!payload) return;
+  const jsonLength = JSON.stringify(payload).length;
+  if (jsonLength > 4096) throw new Error('PAYLOAD_TOO_LARGE');
+  if (eventType === 'UPLOAD_PROGRESS' || eventType === 'UPLOAD_STARTED' || eventType === 'UPLOAD_RECEIVED') {
+    const sent = payload.bytes_sent;
+    const total = payload.bytes_total;
+    const pct = payload.percentage;
+    if (sent !== undefined && (!Number.isFinite(Number(sent)) || Number(sent) < 0)) throw new Error('INVALID_PROGRESS_BYTES');
+    if (total !== undefined && (!Number.isFinite(Number(total)) || Number(total) < 0)) throw new Error('INVALID_PROGRESS_BYTES');
+    if (sent !== undefined && total !== undefined && Number(sent) > Number(total)) throw new Error('INVALID_PROGRESS_RANGE');
+    if (pct !== undefined && (!Number.isFinite(Number(pct)) || Number(pct) < 0 || Number(pct) > 100)) throw new Error('INVALID_PROGRESS_PERCENTAGE');
+  }
+}
+
 function selectColumns(): string {
   return `
     job_id, article_id, article_slug, article_title,
@@ -668,6 +683,7 @@ export async function getReceiptByIdempotencyKey(db: any, jobId: string, idempot
 
 export async function appendMediaJobEvent(db: any, params: MediaJobEventParams): Promise<any> {
   if (!EVENT_TYPES.has(params.event_type)) throw new Error(`event_type tidak valid: '${params.event_type}'`);
+  validateProgressPayload(params.event_type, params.safe_payload);
   const eventId = params.event_id || generateId('mje');
   const attempt = params.attempt || 0;
   await db
@@ -1031,7 +1047,6 @@ export async function appendLeasedProgressEvent(
     throw new Error('JOB_REVISION_CONFLICT');
   }
   const payloadJson = safeJson(params.safe_payload);
-  if (payloadJson && payloadJson.length > 4096) throw new Error('PAYLOAD_TOO_LARGE');
   return appendMediaJobEvent(db, params);
 }
 
@@ -1075,6 +1090,7 @@ export async function reconcileMediaJob(db: any, jobId: string, requesterDeviceI
 
   const leaseActive = Boolean(job.lease_owner && parseTime(job.lease_expires_at) > now.getTime());
   const attachmentConfirmed = Boolean(activeAttachment || latestReceipt?.receipt_type === 'ATTACHMENT_CONFIRMED');
+  const baseRecommendedAction = getRecommendedAction(job, requesterDeviceId, now);
   return {
     protocol_version: LOKAMEDIA_PROTOCOL_VERSION,
     job_id: job.job_id,
@@ -1097,7 +1113,7 @@ export async function reconcileMediaJob(db: any, jobId: string, requesterDeviceI
     last_error_code: job.last_error_code,
     last_error_message_safe: job.last_error_message_safe,
     completed_at: job.completed_at,
-    recommended_action: getRecommendedAction(job, requesterDeviceId, now)
+    recommended_action: baseRecommendedAction === 'STOP' ? 'STOP' : (attachmentConfirmed ? 'COMPLETE' : baseRecommendedAction)
   };
 }
 

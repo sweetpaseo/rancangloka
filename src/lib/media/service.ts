@@ -28,6 +28,8 @@ export const STATUS_REJECTED = 'REJECTED';
 export const STATUS_FAILED = 'FAILED';
 
 export const READINESS_WAITING_MEDIA = 'WAITING_MEDIA';
+export const READINESS_MEDIA_IN_PROGRESS = 'MEDIA_IN_PROGRESS';
+export const READINESS_MEDIA_NEEDS_ATTENTION = 'MEDIA_NEEDS_ATTENTION';
 export const READINESS_READY_FOR_REVIEW = 'READY_FOR_REVIEW';
 
 export const MAX_MEDIA_BYTES = 5 * 1024 * 1024; // 5 MiB strict ceiling
@@ -54,10 +56,22 @@ export interface ImageMetadata {
 export interface MediaUploadParams {
   articleId: number;
   role: 'featured' | 'inline';
+  slotKey?: string;
+  sequence?: number;
   imageBuffer: ArrayBuffer;
   altText: string;
   caption?: string;
   clientSuppliedKey?: string;
+  sourceType?: string;
+  protocolVersion?: number;
+  jobId?: string;
+  expectedJobRevision?: number;
+  promptVersion?: number;
+  promptHash?: string;
+  idempotencyKey?: string;
+  clientSha256?: string;
+  deviceId?: string | null;
+  failureInjectionPoint?: string;
 }
 
 export interface MediaUploadResult {
@@ -75,6 +89,10 @@ export interface MediaUploadResult {
   altText: string;
   deduplicated: boolean;
   editorialReadiness: string;
+  slotKey: string;
+  articleMediaId: number | null;
+  receiptId?: string;
+  receiptType?: string;
 }
 
 export class MediaRuntimeError extends Error {
@@ -86,6 +104,63 @@ export class MediaRuntimeError extends Error {
     this.name = 'MediaRuntimeError';
     this.code = code;
     this.statusCode = statusCode;
+  }
+}
+
+const SAFE_SLOT_KEY_PATTERN = /^[a-z][a-z0-9_]{1,63}$/;
+
+const MEDIA_JOB_TERMINAL_STATES = new Set(['COMPLETE', 'FAILED_TERMINAL', 'SUPERSEDED', 'CANCELLED']);
+const MEDIA_JOB_NEEDS_ATTENTION_STATES = new Set(['AUTH_REQUIRED', 'PROVIDER_BLOCKED', 'USER_ACTION_REQUIRED', 'FAILED_TERMINAL']);
+const MEDIA_JOB_IN_PROGRESS_STATES = new Set([
+  'LEASED',
+  'PROMPT_PREPARING',
+  'PROMPT_READY',
+  'PROMPT_SENDING',
+  'PROMPT_ACKNOWLEDGED',
+  'GENERATING',
+  'IMAGE_DETECTED',
+  'CAPTURING',
+  'CAPTURED',
+  'UPLOAD_QUEUED',
+  'UPLOADING',
+  'UPLOAD_RECEIVED',
+  'ATTACHING',
+  'ATTACHMENT_CONFIRMED',
+  'RECOVERING'
+]);
+
+function assertSafeSlotKey(slotKey: string): void {
+  if (!SAFE_SLOT_KEY_PATTERN.test(slotKey)) {
+    throw new MediaRuntimeError('INVALID_SLOT_KEY', 'slot_key tidak valid.', 400);
+  }
+}
+
+function getResultFromReceipt(receipt: any, articleId: number, role: 'featured' | 'inline', slotKey: string): MediaUploadResult | null {
+  if (!receipt || receipt.receipt_type !== 'ATTACHMENT_CONFIRMED' || !receipt.safe_payload_json) return null;
+  try {
+    const payload = JSON.parse(receipt.safe_payload_json);
+    return {
+      status: 'success',
+      assetId: String(receipt.asset_id || payload.assetId),
+      articleId,
+      role,
+      publicUrl: String(payload.publicUrl || ''),
+      storageKey: String(payload.storageKey || ''),
+      mimeType: String(payload.mimeType || ''),
+      width: Number(payload.width || 0),
+      height: Number(payload.height || 0),
+      fileSize: Number(payload.fileSize || 0),
+      sha256: String(receipt.sha256 || payload.sha256 || ''),
+      altText: String(payload.altText || ''),
+      deduplicated: Boolean(payload.deduplicated),
+      editorialReadiness: String(payload.editorialReadiness || READINESS_WAITING_MEDIA),
+      slotKey,
+      articleMediaId: receipt.article_media_id ? Number(receipt.article_media_id) : null,
+      receiptId: receipt.receipt_id,
+      receiptType: receipt.receipt_type
+    };
+  } catch (_) {
+    return null;
   }
 }
 
@@ -317,6 +392,54 @@ function parseWebpDimensions(bytes: Uint8Array): { width: number; height: number
  * 4. Non-empty alt text
  */
 export async function calculateArticleReadiness(db: any, articleId: number): Promise<string> {
+  let durableJobs: any[] = [];
+  try {
+    const { results } = await db
+      .prepare(
+        `
+        SELECT job_id, slot_key, status, required_for_readiness
+        FROM media_jobs
+        WHERE article_id = ?
+          AND status <> 'SUPERSEDED'
+        ORDER BY sequence ASC, created_at ASC
+      `
+      )
+      .bind(articleId)
+      .all();
+    durableJobs = results || [];
+  } catch (_) {
+    durableJobs = [];
+  }
+
+  if (durableJobs.length > 0) {
+    let hasInProgress = false;
+    for (const job of durableJobs) {
+      if (Number(job.required_for_readiness) !== 1) continue;
+      const status = String(job.status);
+      if (MEDIA_JOB_NEEDS_ATTENTION_STATES.has(status)) return READINESS_MEDIA_NEEDS_ATTENTION;
+      const attached = await db
+        .prepare(
+          `
+          SELECT am.id
+          FROM article_media am
+          JOIN media_assets ma ON am.asset_id = ma.asset_id
+          WHERE am.article_id = ?
+            AND am.slot_key = ?
+            AND am.is_active = 1
+            AND ma.status = 'VALIDATED'
+          LIMIT 1
+        `
+        )
+        .bind(articleId, job.slot_key)
+        .first();
+      if (!attached) {
+        if (MEDIA_JOB_IN_PROGRESS_STATES.has(status)) hasInProgress = true;
+        else return READINESS_WAITING_MEDIA;
+      }
+    }
+    return hasInProgress ? READINESS_MEDIA_IN_PROGRESS : READINESS_READY_FOR_REVIEW;
+  }
+
   const row = await db
     .prepare(
       `
@@ -359,6 +482,10 @@ export async function processMediaUpload(
     throw new MediaRuntimeError('CLIENT_KEY_FORBIDDEN', 'Client cannot choose or supply storage_key', 400);
   }
 
+  const sourceType = params.sourceType || SOURCE_TYPE_MANUAL_UPLOAD;
+  const slotKey = params.slotKey || (params.role === ROLE_FEATURED ? 'featured' : 'inline');
+  assertSafeSlotKey(slotKey);
+
   // 2. Draft Article Validation
   const article = await db.prepare('SELECT id, slug, status, content_md, content_html, content_hash FROM articles WHERE id = ?').bind(params.articleId).first();
   if (!article) {
@@ -372,9 +499,54 @@ export async function processMediaUpload(
     );
   }
 
+  let job: any = null;
+  if (sourceType === SOURCE_TYPE_LOKAMEDIA_EXTENSION) {
+    if (Number(params.protocolVersion) !== 1) {
+      throw new MediaRuntimeError('PROTOCOL_VERSION_UNSUPPORTED', 'Versi protokol LokaMedia tidak didukung.', 426);
+    }
+    if (!params.jobId) throw new MediaRuntimeError('JOB_ID_REQUIRED', 'job_id wajib untuk upload LokaMedia Extension.', 400);
+    if (!params.idempotencyKey) throw new MediaRuntimeError('IDEMPOTENCY_KEY_REQUIRED', 'idempotency_key wajib untuk upload LokaMedia Extension.', 400);
+
+    const priorReceipt = await db
+      .prepare(
+        `
+        SELECT receipt_id, job_id, idempotency_key, receipt_type, asset_id,
+               article_media_id, sha256, safe_payload_json, created_at
+        FROM media_job_receipts
+        WHERE job_id = ? AND idempotency_key = ? AND receipt_type = 'ATTACHMENT_CONFIRMED'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `
+      )
+      .bind(params.jobId, params.idempotencyKey)
+      .first();
+    const replay = getResultFromReceipt(priorReceipt, params.articleId, params.role, slotKey);
+    if (replay) return replay;
+
+    job = await db.prepare('SELECT * FROM media_jobs WHERE job_id = ? LIMIT 1').bind(params.jobId).first();
+    if (!job) throw new MediaRuntimeError('JOB_NOT_FOUND', `Media job ${params.jobId} tidak ditemukan.`, 404);
+    if (Number(job.article_id) !== Number(params.articleId)) throw new MediaRuntimeError('JOB_ARTICLE_MISMATCH', 'job_id tidak cocok dengan article_id.', 409);
+    if (job.slot_key !== slotKey) throw new MediaRuntimeError('JOB_SLOT_MISMATCH', 'job_id tidak cocok dengan slot_key.', 409);
+    if (job.role !== params.role) throw new MediaRuntimeError('JOB_ROLE_MISMATCH', 'job_id tidak cocok dengan role.', 409);
+    if (params.sequence !== undefined && Number(job.sequence) !== Number(params.sequence)) throw new MediaRuntimeError('JOB_SEQUENCE_MISMATCH', 'job_id tidak cocok dengan sequence.', 409);
+    if (params.promptVersion !== undefined && Number(job.prompt_version) !== Number(params.promptVersion)) throw new MediaRuntimeError('PROMPT_VERSION_MISMATCH', 'prompt_version tidak cocok.', 409);
+    if (params.promptHash && job.prompt_hash !== params.promptHash) throw new MediaRuntimeError('PROMPT_HASH_MISMATCH', 'prompt_hash tidak cocok.', 409);
+    if (params.expectedJobRevision !== undefined && Number(job.job_revision) !== Number(params.expectedJobRevision)) throw new MediaRuntimeError('JOB_REVISION_CONFLICT', 'job_revision sudah berubah.', 409);
+    if (job.status === 'CANCELLED') throw new MediaRuntimeError('JOB_CANCELLED', 'Media job sudah dibatalkan.', 409);
+    if (job.status === 'SUPERSEDED') throw new MediaRuntimeError('JOB_SUPERSEDED', 'Media job sudah digantikan.', 409);
+    if (MEDIA_JOB_TERMINAL_STATES.has(job.status)) throw new MediaRuntimeError('JOB_TERMINAL', 'Media job sudah terminal.', 409);
+    if (job.lease_owner && params.deviceId && job.lease_owner !== params.deviceId) throw new MediaRuntimeError('LEASE_NOT_OWNER', 'Perangkat bukan pemilik lease.', 403);
+  }
+
+  if (params.failureInjectionPoint === 'AFTER_VALIDATION') throw new MediaRuntimeError('INJECTED_AFTER_VALIDATION', 'Injected failure after validation.', 500);
+
   // 3. Binary & Dimension Inspection
   const meta = inspectImageBinary(params.imageBuffer);
   meta.sha256 = await computeBufferSha256(params.imageBuffer);
+  if (params.clientSha256 && params.clientSha256.toLowerCase() !== meta.sha256) {
+    throw new MediaRuntimeError('CLIENT_SHA256_MISMATCH', 'client_sha256 tidak cocok dengan SHA-256 server.', 422);
+  }
+  if (params.failureInjectionPoint === 'AFTER_SHA') throw new MediaRuntimeError('INJECTED_AFTER_SHA', 'Injected failure after SHA.', 500);
 
   const storageKey = `media/images/${meta.sha256}.${meta.extension}`;
   const publicUrl = `/${storageKey}`;
@@ -426,7 +598,7 @@ export async function processMediaUpload(
       .bind(
         assetId,
         MEDIA_TYPE_IMAGE,
-        SOURCE_TYPE_MANUAL_UPLOAD,
+        sourceType,
         storageKey,
         publicUrl,
         meta.mimeType,
@@ -437,28 +609,57 @@ export async function processMediaUpload(
         params.altText,
         STATUS_VALIDATED
       )
-      .run();
+        .run();
+  }
+  if (params.failureInjectionPoint === 'AFTER_MEDIA_ASSET') throw new MediaRuntimeError('INJECTED_AFTER_MEDIA_ASSET', 'Injected failure after media_assets.', 500);
+
+  if (sourceType === SOURCE_TYPE_LOKAMEDIA_EXTENSION && params.jobId && params.idempotencyKey) {
+    try {
+      await db
+        .prepare("UPDATE media_jobs SET status = 'UPLOAD_RECEIVED', idempotency_key = ?, updated_at = CURRENT_TIMESTAMP WHERE job_id = ?")
+        .bind(params.idempotencyKey, params.jobId)
+        .run();
+      await db
+        .prepare(
+          `
+          INSERT OR IGNORE INTO media_job_receipts (
+            receipt_id, job_id, idempotency_key, receipt_type, asset_id, article_media_id, sha256, safe_payload_json
+          ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?)
+        `
+        )
+        .bind(`mjr_${params.jobId}_${params.idempotencyKey}_received`, params.jobId, params.idempotencyKey, deduplicated ? 'ASSET_EXISTS' : 'UPLOAD_RECEIVED', assetId, meta.sha256, JSON.stringify({ storageKey, publicUrl, deduplicated }))
+        .run();
+    } catch (_) {}
   }
 
   // 5. Relational Binding & Replacement
   const cleanAlt = params.altText.trim();
 
   // If identical active binding already exists on this article, return idempotently
-  const existingActiveBinding = await db
-    .prepare('SELECT id FROM article_media WHERE article_id = ? AND asset_id = ? AND role = ? AND is_active = 1')
-    .bind(params.articleId, assetId, params.role)
+  let articleMediaId: number | null = null;
+  let existingActiveBinding = await db
+    .prepare('SELECT id, asset_id FROM article_media WHERE article_id = ? AND slot_key = ? AND is_active = 1')
+    .bind(params.articleId, slotKey)
     .first();
-
   if (!existingActiveBinding) {
+    existingActiveBinding = await db
+      .prepare('SELECT id, asset_id FROM article_media WHERE article_id = ? AND asset_id = ? AND role = ? AND is_active = 1')
+      .bind(params.articleId, assetId, params.role)
+      .first();
+  }
+
+  if (existingActiveBinding && existingActiveBinding.asset_id === assetId) {
+    articleMediaId = Number(existingActiveBinding.id);
+  } else {
     if (params.role === ROLE_FEATURED) {
       // Deactivate previous active featured binding on this article
       await db
-        .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE article_id = ? AND role = ? AND is_active = 1')
-        .bind(params.articleId, ROLE_FEATURED)
+        .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE article_id = ? AND slot_key = ? AND is_active = 1')
+        .bind(params.articleId, slotKey)
         .run();
 
       // Create new active featured binding
-      await db
+      const insertRes = await db
         .prepare(
           `
           INSERT INTO article_media (
@@ -466,8 +667,9 @@ export async function processMediaUpload(
           ) VALUES (?, ?, ?, ?, 1, 0, ?);
         `
         )
-        .bind(params.articleId, assetId, ROLE_FEATURED, 'primary', params.caption || null)
+        .bind(params.articleId, assetId, ROLE_FEATURED, slotKey, params.caption || null)
         .run();
+      articleMediaId = Number(insertRes?.meta?.last_row_id ?? insertRes?.lastInsertRowid ?? 0) || null;
 
       // Update compatibility mirrors on articles table
       // (content_md, content_html, content_hash remain UNTOUCHED; status remains DRAFT)
@@ -478,6 +680,10 @@ export async function processMediaUpload(
     } else {
       // Inline media
       await db
+        .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE article_id = ? AND slot_key = ? AND is_active = 1')
+        .bind(params.articleId, slotKey)
+        .run();
+      const insertRes = await db
         .prepare(
           `
           INSERT INTO article_media (
@@ -485,13 +691,59 @@ export async function processMediaUpload(
           ) VALUES (?, ?, ?, ?, 1, 0, ?);
         `
         )
-        .bind(params.articleId, assetId, ROLE_INLINE, 'inline', params.caption || null)
+        .bind(params.articleId, assetId, ROLE_INLINE, slotKey, params.caption || null)
         .run();
+      articleMediaId = Number(insertRes?.meta?.last_row_id ?? insertRes?.lastInsertRowid ?? 0) || null;
     }
   }
+  if (params.failureInjectionPoint === 'AFTER_ARTICLE_MEDIA') throw new MediaRuntimeError('INJECTED_AFTER_ARTICLE_MEDIA', 'Injected failure after article_media.', 500);
 
   // 6. Evaluate Authoritative Readiness
   const readiness = await calculateArticleReadiness(db, params.articleId);
+  let receiptId: string | undefined;
+  if (sourceType === SOURCE_TYPE_LOKAMEDIA_EXTENSION && params.jobId && params.idempotencyKey) {
+    const payload = {
+      assetId,
+      articleId: params.articleId,
+      role: params.role,
+      slotKey,
+      publicUrl,
+      storageKey,
+      mimeType: meta.mimeType,
+      width: meta.width,
+      height: meta.height,
+      fileSize: meta.fileSize,
+      sha256: meta.sha256,
+      altText: cleanAlt,
+      deduplicated,
+      editorialReadiness: readiness
+    };
+    receiptId = `mjr_${params.jobId}_${params.idempotencyKey}_attached`;
+    await db
+      .prepare(
+        `
+        INSERT OR IGNORE INTO media_job_receipts (
+          receipt_id, job_id, idempotency_key, receipt_type, asset_id, article_media_id, sha256, safe_payload_json
+        ) VALUES (?, ?, ?, 'ATTACHMENT_CONFIRMED', ?, ?, ?, ?)
+      `
+      )
+      .bind(receiptId, params.jobId, params.idempotencyKey, assetId, articleMediaId, meta.sha256, JSON.stringify(payload))
+      .run();
+    if (params.failureInjectionPoint === 'AFTER_RECEIPT') throw new MediaRuntimeError('INJECTED_AFTER_RECEIPT', 'Injected failure after receipt.', 500);
+    await db
+      .prepare(
+        `
+        UPDATE media_jobs
+        SET status = 'COMPLETE',
+            completed_at = CURRENT_TIMESTAMP,
+            job_revision = job_revision + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE job_id = ?
+      `
+      )
+      .bind(params.jobId)
+      .run();
+  }
 
   return {
     status: 'success',
@@ -507,6 +759,10 @@ export async function processMediaUpload(
     sha256: meta.sha256,
     altText: cleanAlt,
     deduplicated,
-    editorialReadiness: readiness
+    editorialReadiness: readiness,
+    slotKey,
+    articleMediaId,
+    receiptId,
+    receiptType: receiptId ? 'ATTACHMENT_CONFIRMED' : undefined
   };
 }

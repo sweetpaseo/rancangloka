@@ -42,6 +42,24 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * `AUTO_PUBLISH=OFF`
 * `READY_FOR_PHASE_2C=YES`
 
+### LokaMedia Phase 2C Server Media Pipeline Foundation 2026-09-15
+
+* **Scope:** local server upload, attachment, readiness, and renderer foundation only; no production deploy, no remote migration, no production D1/R2/article mutation, no Chrome extension, no ChatGPT/provider connection.
+* **Canonical endpoint:** evolved `POST /api/internal/v1/media/upload`; no parallel upload path was introduced.
+* **Upload contract:** `source_type=lokamedia_extension` requires protocol version, job ID, expected job revision, article/slot/role/sequence, prompt version/hash, idempotency key, client SHA, alt text, and binary/multipart payload.
+* **Server authority:** media job, article, slot, role, prompt, revision, and lease ownership are verified server-side; wrong article/slot, stale revision, superseded/cancelled/terminal job, prompt mismatch, arbitrary R2 key, and SHA mismatch fail closed.
+* **Binary pipeline:** server validates image magic bytes, MIME, dimensions, size, and server-computed SHA-256; storage key remains server-derived as `media/images/<sha256>.<ext>`.
+* **Dedupe/idempotency:** existing validated `media_assets` are reused by SHA; `job_id + idempotency_key` replays return the authoritative attachment receipt without duplicate side effects.
+* **Attachment:** `article_media` now has a Phase 2C active-slot guard for one active winning attachment per `article_id + slot_key`; featured uploads still mirror to `articles.featured_image` and `articles.image_alt`.
+* **Receipts/recovery:** uploads persist `UPLOAD_RECEIVED`/`ASSET_EXISTS` and `ATTACHMENT_CONFIRMED` receipts; reconcile reveals lost-response success without another R2 write.
+* **Readiness:** durable media requirements now aggregate multi-slot state into `WAITING_MEDIA`, `MEDIA_IN_PROGRESS`, `MEDIA_NEEDS_ATTENTION`, or `READY_FOR_REVIEW`; optional media does not block readiness and legacy articles keep compatibility behavior.
+* **Renderer:** public article rendering supports safe `{{media:<slot_key>}}` anchors, omitting unresolved slots without broken images.
+* **Concurrency:** independent uploads are supported without a global upload lock; generation and upload can overlap across different jobs.
+* **Verification:** Phase 2A, Phase 2B, existing LokaMedia, Phase 2C upload/readiness/renderer, publication readiness/safety, Article tests, TypeScript typecheck, and Astro build passed locally.
+* **New migration:** `db/migrations/0014_lokamedia_phase2c_slot_attachment.sql`.
+* `AUTO_PUBLISH=OFF`
+* `READY_FOR_PHASE_3_MV3_EXTENSION_CORE=YES`
+
 ---
 
 ### Masalah 2026-09-13: Standar Mobile Responsive Artikel Publik
