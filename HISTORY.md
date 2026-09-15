@@ -75,6 +75,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * `AUTO_PUBLISH=OFF`
 * `READY_FOR_PHASE_4_CHATGPT_PROVIDER_ADAPTER=YES`
 
+### LokaMedia Offline Checkpoint After Phase 3 2026-09-15
+
+* **Checkpoint file:** `state/LOKAMEDIA_PHASE3_OFFLINE_CHECKPOINT.md`.
+* **Canonical worktree:** `C:\Users\Fanto\Desktop\antigravity\rancangloka\lokamedia-phase-2ab-checkpoint`.
+* **Clean checkpoint commit:** `712bc5fdf23ac1e8beeafce8db6202a1c07b44c1` (`feat(lokamedia): add durable MV3 extension core`).
+* **Status:** Phase 3 passed and the worktree was clean before offline handoff.
+* **Safety:** `AUTO_PUBLISH=OFF`, `MODEL_CALLS=0`, `PRODUCTION_MUTATIONS=0`, `DEPLOYMENTS=0`.
+* **Next phase:** Phase 4 ChatGPT provider adapter can start from the committed MV3 core boundary.
+
 ---
 
 ### Masalah 2026-09-13: Standar Mobile Responsive Artikel Publik
