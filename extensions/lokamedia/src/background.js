@@ -15,6 +15,25 @@ let controller = null;
 const chatGptTabs = new ChatGptTabController({ chromeApi: chrome, storage });
 const chatGptHandshake = new ChatGptHandshakeManager({ storage, tabController: chatGptTabs });
 
+async function readOnlyChatGptDiagnostic(tabId) {
+  const message = {
+    id: crypto.randomUUID(),
+    provider: 'chatgpt',
+    type: CHATGPT_MESSAGE_TYPES.DIAGNOSTIC,
+    version: 1
+  };
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (error) {
+    if (!chrome.scripting?.executeScript) throw error;
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['src/providers/chatgpt/content-script.js']
+    });
+    return chrome.tabs.sendMessage(tabId, { ...message, id: crypto.randomUUID() });
+  }
+}
+
 async function ensureController() {
   const state = await storage.readState();
   controller = new LokaMediaController({
@@ -60,19 +79,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await storage.saveConfig(request.config);
       return { ok: true };
     },
-    TICK: async () => ({ ok: true, result: await (await ensureController()).tick() })
-    ,
+    TICK: async () => ({ ok: false, error: 'PHASE_4B_NOT_ARMED' }),
     CHATGPT_PROVIDER_HELLO: async (request) => chatGptHandshake.handle(request, sender),
     CHATGPT_PROVIDER_CAPABILITIES: async (request) => chatGptHandshake.handle(request, sender),
     READ_ONLY_PROVIDER_DIAGNOSTIC: async () => {
       const tab = await chatGptTabs.locateTab();
-      if (!tab.ok) return { ok: true, provider: 'ChatGPT', tab };
-      const capabilities = await chrome.tabs.sendMessage(tab.tab_id, {
-        id: crypto.randomUUID(),
-        provider: 'chatgpt',
-        type: CHATGPT_MESSAGE_TYPES.DIAGNOSTIC,
-        version: 1
-      });
+      if (!tab.ok) return { ok: false, provider: 'ChatGPT', tab, error: tab.status || 'TAB_MISSING', state: await storage.readState() };
+      const capabilities = await readOnlyChatGptDiagnostic(tab.tab_id);
       await storage.update((state) => {
         state.provider.chatgpt.capabilities = capabilities.capabilities;
         state.provider.chatgpt.auth_state = capabilities.capabilities.auth_state;
@@ -81,8 +94,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         state.provider.chatgpt.visible_image_candidates = capabilities.capabilities.image_candidate_count;
         state.provider.chatgpt.provider_lane = state.locks.providerLane ? 'bound' : 'idle';
       });
-      return { ok: true, provider: 'ChatGPT', tab, capabilities };
+      return { ok: true, provider: 'ChatGPT', tab, capabilities, state: await storage.readState() };
     }
-  }).then(sendResponse);
+  }).then(sendResponse).catch((error) => {
+    sendResponse({ ok: false, error: String(error?.message || error || 'SERVICE_WORKER_UNAVAILABLE') });
+  });
   return true;
 });

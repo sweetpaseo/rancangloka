@@ -73,4 +73,16 @@ button {
   border: 1px solid #1f1f1f;
   background: #1f1f1f;
   color: #fff;
+  cursor: pointer;
+}
+
+#popup-status {
+  min-height: 18px;
+  margin: 10px 0 0;
+  color: #4b463f;
+  overflow-wrap: anywhere;
+}
+
+#popup-status[data-state="error"] {
+  color: #9f1d1d;
 }

@@ -1,45 +1,124 @@
-function send(type, payload = {}) {
-  return chrome.runtime.sendMessage({ id: crypto.randomUUID(), type, ...payload });
+import {
+  POPUP_BOOT_FLAGS,
+  normalizeProviderStatus,
+  phase4bNotArmedResponse,
+  validatePopupElements
+} from './popup-core.js';
+
+const boot = new Set([POPUP_BOOT_FLAGS.SCRIPT_LOADED]);
+let bound = false;
+
+function element(selector) {
+  const match = document.querySelector(selector);
+  if (!match) throw new Error(`POPUP_ELEMENT_MISSING:${selector}`);
+  return match;
+}
+
+function setStatus(message, isError = false) {
+  const status = document.querySelector('#popup-status');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.state = isError ? 'error' : 'ok';
+}
+
+function boundedError(error) {
+  const message = String(error?.message || error || 'UNKNOWN_ERROR');
+  if (message.includes('Receiving end does not exist')) return 'CONTENT_SCRIPT_UNAVAILABLE';
+  if (message.includes('Extension context invalidated')) return 'SERVICE_WORKER_UNAVAILABLE';
+  if (message.startsWith('POPUP_ELEMENT_MISSING')) return message;
+  return message.replace(/[^\w:.-]/g, '_').slice(0, 80);
+}
+
+async function send(type, payload = {}, { timeoutMs = 3000 } = {}) {
+  const request = { id: crypto.randomUUID(), type, ...payload };
+  let timeoutId = null;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${type}_TIMEOUT`)), timeoutMs);
+  });
+  try {
+    const response = await Promise.race([chrome.runtime.sendMessage(request), timeout]);
+    if (chrome.runtime.lastError) throw new Error(chrome.runtime.lastError.message);
+    if (!response?.ok && response?.error) throw new Error(response.error);
+    boot.add(POPUP_BOOT_FLAGS.SERVICE_WORKER_CONNECTED);
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function renderState(state) {
+  element('#connection').textContent = state.status.connection;
+  element('#total').textContent = state.counters.totalJobs;
+  element('#active').textContent = state.counters.active;
+  element('#waiting').textContent = state.counters.waiting;
+  element('#complete').textContent = state.counters.complete;
+  element('#server').value = state.config.serverBaseUrl;
+  element('#enabled').checked = state.config.enabled;
+  const provider = normalizeProviderStatus(state.provider?.chatgpt ?? {});
+  element('#provider-tab').textContent = provider.tab;
+  element('#provider-auth').textContent = provider.auth;
+  element('#provider-dom').textContent = provider.dom;
+  element('#provider-composer').textContent = provider.composer;
+  element('#provider-images').textContent = String(provider.images);
+  element('#provider-lane').textContent = provider.lane;
 }
 
 async function refresh() {
   const response = await send('STATUS');
-  const state = response.state;
-  document.querySelector('#connection').textContent = state.status.connection;
-  document.querySelector('#total').textContent = state.counters.totalJobs;
-  document.querySelector('#active').textContent = state.counters.active;
-  document.querySelector('#waiting').textContent = state.counters.waiting;
-  document.querySelector('#complete').textContent = state.counters.complete;
-  document.querySelector('#server').value = state.config.serverBaseUrl;
-  document.querySelector('#enabled').checked = state.config.enabled;
-  const provider = state.provider?.chatgpt ?? {};
-  document.querySelector('#provider-tab').textContent = provider.tab_status ?? 'missing';
-  document.querySelector('#provider-auth').textContent = provider.auth_state ?? 'UNKNOWN';
-  document.querySelector('#provider-dom').textContent = provider.dom_status ?? 'UNKNOWN';
-  document.querySelector('#provider-composer').textContent = provider.composer_status ?? 'unavailable';
-  document.querySelector('#provider-images').textContent = String(provider.visible_image_candidates ?? 0);
-  document.querySelector('#provider-lane').textContent = provider.provider_lane ?? 'idle';
+  renderState(response.state);
+  setStatus(`Ready: ${Array.from(boot).join(', ')}`);
 }
 
-document.querySelector('#save').addEventListener('click', async () => {
+async function saveConfig() {
   await send('SAVE_CONFIG', {
     config: {
-      serverBaseUrl: document.querySelector('#server').value,
-      deviceToken: document.querySelector('#token').value,
-      enabled: document.querySelector('#enabled').checked
+      serverBaseUrl: element('#server').value,
+      deviceToken: element('#token').value,
+      enabled: element('#enabled').checked
     }
   });
   await refresh();
-});
+  setStatus('Saved');
+}
 
-document.querySelector('#tick').addEventListener('click', async () => {
-  await send('TICK');
-  await refresh();
-});
+async function providerCheck() {
+  boot.add(POPUP_BOOT_FLAGS.PROVIDER_CHECK_AVAILABLE);
+  setStatus('Checking provider...');
+  const response = await send('READ_ONLY_PROVIDER_DIAGNOSTIC', {}, { timeoutMs: 5000 });
+  if (response.state) renderState(response.state);
+  else await refresh();
+  setStatus(response.ok ? 'Provider check complete' : boundedError(response.error), !response.ok);
+}
 
-document.querySelector('#diagnostic').addEventListener('click', async () => {
-  await send('READ_ONLY_PROVIDER_DIAGNOSTIC');
-  await refresh();
-});
+async function safeRun() {
+  const response = phase4bNotArmedResponse();
+  setStatus(response.error, true);
+  return response;
+}
 
-void refresh();
+function bindPopup() {
+  if (bound) return;
+  const validation = validatePopupElements(document);
+  if (!validation.ok) throw new Error(`POPUP_DOM_BIND_FAILED:${validation.missing.join(',')}`);
+  element('#enabled').addEventListener('change', () => {
+    setStatus(element('#enabled').checked ? 'Enabled selected; save required' : 'Disabled selected; save required');
+  });
+  element('#save').addEventListener('click', () => {
+    void saveConfig().catch((error) => setStatus(boundedError(error), true));
+  });
+  element('#tick').addEventListener('click', () => {
+    void safeRun();
+  });
+  element('#diagnostic').addEventListener('click', () => {
+    void providerCheck().catch((error) => setStatus(boundedError(error), true));
+  });
+  bound = true;
+  boot.add(POPUP_BOOT_FLAGS.DOM_BOUND);
+}
+
+try {
+  bindPopup();
+  void refresh().catch((error) => setStatus(boundedError(error), true));
+} catch (error) {
+  setStatus(boundedError(error), true);
+}
