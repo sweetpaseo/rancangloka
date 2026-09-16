@@ -167,7 +167,7 @@ function waitingState(patch = {}) {
   });
 }
 
-async function installSidePanel({ failProvider = false, initialState = state() } = {}) {
+async function installSidePanel({ failProvider = false, initialState = state(), diagnosticState = null } = {}) {
   const doc = new FakeDocument(ids);
   const messages = [];
   let currentState = initialState;
@@ -194,7 +194,7 @@ async function installSidePanel({ failProvider = false, initialState = state() }
         }
         if (message.type === 'READ_ONLY_PROVIDER_DIAGNOSTIC') {
           if (failProvider) return { ok: false, error: 'CONTENT_SCRIPT_UNAVAILABLE' };
-          return { ok: true, state: state({ provider: { chatgpt: { ...state().provider.chatgpt, visible_image_candidates: 6 } } }) };
+          return { ok: true, state: diagnosticState ?? state({ provider: { chatgpt: { ...state().provider.chatgpt, visible_image_candidates: 6 } } }) };
         }
         throw new Error(`unexpected message ${message.type}`);
       }
@@ -305,6 +305,31 @@ async function testRunOnceControl() {
   pass('Run Once appears for the waiting Phase 4B job and disables immediately after use');
 }
 
+async function testQueueVisibilityAndRunOnceArming() {
+  const ready = waitingState();
+  const { doc } = await installSidePanel({ initialState: ready, diagnosticState: ready });
+  assert.equal(doc.querySelector('#queue-total').textContent, '1');
+  assert.equal(doc.querySelector('#queue-active').textContent, '0');
+  assert.equal(doc.querySelector('#queue-waiting').textContent, '1');
+  assert.equal(doc.querySelector('#queue-complete').textContent, '0');
+  assert.equal(doc.querySelector('#current-article').textContent, 'LokaMedia Phase 4B Controlled Generation Test');
+  assert.equal(doc.querySelector('#current-slot').textContent, 'featured');
+  assert.equal(doc.querySelector('#current-operation').textContent, 'Waiting');
+  assert.equal(doc.querySelector('#run-once').disabled, false);
+
+  const offline = await installSidePanel({ initialState: waitingState({ status: { ...waitingState().status, connection: 'offline' } }) });
+  assert.equal(offline.doc.querySelector('#run-once').disabled, true);
+
+  const disabled = await installSidePanel({ initialState: waitingState({ config: { ...waitingState().config, enabled: false } }) });
+  assert.equal(disabled.doc.querySelector('#run-once').disabled, true);
+
+  const providerUnavailable = await installSidePanel({
+    initialState: waitingState({ provider: { chatgpt: { ...waitingState().provider.chatgpt, provider_lane: 'bound' } } })
+  });
+  assert.equal(providerUnavailable.doc.querySelector('#run-once').disabled, true);
+  pass('existing queued job is visible and Run Once arms only when local prerequisites are ready');
+}
+
 async function testErrorAndRunGuard() {
   const { doc, messages } = await installSidePanel({ failProvider: true });
   await doc.querySelector('#diagnostic').dispatch('click');
@@ -330,6 +355,7 @@ await testSidePanelInitializesAndRecovers();
 await testEnabledSaveProviderCheck();
 await testConfigDraftSurvivesRefreshAndPersists();
 await testRunOnceControl();
+await testQueueVisibilityAndRunOnceArming();
 await testErrorAndRunGuard();
 await testLayoutHasResponsiveRules();
 

@@ -122,6 +122,10 @@ function renderRunOnce(state, current, provider, server) {
     state.config.enabled &&
     server === 'online' &&
     waitingJob &&
+    provider.tab === 'connected' &&
+    provider.auth === 'ready' &&
+    provider.dom === 'supported' &&
+    provider.composer === 'ready' &&
     provider.lane === 'idle' &&
     state.status?.connection !== 'backpressure';
   button.disabled = consumed || !ready;

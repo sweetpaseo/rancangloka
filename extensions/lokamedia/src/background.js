@@ -15,6 +15,8 @@ const logger = new Logger();
 let controller = null;
 const chatGptTabs = new ChatGptTabController({ chromeApi: chrome, storage });
 const chatGptHandshake = new ChatGptHandshakeManager({ storage, tabController: chatGptTabs });
+const ACTIVE_QUEUE_STATES = new Set(['LEASED', 'GENERATING', 'IMAGE_DETECTED', 'CAPTURING', 'CAPTURED', 'UPLOADING', 'RECOVERING']);
+const WAITING_QUEUE_STATES = new Set(['QUEUED', 'WAITING_RETRY']);
 
 if (chrome.sidePanel?.setPanelBehavior) {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
@@ -67,19 +69,19 @@ async function refreshServerState() {
         if (/WorkerGlobalScope|Illegal_invocation|Illegal invocation|fetch/i.test(String(nextState.status.last_error || ''))) {
           nextState.status.last_error = null;
         }
-        for (const job of response.jobs ?? []) {
+      for (const job of response.jobs ?? []) {
         const local = nextState.jobs[job.job_id] ?? {};
+        const serverState = job.status;
+        const localState = ACTIVE_QUEUE_STATES.has(local.local_state) && !WAITING_QUEUE_STATES.has(serverState) && serverState !== 'COMPLETE'
+          ? local.local_state
+          : serverState;
         nextState.jobs[job.job_id] = {
           ...local,
           ...job,
-          local_state: local.local_state ?? job.status
+          local_state: localState
         };
       }
-      const jobs = Object.values(nextState.jobs);
-      nextState.counters.totalJobs = jobs.length;
-      nextState.counters.complete = jobs.filter((job) => job.local_state === 'COMPLETE' || job.status === 'COMPLETE').length;
-      nextState.counters.active = jobs.filter((job) => ['LEASED', 'GENERATING', 'IMAGE_DETECTED', 'CAPTURED', 'UPLOADING', 'RECOVERING'].includes(job.local_state ?? job.status)).length;
-      nextState.counters.waiting = jobs.filter((job) => ['QUEUED', 'WAITING_RETRY'].includes(job.local_state ?? job.status)).length;
+      updateQueueCounters(nextState);
     });
   } catch (error) {
     await storage.update((nextState) => {
@@ -88,6 +90,14 @@ async function refreshServerState() {
     });
   }
   return storage.readState();
+}
+
+function updateQueueCounters(state) {
+  const jobs = Object.values(state.jobs ?? {});
+  state.counters.totalJobs = jobs.length;
+  state.counters.complete = jobs.filter((job) => (job.local_state ?? job.status) === 'COMPLETE').length;
+  state.counters.active = jobs.filter((job) => ACTIVE_QUEUE_STATES.has(job.local_state ?? job.status)).length;
+  state.counters.waiting = jobs.filter((job) => WAITING_QUEUE_STATES.has(job.local_state ?? job.status)).length;
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -139,8 +149,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         state.provider.chatgpt.composer_status = capabilities.capabilities.capabilities.COMPOSER_EDITABLE ? 'ready' : 'unavailable';
         state.provider.chatgpt.visible_image_candidates = capabilities.capabilities.image_candidate_count;
         state.provider.chatgpt.provider_lane = state.locks.providerLane ? 'bound' : 'idle';
+        updateQueueCounters(state);
       });
-      return { ok: true, provider: 'ChatGPT', tab, capabilities, state: await storage.readState() };
+      return { ok: true, provider: 'ChatGPT', tab, capabilities, state: await refreshServerState() };
     }
   }).then(sendResponse).catch((error) => {
     sendResponse({ ok: false, error: String(error?.message || error || 'SERVICE_WORKER_UNAVAILABLE') });

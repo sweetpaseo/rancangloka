@@ -475,6 +475,8 @@ async function testPhase4bBackgroundSafetySource() {
   const background = fs.readFileSync(path.join(extensionRoot, 'src', 'background.js'), 'utf8');
   assert(!/onAlarm[\s\S]{0,260}\.tick\(/.test(background), 'alarm must not auto-acquire provider jobs');
   assert(/last_error\s*=\s*null/.test(background), 'successful server refresh clears stale resolved transport error');
+  assert(/READ_ONLY_PROVIDER_DIAGNOSTIC[\s\S]+state:\s*await refreshServerState\(\)/.test(background), 'provider diagnostic response must include server-authoritative queue state');
+  assert(/updateQueueCounters\(nextState\)/.test(background), 'server job refresh must update queue counters');
   pass('background status refresh clears stale transport error and enable does not auto-run generation');
 }
 
