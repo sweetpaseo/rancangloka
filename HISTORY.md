@@ -20,9 +20,14 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 ### LokaMedia Phase 4B1A.5 Durable Run Audit Logging 2026-09-16
 
 - Implemented local-only durable structured audit logging for the LokaMedia extension Run Once path.
+- Checkpoint commit: `028a73ee45db8edb32c1537c33dab72e1732ec6b` (`fix(lokamedia): repair run-once path and add audit logging`).
 - Added `run_id`/`job_id` correlation, monotonic event sequence, safe error serialization, secret redaction, bounded retention (1000 events / 7 days), copy text, JSON export, isolated clear, and compact Last Action status.
 - Instrumented panel click, background request acceptance, gate checks, job acquisition, provider lane, provider precheck/prepare, submission gate, provider submit, capture, upload, attachment confirmation, run completion, and failure/needs-attention outcomes.
 - Root cause addressed: Run Once failures previously lacked durable structured diagnostics and could appear silent after status refresh.
+- General automatic ChatGPT submission remains disabled; the controlled submit bridge is enabled only through explicit Phase 4B Run Once after local readiness, one-shot gate, server job acquisition, and provider lane checks pass.
+- Capture remains Phase 4A-disabled, so this checkpoint is audit-visible and controlled-submit-ready but not yet full end-to-end media-completion-ready.
+- Verification passed: side panel tests, popup controls tests, Phase 3 extension regression, Phase 4A ChatGPT provider regression, TypeScript `--noEmit`, recursive extension syntax check, and Astro production build.
+- Operator note: unpacked Chrome extension reload is required before the new audit UI and Run Once logging are visible.
 - Safety preserved: no real ChatGPT prompt submission, no image generation, no new article/job fixture, no deployment, and no production mutation.
 
 ### LokaMedia Phase 2A Durable Job Foundation 2026-09-14

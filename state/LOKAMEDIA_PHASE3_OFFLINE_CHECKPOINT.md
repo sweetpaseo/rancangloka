@@ -2,6 +2,60 @@
 
 Date: 2026-09-15
 
+## Latest Local Checkpoint
+
+Date: 2026-09-16
+
+Latest clean checkpoint commit:
+
+```text
+028a73ee45db8edb32c1537c33dab72e1732ec6b
+```
+
+Commit message:
+
+```text
+fix(lokamedia): repair run-once path and add audit logging
+```
+
+`LOKAMEDIA_PHASE_4B1A5=PASS_WITH_CAPTURE_STILL_DISABLED`
+
+Phase 4B1A.5 repaired the local Run Once control path and added durable structured audit logging for the LokaMedia Chrome extension. The extension now records Side Panel click, background dispatch, controller gate checks, job acquisition, provider lane ownership, submission-gate arming, controlled provider submit, capture/upload/attachment stages, terminal success, and failure/needs-attention outcomes.
+
+Important safety boundary:
+
+- General automatic ChatGPT submission remains disabled.
+- Controlled submission is enabled only for the explicit Phase 4B Run Once path after local prerequisites pass.
+- Capture remains Phase 4A-disabled, so this checkpoint is ready for audit-visible operator diagnosis, not full end-to-end unattended media completion.
+- No real ChatGPT prompt was submitted, no image was generated, no new fixture was created, no production mutation was performed, and no deployment was made.
+
+New durable audit surfaces:
+
+- `extensions/lokamedia/src/audit-log.js`
+- `lokamediaState.auditLog` in `chrome.storage.local`
+- Side Panel `Last action`
+- Side Panel `Audit Log`
+- audit filters for level, current run, and current job
+- `Copy Log`
+- `Export JSON`
+- isolated `Clear Log`
+
+Phase 4B1A.5 verification passed locally:
+
+```text
+node --test scripts\test-lokamedia-side-panel.js scripts\test-lokamedia-popup-controls.js scripts\test-lokamedia-phase3-extension.js scripts\test-lokamedia-phase4a-chatgpt-provider.js
+node_modules\.bin\tsc.cmd --noEmit
+node --check extensions\lokamedia\src\*.js and recursive source check
+ASTRO_TELEMETRY_DISABLED=1 astro build
+```
+
+Operator requirement after this checkpoint:
+
+```text
+EXTENSION_RELOAD_REQUIRED=YES
+READY_FOR_OPERATOR_SINGLE_RUN=NO_CAPTURE_STILL_PHASE_4A_DISABLED
+```
+
 ## Current Canonical Worktree
 
 Use this worktree for the next LokaMedia phase:
