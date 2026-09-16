@@ -124,7 +124,7 @@ function state(patch = {}) {
   return {
     status: { connection: 'online', transfers: [{ label: 'Article #79 Cover', percentage: 71 }], last_error: null },
     counters: { totalJobs: 17, active: 1, waiting: 12, complete: 4 },
-    config: { serverBaseUrl: 'http://localhost:4321', enabled: false },
+    config: { serverBaseUrl: 'http://localhost:4321', deviceToken: 'saved-token', enabled: false },
     jobs: {
       active: {
         job_id: 'job-1',
@@ -171,14 +171,23 @@ async function installSidePanel({ failProvider = false, initialState = state() }
   const doc = new FakeDocument(ids);
   const messages = [];
   let currentState = initialState;
+  const intervals = [];
   globalThis.document = doc;
+  globalThis.setInterval = (handler) => {
+    intervals.push(handler);
+    return { unref() {} };
+  };
+  globalThis.clearInterval = () => {};
   globalThis.chrome = {
     runtime: {
       lastError: null,
       async sendMessage(message) {
         messages.push(message);
         if (message.type === 'STATUS') return { ok: true, state: currentState };
-        if (message.type === 'SAVE_CONFIG') return { ok: true };
+        if (message.type === 'SAVE_CONFIG') {
+          currentState = { ...currentState, config: { ...currentState.config, ...message.config } };
+          return { ok: true };
+        }
         if (message.type === 'RUN_ONCE') {
           currentState = waitingState({ phase4bSingleRun: { submission_consumed: true } });
           return { ok: true, state: currentState };
@@ -194,7 +203,16 @@ async function installSidePanel({ failProvider = false, initialState = state() }
   globalThis.addEventListener = () => {};
   await import(`../extensions/lokamedia/src/side-panel.js?case=${Date.now()}-${Math.random()}`);
   await settle();
-  return { doc, messages };
+  return {
+    doc,
+    messages,
+    async tickRefresh() {
+      for (const handler of intervals) {
+        await handler();
+        await settle();
+      }
+    }
+  };
 }
 
 async function testManifestSidePanel() {
@@ -243,6 +261,36 @@ async function testEnabledSaveProviderCheck() {
   pass('Enabled toggle, Save, repeated Provider Check, and status refresh work');
 }
 
+async function testConfigDraftSurvivesRefreshAndPersists() {
+  const { doc, messages, tickRefresh } = await installSidePanel();
+  doc.querySelector('#enabled').checked = true;
+  await doc.querySelector('#enabled').dispatch('change');
+  doc.querySelector('#server').value = 'http://localhost:4321/custom';
+  await doc.querySelector('#server').dispatch('input');
+  doc.querySelector('#token').value = 'draft-token';
+  await doc.querySelector('#token').dispatch('input');
+
+  await tickRefresh();
+  assert.equal(doc.querySelector('#enabled').checked, true);
+  assert.equal(doc.querySelector('#server').value, 'http://localhost:4321/custom');
+  assert.equal(doc.querySelector('#token').value, 'draft-token');
+
+  await doc.querySelector('#save').dispatch('click');
+  await settle();
+  assert(messages.some((message) => message.type === 'SAVE_CONFIG' && message.config.enabled === true));
+  assert.equal(doc.querySelector('#enabled').checked, true);
+  assert.equal(doc.querySelector('#server').value, 'http://localhost:4321/custom');
+  assert.equal(doc.querySelector('#token').value, 'draft-token');
+
+  const reopened = await installSidePanel({
+    initialState: state({ config: { serverBaseUrl: 'http://localhost:4321/custom', deviceToken: 'draft-token', enabled: true } })
+  });
+  assert.equal(reopened.doc.querySelector('#enabled').checked, true);
+  assert.equal(reopened.doc.querySelector('#server').value, 'http://localhost:4321/custom');
+  assert.equal(reopened.doc.querySelector('#token').value, 'draft-token');
+  pass('config draft survives status refresh, Save persists, and reopen restores enabled state');
+}
+
 async function testRunOnceControl() {
   const { doc, messages } = await installSidePanel({ initialState: waitingState() });
   assert.equal(doc.querySelector('#current-article').textContent, 'LokaMedia Phase 4B Controlled Generation Test');
@@ -280,6 +328,7 @@ await testManifestSidePanel();
 await testCoreStateMapping();
 await testSidePanelInitializesAndRecovers();
 await testEnabledSaveProviderCheck();
+await testConfigDraftSurvivesRefreshAndPersists();
 await testRunOnceControl();
 await testErrorAndRunGuard();
 await testLayoutHasResponsiveRules();

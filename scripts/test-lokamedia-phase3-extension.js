@@ -471,6 +471,13 @@ async function testNoSecretAndNoFakeProgress() {
   pass('no hardcoded device/model secret, no legacy ChatGPT host, no prompt submission, no fake generation percentage');
 }
 
+async function testPhase4bBackgroundSafetySource() {
+  const background = fs.readFileSync(path.join(extensionRoot, 'src', 'background.js'), 'utf8');
+  assert(!/onAlarm[\s\S]{0,260}\.tick\(/.test(background), 'alarm must not auto-acquire provider jobs');
+  assert(/last_error\s*=\s*null/.test(background), 'successful server refresh clears stale resolved transport error');
+  pass('background status refresh clears stale transport error and enable does not auto-run generation');
+}
+
 await testManifestAndConstants();
 await testFreshStartupAndNoJob();
 await testApiClientBindsWorkerFetch();
@@ -488,5 +495,6 @@ await testDuplicateMessageAndStaleRevision();
 await testSupersededTerminalAndOfflineRecovery();
 await testMultiLaneRestart();
 await testNoSecretAndNoFakeProgress();
+await testPhase4bBackgroundSafetySource();
 
 console.log(`\nLokaMedia Phase 3 extension tests: ${passed} passed`);

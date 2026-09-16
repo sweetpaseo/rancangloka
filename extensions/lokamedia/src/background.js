@@ -61,10 +61,13 @@ async function refreshServerState() {
   const state = await storage.readState();
   if (!state.config.deviceToken) return state;
   try {
-    const response = await instance.apiClient.listJobs({ status: 'all', limit: 50 });
-    await storage.update((nextState) => {
-      nextState.status.connection = 'online';
-      for (const job of response.jobs ?? []) {
+      const response = await instance.apiClient.listJobs({ status: 'all', limit: 50 });
+      await storage.update((nextState) => {
+        nextState.status.connection = 'online';
+        if (/WorkerGlobalScope|Illegal_invocation|Illegal invocation|fetch/i.test(String(nextState.status.last_error || ''))) {
+          nextState.status.last_error = null;
+        }
+        for (const job of response.jobs ?? []) {
         const local = nextState.jobs[job.job_id] ?? {};
         nextState.jobs[job.job_id] = {
           ...local,
@@ -98,7 +101,7 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms.create('lokamedia_tick', { periodInMinutes: 1 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'lokamedia_tick') {
-    void ensureController().then((instance) => instance.tick()).catch((error) => logger.warn('tick failed', { error: error.message }));
+    void ensureController().then((instance) => instance.startup()).catch((error) => logger.warn('startup reconcile failed', { error: error.message }));
   }
 });
 

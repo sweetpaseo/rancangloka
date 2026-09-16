@@ -10,6 +10,8 @@ import {
 const boot = new Set([SIDE_PANEL_BOOT_FLAGS.SCRIPT_LOADED]);
 let bound = false;
 let refreshTimer = null;
+let configInitialized = false;
+let configDraftDirty = false;
 
 function element(selector) {
   const match = document.querySelector(selector);
@@ -93,10 +95,22 @@ function renderState(state) {
   element('#system-server').textContent = server;
   element('#system-backpressure').textContent = server === 'backpressure' ? 'on' : 'off';
   element('#system-error').textContent = state.status.last_error ?? 'none';
-  element('#server').value = state.config.serverBaseUrl;
-  element('#enabled').checked = state.config.enabled;
+  renderConfigForm(state);
   renderRunOnce(state, current, provider, server);
   renderTransfers(transfers);
+}
+
+function renderConfigForm(state, { force = false } = {}) {
+  if (configDraftDirty && !force) return;
+  element('#server').value = state.config.serverBaseUrl ?? '';
+  element('#enabled').checked = Boolean(state.config.enabled);
+  if (state.config.deviceToken) element('#token').value = state.config.deviceToken;
+  configInitialized = true;
+}
+
+function markConfigDirty() {
+  if (!configInitialized) return;
+  configDraftDirty = true;
 }
 
 function renderRunOnce(state, current, provider, server) {
@@ -128,7 +142,10 @@ async function saveConfig() {
       enabled: element('#enabled').checked
     }
   });
-  await refresh();
+  configDraftDirty = false;
+  const response = await send('STATUS');
+  renderState(response.state);
+  renderConfigForm(response.state, { force: true });
   setStatus('Saved');
 }
 
@@ -156,8 +173,11 @@ function bindSidePanel() {
   const validation = validateSidePanelElements(document);
   if (!validation.ok) throw new Error(`SIDE_PANEL_DOM_BIND_FAILED:${validation.missing.join(',')}`);
   element('#enabled').addEventListener('change', () => {
+    markConfigDirty();
     setStatus(element('#enabled').checked ? 'Enabled selected; save required' : 'Paused selected; save required');
   });
+  element('#server').addEventListener('input', markConfigDirty);
+  element('#token').addEventListener('input', markConfigDirty);
   element('#save').addEventListener('click', () => {
     void saveConfig().catch((error) => setStatus(boundedError(error), true));
   });
