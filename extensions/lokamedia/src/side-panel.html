@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="side-panel.css">
+    <title>LokaMedia</title>
+  </head>
+  <body>
+    <main>
+      <header class="topbar">
+        <strong>LokaMedia</strong>
+        <span id="panel-status" role="status" aria-live="polite">Starting...</span>
+      </header>
+
+      <section>
+        <h2>Connection</h2>
+        <div class="status-row"><span>ChatGPT</span><strong id="connection-chatgpt">unknown</strong></div>
+        <div class="status-row"><span>RancangLoka</span><strong id="connection-rancangloka">offline</strong></div>
+      </section>
+
+      <section>
+        <h2>Current</h2>
+        <div class="metric"><span id="current-article">None</span><small id="current-slot">Idle</small></div>
+        <div class="status-row"><span id="current-operation">Waiting</span><strong id="current-elapsed">--</strong></div>
+      </section>
+
+      <section>
+        <h2>Queue</h2>
+        <div class="grid">
+          <div><strong id="queue-total">0</strong><small>Total</small></div>
+          <div><strong id="queue-active">0</strong><small>Active</small></div>
+          <div><strong id="queue-waiting">0</strong><small>Waiting</small></div>
+          <div><strong id="queue-complete">0</strong><small>Done</small></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Transfers</h2>
+        <div id="transfers" class="transfers">No active transfers</div>
+      </section>
+
+      <section>
+        <h2>Provider</h2>
+        <div class="status-row"><span>Tab</span><strong id="provider-tab">missing</strong></div>
+        <div class="status-row"><span>Auth</span><strong id="provider-auth">unknown</strong></div>
+        <div class="status-row"><span>DOM</span><strong id="provider-dom">unknown</strong></div>
+        <div class="status-row"><span>Composer</span><strong id="provider-composer">unavailable</strong></div>
+        <div class="status-row"><span>Images</span><strong id="provider-images">0</strong></div>
+        <div class="status-row"><span>Lane</span><strong id="provider-lane">idle</strong></div>
+      </section>
+
+      <section>
+        <h2>System</h2>
+        <div class="status-row"><span>Server</span><strong id="system-server">offline</strong></div>
+        <div class="status-row"><span>Backpressure</span><strong id="system-backpressure">off</strong></div>
+        <div class="status-row"><span>Last error</span><strong id="system-error">none</strong></div>
+      </section>
+
+      <section class="controls">
+        <label class="toggle"><input id="enabled" type="checkbox"> Enabled</label>
+        <button id="diagnostic">Provider Check</button>
+      </section>
+
+      <details>
+        <summary>Configuration</summary>
+        <label>Server <input id="server" type="url"></label>
+        <label>Device token <input id="token" type="password" autocomplete="off"></label>
+        <button id="save">Save</button>
+      </details>
+    </main>
+    <script type="module" src="side-panel.js"></script>
+  </body>
+</html>

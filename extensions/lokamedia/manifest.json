@@ -3,7 +3,7 @@
   "name": "RancangLoka LokaMedia",
   "version": "0.1.0",
   "description": "Durable operator extension core for server-authoritative LokaMedia jobs.",
-  "permissions": ["storage", "alarms", "tabs", "scripting"],
+  "permissions": ["storage", "alarms", "tabs", "scripting", "sidePanel"],
   "host_permissions": ["http://localhost/*", "https://rancangloka.com/*", "https://chatgpt.com/*"],
   "background": {
     "service_worker": "src/background.js",
@@ -16,8 +16,10 @@
       "run_at": "document_idle"
     }
   ],
+  "side_panel": {
+    "default_path": "src/side-panel.html"
+  },
   "action": {
-    "default_popup": "src/popup.html",
     "default_title": "LokaMedia"
   }
 }

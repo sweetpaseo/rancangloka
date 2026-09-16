@@ -161,7 +161,9 @@ async function testManifestAndConstants() {
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.version, EXTENSION_VERSION);
   assert.equal(manifest.background.type, 'module');
-  assert.deepEqual(manifest.permissions.sort(), ['alarms', 'scripting', 'storage', 'tabs']);
+  assert.deepEqual(manifest.permissions.sort(), ['alarms', 'scripting', 'sidePanel', 'storage', 'tabs']);
+  assert.equal(manifest.side_panel.default_path, 'src/side-panel.html');
+  assert.equal(manifest.action.default_popup, undefined);
   assert(!JSON.stringify(manifest).includes('<all_urls>'));
   assert(!JSON.stringify(manifest).includes('chat.openai.com'));
   assert.equal(STORAGE_SCHEMA_VERSION, 1);

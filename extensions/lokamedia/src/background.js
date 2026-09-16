@@ -15,6 +15,12 @@ let controller = null;
 const chatGptTabs = new ChatGptTabController({ chromeApi: chrome, storage });
 const chatGptHandshake = new ChatGptHandshakeManager({ storage, tabController: chatGptTabs });
 
+if (chrome.sidePanel?.setPanelBehavior) {
+  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
+    logger.warn('side panel behavior unavailable', { error: error.message });
+  });
+}
+
 async function readOnlyChatGptDiagnostic(tabId) {
   const message = {
     id: crypto.randomUUID(),

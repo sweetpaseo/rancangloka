@@ -5,6 +5,13 @@ export const POPUP_BOOT_FLAGS = Object.freeze({
   PROVIDER_CHECK_AVAILABLE: 'POPUP_PROVIDER_CHECK_AVAILABLE'
 });
 
+export const SIDE_PANEL_BOOT_FLAGS = Object.freeze({
+  SCRIPT_LOADED: 'SIDE_PANEL_SCRIPT_LOADED',
+  DOM_BOUND: 'SIDE_PANEL_DOM_BOUND',
+  SERVICE_WORKER_CONNECTED: 'SIDE_PANEL_SERVICE_WORKER_CONNECTED',
+  PROVIDER_CHECK_AVAILABLE: 'SIDE_PANEL_PROVIDER_CHECK_AVAILABLE'
+});
+
 export function normalizeProviderStatus(provider = {}) {
   const capabilities = provider.capabilities?.capabilities ?? provider.capabilities ?? {};
   const tabStatus = provider.tab_status ?? 'missing';
@@ -44,6 +51,84 @@ export function validatePopupElements(doc) {
   ];
   const missing = ids.filter((id) => !doc.querySelector(`#${id}`));
   return { ok: missing.length === 0, missing };
+}
+
+export function validateSidePanelElements(doc) {
+  const ids = [
+    'connection-chatgpt',
+    'connection-rancangloka',
+    'current-article',
+    'current-slot',
+    'current-operation',
+    'current-elapsed',
+    'queue-total',
+    'queue-active',
+    'queue-waiting',
+    'queue-complete',
+    'transfers',
+    'provider-tab',
+    'provider-auth',
+    'provider-dom',
+    'provider-composer',
+    'provider-images',
+    'provider-lane',
+    'system-server',
+    'system-backpressure',
+    'system-error',
+    'server',
+    'token',
+    'enabled',
+    'save',
+    'diagnostic',
+    'panel-status'
+  ];
+  const missing = ids.filter((id) => !doc.querySelector(`#${id}`));
+  return { ok: missing.length === 0, missing };
+}
+
+export function normalizeServerStatus(state = {}) {
+  const connection = state.status?.connection ?? 'offline';
+  if (connection === 'online' || connection === 'connected') return 'online';
+  if (connection === 'backpressure') return 'backpressure';
+  return 'offline';
+}
+
+export function summarizeCurrentJob(state = {}) {
+  const jobs = Object.values(state.jobs ?? {});
+  const active = jobs.find((job) => ['GENERATING', 'IMAGE_DETECTED', 'CAPTURING', 'CAPTURED', 'UPLOADING', 'RECOVERING'].includes(job.local_state));
+  if (!active) {
+    return {
+      article: 'None',
+      slot: 'Idle',
+      operation: 'Waiting',
+      elapsed: '--'
+    };
+  }
+  return {
+    article: active.article_id ? `Article #${active.article_id}` : active.article_title ?? active.job_id,
+    slot: active.slot_key ?? active.role ?? 'media',
+    operation: active.local_state ?? 'active',
+    elapsed: active.submitted_at ? elapsedSince(active.submitted_at) : '--'
+  };
+}
+
+export function summarizeTransfers(state = {}) {
+  const transfers = state.status?.transfers ?? [];
+  return transfers.map((transfer) => ({
+    label: transfer.label ?? transfer.job_id ?? 'Upload',
+    percentage: Number.isFinite(transfer.percentage) ? Math.max(0, Math.min(100, Math.round(transfer.percentage))) : null,
+    bytesSent: transfer.bytes_sent ?? transfer.bytesSent ?? 0,
+    bytesTotal: transfer.bytes_total ?? transfer.bytesTotal ?? 0
+  }));
+}
+
+function elapsedSince(value) {
+  const start = Date.parse(value);
+  if (!Number.isFinite(start)) return '--';
+  const seconds = Math.max(0, Math.floor((Date.now() - start) / 1000));
+  const minutes = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const rest = String(seconds % 60).padStart(2, '0');
+  return `${minutes}:${rest}`;
 }
 
 export function phase4bNotArmedResponse() {

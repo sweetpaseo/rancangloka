@@ -106,6 +106,24 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * `AUTO_PUBLISH=OFF`
 * `READY_FOR_PHASE_4B_SINGLE_CONTROLLED_GENERATION=YES`
 
+### LokaMedia Phase 4B0A/4B0C Operator UI Preflight 2026-09-16
+
+* **Scope:** Chrome extension UI architecture only; no ChatGPT prompt submission, no model call, no image generation, no media job creation, no D1/R2/article mutation, and no deployment.
+* **Popup repair:** repaired popup control wiring with bounded startup/status diagnostics, visible provider-check errors, service-worker message handling, and a safe content-script reconnect path.
+* **Side Panel migration:** the canonical operator UI moved from the Chrome action popup to Chrome's native right-side Side Panel.
+* **Manifest:** added `sidePanel` permission and `side_panel.default_path = src/side-panel.html`; removed `action.default_popup` so the toolbar icon opens the Side Panel instead of a transient popup.
+* **Toolbar behavior:** service worker requests `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })`.
+* **Boundary:** Side Panel communicates with the service worker through the existing extension message protocol; it does not talk directly to ChatGPT, server internals, D1, R2, or article records.
+* **Persistent monitor:** Side Panel shows ChatGPT and RancangLoka status separately, current job summary, queue counters, upload transfer progress, provider diagnostic fields, server/backpressure/error status, Enabled/Pause, Provider Check, and collapsed configuration.
+* **Safety:** Run/manual generation is not exposed in the Side Panel and background `TICK` remains guarded as `PHASE_4B_NOT_ARMED`.
+* **Provider check:** remains read-only; it may detect tab/auth/DOM/composer/images/lane and may reconnect the content script, but it does not type, click Send, submit, download, or generate.
+* **Progress model:** generation remains indeterminate + elapsed; uploads use real transfer percentage where available.
+* **Tests:** added `scripts/test-lokamedia-popup-controls.js` and `scripts/test-lokamedia-side-panel.js` for popup repair and native Side Panel behavior.
+* `MODEL_CALLS=0`
+* `PROMPT_SUBMISSIONS=0`
+* `IMAGE_GENERATIONS=0`
+* `AUTO_PUBLISH=OFF`
+
 ---
 
 ### Masalah 2026-09-13: Standar Mobile Responsive Artikel Publik

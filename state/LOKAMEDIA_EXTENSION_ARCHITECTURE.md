@@ -1065,3 +1065,69 @@ Phase 4A verification:
 - Phase 2A, Phase 2B, Phase 2C, and publication safety regressions pass.
 - TypeScript `--noEmit` passes.
 - Astro production build passes.
+
+## Phase 4B0A/4B0C Native Operator Side Panel
+
+Implemented locally in `lokamedia-phase-2ab-checkpoint` only. No production deploy, no remote migration, no production D1 write, no production R2 write, no article mutation, no ChatGPT prompt submission, no model call, no image generation, no image download, and no provider capture was performed.
+
+Popup status:
+
+- The Chrome action popup is deprecated as the canonical UI.
+- `action.default_popup` is removed from `manifest.json`.
+- Old popup files may remain as non-canonical source/history, but the manifest no longer opens them.
+
+Native Chrome Side Panel:
+
+- Canonical UI root: `extensions/lokamedia/src/side-panel.html`.
+- Script: `extensions/lokamedia/src/side-panel.js`.
+- Style: `extensions/lokamedia/src/side-panel.css`.
+- Manifest permission: `sidePanel`.
+- Manifest entry: `side_panel.default_path = "src/side-panel.html"`.
+- Toolbar behavior: service worker calls `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` where supported.
+
+Side Panel/service-worker boundary:
+
+- Side Panel uses the existing extension runtime message protocol.
+- It sends `STATUS`, `SAVE_CONFIG`, and `READ_ONLY_PROVIDER_DIAGNOSTIC`.
+- Service worker remains the boundary to provider tab detection, content-script reconnect, scheduler, upload workers, and local state.
+- Side Panel does not bypass the service worker to mutate server/provider state.
+
+Persistent monitoring model:
+
+- The Side Panel remains visible while the operator interacts with ChatGPT.
+- Opening/closing the Side Panel does not affect provider lane ownership, heartbeat, IndexedDB blobs, upload queue, or server job state.
+- Side Panel periodically refreshes state from the service worker and recovers on reopen.
+
+Displayed operator status:
+
+- ChatGPT and RancangLoka connection states are shown separately.
+- Current job summary supports idle, waiting, generating, captured, uploading, recovering, auth-required, user-action-required, and backpressure states without fake jobs.
+- Queue counters use durable extension state.
+- Transfers display real upload percentage when available.
+- Provider status includes tab, auth, DOM, composer, image candidate count, and lane.
+- System status includes server state, backpressure, and bounded last error.
+- Device token remains a password input and is not rendered in status output.
+
+Generation remains disabled:
+
+- The Side Panel does not expose a Run button.
+- Background `TICK` remains guarded and returns `PHASE_4B_NOT_ARMED`.
+- `RUN_BUTTON_GENERATION_ENABLED=NO`.
+- `MODEL_CALLS=0`.
+- `PROMPT_SUBMISSIONS=0`.
+- `IMAGE_GENERATIONS=0`.
+
+Provider Check:
+
+- Provider Check remains read-only.
+- It may locate the ChatGPT tab, reconnect/inject the content script, request the diagnostic, and update bounded provider state.
+- It must not type, click Send, submit, download, generate, or change a ChatGPT conversation.
+
+Side Panel verification:
+
+- Manifest side panel tests pass.
+- Side Panel initialization, Enabled/Pause, Save, repeated Provider Check, status mapping, server status mapping, bounded error feedback, close/reopen recovery, and narrow-width CSS tests pass.
+- Phase 4A provider regression passes.
+- Phase 3 extension regression passes.
+- TypeScript `--noEmit` passes.
+- Astro production build passes.
