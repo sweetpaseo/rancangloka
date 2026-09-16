@@ -7,6 +7,18 @@ const DEFAULT_STATE = {
   uploadQueue: [],
   processedMessages: [],
   locks: {},
+  provider: {
+    chatgpt: {
+      provider_tab_id: null,
+      tab_status: 'missing',
+      auth_state: 'UNKNOWN',
+      dom_status: 'UNKNOWN',
+      composer_status: 'unavailable',
+      visible_image_candidates: 0,
+      provider_lane: 'idle',
+      prompt_submission_enabled: false
+    }
+  },
   counters: {
     totalJobs: 0,
     complete: 0,

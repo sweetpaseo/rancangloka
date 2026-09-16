@@ -84,6 +84,28 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Safety:** `AUTO_PUBLISH=OFF`, `MODEL_CALLS=0`, `PRODUCTION_MUTATIONS=0`, `DEPLOYMENTS=0`.
 * **Next phase:** Phase 4 ChatGPT provider adapter can start from the committed MV3 core boundary.
 
+### LokaMedia Phase 4A ChatGPT Provider Adapter Foundation 2026-09-16
+
+* **Scope:** local read-only ChatGPT provider foundation only; no prompt submission, no model call, no image generation, no capture/download, no production deploy, no remote migration, and no production D1/R2/article mutation.
+* **Provider root:** `extensions/lokamedia/src/providers/chatgpt`.
+* **DOM contract:** `CHATGPT_DOM_ADAPTER_VERSION=1`, separate from `LOKAMEDIA_PROTOCOL_VERSION=1` and `EXTENSION_VERSION=0.1.0`.
+* **Host permission:** added the explicit minimal ChatGPT origin `https://chatgpt.com/*`; `<all_urls>` is not requested.
+* **Human authentication boundary:** adapter detects `AUTHENTICATED`, `AUTH_REQUIRED`, or `UNKNOWN`; it does not log in, enter credentials, copy cookies, copy tokens, or store authorization material.
+* **Handshake:** added versioned service-worker/content-script handshake with tab identity validation, duplicate HELLO safety, stale-version rejection, wrong-tab rejection, and reconnect-safe local provider state.
+* **Capability discovery:** read-only detection covers composer presence/editability, send control presence, conversation/response surfaces, image result surface, download affordance, and auth state.
+* **Selector strategy:** selectors are centralized and layered by semantic attributes, accessibility labels, scoped form/surface relationships, and narrow fallbacks; generated CSS classes, nth-child, coordinates, blind clicks, newest image selection, and broad DOM mutation are not used.
+* **Fail closed:** unsupported DOM returns `DOM_CONTRACT_UNSUPPORTED`; ambiguous image correlation returns `AMBIGUOUS_IMAGE_CANDIDATE`.
+* **Baseline inventory:** existing image candidates are inventoried with local id, normalized source fingerprint, dimensions, container fingerprint, observation timestamp, and optional provider asset id only; image bytes and unrelated conversation text are not persisted.
+* **Correlation foundation:** future Phase 4B acceptance combines job id, prompt version/hash, provider tab id, optional conversation/response identity, sequence, baseline fingerprints, and post-submission candidates; no single DOM-order signal is authoritative.
+* **Capture discovery:** future capture priority is provider download/asset, available binary/blob, fetchable resolved asset, safe browser conversion, and screenshot last; screenshot is not the primary capture path.
+* **Read-only diagnostic/UI:** popup shows ChatGPT tab/auth/DOM/composer/image-count/provider-lane status and exposes a read-only provider check that does not type, click, submit, download, or change conversation.
+* **Tests:** added `scripts/test-lokamedia-phase4a-chatgpt-provider.js` covering provider DOM fixtures, baseline/correlation, reorder safety, no-submission guard, capture discovery, handshake restart/stale/wrong-tab cases, reload, and tab-closed handling.
+* `PROMPT_SUBMISSION_ENABLED=NO`
+* `MODEL_CALLS=0`
+* `IMAGE_GENERATIONS=0`
+* `AUTO_PUBLISH=OFF`
+* `READY_FOR_PHASE_4B_SINGLE_CONTROLLED_GENERATION=YES`
+
 ---
 
 ### Masalah 2026-09-13: Standar Mobile Responsive Artikel Publik

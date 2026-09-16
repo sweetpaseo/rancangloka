@@ -161,7 +161,8 @@ async function testManifestAndConstants() {
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.version, EXTENSION_VERSION);
   assert.equal(manifest.background.type, 'module');
-  assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
+  assert.deepEqual(manifest.permissions.sort(), ['alarms', 'scripting', 'storage', 'tabs']);
+  assert(!JSON.stringify(manifest).includes('<all_urls>'));
   assert(!JSON.stringify(manifest).includes('chat.openai.com'));
   assert.equal(STORAGE_SCHEMA_VERSION, 1);
   assert.equal(LOKAMEDIA_PROTOCOL_VERSION, 1);
@@ -375,14 +376,16 @@ async function testMultiLaneRestart() {
 }
 
 async function testNoSecretAndNoFakeProgress() {
-  const allSource = fs.readdirSync(path.join(extensionRoot, 'src'))
-    .filter((file) => file.endsWith('.js'))
+  const sourceFiles = fs.readdirSync(path.join(extensionRoot, 'src'), { recursive: true })
+    .filter((file) => String(file).endsWith('.js'));
+  const allSource = sourceFiles
     .map((file) => fs.readFileSync(path.join(extensionRoot, 'src', file), 'utf8'))
     .join('\n');
   assert(!/sk-[A-Za-z0-9]/.test(allSource));
-  assert(!/chatgpt|chat\.openai/i.test(allSource));
+  assert(!/chat\.openai/i.test(allSource));
+  assert(!/PROMPT_SUBMISSION_ENABLED\s*=\s*true/i.test(allSource));
   assert(!/generation.*percentage|fake.*percentage/i.test(allSource));
-  pass('no hardcoded device/model secret, no ChatGPT provider, no fake generation percentage');
+  pass('no hardcoded device/model secret, no legacy ChatGPT host, no prompt submission, no fake generation percentage');
 }
 
 await testManifestAndConstants();

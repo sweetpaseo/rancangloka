@@ -18,6 +18,17 @@
         <div><span id="waiting">0</span><small>Waiting</small></div>
         <div><span id="complete">0</span><small>Done</small></div>
       </section>
+      <section class="provider">
+        <h2>Provider: ChatGPT</h2>
+        <dl>
+          <div><dt>Tab</dt><dd id="provider-tab">missing</dd></div>
+          <div><dt>Auth</dt><dd id="provider-auth">unknown</dd></div>
+          <div><dt>DOM</dt><dd id="provider-dom">unknown</dd></div>
+          <div><dt>Composer</dt><dd id="provider-composer">unavailable</dd></div>
+          <div><dt>Images</dt><dd id="provider-images">0</dd></div>
+          <div><dt>Lane</dt><dd id="provider-lane">idle</dd></div>
+        </dl>
+      </section>
       <section>
         <label>Server <input id="server" type="url"></label>
         <label>Device token <input id="token" type="password"></label>
@@ -26,6 +37,7 @@
       <footer>
         <button id="save">Save</button>
         <button id="tick">Run</button>
+        <button id="diagnostic">Provider check</button>
       </footer>
     </main>
     <script type="module" src="popup.js"></script>

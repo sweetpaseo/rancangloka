@@ -920,3 +920,148 @@ Phase 3 verification:
 - superseded/terminal stop and offline/online recovery pass.
 - multi-lane restart pass.
 - source scan confirms no hardcoded device/model secret, no ChatGPT provider, and no fake generation percentage.
+
+## Phase 4A Implemented Read-Only ChatGPT Provider Foundation
+
+Implemented locally in `lokamedia-phase-2ab-checkpoint` only. No production deploy, no remote migration, no production D1 write, no production R2 write, no article mutation, no ChatGPT prompt submission, no model call, no image generation, no image download, and no provider capture was performed.
+
+Provider root:
+
+- `extensions/lokamedia/src/providers/chatgpt`
+
+Provider boundary:
+
+- Phase 4A adds a ChatGPT provider adapter foundation under the existing Phase 3 provider lane; it does not create a second provider framework.
+- The core controller remains provider-agnostic.
+- Phase 4A exposes read-only `prepare`, `observe`, `reconcile`, `cancel`, and diagnostic behavior.
+- `submit` and `capture` are explicit hard-stop methods for Phase 4A.
+- `PROMPT_SUBMISSION_ENABLED=NO`.
+
+Manifest permissions:
+
+- extension permissions: `storage`, `alarms`, `tabs`, `scripting`
+- host permissions: `http://localhost/*`, `https://rancangloka.com/*`, `https://chatgpt.com/*`
+- `ALL_URLS_PERMISSION=NO`
+- no `chat.openai.com` host is requested in this phase
+
+Authentication ownership:
+
+- ChatGPT login remains fully human-owned.
+- Adapter detection returns `AUTHENTICATED`, `AUTH_REQUIRED`, or `UNKNOWN`.
+- The extension does not log in, enter credentials, retrieve credentials, copy cookies, copy auth tokens, copy authorization headers, or persist ChatGPT secrets.
+
+DOM adapter contract:
+
+- `CHATGPT_DOM_ADAPTER_VERSION=1`
+- This is separate from `LOKAMEDIA_PROTOCOL_VERSION=1` and `EXTENSION_VERSION=0.1.0`.
+- Centralized contract modules: `constants.js`, `selectors.js`, `capability-detector.js`, `candidate-discovery.js`, `capture-discovery.js`, `correlation.js`, `observer.js`.
+
+Content-script handshake:
+
+- service worker and ChatGPT content script exchange versioned messages:
+  - `CHATGPT_PROVIDER_HELLO`
+  - `CHATGPT_PROVIDER_READY`
+  - `CHATGPT_PROVIDER_CAPABILITIES`
+- The service worker validates message type, adapter version, provider session id, sender tab id, and ChatGPT origin.
+- Duplicate HELLO is deterministic and safe.
+- Stale adapter versions and wrong-tab senders are rejected.
+- Reload/navigation discards stale content-script session state and requires rediscovery.
+
+Capability discovery:
+
+- `COMPOSER_PRESENT`
+- `COMPOSER_EDITABLE`
+- `SEND_CONTROL_PRESENT`
+- `CONVERSATION_SURFACE_PRESENT`
+- `RESPONSE_SURFACE_DISCOVERABLE`
+- `IMAGE_RESULT_SURFACE_DISCOVERABLE`
+- `DOWNLOAD_CAPABILITY_DISCOVERABLE`
+- `AUTHENTICATED`
+- `AUTH_REQUIRED`
+
+Selector strategy:
+
+- Prefer stable semantic attributes.
+- Then accessibility roles/names.
+- Then stable structural relationships.
+- Then narrowly scoped fallback selectors.
+- Do not use generated CSS classes as the sole selector.
+- Do not use `nth-child`, screen coordinates, blind click, `last img`, newest image, or DOM order as identity.
+
+Fail-closed behavior:
+
+- Unsupported DOM returns `DOM_CONTRACT_UNSUPPORTED`.
+- Multiple indistinguishable new image candidates return `AMBIGUOUS_IMAGE_CANDIDATE`.
+- No automatic click, typing, broad DOM mutation, or fallback capture occurs.
+
+Baseline inventory:
+
+- Existing image candidates are inventoried before any future generation.
+- Stored candidate metadata is limited to a local id, normalized source fingerprint, dimensions, container fingerprint, observation timestamp, and optional provider asset id.
+- Image bytes, Base64 data, unrelated prompts, unrelated responses, and full conversation text are not persisted.
+
+Correlation contract:
+
+- Future Phase 4B correlation combines:
+  - `job_id`
+  - `prompt_version`
+  - `prompt_hash`
+  - `provider_tab_id`
+  - optional conversation identity
+  - submitted timestamp
+  - optional response identity
+  - generation sequence
+  - baseline fingerprints
+  - post-submission candidate fingerprints
+- No single signal is authoritative alone.
+
+Generation observer foundation:
+
+- `ChatGptGenerationObserver` supports a cancellable `MutationObserver` plus bounded polling fallback.
+- It has an explicit timeout and no permanent high-frequency loop.
+- Phase 4A does not start real generation.
+
+Capture-path priorities:
+
+1. highest-quality provider download/asset
+2. already available Blob/binary
+3. fetchable resolved asset
+4. safe browser-side conversion
+5. screenshot last
+
+`SCREENSHOT_PRIMARY_CAPTURE=NO`.
+
+Reload and tab-close recovery:
+
+- Reload/navigation marks the tab as rediscovering and clears stale content-script session state.
+- Closed ChatGPT tabs mark provider tab unavailable locally.
+- Server job state, local checkpoints, provider-lane ownership, and any captured blob remain under the existing Phase 3 recovery rules.
+
+Read-only provider diagnostic:
+
+- Runtime message: `READ_ONLY_PROVIDER_DIAGNOSTIC`.
+- Locates an already open ChatGPT tab, requests current capability flags, and records only bounded provider status.
+- It does not type, click, submit, generate, download, capture, or change conversation.
+
+Minimal provider status UI:
+
+- Popup status now shows provider name, tab status, auth state, DOM status, composer status, visible image candidate count, and provider-lane state.
+- No private conversation content is displayed.
+
+Safe logging and privacy:
+
+- Provider state may contain tab id, adapter version, capability flags, bounded fingerprints, provider stage, error code, and timestamp.
+- It must not log or persist cookies, tokens, credentials, full private conversation text, binary content, Base64, or authorization headers.
+
+Phase 4A verification:
+
+- ChatGPT provider fixture tests pass.
+- Baseline inventory and DOM reorder tests pass.
+- Synthetic correlation tests pass.
+- Reload and tab-close tests pass.
+- Handshake duplicate/stale/wrong-tab tests pass.
+- Hard no-submission test passes.
+- Existing Phase 3 extension core regression passes.
+- Phase 2A, Phase 2B, Phase 2C, and publication safety regressions pass.
+- TypeScript `--noEmit` passes.
+- Astro production build passes.
