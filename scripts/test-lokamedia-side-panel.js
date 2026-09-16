@@ -114,6 +114,7 @@ const ids = [
   'server',
   'token',
   'enabled',
+  'run-once',
   'save',
   'diagnostic',
   'panel-status'
@@ -147,17 +148,41 @@ function state(patch = {}) {
   };
 }
 
-async function installSidePanel({ failProvider = false } = {}) {
+function waitingState(patch = {}) {
+  return state({
+    config: { serverBaseUrl: 'http://localhost:4321', enabled: true },
+    counters: { totalJobs: 1, active: 0, waiting: 1, complete: 0 },
+    jobs: {
+      waiting: {
+        job_id: 'phase4b-job',
+        article_id: 481,
+        article_title: 'LokaMedia Phase 4B Controlled Generation Test',
+        slot_key: 'featured',
+        role: 'featured',
+        local_state: 'QUEUED',
+        status: 'QUEUED'
+      }
+    },
+    ...patch
+  });
+}
+
+async function installSidePanel({ failProvider = false, initialState = state() } = {}) {
   const doc = new FakeDocument(ids);
   const messages = [];
+  let currentState = initialState;
   globalThis.document = doc;
   globalThis.chrome = {
     runtime: {
       lastError: null,
       async sendMessage(message) {
         messages.push(message);
-        if (message.type === 'STATUS') return { ok: true, state: state() };
+        if (message.type === 'STATUS') return { ok: true, state: currentState };
         if (message.type === 'SAVE_CONFIG') return { ok: true };
+        if (message.type === 'RUN_ONCE') {
+          currentState = waitingState({ phase4bSingleRun: { submission_consumed: true } });
+          return { ok: true, state: currentState };
+        }
         if (message.type === 'READ_ONLY_PROVIDER_DIAGNOSTIC') {
           if (failProvider) return { ok: false, error: 'CONTENT_SCRIPT_UNAVAILABLE' };
           return { ok: true, state: state({ provider: { chatgpt: { ...state().provider.chatgpt, visible_image_candidates: 6 } } }) };
@@ -218,15 +243,29 @@ async function testEnabledSaveProviderCheck() {
   pass('Enabled toggle, Save, repeated Provider Check, and status refresh work');
 }
 
-async function testErrorAndRunAbsence() {
+async function testRunOnceControl() {
+  const { doc, messages } = await installSidePanel({ initialState: waitingState() });
+  assert.equal(doc.querySelector('#current-article').textContent, 'LokaMedia Phase 4B Controlled Generation Test');
+  assert.equal(doc.querySelector('#current-slot').textContent, 'featured');
+  assert.equal(doc.querySelector('#current-operation').textContent, 'Waiting');
+  assert.equal(doc.querySelector('#run-once').disabled, false);
+  await doc.querySelector('#run-once').dispatch('click');
+  await settle();
+  assert(messages.some((message) => message.type === 'RUN_ONCE'));
+  assert.equal(doc.querySelector('#run-once').disabled, true);
+  assert.match(doc.querySelector('#run-once').textContent, /Running|Run consumed|Complete|Needs attention/);
+  pass('Run Once appears for the waiting Phase 4B job and disables immediately after use');
+}
+
+async function testErrorAndRunGuard() {
   const { doc, messages } = await installSidePanel({ failProvider: true });
   await doc.querySelector('#diagnostic').dispatch('click');
   await settle();
   assert.equal(doc.querySelector('#panel-status').dataset.state, 'error');
   assert.equal(doc.querySelector('#panel-status').textContent, 'CONTENT_SCRIPT_UNAVAILABLE');
-  assert.equal(doc.querySelector('#tick'), null);
+  assert.equal(doc.querySelector('#run-once').disabled, true);
   assert(!messages.some((message) => message.type === 'TICK'));
-  pass('provider errors are bounded and Run cannot generate because it is not present');
+  pass('provider errors are bounded and legacy TICK is not used');
 }
 
 async function testLayoutHasResponsiveRules() {
@@ -241,7 +280,8 @@ await testManifestSidePanel();
 await testCoreStateMapping();
 await testSidePanelInitializesAndRecovers();
 await testEnabledSaveProviderCheck();
-await testErrorAndRunAbsence();
+await testRunOnceControl();
+await testErrorAndRunGuard();
 await testLayoutHasResponsiveRules();
 
 console.log(`Side panel tests passed: ${passed}`);

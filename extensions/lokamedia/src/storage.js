@@ -29,7 +29,8 @@ const DEFAULT_STATE = {
     connection: 'offline',
     currentGeneration: null,
     transfers: []
-  }
+  },
+  phase4bSingleRun: null
 };
 
 function clone(value) {
@@ -132,6 +133,52 @@ export class ExtensionStorage {
   async dequeueUpload(jobId) {
     return this.update((state) => {
       state.uploadQueue = state.uploadQueue.filter((item) => item !== jobId);
+    });
+  }
+
+  async armPhase4bSingleRun({ jobId, runId = crypto.randomUUID(), now = new Date().toISOString() }) {
+    return this.update((state) => {
+      const gate = state.phase4bSingleRun;
+      if (gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at) {
+        return { armed: false, reason: 'PHASE_4B_RUN_CONSUMED', gate };
+      }
+      state.phase4bSingleRun = {
+        phase4b_single_run_id: runId,
+        job_id: jobId,
+        armed_at: now,
+        submission_consumed: false,
+        generation_consumed: false,
+        completed_at: null,
+        last_error: null
+      };
+      return { armed: true, gate: state.phase4bSingleRun };
+    });
+  }
+
+  async consumePhase4bSubmission({ jobId, now = new Date().toISOString() }) {
+    return this.update((state) => {
+      const gate = state.phase4bSingleRun;
+      if (!gate) return { consumed: false, reason: 'PHASE_4B_RUN_NOT_ARMED' };
+      if (gate.job_id && gate.job_id !== jobId) return { consumed: false, reason: 'PHASE_4B_WRONG_JOB' };
+      if (gate.submission_consumed || gate.generation_consumed || gate.completed_at) {
+        return { consumed: false, reason: 'PHASE_4B_SUBMISSION_ALREADY_CONSUMED' };
+      }
+      gate.job_id = jobId;
+      gate.submission_consumed = true;
+      gate.generation_consumed = true;
+      gate.consumed_at = now;
+      return { consumed: true, gate };
+    });
+  }
+
+  async completePhase4bSingleRun({ jobId, ok = true, error = null, now = new Date().toISOString() }) {
+    return this.update((state) => {
+      const gate = state.phase4bSingleRun;
+      if (!gate || (gate.job_id && gate.job_id !== jobId)) return { completed: false };
+      gate.completed_at = now;
+      gate.last_error = error;
+      gate.outcome = ok ? 'complete' : 'needs_attention';
+      return { completed: true, gate };
     });
   }
 

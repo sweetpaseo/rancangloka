@@ -55,6 +55,54 @@ export class LokaMediaController {
     return this.runJob(response.job);
   }
 
+  async runOnce() {
+    await this.startup();
+    const state = await this.storage.readState();
+    const gate = state.phase4bSingleRun;
+    if (gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at) {
+      return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
+    }
+    if (!state.config.enabled) return { ok: false, error: 'EXTENSION_DISABLED' };
+    if (!state.config.deviceToken || !state.config.deviceId) return { ok: false, error: 'DEVICE_CREDENTIAL_REQUIRED' };
+    if (state.status.connection === 'backpressure') return { ok: false, error: 'BACKPRESSURE' };
+    if (state.locks.providerLane) return { ok: false, error: 'PROVIDER_LANE_BUSY' };
+
+    const provider = state.provider?.chatgpt ?? {};
+    if (
+      provider.tab_status !== 'connected' ||
+      provider.auth_state !== 'AUTHENTICATED' ||
+      provider.dom_status !== 'SUPPORTED' ||
+      provider.composer_status !== 'ready'
+    ) {
+      return { ok: false, error: 'PROVIDER_NOT_READY' };
+    }
+
+    const response = await this.apiClient.nextJob(state.config.deviceId);
+    if (response.protocol_version && response.protocol_version !== LOKAMEDIA_PROTOCOL_VERSION) {
+      return { ok: false, error: 'PROTOCOL_MISMATCH' };
+    }
+    if (!response.job) return { ok: false, error: response.error ?? 'NO_JOB' };
+
+    const job = response.job;
+    if (job.article_title !== 'LokaMedia Phase 4B Controlled Generation Test' || job.slot_key !== 'featured') {
+      return { ok: false, error: 'WRONG_PHASE_4B_JOB', job_id: job.job_id };
+    }
+
+    const armed = await this.storage.armPhase4bSingleRun({ jobId: job.job_id });
+    if (!armed.armed) return { ok: false, error: armed.reason };
+    const consumed = await this.storage.consumePhase4bSubmission({ jobId: job.job_id });
+    if (!consumed.consumed) return { ok: false, error: consumed.reason };
+
+    try {
+      const result = await this.runJob(job);
+      await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
+      return { ok: true, ...result };
+    } catch (error) {
+      await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: false, error: String(error?.message || error) });
+      throw error;
+    }
+  }
+
   async runJob(job) {
     const acquired = await this.providerLane.acquire(job.job_id);
     if (!acquired) return { acquired: false, reason: 'PROVIDER_BUSY' };

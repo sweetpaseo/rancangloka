@@ -95,7 +95,23 @@ function renderState(state) {
   element('#system-error').textContent = state.status.last_error ?? 'none';
   element('#server').value = state.config.serverBaseUrl;
   element('#enabled').checked = state.config.enabled;
+  renderRunOnce(state, current, provider, server);
   renderTransfers(transfers);
+}
+
+function renderRunOnce(state, current, provider, server) {
+  const button = element('#run-once');
+  const gate = state.phase4bSingleRun;
+  const consumed = Boolean(gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at);
+  const waitingJob = current.operation === 'Waiting' && current.slot === 'featured' && current.article === 'LokaMedia Phase 4B Controlled Generation Test';
+  const ready =
+    state.config.enabled &&
+    server === 'online' &&
+    waitingJob &&
+    provider.lane === 'idle' &&
+    state.status?.connection !== 'backpressure';
+  button.disabled = consumed || !ready;
+  button.textContent = consumed ? (gate?.outcome === 'complete' ? 'Complete' : gate?.outcome === 'needs_attention' ? 'Needs attention' : 'Run consumed') : 'Run Once';
 }
 
 async function refresh({ quiet = false } = {}) {
@@ -125,6 +141,16 @@ async function providerCheck() {
   setStatus(response.ok ? 'Provider check complete' : boundedError(response.error), !response.ok);
 }
 
+async function runOnce() {
+  const button = element('#run-once');
+  button.disabled = true;
+  button.textContent = 'Running...';
+  const response = await send('RUN_ONCE', {}, { timeoutMs: 15000 });
+  if (response.state) renderState(response.state);
+  await refresh({ quiet: true });
+  setStatus(response.ok ? 'Run consumed' : boundedError(response.error), !response.ok);
+}
+
 function bindSidePanel() {
   if (bound) return;
   const validation = validateSidePanelElements(document);
@@ -137,6 +163,9 @@ function bindSidePanel() {
   });
   element('#diagnostic').addEventListener('click', () => {
     void providerCheck().catch((error) => setStatus(boundedError(error), true));
+  });
+  element('#run-once').addEventListener('click', () => {
+    void runOnce().catch((error) => setStatus(boundedError(error), true));
   });
   bound = true;
   boot.add(SIDE_PANEL_BOOT_FLAGS.DOM_BOUND);

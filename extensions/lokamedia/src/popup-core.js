@@ -78,6 +78,7 @@ export function validateSidePanelElements(doc) {
     'server',
     'token',
     'enabled',
+    'run-once',
     'save',
     'diagnostic',
     'panel-status'
@@ -96,7 +97,10 @@ export function normalizeServerStatus(state = {}) {
 export function summarizeCurrentJob(state = {}) {
   const jobs = Object.values(state.jobs ?? {});
   const active = jobs.find((job) => ['GENERATING', 'IMAGE_DETECTED', 'CAPTURING', 'CAPTURED', 'UPLOADING', 'RECOVERING'].includes(job.local_state));
-  if (!active) {
+  const waiting = jobs.find((job) => ['QUEUED', 'WAITING_RETRY'].includes(job.local_state ?? job.status));
+  const complete = jobs.find((job) => ['COMPLETE'].includes(job.local_state ?? job.status));
+  const current = active ?? waiting ?? complete;
+  if (!current) {
     return {
       article: 'None',
       slot: 'Idle',
@@ -104,11 +108,12 @@ export function summarizeCurrentJob(state = {}) {
       elapsed: '--'
     };
   }
+  const stateLabel = current === waiting ? 'Waiting' : current === complete ? 'Complete' : (current.local_state ?? 'active');
   return {
-    article: active.article_id ? `Article #${active.article_id}` : active.article_title ?? active.job_id,
-    slot: active.slot_key ?? active.role ?? 'media',
-    operation: active.local_state ?? 'active',
-    elapsed: active.submitted_at ? elapsedSince(active.submitted_at) : '--'
+    article: current.article_title ?? (current.article_id ? `Article #${current.article_id}` : current.job_id),
+    slot: current.slot_key ?? current.role ?? 'media',
+    operation: stateLabel,
+    elapsed: current.submitted_at ? elapsedSince(current.submitted_at) : '--'
   };
 }
 

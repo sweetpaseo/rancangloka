@@ -128,6 +128,17 @@ class MockApi {
 async function makeController(api = new MockApi(), storage = ExtensionStorage.memory(), blobStore = new MemoryBlobStore()) {
   await storage.initialize();
   await storage.saveConfig({ enabled: true, deviceToken: 'test-token', deviceId: 'device-1' });
+  await storage.update((state) => {
+    state.status.connection = 'online';
+    state.provider.chatgpt = {
+      ...state.provider.chatgpt,
+      tab_status: 'connected',
+      auth_state: 'AUTHENTICATED',
+      dom_status: 'SUPPORTED',
+      composer_status: 'ready',
+      provider_lane: 'idle'
+    };
+  });
   return {
     storage,
     blobStore,
@@ -139,6 +150,58 @@ async function makeController(api = new MockApi(), storage = ExtensionStorage.me
       provider: new MockProviderAdapter()
     })
   };
+}
+
+async function testPhase4bOneShotGuard() {
+  const job = makeJob('phase4b-single', {
+    article_id: 481,
+    article_title: 'LokaMedia Phase 4B Controlled Generation Test',
+    slot_key: 'featured',
+    role: 'featured'
+  });
+  const { controller, storage, api } = await makeController(new MockApi({ jobs: [job, job] }));
+  const first = await controller.runOnce();
+  assert.equal(first.ok, true);
+  assert.equal(api.uploads.length, 1);
+  const second = await controller.runOnce();
+  assert.equal(second.error, 'PHASE_4B_RUN_CONSUMED');
+  assert.equal(api.uploads.length, 1);
+
+  const reopened = new LokaMediaController({
+    apiClient: api,
+    storage,
+    blobStore: new MemoryBlobStore(),
+    provider: new MockProviderAdapter()
+  });
+  assert.equal((await reopened.runOnce()).error, 'PHASE_4B_RUN_CONSUMED');
+  assert.equal(api.uploads.length, 1);
+  pass('Phase 4B Run Once durable latch blocks double click, panel reopen, and service-worker restart');
+}
+
+async function testPhase4bPreconditions() {
+  const phaseJob = makeJob('phase4b-precheck', {
+    article_title: 'LokaMedia Phase 4B Controlled Generation Test',
+    slot_key: 'featured',
+    role: 'featured'
+  });
+
+  const notReady = await makeController(new MockApi({ jobs: [phaseJob] }));
+  await notReady.storage.update((state) => {
+    state.provider.chatgpt.composer_status = 'unavailable';
+  });
+  assert.equal((await notReady.controller.runOnce()).error, 'PROVIDER_NOT_READY');
+  assert.equal(notReady.api.jobs.length, 1);
+
+  const wrong = await makeController(new MockApi({ jobs: [makeJob('wrong-job', { article_title: 'Other', slot_key: 'featured', role: 'featured' })] }));
+  assert.equal((await wrong.controller.runOnce()).error, 'WRONG_PHASE_4B_JOB');
+
+  const pressure = await makeController(new MockApi({ jobs: [phaseJob] }));
+  await pressure.storage.update((state) => {
+    state.status.connection = 'backpressure';
+  });
+  assert.equal((await pressure.controller.runOnce()).error, 'BACKPRESSURE');
+  assert.equal(pressure.api.jobs.length, 1);
+  pass('Phase 4B Run Once blocks provider-not-ready, wrong job, and backpressure states');
 }
 
 async function seedCaptured(storage, blobStore, job) {
@@ -393,6 +456,8 @@ async function testNoSecretAndNoFakeProgress() {
 await testManifestAndConstants();
 await testFreshStartupAndNoJob();
 await testJobAcquiredAndPipeline();
+await testPhase4bOneShotGuard();
+await testPhase4bPreconditions();
 await testHeartbeatLossAndLeaseLost();
 await testProtocolMismatchAndAuthRequired();
 await testRestartAndIndexedDbPersistence();

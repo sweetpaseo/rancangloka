@@ -40,6 +40,13 @@ export class ApiClient {
     });
   }
 
+  listJobs({ status = 'all', limit = 20 } = {}) {
+    return this.request(`/api/internal/v1/media/jobs?status=${encodeURIComponent(status)}&limit=${encodeURIComponent(limit)}`, {
+      method: 'GET',
+      headers: this.headers()
+    });
+  }
+
   heartbeat(jobId, body) {
     return this.request(`/api/internal/v1/media/jobs/${encodeURIComponent(jobId)}/heartbeat`, {
       method: 'POST',

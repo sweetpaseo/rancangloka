@@ -33,6 +33,11 @@ export class ChatGptProviderAdapter {
     throw error;
   }
 
+  async generate(job) {
+    await this.prepare(job);
+    await this.submit(job);
+  }
+
   async observe(job) {
     return this.prepare(job);
   }
