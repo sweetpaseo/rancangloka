@@ -8,7 +8,7 @@ export class ApiClient {
   constructor({ baseUrl, deviceToken, fetchImpl = globalThis.fetch } = {}) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
     this.deviceToken = deviceToken;
-    this.fetchImpl = fetchImpl;
+    this.fetchImpl = fetchImpl === globalThis.fetch ? globalThis.fetch.bind(globalThis) : fetchImpl;
   }
 
   headers(extra = {}) {

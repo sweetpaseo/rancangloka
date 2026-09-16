@@ -247,6 +247,24 @@ async function testFreshStartupAndNoJob() {
   pass('fresh startup and no-job response');
 }
 
+async function testApiClientBindsWorkerFetch() {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async function fetch(url) {
+      if (this !== globalThis) throw new TypeError("Failed to execute 'fetch' on 'WorkerGlobalScope': Illegal invocation");
+      assert.equal(String(url), 'http://localhost:4321/api/internal/v1/media/jobs?status=all&limit=1');
+      return new Response(JSON.stringify({ status: 'success', jobs: [] }), { status: 200 });
+    };
+    const { ApiClient } = await import(`../extensions/lokamedia/src/api-client.js?bind=${Date.now()}`);
+    const client = new ApiClient({ baseUrl: 'http://localhost:4321', deviceToken: 'token' });
+    const result = await client.listJobs({ status: 'all', limit: 1 });
+    assert.deepEqual(result.jobs, []);
+    pass('ApiClient binds WorkerGlobalScope fetch to avoid illegal invocation');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 async function testJobAcquiredAndPipeline() {
   const job = makeJob('job-acquired');
   const { controller, storage, blobStore, api } = await makeController(new MockApi({ jobs: [job] }));
@@ -455,6 +473,7 @@ async function testNoSecretAndNoFakeProgress() {
 
 await testManifestAndConstants();
 await testFreshStartupAndNoJob();
+await testApiClientBindsWorkerFetch();
 await testJobAcquiredAndPipeline();
 await testPhase4bOneShotGuard();
 await testPhase4bPreconditions();
