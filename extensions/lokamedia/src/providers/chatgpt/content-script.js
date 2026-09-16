@@ -77,6 +77,43 @@
     };
   }
 
+  function setComposerValue(element, value) {
+    if (element.matches?.('textarea')) {
+      element.value = value;
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    element.textContent = value;
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: value }));
+  }
+
+  async function controlledSubmit(message) {
+    const caps = detect();
+    if (caps.auth_state !== 'AUTHENTICATED') return { ok: false, error: 'AUTH_REQUIRED', capabilities: caps };
+    if (caps.dom_status !== 'SUPPORTED' || !caps.capabilities.COMPOSER_EDITABLE || !caps.capabilities.SEND_CONTROL_PRESENT) {
+      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
+    }
+    const composer = first([
+      'div[contenteditable="true"][data-testid*="prompt"]',
+      'textarea[data-testid*="prompt"]',
+      'form textarea',
+      'main form div[contenteditable="true"]'
+    ]);
+    const sendControl = first(['button[data-testid="send-button"]', 'button[aria-label*="Send"]', 'form button[type="submit"]']);
+    if (!message.controlled_run_once || !message.prompt || !message.prompt_hash || !message.job_id) {
+      return { ok: false, error: 'CONTROLLED_SUBMIT_CONTRACT_INVALID', capabilities: caps };
+    }
+    setComposerValue(composer.element, message.prompt);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    sendControl.element.click();
+    return {
+      ok: true,
+      submitted_at: new Date().toISOString(),
+      session_id: sessionId,
+      baseline_image_count: caps.image_candidate_count
+    };
+  }
+
   function send(type, payload = {}) {
     return chrome.runtime.sendMessage({
       id: crypto.randomUUID(),
@@ -96,6 +133,10 @@
     if (message?.provider !== 'chatgpt' || message?.version !== CHATGPT_DOM_ADAPTER_VERSION) return false;
     if (message.type === 'CHATGPT_PROVIDER_DIAGNOSTIC') {
       sendResponse({ ok: true, capabilities: detect(), session_id: sessionId });
+      return true;
+    }
+    if (message.type === 'CHATGPT_PROVIDER_CONTROLLED_SUBMIT') {
+      void controlledSubmit(message).then(sendResponse).catch((error) => sendResponse({ ok: false, error: String(error?.message || error || 'SUBMIT_FAILED') }));
       return true;
     }
     return false;

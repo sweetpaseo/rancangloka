@@ -60,8 +60,8 @@ class FakeElement {
     for (const handler of this.listeners[type] ?? []) await handler({ target: this });
   }
 
-  append(child) {
-    this.children.push(child);
+  append(...children) {
+    this.children.push(...children);
   }
 
   querySelector(selector) {
@@ -111,18 +111,27 @@ const ids = [
   'system-server',
   'system-backpressure',
   'system-error',
+  'last-action',
   'server',
   'token',
   'enabled',
   'run-once',
   'save',
   'diagnostic',
-  'panel-status'
+  'panel-status',
+  'audit-filter',
+  'audit-current-run',
+  'audit-current-job',
+  'audit-copy',
+  'audit-export',
+  'audit-clear',
+  'audit-log'
 ];
 
 function state(patch = {}) {
   return {
     status: { connection: 'online', transfers: [{ label: 'Article #79 Cover', percentage: 71 }], last_error: null },
+    auditLog: { lastAction: 'Idle', events: [] },
     counters: { totalJobs: 17, active: 1, waiting: 12, complete: 4 },
     config: { serverBaseUrl: 'http://localhost:4321', deviceToken: 'saved-token', enabled: false },
     jobs: {
@@ -173,6 +182,7 @@ async function installSidePanel({ failProvider = false, initialState = state(), 
   let currentState = initialState;
   const intervals = [];
   globalThis.document = doc;
+  Object.defineProperty(globalThis, 'navigator', { value: { clipboard: { async writeText() {} } }, configurable: true });
   globalThis.setInterval = (handler) => {
     intervals.push(handler);
     return { unref() {} };
@@ -189,7 +199,17 @@ async function installSidePanel({ failProvider = false, initialState = state(), 
           return { ok: true };
         }
         if (message.type === 'RUN_ONCE') {
-          currentState = waitingState({ phase4bSingleRun: { submission_consumed: true } });
+          currentState = waitingState({
+            phase4bSingleRun: { submission_consumed: true },
+            auditLog: { lastAction: 'Run Once requested', events: [{ timestamp: new Date().toISOString(), level: 'INFO', event_code: 'RUN_REQUEST_ACCEPTED', message_safe: 'accepted' }] }
+          });
+          return { ok: true, state: currentState };
+        }
+        if (message.type === 'AUDIT_STATUS') return { ok: true, events: currentState.auditLog?.events ?? [], lastAction: currentState.auditLog?.lastAction ?? 'Idle' };
+        if (message.type === 'AUDIT_COPY_TEXT') return { ok: true, text: 'LokaMedia Audit Log\nINFO RUN_REQUEST_ACCEPTED' };
+        if (message.type === 'AUDIT_EXPORT_JSON') return { ok: true, payload: { events: currentState.auditLog?.events ?? [] } };
+        if (message.type === 'AUDIT_CLEAR') {
+          currentState = { ...currentState, auditLog: { events: [], lastAction: 'Idle' } };
           return { ok: true, state: currentState };
         }
         if (message.type === 'READ_ONLY_PROVIDER_DIAGNOSTIC') {
@@ -292,7 +312,7 @@ async function testConfigDraftSurvivesRefreshAndPersists() {
 }
 
 async function testRunOnceControl() {
-  const { doc, messages } = await installSidePanel({ initialState: waitingState() });
+  const { doc, messages } = await installSidePanel({ initialState: waitingState({ auditLog: { lastAction: 'Run Once requested', events: [{ timestamp: new Date().toISOString(), level: 'INFO', event_code: 'RUN_REQUEST_ACCEPTED', message_safe: 'accepted' }] } }) });
   assert.equal(doc.querySelector('#current-article').textContent, 'LokaMedia Phase 4B Controlled Generation Test');
   assert.equal(doc.querySelector('#current-slot').textContent, 'featured');
   assert.equal(doc.querySelector('#current-operation').textContent, 'Waiting');
@@ -300,7 +320,9 @@ async function testRunOnceControl() {
   await doc.querySelector('#run-once').dispatch('click');
   await settle();
   assert(messages.some((message) => message.type === 'RUN_ONCE'));
+  assert(messages.some((message) => message.type === 'AUDIT_STATUS'));
   assert.equal(doc.querySelector('#run-once').disabled, true);
+  assert.equal(doc.querySelector('#last-action').textContent, 'Run Once requested');
   assert.match(doc.querySelector('#run-once').textContent, /Running|Run consumed|Complete|Needs attention/);
   pass('Run Once appears for the waiting Phase 4B job and disables immediately after use');
 }
@@ -330,6 +352,23 @@ async function testQueueVisibilityAndRunOnceArming() {
   pass('existing queued job is visible and Run Once arms only when local prerequisites are ready');
 }
 
+async function testAuditControls() {
+  const event = { timestamp: new Date().toISOString(), level: 'ERROR', event_code: 'RUN_FAILED', message_safe: 'Needs attention' };
+  const { doc, messages } = await installSidePanel({ initialState: state({ auditLog: { lastAction: 'Needs attention - SUBMIT_FAILED', events: [event] } }) });
+  await doc.querySelector('#audit-filter').dispatch('change');
+  await settle();
+  assert.equal(doc.querySelector('#last-action').textContent, 'Needs attention - SUBMIT_FAILED');
+  assert.equal(doc.querySelector('#audit-log').children.length > 0, true);
+  assert.match(doc.querySelector('#audit-log').children[0].children[0].textContent, /RUN_FAILED/);
+  await doc.querySelector('#audit-filter').dispatch('change');
+  await doc.querySelector('#audit-copy').dispatch('click');
+  await doc.querySelector('#audit-clear').dispatch('click');
+  await settle();
+  assert(messages.some((message) => message.type === 'AUDIT_COPY_TEXT'));
+  assert(messages.some((message) => message.type === 'AUDIT_CLEAR'));
+  pass('audit log UI renders events and supports filter, copy, and isolated clear');
+}
+
 async function testErrorAndRunGuard() {
   const { doc, messages } = await installSidePanel({ failProvider: true });
   await doc.querySelector('#diagnostic').dispatch('click');
@@ -356,6 +395,7 @@ await testEnabledSaveProviderCheck();
 await testConfigDraftSurvivesRefreshAndPersists();
 await testRunOnceControl();
 await testQueueVisibilityAndRunOnceArming();
+await testAuditControls();
 await testErrorAndRunGuard();
 await testLayoutHasResponsiveRules();
 

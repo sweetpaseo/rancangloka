@@ -55,6 +55,7 @@
         <div class="status-row"><span>Server</span><strong id="system-server">offline</strong></div>
         <div class="status-row"><span>Backpressure</span><strong id="system-backpressure">off</strong></div>
         <div class="status-row"><span>Last error</span><strong id="system-error">none</strong></div>
+        <div class="status-row"><span>Last action</span><strong id="last-action">Idle</strong></div>
       </section>
 
       <section class="controls">
@@ -68,6 +69,26 @@
         <label>Server <input id="server" type="url"></label>
         <label>Device token <input id="token" type="password" autocomplete="off"></label>
         <button id="save">Save</button>
+      </details>
+
+      <details>
+        <summary>Audit Log</summary>
+        <div class="audit-controls">
+          <select id="audit-filter" aria-label="Audit level filter">
+            <option value="ALL">All</option>
+            <option value="INFO">Info</option>
+            <option value="WARN">Warn</option>
+            <option value="ERROR">Error</option>
+          </select>
+          <label class="toggle"><input id="audit-current-run" type="checkbox"> Current run</label>
+          <label class="toggle"><input id="audit-current-job" type="checkbox"> Current job</label>
+        </div>
+        <div class="audit-controls">
+          <button id="audit-copy" type="button">Copy Log</button>
+          <button id="audit-export" type="button">Export JSON</button>
+          <button id="audit-clear" type="button">Clear Log</button>
+        </div>
+        <div id="audit-log" class="audit-log">No audit events</div>
       </details>
     </main>
     <script type="module" src="side-panel.js"></script>

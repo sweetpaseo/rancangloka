@@ -1,8 +1,10 @@
-import { DEFAULT_CONFIG, STORAGE_SCHEMA_VERSION } from './constants.js';
+import { DEFAULT_CONFIG, EXTENSION_VERSION, STORAGE_SCHEMA_VERSION } from './constants.js';
+import { AUDIT_RETENTION_DAYS, MAX_AUDIT_EVENTS } from './audit-log.js';
 
 const DEFAULT_STATE = {
   schemaVersion: STORAGE_SCHEMA_VERSION,
   config: DEFAULT_CONFIG,
+  extension_version: EXTENSION_VERSION,
   jobs: {},
   uploadQueue: [],
   processedMessages: [],
@@ -30,7 +32,12 @@ const DEFAULT_STATE = {
     currentGeneration: null,
     transfers: []
   },
-  phase4bSingleRun: null
+  phase4bSingleRun: null,
+  auditLog: {
+    events: [],
+    lastAction: 'Idle',
+    nextSequence: 1
+  }
 };
 
 function clone(value) {
@@ -179,6 +186,55 @@ export class ExtensionStorage {
       gate.last_error = error;
       gate.outcome = ok ? 'complete' : 'needs_attention';
       return { completed: true, gate };
+    });
+  }
+
+  async appendAuditEvent(event) {
+    return this.update((state) => {
+      state.auditLog ??= { events: [], lastAction: 'Idle', nextSequence: 1 };
+      const sequence = state.auditLog.nextSequence || 1;
+      const record = { ...event, sequence };
+      state.auditLog.nextSequence = sequence + 1;
+      state.auditLog.events.push(record);
+      const cutoff = Date.now() - AUDIT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+      state.auditLog.events = state.auditLog.events
+        .filter((item) => Date.parse(item.timestamp) >= cutoff)
+        .slice(-MAX_AUDIT_EVENTS);
+      if (record.event_code === 'RUN_FAILED' || record.event_code === 'RUN_NEEDS_ATTENTION') {
+        state.auditLog.lastAction = `Needs attention - ${record.error_code || record.message_safe || record.event_code}`;
+      } else if (record.event_code === 'RUN_COMPLETE') {
+        state.auditLog.lastAction = 'Complete';
+      } else if (record.event_code === 'RUN_REQUEST_ACCEPTED') {
+        state.auditLog.lastAction = 'Run Once requested';
+      } else if (record.event_code === 'JOB_ACQUIRE_START') {
+        state.auditLog.lastAction = 'Acquiring job';
+      } else if (record.event_code === 'PROVIDER_PRECHECK_START') {
+        state.auditLog.lastAction = 'Provider precheck';
+      } else if (record.event_code === 'SUBMISSION_GATE_ARMED') {
+        state.auditLog.lastAction = 'Submission armed';
+      } else if (record.event_code === 'PROVIDER_SUBMIT_START') {
+        state.auditLog.lastAction = 'Submitting';
+      } else if (record.event_code === 'CAPTURE_PERSISTED') {
+        state.auditLog.lastAction = 'Captured';
+      } else if (record.event_code === 'UPLOAD_START') {
+        state.auditLog.lastAction = 'Uploading';
+      }
+      return record;
+    });
+  }
+
+  async listAuditEvents({ level = 'ALL', runId = null, jobId = null, limit = 100 } = {}) {
+    const state = await this.readState();
+    let events = state.auditLog?.events ?? [];
+    if (level !== 'ALL') events = events.filter((event) => event.level === level);
+    if (runId) events = events.filter((event) => event.run_id === runId);
+    if (jobId) events = events.filter((event) => event.job_id === jobId);
+    return events.slice(-limit);
+  }
+
+  async clearAuditEvents() {
+    return this.update((state) => {
+      state.auditLog = { events: [], lastAction: 'Idle', nextSequence: state.auditLog?.nextSequence || 1 };
     });
   }
 

@@ -1131,3 +1131,30 @@ Side Panel verification:
 - Phase 3 extension regression passes.
 - TypeScript `--noEmit` passes.
 - Astro production build passes.
+
+## Phase 4B1A.5 Durable Run Audit Logging
+
+Implemented locally in `lokamedia-phase-2ab-checkpoint` only. No production deploy, remote migration, production D1/R2 mutation, ChatGPT prompt submission, image generation, or new fixture creation was performed.
+
+Run Once root cause and repair:
+
+- The real operator click had no durable diagnostic trail, so a provider-path failure could appear silent after status refresh.
+- The execution path is now instrumented from Side Panel click through controller gate checks, server job acquisition, provider lane acquisition, provider precheck/prepare, submission gate arming, provider submit, capture, upload, attachment confirmation, and terminal run state.
+- General automatic provider submission remains disabled. Controlled submission is allowed only through the explicit Run Once path for the controlled Phase 4B job after local prerequisites, one-shot gate, provider readiness, and provider lane ownership pass.
+- Submission allowance consumption boundary: `SUBMISSION_GATE_ARMED` / `consumePhase4bSubmission`, before provider submit intent.
+
+Audit architecture:
+
+- Canonical module: `extensions/lokamedia/src/audit-log.js`.
+- Persistent store: `chrome.storage.local` inside the existing `lokamediaState.auditLog` envelope.
+- Every event has timestamp, monotonic sequence, level, component, event code, safe message, run id, job id, article id, slot key, provider stage, server job status, error code, duration, and redacted details.
+- Run correlation uses `run_id` plus `job_id` when available.
+- Retention is bounded to 1000 events and seven days; oldest events are pruned first.
+- Persistent audit payloads redact device tokens, authorization headers, cookies, secrets, passwords, binary/blob bytes, Base64, and other sensitive fields.
+- Safe error serialization preserves name, safe message, known code/status, component, and stage while excluding headers, tokens, image binary, and full private conversation data.
+
+Side Panel audit UI:
+
+- Adds compact `Last action` status.
+- Adds collapsible `Audit Log` with level filter, current-run/current-job filters, `Copy Log`, `Export JSON`, and isolated `Clear Log`.
+- `Clear Log` only removes audit events and leaves configuration, credentials, one-shot gate, jobs, blobs, provider lane, and upload queue intact.

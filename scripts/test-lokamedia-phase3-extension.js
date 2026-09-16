@@ -20,6 +20,7 @@ import {
   UPLOAD_CONCURRENCY
 } from '../extensions/lokamedia/src/constants.js';
 import { MemoryBlobStore } from '../extensions/lokamedia/src/blob-store.js';
+import { AuditLogger, formatAuditText, MAX_AUDIT_EVENTS } from '../extensions/lokamedia/src/audit-log.js';
 import { BackpressureController } from '../extensions/lokamedia/src/backpressure.js';
 import { LokaMediaController } from '../extensions/lokamedia/src/controller.js';
 import { HeartbeatManager } from '../extensions/lokamedia/src/heartbeat-manager.js';
@@ -163,6 +164,7 @@ async function testPhase4bOneShotGuard() {
   const first = await controller.runOnce();
   assert.equal(first.ok, true);
   assert.equal(api.uploads.length, 1);
+  assert.equal(controller.provider.calls.filter((call) => call.type === 'generate').length, 1);
   const second = await controller.runOnce();
   assert.equal(second.error, 'PHASE_4B_RUN_CONSUMED');
   assert.equal(api.uploads.length, 1);
@@ -176,6 +178,28 @@ async function testPhase4bOneShotGuard() {
   assert.equal((await reopened.runOnce()).error, 'PHASE_4B_RUN_CONSUMED');
   assert.equal(api.uploads.length, 1);
   pass('Phase 4B Run Once durable latch blocks double click, panel reopen, and service-worker restart');
+}
+
+async function testAuditLogDurabilityAndRedaction() {
+  const storage = ExtensionStorage.memory();
+  await storage.initialize();
+  const audit = new AuditLogger({ storage, component: 'test' });
+  await audit.info('RUN_REQUEST_ACCEPTED', { run_id: 'run-test', job_id: 'job-test', details: { token: 'secret', prompt_hash: 'hash-ok' } });
+  await audit.error('RUN_FAILED', { run_id: 'run-test', job_id: 'job-test', error: Object.assign(new Error('token abc failed'), { code: 'SUBMIT_FAILED', status: 500 }) });
+  const events = await storage.listAuditEvents({ runId: 'run-test' });
+  assert.equal(events.length, 2);
+  assert.equal(events[0].sequence < events[1].sequence, true);
+  assert.equal(events[0].details.token, '[REDACTED]');
+  assert.equal((await storage.readState()).auditLog.lastAction, 'Needs attention - SUBMIT_FAILED');
+  const copied = formatAuditText({ events, state: await storage.readState() });
+  assert.match(copied, /LokaMedia Audit Log/);
+  await storage.clearAuditEvents();
+  assert.equal((await storage.listAuditEvents()).length, 0);
+  assert.equal((await storage.readState()).config.serverBaseUrl, 'http://localhost:4321');
+
+  for (let i = 0; i < MAX_AUDIT_EVENTS + 5; i++) await audit.info('UPLOAD_PROGRESS', { details: { index: i } });
+  assert.equal((await storage.listAuditEvents({ limit: MAX_AUDIT_EVENTS + 10 })).length, MAX_AUDIT_EVENTS);
+  pass('durable audit log orders, persists, redacts, copies, clears in isolation, and prunes oldest events');
 }
 
 async function testPhase4bPreconditions() {
@@ -485,6 +509,7 @@ await testFreshStartupAndNoJob();
 await testApiClientBindsWorkerFetch();
 await testJobAcquiredAndPipeline();
 await testPhase4bOneShotGuard();
+await testAuditLogDurabilityAndRedaction();
 await testPhase4bPreconditions();
 await testHeartbeatLossAndLeaseLost();
 await testProtocolMismatchAndAuthRequired();

@@ -75,13 +75,21 @@ export function validateSidePanelElements(doc) {
     'system-server',
     'system-backpressure',
     'system-error',
+    'last-action',
     'server',
     'token',
     'enabled',
     'run-once',
     'save',
     'diagnostic',
-    'panel-status'
+    'panel-status',
+    'audit-filter',
+    'audit-current-run',
+    'audit-current-job',
+    'audit-copy',
+    'audit-export',
+    'audit-clear',
+    'audit-log'
   ];
   const missing = ids.filter((id) => !doc.querySelector(`#${id}`));
   return { ok: missing.length === 0, missing };

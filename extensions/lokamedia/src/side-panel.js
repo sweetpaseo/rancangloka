@@ -95,9 +95,41 @@ function renderState(state) {
   element('#system-server').textContent = server;
   element('#system-backpressure').textContent = server === 'backpressure' ? 'on' : 'off';
   element('#system-error').textContent = state.status.last_error ?? 'none';
+  element('#last-action').textContent = state.auditLog?.lastAction ?? 'Idle';
   renderConfigForm(state);
   renderRunOnce(state, current, provider, server);
   renderTransfers(transfers);
+}
+
+function renderAuditEvents(events = []) {
+  const container = element('#audit-log');
+  if (!events.length) {
+    container.textContent = 'No audit events';
+    return;
+  }
+  container.textContent = '';
+  for (const event of events.slice(-40).reverse()) {
+    const row = document.createElement('details');
+    row.className = `audit-event audit-${String(event.level || 'INFO').toLowerCase()}`;
+    const summary = document.createElement('summary');
+    const time = new Date(event.timestamp).toLocaleTimeString([], { hour12: false });
+    summary.textContent = `${time} ${event.level} ${event.event_code} ${event.message_safe || ''}`;
+    const pre = document.createElement('pre');
+    pre.textContent = JSON.stringify(event, null, 2);
+    row.append(summary, pre);
+    container.append(row);
+  }
+}
+
+async function refreshAudit() {
+  const response = await send('AUDIT_STATUS', {
+    level: element('#audit-filter').value,
+    currentRun: element('#audit-current-run').checked,
+    currentJob: element('#audit-current-job').checked,
+    limit: 100
+  });
+  renderAuditEvents(response.events);
+  if (response.lastAction) element('#last-action').textContent = response.lastAction;
 }
 
 function renderConfigForm(state, { force = false } = {}) {
@@ -169,7 +201,32 @@ async function runOnce() {
   const response = await send('RUN_ONCE', {}, { timeoutMs: 15000 });
   if (response.state) renderState(response.state);
   await refresh({ quiet: true });
+  await refreshAudit();
   setStatus(response.ok ? 'Run consumed' : boundedError(response.error), !response.ok);
+}
+
+async function copyAuditLog() {
+  const response = await send('AUDIT_COPY_TEXT');
+  await navigator.clipboard?.writeText(response.text);
+  setStatus('Audit copied');
+}
+
+async function exportAuditJson() {
+  const response = await send('AUDIT_EXPORT_JSON');
+  const blob = new Blob([JSON.stringify(response.payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `lokamedia-audit-${Date.now()}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setStatus('Audit exported');
+}
+
+async function clearAuditLog() {
+  await send('AUDIT_CLEAR');
+  await refreshAudit();
+  setStatus('Audit cleared');
 }
 
 function bindSidePanel() {
@@ -191,6 +248,24 @@ function bindSidePanel() {
   element('#run-once').addEventListener('click', () => {
     void runOnce().catch((error) => setStatus(boundedError(error), true));
   });
+  element('#audit-filter').addEventListener('change', () => {
+    void refreshAudit().catch((error) => setStatus(boundedError(error), true));
+  });
+  element('#audit-current-run').addEventListener('change', () => {
+    void refreshAudit().catch((error) => setStatus(boundedError(error), true));
+  });
+  element('#audit-current-job').addEventListener('change', () => {
+    void refreshAudit().catch((error) => setStatus(boundedError(error), true));
+  });
+  element('#audit-copy').addEventListener('click', () => {
+    void copyAuditLog().catch((error) => setStatus(boundedError(error), true));
+  });
+  element('#audit-export').addEventListener('click', () => {
+    void exportAuditJson().catch((error) => setStatus(boundedError(error), true));
+  });
+  element('#audit-clear').addEventListener('click', () => {
+    void clearAuditLog().catch((error) => setStatus(boundedError(error), true));
+  });
   bound = true;
   boot.add(SIDE_PANEL_BOOT_FLAGS.DOM_BOUND);
 }
@@ -198,6 +273,7 @@ function bindSidePanel() {
 try {
   bindSidePanel();
   void refresh().catch((error) => setStatus(boundedError(error), true));
+  void refreshAudit().catch(() => {});
   refreshTimer = setInterval(() => {
     void refresh({ quiet: true }).catch(() => {});
   }, 5000);

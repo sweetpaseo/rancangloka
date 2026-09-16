@@ -196,6 +196,57 @@ async function testCaptureAndAdapterHardStop() {
   pass('read-only diagnostic, capture discovery, and hard no-submission guard');
 }
 
+async function testControlledRunOnceSubmitPath() {
+  const messages = [];
+  const chromeApi = {
+    tabs: {
+      async sendMessage(tabId, message) {
+        messages.push({ tabId, message });
+        if (message.type === 'CHATGPT_PROVIDER_DIAGNOSTIC') {
+          return {
+            ok: true,
+            session_id: 'session-1',
+            capabilities: detectChatGptCapabilities(fixture('ready'))
+          };
+        }
+        if (message.type === 'CHATGPT_PROVIDER_CONTROLLED_SUBMIT') {
+          return {
+            ok: true,
+            session_id: 'session-1',
+            submitted_at: '2026-09-16T00:00:00.000Z'
+          };
+        }
+        return { ok: false, error: 'UNEXPECTED_MESSAGE' };
+      }
+    }
+  };
+  const adapter = new ChatGptProviderAdapter({
+    tabController: {
+      chrome: chromeApi,
+      async locateTab() {
+        return { ok: true, tab_id: 42 };
+      }
+    }
+  });
+  const result = await adapter.generate({
+    controlled_run_once: true,
+    run_id: 'run-1',
+    job_id: 'mjob_1',
+    prompt: 'synthetic prompt',
+    prompt_hash: 'hash-1',
+    prompt_version: 1
+  });
+  const submitMessage = messages.find((entry) => entry.message.type === 'CHATGPT_PROVIDER_CONTROLLED_SUBMIT');
+  assert.equal(messages.filter((entry) => entry.message.type === 'CHATGPT_PROVIDER_CONTROLLED_SUBMIT').length, 1);
+  assert.equal(submitMessage.tabId, 42);
+  assert.equal(submitMessage.message.controlled_run_once, true);
+  assert.equal(submitMessage.message.job_id, 'mjob_1');
+  assert.equal(submitMessage.message.prompt_hash, 'hash-1');
+  assert.equal(result.provider_conversation_id, 'session-1');
+  assert.equal(result.submitted_at, '2026-09-16T00:00:00.000Z');
+  pass('controlled Run Once submit path is separate from general automatic submission');
+}
+
 async function testHandshakeAndTabRecovery() {
   const storage = ExtensionStorage.memory();
   await storage.initialize();
@@ -232,6 +283,7 @@ await testManifestPermissions();
 await testCapabilityFixtures();
 await testBaselineAndCorrelation();
 await testCaptureAndAdapterHardStop();
+await testControlledRunOnceSubmitPath();
 await testHandshakeAndTabRecovery();
 
 console.log(`Phase 4A ChatGPT provider foundation tests passed: ${passed}`);

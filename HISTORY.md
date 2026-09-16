@@ -17,6 +17,14 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 4B1A.5 Durable Run Audit Logging 2026-09-16
+
+- Implemented local-only durable structured audit logging for the LokaMedia extension Run Once path.
+- Added `run_id`/`job_id` correlation, monotonic event sequence, safe error serialization, secret redaction, bounded retention (1000 events / 7 days), copy text, JSON export, isolated clear, and compact Last Action status.
+- Instrumented panel click, background request acceptance, gate checks, job acquisition, provider lane, provider precheck/prepare, submission gate, provider submit, capture, upload, attachment confirmation, run completion, and failure/needs-attention outcomes.
+- Root cause addressed: Run Once failures previously lacked durable structured diagnostics and could appear silent after status refresh.
+- Safety preserved: no real ChatGPT prompt submission, no image generation, no new article/job fixture, no deployment, and no production mutation.
+
 ### LokaMedia Phase 2A Durable Job Foundation 2026-09-14
 
 * **Scope:** local schema/service/test implementation only; no production deploy, no remote D1 migration, no R2 mutation, and no production article mutation.

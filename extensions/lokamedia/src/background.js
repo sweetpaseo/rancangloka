@@ -5,6 +5,7 @@ import { createChromeStorage } from './storage.js';
 import { MessageProtocol } from './messages.js';
 import { Logger } from './logger.js';
 import { ChatGptProviderAdapter } from './providers/chatgpt/adapter.js';
+import { AuditLogger, formatAuditText, MAX_AUDIT_EVENTS, AUDIT_RETENTION_DAYS } from './audit-log.js';
 import { ChatGptHandshakeManager } from './providers/chatgpt/handshake.js';
 import { ChatGptTabController } from './providers/chatgpt/tab-controller.js';
 import { CHATGPT_MESSAGE_TYPES } from './providers/chatgpt/constants.js';
@@ -12,6 +13,7 @@ import { CHATGPT_MESSAGE_TYPES } from './providers/chatgpt/constants.js';
 const storage = createChromeStorage();
 const blobStore = new IndexedDbBlobStore();
 const logger = new Logger();
+const audit = new AuditLogger({ storage, component: 'background' });
 let controller = null;
 const chatGptTabs = new ChatGptTabController({ chromeApi: chrome, storage });
 const chatGptHandshake = new ChatGptHandshakeManager({ storage, tabController: chatGptTabs });
@@ -53,7 +55,8 @@ async function ensureController() {
     storage,
     blobStore,
     provider: new ChatGptProviderAdapter({ tabController: chatGptTabs }),
-    logger
+    logger,
+    audit
   });
   return controller;
 }
@@ -133,8 +136,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     },
     TICK: async () => ({ ok: false, error: 'PHASE_4B_NOT_ARMED' }),
     RUN_ONCE: async () => {
+      await audit.info('PANEL_RUN_CLICK', { component: 'side-panel' });
+      await audit.info('RUN_REQUEST_DISPATCHED', { component: 'side-panel' });
       const instance = await ensureController();
       return instance.runOnce();
+    },
+    AUDIT_STATUS: async (request) => {
+      const state = await storage.readState();
+      const gate = state.phase4bSingleRun || {};
+      const events = await storage.listAuditEvents({
+        level: request.level || 'ALL',
+        runId: request.currentRun ? gate.phase4b_single_run_id : null,
+        jobId: request.currentJob ? gate.job_id : null,
+        limit: request.limit || 100
+      });
+      return { ok: true, events, lastAction: state.auditLog?.lastAction || 'Idle', maxEvents: MAX_AUDIT_EVENTS, retentionDays: AUDIT_RETENTION_DAYS };
+    },
+    AUDIT_COPY_TEXT: async () => {
+      const state = await storage.readState();
+      const events = await storage.listAuditEvents({ limit: MAX_AUDIT_EVENTS });
+      return { ok: true, text: formatAuditText({ events, state }) };
+    },
+    AUDIT_EXPORT_JSON: async () => {
+      const state = await storage.readState();
+      const events = await storage.listAuditEvents({ limit: MAX_AUDIT_EVENTS });
+      return { ok: true, payload: { generated_at: new Date().toISOString(), events, last_action: state.auditLog?.lastAction || 'Idle' } };
+    },
+    AUDIT_CLEAR: async () => {
+      await storage.clearAuditEvents();
+      return { ok: true, state: await storage.readState() };
     },
     CHATGPT_PROVIDER_HELLO: async (request) => chatGptHandshake.handle(request, sender),
     CHATGPT_PROVIDER_CAPABILITIES: async (request) => chatGptHandshake.handle(request, sender),

@@ -26,7 +26,37 @@ export class ChatGptProviderAdapter {
     return diagnostic;
   }
 
-  async submit() {
+  async submit(job = {}) {
+    if (job.controlled_run_once) {
+      const tab = await this.tabController?.locateTab?.();
+      if (!tab?.ok) {
+        const error = new Error(tab?.status || CHATGPT_ERROR_CODES.TAB_MISSING);
+        error.code = tab?.status || CHATGPT_ERROR_CODES.TAB_MISSING;
+        throw error;
+      }
+      const response = await this.tabController.chrome.tabs.sendMessage(tab.tab_id, {
+        id: crypto.randomUUID(),
+        provider: 'chatgpt',
+        type: 'CHATGPT_PROVIDER_CONTROLLED_SUBMIT',
+        version: CHATGPT_DOM_ADAPTER_VERSION,
+        controlled_run_once: true,
+        job_id: job.job_id,
+        prompt: job.prompt,
+        prompt_hash: job.prompt_hash,
+        prompt_version: job.prompt_version,
+        run_id: job.run_id
+      });
+      if (!response?.ok) {
+        const error = new Error(response?.error || 'PROVIDER_SUBMIT_FAILED');
+        error.code = response?.error || 'PROVIDER_SUBMIT_FAILED';
+        throw error;
+      }
+      return {
+        provider_conversation_id: response.session_id || null,
+        provider_response_id: null,
+        submitted_at: response.submitted_at || new Date().toISOString()
+      };
+    }
     const error = new Error('PROMPT_SUBMISSION_DISABLED_PHASE_4A');
     error.code = 'PROMPT_SUBMISSION_DISABLED_PHASE_4A';
     error.prompt_submission_enabled = PROMPT_SUBMISSION_ENABLED;
@@ -35,7 +65,7 @@ export class ChatGptProviderAdapter {
 
   async generate(job) {
     await this.prepare(job);
-    await this.submit(job);
+    return this.submit(job);
   }
 
   async observe(job) {
@@ -58,6 +88,35 @@ export class ChatGptProviderAdapter {
 
   async diagnostic(job = null) {
     const root = this.root ?? globalThis.document;
+    if (!root && this.tabController?.locateTab) {
+      const tab = await this.tabController.locateTab();
+      if (!tab.ok) {
+        return {
+          provider: CHATGPT_PROVIDER_NAME,
+          adapter_version: CHATGPT_DOM_ADAPTER_VERSION,
+          prompt_submission_enabled: PROMPT_SUBMISSION_ENABLED,
+          dom_status: 'UNSUPPORTED',
+          error_code: tab.status || CHATGPT_ERROR_CODES.TAB_MISSING,
+          capture: { screenshot_primary_capture: false, priorities: [] },
+          correlation_baseline: null
+        };
+      }
+      const response = await this.tabController.chrome.tabs.sendMessage(tab.tab_id, {
+        id: crypto.randomUUID(),
+        provider: 'chatgpt',
+        type: 'CHATGPT_PROVIDER_DIAGNOSTIC',
+        version: CHATGPT_DOM_ADAPTER_VERSION
+      });
+      return {
+        provider: CHATGPT_PROVIDER_NAME,
+        adapter_version: CHATGPT_DOM_ADAPTER_VERSION,
+        prompt_submission_enabled: PROMPT_SUBMISSION_ENABLED,
+        ...response.capabilities,
+        capture: { screenshot_primary_capture: false, priorities: [] },
+        correlation_baseline: null,
+        session_id: response.session_id
+      };
+    }
     const capabilities = root ? detectChatGptCapabilities(root) : null;
     const capture = root ? discoverCapturePaths(root) : { screenshot_primary_capture: false, priorities: [] };
     return {

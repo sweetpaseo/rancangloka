@@ -5,9 +5,10 @@ import { ReconciliationManager } from './reconciliation-manager.js';
 import { UploadWorkerPool } from './upload-worker-pool.js';
 import { HeartbeatManager } from './heartbeat-manager.js';
 import { LOKAMEDIA_PROTOCOL_VERSION } from './constants.js';
+import { AuditLogger } from './audit-log.js';
 
 export class LokaMediaController {
-  constructor({ apiClient, storage, blobStore, provider = new MockProviderAdapter(), logger = console }) {
+  constructor({ apiClient, storage, blobStore, provider = new MockProviderAdapter(), logger = console, audit = null }) {
     this.apiClient = apiClient;
     this.storage = storage;
     this.blobStore = blobStore;
@@ -18,6 +19,7 @@ export class LokaMediaController {
     this.reconciliation = new ReconciliationManager({ apiClient, storage, blobStore });
     this.uploads = new UploadWorkerPool({ apiClient, storage, blobStore });
     this.heartbeat = new HeartbeatManager({ apiClient, storage });
+    this.audit = audit || new AuditLogger({ storage, component: 'controller' });
   }
 
   async startup() {
@@ -56,16 +58,20 @@ export class LokaMediaController {
   }
 
   async runOnce() {
+    const runId = `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    await this.audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'controller' });
     await this.startup();
     const state = await this.storage.readState();
+    await this.audit.info('RUN_GATE_CHECK_START', { run_id: runId });
     const gate = state.phase4bSingleRun;
     if (gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at) {
+      await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: gate.job_id } });
       return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
     }
-    if (!state.config.enabled) return { ok: false, error: 'EXTENSION_DISABLED' };
-    if (!state.config.deviceToken || !state.config.deviceId) return { ok: false, error: 'DEVICE_CREDENTIAL_REQUIRED' };
-    if (state.status.connection === 'backpressure') return { ok: false, error: 'BACKPRESSURE' };
-    if (state.locks.providerLane) return { ok: false, error: 'PROVIDER_LANE_BUSY' };
+    if (!state.config.enabled) return this.failGate(runId, 'EXTENSION_DISABLED');
+    if (!state.config.deviceToken || !state.config.deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
+    if (state.status.connection === 'backpressure') return this.failGate(runId, 'BACKPRESSURE');
+    if (state.locks.providerLane) return this.failGate(runId, 'PROVIDER_LANE_BUSY');
 
     const provider = state.provider?.chatgpt ?? {};
     if (
@@ -74,48 +80,81 @@ export class LokaMediaController {
       provider.dom_status !== 'SUPPORTED' ||
       provider.composer_status !== 'ready'
     ) {
-      return { ok: false, error: 'PROVIDER_NOT_READY' };
+      return this.failGate(runId, 'PROVIDER_NOT_READY');
     }
+    await this.audit.info('RUN_GATE_CHECK_PASS', { run_id: runId });
 
+    await this.audit.info('JOB_ACQUIRE_START', { run_id: runId });
     const response = await this.apiClient.nextJob(state.config.deviceId);
     if (response.protocol_version && response.protocol_version !== LOKAMEDIA_PROTOCOL_VERSION) {
+      await this.audit.error('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: 'PROTOCOL_MISMATCH' });
       return { ok: false, error: 'PROTOCOL_MISMATCH' };
     }
-    if (!response.job) return { ok: false, error: response.error ?? 'NO_JOB' };
+    if (!response.job) {
+      const code = response.error ?? 'NO_JOB';
+      await this.audit.warn('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: code });
+      return { ok: false, error: code };
+    }
 
     const job = response.job;
     if (job.article_title !== 'LokaMedia Phase 4B Controlled Generation Test' || job.slot_key !== 'featured') {
+      await this.audit.warn('JOB_ACQUIRE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'WRONG_PHASE_4B_JOB' });
       return { ok: false, error: 'WRONG_PHASE_4B_JOB', job_id: job.job_id };
     }
+    await this.audit.info('JOB_ACQUIRED', { run_id: runId, job_id: job.job_id, article_id: job.article_id, slot_key: job.slot_key, server_job_status: job.status });
 
-    const armed = await this.storage.armPhase4bSingleRun({ jobId: job.job_id });
+    await this.audit.info('JOB_CHECKPOINT_SAVED', { run_id: runId, job_id: job.job_id });
+    const armed = await this.storage.armPhase4bSingleRun({ jobId: job.job_id, runId });
     if (!armed.armed) return { ok: false, error: armed.reason };
+    await this.audit.info('SUBMISSION_GATE_ARMED', { run_id: runId, job_id: job.job_id, details: { boundary: 'before_provider_submit_intent' } });
     const consumed = await this.storage.consumePhase4bSubmission({ jobId: job.job_id });
     if (!consumed.consumed) return { ok: false, error: consumed.reason };
 
     try {
-      const result = await this.runJob(job);
+      const result = await this.runJob(job, { runId, controlledRunOnce: true });
       await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
+      await this.audit.info('RUN_COMPLETE', { run_id: runId, job_id: job.job_id });
       return { ok: true, ...result };
     } catch (error) {
       await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: false, error: String(error?.message || error) });
+      await this.audit.error('RUN_FAILED', { run_id: runId, job_id: job.job_id, error });
       throw error;
     }
   }
 
-  async runJob(job) {
+  async failGate(runId, error) {
+    await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: error });
+    await this.audit.warn('RUN_NEEDS_ATTENTION', { run_id: runId, error_code: error });
+    return { ok: false, error };
+  }
+
+  async runJob(job, { runId = null, controlledRunOnce = false } = {}) {
+    await this.audit.info('PROVIDER_LANE_ACQUIRE_START', { run_id: runId, job_id: job.job_id });
     const acquired = await this.providerLane.acquire(job.job_id);
-    if (!acquired) return { acquired: false, reason: 'PROVIDER_BUSY' };
+    if (!acquired) {
+      await this.audit.warn('PROVIDER_LANE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'PROVIDER_BUSY' });
+      return { acquired: false, reason: 'PROVIDER_BUSY' };
+    }
     try {
+      await this.audit.info('PROVIDER_LANE_ACQUIRED', { run_id: runId, job_id: job.job_id });
       await this.storage.upsertJob(job.job_id, { ...job, local_state: 'GENERATING' });
       await this.heartbeat.beat(job);
-      const providerResult = await this.provider.generate(job);
+      await this.audit.info('PROVIDER_PRECHECK_START', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('PROVIDER_PRECHECK_PASS', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('PROVIDER_PREPARE_START', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('PROVIDER_PREPARE_PASS', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('PROVIDER_SUBMIT_START', { run_id: runId, job_id: job.job_id, provider_stage: 'submit' });
+      const providerResult = await this.provider.generate({ ...job, controlled_run_once: controlledRunOnce, run_id: runId });
+      await this.audit.info('PROVIDER_SUBMIT_ACCEPTED', { run_id: runId, job_id: job.job_id, provider_stage: 'submit' });
       await this.storage.upsertJob(job.job_id, {
         local_state: 'IMAGE_DETECTED',
         provider_conversation_id: providerResult.provider_conversation_id,
         provider_response_id: providerResult.provider_response_id,
         submitted_at: providerResult.submitted_at
       });
+      await this.audit.info('GENERATION_OBSERVER_START', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('GENERATION_IMAGE_DETECTED', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('CAPTURE_START', { run_id: runId, job_id: job.job_id });
       const captured = await this.provider.capture(job);
       await this.blobStore.put({
         key: captured.blobKey,
@@ -127,6 +166,7 @@ export class LokaMediaController {
         size: captured.size,
         bytes: captured.bytes
       });
+      await this.audit.info('CAPTURE_PERSISTED', { run_id: runId, job_id: job.job_id, details: { sha256: captured.sha256, mime: captured.mime, width: captured.width, height: captured.height, size: captured.size } });
       await this.storage.upsertJob(job.job_id, {
         local_state: 'CAPTURED',
         blob_key: captured.blobKey,
@@ -137,9 +177,14 @@ export class LokaMediaController {
       });
       await this.providerLane.release(job.job_id);
       await this.storage.enqueueUpload(job.job_id);
+      await this.audit.info('UPLOAD_START', { run_id: runId, job_id: job.job_id });
       await this.uploads.drain();
+      await this.audit.info('UPLOAD_RECEIVED', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('ATTACHMENT_CONFIRMED', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('JOB_COMPLETE', { run_id: runId, job_id: job.job_id });
       return { acquired: true, job_id: job.job_id };
     } catch (error) {
+      await this.audit.error('PROVIDER_SUBMIT_FAIL', { run_id: runId, job_id: job.job_id, error });
       await this.storage.upsertJob(job.job_id, {
         local_state: error.status === 401 ? 'AUTH_REQUIRED' : 'RECOVERING',
         last_error: error.message
