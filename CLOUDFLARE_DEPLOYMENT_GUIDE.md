@@ -11,7 +11,7 @@
 | Komponen | Spesifikasi Cloudflare | Konfigurasi Repository |
 |---|---|---|
 | **Hosting & Runtime** | **Cloudflare Workers** (Bukan Pages) | `wrangler.toml` (`main` + `assets`) |
-| **SSR Entrypoint** | Astro Cloudflare SSR Output | `dist/_worker.js/index.js` |
+| **SSR Entrypoint** | Astro Cloudflare SSR Output | `@astrojs/cloudflare/entrypoints/server` |
 | **Static Assets** | Workers Static Assets | `dist/` |
 | **Database** | Cloudflare D1 (SQLite Edge) | Binding `DB` (`rancangloka_db`) |
 | **Media Storage** | Cloudflare R2 Bucket | Binding `MEDIA_BUCKET` (`rancangloka-media`) |
@@ -24,9 +24,9 @@ File [`wrangler.toml`](file:///wrangler.toml) wajib mengikuti format Workers den
 
 ```toml
 name = "rancangloka"
-main = "dist/_worker.js/index.js"
-assets = { directory = "dist" }
-compatibility_date = "2024-09-01"
+main = "@astrojs/cloudflare/entrypoints/server"
+assets = { directory = "dist", binding = "ASSETS" }
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare D1 Database Binding
@@ -83,7 +83,7 @@ npm run deploy
 
 1. **Error `✘ It looks like you've run a Workers-specific command in a Pages project`:**
    - **Penyebab:** Ada `pages_build_output_dir` di `wrangler.toml`.
-   - **Solusi:** Ganti `pages_build_output_dir` dengan `main = "dist/_worker.js/index.js"` dan `assets = { directory = "dist" }`.
+   - **Solusi:** Ganti `pages_build_output_dir` dengan `main = "@astrojs/cloudflare/entrypoints/server"` dan `assets = { directory = "dist", binding = "ASSETS" }`.
 
 2. **Error `✘ Project not found [code: 8000007]` saat `wrangler pages deploy`:**
    - **Penyebab:** Menjalankan perintah Pages pada resource yang terdaftar sebagai Worker di Cloudflare.

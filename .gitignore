@@ -3,6 +3,7 @@ node_modules/
 dist/
 .astro/
 .wrangler/
+.tmp/
 
 # environment & local logs
 .env
@@ -25,4 +26,3 @@ workspace/rejected/*
 !workspace/rejected/.gitkeep
 workspace/logs/*
 !workspace/logs/.gitkeep
-

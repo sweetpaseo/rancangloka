@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LokaMedia Extension</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <span class="brand-badge">RL</span>
+        <span class="brand-title">LOKAMEDIA</span>
+      </div>
+      <div class="header-actions">
+        <span id="connection-indicator" class="indicator online" title="Status Koneksi">● Siap</span>
+        <button id="btn-settings-toggle" class="btn-icon" title="Pengaturan Server">⚙️</button>
+      </div>
+    </header>
+
+    <!-- Settings Panel (Collapsible) -->
+    <section id="settings-panel" class="settings-panel hidden">
+      <h3 class="section-title">Konfigurasi Perangkat</h3>
+      <div class="form-group">
+        <label for="input-api-url">Server Base URL</label>
+        <input type="text" id="input-api-url" placeholder="http://localhost:4321" value="http://localhost:4321">
+      </div>
+      <div class="form-group">
+        <label for="input-device-token">Token Perangkat (LokaMedia)</label>
+        <input type="password" id="input-device-token" placeholder="lkmd_..." value="staging-media-token">
+      </div>
+      <div class="settings-buttons">
+        <button id="btn-save-settings" class="btn btn-primary btn-sm">Simpan Pengaturan</button>
+        <button id="btn-refresh-jobs" class="btn btn-secondary btn-sm">Muat Ulang Antrean</button>
+      </div>
+    </section>
+
+    <!-- Job Selection Bar -->
+    <div class="job-bar">
+      <label for="select-job" class="text-xs text-muted">Antrean Pekerjaan:</label>
+      <select id="select-job" class="select-dropdown">
+        <option value="">Memuat pekerjaan...</option>
+      </select>
+    </div>
+
+    <!-- Main Workspace -->
+    <main id="workspace" class="workspace">
+      <!-- Article Context -->
+      <section class="card article-card">
+        <div class="meta-row">
+          <span class="meta-label">Artikel:</span>
+          <span id="article-title" class="meta-value font-bold text-truncate">-</span>
+        </div>
+        <div class="meta-subrow">
+          <span class="text-xs text-muted" id="article-slug">-</span>
+          <span id="slot-badge" class="badge badge-featured">Featured (16:9)</span>
+        </div>
+      </section>
+
+      <!-- Prompt Box -->
+      <section class="card prompt-card">
+        <div class="card-header">
+          <span class="section-title">Prompt Gambar</span>
+          <button id="btn-copy-prompt" class="btn btn-outline btn-xs" title="Salin Prompt ke Clipboard">
+            📋 Salin Prompt
+          </button>
+        </div>
+        <div id="prompt-content" class="prompt-box">
+          Pilih pekerjaan untuk menampilkan prompt...
+        </div>
+      </section>
+
+      <!-- Universal Image Intake Area -->
+      <section class="card intake-card">
+        <div class="section-title">Intake Gambar (Universal Fallback)</div>
+        
+        <!-- Drop / Select Zone -->
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Drop, Paste, atau Pilih Gambar">
+          <input type="file" id="file-input" class="hidden-input" accept="image/jpeg,image/png,image/webp">
+          
+          <div id="drop-zone-idle" class="drop-zone-content">
+            <div class="upload-icon">🖼️</div>
+            <div class="primary-instruction">
+              <strong>Tarik & Lepas Gambar</strong> di sini
+            </div>
+            <div class="secondary-instruction">
+              atau <strong>Tempel (Ctrl+V)</strong> / klik untuk browse
+            </div>
+            <div class="format-note">
+              Format: JPEG, PNG, WebP • Maks. 5 MB • Min. 600x338
+            </div>
+          </div>
+
+          <!-- Preview Container -->
+          <div id="preview-container" class="preview-container hidden">
+            <img id="preview-image" class="preview-img" alt="Pratinjau Gambar Terpilih">
+            <div class="preview-overlay">
+              <div class="preview-specs">
+                <span id="spec-resolution">-</span> • <span id="spec-size">-</span> • <span id="spec-mime">-</span>
+              </div>
+              <button id="btn-remove-image" class="btn btn-danger btn-xs" title="Ganti gambar">✕ Hapus</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="client-validation-msg" class="validation-msg hidden"></div>
+      </section>
+
+      <!-- Alt Text Field -->
+      <section class="card alt-card">
+        <label for="input-alt-text" class="section-title">Alt Text (SEO Deskripsi Gambar)</label>
+        <textarea id="input-alt-text" class="textarea-input" rows="2" placeholder="Deskripsi visual untuk aksesibilitas & SEO..."></textarea>
+      </section>
+
+      <!-- Action & Status Bar -->
+      <section class="action-section">
+        <div class="status-indicator-bar">
+          <span class="text-xs text-muted">Status:</span>
+          <span id="job-status-badge" class="badge badge-status">IDLE</span>
+        </div>
+
+        <div class="action-buttons">
+          <button id="btn-send" class="btn btn-primary btn-block" disabled>
+            <span id="btn-send-text">🚀 Kirim ke RancangLoka</span>
+          </button>
+        </div>
+
+        <div class="sub-actions">
+          <button id="btn-retry" class="btn btn-outline btn-sm hidden">🔁 Coba Lagi</button>
+          <button id="btn-skip" class="btn btn-ghost btn-sm">Lewati Pekerjaan</button>
+        </div>
+
+        <div id="status-message" class="status-message text-xs"></div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>LokaMedia Extension v1.0 • Image Only</span>
+      <span class="badge-draft">Article: DRAFT</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

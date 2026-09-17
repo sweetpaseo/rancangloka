@@ -5,7 +5,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 ---
 
 ## 🏗️ 1. Arsitektur & Spesifikasi Proyek
-* **Framework:** Astro 4 (SSR Mode dengan `@astrojs/cloudflare` adapter)
+* **Framework:** Astro 7 (SSR Mode dengan `@astrojs/cloudflare` adapter)
 * **Styling:** Tailwind CSS (Apple Minimalist Aesthetic & Dark Mode Support)
 * **Compute & Hosting:** Cloudflare Workers CI / Cloudflare Edge Runtime
 * **Database (Relational):** Cloudflare D1 (SQLite Edge) — Database: `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`)
@@ -437,6 +437,60 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### Masalah 48: Admin All Posts Salah Urut, Tanggal Dibuat Tidak Otoritatif, dan Edit Membuka Artikel Salah
+* **Gejala:** Halaman **Manajemen Artikel (All Posts)** tidak menjamin artikel terbaru tampil paling atas, tanggal artikel lama dapat tampak seperti tanggal baru, dan tombol edit dapat membuka artikel lain jika ID target tidak ditemukan dalam daftar awal.
+* **Penyebab:**
+  1. Tabel `articles` belum memiliki `created_at`, sehingga admin memakai `published_at` sebagai tanggal daftar.
+  2. Draft baru ikut mendapat `published_at` saat insert, padahal belum benar-benar dipublikasikan.
+  3. `getAllArticles()` mengurutkan D1 dengan `published_at DESC`, lalu mencampur in-memory seed sebelum hasil D1.
+  4. Route editor `/admin/posts/[id]` memakai `getAllArticles(...).find(id) || allArticles[0]`, sehingga fallback dapat membuka artikel pertama.
+* **Solusi Lokal:**
+  - Menambahkan `articles.created_at` nullable di schema dan migrasi `0012_articles_created_at.sql`; legacy rows tetap `NULL` karena waktu pembuatan historis tidak diketahui.
+  - Mengisi `created_at` dan `updated_at` pada semua insert artikel baru; draft baru tidak lagi otomatis diberi `published_at`.
+  - Mengubah daftar admin agar D1 menjadi sumber otoritatif saat binding DB tersedia, dengan sort `Terbaru`/`Terlama` berbasis `created_at` dan tie-break `id`.
+  - Menambahkan filter server-side `q + category + sort` agar hasil tidak lagi bergantung pada 200 baris pertama di browser.
+  - Menampilkan tanggal dibuat dalam WIB; legacy `created_at=NULL` tampil sebagai `Belum diketahui`.
+  - Mengubah editor agar memuat artikel via `getArticleById(db, id)` dan mengembalikan 404 jika ID invalid/nonexistent.
+  - Menambahkan rencana backfill historis di `state/ARTICLE_CREATED_AT_BACKFILL_PLAN.md`; backfill tidak dieksekusi.
+* **Validasi Lokal:**
+  - `node scripts/test-article-admin-fix.js` PASS.
+  - `node scripts/test-schema-compatibility.js` PASS.
+  - `tsc --noEmit` PASS.
+  - `astro build` PASS dengan `ASTRO_TELEMETRY_DISABLED=1`.
+* **Batasan Produksi:** Tidak ada deploy, tidak ada mutasi D1 produksi, tidak ada publish, `AUTO_PUBLISH=OFF`.
+
+### Masalah 49: Upgrade Astro 4 ke Astro 7 dan Migrasi Cloudflare Adapter Modern
+* **Gejala:** Proyek masih memakai Astro `4.16.19` (`package.json` `^4.15.0`) sementara rilis terbaru npm pada saat upgrade adalah Astro `7.3.3`. Upgrade langsung diperlukan mumpung perubahan fitur belum terlalu jauh, tetapi perlu menjaga logika Cloudflare Workers, D1, R2, admin, sitemap/RSS, dan smoke editorial yang sudah ada.
+* **Penyebab Risiko:**
+  1. `@astrojs/tailwind` lama tidak kompatibel dengan Astro 7.
+  2. `@astrojs/cloudflare` modern tidak lagi memakai `main = "dist/_worker.js/index.js"`.
+  3. Cloudflare Node compat v1 tidak didukung adapter baru; perlu compat date minimal `2024-09-23`.
+  4. `Astro.locals.runtime.env` dihapus sejak Astro 6; binding harus dibaca melalui runtime Cloudflare baru.
+  5. Compiler Astro 7 lebih ketat terhadap fragment/ternary template.
+* **Solusi Lokal:**
+  - Upgrade dependency utama ke `astro@^7.3.3`, `@astrojs/cloudflare@^14.3.2`, `@lucide/astro@^1.46.0`, `wrangler@^4.133.0`, `typescript@^5.9.2`, dan `@types/node@^24.5.2`.
+  - Menghapus `@astrojs/tailwind` dan memindahkan Tailwind ke PostCSS standar (`postcss.config.mjs`) agar CSS `@tailwind base/components/utilities` tetap berjalan di Astro 7.
+  - Mengubah `wrangler.toml` ke entrypoint Astro 7:
+    ```toml
+    main = "@astrojs/cloudflare/entrypoints/server"
+    assets = { directory = "dist", binding = "ASSETS" }
+    compatibility_date = "2024-09-23"
+    compatibility_flags = ["nodejs_compat"]
+    ```
+  - Menambahkan helper `getRuntimeEnv()` di `src/lib/db.ts` untuk membaca binding Cloudflare via `cloudflare:workers`, dengan fallback lokal/test, lalu mengganti seluruh akses `locals.runtime.env`.
+  - Memperbaiki sintaks template Astro 7 di `src/pages/[slug].astro` dan `src/components/MobileBottomNav.astro`.
+  - Menyesuaikan `scripts/test-route-smoke.js` untuk Astro 7 dev server: binary lokal, host `127.0.0.1`, telemetry/config diarahkan ke workspace, dan cleanup `astro dev stop`.
+  - Menyelaraskan `AGENTS.md` dan `CLOUDFLARE_DEPLOYMENT_GUIDE.md` agar tidak mengunci konfigurasi Cloudflare lama.
+* **Validasi Lokal:**
+  - `npx tsc --noEmit` PASS.
+  - `npm run build` PASS dengan `ASTRO_TELEMETRY_DISABLED=1` dan `XDG_CONFIG_HOME` workspace.
+  - `node scripts/test-schema-compatibility.js` PASS.
+  - `node scripts/test-article-admin-fix.js` PASS.
+  - `node scripts/test-route-smoke.js` PASS 100% (draft 404 publik, preview admin aman, artikel published 200, draft tidak bocor ke RSS/homepage).
+  - `npm audit --audit-level=moderate` PASS, 0 vulnerability.
+* **Catatan Risiko Sisa:** Build Astro 7/Rolldown masih memberi warning non-fatal direct `eval` di `src/lib/dr1/offsite/google-drive.ts`. Tidak memblokir build, tetapi sebaiknya dirapikan pada fase DR-1 berikutnya.
+* **Batasan Produksi:** Tidak ada deploy, tidak ada mutasi D1 produksi, tidak ada publish.
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
@@ -450,7 +504,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **Material Comparison Matrix** | ✅ Selesai (Aktif) | Matriks komparasi + box *How We Score* (25%/20%/20%/15%/20%) + Evidence Badges. |
 | **Editorial Standards & Metodologi** | ✅ Selesai (Aktif) | Piagam redaksi independen (`/editorial-standards`) & standar pengujian (`/metodologi`). |
 | **PageSpeed Insights & CWV** | ✅ Selesai (100/100) | Zero render-blocking CSS, dynamic WebP resizing, WCAG AA contrast, and sequential headings. |
-| **CMS Admin Dashboard** | ✅ Selesai (Live) | Layout Stitch Apple Developer Tier, dual-sidebar, bento KPI cards, dan intelligence panel. |
+| **CMS Admin Dashboard** | ✅ Selesai (Local Fix Ready) | Layout Stitch Apple Developer Tier, dual-sidebar, bento KPI cards, intelligence panel, dan patch lokal All Posts untuk created_at/sort/filter/edit exact ID siap review. |
 | **Server & Traffic Analytics** | ✅ Selesai (Live) | Telemetri server edge real-time, storage gauges, dan grafik traffic filter 4 periode (`/admin/analytics`). |
 | **Stealth Mode & Clean Engine** | ✅ Selesai (Aktif) | Path aset disamarkan ke `/assets/`, HTML minified, zero meta generator. |
 | **SEO, News Sitemap & RSS** | ✅ Selesai (Aktif) | Google News XML, Sitemap XML, RSS syndication, Schema.org terverifikasi. |
@@ -517,4 +571,3 @@ Sebelum membuat file migrasi apa pun, wajib audit read-only skema D1 eksisting u
 4. **PHASE 2D:** Hybrid Visual Workflow + visual.json + R2 upload + pre-publish gate.
 5. **PHASE 3:** Scheduler / Autopublish.
 6. **Konservasi Voice Hermes:** Tetap menggunakan `SKILL.md` editorial Hermes saat ini sebagai basis tanpa diubah karakternya; penyesuaian hanya injeksi `CATEGORY_TAXONOMY.md`, `TAG_TAXONOMY.md`, dan `VISUAL_DNA.md`.
-

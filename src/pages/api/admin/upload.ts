@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { getRuntimeEnv } from '../../../lib/db.ts';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
@@ -13,7 +14,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const arrayBuffer = await file.arrayBuffer();
 
     // 1. Get Cloudflare R2 Bucket Binding
-    const env = (locals as any).runtime?.env || (globalThis as any).process?.env;
+    const env = await getRuntimeEnv(locals);
     const bucket = env?.MEDIA_BUCKET;
 
     if (bucket && typeof bucket.put === 'function') {

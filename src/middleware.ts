@@ -5,11 +5,12 @@ import {
   getSafeAdminRedirect,
   verifySameOrigin
 } from './lib/auth.ts';
+import { getRuntimeEnv } from './lib/db.ts';
 
 export const onRequest: MiddlewareHandler = async (context, next) => {
   const { url, request, cookies, locals } = context;
   const pathname = url.pathname;
-  const env = (locals as any)?.runtime?.env || (globalThis as any).process?.env;
+  const env = await getRuntimeEnv(locals);
 
   // 1. Admin UI Protection & Stealth Route Guard
   if (pathname.startsWith('/admin') && pathname !== '/admin/login' && pathname !== '/admin/logout') {
@@ -79,8 +80,29 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     }
   }
 
-  // 3. Process the request
+  // 3. Internal Media API CORS Handling
+  if (pathname.startsWith('/api/internal/v1/media')) {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+          'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-RL-Device-Token, X-RL-Scope, X-RL-Media-Key',
+          'Access-Control-Max-Age': '86400'
+        }
+      });
+    }
+  }
+
+  // 4. Process the request
   const response = await next();
+
+  if (pathname.startsWith('/api/internal/v1/media')) {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-RL-Device-Token, X-RL-Scope, X-RL-Media-Key');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  }
 
   // 4. Inject Proprietary RancangLoka Headers & Security Standards
   response.headers.set('X-Powered-By', 'RancangLoka Editorial Engine');

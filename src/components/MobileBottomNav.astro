@@ -25,6 +25,7 @@ const { isArticlePage = false } = Astro.props;
     </button>
 
     {isArticlePage ? (
+      <>
       <!-- 3. Quick Share on Article Pages -->
       <button id="mobile-quick-share" class="flex flex-col items-center justify-center gap-1 text-[#0066ee] font-bold transition">
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -32,7 +33,9 @@ const { isArticlePage = false } = Astro.props;
         </svg>
         <span class="text-[10px] font-semibold tracking-tight leading-none">Bagikan</span>
       </button>
+      </>
     ) : (
+      <>
       <!-- 3. Dark Mode Toggle -->
       <button class="theme-toggle-btn flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-[#0066ee] dark:text-slate-200 dark:hover:text-white transition">
         <svg class="h-5 w-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -43,6 +46,7 @@ const { isArticlePage = false } = Astro.props;
         </svg>
         <span class="text-[10px] font-semibold tracking-tight leading-none">Tema</span>
       </button>
+      </>
     )}
   </nav>
 </div>

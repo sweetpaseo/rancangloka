@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { getRuntimeEnv } from '../../lib/db.ts';
 
 export const GET: APIRoute = async ({ params, locals }) => {
   try {
@@ -7,7 +8,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
       return new Response('Not Found', { status: 404 });
     }
 
-    const env = (locals as any).runtime?.env || (globalThis as any).process?.env;
+    const env = await getRuntimeEnv(locals);
     const bucket = env?.MEDIA_BUCKET;
 
     if (!bucket || typeof bucket.get !== 'function') {

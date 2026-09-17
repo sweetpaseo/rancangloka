@@ -3,10 +3,30 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { getDb, getAllArticles, getAllCategories } from '../../../lib/db';
 
 const db = await getDb(Astro.locals);
+const q = Astro.url.searchParams.get('q')?.trim() || '';
+const category = Astro.url.searchParams.get('category') || 'all';
+const sortParam = Astro.url.searchParams.get('sort');
+const sort = sortParam === 'oldest' ? 'oldest' : 'newest';
 const [articles, categories] = await Promise.all([
-  getAllArticles(db, 200, 0, 'all'),
+  getAllArticles(db, 200, 0, 'all', { q, category, sort }),
   getAllCategories(db)
 ]);
+
+const formatCreatedAtWib = (value?: string | null) => {
+  if (!value) return 'Belum diketahui';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Belum diketahui';
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZoneName: 'short'
+  }).format(date);
+};
 ---
 
 <AdminLayout title="Semua Artikel">
@@ -35,29 +55,44 @@ const [articles, categories] = await Promise.all([
     </div>
 
     <!-- Filter & Search Bar -->
-    <div class="rounded-2xl bg-white border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+    <form method="get" class="rounded-2xl bg-white border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
       <div class="flex items-center gap-2 w-full sm:w-auto">
         <input
           id="post-search"
+          name="q"
           type="text"
           placeholder="Cari judul artikel..."
+          value={q}
           class="w-full sm:w-64 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary"
         />
         <select
           id="category-filter"
+          name="category"
           class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary"
         >
-          <option value="all">Semua Kategori</option>
+          <option value="all" selected={category === 'all'}>Semua Kategori</option>
           {categories.map((c) => (
-            <option value={c.slug}>{c.name}</option>
+            <option value={c.slug} selected={category === c.slug}>{c.name}</option>
           ))}
         </select>
+        <label class="sr-only" for="sort-filter">Urutkan</label>
+        <select
+          id="sort-filter"
+          name="sort"
+          class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          <option value="newest" selected={sort === 'newest'}>Terbaru</option>
+          <option value="oldest" selected={sort === 'oldest'}>Terlama</option>
+        </select>
+        <button type="submit" class="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-white hover:bg-primary-hover transition shadow-sm">
+          Terapkan
+        </button>
       </div>
 
       <span class="text-xs text-slate-500">
         Total: <strong class="text-slate-900">{articles.length}</strong> Artikel
       </span>
-    </div>
+    </form>
 
     <!-- Posts Table -->
     <div class="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm">
@@ -69,13 +104,13 @@ const [articles, categories] = await Promise.all([
               <th class="px-4 py-3.5">Kategori</th>
               <th class="px-4 py-3.5">Status</th>
               <th class="px-4 py-3.5">Est. Read</th>
-              <th class="px-4 py-3.5">Tanggal</th>
+              <th class="px-4 py-3.5">Dibuat</th>
               <th class="px-6 py-3.5 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody id="posts-table-body" class="divide-y divide-slate-100">
             {articles.map((article) => (
-              <tr class="post-row hover:bg-slate-50/80 transition" data-title={article.title.toLowerCase()} data-category={article.category_slug || ''}>
+              <tr class="post-row hover:bg-slate-50/80 transition">
                 <td class="px-6 py-3.5 flex items-center gap-3">
                   <img
                     src={article.featured_image}
@@ -106,7 +141,7 @@ const [articles, categories] = await Promise.all([
                   ⏱️ {article.reading_time_minutes}m
                 </td>
                 <td class="px-4 py-3.5 whitespace-nowrap text-slate-500">
-                  {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {formatCreatedAtWib(article.created_at)}
                 </td>
                 <td class="px-6 py-3.5 whitespace-nowrap text-right space-x-3">
                   <a href={`/admin/posts/${article.id}`} class="text-primary hover:underline font-semibold">
@@ -137,30 +172,10 @@ const [articles, categories] = await Promise.all([
   </div>
 
   <script>
-    const searchInput = document.getElementById('post-search') as HTMLInputElement;
     const catFilter = document.getElementById('category-filter') as HTMLSelectElement;
-    const rows = document.querySelectorAll('.post-row') as NodeListOf<HTMLElement>;
-
-    function filterPosts() {
-      const q = searchInput?.value.toLowerCase() || '';
-      const cat = catFilter?.value || 'all';
-
-      rows.forEach((row) => {
-        const title = row.getAttribute('data-title') || '';
-        const category = row.getAttribute('data-category') || '';
-        const matchSearch = title.includes(q);
-        const matchCat = cat === 'all' || category === cat;
-
-        if (matchSearch && matchCat) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-    }
-
-    searchInput?.addEventListener('input', filterPosts);
-    catFilter?.addEventListener('change', filterPosts);
+    const sortFilter = document.getElementById('sort-filter') as HTMLSelectElement;
+    catFilter?.addEventListener('change', () => catFilter.form?.requestSubmit());
+    sortFilter?.addEventListener('change', () => sortFilter.form?.requestSubmit());
 
     // Delete post listener
     document.querySelectorAll('.delete-post-btn').forEach((btn) => {

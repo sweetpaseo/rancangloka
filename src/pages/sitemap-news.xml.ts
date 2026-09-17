@@ -14,14 +14,16 @@ export const GET: APIRoute = async ({ locals }) => {
   // Filter articles published in the last 48 hours for Google News
   const fortyEightHoursAgo = Date.now() - 48 * 3600 * 1000;
   const recentArticles = articles.filter(
-    (a) => new Date(a.published_at).getTime() >= fortyEightHoursAgo
+    (a) => Boolean(a.published_at) && new Date(a.published_at as string).getTime() >= fortyEightHoursAgo
   );
 
-  const targetArticles = recentArticles.length > 0 ? recentArticles : articles.slice(0, 10);
+  const targetArticles = recentArticles.length > 0
+    ? recentArticles
+    : articles.filter((a) => Boolean(a.published_at)).slice(0, 10);
 
   const urls = targetArticles
     .map((a) => {
-      const pubDate = new Date(a.published_at).toISOString();
+      const pubDate = new Date(a.published_at as string).toISOString();
       return `  <url>
     <loc>${siteUrl}/${a.slug}</loc>
     <lastmod>${pubDate}</lastmod>

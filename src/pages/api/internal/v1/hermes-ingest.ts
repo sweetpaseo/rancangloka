@@ -43,7 +43,8 @@ import {
   getReceiptBySourceArticleId,
   getReceiptByContentHashes,
   insertHermesArticleAndReceipt,
-  getArticleById
+  getArticleById,
+  getRuntimeEnv
 } from '../../../../lib/db.ts';
 
 /**
@@ -155,7 +156,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const { signatureVersion, timestamp, jobId, requestId, keyId, signature } = headerValidation.data;
 
   // 6. Resolve Ingestion Secret with Fail-Closed semantics
-  const env = (locals as any)?.runtime?.env || (globalThis as any).process?.env || {};
+  const env = await getRuntimeEnv(locals);
   const secretResolution = getHermesIngestSecret(keyId, env);
 
   if (!secretResolution.configured) {
@@ -419,7 +420,8 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     is_trending: 0,
     is_sponsored: 0,
     disable_internal_links: 0,
-    published_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    published_at: null,
     updated_at: new Date().toISOString()
   };
 

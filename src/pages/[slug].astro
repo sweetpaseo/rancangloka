@@ -39,7 +39,7 @@ let breadcrumbItems: any[] = [];
 if (article) {
   const [fetchedRelated, allArticles] = await Promise.all([
     getRelatedArticles(db, article.id, article.category_id, 3),
-    getAllArticles(db, 'published')
+    getAllArticles(db, 1000, 0, 'published')
   ]);
 
   relatedArticles = fetchedRelated;
@@ -229,6 +229,7 @@ if (article) {
 
   <!-- 🅱️ RENDER AS MAGAZINE ARTICLE -->
   {!isStaticPage && article && (
+  <>
 
   <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <!-- 1. Breadcrumbs -->
@@ -517,6 +518,7 @@ if (article) {
   {article.is_sponsored !== 1 && relatedArticles.length > 0 && (
     <RelatedArticles articles={relatedArticles} />
   )}
+  </>
   )}
 
   <!-- Reading Progress & Bookmark Script -->

@@ -7,8 +7,8 @@
    - Always keep:
      ```toml
      name = "rancangloka"
-     main = "dist/_worker.js/index.js"
-     assets = { directory = "dist" }
+     main = "@astrojs/cloudflare/entrypoints/server"
+     assets = { directory = "dist", binding = "ASSETS" }
      ```
    - **NEVER** add `pages_build_output_dir = "dist"` to `wrangler.toml`.
 3. **Deployment Command:**

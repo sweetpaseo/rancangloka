@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS articles (
   is_trending INTEGER DEFAULT 0, -- 1 for Trending Bar
   is_sponsored INTEGER DEFAULT 0, -- 1 for Sponsored Post / Paid Review
   disable_internal_links INTEGER DEFAULT 0, -- 1 to disable auto-keyword & in-article related links
+  created_at DATETIME,
   published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -104,6 +105,7 @@ CREATE TABLE IF NOT EXISTS subscribers (
 -- Indices for Fast Querying
 CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
 CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_created_at_id ON articles(created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id);
 CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles(content_hash);
 CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);

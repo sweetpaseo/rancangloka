@@ -1,7 +1,7 @@
 name = "rancangloka"
-main = "dist/_worker.js/index.js"
-assets = { directory = "dist" }
-compatibility_date = "2024-09-01"
+main = "@astrojs/cloudflare/entrypoints/server"
+assets = { directory = "dist", binding = "ASSETS" }
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare D1 Database Binding

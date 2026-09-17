@@ -5,14 +5,14 @@ import TableOfContents from '../../../components/TableOfContents.astro';
 import AuthorCard from '../../../components/AuthorCard.astro';
 import RelatedArticles from '../../../components/RelatedArticles.astro';
 import SocialShareBar from '../../../components/SocialShareBar.astro';
-import { getDb, getArticleBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../../../lib/db';
+import { getDb, getRuntimeEnv, getArticleBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../../../lib/db';
 import { extractTableOfContents, processArticleContent } from '../../../lib/seo';
 import { sanitizeArticleHtml } from '../../../lib/article/renderer.ts';
 import { isValidAdminSession, getSafeAdminRedirect } from '../../../lib/auth';
 
 // 1. Enforce Admin Authentication
 const sessionCookie = Astro.cookies.get('admin_session');
-const env = (Astro.locals as any)?.runtime?.env || (import.meta as any).env || {};
+const env = await getRuntimeEnv(Astro.locals);
 const isAuthenticated = await isValidAdminSession(sessionCookie, env);
 if (!isAuthenticated) {
   const safeRedirect = getSafeAdminRedirect(Astro.url.pathname);

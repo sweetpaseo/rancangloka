@@ -3,7 +3,7 @@
  * Phase 1.5 — Verifies HTTP rendering of imported article route /<generated-slug>
  */
 
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -11,6 +11,8 @@ import { createAdminSessionToken } from '../src/lib/auth.ts';
 
 const TEST_PORT = 4399;
 const SAMPLE_PATH = path.resolve(process.cwd(), 'samples/safe-sample-article.md');
+const XDG_CONFIG_HOME = path.resolve(process.cwd(), '.tmp/xdg');
+const TEST_ORIGIN = `http://127.0.0.1:${TEST_PORT}`;
 
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
@@ -22,17 +24,20 @@ function fetchUrl(url) {
   });
 }
 
-async function waitForServer(url, timeoutMs = 25000) {
+async function waitForServer(url, timeoutMs = 45000) {
   const start = Date.now();
+  let lastResult = 'no response yet';
   while (Date.now() - start < timeoutMs) {
     try {
       const res = await fetchUrl(url);
       if (res.statusCode === 200) return true;
+      lastResult = `HTTP ${res.statusCode}: ${String(res.body || '').slice(0, 300)}`;
     } catch {
+      lastResult = 'connection refused / not ready';
       await new Promise(r => setTimeout(r, 600));
     }
   }
-  throw new Error(`Server did not respond at ${url} within ${timeoutMs}ms`);
+  throw new Error(`Server did not return HTTP 200 at ${url} within ${timeoutMs}ms. Last result: ${lastResult}`);
 }
 
 async function runRouteSmokeTest() {
@@ -43,30 +48,58 @@ async function runRouteSmokeTest() {
   // 1. Start Astro dev server on isolated port
   console.log(`1. Spawning Astro dev server on port ${TEST_PORT}...`);
   const isWindows = process.platform === 'win32';
-  const cmd = isWindows ? 'npx.cmd' : 'npx';
-  const serverProc = spawn(cmd, ['astro', 'dev', '--port', String(TEST_PORT)], {
+  const astroBin = path.resolve(process.cwd(), 'node_modules/.bin', isWindows ? 'astro.cmd' : 'astro');
+  const serverEnv = {
+    ...process.env,
+    ASTRO_TELEMETRY_DISABLED: '1',
+    XDG_CONFIG_HOME
+  };
+  spawnSync(astroBin, ['dev', 'stop'], {
     cwd: process.cwd(),
-    shell: true,
+    shell: isWindows,
+    env: serverEnv,
+    stdio: 'ignore'
+  });
+  const serverProc = spawn(astroBin, ['dev', '--host', '127.0.0.1', '--port', String(TEST_PORT)], {
+    cwd: process.cwd(),
+    shell: isWindows,
+    env: serverEnv,
     stdio: ['ignore', 'pipe', 'pipe']
+  });
+  let serverStdout = '';
+  let serverStderr = '';
+  serverProc.stdout?.on('data', chunk => {
+    serverStdout += chunk.toString();
+  });
+  serverProc.stderr?.on('data', chunk => {
+    serverStderr += chunk.toString();
   });
 
   try {
-    await waitForServer(`http://localhost:${TEST_PORT}/`);
-    console.log(`✅ Astro server is running at http://localhost:${TEST_PORT}/\n`);
+    try {
+      await waitForServer(`${TEST_ORIGIN}/`);
+    } catch (err) {
+      console.error('--- Astro dev stdout ---');
+      console.error(serverStdout || '(empty)');
+      console.error('--- Astro dev stderr ---');
+      console.error(serverStderr || '(empty)');
+      throw err;
+    }
+    console.log(`✅ Astro server is running at ${TEST_ORIGIN}/\n`);
 
     // 2. Import article via HTTP POST to the running server's import API (Authenticated with Origin)
-    console.log(`2. Sending HTTP POST import to http://localhost:${TEST_PORT}/api/admin/import-md...`);
+    console.log(`2. Sending HTTP POST import to ${TEST_ORIGIN}/api/admin/import-md...`);
     const validSessionToken = await createAdminSessionToken();
     const formData = new FormData();
     formData.append('filename', 'safe-sample-article.md');
     formData.append('content', rawContent);
     formData.append('strategy', 'overwrite');
 
-    const importRes = await fetch(`http://localhost:${TEST_PORT}/api/admin/import-md`, {
+    const importRes = await fetch(`${TEST_ORIGIN}/api/admin/import-md`, {
       method: 'POST',
       headers: {
         'Cookie': `admin_session=${validSessionToken}`,
-        'Origin': `http://localhost:${TEST_PORT}`
+        'Origin': TEST_ORIGIN
       },
       body: formData
     });
@@ -82,7 +115,7 @@ async function runRouteSmokeTest() {
     console.log(`✅ Article imported successfully into dev server with slug: "${slug}"\n`);
 
     // 3. HTTP GET to the public route (MUST return 404 for draft)
-    const publicUrl = `http://localhost:${TEST_PORT}/${slug}`;
+    const publicUrl = `${TEST_ORIGIN}/${slug}`;
     console.log(`3. Sending HTTP GET to public route ${publicUrl}...`);
     const publicRes = await fetch(publicUrl);
 
@@ -100,7 +133,7 @@ async function runRouteSmokeTest() {
     console.log('✅ Public route returned HTTP 404 with zero information leakage.');
 
     // 4. Unauthorized GET to /admin/preview/[slug] (MUST redirect to /admin/login)
-    const previewUrl = `http://localhost:${TEST_PORT}/admin/preview/${slug}`;
+    const previewUrl = `${TEST_ORIGIN}/admin/preview/${slug}`;
     console.log(`4. Sending Unauthenticated HTTP GET to ${previewUrl}...`);
     const unauthPreviewRes = await fetch(previewUrl, { redirect: 'manual' });
     console.log(`  • Unauthenticated Preview Status: ${unauthPreviewRes.status}`);
@@ -158,7 +191,7 @@ async function runRouteSmokeTest() {
 
     // 6. Public Published Article Check
     console.log('6. Verifying public published article access...');
-    const pubRes = await fetch(`http://localhost:${TEST_PORT}/tren-desain-interior-japandi-2026-hunian-minimalis`);
+    const pubRes = await fetch(`${TEST_ORIGIN}/tren-desain-interior-japandi-2026-hunian-minimalis`);
     console.log(`  • Published Article Status: ${pubRes.status}`);
     if (pubRes.status !== 200) {
       console.error(`❌ Expected HTTP 200 for published article, got ${pubRes.status}`);
@@ -169,13 +202,13 @@ async function runRouteSmokeTest() {
     // 7. Draft Safety Verification
     console.log('7. Verifying Draft Safety across public feeds...');
     // Check RSS feed: Drafts must NOT appear in RSS feed
-    const rssRes = await fetch(`http://localhost:${TEST_PORT}/rss.xml`);
+    const rssRes = await fetch(`${TEST_ORIGIN}/rss.xml`);
     const rssText = await rssRes.text();
     const inRss = rssText.includes(slug);
     console.log(`  • Appears in public RSS feed (/rss.xml): ${inRss ? 'YES (LEAKED!)' : 'NO (PROTECTED DRAFT)'}`);
 
     // Check Homepage HTML: Drafts must NOT appear on homepage
-    const homeRes = await fetch(`http://localhost:${TEST_PORT}/`);
+    const homeRes = await fetch(`${TEST_ORIGIN}/`);
     const homeText = await homeRes.text();
     const inHome = homeText.includes(slug);
     console.log(`  • Appears in homepage feed (/): ${inHome ? 'YES (LEAKED!)' : 'NO (PROTECTED DRAFT)'}`);
@@ -192,6 +225,12 @@ async function runRouteSmokeTest() {
     // Graceful server shutdown
     serverProc.kill('SIGTERM');
     try {
+      spawnSync(astroBin, ['dev', 'stop'], {
+        cwd: process.cwd(),
+        shell: isWindows,
+        env: serverEnv,
+        stdio: 'ignore'
+      });
       if (isWindows) {
         spawn('taskkill', ['/pid', String(serverProc.pid), '/f', '/t'], { shell: true });
       }

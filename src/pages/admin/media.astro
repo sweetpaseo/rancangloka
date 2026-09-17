@@ -1,9 +1,9 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { getDb, getAllArticles, getAllPages } from '../../lib/db';
+import { getDb, getAllArticles, getAllPages, getRuntimeEnv } from '../../lib/db';
 
 const db = await getDb(Astro.locals);
-const env = (Astro.locals as any).runtime?.env || (globalThis as any).process?.env;
+const env = await getRuntimeEnv(Astro.locals);
 const bucket = env?.MEDIA_BUCKET;
 
 interface MediaItem {

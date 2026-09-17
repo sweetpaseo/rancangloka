@@ -37,8 +37,15 @@ export interface Article {
   is_trending: number;
   is_sponsored?: number;
   disable_internal_links?: number;
-  published_at: string;
+  created_at?: string | null;
+  published_at: string | null;
   updated_at: string;
+}
+
+export interface ArticleListOptions {
+  q?: string;
+  category?: string;
+  sort?: 'newest' | 'oldest';
 }
 
 export interface Category {
@@ -854,8 +861,20 @@ let inMemoryPages: Page[] = [
   }
 ];
 
+export async function getRuntimeEnv(locals?: any) {
+  if (locals?.env) return locals.env;
+  try {
+    const workers = await import('cloudflare:workers');
+    if ((workers as any)?.env) return (workers as any).env;
+  } catch {
+    // Non-Cloudflare local/test runtime.
+  }
+  return (globalThis as any).process?.env || {};
+}
+
 export async function getDb(locals?: any) {
-  return locals?.runtime?.env?.DB || null;
+  const runtimeEnv = await getRuntimeEnv(locals);
+  return runtimeEnv?.DB || locals?.db || null;
 }
 
 export function sanitizeArticle(a: Article): Article {
@@ -903,7 +922,7 @@ export function sanitizePage(p: Page): Page {
   };
 }
 
-export async function getAllArticles(db: any, limit = 50, offset = 0, status = 'published'): Promise<Article[]> {
+export async function getAllArticles(db: any, limit = 50, offset = 0, status = 'published', options: ArticleListOptions = {}): Promise<Article[]> {
   const inMemFiltered = inMemoryArticles
     .filter(a => status === 'all' || a.status === status)
     .map(sanitizeArticle);
@@ -911,6 +930,24 @@ export async function getAllArticles(db: any, limit = 50, offset = 0, status = '
   let dbArticles: Article[] = [];
   if (db) {
     try {
+      const whereClauses = ['(? IS NULL OR a.status = ?)'];
+      const bindings: any[] = [status === 'all' ? null : status, status === 'all' ? null : status];
+
+      if (options.q?.trim()) {
+        whereClauses.push('(LOWER(a.title) LIKE ? OR LOWER(a.slug) LIKE ? OR LOWER(a.description) LIKE ?)');
+        const q = `%${options.q.trim().toLowerCase()}%`;
+        bindings.push(q, q, q);
+      }
+
+      if (options.category && options.category !== 'all') {
+        whereClauses.push('c.slug = ?');
+        bindings.push(options.category);
+      }
+
+      const orderBy = options.sort === 'oldest'
+        ? `CASE WHEN a.created_at IS NULL THEN 1 ELSE 0 END ASC, a.created_at ASC, a.id ASC`
+        : `CASE WHEN a.created_at IS NULL THEN 1 ELSE 0 END ASC, a.created_at DESC, a.id DESC`;
+
       const { results } = await db
         .prepare(`
           SELECT a.*, c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
@@ -918,14 +955,13 @@ export async function getAllArticles(db: any, limit = 50, offset = 0, status = '
           FROM articles a
           LEFT JOIN categories c ON a.category_id = c.id
           LEFT JOIN authors au ON a.author_id = au.id
-          WHERE (? IS NULL OR a.status = ?)
-          ORDER BY a.published_at DESC
+          WHERE ${whereClauses.join(' AND ')}
+          ORDER BY ${orderBy}
+          LIMIT ? OFFSET ?
         `)
-        .bind(status === 'all' ? null : status, status === 'all' ? null : status)
+        .bind(...bindings, limit, offset)
         .all();
-      if (results && results.length > 0) {
-        dbArticles = (results as Article[]).map(sanitizeArticle);
-      }
+      return ((results || []) as Article[]).map(sanitizeArticle);
     } catch (e) {
       console.warn('D1 Query fallback to mock:', e);
     }
@@ -1304,8 +1340,12 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
   const is_trending = article.is_trending || 0;
   const is_sponsored = article.is_sponsored || 0;
   const disable_internal_links = article.disable_internal_links || 0;
-  const published_at = article.published_at || new Date().toISOString();
-  const updated_at = article.updated_at || new Date().toISOString();
+  const now = new Date().toISOString();
+  const created_at = article.created_at ?? now;
+  const updated_at = article.updated_at || now;
+  const published_at = article.published_at !== undefined
+    ? article.published_at
+    : (status === 'published' ? now : null);
 
   // Case A: Real D1 Database Binding exists
   if (db) {
@@ -1317,9 +1357,9 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
             slug, title, description, content_md, content_html, featured_image, image_alt,
             category_id, author_id, status, reading_time_minutes, key_takeaways,
             focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
-            disable_internal_links, published_at, updated_at
+            disable_internal_links, created_at, published_at, updated_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         .bind(
           slug,
@@ -1340,6 +1380,7 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
           is_trending,
           is_sponsored,
           disable_internal_links,
+          created_at,
           published_at,
           updated_at
         )
@@ -1416,6 +1457,7 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
     is_trending,
     is_sponsored,
     disable_internal_links,
+    created_at,
     published_at,
     updated_at
   };
@@ -1523,6 +1565,7 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
     ...inMemoryArticles[idx],
     ...article,
     id, // strictly preserve original id!
+    created_at: inMemoryArticles[idx].created_at,
     updated_at: new Date().toISOString()
   };
 
@@ -1864,9 +1907,9 @@ export async function insertHermesArticleAndReceipt(
       slug, title, description, content_md, content_html, featured_image, image_alt,
       category_id, author_id, status, reading_time_minutes, key_takeaways,
       focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
-      disable_internal_links, published_at, updated_at
+      disable_internal_links, created_at, published_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     articleData.slug,
     articleData.title,
@@ -1886,7 +1929,8 @@ export async function insertHermesArticleAndReceipt(
     0, // Not trending
     0, // Not sponsored
     0, // Default internal links
-    articleData.published_at || new Date().toISOString(),
+    articleData.created_at ?? new Date().toISOString(),
+    articleData.published_at ?? null,
     articleData.updated_at || new Date().toISOString()
   );
 

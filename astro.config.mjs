@@ -1,6 +1,5 @@
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
-import tailwind from '@astrojs/tailwind';
 
 // https://astro.build/config
 export default defineConfig({
@@ -19,9 +18,10 @@ export default defineConfig({
     host: true,
     port: 4321
   },
-  integrations: [
-    tailwind({
-      applyBaseStyles: false
-    })
-  ]
+  vite: {
+    ssr: {
+      external: ['node:fs', 'node:path', 'node:os']
+    }
+  },
+  integrations: []
 });

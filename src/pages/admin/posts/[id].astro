@@ -1,20 +1,23 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { getDb, getAllArticles, getAllCategories, getAllAuthors } from '../../../lib/db';
+import { getDb, getArticleById, getAllCategories, getAllAuthors } from '../../../lib/db';
 
 const { id } = Astro.params;
+const articleId = Number.parseInt(id || '', 10);
+
+if (!id || Number.isNaN(articleId)) {
+  return new Response('Artikel tidak ditemukan.', { status: 404 });
+}
+
 const db = await getDb(Astro.locals);
-const [allArticles, categories, authors] = await Promise.all([
-  getAllArticles(db, 200, 0, 'all'),
+const [article, categories, authors] = await Promise.all([
+  getArticleById(db, articleId),
   getAllCategories(db),
   getAllAuthors(db)
 ]);
 
-const articleId = parseInt(id || '1', 10);
-const article = allArticles.find((a) => a.id === articleId) || allArticles[0];
-
 if (!article) {
-  return Astro.redirect('/admin/posts');
+  return new Response('Artikel tidak ditemukan.', { status: 404 });
 }
 
 let keyTakeawaysList: string[] = [];

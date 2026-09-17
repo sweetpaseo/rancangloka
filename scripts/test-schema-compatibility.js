@@ -87,7 +87,15 @@ test('Schema Compatibility: migration chain and runtime persistence verification
         '0001_category_taxonomy_expansion.sql',
         '0002_article_ingest_receipts.sql',
         '0003_canonical_editorial_author.sql',
-        '0004_add_article_flags.sql'
+        '0004_add_article_flags.sql',
+        '0005_media_assets_and_article_media.sql',
+        '0006_media_jobs_queue.sql',
+        '0007_publication_readiness_and_approvals.sql',
+        '0008_publication_planner.sql',
+        '0009_publication_publisher.sql',
+        '0010_publication_feedback.sql',
+        '0011_automation_safety.sql',
+        '0012_articles_created_at.sql'
       ],
       'Migration files must match expected sequence'
     );
@@ -143,9 +151,9 @@ test('Schema Compatibility: migration chain and runtime persistence verification
         slug, title, description, content_md, content_html, featured_image, image_alt,
         category_id, author_id, status, reading_time_minutes, key_takeaways,
         focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
-        disable_internal_links, published_at, updated_at
+        disable_internal_links, created_at, published_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     assert.doesNotThrow(() => {
@@ -168,6 +176,7 @@ test('Schema Compatibility: migration chain and runtime persistence verification
         0,
         0,
         0,
+        new Date().toISOString(),
         new Date().toISOString(),
         new Date().toISOString()
       );

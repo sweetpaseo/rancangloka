@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { getRuntimeEnv } from '../../../lib/db.ts';
 
 export const DELETE: APIRoute = async ({ request, locals }) => {
   try {
@@ -16,7 +17,7 @@ export const DELETE: APIRoute = async ({ request, locals }) => {
     const cleanFilename = filename.split('/').pop()?.split('?')[0] || filename;
 
     // Get Cloudflare R2 Bucket Binding
-    const env = (locals as any).runtime?.env || (globalThis as any).process?.env;
+    const env = await getRuntimeEnv(locals);
     const bucket = env?.MEDIA_BUCKET;
 
     if (bucket && typeof bucket.delete === 'function') {
