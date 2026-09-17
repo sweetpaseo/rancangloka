@@ -514,6 +514,22 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Setelah push GitHub berhasil, Cloudflare Workers Builds CI dapat melakukan build/deploy dari branch `main` memakai konfigurasi `wrangler.toml` Astro 7.
 * **Batasan Produksi:** Belum ada deploy Cloudflare baru untuk commit Astro 7; live production masih mengikuti commit remote terakhir sebelum push.
 
+### Masalah 51: Post-Upgrade Transition Audit Menemukan Blocker Runtime Lokal Cloudflare
+* **Gejala:** Audit transisi setelah upgrade Astro 7 tidak boleh hanya mengulang build/typecheck. Pemeriksaan runtime produksi-like harus memastikan output Astro 7 benar-benar bisa dijalankan oleh Wrangler/Cloudflare lokal sebelum push/deploy.
+* **Hasil Audit:**
+  - Dependency resolved konsisten: Astro `7.3.3`, `@astrojs/cloudflare` `14.3.2`, Vite `8.3.0`, TypeScript `5.9.3`, Wrangler `4.133.0`, Node lokal `24.16.0`.
+  - `npm ls` tidak menunjukkan invalid peer dependency untuk integrasi Astro/Cloudflare; `npm audit --json` melaporkan 0 vulnerability.
+  - `tsc --noEmit` PASS dan `astro build` PASS.
+  - Build warning tersisa tetap 3 direct `eval` warning dari `src/lib/dr1/offsite/google-drive.ts`.
+  - `astro check` belum menjadi sinyal validasi karena `@astrojs/check` belum terpasang dan Astro meminta instalasi interaktif.
+  - Smoke yang PASS: schema compatibility, admin article fix, route smoke, LokaMedia unit suite, publication readiness/planner/feedback/publisher unit, dan SOAK safety.
+* **Blocker:**
+  - `wrangler dev --local` terhadap output build Astro 7 gagal pada redirected config `dist/server/wrangler.json` dengan error akses direktori naik (`Cannot read directory "../../../.."`) dan gagal resolve `dist/server/entry.mjs`, meskipun file entry tersebut ada.
+  - Karena local Worker runtime tidak berhasil start, browser/runtime console smoke dan local R2 live smoke tidak bisa diselesaikan secara valid.
+  - `scripts/smoke-publication-publisher-local.js` gagal pada Stage 17 dispatcher telemetry (`executions_json` undefined) walaupun unit publisher PASS 48/48.
+* **Gate:** `ASTRO_7_TRANSITION_STABLE=NO`, `READY_FOR_GITHUB_PUSH=NO`, dan `READY_FOR_CLOUDFLARE_DEPLOY=NO` sampai blocker local Worker runtime dan Stage 17 smoke diselesaikan atau dibuktikan sebagai isu lingkungan lokal non-produksi.
+* **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel.
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
