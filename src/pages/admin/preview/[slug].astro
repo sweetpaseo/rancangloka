@@ -45,8 +45,10 @@ let toc: any[] = [];
 let processedHtml = '';
 let keyTakeaways: string[] = [];
 let breadcrumbItems: any[] = [];
+let articlePublishedAt = new Date().toISOString();
 
 if (article) {
+  articlePublishedAt = article.published_at || article.created_at || articlePublishedAt;
   const [fetchedRelated, allArticles] = await Promise.all([
     getRelatedArticles(db, article.id, article.category_id, 3),
     getAllArticles(db, 50, 0, 'published')
@@ -171,7 +173,7 @@ if (article) {
           </span>
           <span class="font-mono text-xs text-stone">/</span>
           <time class="font-mono text-xs text-stone uppercase tracking-wide">
-            {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {new Date(articlePublishedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
           </time>
           <span class={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${article.status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
             {article.status}
@@ -243,7 +245,7 @@ if (article) {
       <!-- Table of Contents -->
       {toc.length > 1 && (
         <div class="my-8">
-          <TableOfContents items={toc} />
+          <TableOfContents toc={toc} />
         </div>
       )}
 
@@ -253,10 +255,9 @@ if (article) {
       <!-- Author Card Section -->
       <div class="mt-14 pt-8 border-t border-stone/20 dark:border-stone/40">
         <AuthorCard
-          name={article.author_name || 'Dewan Redaksi RancangLoka'}
-          role={article.author_role || 'Kurator Utama Tata Ruang Tropis'}
-          avatar={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-          bio="Kurasi editorial RancangLoka untuk eksplorasi spasial, materialitas, dan kenyamanan hunian tropis kontemporer."
+          authorName={article.author_name || 'Dewan Redaksi RancangLoka'}
+          authorRole={article.author_role || 'Kurator Utama Tata Ruang Tropis'}
+          authorAvatar={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
         />
       </div>
     </article>

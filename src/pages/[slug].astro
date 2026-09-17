@@ -35,8 +35,10 @@ let processedHtml = '';
 let keyTakeaways: string[] = [];
 let jsonLdSchema: any = null;
 let breadcrumbItems: any[] = [];
+let articlePublishedAt = new Date().toISOString();
 
 if (article) {
+  articlePublishedAt = article.published_at || article.created_at || articlePublishedAt;
   const [fetchedRelated, allArticles] = await Promise.all([
     getRelatedArticles(db, article.id, article.category_id, 3),
     getAllArticles(db, 1000, 0, 'published')
@@ -298,7 +300,7 @@ if (article) {
 
         <div class="text-left sm:text-right text-[11px]">
           <div>
-            Diterbitkan {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            Diterbitkan {new Date(articlePublishedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
         </div>
       </div>

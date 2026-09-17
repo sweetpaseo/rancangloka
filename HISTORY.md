@@ -530,6 +530,89 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Gate:** `ASTRO_7_TRANSITION_STABLE=NO`, `READY_FOR_GITHUB_PUSH=NO`, dan `READY_FOR_CLOUDFLARE_DEPLOY=NO` sampai blocker local Worker runtime dan Stage 17 smoke diselesaikan atau dibuktikan sebagai isu lingkungan lokal non-produksi.
 * **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel.
 
+### Masalah 52: Bootstrap Runtime Lokal Cloudflare Gagal Karena Path Resolver Windows
+* **Gejala:** Output produksi Astro 7 (`dist/server/entry.mjs` + `dist/server/wrangler.json`) sudah terbentuk, tetapi `wrangler dev --local --config dist/server/wrangler.json` gagal sebelum server start dengan:
+  - `Cannot read directory "../../../.." / "../../../../../..": Access is denied.`
+  - `Could not resolve "...\\dist\\server\\entry.mjs"`.
+* **Akar Penyebab:** Wrangler `4.133.0` memakai esbuild untuk inspeksi modul lokal. Pada path repo Windows yang dalam (`C:\Users\Fanto\Desktop\antigravity\...`), resolver esbuild berjalan naik ke parent directory yang dibatasi sandbox/ACL dan gagal sebelum membaca Worker entry. File entry valid; kegagalan terjadi pada bootstrap path lokal, bukan pada output Astro 7 atau binding Cloudflare.
+* **Solusi Lokal:**
+  - Menambahkan `scripts/dev-worker-local.mjs`.
+  - Script tersebut membuat mapping drive pendek via `subst` (default `R:`), lalu menjalankan Wrangler dengan `--cwd R:\` dan config `R:\dist\server\wrangler.json`.
+  - `XDG_CONFIG_HOME` dipin ke `.tmp/xdg` agar log/cache Wrangler tetap di workspace.
+  - Menambahkan package script:
+    ```json
+    "worker:local": "node scripts/dev-worker-local.mjs --ip 127.0.0.1 --port 8788"
+    ```
+* **Validasi Lokal:**
+  - Reproduksi failure canonical PASS sebelum patch: command langsung terhadap `dist/server/wrangler.json` gagal dengan error akses/resolve di atas.
+  - Runtime lokal repaired PASS: Worker start dengan `Ready on http://127.0.0.1:8814`.
+  - Binding bootstrap terdeteksi Wrangler: `SESSION` KV, `DB` D1, `MEDIA_BUCKET` R2, dan `ASSETS`.
+  - Route smoke terhadap runtime Worker PASS:
+    - `/` -> 200
+    - `/tren-desain-interior-japandi-2026-hunian-minimalis` -> 200
+    - `/api/search.json` -> 200
+    - `/robots.txt` -> 200
+    - `/media/nonexistent-a71` -> 404 expected
+    - `/definitely-missing-a71` -> 404 expected
+  - `node_modules/.bin/tsc.cmd --noEmit` PASS.
+  - `astro build` PASS dengan 3 warning direct `eval` lama dari `src/lib/dr1/offsite/google-drive.ts`.
+  - `node scripts/test-route-smoke.js` PASS 100%.
+* **Gate:** Local Worker runtime blocker resolved. `ASTRO_7_TRANSITION_STABLE=NO` tetap dipertahankan karena Stage 17 publisher smoke masih blocker terpisah. `READY_FOR_GITHUB_PUSH=NO` dan `READY_FOR_CLOUDFLARE_DEPLOY=NO`.
+* **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel.
+
+### Masalah 53: Stage 17 Publisher Smoke Gagal Karena Harness Lokal Tidak Mengikuti Safety Schema dan Fixture Kontaminasi
+* **Gejala:** `scripts/smoke-publication-publisher-local.js` gagal pada Stage 17. Dispatcher mengembalikan `triggerSource = "cron"`, tetapi `publishedCount` tetap `0`, row `publication_publisher_runs` tidak ditemukan, lalu smoke crash saat membaca `runRow.executions_json`.
+* **Akar Penyebab:**
+  1. Smoke lokal hanya menerapkan migration `0009_publication_publisher.sql`, padahal dispatcher otomatis sekarang melewati safety gate SOAK-0 dari migration `0011_automation_safety.sql` (`automation_control`, `circuit_breakers`).
+  2. Fixture Stage 17 memakai target statis `2026-09-08T12:00:00.000Z`; pada tanggal audit 2026-09-17, catch-up protection menganggapnya stale overdue dan membatalkan jalur publish otomatis.
+  3. Stage sebelumnya membuat receipt publish lokal, sehingga activation rate limiter melihat publikasi dalam window 24 jam dan memblokir dispatcher otomatis sebelum telemetry run ditulis.
+* **Klasifikasi:** `FIXTURE_BUG` dengan unsur `LOCAL_SCHEMA_BUG`; bukan regresi Astro 7 dan bukan bug implementasi publisher.
+* **Solusi Lokal:**
+  - Stage 1 smoke publisher sekarang menerapkan migration `0011_automation_safety.sql` setelah `0009`.
+  - Stage 17 memakai `stage17NowUtc = new Date().toISOString()` untuk target dan `nowUtc` dispatcher yang sama.
+  - Stage 17 menghapus hanya receipt fixture smoke sebelumnya (`article_id >= 900 AND article_id <> 913`) sebelum dispatcher otomatis, agar telemetry cron diuji secara terisolasi dari rate limiter yang memang benar.
+* **Validasi Lokal:**
+  - Stage 17 isolated PASS: `publishedCount = 1`, `triggerSource = "cron"`, run telemetry row ada, `executions_json` secret-free.
+  - `node scripts/smoke-publication-publisher-local.js` PASS 71/71.
+  - `node scripts/test-publication-publisher.js` PASS 48/48.
+  - `node scripts/smoke-publication-planner-local.js` PASS 74/74.
+  - `node scripts/smoke-soak-safety-local.js` PASS 38/38.
+  - `node_modules/.bin/tsc.cmd --noEmit` PASS.
+  - `astro build` PASS dengan warning direct `eval` lama dari `src/lib/dr1/offsite/google-drive.ts`.
+  - `node scripts/dev-worker-local.mjs --ip 127.0.0.1 --port 8816 --log-level info` mencapai `Ready on http://127.0.0.1:8816`.
+* **Gate:** Stage 17 blocker cleared. `READY_FOR_ASTRO_CHECK_SETUP=YES`; `READY_FOR_FULL_TRANSITION_RETEST=YES`. `READY_FOR_GITHUB_PUSH=NO` dan `READY_FOR_CLOUDFLARE_DEPLOY=NO` tetap karena prompt melarang push/deploy dan commit masih terblokir ACL `.git`.
+* **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
+
+### Masalah 54: Phase C Full Transition Retest dan Astro Check Setup
+* **Tujuan:** Menjalankan full retest transisi Astro 7 setelah Phase A/B, memasang `@astrojs/check`, dan memastikan runtime production-like lokal tetap sehat tanpa push/deploy.
+* **Dependency Check:**
+  - Astro tetap `7.3.3`.
+  - `@astrojs/cloudflare` tetap `14.3.2`.
+  - TypeScript tetap `5.9.3`.
+  - Wrangler tetap `4.133.0`.
+  - `@astrojs/check` ditambahkan sebagai dev dependency versi `0.9.10`.
+  - `npm audit --json` PASS: 0 critical, 0 high, 0 moderate, 0 low.
+* **Astro Check Fixes:**
+  - `src/pages/[slug].astro`: tanggal published nullable diberi fallback ke `created_at`/current ISO sebelum `new Date(...)`.
+  - `src/pages/admin/preview/[slug].astro`: tanggal published nullable diberi fallback yang sama.
+  - `src/pages/admin/preview/[slug].astro`: prop `TableOfContents` diperbaiki dari `items` ke `toc`.
+  - `src/pages/admin/preview/[slug].astro`: prop `AuthorCard` diperbaiki ke `authorName`, `authorRole`, dan `authorAvatar`.
+  - `src/pages/admin/media.astro`: pemanggilan `getAllPages(db, 'all')` diganti menjadi `getAllPages(db)` sesuai signature typed.
+* **Validasi Lokal:**
+  - `astro check` PASS: 0 errors, 0 warnings, 280 hints.
+  - `node_modules/.bin/tsc.cmd --noEmit` PASS.
+  - `astro build` PASS; warning non-fatal direct `eval` lama tetap muncul dari `src/lib/dr1/offsite/google-drive.ts`.
+  - Local Worker route inventory PASS pada port lokal: `/`, artikel representative, `/editorial-standards`, `/solusi`, `/komparasi`, `/metodologi`, `/api/search.json`, `/robots.txt`.
+  - Expected protection PASS: `/admin` dan `/admin/posts` redirect 302; `/media/nonexistent-a71` dan bad slug return 404.
+  - `node scripts/test-route-smoke.js` PASS 100%.
+  - `node scripts/test-publication-publisher.js` PASS 48/48.
+  - `node scripts/smoke-publication-publisher-local.js` PASS 71/71.
+  - `node scripts/smoke-publication-planner-local.js` PASS 74/74.
+  - `node scripts/smoke-soak-safety-local.js` PASS 38/38.
+* **Catatan Browser Tooling:** Browser plugin tersedia, tetapi localhost Worker background job tidak bertahan melewati boundary tool browser pada sandbox ini sehingga console smoke browser tidak dapat dijalankan valid. HTTP Worker route smoke tetap PASS dan tidak menemukan 500/unhandled route failure.
+* **Gate:** `ASTRO_7_TRANSITION_STABLE=YES` untuk local code/runtime/test surface. `READY_FOR_GITHUB_PUSH=NO` dan `READY_FOR_CLOUDFLARE_DEPLOY=NO` tetap karena prompt melarang push/deploy dan tidak ada commit dibuat.
+* **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |

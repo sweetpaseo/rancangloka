@@ -39,7 +39,7 @@ if (bucket && typeof bucket.list === 'function') {
 // 2. Fetch images linked in Articles and Pages (for comprehensive gallery)
 const [articles, pages] = await Promise.all([
   getAllArticles(db, 100, 0, 'all'),
-  getAllPages(db, 'all')
+  getAllPages(db)
 ]);
 
 for (const a of articles) {

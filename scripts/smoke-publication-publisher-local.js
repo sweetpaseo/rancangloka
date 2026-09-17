@@ -293,12 +293,18 @@ async function runLocalPublisherSmoke() {
   // ========================================================================
   // 1. LOCAL SETUP & MIGRATION 0009 VERIFICATION
   // ========================================================================
-  console.log('--- Stage 1: Local Setup & Migration 0009 Application ---');
+  console.log('--- Stage 1: Local Setup & Migration 0009/0011 Application ---');
   const migrationPath = path.resolve('db/migrations/0009_publication_publisher.sql');
   assert(fs.existsSync(migrationPath), 'Stage 1.1: Migration 0009 file exists locally');
 
   const migrationSql = fs.readFileSync(migrationPath, 'utf-8');
   db.raw.exec(migrationSql);
+
+  const automationMigrationPath = path.resolve('db/migrations/0011_automation_safety.sql');
+  assert(fs.existsSync(automationMigrationPath), 'Stage 1.1b: Migration 0011 automation safety file exists locally');
+
+  const automationMigrationSql = fs.readFileSync(automationMigrationPath, 'utf-8');
+  db.raw.exec(automationMigrationSql);
 
   // Clean any existing smoke artifacts
   cleanFixtures(db);
@@ -612,14 +618,19 @@ async function runLocalPublisherSmoke() {
   // 17. SCHEDULER BOUNDARY & DISPATCHER RUN
   // ========================================================================
   console.log('\n--- Stage 17: Scheduler Boundary & Telemetry ---');
+  const stage17NowUtc = new Date().toISOString();
   const fix913 = seedLocalPlannedFixture(db, {
     id: 913,
     slug: 'dispatcher-run-913',
     title: 'Dispatcher Run 913',
     contentMd: '# Dispatcher Run',
-    targetPublishAt: '2026-09-08T12:00:00.000Z'
+    targetPublishAt: stage17NowUtc
   });
   await schedulePlanForExecution(db, fix913.planId);
+
+  // Isolate the automated dispatcher from earlier smoke-stage receipts so the
+  // activation rate limiter tests Stage 17's due item, not prior fixture state.
+  db.raw.prepare('DELETE FROM publication_execution_receipts WHERE article_id >= 900 AND article_id <> 913').run();
 
   // Temporarily set mode to UNATTENDED to exercise Stage 17 automated dispatcher, then immediately restore to OFF
   try { db.raw.prepare("UPDATE automation_control SET mode = 'UNATTENDED' WHERE id = 1").run(); } catch {}
@@ -627,7 +638,7 @@ async function runLocalPublisherSmoke() {
   const dispatchRun = await runPublisherDispatcher(db, {
     triggerSource: 'cron',
     workerId: 'worker_cron_smoke',
-    nowUtc: '2026-09-08T12:00:00.000Z'
+    nowUtc: stage17NowUtc
   });
 
   try { db.raw.prepare("UPDATE automation_control SET mode = 'OFF' WHERE id = 1").run(); } catch {}
