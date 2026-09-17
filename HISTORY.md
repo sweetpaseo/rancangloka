@@ -491,12 +491,35 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Catatan Risiko Sisa:** Build Astro 7/Rolldown masih memberi warning non-fatal direct `eval` di `src/lib/dr1/offsite/google-drive.ts`. Tidak memblokir build, tetapi sebaiknya dirapikan pada fase DR-1 berikutnya.
 * **Batasan Produksi:** Tidak ada deploy, tidak ada mutasi D1 produksi, tidak ada publish.
 
+### Masalah 50: Upload GitHub/Cloudflare Setelah Upgrade Astro 7 Tertahan Kredensial Lokal
+* **Gejala:** Commit upgrade Astro 7 sudah siap secara lokal, tetapi `git push origin main` belum berhasil sehingga Cloudflare Workers Builds CI belum menerima perubahan terbaru.
+* **Status Commit Lokal:**
+  - Commit terakhir: `f34683e feat: upgrade Astro 7 and publication systems`.
+  - Branch lokal `main` bersih dan berada `4` commit di depan `origin/main`.
+  - Validasi lokal upgrade tetap PASS: typecheck, build, schema compatibility, admin article fix, route smoke, dan audit moderate.
+* **Akar Penyebab:** Masalah berada pada kredensial Git/GitHub lokal, bukan pada kode aplikasi:
+  - GitHub CLI global masih memakai token lama/invalid untuk akun `sweetpaseo`.
+  - Device login GitHub di browser berhasil, tetapi token tidak tersimpan ke konfigurasi GitHub CLI dari sesi Codex karena folder konfigurasi user tidak dapat ditulis.
+  - Backend HTTPS Windows Schannel sempat gagal dengan `SEC_E_NO_CREDENTIALS`.
+  - Koneksi read-only ke GitHub berhasil ketika Git dipaksa memakai OpenSSL (`http.sslBackend=openssl`), tetapi proses push tetap berhenti saat membutuhkan kredensial.
+  - Konfigurasi global Git mengarahkan kredensial GitHub ke GitHub CLI (`gh auth git-credential`), dan proses `git-remote-https.exe` sempat crash saat mencoba push.
+  - Jalur SSH belum tersedia karena GitHub menolak public key (`Permission denied (publickey)`).
+* **Solusi Lanjut yang Direkomendasikan:**
+  - Jalankan push dari PowerShell biasa agar dialog/kredensial Windows dapat tersimpan:
+    ```powershell
+    cd C:\Users\Fanto\Desktop\antigravity\rancangloka\rancangloka-astro
+    git -c http.sslBackend=openssl push origin main
+    ```
+  - Jika masih gagal, gunakan GitHub Desktop atau fine-grained Personal Access Token sementara untuk satu kali push.
+  - Setelah push GitHub berhasil, Cloudflare Workers Builds CI dapat melakukan build/deploy dari branch `main` memakai konfigurasi `wrangler.toml` Astro 7.
+* **Batasan Produksi:** Belum ada deploy Cloudflare baru untuk commit Astro 7; live production masih mengikuti commit remote terakhir sebelum push.
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main` (*Version ID: `fa3f3770`*). |
+| **Kompilasi & Deployment** | ⚠️ Live lama aktif; upgrade Astro 7 menunggu push | Cloudflare Workers CI masih live dari commit remote terakhir. Commit lokal `f34683e` sudah siap, tetapi upload GitHub tertahan kredensial lokal. |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + fallback 20 in-memory authoritative articles. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |

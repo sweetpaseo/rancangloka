@@ -61,6 +61,24 @@ PASS:
 - `node scripts/test-route-smoke.js`
 - `npm audit --audit-level=moderate`
 
+## Status GitHub / Cloudflare Upload
+
+- Commit lokal sudah dibuat: `f34683e feat: upgrade Astro 7 and publication systems`.
+- Branch lokal `main` bersih dan berada `4` commit di depan `origin/main`.
+- Push ke GitHub belum berhasil karena masalah autentikasi lokal, bukan karena kode:
+  - GitHub CLI global masih memakai token lama/invalid.
+  - Device login di browser menampilkan sukses, tetapi token tidak tersimpan ke konfigurasi GitHub CLI karena akses tulis folder user tidak tersedia dari sesi Codex.
+  - Git HTTPS sempat gagal pada backend Windows Schannel dengan `SEC_E_NO_CREDENTIALS`.
+  - Koneksi Git ke GitHub berhasil jika memakai `http.sslBackend=openssl`, tetapi proses push tetap tertahan saat meminta kredensial.
+  - Konfigurasi global Git mengarahkan kredensial GitHub ke GitHub CLI, dan proses `git-remote-https.exe` sempat crash saat push.
+  - Jalur SSH belum bisa dipakai karena GitHub menolak public key (`Permission denied (publickey)`).
+- Langkah lanjut yang disarankan:
+  ```powershell
+  cd C:\Users\Fanto\Desktop\antigravity\rancangloka\rancangloka-astro
+  git -c http.sslBackend=openssl push origin main
+  ```
+- Setelah push GitHub berhasil, Cloudflare Workers Builds CI dapat mengambil perubahan dari repository dan menjalankan build/deploy sesuai `CLOUDFLARE_DEPLOYMENT_GUIDE.md`.
+
 ## Catatan
 
 Build masih menampilkan warning non-fatal direct `eval` dari `src/lib/dr1/offsite/google-drive.ts`. Warning ini tidak terkait langsung dengan Astro 7 upgrade dan tidak memblokir build, tetapi sebaiknya dirapikan saat fase DR-1/backup berikutnya.
