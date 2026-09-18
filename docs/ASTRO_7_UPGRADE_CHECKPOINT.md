@@ -275,4 +275,25 @@ Perbaikan lokal yang divalidasi:
 
 Catatan bootstrap: migration chain historis tidak berdiri sendiri dari zero-state karena `0001_category_taxonomy_expansion.sql` mengasumsikan tabel dasar sudah ada. Base runtime schema tetap `db/schema.sql`; migrasi forward-only tetap dipakai untuk state D1 yang sudah memiliki baseline schema.
 
+## Phase E Fresh D1 Bootstrap Normalization
+
+Phase E menormalkan kontrak bootstrap D1 lokal tanpa mengubah migrasi historis dan tanpa mutasi produksi.
+
+Keputusan kontrak:
+
+- `db/schema.sql` adalah baseline schema snapshot untuk tabel runtime awal dan seed dasar.
+- `db/migrations/*` tetap menjadi riwayat evolusi forward-only yang tidak diubah.
+- Bootstrap fresh local D1 dilakukan lewat `npm run db:local:bootstrap`.
+- Bootstrap Worker lokal dilakukan lewat `npm run worker:local:bootstrap`.
+- Bootstrap menerapkan `db/schema.sql`, lalu hanya migrasi historis non-overlap yang dibutuhkan subsystem saat ini, lalu mengisi `d1_migrations` sampai `0012` agar Wrangler tidak memutar ulang migrasi overlap seperti `0004` dan `0012`.
+
+Validasi Phase E:
+
+- Disposable zero-state local D1 bootstrap PASS.
+- Wrangler second migration apply melaporkan `No migrations to apply`.
+- Bootstrap rerun pada local D1 yang sudah current PASS.
+- Fresh Worker runtime dengan disposable D1 PASS untuk `/`, artikel representatif, `/editorial-standards`, `/solusi`, `/komparasi`, `/api/search.json`, `/admin` redirect, dan expected 404.
+- Tidak ada warning `no such table`, `no such column`, atau fallback schema selama Worker fresh runtime.
+- Automation safety default tetap `OFF`, circuit breakers seeded `CLOSED`, dan tidak ada mutasi produksi.
+
 Tidak ada deploy produksi, tidak ada mutasi D1 produksi, dan tidak ada publish artikel dalam checkpoint ini.

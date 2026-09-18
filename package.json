@@ -7,6 +7,7 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "db:local:bootstrap": "node scripts/bootstrap-local-d1.mjs",
     "worker:local:bootstrap": "node scripts/bootstrap-worker-local-d1.mjs",
     "worker:local": "node scripts/dev-worker-local.mjs --ip 127.0.0.1 --port 8788",
     "astro": "astro",

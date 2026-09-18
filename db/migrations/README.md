@@ -22,30 +22,62 @@ This directory contains tracked, forward-only SQL migrations for the RancangLoka
 
 ---
 
-## 🛠️ Migration Commands
+## 🛠️ Local Bootstrap and Migration Commands
 
-### Local Environment (Wrangler / Miniflare)
+### Fresh Local D1 Bootstrap
 
-Apply pending migrations to the local test database:
+Create or refresh a local D1 database from an empty Miniflare state:
 
 ```bash
-npx wrangler d1 migrations apply DB --local
+npm run db:local:bootstrap
 ```
+
+This is the canonical local bootstrap command. It is local-only, uses the root
+`wrangler.toml`, and never contacts remote production D1.
+
+`db/schema.sql` is the baseline schema snapshot for the original runtime tables
+and seed rows. It is executable only through the bootstrap command, not directly
+followed by all historical migrations. Some historical migrations overlap that
+baseline because they were written for already-existing production tables.
+
+The bootstrap command therefore:
+
+1. Applies `db/schema.sql`.
+2. Replays only non-overlapping historical migrations required for current
+   subsystems.
+3. Initializes `d1_migrations` through the current local baseline so Wrangler
+   will not replay overlapping historical migrations.
+
+The command is safe to rerun on an already-current local D1 because all executed
+DDL uses `IF NOT EXISTS` and seed/journal rows use `INSERT OR IGNORE`.
 
 ### Local Astro Worker Runtime
 
 The Astro 7 production-like Worker is launched from `dist/server/wrangler.json`
 through the short-drive wrapper in `scripts/dev-worker-local.mjs`. That generated
 Worker config has its own local Miniflare D1 state. After a fresh build or empty
-local Worker state, initialize its base runtime schema before route validation:
+local Worker state, initialize it with the same bootstrap contract before route
+validation:
 
 ```bash
 npm run worker:local:bootstrap
 npm run worker:local
 ```
 
-This bootstrap is local-only and applies `db/schema.sql` to the generated Worker
-D1 state. It does not run remote migrations and does not mutate production D1.
+This is also local-only. It targets the generated Worker config and does not run
+remote migrations or mutate production D1.
+
+`npm run worker:local` does not migrate automatically. It expects the generated
+Worker D1 state to have been bootstrapped already.
+
+### Applying Future Local Migrations
+
+After the local bootstrap baseline exists, apply future pending migrations to the
+root local test database with:
+
+```bash
+npx wrangler d1 migrations apply DB --local
+```
 
 List migration status locally:
 

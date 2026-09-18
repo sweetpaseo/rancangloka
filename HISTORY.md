@@ -613,6 +613,24 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Gate:** `ASTRO_7_TRANSITION_STABLE=YES` untuk local code/runtime/test surface. `READY_FOR_GITHUB_PUSH=NO` dan `READY_FOR_CLOUDFLARE_DEPLOY=NO` tetap karena prompt melarang push/deploy dan tidak ada commit dibuat.
 * **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
 
+### Masalah 55: Normalisasi Fresh Local D1 Bootstrap Setelah Astro 7
+* **Gejala:** Audit Phase D membuktikan warning `no such table: categories` di runtime Worker lokal berasal dari state D1 generated Worker config yang belum diinisialisasi. Namun audit lanjutan menemukan masalah bootstrap lebih luas: `db/schema.sql` dan migrasi historis forward-only overlap, sehingga fresh D1 dari nol gagal jika baseline schema diterapkan lalu semua migrasi diputar ulang mentah.
+* **Akar Penyebab:** `db/schema.sql` berfungsi sebagai baseline snapshot tabel runtime awal, sementara migrasi seperti `0004_add_article_flags.sql` dan `0012_articles_created_at.sql` menambahkan kolom yang sudah ada di snapshot tersebut. Migrasi historis valid sebagai riwayat produksi, tetapi bukan chain bootstrap zero-state yang berdiri sendiri.
+* **Solusi Lokal:**
+  - Menambahkan `scripts/bootstrap-local-d1.mjs` sebagai kontrak bootstrap lokal tunggal.
+  - Menambahkan script `npm run db:local:bootstrap`.
+  - Menjadikan `npm run worker:local:bootstrap` wrapper ke kontrak yang sama dengan target generated Worker config.
+  - Bootstrap menerapkan `db/schema.sql`, replay migrasi historis non-overlap (`0002`, `0003`, `0005`-`0011`), lalu mengisi journal `d1_migrations` sampai `0012` agar Wrangler tidak replay migrasi overlap.
+* **Validasi Lokal:**
+  - Disposable zero-state local D1 bootstrap PASS.
+  - `wrangler d1 migrations apply DB --local --persist-to <state>` setelah bootstrap melaporkan tidak ada migrasi pending.
+  - Bootstrap rerun pada D1 yang sudah current PASS.
+  - Fresh Worker runtime disposable PASS untuk `/`, artikel representatif, `/editorial-standards`, `/solusi`, `/komparasi`, `/api/search.json`, `/admin` redirect, dan expected 404.
+  - Tidak ada warning `no such table`, `no such column`, atau fallback schema saat Worker fresh runtime.
+  - Automation safety default tetap `OFF`; circuit breaker default seeded `CLOSED`.
+* **Gate:** `LOCAL_D1_SCHEMA_COMPLETE=YES`. `READY_FOR_ASTRO7_PERFORMANCE_PHASE=YES` jika full regression suite tetap PASS.
+* **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
