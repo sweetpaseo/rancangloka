@@ -32,6 +32,21 @@ Apply pending migrations to the local test database:
 npx wrangler d1 migrations apply DB --local
 ```
 
+### Local Astro Worker Runtime
+
+The Astro 7 production-like Worker is launched from `dist/server/wrangler.json`
+through the short-drive wrapper in `scripts/dev-worker-local.mjs`. That generated
+Worker config has its own local Miniflare D1 state. After a fresh build or empty
+local Worker state, initialize its base runtime schema before route validation:
+
+```bash
+npm run worker:local:bootstrap
+npm run worker:local
+```
+
+This bootstrap is local-only and applies `db/schema.sql` to the generated Worker
+D1 state. It does not run remote migrations and does not mutate production D1.
+
 List migration status locally:
 
 ```bash

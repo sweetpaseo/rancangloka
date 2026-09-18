@@ -262,4 +262,17 @@ Build masih menampilkan warning non-fatal direct `eval` dari `src/lib/dr1/offsit
 
 DR-1 infrastructure manifest metadata sudah diselaraskan ke Astro 7 (`astro_7_ssr`, compatibility date `2024-09-23`, entrypoint `@astrojs/cloudflare/entrypoints/server`, asset binding `ASSETS`). Test suite DR-1 masih memiliki kegagalan lama/terpisah pada bagian offsite Google Drive replication/retention; jalur build dan route editorial tidak terdampak.
 
+## Phase D Local D1 Categories Audit
+
+Audit lokal setelah checkpoint Astro 7 menemukan bahwa warning `no such table: categories` berasal dari state D1 lokal yang dipakai `dist/server/wrangler.json`, bukan dari query kategori stale. Runtime Worker Astro 7 memakai generated config melalui short-drive wrapper, sementara perintah migrasi lokal umum (`wrangler d1 migrations ... --config wrangler.toml`) membaca state Miniflare berbeda.
+
+Perbaikan lokal yang divalidasi:
+
+- `db/schema.sql` diterapkan ke D1 lokal milik generated Worker config.
+- `npm run worker:local` boot PASS.
+- Route `/`, artikel representatif, `/solusi`, `/komparasi`, `/api/search.json`, dan 404 expected PASS tanpa warning `no such table`.
+- Helper `npm run worker:local:bootstrap` ditambahkan agar state D1 Worker lokal dapat diinisialisasi eksplisit setelah build/fresh state.
+
+Catatan bootstrap: migration chain historis tidak berdiri sendiri dari zero-state karena `0001_category_taxonomy_expansion.sql` mengasumsikan tabel dasar sudah ada. Base runtime schema tetap `db/schema.sql`; migrasi forward-only tetap dipakai untuk state D1 yang sudah memiliki baseline schema.
+
 Tidak ada deploy produksi, tidak ada mutasi D1 produksi, dan tidak ada publish artikel dalam checkpoint ini.
