@@ -645,6 +645,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Local Worker route smoke PASS; D1 schema warnings 0.
   - Local D1 zero-state bootstrap PASS.
   - Publication safety regression PASS: publisher unit, publisher local, planner local, dan soak safety.
+* **Checkpoint:** Performance commit lokal `16f204e perf: improve Astro 7 public cache delivery` tercatat setelah baseline Phase E `0240347`.
 * **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
 
 ## 📍 3. Status Terkini (Current Milestone Progress)

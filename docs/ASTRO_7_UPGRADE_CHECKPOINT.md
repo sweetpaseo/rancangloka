@@ -297,3 +297,62 @@ Validasi Phase E:
 - Automation safety default tetap `OFF`, circuit breakers seeded `CLOSED`, dan tidak ada mutasi produksi.
 
 Tidak ada deploy produksi, tidak ada mutasi D1 produksi, dan tidak ada publish artikel dalam checkpoint ini.
+
+## Phase F Astro 7 Performance Program
+
+Phase F dijalankan setelah Phase E dikomit sebagai baseline bersih:
+
+- Phase E checkpoint commit: `024034755e19106e539f8cc3bb56f666983893d9`.
+- Performance checkpoint commit: `16f204e0f00b48b9a153daef5c6d2a389d4bdbd6`.
+- Baseline/result docs:
+  - `docs/ASTRO_7_PERFORMANCE_BASELINE.md`
+  - `docs/ASTRO_7_PERFORMANCE_RESULT.md`
+
+Baseline ringkas:
+
+- Astro `7.3.3`, `@astrojs/cloudflare` `14.3.2`, Vite `8.3.0`, TypeScript `5.9.3`, Wrangler `4.133.0`, Node `24.16.0`.
+- Total build before: `3,969,555` bytes.
+- Client JS before: `65,932` bytes across 6 files.
+- Client CSS before: `0` emitted files / `0` bytes.
+- Public reader pages showed no hydrated Astro islands and no measured external scripts in local Worker output.
+
+Optimasi yang diterapkan:
+
+- `src/middleware.ts` tidak lagi menimpa cache header eksplisit untuk route publik non-HTML.
+- HTML/admin/admin API tetap `no-cache, no-store, must-revalidate`.
+- `/api/search.json` sekarang memberi `Cache-Control: public, max-age=60, s-maxage=300` untuk response kosong maupun query.
+
+Hasil terukur:
+
+- Client JS after: `65,932` bytes (`0` delta).
+- Client CSS after: `0` bytes (`0` delta).
+- Total build after: `3,969,815` bytes (`+260` bytes server-side middleware/output).
+- `/api/search.json` verified memakai short public cache.
+- `/sitemap.xml` dan `/rss.xml` mempertahankan public cache header masing-masing.
+- Timing Worker lokal dicatat sebagai baseline regresi saja, bukan klaim latency produksi.
+
+Validasi Phase F:
+
+- `node_modules/.bin/tsc.cmd --noEmit` PASS.
+- `astro check` PASS: 0 errors, 0 warnings, 280 hints.
+- `astro build` PASS dengan warning direct `eval` lama dari `src/lib/dr1/offsite/google-drive.ts`.
+- Disposable local D1 bootstrap PASS.
+- Local Worker route smoke PASS tanpa D1 schema warnings.
+- Route smoke PASS.
+- Publisher unit PASS 48/48.
+- Publisher local smoke PASS 71/71.
+- Planner local smoke PASS 74/74.
+- Soak safety local smoke PASS 38/38.
+- SEO representative checks PASS untuk title, meta description, canonical, OpenGraph, dan JSON-LD pada page yang relevan.
+- Admin regression PASS untuk redirect/auth shell `/admin`.
+
+Batasan:
+
+- Browser/Lighthouse tidak diuji di sandbox; tidak ada klaim Lighthouse atau Core Web Vitals produksi.
+- Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, dan tidak ada publish artikel.
+- `AUTO_PUBLISH=OFF` dan `MEDIA_CAN_PUBLISH=NO` tetap dipertahankan.
+
+Gate setelah Phase F:
+
+- `ASTRO7_BASELINE_STILL_STABLE = YES`.
+- `READY_FOR_PRODUCTION_RELEASE_REVIEW = YES`, dengan syarat review release terpisah menjalankan browser/Lighthouse nyata dan operator menyetujui push/deploy.
