@@ -19,7 +19,11 @@ No D1 migration was created. No production resource was touched.
 | Client JS bytes | 65,932 | 65,932 | 0 |
 | Client CSS bytes | 0 | 0 | 0 |
 
-The build-size delta is server middleware code only; public JS and CSS did not increase.
+The build-size delta is server middleware code only; public JS did not increase. The `0` client CSS result was later proven invalid as a release-health signal: the manual browser gate caught that no compiled application CSS was being delivered, even though HTTP smoke checks returned 200.
+
+## Follow-Up Correction
+
+The manual pre-production browser check failed because public pages rendered with Tailwind utility classes in HTML but without compiled application CSS. The repair changed Astro CSS delivery from forced inline styles to emitted stylesheet assets and added `npm run test:css-delivery` so future builds fail if the public HTML pipeline contains Tailwind classes but no compiled application stylesheet is emitted and referenced.
 
 ## Before / After Payload And Cache
 
@@ -70,4 +74,3 @@ Do not overinterpret localhost timing variance. The retained optimization is jus
 - Audit whether public page inline scripts can be deferred or consolidated without harming search, bookmarking, newsletter, lightbox, and mobile navigation.
 - Consider replacing sitemap count logic with a direct `COUNT(*)` in a separate low-risk pass.
 - Browser/Lighthouse testing remains manual because the sandbox did not provide reliable browser performance tooling against the local Worker.
-

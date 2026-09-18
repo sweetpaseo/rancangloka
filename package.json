@@ -10,6 +10,7 @@
     "db:local:bootstrap": "node scripts/bootstrap-local-d1.mjs",
     "worker:local:bootstrap": "node scripts/bootstrap-worker-local-d1.mjs",
     "worker:local": "node scripts/dev-worker-local.mjs --ip 127.0.0.1 --port 8788",
+    "test:css-delivery": "node scripts/test-css-delivery.mjs",
     "astro": "astro",
     "deploy": "astro build && wrangler deploy",
     "article:import": "node scripts/import-article.js"

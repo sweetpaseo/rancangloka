@@ -17,6 +17,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### Masalah 0: Astro 7 Public CSS Tidak Terkirim
+* **Gejala:** Manual browser gate menampilkan halaman publik seperti HTML mentah: utility class Tailwind ada di HTML, tetapi layout, warna, spacing, navigasi, dan ukuran ikon tidak diterapkan.
+* **Penyebab:** Konfigurasi Astro 7 memaksa `inlineStylesheets: 'always'`, namun build SSR Cloudflare tidak menghasilkan inline application CSS maupun asset CSS publik untuk stylesheet global.
+* **Solusi:**
+  - Mengubah [`astro.config.mjs`](file:///astro.config.mjs) menjadi `inlineStylesheets: 'never'` agar Astro memancarkan asset CSS ter-hash di `dist/client/assets`.
+  - Menambahkan [`scripts/test-css-delivery.mjs`](file:///scripts/test-css-delivery.mjs) dan script `npm run test:css-delivery` untuk memastikan CSS global ter-compile, direferensikan manifest Astro, dan berisi utility Tailwind representatif.
+  - Mengupdate checklist manual agar browser gate wajib memeriksa stylesheet `/assets/global.*.css`.
+* **Hasil:** CSS publik kembali tersedia sebagai asset `global.*.css`, Tailwind utilities ter-compile, dan local Worker dapat melayani stylesheet dengan `Content-Type: text/css`.
+
 ### Masalah 1: Konfigurasi Deployment Cloudflare Workers Builds CI
 * **Gejala:** Deploy gagal dengan error `Authentication error [code: 10000]` atau `It looks like you've run a Workers-specific command in a Pages project`.
 * **Penyebab:** 

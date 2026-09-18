@@ -17,13 +17,13 @@ From the canonical repository:
 cd C:\Users\Fanto\Desktop\antigravity\rancangloka\rancangloka-astro
 npm run build
 node scripts\bootstrap-worker-local-d1.mjs
-node scripts\dev-worker-local.mjs --ip 127.0.0.1 --port 8814 --log-level info
+npm run worker:local
 ```
 
 Open:
 
 ```text
-http://127.0.0.1:8814/
+http://127.0.0.1:8788/
 ```
 
 ## Browser Route Matrix
@@ -78,6 +78,23 @@ Expected cache behavior:
 | Hashed assets | `public, max-age=31536000, immutable` |
 | Successful media responses | `public, max-age=31536000, immutable` |
 
+## CSS Delivery Gate
+
+Before visual approval, confirm that public pages load a built application stylesheet from `/assets/*.css`.
+
+Run:
+
+```powershell
+npm run test:css-delivery
+```
+
+Expected result:
+
+- At least one compiled CSS asset exists in `dist/client/assets`.
+- The built Astro server manifest references the global stylesheet.
+- Representative Tailwind utilities such as `.max-w-7xl`, `.bg-white`, `.grid`, `.h-4`, and `.w-4` exist in compiled CSS.
+- In Chrome Network, the public page requests the `/assets/global.*.css` stylesheet with status 200 and `Content-Type: text/css`.
+
 ## Visual Gate
 
 Check desktop and mobile responsive views:
@@ -92,6 +109,8 @@ Check desktop and mobile responsive views:
 | Admin login redirect |  |  |  |
 
 Look for layout shifts, overlapping text, broken images, unreadable controls, and missing SEO-visible content.
+
+The page must not look like raw/default HTML. If Tailwind spacing, colors, grid layout, navigation styling, or icon sizing is absent, stop the release check and treat it as a CSS delivery blocker.
 
 ## Lighthouse Matrix
 

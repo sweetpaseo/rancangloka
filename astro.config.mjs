@@ -8,7 +8,7 @@ export default defineConfig({
   compressHTML: true,
   build: {
     assets: 'assets',
-    inlineStylesheets: 'always'
+    inlineStylesheets: 'never'
   },
   adapter: cloudflare({
     imageService: 'passthrough',
