@@ -115,8 +115,16 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 
-  // 5. Cache-Control for Real-Time Freshness on HTML Pages
-  if (!pathname.startsWith('/assets/') && !pathname.startsWith('/_astro/')) {
+  // 5. Cache-Control for Real-Time Freshness on HTML/Admin/API responses.
+  // Preserve explicit public cache headers from XML/JSON routes such as search and sitemaps.
+  const contentType = response.headers.get('Content-Type') || '';
+  const hasExplicitCache = response.headers.has('Cache-Control');
+  const shouldForceNoStore =
+    !pathname.startsWith('/assets/') &&
+    !pathname.startsWith('/_astro/') &&
+    (contentType.includes('text/html') || pathname.startsWith('/admin') || pathname.startsWith('/api/admin'));
+
+  if (shouldForceNoStore || !hasExplicitCache) {
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');

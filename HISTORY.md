@@ -631,6 +631,22 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Gate:** `LOCAL_D1_SCHEMA_COMPLETE=YES`. `READY_FOR_ASTRO7_PERFORMANCE_PHASE=YES` jika full regression suite tetap PASS.
 * **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
 
+### Masalah 56: Astro 7 Performance Baseline dan Cache Policy Publik
+* **Gejala:** Program performa Astro 7 membutuhkan baseline terukur sebelum optimasi. Baseline lokal menunjukkan public reader path sudah tanpa hydrated island dan tanpa emitted reader JS bundle, tetapi middleware menimpa header cache route publik non-HTML seperti `/api/search.json`.
+* **Akar Penyebab:** `src/middleware.ts` memaksa `Cache-Control: no-cache, no-store, must-revalidate` untuk semua route non-asset. Akibatnya route JSON/XML publik tidak selalu dapat mempertahankan cache policy eksplisitnya.
+* **Solusi Lokal:**
+  - Menambahkan `docs/ASTRO_7_PERFORMANCE_BASELINE.md` dan `docs/ASTRO_7_PERFORMANCE_RESULT.md`.
+  - Memperbarui middleware agar no-store tetap berlaku untuk HTML/admin/admin API, tetapi cache eksplisit JSON/XML publik dipertahankan.
+  - Memperbarui `/api/search.json` agar response kosong maupun query memakai `Cache-Control: public, max-age=60, s-maxage=300`.
+* **Validasi Lokal:**
+  - Typecheck PASS.
+  - `astro check` PASS: 0 errors, 0 warnings, 280 hints.
+  - Build PASS; warning lama direct `eval` dari Google Drive helper tetap non-fatal.
+  - Local Worker route smoke PASS; D1 schema warnings 0.
+  - Local D1 zero-state bootstrap PASS.
+  - Publication safety regression PASS: publisher unit, publisher local, planner local, dan soak safety.
+* **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |

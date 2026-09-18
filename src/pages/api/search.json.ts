@@ -4,10 +4,14 @@ import { getDb, getAllArticles } from '../../lib/db';
 export const GET: APIRoute = async ({ request, locals }) => {
   const url = new URL(request.url);
   const query = (url.searchParams.get('q') || '').toLowerCase().trim();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'public, max-age=60, s-maxage=300'
+  };
 
   if (!query) {
     return new Response(JSON.stringify([]), {
-      headers: { 'Content-Type': 'application/json' }
+      headers
     });
   }
 
@@ -24,9 +28,6 @@ export const GET: APIRoute = async ({ request, locals }) => {
     .slice(0, 8);
 
   return new Response(JSON.stringify(filtered), {
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=60, s-maxage=300'
-    }
+    headers
   });
 };
