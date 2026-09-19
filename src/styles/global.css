@@ -105,11 +105,10 @@
   font-size: 1.85rem;
   font-weight: 800;
   margin-top: 3.5rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.375rem;
   letter-spacing: -0.025em;
   line-height: 1.25;
   color: #18181b;
-  padding-bottom: 0.5rem;
 }
 
 .dark .prose-magazine h2 {
@@ -121,13 +120,35 @@
   font-size: 1.35rem;
   font-weight: 700;
   margin-top: 2.25rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.125rem;
   letter-spacing: -0.02em;
   color: #27272a;
 }
 
 .dark .prose-magazine h3 {
   color: #f4f4f5;
+}
+
+/* Responsive Heading Rhythm & Drop Cap Refinement for Mobile */
+@media (max-width: 640px) {
+  .prose-magazine > p:first-of-type::first-letter {
+    font-size: 2.7rem;
+    line-height: 0.85;
+    margin-right: 0.6rem;
+    margin-top: 0.15rem;
+  }
+
+  .prose-magazine h2 {
+    font-size: 1.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .prose-magazine h3 {
+    font-size: 1.2rem;
+    margin-top: 1.75rem;
+    margin-bottom: 0.875rem;
+  }
 }
 
 /* 3. Styled Lists */
