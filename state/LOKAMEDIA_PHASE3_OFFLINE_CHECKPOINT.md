@@ -9,17 +9,57 @@ Date: 2026-09-19
 Latest clean checkpoint commit:
 
 ```text
-6960e9cb102597697a8be94c7aee91ffca6e9459
+0d04af48d3b946b4484b5c5b1d95fdc31b1dfa13
 ```
 
 Commit message:
 
 ```text
-fix: wire LokaMedia ChatGPT capture adapter
+fix: await correlated ChatGPT image result before capture
 ```
 
-`LOKAMEDIA_PHASE_4B1A5D1B=PASS_CHATGPT_REAL_CAPTURE_ADAPTER_WIRED`
-`READY_FOR_CONTROLLED_LIVE_CAPTURE_PROBE=YES`
+`LOKAMEDIA_PHASE_4B1A5D2P=PASS_FRESH_PROVIDER_PREFLIGHT`
+`LOKAMEDIA_PHASE_4B1A5D2R_2=PASS_CANONICAL_RECOVERY_POST_5D1E`
+`LOKAMEDIA_PHASE_4B1A5D1E=PASS_PROVIDER_RESULT_AWAIT_AND_CAPTURE_GUARD`
+`LOKAMEDIA_PHASE_4B1A5D1C=PASS_INDEXEDDB_CAPTURE_STORE_SCHEMA_MIGRATION`
+`READY_FOR_ONE_FRESH_5D2=YES`
+
+Phase 4B1A.5D2P (Fresh Provider Preflight):
+- Reloaded extension with commit `0d04af48d3b946b4484b5c5b1d95fdc31b1dfa13`.
+- Refreshed same authenticated ChatGPT tab to reconnect fresh content script (`session_id` regenerated, composer present, no login prompt).
+- Dispatched canonical `READ_ONLY_PROVIDER_DIAGNOSTIC` message from Side Panel.
+- Provider state converged cleanly: `tab=connected`, `auth=ready`, `dom=supported`, `composer=ready`, `lane=idle`.
+- Runtime 5D1E features verified in loaded service worker and content script:
+  - `getAllImages` and baseline diffing snapshot.
+  - Bounded result polling (90000ms / message `timeout_ms`).
+  - Strict capture-ready requirement (`source_fingerprint`, `containerFingerprint`, context matching).
+  - Controller and adapter fail-closed guards before capture.
+  - Durable `result_checkpoint` stored in local job state.
+- Side Panel verified: `Run Once` button present, enabled, text `Run Once`.
+- Fixture clean: server job `QUEUED`, `lease_owner=null`, `attempt=0`, `job_revision=15`. Local job `QUEUED`, `phase4bSingleRun=null`, all probes false, blob count 0.
+
+Phase 4B1A.5D2R-2 (Canonical Recovery):
+- Resolved blocked incident from earlier live run where generation resolved before result identification.
+- Executed canonical lease release via `POST /api/internal/v1/media/jobs/mjob_5c0f488d7ee123b9579a58a5/release` with `intent: 'SAFE_REQUEUE'`, `reason_code: 'EXPIRED_LEASE_RECOVERY'`, `expected_job_revision: 14`. Server returned `QUEUED`, `lease_owner=null`, `attempt=0`, `job_revision=15`.
+- Synchronized local extension state with server jobs list (`status=QUEUED`, `local_state=QUEUED`).
+- Verified zero stale `result_checkpoint` and retired stale `phase4bSingleRun` latch safely.
+- Zero mutations to media assets, zero R2 uploads, zero live generation or capture.
+
+Phase 4B1A.5D1E (Provider Result Completion & Correlation Hardening):
+- Hardened ChatGPT provider generation contract: `provider.generate()` does not resolve merely upon prompt submission.
+- Pre-submit baseline candidate diffing captures existing images before clicking send.
+- Bounded asynchronous polling loop awaits correlated image result to emerge.
+- Emits structured error `PROVIDER_RESULT_TIMEOUT` on timeout (90000ms) or `PROVIDER_RESULT_AMBIGUOUS` on ambiguous multiple candidates.
+- Generates complete descriptor with `source_fingerprint`, `containerFingerprint`, `job_id`, `run_id`, `slot_key`, `prompt_version`, `prompt_hash`, `submitted_at`, and `identified_at`.
+- Durable `result_checkpoint` persisted in extension storage before capture handoff.
+- Fail-closed guards added in both `controller.js` and `adapter.js` checking `isCaptureReadyProviderResult()` before dispatching `CHATGPT_PROVIDER_CAPTURE` to content script.
+- Deterministic test suite: `scripts/test-lokamedia-phase4b1a-5d1e-result-await.js` (Tests 13-22 all pass).
+
+Phase 4B1A.5D1C (IndexedDB Schema Migration):
+- Bumped extension IndexedDB schema version from 1 to 2.
+- Created required `captured-blobs` object store with `keyPath: 'blobKey'` and secondary indexes (`by_job_id`, `by_run_id`, `by_status`, `by_created_at`).
+- Preserved legacy data in existing stores and ensured forward-only idempotent migration.
+- Deterministic test suite: `scripts/test-lokamedia-phase4b1a-5d1c-schema-migration.js` (Tests A through H all pass).
 
 Phase 4B1A.5D1B wired the real ChatGPT capture path, removing the `CAPTURE_DISABLED_PHASE_4A` stub:
 - `controller.js` explicitly passes the already-correlated `providerResult` descriptor into `provider.capture(job, providerResult)`.

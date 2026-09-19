@@ -17,6 +17,45 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 4B1A.5D2P Fresh Provider Preflight 2026-09-19
+
+- Verified and reconciled extension runtime lifecycle after 5D1E fix and 5D2R-2 canonical recovery.
+- Extension reloaded once with commit `0d04af48d3b946b4484b5c5b1d95fdc31b1dfa13`.
+- ChatGPT tab (`https://chatgpt.com/c/6aae8fae-6308-83ec-accc-2a98d5c030eb`) refreshed cleanly; session state verified `AUTHENTICATED`, login prompt absent, ProseMirror composer present.
+- Canonical `READ_ONLY_PROVIDER_DIAGNOSTIC` message executed through Side Panel and background handler.
+- Provider state converged cleanly: `provider.tab=connected`, `provider.auth=ready`, `provider.dom=supported`, `provider.composer=ready`, `provider.lane=idle`.
+- Runtime 5D1E contract verified loaded in content script and service worker: baseline candidate diffing, bounded result polling (up to 90000ms), source/container fingerprint requirement, controller and adapter malformed descriptor guards, and durable `result_checkpoint` support.
+- Side Panel verified ready: `Run Once` button present, enabled, text `Run Once`.
+- Fixture clean: server job `mjob_5c0f488d7ee123b9579a58a5` status `QUEUED`, `lease_owner=null`, `attempt=0`, `job_revision=15`. Local job `QUEUED`, `phase4bSingleRun=null`, all probes false, blob count 0.
+- Zero live provider submissions, zero live captures, zero R2 uploads, zero media assets, zero article attachments, no push, no deploy.
+
+### LokaMedia Phase 4B1A.5D2R-2 Blocked-Run Recovery Post-5D1E 2026-09-19
+
+- Safely recovered blocked incident from earlier live run using canonical server and local recovery semantics.
+- Server recovery: executed `POST /api/internal/v1/media/jobs/mjob_5c0f488d7ee123b9579a58a5/release` with `intent: 'SAFE_REQUEUE'`, `reason_code: 'EXPIRED_LEASE_RECOVERY'`, `expected_job_revision: 14`. Server returned `QUEUED`, `lease_owner=null`, `attempt=0`, `job_revision=15`.
+- Local reconciliation: synchronized extension storage with server jobs list (`status=QUEUED`, `local_state=QUEUED`).
+- Verified zero stale `result_checkpoint` and retired stale `phase4bSingleRun` latch (`lokamediaState.phase4bSingleRun = null`).
+- Zero mutations to media assets, zero R2 uploads, zero live generation or capture.
+
+### LokaMedia Phase 4B1A.5D1E Provider Result Completion & Correlation Contract Hardening 2026-09-19
+
+- Hardened provider generation contract: `provider.generate()` does not resolve merely upon prompt submission; it awaits deterministic result identification.
+- Checkpoint commit: `0d04af48d3b946b4484b5c5b1d95fdc31b1dfa13` (`fix: await correlated ChatGPT image result before capture`).
+- Added pre-submit baseline candidate snapshot to distinguish pre-existing images from newly generated results.
+- Added bounded asynchronous candidate polling loop in `controlledSubmit` with `PROVIDER_RESULT_TIMEOUT` (90000ms) and `PROVIDER_RESULT_AMBIGUOUS` structured fail-closed errors.
+- Enforced complete result descriptor carrying `source_fingerprint`, `containerFingerprint`, `job_id`, `run_id`, `slot_key`, `prompt_version`, and `prompt_hash`.
+- Persisted durable `result_checkpoint` in extension storage before capture handoff.
+- Added fail-closed guards in `controller.js` and `adapter.js` before messaging content script or invoking capture when result is not capture-ready (`isCaptureReadyProviderResult`).
+- Deterministic test suite: `scripts/test-lokamedia-phase4b1a-5d1e-result-await.js` (Tests 13 through 22 all pass).
+- Full regression suite clean: all 56 tests passed, TypeScript typecheck clean, syntax checks clean.
+
+### LokaMedia Phase 4B1A.5D1C IndexedDB Capture Store Schema Migration 2026-09-19
+
+- Upgraded extension IndexedDB schema version from 1 to 2.
+- Created `captured-blobs` object store with `keyPath: 'blobKey'` and secondary indexes (`by_job_id`, `by_run_id`, `by_status`, `by_created_at`).
+- Preserved existing data in unrelated stores and ensured forward-only idempotent migration.
+- Deterministic test suite: `scripts/test-lokamedia-phase4b1a-5d1c-schema-migration.js` (Tests A through H all pass).
+
 ### LokaMedia Phase 4B1A.5D1B Real ChatGPT Capture Adapter Wiring 2026-09-19
 
 - Wrote and wired the real ChatGPT capture path, removing the `CAPTURE_DISABLED_PHASE_4A` stub: `provider.capture(job, providerResult)` → `chrome.tabs.sendMessage` → `content-script.js` `CHATGPT_PROVIDER_CAPTURE` handler → target image binary acquisition → controller binary validation & durable persistence.
