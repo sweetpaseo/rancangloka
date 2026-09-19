@@ -22,3 +22,16 @@ export function correlateImageCandidates(baseline, root = document) {
     current_fingerprints: current
   };
 }
+
+export function isCaptureReadyProviderResult(result, context = {}) {
+  if (!result || typeof result !== 'object') return false;
+  const fp = result.source_fingerprint || result.fingerprint;
+  if (!fp || typeof fp !== 'string' || fp.trim() === '') return false;
+  if (result.containerFingerprint !== undefined && (typeof result.containerFingerprint !== 'string' || result.containerFingerprint.trim() === '')) {
+    return false;
+  }
+  if (context.job_id && result.job_id && result.job_id !== context.job_id) return false;
+  if (context.run_id && result.run_id && result.run_id !== context.run_id) return false;
+  if (context.slot_key && result.slot_key && result.slot_key !== context.slot_key) return false;
+  return true;
+}

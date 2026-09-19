@@ -157,42 +157,6 @@
     return null;
   }
 
-  async function controlledSubmit(message) {
-    const caps = detect();
-    if (caps.auth_state !== 'AUTHENTICATED') return { ok: false, error: 'AUTH_REQUIRED', capabilities: caps };
-    if (caps.dom_status !== 'SUPPORTED' || !caps.capabilities.COMPOSER_EDITABLE || !caps.capabilities.SEND_CONTROL_PRESENT) {
-      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
-    }
-    const composer = first([
-      '#prompt-textarea[contenteditable="true"]',
-      'div[contenteditable="true"]#prompt-textarea',
-      'div[contenteditable="true"].ProseMirror',
-      'div[contenteditable="true"][data-testid*="prompt"]',
-      'textarea[data-testid*="prompt"]',
-      'main form div[contenteditable="true"]',
-      'form div[contenteditable="true"]',
-      'form textarea'
-    ]);
-    if (!composer.element) {
-      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
-    }
-    if (!message.controlled_run_once || !message.prompt || !message.prompt_hash || !message.job_id) {
-      return { ok: false, error: 'CONTROLLED_SUBMIT_CONTRACT_INVALID', capabilities: caps };
-    }
-    setComposerValue(composer.element, message.prompt);
-    const sendControl = await waitForSendControl(composer.element, 2000);
-    if (!sendControl) {
-      return { ok: false, error: 'SEND_CONTROL_UNAVAILABLE', capabilities: detect() };
-    }
-    sendControl.click();
-    return {
-      ok: true,
-      submitted_at: new Date().toISOString(),
-      session_id: sessionId,
-      baseline_image_count: caps.image_candidate_count
-    };
-  }
-
   function normalizeSource(src = '') {
     try {
       const url = new URL(src, 'https://chatgpt.com');
@@ -230,6 +194,129 @@
       element.getAttribute?.('data-asset-id') || ''
     ].join('|');
     return `img_${hashText(basis)}`;
+  }
+
+  function getAllImages(root = (typeof document !== 'undefined' ? document : null)) {
+    if (!root?.querySelectorAll) return [];
+    const imageSelectors = [
+      '[data-message-author-role="assistant"] img',
+      'main img[src]',
+      'main picture img[src]'
+    ];
+    const allImgs = [];
+    const seen = new Set();
+    for (const sel of imageSelectors) {
+      try {
+        for (const el of root.querySelectorAll(sel)) {
+          if (!seen.has(el)) {
+            seen.add(el);
+            allImgs.push(el);
+          }
+        }
+      } catch {}
+    }
+    return allImgs;
+  }
+
+  async function controlledSubmit(message, root = (typeof document !== 'undefined' ? document : null)) {
+    const caps = detect();
+    if (caps.auth_state !== 'AUTHENTICATED') return { ok: false, error: 'AUTH_REQUIRED', capabilities: caps };
+    if (caps.dom_status !== 'SUPPORTED' || !caps.capabilities.COMPOSER_EDITABLE || !caps.capabilities.SEND_CONTROL_PRESENT) {
+      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
+    }
+    const composer = first([
+      '#prompt-textarea[contenteditable="true"]',
+      'div[contenteditable="true"]#prompt-textarea',
+      'div[contenteditable="true"].ProseMirror',
+      'div[contenteditable="true"][data-testid*="prompt"]',
+      'textarea[data-testid*="prompt"]',
+      'main form div[contenteditable="true"]',
+      'form div[contenteditable="true"]',
+      'form textarea'
+    ]);
+    if (!composer.element) {
+      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
+    }
+    if (!message.controlled_run_once || !message.prompt || !message.prompt_hash || !message.job_id) {
+      return { ok: false, error: 'CONTROLLED_SUBMIT_CONTRACT_INVALID', capabilities: caps };
+    }
+
+    // Capture pre-submit image baseline
+    const baselineImages = getAllImages(root);
+    const baselineFps = new Set(baselineImages.map((el) => fingerprintImg(el)));
+
+    setComposerValue(composer.element, message.prompt);
+    const sendControl = await waitForSendControl(composer.element, 2000);
+    if (!sendControl) {
+      return { ok: false, error: 'SEND_CONTROL_UNAVAILABLE', capabilities: detect() };
+    }
+    sendControl.click();
+    const submittedAt = new Date().toISOString();
+
+    // Await deterministic generation result
+    const timeoutMs = message.timeout_ms || 120000;
+    const pollIntervalMs = 50;
+    const startWait = Date.now();
+    let targetCandidate = null;
+
+    while (Date.now() - startWait < timeoutMs) {
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+      const currentImages = getAllImages(root);
+      const newImages = currentImages.filter((el) => !baselineFps.has(fingerprintImg(el)));
+
+      if (newImages.length === 1) {
+        const candidate = newImages[0];
+        const src = candidate.currentSrc || candidate.src || candidate.getAttribute?.('src');
+        if (src) {
+          targetCandidate = candidate;
+          break;
+        }
+      } else if (newImages.length > 1) {
+        const distinctFps = new Set(newImages.map((el) => fingerprintImg(el)));
+        if (distinctFps.size > 1) {
+          return {
+            ok: false,
+            error: 'PROVIDER_RESULT_AMBIGUOUS',
+            candidate_count: distinctFps.size
+          };
+        } else if (distinctFps.size === 1) {
+          targetCandidate = newImages[0];
+          break;
+        }
+      }
+    }
+
+    if (!targetCandidate) {
+      return {
+        ok: false,
+        error: 'PROVIDER_RESULT_TIMEOUT',
+        duration_ms: Date.now() - startWait
+      };
+    }
+
+    const container = targetCandidate.closest?.('[data-message-id], [data-testid*="conversation-turn"], article, [data-message-author-role]') ?? targetCandidate.parentElement;
+    const containerFingerprint = hashText([
+      container?.getAttribute?.('data-message-id') ?? '',
+      container?.getAttribute?.('data-testid') ?? '',
+      container?.getAttribute?.('data-message-author-role') ?? '',
+      container?.tagName ?? ''
+    ].join('|'));
+
+    return {
+      ok: true,
+      job_id: message.job_id,
+      run_id: message.run_id,
+      slot_key: message.slot_key || 'featured',
+      prompt_version: message.prompt_version,
+      prompt_hash: message.prompt_hash,
+      provider_conversation_id: sessionId,
+      provider_response_id: container?.getAttribute?.('data-message-id') || null,
+      submitted_at: submittedAt,
+      identified_at: new Date().toISOString(),
+      source_fingerprint: fingerprintImg(targetCandidate),
+      containerFingerprint,
+      baseline_image_count: baselineImages.length
+    };
   }
 
   async function imageToDataUrl(imgElement) {
@@ -294,7 +381,7 @@
     };
   }
 
-  async function controlledCapture(message) {
+  async function controlledCapture(message, root = (typeof document !== 'undefined' ? document : null)) {
     const { job_id, run_id, slot_key, provider_result } = message;
     if (!job_id || !provider_result) {
       return { ok: false, error: 'CAPTURE_CORRELATION_MISMATCH' };
@@ -317,23 +404,7 @@
     }
 
     // Discover all candidate images on page
-    const imageSelectors = [
-      '[data-message-author-role="assistant"] img',
-      'main img[src]',
-      'main picture img[src]'
-    ];
-    const allImgs = [];
-    const seen = new Set();
-    for (const sel of imageSelectors) {
-      try {
-        for (const el of document.querySelectorAll(sel)) {
-          if (!seen.has(el)) {
-            seen.add(el);
-            allImgs.push(el);
-          }
-        }
-      } catch {}
-    }
+    const allImgs = getAllImages(root);
 
     if (allImgs.length === 0) {
       return { ok: false, error: 'CAPTURE_TARGET_MISSING' };
@@ -416,6 +487,8 @@
     detect,
     handshake,
     fingerprintImg,
+    getAllImages,
+    controlledSubmit,
     controlledCapture
   };
 

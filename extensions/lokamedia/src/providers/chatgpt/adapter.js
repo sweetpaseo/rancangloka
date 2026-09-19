@@ -6,7 +6,7 @@ import {
 } from './constants.js';
 import { detectChatGptCapabilities } from './capability-detector.js';
 import { discoverCapturePaths } from './capture-discovery.js';
-import { createCorrelationBaseline } from './correlation.js';
+import { createCorrelationBaseline, isCaptureReadyProviderResult } from './correlation.js';
 
 export class ChatGptProviderAdapter {
   constructor({ tabController = null, root = null } = {}) {
@@ -44,18 +44,34 @@ export class ChatGptProviderAdapter {
         prompt: job.prompt,
         prompt_hash: job.prompt_hash,
         prompt_version: job.prompt_version,
-        run_id: job.run_id
+        run_id: job.run_id,
+        slot_key: job.slot_key,
+        timeout_ms: job.timeout_ms
       });
       if (!response?.ok) {
         const error = new Error(response?.error || 'PROVIDER_SUBMIT_FAILED');
         error.code = response?.error || 'PROVIDER_SUBMIT_FAILED';
         throw error;
       }
-      return {
-        provider_conversation_id: response.session_id || null,
-        provider_response_id: null,
-        submitted_at: response.submitted_at || new Date().toISOString()
+      const providerResult = {
+        job_id: job.job_id,
+        run_id: job.run_id,
+        slot_key: job.slot_key || 'featured',
+        prompt_version: job.prompt_version,
+        prompt_hash: job.prompt_hash,
+        provider_conversation_id: response.provider_conversation_id || response.session_id || null,
+        provider_response_id: response.provider_response_id || null,
+        submitted_at: response.submitted_at || new Date().toISOString(),
+        identified_at: response.identified_at || new Date().toISOString(),
+        source_fingerprint: response.source_fingerprint,
+        containerFingerprint: response.containerFingerprint
       };
+      if (!isCaptureReadyProviderResult(providerResult, { job_id: job.job_id, run_id: job.run_id, slot_key: job.slot_key })) {
+        const invErr = new Error(CHATGPT_ERROR_CODES.PROVIDER_RESULT_INVALID_DESCRIPTOR);
+        invErr.code = CHATGPT_ERROR_CODES.PROVIDER_RESULT_INVALID_DESCRIPTOR;
+        throw invErr;
+      }
+      return providerResult;
     }
     const error = new Error('PROMPT_SUBMISSION_DISABLED_PHASE_4A');
     error.code = 'PROMPT_SUBMISSION_DISABLED_PHASE_4A';
@@ -73,8 +89,17 @@ export class ChatGptProviderAdapter {
   }
 
   async capture(job = {}, providerResult = {}) {
-    if (this.tabController?.locateTab) {
-      const tab = await this.tabController.locateTab();
+    if (!this.tabController?.locateTab) {
+      const error = new Error('CAPTURE_DISABLED_PHASE_4A');
+      error.code = 'CAPTURE_DISABLED_PHASE_4A';
+      throw error;
+    }
+    if (!isCaptureReadyProviderResult(providerResult, { job_id: job.job_id, run_id: job.run_id, slot_key: job.slot_key })) {
+      const error = new Error(CHATGPT_ERROR_CODES.ADAPTER_CAPTURE_MALFORMED_DESCRIPTOR);
+      error.code = CHATGPT_ERROR_CODES.ADAPTER_CAPTURE_MALFORMED_DESCRIPTOR;
+      throw error;
+    }
+    const tab = await this.tabController.locateTab();
       if (!tab?.ok) {
         const error = new Error(tab?.status || CHATGPT_ERROR_CODES.TAB_MISSING);
         error.code = tab?.status || CHATGPT_ERROR_CODES.TAB_MISSING;
@@ -131,10 +156,6 @@ export class ChatGptProviderAdapter {
         sha256: response.sha256 || `sha256-${job.job_id}`,
         blobKey: `${job.job_id}:${job.prompt_version ?? 1}`
       };
-    }
-    const error = new Error('CAPTURE_DISABLED_PHASE_4A');
-    error.code = 'CAPTURE_DISABLED_PHASE_4A';
-    throw error;
   }
 
   async reconcile(job) {

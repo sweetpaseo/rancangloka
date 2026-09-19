@@ -213,7 +213,9 @@ async function testControlledRunOnceSubmitPath() {
           return {
             ok: true,
             session_id: 'session-1',
-            submitted_at: '2026-09-16T00:00:00.000Z'
+            submitted_at: '2026-09-16T00:00:00.000Z',
+            source_fingerprint: 'img_test_fp',
+            containerFingerprint: 'cont_test_fp'
           };
         }
         return { ok: false, error: 'UNEXPECTED_MESSAGE' };

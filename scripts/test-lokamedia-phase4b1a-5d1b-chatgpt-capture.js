@@ -448,7 +448,11 @@ async function testF_MimePreservation() {
   await storage.initialize();
   await storage.upsertJob(badJob.job_id, badJob);
   badAdapter.prepare = async () => ({ provider: 'chatgpt' });
-  badAdapter.generate = async () => ({ provider_conversation_id: 'conv-bad' });
+  badAdapter.generate = async () => ({
+    provider_conversation_id: 'conv-bad',
+    source_fingerprint: 'fp_bad',
+    containerFingerprint: 'cont_bad'
+  });
   badAdapter.observe = async () => ({ source_fingerprint: 'fp_bad' });
   const mockApi = {
     async heartbeat(jobId, body) {
@@ -589,7 +593,9 @@ async function testI_ControllerIntegration() {
           return {
             ok: true,
             session_id: 'chatgpt-session-i',
-            submitted_at: new Date().toISOString()
+            submitted_at: new Date().toISOString(),
+            source_fingerprint: 'img_fp_controller_i',
+            containerFingerprint: 'container_fp_i'
           };
         }
         if (message.type === CHATGPT_MESSAGE_TYPES.CAPTURE) {
@@ -707,6 +713,7 @@ async function testJ_ProviderResultPassedExplicitly() {
       return {
         provider_conversation_id: 'conv-j',
         source_fingerprint: generatedDescriptorId,
+        containerFingerprint: 'cont_fp_j',
         job_id: job.job_id,
         run_id: 'run-j'
       };

@@ -6,6 +6,7 @@ import { UploadWorkerPool } from './upload-worker-pool.js';
 import { HeartbeatManager } from './heartbeat-manager.js';
 import { LOKAMEDIA_PROTOCOL_VERSION } from './constants.js';
 import { AuditLogger } from './audit-log.js';
+import { isCaptureReadyProviderResult } from './providers/chatgpt/correlation.js';
 
 export class LokaMediaController {
   constructor({ apiClient, storage, blobStore, provider = new MockProviderAdapter(), logger = console, audit = null }) {
@@ -228,14 +229,48 @@ export class LokaMediaController {
       await this.audit.info('PROVIDER_SUBMIT_START', { run_id: runId, job_id: job.job_id, provider_stage: 'submit' });
       const providerResult = await this.provider.generate({ ...job, controlled_run_once: controlledRunOnce, run_id: runId });
       await this.audit.info('PROVIDER_SUBMIT_ACCEPTED', { run_id: runId, job_id: job.job_id, provider_stage: 'submit' });
+
+      // Immediate post-generate validation
+      if (!isCaptureReadyProviderResult(providerResult, { job_id: job.job_id, run_id: runId, slot_key: job.slot_key })) {
+        const notReadyErr = new Error('PROVIDER_RESULT_NOT_CAPTURE_READY');
+        notReadyErr.code = 'PROVIDER_RESULT_NOT_CAPTURE_READY';
+        await this.audit.warn('PROVIDER_RESULT_INVALID', {
+          run_id: runId,
+          job_id: job.job_id,
+          error_code: 'PROVIDER_RESULT_NOT_CAPTURE_READY'
+        });
+        throw notReadyErr;
+      }
+
+      const resultCheckpoint = {
+        run_id: runId,
+        job_id: job.job_id,
+        slot_key: job.slot_key,
+        prompt_version: job.prompt_version,
+        prompt_hash: job.prompt_hash,
+        provider_conversation_id: providerResult.provider_conversation_id || null,
+        provider_response_id: providerResult.provider_response_id || null,
+        source_fingerprint: providerResult.source_fingerprint,
+        containerFingerprint: providerResult.containerFingerprint,
+        identified_at: providerResult.identified_at || new Date().toISOString()
+      };
+
       await this.storage.upsertJob(job.job_id, {
         local_state: 'IMAGE_DETECTED',
         provider_conversation_id: providerResult.provider_conversation_id,
         provider_response_id: providerResult.provider_response_id,
-        submitted_at: providerResult.submitted_at
+        submitted_at: providerResult.submitted_at,
+        result_checkpoint: resultCheckpoint
       });
       await this.audit.info('GENERATION_OBSERVER_START', { run_id: runId, job_id: job.job_id });
-      await this.audit.info('GENERATION_IMAGE_DETECTED', { run_id: runId, job_id: job.job_id });
+      await this.audit.info('GENERATION_IMAGE_DETECTED', {
+        run_id: runId,
+        job_id: job.job_id,
+        details: {
+          source_fingerprint: providerResult.source_fingerprint,
+          containerFingerprint: providerResult.containerFingerprint
+        }
+      });
 
       if (providerResultProbe) {
         await this.audit.info('PROVIDER_RESULT_PROBE_STOP', {
@@ -245,6 +280,8 @@ export class LokaMediaController {
             provider_conversation_id: providerResult?.provider_conversation_id || null,
             provider_response_id: providerResult?.provider_response_id || null,
             submitted_at: providerResult?.submitted_at || null,
+            source_fingerprint: providerResult?.source_fingerprint || null,
+            containerFingerprint: providerResult?.containerFingerprint || null,
             local_state: 'IMAGE_DETECTED'
           }
         });
@@ -275,7 +312,9 @@ export class LokaMediaController {
           provider_result: {
             provider_conversation_id: providerResult?.provider_conversation_id || null,
             provider_response_id: providerResult?.provider_response_id || null,
-            submitted_at: providerResult?.submitted_at || null
+            submitted_at: providerResult?.submitted_at || null,
+            source_fingerprint: providerResult?.source_fingerprint || null,
+            containerFingerprint: providerResult?.containerFingerprint || null
           }
         };
       }
@@ -294,8 +333,15 @@ export class LokaMediaController {
         throw bpErr;
       }
 
+      // Fail-closed guard: ensure providerResult is capture-ready before capture
+      if (!isCaptureReadyProviderResult(providerResult, { job_id: job.job_id, run_id: runId, slot_key: job.slot_key })) {
+        const notReadyErr = new Error('CONTROLLER_CAPTURE_PRECONDITION_FAILED');
+        notReadyErr.code = 'CONTROLLER_CAPTURE_PRECONDITION_FAILED';
+        throw notReadyErr;
+      }
+
       await this.audit.info('CAPTURE_START', { run_id: runId, job_id: job.job_id });
-      const captured = await this.provider.capture(job, providerResult);
+      const captured = await this.provider.capture({ ...job, run_id: runId }, providerResult);
 
       // Binary validation
       if (!captured || !captured.bytes) {
