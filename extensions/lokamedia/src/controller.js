@@ -134,6 +134,11 @@ export class LokaMediaController {
           ? options.providerResultProbe
           : state.config?.providerResultProbe
       );
+      const captureBlobProbe = Boolean(
+        (typeof options === 'object' && options !== null && options.captureBlobProbe !== undefined)
+          ? options.captureBlobProbe
+          : state.config?.captureBlobProbe
+      );
 
       if (acquisitionProbe) {
         await this.audit.info('ACQUISITION_PROBE_STOP', {
@@ -177,9 +182,9 @@ export class LokaMediaController {
       if (!consumed.consumed) return { ok: false, error: consumed.reason };
 
       try {
-        const result = await this.runJob(job, { runId, controlledRunOnce: true, providerResultProbe });
+        const result = await this.runJob(job, { runId, controlledRunOnce: true, providerResultProbe, captureBlobProbe });
         await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
-        if (result?.status === 'PROVIDER_RESULT_PROBE_STOPPED') {
+        if (result?.status === 'PROVIDER_RESULT_PROBE_STOPPED' || result?.status === 'CAPTURE_BLOB_PROBE_STOPPED') {
           return result;
         }
         await this.audit.info('RUN_COMPLETE', { run_id: runId, job_id: job.job_id });
@@ -200,7 +205,7 @@ export class LokaMediaController {
     return { ok: false, error };
   }
 
-  async runJob(job, { runId = null, controlledRunOnce = false, providerResultProbe = false } = {}) {
+  async runJob(job, { runId = null, controlledRunOnce = false, providerResultProbe = false, captureBlobProbe = false } = {}) {
     await this.audit.info('PROVIDER_LANE_ACQUIRE_START', { run_id: runId, job_id: job.job_id });
     const acquired = await this.providerLane.acquire(job.job_id);
     if (!acquired) {
@@ -274,8 +279,44 @@ export class LokaMediaController {
           }
         };
       }
+
+      // Backpressure inspection before capturing & persisting new asset
+      const pressure = await this.backpressure.inspect();
+      if (pressure.blocked) {
+        const bpErr = new Error('CAPTURE_BACKPRESSURE_LIMIT_EXCEEDED');
+        bpErr.code = 'CAPTURE_BACKPRESSURE_LIMIT_EXCEEDED';
+        bpErr.pressure = pressure;
+        await this.audit.warn('CAPTURE_BACKPRESSURE_EXCEEDED', {
+          run_id: runId,
+          job_id: job.job_id,
+          details: pressure
+        });
+        throw bpErr;
+      }
+
       await this.audit.info('CAPTURE_START', { run_id: runId, job_id: job.job_id });
       const captured = await this.provider.capture(job);
+
+      // Binary validation
+      if (!captured || !captured.bytes) {
+        const binErr = new Error('CAPTURE_BINARY_MISSING');
+        binErr.code = 'CAPTURE_BINARY_MISSING';
+        throw binErr;
+      }
+      const byteLength = captured.bytes.byteLength ?? captured.size ?? 0;
+      if (byteLength === 0) {
+        const binErr = new Error('CAPTURE_BINARY_EMPTY');
+        binErr.code = 'CAPTURE_BINARY_EMPTY';
+        throw binErr;
+      }
+      const supportedMimes = new Set(['image/png', 'image/webp', 'image/jpeg']);
+      if (!captured.mime || !supportedMimes.has(captured.mime)) {
+        const binErr = new Error('CAPTURE_UNSUPPORTED_MIME');
+        binErr.code = 'CAPTURE_UNSUPPORTED_MIME';
+        throw binErr;
+      }
+
+      // Durable blob persistence
       await this.blobStore.put({
         key: captured.blobKey,
         job_id: job.job_id,
@@ -283,10 +324,14 @@ export class LokaMediaController {
         mime: captured.mime,
         width: captured.width,
         height: captured.height,
-        size: captured.size,
+        size: captured.size ?? byteLength,
         bytes: captured.bytes
       });
-      await this.audit.info('CAPTURE_PERSISTED', { run_id: runId, job_id: job.job_id, details: { sha256: captured.sha256, mime: captured.mime, width: captured.width, height: captured.height, size: captured.size } });
+      await this.audit.info('CAPTURE_PERSISTED', {
+        run_id: runId,
+        job_id: job.job_id,
+        details: { sha256: captured.sha256, mime: captured.mime, width: captured.width, height: captured.height, size: captured.size ?? byteLength }
+      });
       await this.storage.upsertJob(job.job_id, {
         local_state: 'CAPTURED',
         blob_key: captured.blobKey,
@@ -295,6 +340,39 @@ export class LokaMediaController {
         width: captured.width,
         height: captured.height
       });
+
+      // Capture Blob Probe boundary: stops immediately after durable persistence
+      // and BEFORE provider lane release, upload queue enqueue, and uploads drain.
+      if (captureBlobProbe) {
+        await this.audit.info('CAPTURE_BLOB_PROBE_STOP', {
+          run_id: runId,
+          job_id: job.job_id,
+          details: {
+            blob_key: captured.blobKey,
+            sha256: captured.sha256,
+            mime: captured.mime,
+            width: captured.width,
+            height: captured.height,
+            size: captured.size ?? byteLength,
+            local_state: 'CAPTURED'
+          }
+        });
+        return {
+          ok: true,
+          status: 'CAPTURE_BLOB_PROBE_STOPPED',
+          run_id: runId,
+          job_id: job.job_id,
+          blob_key: captured.blobKey,
+          details: {
+            sha256: captured.sha256,
+            mime: captured.mime,
+            width: captured.width,
+            height: captured.height,
+            size: captured.size ?? byteLength
+          }
+        };
+      }
+
       await this.providerLane.release(job.job_id);
       await this.storage.enqueueUpload(job.job_id);
       await this.audit.info('UPLOAD_START', { run_id: runId, job_id: job.job_id });

@@ -29,7 +29,8 @@ export const DEFAULT_CONFIG = {
   deviceId: '',
   enabled: false,
   acquisitionProbe: false,
-  providerResultProbe: false
+  providerResultProbe: false,
+  captureBlobProbe: false
 };
 
 export function nowIso(clock = Date) {

@@ -140,6 +140,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const state = await storage.readState();
       const acquisitionProbe = Boolean(request?.acquisitionProbe ?? state.config?.acquisitionProbe);
       const providerResultProbe = Boolean(request?.providerResultProbe ?? state.config?.providerResultProbe);
+      const captureBlobProbe = Boolean(request?.captureBlobProbe ?? state.config?.captureBlobProbe);
       await audit.info('PANEL_RUN_CLICK', { run_id: runId, component: 'side-panel' });
       await audit.info('RUN_REQUEST_DISPATCHED', { run_id: runId, component: 'side-panel' });
 
@@ -156,7 +157,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'background' });
       try {
         const instance = await ensureController();
-        return await instance.runOnce({ runId, acceptedLogged: true, acquisitionProbe, providerResultProbe });
+        return await instance.runOnce({ runId, acceptedLogged: true, acquisitionProbe, providerResultProbe, captureBlobProbe });
       } catch (error) {
         await storage.releaseActiveRunLock({ runId });
         throw error;
