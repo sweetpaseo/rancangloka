@@ -17,6 +17,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 4B1A.5D1B Real ChatGPT Capture Adapter Wiring 2026-09-19
+
+- Wrote and wired the real ChatGPT capture path, removing the `CAPTURE_DISABLED_PHASE_4A` stub: `provider.capture(job, providerResult)` → `chrome.tabs.sendMessage` → `content-script.js` `CHATGPT_PROVIDER_CAPTURE` handler → target image binary acquisition → controller binary validation & durable persistence.
+- Checkpoint commit: `6960e9cb102597697a8be94c7aee91ffca6e9459` (`fix: wire LokaMedia ChatGPT capture adapter`).
+- Critical correlation rule enforced: capture consumes the exact result descriptor already selected by provider-generation correlation (`source_fingerprint` or `containerFingerprint`). Global heuristics (`newest <img>`, first matching, ungrounded re-discovery) are strictly prohibited.
+- Content script `controlledCapture` revalidates candidate image within container, fails closed with `CAPTURE_TARGET_MISSING` if absent, `CAPTURE_TARGET_AMBIGUOUS` if non-unique, and `CAPTURE_CORRELATION_MISMATCH` if descriptor metadata does not match `job_id`/`run_id`/`slot_key`.
+- Binary acquisition method: canvas `toDataURL` fallback to direct `fetch(src)` with chunked base64 data URL transport across Chrome extension messaging (`CAPTURE_MESSAGE_BINARY_TRANSPORT=BASE64_DATA_URL`).
+- Binary roundtrip verified byte-for-byte identical using 64 KiB deterministic fixture (`BINARY_ROUNDTRIP_IDENTICAL=YES`).
+- Canonical binary validation maintained in controller: authoritative gate for non-empty bytes, valid MIME (`image/png`, `image/jpeg`, `image/webp`), and dimensions before durable IndexedDB persistence.
+- Fail-closed handling for missing receiver: surfaces `CONTENT_SCRIPT_UNAVAILABLE` cleanly without silent retries.
+- Deterministic test suite added in `scripts/test-lokamedia-phase4b1a-5d1b-chatgpt-capture.js` covering Tests A through J (exact correlated capture, missing target, ambiguous target, correlation mismatch, binary transport, MIME preservation, content script absent, capture exactly once, controller integration, and explicit descriptor passing).
+- Regression suite: all 7 test suites passing (76 tests passed, 0 failures), TypeScript `--noEmit` clean, syntax checks clean.
+- Controlled fixture `mjob_5c0f488d7ee123b9579a58a5` remains untouched in local D1 (`status=QUEUED`, `lease_owner=null`, `attempt=0`, `job_revision=11`).
+- Probes reset to default: `acquisitionProbe=false`, `providerResultProbe=false`, `captureBlobProbe=false`.
+- Zero live prompt submissions, zero live captures, zero R2 uploads, zero media assets, zero article attachments, no push, no deploy.
+
+### LokaMedia Phase 4B1A.5D1 Capture Correlation & Durable Blob Safety Boundary 2026-09-19
+
+- Implemented deterministic correlation baseline diffing and capture durable safety boundary for the LokaMedia extension pipeline.
+- Checkpoint commit: `58428bd2e87daa5d2df011f44c1dc822101c75af` (`test: add safe LokaMedia capture blob probe`).
+- Exact candidate correlation: `correlateImageCandidates` diffs baseline snapshot against current DOM; prohibits global `newest <img>` heuristic.
+- Durable persistence: IndexedDB / memory blob store persistence (`blobStore.put`) storing binary bytes, mime, dimensions, sha256, run_id, and job_id.
+- Backpressure limits enforced: `MAX_PENDING_CAPTURED_ASSETS=4` and `MAX_PENDING_CAPTURED_BYTES=20 MiB` with fail-closed rejection.
+- Capture Blob Probe boundary: `captureBlobProbe=true` stops pipeline immediately after durable blob persistence and before R2 upload, media asset creation, or article attachment.
+- Deterministic test suite: `scripts/test-lokamedia-phase4b1a-5d1-capture-probe.js` (12 tests covering Tests 12-23).
+
+### LokaMedia Phase 4B1A.5C2 Live Provider Generation Probe & Preflight Repairs 2026-09-19
+
+- Successfully executed controlled live provider generation probe with exactly one real ChatGPT submission and stop at provider-result probe boundary.
+- Repaired heartbeat contract (client sends `expected_job_revision`, server authoritative revision propagated to subsequent mutations).
+- Repaired ChatGPT ProseMirror contenteditable composer detection and dynamic voice/send control state transitions.
+- Fixed content-script lifecycle with mandatory reconnect preflight on reload.
+- Proven live: Panel click → Run Once → Job Acquired → Heartbeat pass → provider.generate → ChatGPT submit 1x → Result correlated → Stop at `PROVIDER_RESULT_PROBE_STOP` with safe requeue. Zero capture calls, zero R2 uploads, zero media assets.
+
 ### LokaMedia Phase 4B1A.5C1 Provider Result Stop Boundary 2026-09-19
 
 - Added explicit local-only `providerResultProbe` boundary to `controller.runJob` immediately after provider result correlation (`GENERATION_IMAGE_DETECTED`) and before capture handoff (`CAPTURE_START`).

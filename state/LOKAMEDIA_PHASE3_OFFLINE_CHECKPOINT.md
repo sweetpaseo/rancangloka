@@ -6,6 +6,54 @@ Date: 2026-09-15
 
 Date: 2026-09-19
 
+Latest clean checkpoint commit:
+
+```text
+6960e9cb102597697a8be94c7aee91ffca6e9459
+```
+
+Commit message:
+
+```text
+fix: wire LokaMedia ChatGPT capture adapter
+```
+
+`LOKAMEDIA_PHASE_4B1A5D1B=PASS_CHATGPT_REAL_CAPTURE_ADAPTER_WIRED`
+`READY_FOR_CONTROLLED_LIVE_CAPTURE_PROBE=YES`
+
+Phase 4B1A.5D1B wired the real ChatGPT capture path, removing the `CAPTURE_DISABLED_PHASE_4A` stub:
+- `controller.js` explicitly passes the already-correlated `providerResult` descriptor into `provider.capture(job, providerResult)`.
+- `ChatGptProviderAdapter.capture(job, providerResult)` locates the active ChatGPT tab, dispatches `CHATGPT_PROVIDER_CAPTURE`, converts received base64 data URL into binary `ArrayBuffer`, and returns normalized capture record (`bytes`, `mime`, `width`, `height`, `size`, `sha256`, `blobKey`).
+- Content script `CHATGPT_PROVIDER_CAPTURE` handler executes `controlledCapture(message)`:
+  - Validates request shape (`job_id`, `run_id`, `slot_key`, `provider_result`).
+  - Re-locates candidate image strictly matching `source_fingerprint` or `containerFingerprint`.
+  - Prohibits all global heuristics (no `newest <img>`, no global ungrounded re-discovery).
+  - Fails closed on missing (`CAPTURE_TARGET_MISSING`), ambiguous (`CAPTURE_TARGET_AMBIGUOUS`), or mismatched (`CAPTURE_CORRELATION_MISMATCH`) target.
+  - Binary acquisition: Canvas `toDataURL` fallback to direct `fetch(src)` with chunked base64 data URL transport across Chrome extension messaging (`CAPTURE_MESSAGE_BINARY_TRANSPORT=BASE64_DATA_URL`).
+  - Byte-identical roundtrip transport verified (`BINARY_ROUNDTRIP_IDENTICAL=YES`).
+  - Reconnection fail-closed: surfaces `CONTENT_SCRIPT_UNAVAILABLE` cleanly without silent duplicate attempts.
+- Controller binary validation authoritative gate preserved (non-empty bytes, valid MIME, dimensions) before durable IndexedDB persistence.
+- Deterministic test suite: `scripts/test-lokamedia-phase4b1a-5d1b-chatgpt-capture.js` (Tests A through J all pass).
+- Full regression suite clean: 76 tests pass across all 7 test suites, zero failures.
+- Controlled fixture `mjob_5c0f488d7ee123b9579a58a5` status remains `QUEUED`, `lease_owner=null`, `attempt=0`, `job_revision=11` (unmutated).
+- Probes reset to default: `acquisitionProbe=false`, `providerResultProbe=false`, `captureBlobProbe=false`.
+
+`LOKAMEDIA_PHASE_4B1A5D1=PASS_CAPTURE_CORRELATION_AND_DURABLE_BLOB_SAFETY_BOUNDARY`
+
+Phase 4B1A.5D1 proved the generic capture correlation and durable persistence architecture:
+- Exact candidate correlation via baseline diffing (`correlateImageCandidates`), prohibiting `newest <img>` heuristic.
+- Durable IndexedDB persistence (`MemoryBlobStore` / `IndexedDbBlobStore`).
+- Backpressure contract: max 4 assets, max 20 MiB.
+- Capture Blob Probe boundary: `captureBlobProbe=true` stops immediately after blob persistence before R2 upload, media asset creation, or article attachment.
+
+`LOKAMEDIA_PHASE_4B1A5C2=PASS_CONTROLLED_LIVE_PROVIDER_GENERATION_PROBE`
+
+Phase 4B1A.5C2 proved the live provider generation path:
+- Repaired heartbeat contract (`expected_job_revision`, authoritative revision propagation).
+- Repaired ChatGPT ProseMirror composer detection and dynamic send control.
+- Handled content-script lifecycle and reconnection on extension reload.
+- Executed exactly one real ChatGPT generation live and stopped cleanly at `PROVIDER_RESULT_PROBE_STOP` with safe requeue.
+
 `LOKAMEDIA_PHASE_4B1A5C1=PASS_PROVIDER_RESULT_STOP_BOUNDARY`
 
 Phase 4B1A.5C1 added the provider-result stop boundary (`providerResultProbe`, default `false`) for controlled live generation:
