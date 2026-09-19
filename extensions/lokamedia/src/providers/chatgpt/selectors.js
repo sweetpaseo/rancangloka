@@ -5,14 +5,21 @@ export const CHATGPT_SELECTORS = Object.freeze({
     '[data-testid="login-button"]'
   ],
   composer: [
+    '#prompt-textarea[contenteditable="true"]',
+    'div[contenteditable="true"]#prompt-textarea',
+    'div[contenteditable="true"].ProseMirror',
     'div[contenteditable="true"][data-testid*="prompt"]',
     'textarea[data-testid*="prompt"]',
-    'form textarea',
-    'main form div[contenteditable="true"]'
+    'main form div[contenteditable="true"]',
+    'form div[contenteditable="true"]',
+    'form textarea'
   ],
   sendControl: [
     'button[data-testid="send-button"]',
     'button[aria-label*="Send"]',
+    'button#composer-submit-button',
+    'button.composer-submit-button-color',
+    'form button[class*="composer-submit-button"]',
     'form button[type="submit"]'
   ],
   conversationSurface: ['main', '[role="main"]'],

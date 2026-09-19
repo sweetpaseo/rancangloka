@@ -95,7 +95,13 @@ class MockApi {
   async heartbeat(jobId, body) {
     this.heartbeats.push({ jobId, body });
     if (this.leaseLost) return { error: 'LEASE_NOT_OWNER', status: 'RECOVERING', recommended_action: 'STOP' };
-    return { job_id: jobId, job_revision: body.job_revision, status: 'LEASED' };
+    return {
+      job_id: jobId,
+      job_revision: body.expected_job_revision ?? body.job_revision,
+      status: 'LEASED',
+      lease_expires_at: new Date(Date.now() + 60000).toISOString(),
+      heartbeat_at: new Date().toISOString()
+    };
   }
 
   async reconcile(jobId) {

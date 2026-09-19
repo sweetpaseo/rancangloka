@@ -7,10 +7,10 @@
 
   const sessionId = crypto.randomUUID();
 
-  function first(selectors) {
+  function first(selectors, root = document) {
     for (const selector of selectors) {
       try {
-        const element = document.querySelector(selector);
+        const element = root.querySelector(selector);
         if (element) return { element, selector };
       } catch {
         // Continue layered discovery when a browser rejects a selector.
@@ -19,11 +19,11 @@
     return { element: null, selector: null };
   }
 
-  function count(selectors) {
+  function count(selectors, root = document) {
     const seen = new Set();
     for (const selector of selectors) {
       try {
-        for (const element of document.querySelectorAll(selector)) seen.add(element);
+        for (const element of root.querySelectorAll(selector)) seen.add(element);
       } catch {
         // Continue layered discovery.
       }
@@ -34,12 +34,23 @@
   function detect() {
     const auth = first(['a[href*="/auth/login"]', 'button[data-testid="login-button"]', '[data-testid="login-button"]']);
     const composer = first([
+      '#prompt-textarea[contenteditable="true"]',
+      'div[contenteditable="true"]#prompt-textarea',
+      'div[contenteditable="true"].ProseMirror',
       'div[contenteditable="true"][data-testid*="prompt"]',
       'textarea[data-testid*="prompt"]',
-      'form textarea',
-      'main form div[contenteditable="true"]'
+      'main form div[contenteditable="true"]',
+      'form div[contenteditable="true"]',
+      'form textarea'
     ]);
-    const send = first(['button[data-testid="send-button"]', 'button[aria-label*="Send"]', 'form button[type="submit"]']);
+    const send = first([
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send"]',
+      'button#composer-submit-button',
+      'button.composer-submit-button-color',
+      'form button[class*="composer-submit-button"]',
+      'form button[type="submit"]'
+    ]);
     const surface = first(['main', '[role="main"]']);
     const imageCount = count(['[data-message-author-role="assistant"] img', 'main img[src]', 'main picture img[src]']);
     const responseCount = count([
@@ -54,6 +65,7 @@
       composer.element &&
         (composer.element.matches?.('textarea') ||
           composer.element.getAttribute?.('contenteditable') === 'true' ||
+          composer.element.isContentEditable ||
           !composer.element.hasAttribute?.('disabled'))
     );
     return {
@@ -79,12 +91,70 @@
 
   function setComposerValue(element, value) {
     if (element.matches?.('textarea')) {
-      element.value = value;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement?.prototype || {}, 'value')?.set;
+      if (setter) {
+        setter.call(element, value);
+      } else {
+        element.value = value;
+      }
       element.dispatchEvent(new Event('input', { bubbles: true }));
       return;
     }
+    if (element.isContentEditable || element.getAttribute?.('contenteditable') === 'true') {
+      element.focus?.();
+      try {
+        const sel = window.getSelection?.();
+        if (sel) {
+          const range = document.createRange?.();
+          range.selectNodeContents(element);
+          sel.removeAllRanges?.();
+          sel.addRange?.(range);
+        }
+        if (document.execCommand?.('insertText', false, value)) {
+          element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: value }));
+          return;
+        }
+      } catch {
+        // Fallback below
+      }
+      element.textContent = value;
+      element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: value }));
+      return;
+    }
     element.textContent = value;
-    element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: value }));
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  async function waitForSendControl(container, timeoutMs = 2000) {
+    const form = container?.closest?.('form') || document;
+    const findSend = () => {
+      const btn = first([
+        'button[data-testid="send-button"]:not([disabled])',
+        'button[aria-label*="Send"]:not([disabled])',
+        '#composer-submit-button:not([aria-label*="Voice"]):not([disabled])',
+        'form button[type="submit"]:not([disabled])',
+        'button[data-testid="send-button"]',
+        'button[aria-label*="Send"]',
+        '#composer-submit-button',
+        'button.composer-submit-button-color'
+      ], form).element;
+      if (!btn) return null;
+      const isVoice = btn.getAttribute?.('aria-label')?.includes('Voice');
+      const isDisabled = btn.disabled || btn.getAttribute?.('aria-disabled') === 'true';
+      if (!isVoice && !isDisabled) return btn;
+      return null;
+    };
+
+    const immediate = findSend();
+    if (immediate) return immediate;
+
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      await new Promise((r) => setTimeout(r, 50));
+      const found = findSend();
+      if (found) return found;
+    }
+    return null;
   }
 
   async function controlledSubmit(message) {
@@ -94,18 +164,27 @@
       return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
     }
     const composer = first([
+      '#prompt-textarea[contenteditable="true"]',
+      'div[contenteditable="true"]#prompt-textarea',
+      'div[contenteditable="true"].ProseMirror',
       'div[contenteditable="true"][data-testid*="prompt"]',
       'textarea[data-testid*="prompt"]',
-      'form textarea',
-      'main form div[contenteditable="true"]'
+      'main form div[contenteditable="true"]',
+      'form div[contenteditable="true"]',
+      'form textarea'
     ]);
-    const sendControl = first(['button[data-testid="send-button"]', 'button[aria-label*="Send"]', 'form button[type="submit"]']);
+    if (!composer.element) {
+      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
+    }
     if (!message.controlled_run_once || !message.prompt || !message.prompt_hash || !message.job_id) {
       return { ok: false, error: 'CONTROLLED_SUBMIT_CONTRACT_INVALID', capabilities: caps };
     }
     setComposerValue(composer.element, message.prompt);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    sendControl.element.click();
+    const sendControl = await waitForSendControl(composer.element, 2000);
+    if (!sendControl) {
+      return { ok: false, error: 'SEND_CONTROL_UNAVAILABLE', capabilities: detect() };
+    }
+    sendControl.click();
     return {
       ok: true,
       submitted_at: new Date().toISOString(),

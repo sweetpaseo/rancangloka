@@ -24,7 +24,8 @@ export class ApiClient {
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, options);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const error = new Error(payload.error ?? `HTTP_${response.status}`);
+      const error = new Error(payload.code ?? payload.error ?? `HTTP_${response.status}`);
+      error.code = payload.code ?? payload.error;
       error.status = response.status;
       error.payload = payload;
       throw error;

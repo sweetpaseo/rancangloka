@@ -210,7 +210,12 @@ export class LokaMediaController {
     try {
       await this.audit.info('PROVIDER_LANE_ACQUIRED', { run_id: runId, job_id: job.job_id });
       await this.storage.upsertJob(job.job_id, { ...job, local_state: 'GENERATING' });
-      await this.heartbeat.beat(job);
+      const beatResult = await this.heartbeat.beat(job);
+      if (beatResult && !beatResult.ok) {
+        const err = new Error(beatResult.response?.error || 'HEARTBEAT_FAILED');
+        err.code = beatResult.response?.error || 'HEARTBEAT_FAILED';
+        throw err;
+      }
       await this.audit.info('PROVIDER_PRECHECK_START', { run_id: runId, job_id: job.job_id });
       await this.audit.info('PROVIDER_PRECHECK_PASS', { run_id: runId, job_id: job.job_id });
       await this.audit.info('PROVIDER_PREPARE_START', { run_id: runId, job_id: job.job_id });
