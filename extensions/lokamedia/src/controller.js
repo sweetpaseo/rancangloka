@@ -295,7 +295,7 @@ export class LokaMediaController {
       }
 
       await this.audit.info('CAPTURE_START', { run_id: runId, job_id: job.job_id });
-      const captured = await this.provider.capture(job);
+      const captured = await this.provider.capture(job, providerResult);
 
       // Binary validation
       if (!captured || !captured.bytes) {
