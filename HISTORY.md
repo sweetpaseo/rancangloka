@@ -715,12 +715,32 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Observasi pasca-deploy: Seluruh rute dan aset stabil tanpa runtime errors.
 * **Status Akhir:** `ASTRO7_PRODUCTION_RELEASE=PASS`, `PRODUCTION_RELEASE_STABLE=YES`, `ASTRO7_RELEASE_PHASE=PRODUCTION_RELEASE_CLOSED`.
 
+### Masalah 60: Article Typography & Heading Rhythm Micro Release
+* **Kebutuhan Rilis:** Penyesuaian ritme vertikal tipografi artikel (`.prose-magazine`) agar heading H2/H3 tidak terlalu berhimpitan dengan paragraf di bawahnya, serta penyempurnaan skala drop cap mobile.
+* **Perubahan Kode:** Hanya `src/styles/global.css` (H2 desktop margin-bottom 22px, H3 desktop margin-bottom 18px; H2 mobile 16px, H3 mobile 14px, drop cap mobile diskalakan ~20.6% ke 2.7rem).
+* **Eksekusi Micro Release:**
+  - Commit patch: `8b4e2425b54397f3ef52ba0bb4532513d816fc59` (`style: refine article heading rhythm`).
+  - GitHub Push: `8b4e242` terdorong sukses ke `origin/main`.
+  - Canonical deploy: `npm run deploy` sukses (`exit 0`).
+  - Target Worker: `rancangloka` pada domain `https://rancangloka.com`.
+  - New Production Version ID: `470a874d-7af6-4336-bc9f-c3ed66d387cf` (baseline sebelumnya: `dfbd3ae4-2341-4776-90e4-080949f8d56a`).
+  - Waktu deploy: 2026-09-19 11:24:59 WIB (04:24:59 UTC).
+* **Verifikasi Produksi Langsung:**
+  - Route smoke: `/` (200), `/rumah-tropis-yang-tidak-takut-matahari` (200), `/api/search.json` (200), `/admin` (302) -> PASS.
+  - CSS delivery gate: `/assets/global.DA7kqqIR.css` (72,222 bytes, text/css, 200 OK) -> PASS.
+  - Desktop visual verify (1440x900): H2 gap ke konten terukur 22px, drop cap 3.4rem proporsional -> PASS.
+  - Mobile visual verify (390x844): H2 gap terukur 16px, drop cap terskala ke 2.7rem, zero horizontal overflow -> PASS.
+  - Console & Network: 0 uncaught console errors, 0 failed network requests -> PASS.
+  - Keamanan publikasi: `AUTO_PUBLISH=OFF` dan `MEDIA_CAN_PUBLISH=NO` tetap terkunci. Mutasi D1/R2/artikel = 0.
+  - Rollback gate: Tidak ada regresi atau pemicu rollback (`ROLLBACK_REQUIRED=NO`).
+* **Status Akhir:** `ARTICLE_RHYTHM_MICRO_RELEASE=PASS`, `PRODUCTION_STABLE=YES`.
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
 |---|---|---|
-| **Aplikasi Web & UI** | ✅ Selesai (Live di Produksi) | Layout Apple-aesthetic, responsive (390px-1280px), Outfit + Newsreader + Plus Jakarta Sans + JetBrains Mono terverifikasi di real browser produksi. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live di Produksi) | Astro 7.3.3 rilis sukses ke Cloudflare Worker `rancangloka` (Version ID: `dfbd3ae4-2341-4776-90e4-080949f8d56a`). Seluruh gerbang smoke, CSS, dan cache lulus. |
+| **Aplikasi Web & UI** | ✅ Selesai (Live di Produksi) | Layout Apple-aesthetic, responsive (390px-1280px), Outfit + Newsreader + Plus Jakarta Sans + JetBrains Mono terverifikasi di real browser produksi dengan ritme heading artikel yang disempurnakan. |
+| **Kompilasi & Deployment** | ✅ Selesai (Live di Produksi) | Astro 7.3.3 + patch ritme tipografi rilis sukses ke Cloudflare Worker `rancangloka` (Version ID: `470a874d-7af6-4336-bc9f-c3ed66d387cf`). Seluruh gerbang smoke, CSS, dan browser visual lulus. |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + fallback 20 in-memory authoritative articles. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
