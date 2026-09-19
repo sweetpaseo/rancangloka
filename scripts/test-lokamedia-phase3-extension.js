@@ -74,9 +74,15 @@ class MockApi {
     this.uploads = [];
     this.reconciliations = [];
     this.receipts = new Map();
+    this.releases = [];
     this.leaseLost = false;
     this.uploadDelayMs = 0;
     this.lostUploadResponse = false;
+  }
+
+  async releaseJob(jobId, payload = {}) {
+    this.releases.push({ jobId, payload });
+    return { ok: true, status: 'success' };
   }
 
   async nextJob() {
@@ -669,6 +675,97 @@ async function testPhase4b1a5aExecutionStartAndActiveLock() {
   pass('Phase 4B1A.5A execution start, single run_id, mutual exclusion, reentry rejection, and lock cleanup');
 }
 
+async function testPhase4b1a5b1AcquisitionProbeBoundary() {
+  const job = makeJob('phase4b-probe-test', {
+    article_id: 481,
+    article_title: 'LokaMedia Phase 4B Controlled Generation Test',
+    slot_key: 'featured',
+    role: 'featured',
+    job_revision: 5
+  });
+
+  // TEST A: Default normal flow unaffected when acquisitionProbe is false or omitted
+  {
+    const storage = ExtensionStorage.memory();
+    const { controller } = await makeController(new MockApi({ jobs: [job] }), storage);
+    let runJobInvoked = false;
+    const originalRunJob = controller.runJob.bind(controller);
+    controller.runJob = async (j, opts) => {
+      runJobInvoked = true;
+      return originalRunJob(j, opts);
+    };
+
+    const result = await controller.runOnce({ runId: 'run-normal-flow' });
+    assert.equal(result.ok, true);
+    assert.equal(runJobInvoked, true, 'runJob must be invoked in normal flow (TEST A)');
+    const events = await storage.listAuditEvents({ runId: 'run-normal-flow' });
+    const eventCodes = events.map((e) => e.event_code);
+    assert(!eventCodes.includes('ACQUISITION_PROBE_STOP'), 'ACQUISITION_PROBE_STOP absent in normal run (TEST A)');
+    assert(eventCodes.includes('RUN_COMPLETE'), 'normal run reaches RUN_COMPLETE (TEST A)');
+  }
+
+  // TEST B, C, D, E, F: Probe stops after acquisition, correlates run_id, releases lock & job, skips provider
+  {
+    const storage = ExtensionStorage.memory();
+    const api = new MockApi({ jobs: [job] });
+    const { controller } = await makeController(api, storage);
+
+    let runJobCalls = 0;
+    controller.runJob = async () => {
+      runJobCalls++;
+      throw new Error('UNEXPECTED_RUN_JOB_INVOCATION');
+    };
+
+    let providerCalls = 0;
+    controller.provider.generate = async () => {
+      providerCalls++;
+      throw new Error('UNEXPECTED_PROVIDER_GENERATE');
+    };
+
+    const testRunId = 'run_probe_test_777';
+    const result = await controller.runOnce({ runId: testRunId, acquisitionProbe: true });
+
+    // TEST B: Probe stops after acquisition
+    assert.equal(result.ok, true);
+    assert.equal(result.status, 'ACQUISITION_PROBE_STOPPED', 'result status must be ACQUISITION_PROBE_STOPPED (TEST B)');
+    assert.equal(result.job_id, job.job_id);
+
+    // TEST F: No provider side effect (runJob = 0, provider.generate = 0)
+    assert.equal(runJobCalls, 0, 'runJob must not be called during probe (TEST B, TEST F)');
+    assert.equal(providerCalls, 0, 'provider.generate must not be called during probe (TEST B, TEST F)');
+
+    // Audit trace & correlation
+    const events = await storage.listAuditEvents({ runId: testRunId });
+    const eventCodes = events.map((e) => e.event_code);
+    const jobAcquiredIdx = eventCodes.indexOf('JOB_ACQUIRED');
+    const probeStopIdx = eventCodes.indexOf('ACQUISITION_PROBE_STOP');
+
+    assert(jobAcquiredIdx !== -1, 'JOB_ACQUIRED must be emitted');
+    assert(probeStopIdx !== -1, 'ACQUISITION_PROBE_STOP must be emitted');
+    assert(jobAcquiredIdx < probeStopIdx, 'JOB_ACQUIRED must precede ACQUISITION_PROBE_STOP');
+
+    // TEST C: Run ID correlation
+    const jobAcquiredEvent = events.find((e) => e.event_code === 'JOB_ACQUIRED');
+    const probeStopEvent = events.find((e) => e.event_code === 'ACQUISITION_PROBE_STOP');
+    assert.equal(jobAcquiredEvent.run_id, testRunId, 'JOB_ACQUIRED run_id matches (TEST C)');
+    assert.equal(probeStopEvent.run_id, testRunId, 'ACQUISITION_PROBE_STOP run_id matches (TEST C)');
+    assert.equal(probeStopEvent.job_id, job.job_id, 'ACQUISITION_PROBE_STOP job_id matches (TEST C)');
+
+    // TEST D: Active lock release
+    const lockAfterProbe = await storage.getActiveRunLock();
+    assert.equal(lockAfterProbe, null, 'active run lock must be released after probe stop (TEST D)');
+
+    // TEST E: Canonical job cleanup invoked
+    assert.equal(api.releases.length, 1, 'releaseJob must be called exactly once (TEST E)');
+    assert.equal(api.releases[0].jobId, job.job_id);
+    assert.equal(api.releases[0].payload.intent, 'SAFE_REQUEUE');
+    assert.equal(api.releases[0].payload.expectedJobRevision, job.job_revision);
+    assert(eventCodes.includes('JOB_LEASE_RELEASED'), 'JOB_LEASE_RELEASED audit event recorded');
+  }
+
+  pass('Phase 4B1A.5B1 acquisition probe stop, single run_id, lock release, canonical requeue, and zero provider calls');
+}
+
 await testManifestAndConstants();
 await testFreshStartupAndNoJob();
 await testApiClientBindsWorkerFetch();
@@ -677,6 +774,7 @@ await testPhase4bOneShotGuard();
 await testAuditLogDurabilityAndRedaction();
 await testPhase4bPreconditions();
 await testPhase4b1a5aExecutionStartAndActiveLock();
+await testPhase4b1a5b1AcquisitionProbeBoundary();
 await testHeartbeatLossAndLeaseLost();
 await testProtocolMismatchAndAuthRequired();
 await testRestartAndIndexedDbPersistence();

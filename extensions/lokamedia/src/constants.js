@@ -27,7 +27,8 @@ export const DEFAULT_CONFIG = {
   serverBaseUrl: 'http://localhost:4321',
   deviceToken: '',
   deviceId: '',
-  enabled: false
+  enabled: false,
+  acquisitionProbe: false
 };
 
 export function nowIso(clock = Date) {

@@ -137,6 +137,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     TICK: async () => ({ ok: false, error: 'PHASE_4B_NOT_ARMED' }),
     RUN_ONCE: async (request) => {
       const runId = request?.runId || `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+      const state = await storage.readState();
+      const acquisitionProbe = Boolean(request?.acquisitionProbe ?? state.config?.acquisitionProbe);
       await audit.info('PANEL_RUN_CLICK', { run_id: runId, component: 'side-panel' });
       await audit.info('RUN_REQUEST_DISPATCHED', { run_id: runId, component: 'side-panel' });
 
@@ -153,7 +155,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'background' });
       try {
         const instance = await ensureController();
-        return await instance.runOnce({ runId, acceptedLogged: true });
+        return await instance.runOnce({ runId, acceptedLogged: true, acquisitionProbe });
       } catch (error) {
         await storage.releaseActiveRunLock({ runId });
         throw error;

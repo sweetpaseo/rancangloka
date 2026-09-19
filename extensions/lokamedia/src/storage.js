@@ -244,6 +244,8 @@ export class ExtensionStorage {
         state.auditLog.lastAction = `Needs attention - ${record.error_code || record.message_safe || record.event_code}`;
       } else if (record.event_code === 'RUN_REENTRY_REJECTED') {
         state.auditLog.lastAction = 'Run rejected: already active';
+      } else if (record.event_code === 'ACQUISITION_PROBE_STOP') {
+        state.auditLog.lastAction = 'Probe stopped: acquisition verified';
       } else if (record.event_code === 'RUN_COMPLETE') {
         state.auditLog.lastAction = 'Complete';
       } else if (record.event_code === 'RUN_REQUEST_ACCEPTED') {

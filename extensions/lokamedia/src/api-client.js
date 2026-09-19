@@ -71,6 +71,20 @@ export class ApiClient {
     });
   }
 
+  releaseJob(jobId, { expectedJobRevision, intent = 'SAFE_REQUEUE', reasonCode = 'CLIENT_RELEASE', messageSafe = '' } = {}) {
+    return this.request(`/api/internal/v1/media/jobs/${encodeURIComponent(jobId)}/release`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        protocol_version: LOKAMEDIA_PROTOCOL_VERSION,
+        expected_job_revision: expectedJobRevision,
+        intent,
+        reason_code: reasonCode,
+        message_safe: messageSafe
+      })
+    });
+  }
+
   async uploadBlob(job, blobRecord, { onProgress } = {}) {
     const total = blobRecord.size ?? blobRecord.bytes?.byteLength ?? 0;
     onProgress?.({ bytesSent: 0, bytesTotal: total });

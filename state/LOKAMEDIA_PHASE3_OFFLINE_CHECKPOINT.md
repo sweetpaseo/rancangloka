@@ -6,6 +6,15 @@ Date: 2026-09-15
 
 Date: 2026-09-19
 
+`LOKAMEDIA_PHASE_4B1A5B1=PASS_LOCAL_ACQUISITION_PROBE_BOUNDARY`
+
+Phase 4B1A.5B1 added an explicit local-only acquisition probe boundary to enable safe live acquisition proof:
+- `acquisitionProbe` flag (default `false`) stops execution immediately after `JOB_ACQUIRED` and before single-run arming or `runJob`.
+- Emits structured `ACQUISITION_PROBE_STOP` audit event.
+- Canonical job lease cleanup: uses `ApiClient.releaseJob` with `intent: 'SAFE_REQUEUE'` (`POST /api/internal/v1/media/jobs/[job_id]/release`) to return the job safely to `QUEUED`.
+- Releases active-run lock via `try/finally` cleanup.
+- Deterministic test coverage added for normal flow parity, probe stop, run_id correlation, lock release, and zero provider calls.
+
 `LOKAMEDIA_PHASE_4B1A5A=PASS_DETERMINISTIC_EXECUTION_START`
 
 Phase 4B1A.5A repaired the execution start and locking path for the LokaMedia Chrome extension:

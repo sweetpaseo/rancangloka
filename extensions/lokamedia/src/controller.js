@@ -124,6 +124,46 @@ export class LokaMediaController {
       }
       await this.audit.info('JOB_ACQUIRED', { run_id: runId, job_id: job.job_id, article_id: job.article_id, slot_key: job.slot_key, server_job_status: job.status });
 
+      const acquisitionProbe = Boolean(
+        (typeof options === 'object' && options !== null && options.acquisitionProbe !== undefined)
+          ? options.acquisitionProbe
+          : state.config?.acquisitionProbe
+      );
+
+      if (acquisitionProbe) {
+        await this.audit.info('ACQUISITION_PROBE_STOP', {
+          run_id: runId,
+          job_id: job.job_id,
+          details: { status: job.status, job_revision: job.job_revision }
+        });
+
+        if (typeof this.apiClient?.releaseJob === 'function') {
+          try {
+            await this.apiClient.releaseJob(job.job_id, {
+              expectedJobRevision: job.job_revision,
+              intent: 'SAFE_REQUEUE',
+              reasonCode: 'ACQUISITION_PROBE_STOP',
+              messageSafe: 'Acquisition probe stopped before provider generation'
+            });
+            await this.audit.info('JOB_LEASE_RELEASED', {
+              run_id: runId,
+              job_id: job.job_id,
+              details: { intent: 'SAFE_REQUEUE' }
+            });
+          } catch (releaseErr) {
+            this.logger?.warn?.('failed to release job lease after probe stop', { error: releaseErr?.message || releaseErr });
+          }
+        }
+
+        return {
+          ok: true,
+          status: 'ACQUISITION_PROBE_STOPPED',
+          run_id: runId,
+          job_id: job.job_id,
+          job
+        };
+      }
+
       await this.audit.info('JOB_CHECKPOINT_SAVED', { run_id: runId, job_id: job.job_id });
       const armed = await this.storage.armPhase4bSingleRun({ jobId: job.job_id, runId });
       if (!armed.armed) return { ok: false, error: armed.reason };

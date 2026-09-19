@@ -17,6 +17,15 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 4B1A.5B1 Local Acquisition-Stop Probe Boundary 2026-09-19
+
+- Added explicit local-only `acquisitionProbe` boundary to `controller.runOnce` immediately after `JOB_ACQUIRED` and before single-run arming, submission, or `runJob` invocation.
+- Emits structured `ACQUISITION_PROBE_STOP` audit event correlated with `run_id` and `job_id`.
+- Canonical job lease cleanup: uses existing server-side `POST /api/internal/v1/media/jobs/[job_id]/release` endpoint via `ApiClient.releaseJob` with `intent: 'SAFE_REQUEUE'` to safely return leased fixture back to `QUEUED` without stranding.
+- Preserves guaranteed active-run lock release in try/finally block and leaves default normal execution (`acquisitionProbe: false`) completely unchanged.
+- Deterministic test coverage added proving normal flow unaffected, probe stop immediately after acquisition, run_id correlation, active lock release, canonical requeue invocation, and zero provider/image calls.
+- Safety preserved: no live provider calls, no ChatGPT generation, no fixture mutation, and no deployment.
+
 ### LokaMedia Phase 4B1A.5A Run Once Execution-Start Repair 2026-09-19
 
 - Repaired the execution-start gap between Side Panel Run Once dispatch, background message acceptance, and controller execution start.
