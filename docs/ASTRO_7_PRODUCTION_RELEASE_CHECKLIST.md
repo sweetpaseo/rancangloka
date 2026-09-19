@@ -30,45 +30,45 @@ Daftar periksa operasional (runbook checklist) peluncuran rilis Astro 7 untuk Ra
 - [x] **Zero Release Blockers:** `RELEASE_BLOCKERS = NONE`, `SHOULD_FIX_BEFORE_RELEASE = NONE`.
 - [x] **Publication Safety Locked:** `AUTO_PUBLISH = OFF`, `MEDIA_CAN_PUBLISH = NO`, integritas artikel 6 terjaga.
 
-### Syarat Gerbang Sebelum Eksekusi Rilis (Pending Final Action)
-- [ ] **Final Documentation Commit:** Seluruh dokumen rilis (`HISTORY.md`, `ASTRO_7_UPGRADE_CHECKPOINT.md`, Release Plan, Checklist) di-commit secara lokal.
-- [ ] **Clean Worktree:** `git status --short` benar-benar bersih tanpa uncommitted changes.
-- [ ] **Explicit Human Deploy Approval:** Operator memberikan persetujuan eksplisit untuk memulai deployment produksi.
+### Syarat Gerbang Sebelum Eksekusi Rilis (Completed)
+- [x] **Final Documentation Commit:** Seluruh dokumen rilis (`HISTORY.md`, `ASTRO_7_UPGRADE_CHECKPOINT.md`, Release Plan, Checklist) di-commit secara lokal (`e8954be`).
+- [x] **Clean Worktree:** `git status --short` benar-benar bersih tanpa uncommitted changes saat rilis.
+- [x] **Explicit Human Deploy Approval:** Operator memberikan persetujuan eksplisit untuk memulai deployment produksi (`PROCEED WITH PRODUCTION RELEASE`).
 
 ---
 
-## 2. DEPLOY (Unchecked - Do Not Run Yet)
+## 2. DEPLOY (Completed)
 
-- [ ] **Push Final Release Branch:** Eksekusi `git push origin main` ke GitHub remote.
-- [ ] **Record Pushed Commit:** Catat SHA commit remote yang terdorong.
-- [ ] **Run Canonical Production Deploy:** Jalankan `npm run deploy` (`astro build && wrangler deploy`).
-- [ ] **Record Cloudflare Version:** Catat Version ID baru yang dihasilkan oleh Cloudflare Worker deploy.
-- [ ] **Verify Deployment Success:** Pastikan proses deployment CLI keluar dengan status success tanpa fatal errors.
-
----
-
-## 3. POST-DEPLOY (Unchecked - Verify After Deploy)
-
-- [ ] **Homepage Verification:** Akses `https://rancangloka.com/` (HTTP 200, visual styling utuh).
-- [ ] **Representative Article Verification:** Akses `https://rancangloka.com/rumah-tropis-yang-tidak-takut-matahari` (HTTP 200, layout artikel presisi).
-- [ ] **CSS Critical Verification:**
-  - [ ] Tag `<link rel="stylesheet">` mengarah ke `/assets/global.*.css`.
-  - [ ] Asset CSS merespons HTTP 200 dengan `Content-Type: text/css`.
-  - [ ] Ukuran asset CSS > 70 KB.
-  - [ ] Tidak ada tampilan raw HTML.
-  - [ ] Ikon pencarian dan navigasi berukuran normal (bukan giant SVG).
-- [ ] **Console & Network Gate:** Buka DevTools di browser produksi, pastikan 0 error pada konsol dan seluruh network requests vital 200 OK.
-- [ ] **Search API Smoke:** Periksa `https://rancangloka.com/api/search.json` (HTTP 200, format valid, Cache-Control public).
-- [ ] **Cache Policy Verification:** Header `Cache-Control` pada halaman publik adalah `no-cache, no-store, must-revalidate`.
-- [ ] **Sitemap Verification:** Akses `https://rancangloka.com/sitemap.xml` (HTTP 200, format XML valid).
-- [ ] **Robots Verification:** Akses `https://rancangloka.com/robots.txt` (HTTP 200, aturan perayapan sesuai).
-- [ ] **Admin Auth Protection:** Akses `https://rancangloka.com/admin` (HTTP 302 redirect ke login, proteksi OTP Cloudflare aktif).
-- [ ] **Publication Invariant Check:** Konfirmasi `AUTO_PUBLISH` tetap non-aktif di produksi dan tidak ada artikel termutasi liar.
-- [ ] **Production Observation Window:** Pantau Worker logs / error rate selama 15–30 menit setelah rilis.
+- [x] **Push Final Release Branch:** Eksekusi `git push origin main` ke GitHub remote (`bc15be5..e8954be`).
+- [x] **Record Pushed Commit:** Commit SHA `e8954beeee215c3e95084aceb9ce9c976ef403e9`.
+- [x] **Run Canonical Production Deploy:** Jalankan `npm run deploy` (`astro build && wrangler deploy`) -> Exit Code `0`.
+- [x] **Record Cloudflare Version:** Version ID baru: `dfbd3ae4-2341-4776-90e4-080949f8d56a`.
+- [x] **Verify Deployment Success:** Proses deployment Cloudflare Worker `rancangloka` sukses 100%.
 
 ---
 
-## 4. ROLLBACK (Unchecked - For Emergency Incident Only)
+## 3. POST-DEPLOY (Completed)
+
+- [x] **Homepage Verification:** Akses `https://rancangloka.com/` (HTTP 200, visual styling utuh).
+- [x] **Representative Article Verification:** Akses `https://rancangloka.com/rumah-tropis-yang-tidak-takut-matahari` (HTTP 200, layout artikel presisi).
+- [x] **CSS Critical Verification:**
+  - [x] Tag `<link rel="stylesheet">` mengarah ke `/assets/global.*.css`.
+  - [x] Asset CSS merespons HTTP 200 dengan `Content-Type: text/css`.
+  - [x] Ukuran asset CSS > 70 KB (71,952 bytes).
+  - [x] Tidak ada tampilan raw HTML.
+  - [x] Ikon pencarian dan navigasi berukuran normal (bukan giant SVG).
+- [x] **Console & Network Gate:** Diuji via browser subagent pada domain produksi: 0 error pada konsol dan seluruh network requests vital 200 OK.
+- [x] **Search API Smoke:** Periksa `https://rancangloka.com/api/search.json` (HTTP 200, format valid, `public, max-age=60, s-maxage=300`).
+- [x] **Cache Policy Verification:** Header `Cache-Control` pada halaman publik adalah `no-cache, no-store, must-revalidate`.
+- [x] **Sitemap Verification:** Akses `https://rancangloka.com/sitemap.xml` (HTTP 200, format XML valid).
+- [x] **Robots Verification:** Akses `https://rancangloka.com/robots.txt` (HTTP 200, aturan perayapan sesuai).
+- [x] **Admin Auth Protection:** Akses `https://rancangloka.com/admin` (HTTP 302 redirect ke login, proteksi OTP Cloudflare aktif).
+- [x] **Publication Invariant Check:** Konfirmasi `AUTO_PUBLISH=OFF` dan `MEDIA_CAN_PUBLISH=NO` tetap terkunci di produksi.
+- [x] **Production Observation Window:** Observasi pasca-rilis selesai dengan 0 runtime/HTTP errors.
+
+---
+
+## 4. ROLLBACK (Not Triggered - Unchecked)
 
 - [ ] **Rollback Trigger Identified:** Deteksi insiden kritis (widespread 5xx, CSS missing, database failure, dsb.).
 - [ ] **Rollback Decision Confirmed:** Keputusan rollback disetujui oleh operator.

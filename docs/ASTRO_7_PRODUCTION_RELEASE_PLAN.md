@@ -9,7 +9,10 @@ Dokumen operasional rencana rilis produksi (production release) dan pemulihan da
 - **Repository:** `C:\Users\Fanto\Desktop\antigravity\rancangloka\rancangloka-astro`
 - **Target Branch:** `main`
 - **Application Release Candidate Checkpoint:** `b12d064725ef3a29e5a1b7fd1acf7ace23491865` (`b12d064`)
-- **Final Release Documentation Checkpoint:** Terbentuk setelah commit dokumentasi rilis ini
+- **Final Release Documentation Checkpoint:** `e8954beeee215c3e95084aceb9ce9c976ef403e9` (`e8954be`)
+- **Cloudflare Deployed Version ID:** `dfbd3ae4-2341-4776-90e4-080949f8d56a`
+- **Deployed Timestamp:** 2026-09-19 10:21:18 WIB (03:21:18 UTC)
+- **Deployment Status:** SUCCESS (Live pada `https://rancangloka.com`)
 - **Framework Versions:**
   - Astro: `^7.3.3` (7.3.3)
   - @astrojs/cloudflare: `^14.3.2` (14.3.2)
@@ -22,7 +25,8 @@ Dokumen operasional rencana rilis produksi (production release) dan pemulihan da
 
 > **Catatan Distingsi Checkpoint:**
 > - `APPLICATION_RELEASE_CHECKPOINT = b12d064` adalah checkpoint kode aplikasi final yang telah lulus browser release gate dan verifikasi CSS.
-> - `FINAL_RELEASE_DOCUMENTATION_CHECKPOINT` adalah checkpoint dokumentasi komprehensif yang di-commit sebelum deploy.
+> - `FINAL_RELEASE_DOCUMENTATION_CHECKPOINT = e8954be` adalah checkpoint dokumentasi komprehensif yang di-push sebelum deploy.
+> - Produksi aktif saat ini berjalan pada Version ID `dfbd3ae4-2341-4776-90e4-080949f8d56a`.
 
 ---
 
