@@ -657,12 +657,51 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Checkpoint:** Performance commit lokal `16f204e perf: improve Astro 7 public cache delivery` tercatat setelah baseline Phase E `0240347`.
 * **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
 
+### Masalah 57: Astro 7 CSS Release Gate dan Handoff Visual Manual
+* **Gejala:** Release review menemukan halaman publik sempat tampil seperti HTML mentah pada browser manual karena CSS aplikasi tidak terkirim sebagai asset publik.
+* **Akar Penyebab:** Astro 7 SSR Cloudflare build sebelumnya memakai konfigurasi stylesheet inline yang tidak menghasilkan application CSS publik yang valid untuk Worker runtime.
+* **Solusi Lokal:** Konfigurasi CSS sudah dipulihkan agar build memancarkan asset CSS publik `global.*.css`; guard `npm run test:css-delivery` memastikan stylesheet global terhubung ke manifest server, tersedia di `dist/client/assets`, dan berisi utility Tailwind representatif.
+* **Validasi Lokal Terakhir:**
+  - HEAD valid: `b12d064725ef3a29e5a1b7fd1acf7ace23491865`.
+  - Worktree clean sebelum handoff offline.
+  - Build PASS.
+  - `npm run test:css-delivery` PASS dengan 4 CSS assets dan total `72392` bytes.
+  - Local Worker fallback foreground mencapai `Ready on http://127.0.0.1:8799`.
+* **Catatan Handoff Manual:** Permintaan "keep local Worker running" membuat proses terminal sengaja tidak selesai. Karena operator ingin offline, Worker tidak dipertahankan lebih lanjut dari sesi Codex. Visual browser gate dan Lighthouse tetap harus diselesaikan manual di Chrome normal sebelum production deploy.
+* **Update Handoff Lokal:** Dibuat launcher eksternal di Desktop: `C:\Users\Fanto\Desktop\RancangLoka-Local-Test.cmd` untuk menjalankan Worker lokal pada port `8799`, dan `C:\Users\Fanto\Desktop\RancangLoka-Open-Test.cmd` untuk membuka `http://127.0.0.1:8799/` di browser default. Codex sandbox dapat membuat dan mencoba launcher, tetapi proses Worker yang dipanggil dari sandbox tidak terbukti bertahan sebagai server lokal yang bisa diakses lintas proses. Operator harus menjalankan launcher langsung dari Desktop untuk visual test normal.
+* **Gate:** `CSS_RELEASE_BLOCKER_FIXED=YES` untuk automated build/CSS guard. `READY_FOR_PRODUCTION_DEPLOY=NO` sampai visual browser gate dan Lighthouse manual PASS.
+* **Batasan Produksi:** Tidak ada push GitHub, tidak ada deploy Cloudflare, tidak ada mutasi D1/R2 produksi, tidak ada publish artikel. `AUTO_PUBLISH=OFF`.
+
+### Masalah 58: Antigravity Local Real Browser Release Gate & Audits Validation
+* **Gejala:** Memerlukan verifikasi visual dan performa nyata lintas rute untuk memastikan perbaikan CSS Astro 7 tidak memiliki efek samping atau regresi pada browser runtime asli.
+* **Akar Penyebab:** Lingkungan sandbox sebelumnya terbatas untuk emulasi browser visual interaktif penuh.
+* **Solusi Lokal:** Eksekusi browser release gate lengkap secara mandiri menggunakan runtime real browser & subagent Antigravity pada local worker `http://127.0.0.1:8788`.
+* **Validasi Lokal Terakhir:**
+  - HEAD valid: `b12d064725ef3a29e5a1b7fd1acf7ace23491865` (checkpoint perbaikan CSS publik `b12d064 fix: restore Astro 7 public CSS delivery`).
+  - Build PASS, `npm run test:css-delivery` PASS (4 assets, 72,392 bytes).
+  - Operator visual evidence: Styling pulih sempurna, regresi giant search icon teratasi (`MANUAL_CSS_VISUAL_RETEST=PASS`).
+  - Route matrix 7 rute: `/` (200), `/rumah-tropis-yang-tidak-takut-matahari` (200), `/editorial-standards` (200), `/solusi` (200), `/komparasi` (200), `/api/search.json` (200), `/admin` (302) -> `HTTP_PRE_BROWSER_GATE=PASS`.
+  - Public CSS delivery: 2 stylesheet lokal terverifikasi 200 OK dengan total 72,029 bytes (`PUBLIC_CSS_HTTP_DELIVERY=PASS`).
+  - Browser inspection 6 rute: 0 uncaught console errors (`BROWSER_CONSOLE_GATE=PASS`), seluruh resource kritis HTML/CSS/JS/Image/Search berstatus 200 OK (`BROWSER_NETWORK_GATE=PASS`).
+  - Keamanan cache: Search JSON `public, max-age=60, s-maxage=300`, Homepage HTML `no-cache, no-store, must-revalidate` (`PUBLIC_HTML_CACHE_POLICY_SAFE=PASS`), Admin `302 Found` tanpa public cache (`PRIVATE_RESPONSE_CACHE_SAFETY=PASS`).
+  - Responsiveness: Desktop (1280x800) dan Mobile (390x844) zero horizontal overflow (`DESKTOP_RESPONSIVE_GATE=PASS`, `MOBILE_RESPONSIVE_GATE=PASS`).
+  - Core Web Vitals & Audit Terukur (Lokal di Browser):
+    - Homepage Mobile: Perf 99, A11y 95, BP 100, SEO 100 | FCP 236ms, LCP 236ms, CLS 0.000, TBT 0ms.
+    - Homepage Desktop: Perf 99, A11y 95, BP 100, SEO 100 | FCP 220ms, LCP 316ms, CLS 0.000, TBT 0ms.
+    - Article Mobile: Perf 98, A11y 92, BP 100, SEO 95 | FCP 264ms, LCP 264ms, CLS 0.000, TBT 0ms.
+    - Article Desktop: Perf 99, A11y 92, BP 100, SEO 95 | FCP 252ms, LCP 252ms, CLS 0.000, TBT 0ms.
+    - *Catatan penting:* Skor dan latensi Lighthouse ini diukur pada environment Local Worker (`http://127.0.0.1:8788`), bukan latensi Cloudflare Edge produksi.
+  - Worker lokal dihentikan bersih dan drive `R:` di-unmount (`LOCAL_WORKER_CLEANUP=PASS`).
+* **Gate:** `CSS_RELEASE_BLOCKER_FIXED=YES`, `MANUAL_CSS_VISUAL_RETEST=PASS`, `MANUAL_BROWSER_GATE=PASS`, `ASTRO7_RELEASE_CANDIDATE_STABLE=YES`, `RELEASE_BLOCKERS=NONE`, `SHOULD_FIX_BEFORE_RELEASE=NONE`, `READY_FOR_PRODUCTION_DEPLOY=YES_AWAITING_EXPLICIT_RELEASE_APPROVAL`.
+* **Batasan Produksi:** Tidak ada push GitHub (`GITHUB_PUSH=NO`), tidak ada deploy Cloudflare (`CLOUDFLARE_DEPLOY=NO`), tidak ada mutasi D1/R2 produksi (`PRODUCTION_D1_MUTATIONS=0`, `PRODUCTION_R2_MUTATIONS=0`), tidak ada mutasi/publish artikel (`PRODUCTION_ARTICLE_MUTATIONS=0`). `AUTO_PUBLISH=OFF`, `MEDIA_CAN_PUBLISH=NO`. Deploy produksi tetap memerlukan persetujuan eksplisit operator manusia.
+
+
 ## 📍 3. Status Terkini (Current Milestone Progress)
 
 | Komponen | Status | Catatan |
 |---|---|---|
-| **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ⚠️ Live lama aktif; upgrade Astro 7 menunggu push | Cloudflare Workers CI masih live dari commit remote terakhir. Commit lokal `f34683e` sudah siap, tetapi upload GitHub tertahan kredensial lokal. |
+| **Aplikasi Web & UI** | ✅ Selesai (Validasi Browser PASS) | Layout Apple-aesthetic, responsive (390px-1280px), Outfit + Newsreader + Plus Jakarta Sans + JetBrains Mono terverifikasi di real browser. |
+| **Kompilasi & Deployment** | ⏳ Siap Deploy (Menunggu Persetujuan Rilis) | Release Candidate Astro 7 `b12d064` stabil, build & CSS delivery PASS, real browser gate PASS. Menunggu persetujuan eksplisit operator sebelum push/deploy. |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + fallback 20 in-memory authoritative articles. |
 | **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |

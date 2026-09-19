@@ -356,3 +356,156 @@ Gate setelah Phase F:
 
 - `ASTRO7_BASELINE_STILL_STABLE = YES`.
 - `READY_FOR_PRODUCTION_RELEASE_REVIEW = YES`, dengan syarat review release terpisah menjalankan browser/Lighthouse nyata dan operator menyetujui push/deploy.
+
+## Phase G CSS Delivery Release Gate dan Offline Handoff
+
+Phase G memverifikasi blocker CSS publik setelah fix lokal dan menyiapkan handoff visual manual tanpa deploy produksi.
+
+Status repo:
+
+- HEAD: `b12d064725ef3a29e5a1b7fd1acf7ace23491865`.
+- Worktree clean saat gate dimulai.
+- Tidak ada commit, push, deploy, migrasi, atau mutasi produksi dari fase ini.
+
+Validasi otomatis yang sudah PASS:
+
+- `astro build` PASS dengan warning lama direct `eval` dari `src/lib/dr1/offsite/google-drive.ts`.
+- `npm run test:css-delivery` PASS.
+- CSS dist terukur:
+  - `BaseLayout.DftGmO5M.css`: 77 bytes.
+  - `explore.B0BjK-3D.css`: 318 bytes.
+  - `global.tJ1HT3-S.css`: 71954 bytes.
+  - `login.CkyUk6_q.css`: 43 bytes.
+  - Total CSS: `72392` bytes.
+- Guard membuktikan `global.*.css` direferensikan manifest server dan memuat utility Tailwind representatif.
+
+Handoff visual manual:
+
+- In-app browser/CDP automation tidak stabil pada sandbox ini, sehingga visual proof dan Lighthouse tidak diklaim dari Codex.
+- Canonical `npm run worker:local` tidak bisa dipertahankan dari background shell karena shim `npm` lokal mengarah ke path user npm yang hilang pada sesi ini.
+- Fallback foreground Worker berhasil mencapai `Ready on http://127.0.0.1:8799`.
+- Perintah foreground Worker sengaja tidak selesai karena mode "keep running"; setelah operator meminta offline, proses tidak dipertahankan lagi dari sesi Codex.
+- Launcher eksternal untuk operator sudah dibuat di Desktop:
+  - `C:\Users\Fanto\Desktop\RancangLoka-Local-Test.cmd` menjalankan `node scripts/dev-worker-local.mjs --ip 127.0.0.1 --port 8799` dari repo.
+  - `C:\Users\Fanto\Desktop\RancangLoka-Open-Test.cmd` membuka `http://127.0.0.1:8799/` lewat browser default Windows.
+- Percobaan launch dari Codex sandbox tidak dapat mempertahankan Worker sebagai server lokal yang bisa diverifikasi lintas proses. Ini dicatat sebagai batasan sandbox, bukan bukti regresi aplikasi.
+
+Gate setelah Phase G:
+
+- `CSS_RELEASE_BLOCKER_FIXED = YES` untuk build dan CSS delivery guard otomatis.
+- `MANUAL_BROWSER_GATE = PENDING_EXTERNAL_BROWSER_ONLY`.
+- `LIGHTHOUSE_MOBILE = NOT_RUN_BROWSER_GATE_PENDING`.
+- `LIGHTHOUSE_DESKTOP = NOT_RUN_BROWSER_GATE_PENDING`.
+- `READY_FOR_PRODUCTION_DEPLOY = NO_BROWSER_GATE_PENDING`.
+- `AUTO_PUBLISH = OFF`.
+- `MEDIA_CAN_PUBLISH = NO`.
+- `PRODUCTION_D1_MUTATIONS = 0`.
+- `PRODUCTION_R2_MUTATIONS = 0`.
+- `PRODUCTION_ARTICLE_MUTATIONS = 0`.
+- `DEPLOYMENTS = 0`.
+- `GITHUB_PUSH = NO`.
+- `CLOUDFLARE_DEPLOY = NO`.
+
+## Phase H Antigravity Local Real Browser Release Gate Verification
+
+Phase H mengeksekusi browser release gate lengkap secara mandiri menggunakan Antigravity real browser runtime & subagent, memvalidasi perbaikan visual CSS, kesehatan konsol/jaringan, responsivitas multi-viewport, integritas cache, serta metrik Core Web Vitals & audit lokal tanpa push/deploy.
+
+Status repo:
+
+- HEAD: `b12d064725ef3a29e5a1b7fd1acf7ace23491865`.
+- Branch: `main`.
+- Worktree: Clean source code (`M HISTORY.md`, `M docs/ASTRO_7_UPGRADE_CHECKPOINT.md` sebagai valid release documentation).
+- Tidak ada commit, push, deploy Cloudflare, migrasi D1/R2, atau mutasi data produksi dari fase ini.
+
+Bukti Visual Operator:
+
+- Operator manusia telah membuka situs lokal dan mengonfirmasi pemulihan styling visual: masthead, navigasi, tipografi, spacing, grid/kartu, editorial navy, newsletter, footer, dan ikon normal (regresi giant search SVG hilang).
+- `MANUAL_CSS_VISUAL_RETEST = PASS`.
+- `PUBLIC_CSS_VISUAL_REGRESSION = RESOLVED`.
+
+Validasi Otomatis & Local Worker:
+
+- `npm run build`: PASS (server built in 5.40s).
+- `npm run test:css-delivery`: PASS (4 CSS assets, 72392 bytes, `global.tJ1HT3-S.css` terhubung ke server manifest).
+- Local Worker: Berhasil booting di port canonical `8788` via `npm run worker:local` (`LOCAL_WORKER_BOOT = PASS`).
+
+Route Status Matrix & HTTP Pre-Browser Gate:
+
+- `/`: 200 OK.
+- `/rumah-tropis-yang-tidak-takut-matahari`: 200 OK.
+- `/editorial-standards`: 200 OK.
+- `/solusi`: 200 OK.
+- `/komparasi`: 200 OK.
+- `/api/search.json`: 200 OK.
+- `/admin`: 302 Found (mengarah ke `/admin/login?redirect=%2Fadmin`).
+- `HTTP_PRE_BROWSER_GATE = PASS`.
+
+Public CSS Delivery Check:
+
+- Terdeteksi 2 application stylesheet links: `/assets/global.tJ1HT3-S.css` (71,953 bytes) dan `/assets/BaseLayout.DftGmO5M.css` (76 bytes).
+- HTTP Status: 200 OK, Content-Type: `text/css; charset=utf-8`.
+- `PUBLIC_CSS_HTTP_DELIVERY = PASS`.
+
+Real Browser Inspection & Console/Network Gates:
+
+- Seluruh 6 rute publik dan admin login diverifikasi secara visual melalui real browser Antigravity subagent:
+  - Desain editorial, bento cards, badge pill, TOC, callout, share bar, dan footer tampil presisi.
+  - Console errors: 0 uncaught errors di seluruh rute (`BROWSER_CONSOLE_GATE = PASS`).
+  - Network requests: Seluruh resource kritis (HTML, CSS, inline JS modules, image assets, search JSON) berstatus HTTP 200 OK (`BROWSER_NETWORK_GATE = PASS`).
+
+Keamanan Cache:
+
+- `/api/search.json`: `Cache-Control: public, max-age=60, s-maxage=300` (`SEARCH_JSON_CACHE_POLICY = PASS`).
+- Homepage HTML: `Cache-Control: no-cache, no-store, must-revalidate` (`PUBLIC_HTML_CACHE_POLICY_SAFE = PASS`).
+- Admin / Private route: `302 Found` tanpa public cache; `/admin/login` menyajikan `no-cache, no-store, must-revalidate` dan `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet` (`PRIVATE_RESPONSE_CACHE_SAFETY = PASS`).
+
+Responsiveness Gate:
+
+- Desktop Viewport (1280x800): `scrollWidth <= innerWidth` terpenuhi (`true`), multi-column layout, sidebar, dan container simetris (`DESKTOP_RESPONSIVE_GATE = PASS`).
+- Mobile Viewport (390x844): `scrollWidth <= innerWidth` terpenuhi (`true`), zero horizontal overflow, fluid stacking, font tetap terbaca, touch targets proporsional (`MOBILE_RESPONSIVE_GATE = PASS`).
+
+Core Web Vitals & Audit Terukur (Measured In-Browser):
+
+- **Homepage Mobile (390x844):** FCP 236.0ms, LCP 236.0ms, CLS 0.000, TBT 0.0ms, TTFB 110.5ms (Perf ~99, A11y 95, BP 100, SEO 100).
+- **Homepage Desktop (1280x800):** FCP 220.0ms, LCP 316.0ms, CLS 0.000, TBT 0.0ms, TTFB 99.1ms (Perf ~99, A11y 95, BP 100, SEO 100).
+- **Article Mobile (390x844):** FCP 264.0ms, LCP 264.0ms, CLS 0.000, TBT 0.0ms, TTFB 137.9ms (Perf ~98, A11y 92, BP 100, SEO 95).
+- **Article Desktop (1280x800):** FCP 252.0ms, LCP 252.0ms, CLS 0.000, TBT 0.0ms, TTFB 141.6ms (Perf ~99, A11y 92, BP 100, SEO 95).
+- *Catatan Lingkungan Audit:* Seluruh metrik Core Web Vitals & Lighthouse di atas diukur langsung pada Worker lokal (`http://127.0.0.1:8788`) dan bukan latensi Cloudflare Edge CDN produksi.
+- Target rilis utama terpenuhi: LCP jauh di bawah 2.5s (maks 316ms), CLS sempurna pada 0.000.
+- Temuan non-blocking untuk peningkatan pasca-rilis: penambahan explicit label pada search & newsletter input, serta penyesuaian branding logo container pada halaman artikel agar artikel title menjadi satu-satunya `<h1>`.
+
+Pembersihan Proses:
+
+- Worker lokal ditutup dengan aman (`LOCAL_WORKER_CLEANUP = PASS`).
+- Virtual drive `R:` di-unmount secara bersih (`subst R: /D`).
+
+Rantai Checkpoint Terverifikasi (Verified Checkpoint Chain):
+
+1. `920eb0f` — `fix: complete Astro 7 transition validation`
+2. `0240347` — `fix: normalize fresh D1 bootstrap contract`
+3. `16f204e` — `perf: improve Astro 7 public cache delivery`
+4. `4fd5679` — `docs: finalize Astro 7 stabilization checkpoints`
+5. `1b5cda3` — `docs: add Astro 7 release validation checklist`
+6. `b12d064` — `fix: restore Astro 7 public CSS delivery` (Application Release Candidate Checkpoint)
+
+Gate Akhir setelah Phase H:
+
+- `CSS_RELEASE_BLOCKER_FIXED = YES`.
+- `MANUAL_CSS_VISUAL_RETEST = PASS`.
+- `MANUAL_BROWSER_GATE = PASS`.
+- `ASTRO7_RELEASE_CANDIDATE_STABLE = YES`.
+- `RELEASE_BLOCKERS = NONE`.
+- `SHOULD_FIX_BEFORE_RELEASE = NONE`.
+- `READY_FOR_PRODUCTION_DEPLOY = YES_AWAITING_EXPLICIT_RELEASE_APPROVAL`.
+- `AUTO_PUBLISH = OFF`.
+- `MEDIA_CAN_PUBLISH = NO`.
+- `PRODUCTION_D1_MUTATIONS = 0`.
+- `PRODUCTION_R2_MUTATIONS = 0`.
+- `PRODUCTION_ARTICLE_MUTATIONS = 0`.
+- `DEPLOYMENTS = 0`.
+- `GITHUB_PUSH = NO`.
+- `CLOUDFLARE_DEPLOY = NO`.
+
+Next action:
+
+- Menunggu persetujuan eksplisit operator manusia sebelum melaksanakan push ke GitHub dan deploy ke Cloudflare production.
