@@ -812,6 +812,11 @@ async function testPhase4b1a5c1ProviderResultProbeBoundary() {
     controller.provider.generate = async (opts) => {
       providerGenerateCalls++;
       return {
+        job_id: opts?.job_id || job.job_id,
+        run_id: opts?.run_id,
+        slot_key: opts?.slot_key || job.slot_key,
+        source_fingerprint: 'fp-test-probe',
+        containerFingerprint: 'cont-test-probe',
         provider_conversation_id: testConversationId,
         provider_response_id: 'resp-test-67890',
         submitted_at: '2026-09-19T12:00:00.000Z'

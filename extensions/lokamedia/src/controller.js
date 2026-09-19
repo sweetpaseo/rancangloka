@@ -243,6 +243,7 @@ export class LokaMediaController {
       }
 
       const resultCheckpoint = {
+        schema_version: providerResult.schema_version || 1,
         run_id: runId,
         job_id: job.job_id,
         slot_key: job.slot_key,
@@ -252,6 +253,8 @@ export class LokaMediaController {
         provider_response_id: providerResult.provider_response_id || null,
         source_fingerprint: providerResult.source_fingerprint,
         containerFingerprint: providerResult.containerFingerprint,
+        candidate_ordinal: typeof providerResult.candidate_ordinal === 'number' ? providerResult.candidate_ordinal : null,
+        candidate_alt: providerResult.candidate_alt || null,
         identified_at: providerResult.identified_at || new Date().toISOString()
       };
 

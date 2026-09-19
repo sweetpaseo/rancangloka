@@ -177,14 +177,18 @@
     return (hash >>> 0).toString(16).padStart(8, '0');
   }
 
-  function fingerprintImg(element) {
+  function getContainerFingerprint(element) {
     const container = element.closest?.('[data-message-id], [data-testid*="conversation-turn"], article, [data-message-author-role]') ?? element.parentElement;
-    const containerFingerprint = hashText([
+    return hashText([
       container?.getAttribute?.('data-message-id') ?? '',
       container?.getAttribute?.('data-testid') ?? '',
       container?.getAttribute?.('data-message-author-role') ?? '',
       container?.tagName ?? ''
     ].join('|'));
+  }
+
+  function fingerprintImg(element) {
+    const containerFingerprint = getContainerFingerprint(element);
     const normalized = normalizeSource(element.currentSrc || element.getAttribute?.('src') || '');
     const basis = [
       normalized,
@@ -272,7 +276,15 @@
           break;
         }
       } else if (newImages.length > 1) {
-        const distinctFps = new Set(newImages.map((el) => fingerprintImg(el)));
+        // Disambiguate against aria-hidden or blurred decorative clones
+        const nonDecorative = newImages.filter((el) => {
+          const isAriaHidden = el.getAttribute?.('aria-hidden') === 'true' || el.closest?.('[aria-hidden="true"]') !== null;
+          const isBlur = (el.className?.includes?.('blur') || el.closest?.('[class*="blur"]') !== null);
+          const isOpacityZero = (el.className?.includes?.('opacity-0') || el.style?.opacity === '0');
+          return !isAriaHidden && !isBlur && !isOpacityZero;
+        });
+        const pool = nonDecorative.length > 0 ? nonDecorative : newImages;
+        const distinctFps = new Set(pool.map((el) => fingerprintImg(el)));
         if (distinctFps.size > 1) {
           return {
             ok: false,
@@ -280,7 +292,8 @@
             candidate_count: distinctFps.size
           };
         } else if (distinctFps.size === 1) {
-          targetCandidate = newImages[0];
+          const withAlt = pool.filter((el) => (el.getAttribute?.('alt') || '').trim() !== '');
+          targetCandidate = withAlt.length > 0 ? withAlt[0] : pool[0];
           break;
         }
       }
@@ -295,15 +308,19 @@
     }
 
     const container = targetCandidate.closest?.('[data-message-id], [data-testid*="conversation-turn"], article, [data-message-author-role]') ?? targetCandidate.parentElement;
-    const containerFingerprint = hashText([
-      container?.getAttribute?.('data-message-id') ?? '',
-      container?.getAttribute?.('data-testid') ?? '',
-      container?.getAttribute?.('data-message-author-role') ?? '',
-      container?.tagName ?? ''
-    ].join('|'));
+    const containerFingerprint = getContainerFingerprint(targetCandidate);
+
+    let candidateOrdinal = 0;
+    if (container?.querySelectorAll) {
+      const containerImgs = Array.from(container.querySelectorAll('img'));
+      const idx = containerImgs.indexOf(targetCandidate);
+      if (idx >= 0) candidateOrdinal = idx;
+    }
+    const candidateAlt = (targetCandidate.getAttribute?.('alt') || '').trim();
 
     return {
       ok: true,
+      schema_version: 2,
       job_id: message.job_id,
       run_id: message.run_id,
       slot_key: message.slot_key || 'featured',
@@ -315,6 +332,8 @@
       identified_at: new Date().toISOString(),
       source_fingerprint: fingerprintImg(targetCandidate),
       containerFingerprint,
+      candidate_ordinal: candidateOrdinal,
+      candidate_alt: candidateAlt,
       baseline_image_count: baselineImages.length
     };
   }
@@ -410,28 +429,83 @@
       return { ok: false, error: 'CAPTURE_TARGET_MISSING' };
     }
 
-    // Correlate: match by exact source_fingerprint if provided
-    let matches = [];
+    // Initial match: filter by exact source_fingerprint and/or containerFingerprint
+    let matches = allImgs;
     if (expectedFp) {
-      matches = allImgs.filter((el) => fingerprintImg(el) === expectedFp);
-    } else if (expectedContainerFp) {
-      matches = allImgs.filter((el) => {
-        const container = el.closest?.('[data-message-id], [data-testid*="conversation-turn"], article, [data-message-author-role]') ?? el.parentElement;
-        const cFp = hashText([
-          container?.getAttribute?.('data-message-id') ?? '',
-          container?.getAttribute?.('data-testid') ?? '',
-          container?.getAttribute?.('data-message-author-role') ?? '',
-          container?.tagName ?? ''
-        ].join('|'));
-        return cFp === expectedContainerFp;
-      });
+      matches = matches.filter((el) => fingerprintImg(el) === expectedFp);
+    }
+    if (expectedContainerFp) {
+      matches = matches.filter((el) => getContainerFingerprint(el) === expectedContainerFp);
     }
 
     if (matches.length === 0) {
       return { ok: false, error: 'CAPTURE_TARGET_MISSING' };
     }
+
+    // If more than 1 candidate matches the source & container fingerprints,
+    // disambiguate between decorative/hidden/blur clones vs the primary generated image:
     if (matches.length > 1) {
-      return { ok: false, error: 'CAPTURE_TARGET_AMBIGUOUS', match_count: matches.length };
+      // 1. Candidate alt filter (if recorded in descriptor and non-empty)
+      if (provider_result.candidate_alt) {
+        const altMatches = matches.filter((el) => (el.getAttribute?.('alt') || '').trim() === provider_result.candidate_alt);
+        if (altMatches.length === 1) {
+          matches = altMatches;
+        } else if (altMatches.length > 1) {
+          matches = altMatches;
+        }
+      }
+
+      // 2. Filter decorative / hidden clones:
+      // ChatGPT renders aria-hidden="true" on layout placeholders and blurred backdrop clones.
+      if (matches.length > 1) {
+        const nonDecorative = matches.filter((el) => {
+          const isAriaHidden = el.getAttribute?.('aria-hidden') === 'true' || el.closest?.('[aria-hidden="true"]') !== null;
+          const isBlur = (el.className?.includes?.('blur') || el.closest?.('[class*="blur"]') !== null);
+          const isOpacityZero = (el.className?.includes?.('opacity-0') || el.style?.opacity === '0');
+          return !isAriaHidden && !isBlur && !isOpacityZero;
+        });
+        if (nonDecorative.length === 1) {
+          matches = nonDecorative;
+        } else if (nonDecorative.length > 1) {
+          matches = nonDecorative;
+        }
+      }
+
+      // 3. Semantic primary image check: descriptive non-empty alt vs empty alt=""
+      if (matches.length > 1) {
+        const withAlt = matches.filter((el) => (el.getAttribute?.('alt') || '').trim() !== '');
+        if (withAlt.length === 1) {
+          matches = withAlt;
+        } else if (withAlt.length > 1) {
+          matches = withAlt;
+        }
+      }
+
+      // 4. Thumbnail vs full image disambiguation (if sizes differ within same container)
+      if (matches.length > 1) {
+        const widths = matches.map((el) => Number(el.getAttribute?.('width') || el.naturalWidth || el.width || 0));
+        const maxWidth = Math.max(...widths);
+        const minWidth = Math.min(...widths);
+        if (maxWidth > minWidth) {
+          const fullImgs = matches.filter((el) => Number(el.getAttribute?.('width') || el.naturalWidth || el.width || 0) === maxWidth);
+          if (fullImgs.length === 1) {
+            matches = fullImgs;
+          }
+        }
+      }
+
+      // 5. Candidate ordinal within container (if recorded in descriptor)
+      if (matches.length > 1 && typeof provider_result.candidate_ordinal === 'number') {
+        const targetEl = matches[provider_result.candidate_ordinal];
+        if (targetEl) {
+          matches = [targetEl];
+        }
+      }
+
+      // If still ambiguous after all deterministic revalidation invariants, FAIL CLOSED!
+      if (matches.length > 1) {
+        return { ok: false, error: 'CAPTURE_TARGET_AMBIGUOUS', match_count: matches.length };
+      }
     }
 
     const targetImg = matches[0];
@@ -441,6 +515,7 @@
         ok: true,
         ...capturedData,
         source_fingerprint: fingerprintImg(targetImg),
+        containerFingerprint: getContainerFingerprint(targetImg),
         job_id,
         run_id,
         slot_key
@@ -487,6 +562,7 @@
     detect,
     handshake,
     fingerprintImg,
+    getContainerFingerprint,
     getAllImages,
     controlledSubmit,
     controlledCapture
