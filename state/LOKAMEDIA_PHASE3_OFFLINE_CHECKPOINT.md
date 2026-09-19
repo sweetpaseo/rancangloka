@@ -6,6 +6,15 @@ Date: 2026-09-15
 
 Date: 2026-09-19
 
+`LOKAMEDIA_PHASE_4B1A5C1=PASS_PROVIDER_RESULT_STOP_BOUNDARY`
+
+Phase 4B1A.5C1 added the provider-result stop boundary (`providerResultProbe`, default `false`) for controlled live generation:
+- Stops execution immediately after `provider.generate` returns and `GENERATION_IMAGE_DETECTED` is recorded, prior to `provider.capture`.
+- Emits structured `PROVIDER_RESULT_PROBE_STOP` audit event with non-sensitive provider result metadata.
+- Canonical job lease cleanup: uses `ApiClient.releaseJob` with `intent: 'SAFE_REQUEUE'` (`POST /api/internal/v1/media/jobs/[job_id]/release`) to release server lease safely.
+- Duplicate generation risk controlled by Phase 4B single-run submission latch (`phase4bSingleRun.submission_consumed`), `providerLane` exclusivity, and `activeRun` lock release in `finally`.
+- Deterministic test coverage added for default flow preservation, probe stop before capture, run_id and job_id correlation, single provider call enforcement, zero capture calls, canonical cleanup, and active-run lock release.
+
 `LOKAMEDIA_PHASE_4B1A5B1=PASS_LOCAL_ACQUISITION_PROBE_BOUNDARY`
 
 Phase 4B1A.5B1 added an explicit local-only acquisition probe boundary to enable safe live acquisition proof:

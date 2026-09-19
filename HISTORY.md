@@ -17,6 +17,18 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 4B1A.5C1 Provider Result Stop Boundary 2026-09-19
+
+- Added explicit local-only `providerResultProbe` boundary to `controller.runJob` immediately after provider result correlation (`GENERATION_IMAGE_DETECTED`) and before capture handoff (`CAPTURE_START`).
+- Emits structured `PROVIDER_RESULT_PROBE_STOP` audit event correlated with `run_id`, `job_id`, and provider result metadata.
+- Canonical job lease cleanup: uses existing server-side `POST /api/internal/v1/media/jobs/[job_id]/release` endpoint via `ApiClient.releaseJob` with `intent: 'SAFE_REQUEUE'`, `reasonCode: 'PROVIDER_RESULT_PROBE_STOP'` to safely return leased fixture back to `QUEUED` without stranding.
+- Duplicate generation risk is strictly controlled: single-run consumption latch (`phase4bSingleRun.submission_consumed = true`) blocks subsequent re-entry with `PHASE_4B_RUN_CONSUMED`, while provider generation concurrency is locked to 1.
+- Guarantees zero image capture calls, zero blob persistence, zero R2 uploads, zero media asset creations, and zero article media attachments.
+- Active-run lock is reliably released in `controller.runOnce` try/finally cleanup block upon probe stop.
+- Normal flow remains completely unchanged when `providerResultProbe: false` (the default).
+- Deterministic test coverage added covering Tests A through H (default flow unchanged, probe stop after result identification, run_id and job_id correlation, single provider call, capture blocked, canonical cleanup semantics, active run lock release).
+- Safety preserved: no live provider calls, no live ChatGPT generation, no fixture mutation, no deployment, and no production mutation.
+
 ### LokaMedia Phase 4B1A.5B1 Local Acquisition-Stop Probe Boundary 2026-09-19
 
 - Added explicit local-only `acquisitionProbe` boundary to `controller.runOnce` immediately after `JOB_ACQUIRED` and before single-run arming, submission, or `runJob` invocation.

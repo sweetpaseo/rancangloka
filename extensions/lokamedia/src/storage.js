@@ -246,6 +246,8 @@ export class ExtensionStorage {
         state.auditLog.lastAction = 'Run rejected: already active';
       } else if (record.event_code === 'ACQUISITION_PROBE_STOP') {
         state.auditLog.lastAction = 'Probe stopped: acquisition verified';
+      } else if (record.event_code === 'PROVIDER_RESULT_PROBE_STOP') {
+        state.auditLog.lastAction = 'Probe stopped: provider result identified';
       } else if (record.event_code === 'RUN_COMPLETE') {
         state.auditLog.lastAction = 'Complete';
       } else if (record.event_code === 'RUN_REQUEST_ACCEPTED') {

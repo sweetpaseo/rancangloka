@@ -28,7 +28,8 @@ export const DEFAULT_CONFIG = {
   deviceToken: '',
   deviceId: '',
   enabled: false,
-  acquisitionProbe: false
+  acquisitionProbe: false,
+  providerResultProbe: false
 };
 
 export function nowIso(clock = Date) {

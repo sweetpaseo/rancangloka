@@ -766,6 +766,140 @@ async function testPhase4b1a5b1AcquisitionProbeBoundary() {
   pass('Phase 4B1A.5B1 acquisition probe stop, single run_id, lock release, canonical requeue, and zero provider calls');
 }
 
+async function testPhase4b1a5c1ProviderResultProbeBoundary() {
+  const job = makeJob('phase4b-provider-probe-test', {
+    article_id: 481,
+    article_title: 'LokaMedia Phase 4B Controlled Generation Test',
+    slot_key: 'featured',
+    role: 'featured',
+    job_revision: 5
+  });
+
+  // TEST A: Default normal flow unchanged when providerResultProbe is false or omitted
+  {
+    const storage = ExtensionStorage.memory();
+    const { controller } = await makeController(new MockApi({ jobs: [job] }), storage);
+    let captureCalled = false;
+    const originalCapture = controller.provider.capture.bind(controller.provider);
+    controller.provider.capture = async (j) => {
+      captureCalled = true;
+      return originalCapture(j);
+    };
+
+    const result = await controller.runOnce({ runId: 'run-normal-provider-flow' });
+    assert.equal(result.ok, true);
+    assert.equal(captureCalled, true, 'capture must be called in normal flow (TEST A)');
+    const events = await storage.listAuditEvents({ runId: 'run-normal-provider-flow' });
+    const eventCodes = events.map((e) => e.event_code);
+    assert(!eventCodes.includes('PROVIDER_RESULT_PROBE_STOP'), 'PROVIDER_RESULT_PROBE_STOP absent in normal run (TEST A)');
+    assert(eventCodes.includes('RUN_COMPLETE'), 'normal run reaches RUN_COMPLETE (TEST A)');
+  }
+
+  // TEST B, C, D, E, F, G, H: Probe stops after provider result identification, correlates run_id & job_id, blocks capture, releases lease & lock
+  {
+    const storage = ExtensionStorage.memory();
+    const api = new MockApi({ jobs: [job] });
+    const { controller, blobStore } = await makeController(api, storage);
+
+    let providerGenerateCalls = 0;
+    const testConversationId = 'conv-test-12345';
+    controller.provider.generate = async (opts) => {
+      providerGenerateCalls++;
+      return {
+        provider_conversation_id: testConversationId,
+        provider_response_id: 'resp-test-67890',
+        submitted_at: '2026-09-19T12:00:00.000Z'
+      };
+    };
+
+    let captureCalls = 0;
+    controller.provider.capture = async () => {
+      captureCalls++;
+      throw new Error('UNEXPECTED_CAPTURE_CALL');
+    };
+
+    let blobPutCalls = 0;
+    const origPut = blobStore.put.bind(blobStore);
+    blobStore.put = async (...args) => {
+      blobPutCalls++;
+      return origPut(...args);
+    };
+
+    const testRunId = 'run_provider_probe_999';
+    const result = await controller.runOnce({ runId: testRunId, providerResultProbe: true });
+
+    // TEST B: Probe stops after provider result identification
+    assert.equal(result.ok, true);
+    assert.equal(result.status, 'PROVIDER_RESULT_PROBE_STOPPED', 'result status must be PROVIDER_RESULT_PROBE_STOPPED (TEST B)');
+    assert.equal(result.job_id, job.job_id);
+    assert.equal(result.provider_result?.provider_conversation_id, testConversationId);
+
+    // TEST E: Provider.generate called exactly once (never 2)
+    assert.equal(providerGenerateCalls, 1, 'provider.generate must be called exactly once (TEST B, TEST E)');
+
+    // TEST F: Capture blocked (capture = 0, blob put = 0, upload = 0, attachments = 0)
+    assert.equal(captureCalls, 0, 'capture must not be called during probe (TEST B, TEST F)');
+    assert.equal(blobPutCalls, 0, 'blobStore.put must not be called during probe (TEST F)');
+    assert.equal(api.uploads.length, 0, 'no uploads must be dispatched (TEST F)');
+
+    // Audit trace & ordering
+    const events = await storage.listAuditEvents({ runId: testRunId });
+    const eventCodes = events.map((e) => e.event_code);
+    const acceptedIdx = eventCodes.indexOf('RUN_REQUEST_ACCEPTED');
+    const jobAcquiredIdx = eventCodes.indexOf('JOB_ACQUIRED');
+    const submitAcceptedIdx = eventCodes.indexOf('PROVIDER_SUBMIT_ACCEPTED');
+    const imageDetectedIdx = eventCodes.indexOf('GENERATION_IMAGE_DETECTED');
+    const probeStopIdx = eventCodes.indexOf('PROVIDER_RESULT_PROBE_STOP');
+
+    assert(acceptedIdx !== -1, 'RUN_REQUEST_ACCEPTED must be recorded');
+    assert(jobAcquiredIdx !== -1, 'JOB_ACQUIRED must be recorded');
+    assert(submitAcceptedIdx !== -1, 'PROVIDER_SUBMIT_ACCEPTED must be recorded');
+    assert(imageDetectedIdx !== -1, 'GENERATION_IMAGE_DETECTED must be recorded');
+    assert(probeStopIdx !== -1, 'PROVIDER_RESULT_PROBE_STOP must be recorded');
+    assert(jobAcquiredIdx < submitAcceptedIdx, 'JOB_ACQUIRED precedes submit accepted');
+    assert(submitAcceptedIdx < imageDetectedIdx, 'PROVIDER_SUBMIT_ACCEPTED precedes GENERATION_IMAGE_DETECTED');
+    assert(imageDetectedIdx < probeStopIdx, 'GENERATION_IMAGE_DETECTED precedes PROVIDER_RESULT_PROBE_STOP');
+    assert(!eventCodes.includes('CAPTURE_START'), 'CAPTURE_START must not be emitted');
+    assert(!eventCodes.includes('RUN_COMPLETE'), 'RUN_COMPLETE must not be emitted');
+
+    // TEST C: Run ID correlation across all events
+    for (const event of events) {
+      assert.equal(event.run_id, testRunId, `event ${event.event_code} must correlate with testRunId (TEST C)`);
+    }
+
+    // TEST D: Job ID correlation
+    const jobEvents = events.filter((e) => e.job_id !== null && e.job_id !== undefined);
+    assert(jobEvents.length >= 4, 'at least 4 job-scoped events');
+    for (const event of jobEvents) {
+      assert.equal(event.job_id, job.job_id, `event ${event.event_code} must match job_id (TEST D)`);
+    }
+
+    // TEST G: Cleanup semantics (canonical release with SAFE_REQUEUE, and latch prevents duplicate generation)
+    assert.equal(api.releases.length, 1, 'releaseJob must be called exactly once (TEST G)');
+    assert.equal(api.releases[0].jobId, job.job_id);
+    assert.equal(api.releases[0].payload.intent, 'SAFE_REQUEUE');
+    assert.equal(api.releases[0].payload.reasonCode, 'PROVIDER_RESULT_PROBE_STOP');
+    assert.equal(api.releases[0].payload.expectedJobRevision, job.job_revision);
+    assert(eventCodes.includes('JOB_LEASE_RELEASED'), 'JOB_LEASE_RELEASED audit event recorded');
+
+    // TEST H: Active run lock cleanup
+    const lockAfterProbe = await storage.getActiveRunLock();
+    assert.equal(lockAfterProbe, null, 'active run lock must be released after probe stop (TEST H)');
+
+    // Verify lastAction in storage immediately after probe stop
+    const state = await storage.readState();
+    assert.equal(state.auditLog.lastAction, 'Probe stopped: provider result identified');
+
+    // Duplicate generation risk controlled: latch prevents immediate re-execution
+    const secondRun = await controller.runOnce({ runId: 'run-duplicate-attempt' });
+    assert.equal(secondRun.ok, false);
+    assert.equal(secondRun.error, 'PHASE_4B_RUN_CONSUMED', 'single-run latch prevents duplicate generation without reconciliation (TEST G)');
+    assert.equal(providerGenerateCalls, 1, 'provider.generate still called only once total (TEST E, TEST G)');
+  }
+
+  pass('Phase 4B1A.5C1 provider result probe stop, single run_id, lock release, canonical requeue, and zero capture calls');
+}
+
 await testManifestAndConstants();
 await testFreshStartupAndNoJob();
 await testApiClientBindsWorkerFetch();
@@ -775,6 +909,7 @@ await testAuditLogDurabilityAndRedaction();
 await testPhase4bPreconditions();
 await testPhase4b1a5aExecutionStartAndActiveLock();
 await testPhase4b1a5b1AcquisitionProbeBoundary();
+await testPhase4b1a5c1ProviderResultProbeBoundary();
 await testHeartbeatLossAndLeaseLost();
 await testProtocolMismatchAndAuthRequired();
 await testRestartAndIndexedDbPersistence();

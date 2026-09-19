@@ -129,6 +129,11 @@ export class LokaMediaController {
           ? options.acquisitionProbe
           : state.config?.acquisitionProbe
       );
+      const providerResultProbe = Boolean(
+        (typeof options === 'object' && options !== null && options.providerResultProbe !== undefined)
+          ? options.providerResultProbe
+          : state.config?.providerResultProbe
+      );
 
       if (acquisitionProbe) {
         await this.audit.info('ACQUISITION_PROBE_STOP', {
@@ -172,8 +177,11 @@ export class LokaMediaController {
       if (!consumed.consumed) return { ok: false, error: consumed.reason };
 
       try {
-        const result = await this.runJob(job, { runId, controlledRunOnce: true });
+        const result = await this.runJob(job, { runId, controlledRunOnce: true, providerResultProbe });
         await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
+        if (result?.status === 'PROVIDER_RESULT_PROBE_STOPPED') {
+          return result;
+        }
         await this.audit.info('RUN_COMPLETE', { run_id: runId, job_id: job.job_id });
         return { ok: true, ...result };
       } catch (error) {
@@ -192,7 +200,7 @@ export class LokaMediaController {
     return { ok: false, error };
   }
 
-  async runJob(job, { runId = null, controlledRunOnce = false } = {}) {
+  async runJob(job, { runId = null, controlledRunOnce = false, providerResultProbe = false } = {}) {
     await this.audit.info('PROVIDER_LANE_ACQUIRE_START', { run_id: runId, job_id: job.job_id });
     const acquired = await this.providerLane.acquire(job.job_id);
     if (!acquired) {
@@ -218,6 +226,49 @@ export class LokaMediaController {
       });
       await this.audit.info('GENERATION_OBSERVER_START', { run_id: runId, job_id: job.job_id });
       await this.audit.info('GENERATION_IMAGE_DETECTED', { run_id: runId, job_id: job.job_id });
+
+      if (providerResultProbe) {
+        await this.audit.info('PROVIDER_RESULT_PROBE_STOP', {
+          run_id: runId,
+          job_id: job.job_id,
+          details: {
+            provider_conversation_id: providerResult?.provider_conversation_id || null,
+            provider_response_id: providerResult?.provider_response_id || null,
+            submitted_at: providerResult?.submitted_at || null,
+            local_state: 'IMAGE_DETECTED'
+          }
+        });
+
+        if (typeof this.apiClient?.releaseJob === 'function') {
+          try {
+            await this.apiClient.releaseJob(job.job_id, {
+              expectedJobRevision: job.job_revision,
+              intent: 'SAFE_REQUEUE',
+              reasonCode: 'PROVIDER_RESULT_PROBE_STOP',
+              messageSafe: 'Provider result probe stopped before image capture'
+            });
+            await this.audit.info('JOB_LEASE_RELEASED', {
+              run_id: runId,
+              job_id: job.job_id,
+              details: { intent: 'SAFE_REQUEUE', reason: 'PROVIDER_RESULT_PROBE_STOP' }
+            });
+          } catch (releaseErr) {
+            this.logger?.warn?.('failed to release job lease after provider result probe stop', { error: releaseErr?.message || releaseErr });
+          }
+        }
+
+        return {
+          ok: true,
+          status: 'PROVIDER_RESULT_PROBE_STOPPED',
+          run_id: runId,
+          job_id: job.job_id,
+          provider_result: {
+            provider_conversation_id: providerResult?.provider_conversation_id || null,
+            provider_response_id: providerResult?.provider_response_id || null,
+            submitted_at: providerResult?.submitted_at || null
+          }
+        };
+      }
       await this.audit.info('CAPTURE_START', { run_id: runId, job_id: job.job_id });
       const captured = await this.provider.capture(job);
       await this.blobStore.put({
