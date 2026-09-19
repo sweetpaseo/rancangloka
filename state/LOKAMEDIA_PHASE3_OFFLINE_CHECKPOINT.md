@@ -234,6 +234,13 @@ All passed locally before checkpoint.
 
 ## Next Recommended Phase
 
-`READY_FOR_PHASE_4_CHATGPT_PROVIDER_ADAPTER=YES`
+`READY_FOR_PHASE_4B1A_5D2_CONTROLLED_LIVE_CAPTURE_PROBE=YES`
 
-Phase 4 should implement the real provider adapter behind the existing provider lane boundary. Keep the server authoritative, preserve reconcile-before-retry, and do not broaden host permissions beyond the provider host actually needed for that phase.
+Phase 4B1A.5D1B successfully wired the real ChatGPT capture adapter with 76 passing deterministic tests and zero regressions.
+When resuming, execute Phase 4B1A.5D2 (Controlled Live ChatGPT Capture + Durable Blob Probe):
+- Exactly one Run Once on existing controlled fixture `mjob_5c0f488d7ee123b9579a58a5`.
+- Exactly one generation, exact result correlation, exactly one capture.
+- Durable persistence into IndexedDB (`local_state=CAPTURED`).
+- Stop at `CAPTURE_BLOB_PROBE_STOP`.
+- Zero R2 upload, zero media assets, zero article attachments.
+
