@@ -6,6 +6,7 @@ import {
   summarizeTransfers,
   validateSidePanelElements
 } from './popup-core.js';
+import { isRecoverableResultCheckpoint } from './providers/chatgpt/correlation.js';
 
 const boot = new Set([SIDE_PANEL_BOOT_FLAGS.SCRIPT_LOADED]);
 let bound = false;
@@ -145,8 +146,33 @@ function markConfigDirty() {
   configDraftDirty = true;
 }
 
+function findRecoverableJob(state = {}) {
+  const jobs = Object.values(state.jobs ?? {});
+  return jobs.find((job) => {
+    if (job.local_state === 'COMPLETE' || job.status === 'COMPLETE') return false;
+    if (job.local_state === 'CAPTURED' && job.blob_key) return false;
+    return isRecoverableResultCheckpoint(job.result_checkpoint, job);
+  }) || null;
+}
+
 function renderRunOnce(state, current, provider, server) {
   const button = element('#run-once');
+  const recoverableJob = findRecoverableJob(state);
+
+  if (recoverableJob) {
+    const readyForRecovery =
+      state.config.enabled &&
+      server === 'online' &&
+      provider.tab === 'connected' &&
+      provider.auth === 'ready' &&
+      provider.dom === 'supported' &&
+      provider.lane === 'idle' &&
+      state.status?.connection !== 'backpressure';
+    button.disabled = !readyForRecovery;
+    button.textContent = 'Resume Capture';
+    return;
+  }
+
   const gate = state.phase4bSingleRun;
   const consumed = Boolean(gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at);
   const waitingJob = current.operation === 'Waiting' && current.slot === 'featured' && current.article === 'LokaMedia Phase 4B Controlled Generation Test';
@@ -198,8 +224,21 @@ async function runOnce() {
   const runId = `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
   const button = element('#run-once');
   button.disabled = true;
-  button.textContent = 'Running...';
+
   try {
+    const stateRes = await send('STATUS');
+    const recoverableJob = findRecoverableJob(stateRes.state || {});
+
+    if (recoverableJob) {
+      button.textContent = 'Recovering...';
+      setStatus('Recovering generated result...');
+      const response = await send('RUN_CHECKPOINT_RECOVERY', { runId, jobId: recoverableJob.job_id }, { timeoutMs: 30000 });
+      if (response.state) renderState(response.state);
+      setStatus(response.ok ? 'Recovery capture complete' : boundedError(response.error), !response.ok);
+      return;
+    }
+
+    button.textContent = 'Running...';
     const response = await send('RUN_ONCE', { runId }, { timeoutMs: 15000 });
     if (response.state) renderState(response.state);
     setStatus(response.ok ? 'Run consumed' : boundedError(response.error), !response.ok);

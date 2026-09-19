@@ -6,7 +6,7 @@ import { UploadWorkerPool } from './upload-worker-pool.js';
 import { HeartbeatManager } from './heartbeat-manager.js';
 import { LOKAMEDIA_PROTOCOL_VERSION } from './constants.js';
 import { AuditLogger } from './audit-log.js';
-import { isCaptureReadyProviderResult } from './providers/chatgpt/correlation.js';
+import { isCaptureReadyProviderResult, isRecoverableResultCheckpoint } from './providers/chatgpt/correlation.js';
 
 export class LokaMediaController {
   constructor({ apiClient, storage, blobStore, provider = new MockProviderAdapter(), logger = console, audit = null }) {
@@ -80,6 +80,52 @@ export class LokaMediaController {
 
       const state = await this.storage.readState();
       const gate = state.phase4bSingleRun;
+      if (gate?.outcome === 'complete') {
+        await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: gate.job_id } });
+        return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
+      }
+
+      // Check for recovery mode trigger or recoverable checkpoint
+      const recoverableJob = Object.values(state.jobs ?? {}).find((j) => {
+        if (j.local_state === 'COMPLETE' || j.status === 'COMPLETE') return false;
+        if (j.local_state === 'CAPTURED' && j.blob_key) return false;
+        return isRecoverableResultCheckpoint(j.result_checkpoint, j);
+      });
+      const isRecoveryRequested = options?.runMode === 'checkpoint_capture_recovery' || Boolean(recoverableJob);
+
+      if (isRecoveryRequested) {
+        const targetJob = recoverableJob || (options?.jobId ? state.jobs[options.jobId] : null);
+        if (!targetJob) {
+          return this.failGate(runId, 'RESULT_CHECKPOINT_MISSING');
+        }
+        if (!state.config.enabled) return this.failGate(runId, 'EXTENSION_DISABLED');
+        if (!state.config.deviceToken || !state.config.deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
+        if (state.status.connection === 'backpressure') return this.failGate(runId, 'BACKPRESSURE');
+        if (state.locks.providerLane) return this.failGate(runId, 'PROVIDER_LANE_BUSY');
+
+        const provider = state.provider?.chatgpt ?? {};
+        if (
+          provider.tab_status !== 'connected' ||
+          provider.auth_state !== 'AUTHENTICATED' ||
+          provider.dom_status !== 'SUPPORTED'
+        ) {
+          return this.failGate(runId, 'PROVIDER_NOT_READY');
+        }
+        await this.audit.info('RUN_GATE_CHECK_PASS', { run_id: runId, mode: 'recovery' });
+
+        const captureBlobProbe = Boolean(
+          (typeof options === 'object' && options !== null && options.captureBlobProbe !== undefined)
+            ? options.captureBlobProbe
+            : state.config?.captureBlobProbe
+        );
+
+        return await this.runJob(targetJob, {
+          runId,
+          runMode: 'checkpoint_capture_recovery',
+          captureBlobProbe
+        });
+      }
+
       if (gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at) {
         await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: gate.job_id } });
         return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
@@ -206,7 +252,123 @@ export class LokaMediaController {
     return { ok: false, error };
   }
 
-  async runJob(job, { runId = null, controlledRunOnce = false, providerResultProbe = false, captureBlobProbe = false } = {}) {
+  async runCheckpointRecovery(jobOrJobId, options = {}) {
+    const runId = typeof options === 'string' ? options : (options?.runId || `run_rec_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`);
+    const acceptedLogged = typeof options === 'object' && options !== null && Boolean(options.acceptedLogged);
+
+    const lockResult = await this.storage.acquireActiveRunLock({ runId });
+    if (!lockResult.acquired) {
+      await this.audit.warn('RUN_REENTRY_REJECTED', {
+        run_id: runId,
+        component: 'controller',
+        details: { active_run_id: lockResult.lock?.run_id }
+      });
+      return { ok: false, error: 'RUN_ALREADY_ACTIVE', run_id: runId };
+    }
+
+    try {
+      if (!acceptedLogged) {
+        await this.audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'controller', mode: 'recovery' });
+      }
+      await this.audit.info('RUN_GATE_CHECK_START', { run_id: runId, mode: 'recovery' });
+
+      const state = await this.storage.readState();
+      if (!state.config.enabled) return this.failGate(runId, 'EXTENSION_DISABLED');
+      if (!state.config.deviceToken || !state.config.deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
+      if (state.status.connection === 'backpressure') return this.failGate(runId, 'BACKPRESSURE');
+      if (state.locks.providerLane) return this.failGate(runId, 'PROVIDER_LANE_BUSY');
+
+      const provider = state.provider?.chatgpt ?? {};
+      if (
+        provider.tab_status !== 'connected' ||
+        provider.auth_state !== 'AUTHENTICATED' ||
+        provider.dom_status !== 'SUPPORTED'
+      ) {
+        return this.failGate(runId, 'PROVIDER_NOT_READY');
+      }
+      await this.audit.info('RUN_GATE_CHECK_PASS', { run_id: runId, mode: 'recovery' });
+
+      let job = typeof jobOrJobId === 'object' && jobOrJobId !== null ? jobOrJobId : null;
+      if (!job) {
+        const jobId = typeof jobOrJobId === 'string' ? jobOrJobId : null;
+        if (jobId) {
+          job = state.jobs[jobId];
+        } else {
+          job = Object.values(state.jobs ?? {}).find((j) => isRecoverableResultCheckpoint(j.result_checkpoint, j));
+        }
+      }
+      if (!job) {
+        await this.audit.warn('CHECKPOINT_RECOVERY_FAIL', { run_id: runId, error_code: 'RESULT_CHECKPOINT_MISSING' });
+        return { ok: false, error: 'RESULT_CHECKPOINT_MISSING' };
+      }
+
+      const captureBlobProbe = Boolean(
+        (typeof options === 'object' && options !== null && options.captureBlobProbe !== undefined)
+          ? options.captureBlobProbe
+          : state.config?.captureBlobProbe
+      );
+
+      return await this.runJob(job, {
+        runId,
+        runMode: 'checkpoint_capture_recovery',
+        captureBlobProbe,
+        ...options
+      });
+    } finally {
+      await this.storage.releaseActiveRunLock({ runId });
+    }
+  }
+
+  async runJob(job, { runId = null, controlledRunOnce = false, providerResultProbe = false, captureBlobProbe = false, runMode = null } = {}) {
+    const isExplicitRecovery = runMode === 'checkpoint_capture_recovery';
+    const state = await this.storage.readState();
+    const storedJob = state.jobs?.[job.job_id] || {};
+    const candidateCheckpoint = job.result_checkpoint || storedJob.result_checkpoint || null;
+
+    if (isExplicitRecovery) {
+      if (!candidateCheckpoint) {
+        const missErr = new Error('RESULT_CHECKPOINT_MISSING');
+        missErr.code = 'RESULT_CHECKPOINT_MISSING';
+        await this.audit.warn('CHECKPOINT_RECOVERY_FAIL', {
+          run_id: runId,
+          job_id: job.job_id,
+          error_code: 'RESULT_CHECKPOINT_MISSING'
+        });
+        throw missErr;
+      }
+      if (!isRecoverableResultCheckpoint(candidateCheckpoint, job)) {
+        const invErr = new Error('RESULT_CHECKPOINT_INVALID');
+        invErr.code = 'RESULT_CHECKPOINT_INVALID';
+        await this.audit.warn('CHECKPOINT_RECOVERY_FAIL', {
+          run_id: runId,
+          job_id: job.job_id,
+          error_code: 'RESULT_CHECKPOINT_INVALID'
+        });
+        throw invErr;
+      }
+      return this._executeCaptureFromCheckpoint(job, candidateCheckpoint, {
+        runId,
+        captureBlobProbe
+      });
+    }
+
+    if (candidateCheckpoint) {
+      if (!isRecoverableResultCheckpoint(candidateCheckpoint, job)) {
+        const invErr = new Error('RESULT_CHECKPOINT_INVALID');
+        invErr.code = 'RESULT_CHECKPOINT_INVALID';
+        await this.audit.warn('CHECKPOINT_RECOVERY_FAIL', {
+          run_id: runId,
+          job_id: job.job_id,
+          error_code: 'RESULT_CHECKPOINT_INVALID'
+        });
+        throw invErr;
+      }
+      return this._executeCaptureFromCheckpoint(job, candidateCheckpoint, {
+        runId,
+        captureBlobProbe
+      });
+    }
+
     await this.audit.info('PROVIDER_LANE_ACQUIRE_START', { run_id: runId, job_id: job.job_id });
     const acquired = await this.providerLane.acquire(job.job_id);
     if (!acquired) {
@@ -435,6 +597,208 @@ export class LokaMediaController {
       await this.storage.upsertJob(job.job_id, {
         local_state: error.status === 401 ? 'AUTH_REQUIRED' : 'RECOVERING',
         last_error: error.message
+      });
+      throw error;
+    } finally {
+      await this.providerLane.release(job.job_id);
+    }
+  }
+
+  async _executeCaptureFromCheckpoint(job, checkpoint, { runId = null, captureBlobProbe = false } = {}) {
+    const originRunId = checkpoint.run_id;
+    const recoveryRunId = runId || `run_rec_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+
+    await this.audit.info('CHECKPOINT_RECOVERY_START', {
+      run_id: recoveryRunId,
+      origin_run_id: originRunId,
+      job_id: job.job_id,
+      slot_key: job.slot_key
+    });
+
+    await this.audit.info('CHECKPOINT_RECOVERY_VALIDATED', {
+      run_id: recoveryRunId,
+      origin_run_id: originRunId,
+      job_id: job.job_id,
+      slot_key: job.slot_key,
+      details: {
+        source_fingerprint: checkpoint.source_fingerprint || checkpoint.fingerprint,
+        containerFingerprint: checkpoint.containerFingerprint,
+        schema_version: checkpoint.schema_version ?? 1
+      }
+    });
+
+    const acquired = await this.providerLane.acquire(job.job_id);
+    if (!acquired) {
+      await this.audit.warn('PROVIDER_LANE_FAIL', {
+        run_id: recoveryRunId,
+        origin_run_id: originRunId,
+        job_id: job.job_id,
+        error_code: 'PROVIDER_BUSY'
+      });
+      return { acquired: false, reason: 'PROVIDER_BUSY' };
+    }
+
+    try {
+      await this.audit.info('PROVIDER_LANE_ACQUIRED', {
+        run_id: recoveryRunId,
+        origin_run_id: originRunId,
+        job_id: job.job_id
+      });
+
+      // Backpressure inspection before capturing & persisting
+      const pressure = await this.backpressure.inspect();
+      if (pressure.blocked) {
+        const bpErr = new Error('CAPTURE_BACKPRESSURE_LIMIT_EXCEEDED');
+        bpErr.code = 'CAPTURE_BACKPRESSURE_LIMIT_EXCEEDED';
+        bpErr.pressure = pressure;
+        await this.audit.warn('CAPTURE_BACKPRESSURE_EXCEEDED', {
+          run_id: recoveryRunId,
+          origin_run_id: originRunId,
+          job_id: job.job_id,
+          details: pressure
+        });
+        throw bpErr;
+      }
+
+      await this.audit.info('CHECKPOINT_RECOVERY_CAPTURE_START', {
+        run_id: recoveryRunId,
+        origin_run_id: originRunId,
+        job_id: job.job_id
+      });
+
+      // Pass originRunId in captureJob so adapter and content-script correlation match descriptor.run_id!
+      const captureJob = { ...job, run_id: originRunId || recoveryRunId };
+      const captured = await this.provider.capture(captureJob, checkpoint);
+
+      // Binary validation
+      if (!captured || !captured.bytes) {
+        const binErr = new Error('CAPTURE_BINARY_MISSING');
+        binErr.code = 'CAPTURE_BINARY_MISSING';
+        throw binErr;
+      }
+      const byteLength = captured.bytes.byteLength ?? captured.size ?? 0;
+      if (byteLength === 0) {
+        const binErr = new Error('CAPTURE_BINARY_EMPTY');
+        binErr.code = 'CAPTURE_BINARY_EMPTY';
+        throw binErr;
+      }
+      const supportedMimes = new Set(['image/png', 'image/webp', 'image/jpeg']);
+      if (!captured.mime || !supportedMimes.has(captured.mime)) {
+        const binErr = new Error('CAPTURE_UNSUPPORTED_MIME');
+        binErr.code = 'CAPTURE_UNSUPPORTED_MIME';
+        throw binErr;
+      }
+
+      await this.audit.info('CHECKPOINT_RECOVERY_CAPTURE_SUCCESS', {
+        run_id: recoveryRunId,
+        origin_run_id: originRunId,
+        job_id: job.job_id,
+        details: {
+          sha256: captured.sha256,
+          mime: captured.mime,
+          width: captured.width,
+          height: captured.height,
+          size: captured.size ?? byteLength
+        }
+      });
+
+      // Durable blob persistence
+      await this.blobStore.put({
+        key: captured.blobKey,
+        job_id: job.job_id,
+        sha256: captured.sha256,
+        mime: captured.mime,
+        width: captured.width,
+        height: captured.height,
+        size: captured.size ?? byteLength,
+        bytes: captured.bytes
+      });
+
+      await this.audit.info('CAPTURE_PERSISTED', {
+        run_id: recoveryRunId,
+        job_id: job.job_id,
+        details: {
+          sha256: captured.sha256,
+          mime: captured.mime,
+          width: captured.width,
+          height: captured.height,
+          size: captured.size ?? byteLength
+        }
+      });
+
+      await this.storage.upsertJob(job.job_id, {
+        local_state: 'CAPTURED',
+        blob_key: captured.blobKey,
+        sha256: captured.sha256,
+        mime: captured.mime,
+        width: captured.width,
+        height: captured.height,
+        result_checkpoint: checkpoint
+      });
+
+      // Capture Blob Probe boundary: stops immediately after durable persistence
+      if (captureBlobProbe) {
+        await this.audit.info('CAPTURE_BLOB_PROBE_STOP', {
+          run_id: recoveryRunId,
+          job_id: job.job_id,
+          details: {
+            blob_key: captured.blobKey,
+            sha256: captured.sha256,
+            mime: captured.mime,
+            width: captured.width,
+            height: captured.height,
+            size: captured.size ?? byteLength,
+            local_state: 'CAPTURED'
+          }
+        });
+        return {
+          ok: true,
+          status: 'CAPTURE_BLOB_PROBE_STOPPED',
+          execution_mode: 'checkpoint_capture_recovery',
+          checkpoint_recovery_used: true,
+          origin_run_id: originRunId,
+          recovery_run_id: recoveryRunId,
+          run_id: recoveryRunId,
+          job_id: job.job_id,
+          blob_key: captured.blobKey,
+          details: {
+            sha256: captured.sha256,
+            mime: captured.mime,
+            width: captured.width,
+            height: captured.height,
+            size: captured.size ?? byteLength
+          }
+        };
+      }
+
+      await this.providerLane.release(job.job_id);
+      await this.storage.enqueueUpload(job.job_id);
+      await this.audit.info('UPLOAD_START', { run_id: recoveryRunId, job_id: job.job_id });
+      await this.uploads.drain();
+      await this.audit.info('UPLOAD_RECEIVED', { run_id: recoveryRunId, job_id: job.job_id });
+      await this.audit.info('ATTACHMENT_CONFIRMED', { run_id: recoveryRunId, job_id: job.job_id });
+      await this.audit.info('JOB_COMPLETE', { run_id: recoveryRunId, job_id: job.job_id });
+      return {
+        ok: true,
+        acquired: true,
+        execution_mode: 'checkpoint_capture_recovery',
+        checkpoint_recovery_used: true,
+        origin_run_id: originRunId,
+        recovery_run_id: recoveryRunId,
+        job_id: job.job_id
+      };
+    } catch (error) {
+      await this.audit.error('CHECKPOINT_RECOVERY_FAIL', {
+        run_id: recoveryRunId,
+        origin_run_id: originRunId,
+        job_id: job.job_id,
+        error_code: error.code || error.message,
+        error
+      });
+      await this.storage.upsertJob(job.job_id, {
+        local_state: error.status === 401 ? 'AUTH_REQUIRED' : 'RECOVERING',
+        last_error: error.message,
+        result_checkpoint: checkpoint
       });
       throw error;
     } finally {

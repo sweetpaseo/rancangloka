@@ -163,6 +163,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         throw error;
       }
     },
+    RUN_CHECKPOINT_RECOVERY: async (request) => {
+      const runId = request?.runId || `run_rec_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+      const state = await storage.readState();
+      const captureBlobProbe = Boolean(request?.captureBlobProbe ?? state.config?.captureBlobProbe);
+      await audit.info('PANEL_RUN_CLICK', { run_id: runId, component: 'side-panel', mode: 'recovery' });
+      await audit.info('RUN_REQUEST_DISPATCHED', { run_id: runId, component: 'side-panel', mode: 'recovery' });
+
+      const lockResult = await storage.acquireActiveRunLock({ runId });
+      if (!lockResult.acquired) {
+        await audit.warn('RUN_REENTRY_REJECTED', {
+          run_id: runId,
+          component: 'background',
+          details: { active_run_id: lockResult.lock?.run_id }
+        });
+        return { ok: false, error: 'RUN_ALREADY_ACTIVE', run_id: runId };
+      }
+
+      await audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'background', mode: 'recovery' });
+      try {
+        const instance = await ensureController();
+        return await instance.runCheckpointRecovery(request?.jobId || request?.job, {
+          runId,
+          acceptedLogged: true,
+          captureBlobProbe
+        });
+      } catch (error) {
+        await storage.releaseActiveRunLock({ runId });
+        throw error;
+      }
+    },
     AUDIT_STATUS: async (request) => {
       const state = await storage.readState();
       const gate = state.phase4bSingleRun || {};

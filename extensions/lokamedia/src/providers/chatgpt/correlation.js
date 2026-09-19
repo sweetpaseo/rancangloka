@@ -35,3 +35,19 @@ export function isCaptureReadyProviderResult(result, context = {}) {
   if (context.slot_key && result.slot_key && result.slot_key !== context.slot_key) return false;
   return true;
 }
+
+export function isRecoverableResultCheckpoint(checkpoint, job = {}) {
+  if (!checkpoint || typeof checkpoint !== 'object') return false;
+  const fp = checkpoint.source_fingerprint || checkpoint.fingerprint;
+  if (!fp || typeof fp !== 'string' || fp.trim() === '') return false;
+  if (!checkpoint.containerFingerprint || typeof checkpoint.containerFingerprint !== 'string' || checkpoint.containerFingerprint.trim() === '') {
+    return false;
+  }
+  if (job.job_id && (!checkpoint.job_id || checkpoint.job_id !== job.job_id)) return false;
+  if (job.slot_key && (!checkpoint.slot_key || checkpoint.slot_key !== job.slot_key)) return false;
+  if (job.prompt_hash && checkpoint.prompt_hash && checkpoint.prompt_hash !== job.prompt_hash) return false;
+  if (job.prompt_version !== undefined && checkpoint.prompt_version !== undefined && checkpoint.prompt_version !== job.prompt_version) return false;
+  const schemaVer = checkpoint.schema_version ?? 1;
+  if (schemaVer !== 1 && schemaVer !== 2) return false;
+  return true;
+}
