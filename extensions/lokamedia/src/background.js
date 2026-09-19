@@ -135,11 +135,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return { ok: true };
     },
     TICK: async () => ({ ok: false, error: 'PHASE_4B_NOT_ARMED' }),
-    RUN_ONCE: async () => {
-      await audit.info('PANEL_RUN_CLICK', { component: 'side-panel' });
-      await audit.info('RUN_REQUEST_DISPATCHED', { component: 'side-panel' });
-      const instance = await ensureController();
-      return instance.runOnce();
+    RUN_ONCE: async (request) => {
+      const runId = request?.runId || `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+      await audit.info('PANEL_RUN_CLICK', { run_id: runId, component: 'side-panel' });
+      await audit.info('RUN_REQUEST_DISPATCHED', { run_id: runId, component: 'side-panel' });
+
+      const lockResult = await storage.acquireActiveRunLock({ runId });
+      if (!lockResult.acquired) {
+        await audit.warn('RUN_REENTRY_REJECTED', {
+          run_id: runId,
+          component: 'background',
+          details: { active_run_id: lockResult.lock?.run_id }
+        });
+        return { ok: false, error: 'RUN_ALREADY_ACTIVE', run_id: runId };
+      }
+
+      await audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'background' });
+      try {
+        const instance = await ensureController();
+        return await instance.runOnce({ runId, acceptedLogged: true });
+      } catch (error) {
+        await storage.releaseActiveRunLock({ runId });
+        throw error;
+      }
     },
     AUDIT_STATUS: async (request) => {
       const state = await storage.readState();

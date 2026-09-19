@@ -4,6 +4,20 @@ Date: 2026-09-15
 
 ## Latest Local Checkpoint
 
+Date: 2026-09-19
+
+`LOKAMEDIA_PHASE_4B1A5A=PASS_DETERMINISTIC_EXECUTION_START`
+
+Phase 4B1A.5A repaired the execution start and locking path for the LokaMedia Chrome extension:
+- `side-panel.js` generates a single `run_id` and propagates it via `RUN_ONCE` message payload.
+- `background.js` verifies mutual exclusion using `acquireActiveRunLock({ runId })`, logs `RUN_REENTRY_REJECTED` if already active, logs `RUN_REQUEST_ACCEPTED`, and invokes `controller.runOnce({ runId, acceptedLogged: true })`.
+- `controller.js` directly enters `RUN_GATE_CHECK_START` under a guaranteed `try/finally` block that releases the active-run lock upon completion, gate failure, or error.
+- Deterministic test coverage added for execution start, single run_id propagation, concurrent re-entry blocking, lock release on success, and lock release on failure.
+
+Important safety boundary:
+- General automatic ChatGPT submission remains disabled.
+- No real ChatGPT prompt submission, no image generation, no production mutation, and no deployment.
+
 Date: 2026-09-16
 
 Latest clean checkpoint commit:

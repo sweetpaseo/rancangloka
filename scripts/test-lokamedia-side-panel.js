@@ -319,7 +319,8 @@ async function testRunOnceControl() {
   assert.equal(doc.querySelector('#run-once').disabled, false);
   await doc.querySelector('#run-once').dispatch('click');
   await settle();
-  assert(messages.some((message) => message.type === 'RUN_ONCE'));
+  const runOnceMsg = messages.find((message) => message.type === 'RUN_ONCE');
+  assert(runOnceMsg && typeof runOnceMsg.runId === 'string' && runOnceMsg.runId.startsWith('run_'), 'RUN_ONCE message must carry generated runId');
   assert(messages.some((message) => message.type === 'AUDIT_STATUS'));
   assert.equal(doc.querySelector('#run-once').disabled, true);
   assert.equal(doc.querySelector('#last-action').textContent, 'Run Once requested');

@@ -195,14 +195,20 @@ async function providerCheck() {
 }
 
 async function runOnce() {
+  const runId = `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
   const button = element('#run-once');
   button.disabled = true;
   button.textContent = 'Running...';
-  const response = await send('RUN_ONCE', {}, { timeoutMs: 15000 });
-  if (response.state) renderState(response.state);
-  await refresh({ quiet: true });
-  await refreshAudit();
-  setStatus(response.ok ? 'Run consumed' : boundedError(response.error), !response.ok);
+  try {
+    const response = await send('RUN_ONCE', { runId }, { timeoutMs: 15000 });
+    if (response.state) renderState(response.state);
+    setStatus(response.ok ? 'Run consumed' : boundedError(response.error), !response.ok);
+  } catch (error) {
+    setStatus(boundedError(error), true);
+  } finally {
+    await refresh({ quiet: true });
+    await refreshAudit();
+  }
 }
 
 async function copyAuditLog() {

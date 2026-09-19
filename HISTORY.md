@@ -17,6 +17,16 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 4B1A.5A Run Once Execution-Start Repair 2026-09-19
+
+- Repaired the execution-start gap between Side Panel Run Once dispatch, background message acceptance, and controller execution start.
+- Single source of truth `run_id`: generated once at Side Panel click, propagated through `RUN_ONCE` message payload to background and controller, ensuring `RUN_ID_PANEL == RUN_ID_BACKGROUND == RUN_ID_CONTROLLER == RUN_ID_GATE`.
+- Active-run mutual exclusion: added `acquireActiveRunLock`, `releaseActiveRunLock`, and `getActiveRunLock` in storage and controller, preventing concurrent executions and logging structured `RUN_REENTRY_REJECTED` audit evidence.
+- Reliable lock release: controller execution path is protected with try/finally cleanup, guaranteeing active lock release on success, controlled gate rejection, and unexpected failures.
+- Ensured `RUN_GATE_CHECK_START` is reached directly upon execution controller entry, preventing startup/reconcile failures from silently blocking gate inspection.
+- Deterministic test coverage added covering accepted request execution start, run_id propagation, concurrent re-entry rejection, lock release on success, lock release on failure, and no duplicate execution.
+- Safety preserved: no real ChatGPT prompt submission, no image generation, no new article/job fixture, no deployment, and no production mutation.
+
 ### LokaMedia Phase 4B1A.5 Durable Run Audit Logging 2026-09-16
 
 - Implemented local-only durable structured audit logging for the LokaMedia extension Run Once path.

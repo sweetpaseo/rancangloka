@@ -57,68 +57,92 @@ export class LokaMediaController {
     return this.runJob(response.job);
   }
 
-  async runOnce() {
-    const runId = `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
-    await this.audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'controller' });
-    await this.startup();
-    const state = await this.storage.readState();
-    await this.audit.info('RUN_GATE_CHECK_START', { run_id: runId });
-    const gate = state.phase4bSingleRun;
-    if (gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at) {
-      await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: gate.job_id } });
-      return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
-    }
-    if (!state.config.enabled) return this.failGate(runId, 'EXTENSION_DISABLED');
-    if (!state.config.deviceToken || !state.config.deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
-    if (state.status.connection === 'backpressure') return this.failGate(runId, 'BACKPRESSURE');
-    if (state.locks.providerLane) return this.failGate(runId, 'PROVIDER_LANE_BUSY');
+  async runOnce(options = {}) {
+    const runId = typeof options === 'string' ? options : (options?.runId || `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`);
+    const acceptedLogged = typeof options === 'object' && options !== null && Boolean(options.acceptedLogged);
 
-    const provider = state.provider?.chatgpt ?? {};
-    if (
-      provider.tab_status !== 'connected' ||
-      provider.auth_state !== 'AUTHENTICATED' ||
-      provider.dom_status !== 'SUPPORTED' ||
-      provider.composer_status !== 'ready'
-    ) {
-      return this.failGate(runId, 'PROVIDER_NOT_READY');
+    const lockResult = await this.storage.acquireActiveRunLock({ runId });
+    if (!lockResult.acquired) {
+      await this.audit.warn('RUN_REENTRY_REJECTED', {
+        run_id: runId,
+        component: 'controller',
+        details: { active_run_id: lockResult.lock?.run_id }
+      });
+      return { ok: false, error: 'RUN_ALREADY_ACTIVE', run_id: runId };
     }
-    await this.audit.info('RUN_GATE_CHECK_PASS', { run_id: runId });
-
-    await this.audit.info('JOB_ACQUIRE_START', { run_id: runId });
-    const response = await this.apiClient.nextJob(state.config.deviceId);
-    if (response.protocol_version && response.protocol_version !== LOKAMEDIA_PROTOCOL_VERSION) {
-      await this.audit.error('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: 'PROTOCOL_MISMATCH' });
-      return { ok: false, error: 'PROTOCOL_MISMATCH' };
-    }
-    if (!response.job) {
-      const code = response.error ?? 'NO_JOB';
-      await this.audit.warn('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: code });
-      return { ok: false, error: code };
-    }
-
-    const job = response.job;
-    if (job.article_title !== 'LokaMedia Phase 4B Controlled Generation Test' || job.slot_key !== 'featured') {
-      await this.audit.warn('JOB_ACQUIRE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'WRONG_PHASE_4B_JOB' });
-      return { ok: false, error: 'WRONG_PHASE_4B_JOB', job_id: job.job_id };
-    }
-    await this.audit.info('JOB_ACQUIRED', { run_id: runId, job_id: job.job_id, article_id: job.article_id, slot_key: job.slot_key, server_job_status: job.status });
-
-    await this.audit.info('JOB_CHECKPOINT_SAVED', { run_id: runId, job_id: job.job_id });
-    const armed = await this.storage.armPhase4bSingleRun({ jobId: job.job_id, runId });
-    if (!armed.armed) return { ok: false, error: armed.reason };
-    await this.audit.info('SUBMISSION_GATE_ARMED', { run_id: runId, job_id: job.job_id, details: { boundary: 'before_provider_submit_intent' } });
-    const consumed = await this.storage.consumePhase4bSubmission({ jobId: job.job_id });
-    if (!consumed.consumed) return { ok: false, error: consumed.reason };
 
     try {
-      const result = await this.runJob(job, { runId, controlledRunOnce: true });
-      await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
-      await this.audit.info('RUN_COMPLETE', { run_id: runId, job_id: job.job_id });
-      return { ok: true, ...result };
-    } catch (error) {
-      await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: false, error: String(error?.message || error) });
-      await this.audit.error('RUN_FAILED', { run_id: runId, job_id: job.job_id, error });
-      throw error;
+      if (!acceptedLogged) {
+        await this.audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'controller' });
+      }
+      await this.audit.info('RUN_GATE_CHECK_START', { run_id: runId });
+
+      const state = await this.storage.readState();
+      const gate = state.phase4bSingleRun;
+      if (gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at) {
+        await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: gate.job_id } });
+        return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
+      }
+      if (!state.config.enabled) return this.failGate(runId, 'EXTENSION_DISABLED');
+      if (!state.config.deviceToken || !state.config.deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
+      if (state.status.connection === 'backpressure') return this.failGate(runId, 'BACKPRESSURE');
+      if (state.locks.providerLane) return this.failGate(runId, 'PROVIDER_LANE_BUSY');
+
+      const provider = state.provider?.chatgpt ?? {};
+      if (
+        provider.tab_status !== 'connected' ||
+        provider.auth_state !== 'AUTHENTICATED' ||
+        provider.dom_status !== 'SUPPORTED' ||
+        provider.composer_status !== 'ready'
+      ) {
+        return this.failGate(runId, 'PROVIDER_NOT_READY');
+      }
+      await this.audit.info('RUN_GATE_CHECK_PASS', { run_id: runId });
+
+      try {
+        await this.startup();
+      } catch (startupError) {
+        this.logger?.warn?.('startup reconcile failed in runOnce', { error: startupError?.message || startupError });
+      }
+
+      await this.audit.info('JOB_ACQUIRE_START', { run_id: runId });
+      const response = await this.apiClient.nextJob(state.config.deviceId);
+      if (response.protocol_version && response.protocol_version !== LOKAMEDIA_PROTOCOL_VERSION) {
+        await this.audit.error('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: 'PROTOCOL_MISMATCH' });
+        return { ok: false, error: 'PROTOCOL_MISMATCH' };
+      }
+      if (!response.job) {
+        const code = response.error ?? 'NO_JOB';
+        await this.audit.warn('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: code });
+        return { ok: false, error: code };
+      }
+
+      const job = response.job;
+      if (job.article_title !== 'LokaMedia Phase 4B Controlled Generation Test' || job.slot_key !== 'featured') {
+        await this.audit.warn('JOB_ACQUIRE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'WRONG_PHASE_4B_JOB' });
+        return { ok: false, error: 'WRONG_PHASE_4B_JOB', job_id: job.job_id };
+      }
+      await this.audit.info('JOB_ACQUIRED', { run_id: runId, job_id: job.job_id, article_id: job.article_id, slot_key: job.slot_key, server_job_status: job.status });
+
+      await this.audit.info('JOB_CHECKPOINT_SAVED', { run_id: runId, job_id: job.job_id });
+      const armed = await this.storage.armPhase4bSingleRun({ jobId: job.job_id, runId });
+      if (!armed.armed) return { ok: false, error: armed.reason };
+      await this.audit.info('SUBMISSION_GATE_ARMED', { run_id: runId, job_id: job.job_id, details: { boundary: 'before_provider_submit_intent' } });
+      const consumed = await this.storage.consumePhase4bSubmission({ jobId: job.job_id });
+      if (!consumed.consumed) return { ok: false, error: consumed.reason };
+
+      try {
+        const result = await this.runJob(job, { runId, controlledRunOnce: true });
+        await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
+        await this.audit.info('RUN_COMPLETE', { run_id: runId, job_id: job.job_id });
+        return { ok: true, ...result };
+      } catch (error) {
+        await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: false, error: String(error?.message || error) });
+        await this.audit.error('RUN_FAILED', { run_id: runId, job_id: job.job_id, error });
+        throw error;
+      }
+    } finally {
+      await this.storage.releaseActiveRunLock({ runId });
     }
   }
 

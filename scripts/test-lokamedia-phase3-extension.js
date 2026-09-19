@@ -504,6 +504,171 @@ async function testPhase4bBackgroundSafetySource() {
   pass('background status refresh clears stale transport error and enable does not auto-run generation');
 }
 
+async function testPhase4b1a5aExecutionStartAndActiveLock() {
+  const job = makeJob('phase4b-exec-lock', {
+    article_id: 481,
+    article_title: 'LokaMedia Phase 4B Controlled Generation Test',
+    slot_key: 'featured',
+    role: 'featured'
+  });
+
+  // TEST A, B, D, F: Message dispatch -> accepted -> controller.runOnce -> RUN_GATE_CHECK_START with exact run_id
+  {
+    const storage = ExtensionStorage.memory();
+    const audit = new AuditLogger({ storage, component: 'background' });
+    const { controller } = await makeController(new MockApi({ jobs: [job] }), storage);
+    let runOnceCalls = 0;
+    const originalRunOnce = controller.runOnce.bind(controller);
+    controller.runOnce = async (options) => {
+      runOnceCalls++;
+      return originalRunOnce(options);
+    };
+
+    const protocol = new MessageProtocol(storage);
+    const testRunId = 'run_deterministic_test_001';
+
+    const response = await protocol.handle({ id: 'msg-1', type: 'RUN_ONCE', runId: testRunId }, {
+      RUN_ONCE: async (request) => {
+        const runId = request?.runId || `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+        await audit.info('PANEL_RUN_CLICK', { run_id: runId, component: 'side-panel' });
+        await audit.info('RUN_REQUEST_DISPATCHED', { run_id: runId, component: 'side-panel' });
+
+        const lockResult = await storage.acquireActiveRunLock({ runId });
+        if (!lockResult.acquired) {
+          await audit.warn('RUN_REENTRY_REJECTED', {
+            run_id: runId,
+            component: 'background',
+            details: { active_run_id: lockResult.lock?.run_id }
+          });
+          return { ok: false, error: 'RUN_ALREADY_ACTIVE', run_id: runId };
+        }
+
+        await audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'background' });
+        try {
+          return await controller.runOnce({ runId, acceptedLogged: true });
+        } catch (error) {
+          await storage.releaseActiveRunLock({ runId });
+          throw error;
+        }
+      }
+    });
+
+    assert.equal(response.ok, true);
+    assert.equal(runOnceCalls, 1, 'controller.runOnce invoked exactly once (TEST A, TEST F)');
+
+    const events = await storage.listAuditEvents({ runId: testRunId });
+    const eventCodes = events.map((e) => e.event_code);
+    assert(eventCodes.includes('PANEL_RUN_CLICK'), 'PANEL_RUN_CLICK recorded');
+    assert(eventCodes.includes('RUN_REQUEST_DISPATCHED'), 'RUN_REQUEST_DISPATCHED recorded');
+    assert(eventCodes.includes('RUN_REQUEST_ACCEPTED'), 'RUN_REQUEST_ACCEPTED recorded');
+    assert(eventCodes.includes('RUN_GATE_CHECK_START'), 'RUN_GATE_CHECK_START recorded (TEST A)');
+    assert(eventCodes.includes('RUN_GATE_CHECK_PASS'), 'RUN_GATE_CHECK_PASS recorded');
+    assert(eventCodes.includes('JOB_ACQUIRE_START'), 'JOB_ACQUIRE_START recorded');
+    assert(eventCodes.includes('RUN_COMPLETE'), 'RUN_COMPLETE recorded');
+
+    // TEST B: all events use exact testRunId
+    for (const event of events) {
+      assert.equal(event.run_id, testRunId, `event ${event.event_code} must use propagated run_id (TEST B)`);
+    }
+
+    // TEST D: active lock removed on normal completion
+    const lockAfterSuccess = await storage.getActiveRunLock();
+    assert.equal(lockAfterSuccess, null, 'active run lock must be released on success (TEST D)');
+  }
+
+  // TEST C: Concurrent re-entry blocked
+  {
+    const storage = ExtensionStorage.memory();
+    const audit = new AuditLogger({ storage, component: 'background' });
+    let releaseHold;
+    const holdPromise = new Promise((resolve) => { releaseHold = resolve; });
+
+    class BlockingApi extends MockApi {
+      async nextJob(deviceId) {
+        await holdPromise;
+        return super.nextJob(deviceId);
+      }
+    }
+
+    const { controller } = await makeController(new BlockingApi({ jobs: [job] }), storage);
+
+    const protocol = new MessageProtocol(storage);
+    const runHandler = async (request) => {
+      const runId = request?.runId || `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+      await audit.info('PANEL_RUN_CLICK', { run_id: runId, component: 'side-panel' });
+      await audit.info('RUN_REQUEST_DISPATCHED', { run_id: runId, component: 'side-panel' });
+
+      const lockResult = await storage.acquireActiveRunLock({ runId });
+      if (!lockResult.acquired) {
+        await audit.warn('RUN_REENTRY_REJECTED', {
+          run_id: runId,
+          component: 'background',
+          details: { active_run_id: lockResult.lock?.run_id }
+        });
+        return { ok: false, error: 'RUN_ALREADY_ACTIVE', run_id: runId };
+      }
+
+      await audit.info('RUN_REQUEST_ACCEPTED', { run_id: runId, component: 'background' });
+      try {
+        return await controller.runOnce({ runId, acceptedLogged: true });
+      } catch (error) {
+        await storage.releaseActiveRunLock({ runId });
+        throw error;
+      }
+    };
+
+    const runAPromise = protocol.handle({ id: 'msg-run-a', type: 'RUN_ONCE', runId: 'run-a' }, { RUN_ONCE: runHandler });
+    await new Promise((r) => setTimeout(r, 10));
+
+    const runBResponse = await protocol.handle({ id: 'msg-run-b', type: 'RUN_ONCE', runId: 'run-b' }, { RUN_ONCE: runHandler });
+
+    assert.equal(runBResponse.ok, false);
+    assert.equal(runBResponse.error, 'RUN_ALREADY_ACTIVE');
+
+    const bEvents = await storage.listAuditEvents({ runId: 'run-b' });
+    const bCodes = bEvents.map((e) => e.event_code);
+    assert(bCodes.includes('RUN_REENTRY_REJECTED'), 'reentry rejection must be recorded in audit (TEST C)');
+    assert(!bCodes.includes('RUN_GATE_CHECK_START'), 'run B must not reach gate check start (TEST C)');
+
+    releaseHold();
+    const runAResponse = await runAPromise;
+    assert.equal(runAResponse.ok, true);
+
+    const lockAfterAll = await storage.getActiveRunLock();
+    assert.equal(lockAfterAll, null, 'active run lock must be released after run A completes');
+  }
+
+  // TEST E: Lock release on failure
+  {
+    const storage = ExtensionStorage.memory();
+    class FailingApi extends MockApi {
+      async nextJob() {
+        throw new Error('MOCKED_SCHEDULER_NETWORK_ERROR');
+      }
+    }
+    const { controller } = await makeController(new FailingApi({ jobs: [job] }), storage);
+
+    let errorThrown = false;
+    try {
+      await controller.runOnce({ runId: 'run-fail' });
+    } catch (err) {
+      errorThrown = true;
+      assert.match(err.message, /MOCKED_SCHEDULER_NETWORK_ERROR/);
+    }
+    assert.equal(errorThrown, true, 'deterministic error must be thrown');
+
+    const lockAfterFail = await storage.getActiveRunLock();
+    assert.equal(lockAfterFail, null, 'active lock must be removed in finally on failure (TEST E)');
+
+    const goodApi = new MockApi({ jobs: [job] });
+    const recovering = await makeController(goodApi, storage);
+    const recoverResult = await recovering.controller.runOnce({ runId: 'run-recover' });
+    assert.equal(recoverResult.ok, true, 'future run must succeed after failure lock release (TEST E)');
+  }
+
+  pass('Phase 4B1A.5A execution start, single run_id, mutual exclusion, reentry rejection, and lock cleanup');
+}
+
 await testManifestAndConstants();
 await testFreshStartupAndNoJob();
 await testApiClientBindsWorkerFetch();
@@ -511,6 +676,7 @@ await testJobAcquiredAndPipeline();
 await testPhase4bOneShotGuard();
 await testAuditLogDurabilityAndRedaction();
 await testPhase4bPreconditions();
+await testPhase4b1a5aExecutionStartAndActiveLock();
 await testHeartbeatLossAndLeaseLost();
 await testProtocolMismatchAndAuthRequired();
 await testRestartAndIndexedDbPersistence();

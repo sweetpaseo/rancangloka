@@ -189,6 +189,46 @@ export class ExtensionStorage {
     });
   }
 
+  async acquireActiveRunLock({ runId, now = new Date().toISOString(), staleThresholdMs = 300000 }) {
+    return this.update((state) => {
+      state.locks ??= {};
+      const current = state.locks.activeRun;
+      if (current) {
+        if (current.run_id === runId) {
+          return { acquired: true, lock: current };
+        }
+        const acquiredMs = Date.parse(current.acquired_at || current.started_at || 0);
+        const age = Date.parse(now) - acquiredMs;
+        if (!isNaN(age) && age < staleThresholdMs) {
+          return { acquired: false, reason: 'RUN_ALREADY_ACTIVE', lock: current };
+        }
+      }
+      state.locks.activeRun = {
+        run_id: runId,
+        started_at: now,
+        acquired_at: now
+      };
+      return { acquired: true, lock: state.locks.activeRun };
+    });
+  }
+
+  async releaseActiveRunLock({ runId = null } = {}) {
+    return this.update((state) => {
+      state.locks ??= {};
+      if (!state.locks.activeRun) return { released: true, lock: null };
+      if (!runId || state.locks.activeRun.run_id === runId) {
+        delete state.locks.activeRun;
+        return { released: true };
+      }
+      return { released: false, lock: state.locks.activeRun };
+    });
+  }
+
+  async getActiveRunLock() {
+    const state = await this.readState();
+    return state.locks?.activeRun ?? null;
+  }
+
   async appendAuditEvent(event) {
     return this.update((state) => {
       state.auditLog ??= { events: [], lastAction: 'Idle', nextSequence: 1 };
@@ -202,6 +242,8 @@ export class ExtensionStorage {
         .slice(-MAX_AUDIT_EVENTS);
       if (record.event_code === 'RUN_FAILED' || record.event_code === 'RUN_NEEDS_ATTENTION') {
         state.auditLog.lastAction = `Needs attention - ${record.error_code || record.message_safe || record.event_code}`;
+      } else if (record.event_code === 'RUN_REENTRY_REJECTED') {
+        state.auditLog.lastAction = 'Run rejected: already active';
       } else if (record.event_code === 'RUN_COMPLETE') {
         state.auditLog.lastAction = 'Complete';
       } else if (record.event_code === 'RUN_REQUEST_ACCEPTED') {
