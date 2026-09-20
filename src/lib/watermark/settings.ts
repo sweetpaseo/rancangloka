@@ -313,6 +313,44 @@ export async function saveD1WatermarkSettings(
     watermark_version: current.watermark_version
   });
 
+  // Verification for IMAGE mode asset linkage
+  if (normalized.type === WATERMARK_TYPES.IMAGE && normalized.image?.asset_id) {
+    if (db && typeof db.prepare === 'function') {
+      const assetRow = await db
+        .prepare('SELECT * FROM site_watermark_assets WHERE asset_id = ? LIMIT 1')
+        .bind(normalized.image.asset_id)
+        .first();
+
+      if (!assetRow) {
+        throw new WatermarkSettingsValidationError(
+          `Asset watermark '${normalized.image.asset_id}' tidak ditemukan di sistem database.`,
+          'UNKNOWN_ASSET_ID'
+        );
+      }
+
+      if (assetRow.purpose !== 'WATERMARK_MASTER') {
+        throw new WatermarkSettingsValidationError(
+          `Asset '${normalized.image.asset_id}' bukan bertipe WATERMARK_MASTER (purpose: ${assetRow.purpose}).`,
+          'WRONG_PURPOSE_ASSET'
+        );
+      }
+
+      if (!['image/png', 'image/webp'].includes(assetRow.mime_type)) {
+        throw new WatermarkSettingsValidationError(
+          `Asset '${normalized.image.asset_id}' memiliki tipe MIME '${assetRow.mime_type}' yang tidak didukung.`,
+          'UNSUPPORTED_ASSET_MIME'
+        );
+      }
+
+      if (Number(assetRow.alpha_present) !== 1) {
+        throw new WatermarkSettingsValidationError(
+          `Asset '${normalized.image.asset_id}' tidak memiliki transparansi terverifikasi (alpha_present != 1).`,
+          'OPAQUE_ASSET'
+        );
+      }
+    }
+  }
+
   // Check if identical to current configuration
   const isIdentical = areSettingsFunctionallyIdentical(current, normalized);
   let newVersion = current.watermark_version;
@@ -340,9 +378,13 @@ export async function saveD1WatermarkSettings(
     // Record audit event if changed
     if (versionBumped) {
       try {
-        const auditEvent = {
+        const isAssetChange = current.image?.asset_id !== normalized.image?.asset_id;
+        const auditEvent: any = {
+          event: isAssetChange ? 'WATERMARK_SETTINGS_ASSET_CHANGED' : 'WATERMARK_SETTINGS_CHANGED',
           previous_version: current.watermark_version,
           new_version: newVersion,
+          previous_asset_id: current.image?.asset_id || null,
+          new_asset_id: normalized.image?.asset_id || null,
           changed_at: new Date().toISOString(),
           actor: options.actor || 'admin'
         };

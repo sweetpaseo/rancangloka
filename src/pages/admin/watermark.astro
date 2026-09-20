@@ -138,23 +138,49 @@ const initialSettings = await getD1WatermarkSettings(db);
             <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <span>🖼️</span> Konfigurasi Logo / Gambar Transparan
             </h2>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-              Master PNG / WebP
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Cloudflare R2 Master
             </span>
           </div>
 
+          <!-- Current Active Asset Indicator -->
+          <div id="current-asset-card" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Asset Master Aktif di R2</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-[#0066ee] border border-blue-200">
+                VALIDATED
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono font-bold text-slate-800" id="current-asset-id">-</span>
+              <span class="text-[11px] text-slate-500 font-medium" id="current-asset-dimensions">Terhubung ke R2 Storage</span>
+            </div>
+          </div>
+
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Unggah Berkas Logo</label>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Unggah Berkas Logo Master</label>
             <input
               type="file"
               id="field-image-file"
               accept="image/png,image/webp"
               class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[#0066ee] hover:file:bg-blue-100 cursor-pointer"
             />
-            <p class="text-[10px] text-slate-400 mt-1">Hanya format PNG transparan atau WebP transparan (Maks. 2MB). SVG tidak diizinkan.</p>
+            <p class="text-[10px] text-slate-400 mt-1">Hanya format PNG transparan atau WebP transparan (20x20 s.d. 2000x2000 px, Maks. 2MB). SVG, JPEG, dan remote URL ditolak.</p>
           </div>
 
           <div id="image-preflight-status" class="hidden rounded-xl p-3 text-xs font-medium"></div>
+
+          <!-- Upload Master to R2 Action -->
+          <div id="upload-master-container" class="hidden">
+            <button
+              type="button"
+              id="btn-upload-master"
+              class="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow-xs flex items-center justify-center gap-2"
+            >
+              <span>☁️</span>
+              <span id="btn-upload-master-label">Unggah Master ke R2</span>
+            </button>
+          </div>
 
           <div>
             <div class="flex justify-between items-center mb-1">
@@ -174,9 +200,9 @@ const initialSettings = await getD1WatermarkSettings(db);
           </div>
 
           <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
-            <span class="font-bold text-slate-800">Catatan Penyimpanan:</span>
+            <span class="font-bold text-slate-800">Penyimpanan Master:</span>
             <span id="asset-storage-note">
-              Watermark gambar transparan dapat divalidasi dan di-preview secara live. Penyimpanan binary ke Media Storage permanen akan diselesaikan pada Phase 5D4B.
+              Watermark master disimpan secara aman di Cloudflare R2 Media Bucket dengan deduplikasi konten SHA-256 dan alpha channel terverifikasi.
             </span>
           </div>
         </div>
@@ -337,6 +363,13 @@ const initialSettings = await getD1WatermarkSettings(db);
       const imagePreflightStatus = document.getElementById('image-preflight-status');
       const fieldImageWidthRatio = document.getElementById('field-image-width-ratio');
       const labelImageWidth = document.getElementById('label-image-width');
+      const currentAssetCard = document.getElementById('current-asset-card');
+      const currentAssetId = document.getElementById('current-asset-id');
+      const currentAssetDimensions = document.getElementById('current-asset-dimensions');
+      const uploadMasterContainer = document.getElementById('upload-master-container');
+      const btnUploadMaster = document.getElementById('btn-upload-master');
+      const btnUploadMasterLabel = document.getElementById('btn-upload-master-label');
+      let selectedFileToUpload = null;
 
       const posButtons = document.querySelectorAll('.pos-btn');
       const fieldOpacity = document.getElementById('field-opacity');
@@ -388,10 +421,29 @@ const initialSettings = await getD1WatermarkSettings(db);
           fieldFontWeight.value = String(state.text.font_weight || 500);
         }
 
-        // Image values
+        // Image values & active asset badge
         if (state.image) {
           fieldImageWidthRatio.value = (state.image.width_ratio * 100).toFixed(1);
           labelImageWidth.textContent = (state.image.width_ratio * 100).toFixed(1) + '%';
+
+          if (state.image.asset_id) {
+            currentAssetCard.classList.remove('hidden');
+            currentAssetId.textContent = state.image.asset_id;
+            if (!loadedImageBitmap) {
+              const previewImg = new Image();
+              previewImg.crossOrigin = 'anonymous';
+              previewImg.src = `/api/admin/watermark/assets/${encodeURIComponent(state.image.asset_id)}/preview`;
+              previewImg.onload = () => {
+                loadedImageBitmap = previewImg;
+                currentAssetDimensions.textContent = `${previewImg.naturalWidth}x${previewImg.naturalHeight} px (R2 Master)`;
+                renderPreview();
+              };
+            }
+          } else {
+            currentAssetCard.classList.add('hidden');
+          }
+        } else {
+          currentAssetCard.classList.add('hidden');
         }
 
         // Positions
@@ -545,12 +597,29 @@ const initialSettings = await getD1WatermarkSettings(db);
 
       // Preflight Image validation function
       async function validateImageFile(file) {
-        if (!file) return;
+        if (!file) {
+          selectedFileToUpload = null;
+          uploadMasterContainer.classList.add('hidden');
+          return;
+        }
         const validMimes = ['image/png', 'image/webp'];
         if (!validMimes.includes(file.type)) {
           imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200';
-          imagePreflightStatus.textContent = '❌ Format tidak didukung: ' + file.type + '. Gunakan PNG transparan atau WebP transparan.';
+          imagePreflightStatus.textContent = '❌ Format tidak didukung: ' + (file.type || 'unknown') + '. Gunakan PNG transparan atau WebP transparan.';
           imagePreflightStatus.classList.remove('hidden');
+          selectedFileToUpload = null;
+          uploadMasterContainer.classList.add('hidden');
+          loadedImageBitmap = null;
+          renderPreview();
+          return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+          imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200';
+          imagePreflightStatus.textContent = '❌ Ukuran file ' + (file.size / (1024 * 1024)).toFixed(2) + ' MiB melebihi batas maksimum 2 MiB.';
+          imagePreflightStatus.classList.remove('hidden');
+          selectedFileToUpload = null;
+          uploadMasterContainer.classList.add('hidden');
           loadedImageBitmap = null;
           renderPreview();
           return;
@@ -558,8 +627,11 @@ const initialSettings = await getD1WatermarkSettings(db);
 
         try {
           const bitmap = await createImageBitmap(file);
-          if (bitmap.width <= 0 || bitmap.height <= 0) {
-            throw new Error('Dimensi gambar tidak valid.');
+          if (bitmap.width < 20 || bitmap.height < 20) {
+            throw new Error(`Dimensi gambar (${bitmap.width}x${bitmap.height} px) lebih kecil dari batas minimum 20x20 px.`);
+          }
+          if (bitmap.width > 2000 || bitmap.height > 2000) {
+            throw new Error(`Dimensi gambar (${bitmap.width}x${bitmap.height} px) melebihi batas maksimum 2000x2000 px.`);
           }
 
           // Scan alpha transparency
@@ -579,24 +651,68 @@ const initialSettings = await getD1WatermarkSettings(db);
 
           if (transparentCount === 0) {
             imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200';
-            imagePreflightStatus.textContent = '⚠️ Peringatan: Gambar tidak memiliki piksel transparan (alpha channel penuh 100%). Watermark logo harus memiliki latar transparan.';
+            imagePreflightStatus.textContent = '❌ Gambar tidak memiliki piksel transparan (alpha channel penuh 100%). Watermark logo master harus memiliki transparansi.';
             imagePreflightStatus.classList.remove('hidden');
-            loadedImageBitmap = bitmap;
-          } else {
-            imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200';
-            imagePreflightStatus.textContent = `✅ Gambar valid: ${bitmap.width}x${bitmap.height} px dengan alpha channel transparan terverifikasi.`;
-            imagePreflightStatus.classList.remove('hidden');
-            loadedImageBitmap = bitmap;
+            selectedFileToUpload = null;
+            uploadMasterContainer.classList.add('hidden');
+            loadedImageBitmap = null;
+            renderPreview();
+            return;
           }
+
+          imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200';
+          imagePreflightStatus.textContent = `✅ File valid: ${file.name} (${bitmap.width}x${bitmap.height} px, ${(file.size / 1024).toFixed(1)} KB, Alpha OK). Siap diunggah ke R2 storage.`;
+          imagePreflightStatus.classList.remove('hidden');
+          selectedFileToUpload = file;
+          uploadMasterContainer.classList.remove('hidden');
+          loadedImageBitmap = bitmap;
           renderPreview();
         } catch (err) {
           imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200';
-          imagePreflightStatus.textContent = '❌ Gagal membaca gambar: ' + err.message;
+          imagePreflightStatus.textContent = '❌ Validasi gagal: ' + err.message;
           imagePreflightStatus.classList.remove('hidden');
+          selectedFileToUpload = null;
+          uploadMasterContainer.classList.add('hidden');
           loadedImageBitmap = null;
           renderPreview();
         }
       }
+
+      // Upload Master to R2 Listener
+      btnUploadMaster.addEventListener('click', async () => {
+        if (!selectedFileToUpload) return;
+        btnUploadMaster.disabled = true;
+        btnUploadMasterLabel.textContent = 'Mengunggah ke R2...';
+        try {
+          const formData = new FormData();
+          formData.append('file', selectedFileToUpload);
+          formData.append('filename', selectedFileToUpload.name);
+
+          const res = await fetch('/api/admin/watermark/asset', {
+            method: 'POST',
+            body: formData
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.message || 'Gagal mengunggah master watermark ke R2.');
+          }
+
+          if (!state.image) state.image = {};
+          state.image.asset_id = data.asset.asset_id;
+          updateUiFromState();
+          uploadMasterContainer.classList.add('hidden');
+          showNotice(
+            `✅ ${data.message} (Asset ID: ${data.asset.asset_id}). Klik 'Simpan Pengaturan' untuk mengunci konfigurasi.`,
+            'success'
+          );
+        } catch (err) {
+          showNotice(`❌ Upload gagal: ${err.message}`, 'error');
+        } finally {
+          btnUploadMaster.disabled = false;
+          btnUploadMasterLabel.textContent = 'Unggah Master ke R2';
+        }
+      });
 
       // Event Listeners
       fieldEnabled.addEventListener('change', () => {
