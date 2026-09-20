@@ -120,4 +120,46 @@ export class ApiClient {
     onProgress?.({ bytesSent: total, bytesTotal: total });
     return payload;
   }
+
+  getWatermarkConfig() {
+    return this.request('/api/internal/v1/media/watermark/config', {
+      method: 'GET',
+      headers: this.headers()
+    });
+  }
+
+  async getWatermarkMasterAsset(assetId) {
+    const response = await this.fetchImpl(`${this.baseUrl}/api/internal/v1/media/watermark/assets/${encodeURIComponent(assetId)}`, {
+      method: 'GET',
+      headers: this.headers({
+        Accept: 'image/png, image/webp, */*'
+      })
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      const error = new Error(payload.code ?? payload.error ?? payload.message ?? `HTTP_${response.status}`);
+      error.code = payload.code ?? payload.error;
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
+    }
+
+    const meta = {
+      asset_id: response.headers.get('x-asset-id') || assetId,
+      mime: response.headers.get('x-asset-mime') || response.headers.get('content-type') || 'image/png',
+      width: parseInt(response.headers.get('x-asset-width') || '0', 10),
+      height: parseInt(response.headers.get('x-asset-height') || '0', 10),
+      byte_size: parseInt(response.headers.get('x-asset-byte-size') || response.headers.get('content-length') || '0', 10),
+      sha256: response.headers.get('x-asset-sha256') || '',
+      alpha_present: response.headers.get('x-asset-alpha-present') === 'true'
+    };
+
+    const bytes = await response.arrayBuffer();
+    return {
+      bytes,
+      meta
+    };
+  }
 }
+

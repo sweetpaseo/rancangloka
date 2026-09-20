@@ -569,12 +569,15 @@ export async function transformWatermark({
   const sourceSha256 = sourceMeta.sha256 || (await computeSha256(sourceBlob));
 
   // 7. Compute deterministic transform ID
+  const watermarkVersion = Number(config.watermark_version ?? options.watermarkVersion ?? DEFAULT_WATERMARK_VERSION);
+  const engineVersion = String(config.engine_version ?? options.engineVersion ?? WATERMARK_ENGINE_VERSION);
+
   const transformId = await computeTransformId({
     sourceSha256,
     normalizedConfig,
     watermarkAssetSha256,
-    watermarkVersion: DEFAULT_WATERMARK_VERSION,
-    engineVersion: WATERMARK_ENGINE_VERSION
+    watermarkVersion,
+    engineVersion
   });
 
   // 8. Execute Canvas Rendering
@@ -683,8 +686,8 @@ export async function transformWatermark({
     height: renderedHeight,
     byteSize: outputBlob.size,
     transformId,
-    engineVersion: WATERMARK_ENGINE_VERSION,
-    watermarkVersion: DEFAULT_WATERMARK_VERSION,
+    engineVersion,
+    watermarkVersion,
     sourceSha256,
     watermarkAssetSha256,
     normalizedConfig
