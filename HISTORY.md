@@ -17,6 +17,129 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5H2 Controlled Article Media Attachment Execution 2026-09-20
+
+- Successfully executed controlled canonical attachment of registered media asset `ast_d230f3d834ae5f1a9f689d7c` to controlled article fixture `article_id: 1`, `slot_key: 'featured'`.
+- Invoked canonical internal endpoint: `POST /api/internal/v1/media/article-media/attach` with device authentication (`Bearer lkmd_controlled_phase5h2_device`, scope `media:attach`).
+- First clean attachment created exactly one active relation in `article_media` (`id: 1`, `article_id: 1`, `slot_key: 'featured'`, `asset_id: 'ast_d230f3d834ae5f1a9f689d7c'`, `role: 'featured'`, `is_active: 1`, `sort_order: 0`, `reused_existing: false`).
+- Single-active-slot constraint verified: `idx_article_media_one_active_slot` ensures exactly one active asset per `(article_id, slot_key)`.
+- Idempotency verified: second invocation with identical payload returned existing attachment (`id: 1`, `reused_existing: true`, 0 second inserts).
+- Lost-response retry recovery and restart/reopen readback verified independently against Miniflare D1 SQLite.
+- Safe audit event recorded in `media_asset_audit` (`action: 'ATTACH'`, safe metadata JSON, zero binary).
+- Absolute safety boundaries verified:
+  - Article status remained strictly `draft` (`ARTICLE_STATUS_MUTATIONS=0`).
+  - Article readiness remained strictly `NONE` (`ARTICLE_READINESS_MUTATIONS=0`, readiness transition deferred to Phase 5I).
+  - Article `updated_at` remained strictly unchanged (`2026-09-16T05:09:07.518Z`).
+  - Registered media asset `ast_d230f3d834ae5f1a9f689d7c` in `media_assets` remained untouched (`status: VALIDATED`, 0 mutations).
+  - Canonical R2 object at `media/articles/derivatives/458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff.png` remained unchanged (`R2_PUT_CALLS=0`, `R2_DELETE_CALLS=0`).
+  - Extension IndexedDB original, derivative, and upload receipt remained 100% intact.
+  - Zero binary transfer, zero image processing, zero publication mutations, zero production mutations.
+- Result: `PHASE_5H2=PASS`, `ARTICLE_MEDIA_ATTACHMENT_LANE_CLOSED=YES`, `READY_FOR_READINESS_RECONCILIATION=YES`.
+
+### LokaMedia Phase 5H1 Article Media Attachment Foundation 2026-09-20
+
+- Built decoupled article media attachment service and dedicated internal device-authenticated endpoint.
+- Checkpoint commit: `182726593d11cc7971ad759190eaf18901bca753` (`feat: add article media attachment`).
+- Service implementation: `src/lib/media/article-media.ts` (`attachArticleMedia`, `resolveEditorialRole`, `assertValidSlotKey`).
+  - Enforced editorial slot identity: `(article_id, slot_key)`.
+  - Enforced attachability guards: article existence in `articles` (404), media asset existence & `VALIDATED` status in `media_assets` (404/422).
+  - Enforced role compatibility: permits `ARTICLE_PUBLIC_DERIVATIVE`, strictly bars site-level `WATERMARK_MASTER` (422).
+  - Enforced slot regex validation: `/^[a-z][a-z0-9_]{1,63}$/` (400).
+  - Enforced provenance compatibility: generated asset bound to `article_id`/`slot_key` cannot be attached to a different article or slot (422).
+  - Enforced active slot cardinality (`ONE_ACTIVE_ASSET_PER_SLOT` via `idx_article_media_one_active_slot`).
+  - Enforced replacement policy: `FAIL_CLOSED_REPLACEMENT_REQUIRED` (409 `SLOT_OCCUPIED_CONFLICT` if different asset attempts to occupy active slot).
+  - Idempotent duplicate reuse (`reused_existing: true`).
+  - Safe audit trail logged to `media_asset_audit` (`action: 'ATTACH'`).
+- Internal API endpoint: `src/pages/api/internal/v1/media/article-media/attach.ts`.
+  - Least-privilege device authentication (`media:attach`, `media:upload`, `media:device`, `media:write:draft`).
+  - Binary rejection guard: rejects multipart/form-data, octet-stream, and image/* with 415.
+- Deterministic test suite: `scripts/test-lokamedia-phase5h1-article-media-attachment.js` (39 tests all pass).
+- Full regression pass: 202 tests passed across Phase 5H1, 5G1, 5E1, publication readiness, and existing media tests. Clean TypeScript typecheck (`npx tsc --noEmit`).
+
+### LokaMedia Phase 5G2 Controlled Media Assets Registration Execution 2026-09-20
+
+- Successfully executed controlled canonical registration of the verified R2 derivative into `media_assets`.
+- Consumed verified durable upload receipt (`upl_34381ae9e9996a2d4b4e0d93d29da49849e38fce7160e3e675a4d2c656f82d45`, state: `UPLOADED`) and verified canonical R2 object metadata (`media/articles/derivatives/458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff.png`, size: 3847117, SHA: `458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff`).
+- Invoked canonical internal endpoint: `POST /api/internal/v1/media/assets/register`.
+- Deterministic asset identity derived and verified: `ast_d230f3d834ae5f1a9f689d7c` (`ast_${sha256(role:sha256:r2_key).substring(0, 24)}`).
+- First clean registration inserted exactly one row into `media_assets` with `status: 'VALIDATED'`, `role: 'ARTICLE_PUBLIC_DERIVATIVE'`, and full provenance JSON (`derivative_id`, `transform_id`, `upload_id`, `job_id`, `slot_key`, `article_id`).
+- Safe audit event recorded in `media_asset_audit` (`action: 'REGISTER'`).
+- Idempotency verified: second invocation returned existing asset (`reused_existing: true`, 0 second inserts).
+- Lost-response retry recovery and post-reopen discovery verified.
+- Absolute safety boundaries verified: `REGISTRATION_BINARY_BYTES_SENT=0`, `R2_PUT_CALLS=0`, `ARTICLE_MEDIA_CREATE_CALLS=0`, `ARTICLE_STATUS_MUTATIONS=0`, `ARTICLE_READINESS_MUTATIONS=0`, `PUBLICATION_MUTATIONS=0`.
+- Result: `PHASE_5G2=PASS`, `MEDIA_ASSET_REGISTRATION_LANE_CLOSED=YES`, `READY_FOR_ARTICLE_MEDIA_ATTACHMENT=YES`.
+
+### LokaMedia Phase 5G1 Media Asset Registration Foundation 2026-09-20
+
+- Built decoupled media asset registration service and dedicated internal device-authenticated endpoint.
+- Checkpoint commit: `861baa58bc90a4dae2a9f6c5f8cd01cf9d562730` (`feat: add media asset registration`).
+- Database migration: `db/migrations/0016_media_assets_derivative_registration.sql` (additive columns for role, upload_id, derivative_id, transform_id, provenance_json; created `media_asset_audit` table).
+- Service implementation: `src/lib/media/asset-registration.ts` (`registerMediaAsset`, `computeMediaAssetId`).
+  - Enforced content-addressed identity rule: `ast_${sha256(role:sha256:r2_key).substring(0, 24)}`.
+  - Enforced server-side receipt verification (must be `UPLOADED` with matching metadata).
+  - Enforced independent canonical R2 object existence and metadata check (`bucket.head`).
+  - Enforced idempotent deduplication and identity conflict guard (409 on conflicting metadata).
+  - Preserved R2 storage on database failure (zero R2 deletes).
+  - Strict decoupling: zero `article_media` creation, zero article readiness or status mutation.
+- Internal API endpoint: `src/pages/api/internal/v1/media/assets/register.ts`.
+- Deterministic test suite: `scripts/test-lokamedia-phase5g1-asset-registration.js` (40 tests all pass).
+
+### LokaMedia Phase 5E2 Controlled Live R2 Upload Execution 2026-09-20
+
+- Successfully executed controlled live upload of public derivative candidate to local Miniflare R2 bucket (`rancangloka-media`).
+- Controlled fixture: `der_882fdc3c59e650718a83a38c5fa0db0f8b422a504946772c0f3af0fde9a0a662` (transform `f886f5d7b3278ebb6da84e9551df0c26b20795608eca26b05007f20ba48f155c`, 3847117 bytes, SHA `458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff`).
+- Canonical R2 storage key: `media/articles/derivatives/458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff.png`.
+- Durable upload receipt persisted in IndexedDB `media-uploads`: `upl_34381ae9e9996a2d4b4e0d93d29da49849e38fce7160e3e675a4d2c656f82d45` (state: `UPLOADED`).
+- Second batch and duplicate enqueue idempotency verified: 0 second transfers, 0 duplicate R2 objects.
+- R2 binary readback independently verified byte-for-byte identical (3847117 bytes, SHA-256 match).
+- Zero `media_assets` rows created, zero `article_media` rows created, zero article status or readiness mutations.
+- Result: `PHASE_5E2=PASS`, `UPLOAD_LANE_CLOSED=YES`, `READY_FOR_MEDIA_ASSET_REGISTRATION=YES`.
+
+### LokaMedia Phase 5E1 Durable Derivative Upload Queue Foundation 2026-09-20
+
+- Built durable client-side upload queue and server-side upload verification endpoint.
+- Checkpoint commit: `1c30da7a0ab0118608836ea200c5cd4689679340` (`feat: add durable derivative upload queue`).
+- Upgraded extension IndexedDB schema version from 3 to 4, adding `media-uploads` store.
+- Modules: `src/upload-queue.ts`, `src/lib/media/derivative-upload.ts`, `src/pages/api/internal/v1/media/derivatives/[derivative_id]/upload.ts`.
+- Enforced lease lock with expiration, concurrency cap of 2, backpressure limits, and canonical R2 key format.
+- Deterministic test suite: `scripts/test-lokamedia-phase5e1-upload-queue.js` (19 tests all pass).
+
+### LokaMedia Phase 5D5B Controlled Live Watermark Derivative Execution 2026-09-20
+
+- Successfully executed one live watermark transform on the immutable captured original (`mjob_5c0f488d7ee123b9579a58a5:1`, 3846190 bytes).
+- Produced durable derivative: `der_882fdc3c59e650718a83a38c5fa0db0f8b422a504946772c0f3af0fde9a0a662` (transform `f886f5d7b3278ebb6da84e9551df0c26b20795608eca26b05007f20ba48f155c`, SHA: `458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff`, 3847117 bytes, 1672x941 PNG).
+- Stored durably in IndexedDB `media-derivatives` with role `PUBLIC_DERIVATIVE_CANDIDATE`.
+- Idempotency verified: re-running transform reused existing derivative with 0 additional transforms.
+- Original binary verified 100% immutable (SHA `68641cd3be874524f7a033bc539170f28cee0a609885d93c1f63f7c15ff35813` unchanged).
+- Result: `PHASE_5D5B=PASS`, `MEDIA_PROCESSING_LANE_CLOSED=YES`, `READY_FOR_UPLOAD_QUEUE=YES`.
+
+### LokaMedia Phase 5D5A Durable Watermark Derivative Pipeline 2026-09-20
+
+- Checkpoint commit: `d5b67948bbdd73f4038af9dc395d65768247146c` (`feat: add durable watermark derivative pipeline`).
+- Upgraded extension IndexedDB schema version from 2 to 3, adding `media-derivatives` store.
+- Built client-side derivative pipeline (`src/derivative-pipeline.js`) with transform fingerprinting, watermark composition, and idempotent caching.
+- Deterministic test suite: `scripts/test-lokamedia-phase5d5a-watermark-derivative-pipeline.js` (24 tests all pass).
+
+### LokaMedia Phase 5D4B Watermark Master Asset Storage 2026-09-20
+
+- Checkpoint commit: `a13e2532cb19e59d2a6a1aa5e4f20ec6179e8c45` (`feat: add watermark master asset storage`).
+- Migration: `db/migrations/0015_site_watermark_assets.sql` (`site_watermark_assets` table).
+- Service: `src/lib/watermark/assets.ts` with dedicated R2 namespace `site/watermarks/master/`.
+- Deterministic test suite: `scripts/test-lokamedia-phase5d4b-watermark-asset-storage.js` (19 tests all pass).
+
+### LokaMedia Phase 5D4A Admin Watermark Settings 2026-09-20
+
+- Checkpoint commit: `50b41416ef35245a49fc51205fe2df4973ee7e5f` (`feat: add admin watermark settings`).
+- Endpoints: `GET /api/admin/settings/watermark` and `PUT /api/admin/settings/watermark`.
+- Schema: canonical settings structure with version tracking.
+- Deterministic test suite: `scripts/test-lokamedia-phase5d4a-watermark-settings.js` (14 tests all pass).
+
+### LokaMedia Phase 5D3A Deterministic Watermark Transform Core 2026-09-20
+
+- Checkpoint commit: `1a40ab480d1964fb49e3cf41865c3bbcb3d1ffad` (`feat: add deterministic watermark transform core`).
+- Module: `src/watermark-engine.js` (pure client-side deterministic composition with Canvas 2D API).
+- Deterministic test suite: `scripts/test-lokamedia-phase5d3a-watermark-engine.js` (14 tests all pass).
+
 ### LokaMedia Phase 4B1A.5D2P Fresh Provider Preflight 2026-09-19
 
 - Verified and reconciled extension runtime lifecycle after 5D1E fix and 5D2R-2 canonical recovery.

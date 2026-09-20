@@ -4,25 +4,93 @@ Date: 2026-09-15
 
 ## Latest Local Checkpoint
 
-Date: 2026-09-19
+Date: 2026-09-20
 
 Latest clean checkpoint commit:
 
 ```text
-0d04af48d3b946b4484b5c5b1d95fdc31b1dfa13
+182726593d11cc7971ad759190eaf18901bca753
 ```
 
 Commit message:
 
 ```text
-fix: await correlated ChatGPT image result before capture
+feat: add article media attachment
 ```
 
-`LOKAMEDIA_PHASE_4B1A5D2P=PASS_FRESH_PROVIDER_PREFLIGHT`
-`LOKAMEDIA_PHASE_4B1A5D2R_2=PASS_CANONICAL_RECOVERY_POST_5D1E`
-`LOKAMEDIA_PHASE_4B1A5D1E=PASS_PROVIDER_RESULT_AWAIT_AND_CAPTURE_GUARD`
-`LOKAMEDIA_PHASE_4B1A5D1C=PASS_INDEXEDDB_CAPTURE_STORE_SCHEMA_MIGRATION`
-`READY_FOR_ONE_FRESH_5D2=YES`
+`LOKAMEDIA_PHASE_5H2=PASS_CONTROLLED_ARTICLE_MEDIA_ATTACHMENT`
+`LOKAMEDIA_PHASE_5H1=PASS_ARTICLE_MEDIA_ATTACHMENT_FOUNDATION`
+`LOKAMEDIA_PHASE_5G2=PASS_CONTROLLED_MEDIA_ASSETS_REGISTRATION`
+`LOKAMEDIA_PHASE_5G1=PASS_MEDIA_ASSET_REGISTRATION_FOUNDATION`
+`LOKAMEDIA_PHASE_5E2=PASS_CONTROLLED_LIVE_R2_UPLOAD`
+`LOKAMEDIA_PHASE_5E1=PASS_DURABLE_DERIVATIVE_UPLOAD_QUEUE`
+`LOKAMEDIA_PHASE_5D5B=PASS_CONTROLLED_LIVE_WATERMARK_DERIVATIVE`
+`LOKAMEDIA_PHASE_5D5A=PASS_DURABLE_WATERMARK_DERIVATIVE_PIPELINE`
+`LOKAMEDIA_PHASE_5D4B=PASS_WATERMARK_MASTER_ASSET_STORAGE`
+`LOKAMEDIA_PHASE_5D4A=PASS_ADMIN_WATERMARK_SETTINGS`
+`LOKAMEDIA_PHASE_5D3A=PASS_DETERMINISTIC_WATERMARK_TRANSFORM_CORE`
+`MEDIA_PROCESSING_LANE_CLOSED=YES`
+`UPLOAD_LANE_CLOSED=YES`
+`MEDIA_ASSET_REGISTRATION_LANE_CLOSED=YES`
+`ARTICLE_MEDIA_ATTACHMENT_LANE_CLOSED=YES`
+`READY_FOR_READINESS_RECONCILIATION=YES`
+
+Phase 5H2 (Controlled Article Media Attachment Execution):
+- Controlled article fixture `article_id: 1`, `slot_key: 'featured'`.
+- Registered media asset `ast_d230f3d834ae5f1a9f689d7c` attached via canonical endpoint `POST /api/internal/v1/media/article-media/attach`.
+- Exactly one active relation created in `article_media` (`id: 1`, `article_id: 1`, `slot_key: 'featured'`, `asset_id: 'ast_d230f3d834ae5f1a9f689d7c'`, `role: 'featured'`, `is_active: 1`, `reused_existing: false`).
+- Duplicate attachment idempotency verified (`reused_existing: true`, 0 duplicate inserts).
+- Lost-response recovery and restart/reopen readback verified independently.
+- Audit event recorded in `media_asset_audit` (`action: 'ATTACH'`).
+- Invariant safety verified: article status remains `draft`, readiness remains `NONE`, updated_at unchanged. Zero R2 activity, zero binary transfer.
+
+Phase 5H1 (Article Media Attachment Foundation):
+- Commit `182726593d11cc7971ad759190eaf18901bca753` (`feat: add article media attachment`).
+- Service: `src/lib/media/article-media.ts` (`attachArticleMedia`, `resolveEditorialRole`, `assertValidSlotKey`).
+- Internal API: `src/pages/api/internal/v1/media/article-media/attach.ts`.
+- Enforces existence, attachability, role compatibility, slot regex, provenance guard, active slot uniqueness (`idx_article_media_one_active_slot`), conflict guard (`FAIL_CLOSED_REPLACEMENT_REQUIRED`), idempotency, and audit.
+- Deterministic test suite: `scripts/test-lokamedia-phase5h1-article-media-attachment.js` (39 tests all pass). Full regression clean (202 tests pass).
+
+Phase 5G2 (Controlled Media Assets Registration Execution):
+- Verified R2 derivative `media/articles/derivatives/458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff.png` (3847117 bytes) registered into `media_assets` as `ast_d230f3d834ae5f1a9f689d7c`.
+- Provenance stored in `provenance_json`. Audit event recorded in `media_asset_audit`. Idempotency verified.
+
+Phase 5G1 (Media Asset Registration Foundation):
+- Commit `861baa58bc90a4dae2a9f6c5f8cd01cf9d562730` (`feat: add media asset registration`).
+- Migration `db/migrations/0016_media_assets_derivative_registration.sql`.
+- Service `src/lib/media/asset-registration.ts` and endpoint `src/pages/api/internal/v1/media/assets/register.ts`.
+- Deterministic test suite: `scripts/test-lokamedia-phase5g1-asset-registration.js` (40 tests all pass).
+
+Phase 5E2 (Controlled Live R2 Upload Execution):
+- Public derivative candidate uploaded to local Miniflare R2 bucket (`rancangloka-media`).
+- Upload receipt stored in IndexedDB `media-uploads`: `upl_34381ae9e9996a2d4b4e0d93d29da49849e38fce7160e3e675a4d2c656f82d45` (`state: UPLOADED`).
+- Second batch idempotency verified (0 second uploads).
+
+Phase 5E1 (Durable Derivative Upload Queue Foundation):
+- Commit `1c30da7a0ab0118608836ea200c5cd4689679340` (`feat: add durable derivative upload queue`).
+- IndexedDB schema v3 -> v4 (`media-uploads` store). Modules: `src/upload-queue.ts`, `src/lib/media/derivative-upload.ts`.
+- Deterministic test suite: `scripts/test-lokamedia-phase5e1-upload-queue.js` (19 tests all pass).
+
+Phase 5D5B (Controlled Live Watermark Derivative Execution):
+- Watermark derivative produced from immutable original: `der_882fdc3c59e650718a83a38c5fa0db0f8b422a504946772c0f3af0fde9a0a662` (transform `f886f5d7b3278ebb6da84e9551df0c26b20795608eca26b05007f20ba48f155c`, SHA: `458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff`).
+- Stored in IndexedDB `media-derivatives` with role `PUBLIC_DERIVATIVE_CANDIDATE`.
+
+Phase 5D5A (Durable Watermark Derivative Pipeline):
+- Commit `d5b67948bbdd73f4038af9dc395d65768247146c` (`feat: add durable watermark derivative pipeline`).
+- IndexedDB schema v2 -> v3 (`media-derivatives` store). Client-side pipeline in `src/derivative-pipeline.js`.
+- Deterministic test suite: `scripts/test-lokamedia-phase5d5a-watermark-derivative-pipeline.js` (24 tests all pass).
+
+Phase 5D4B (Watermark Master Asset Storage):
+- Commit `a13e2532cb19e59d2a6a1aa5e4f20ec6179e8c45` (`feat: add watermark master asset storage`).
+- Migration `0015_site_watermark_assets.sql`. Service `src/lib/watermark/assets.ts`.
+
+Phase 5D4A (Admin Watermark Settings):
+- Commit `50b41416ef35245a49fc51205fe2df4973ee7e5f` (`feat: add admin watermark settings`).
+
+Phase 5D3A (Deterministic Watermark Transform Core):
+- Commit `1a40ab480d1964fb49e3cf41865c3bbcb3d1ffad` (`feat: add deterministic watermark transform core`).
+- Client module `src/watermark-engine.js`.
+
 
 Phase 4B1A.5D2P (Fresh Provider Preflight):
 - Reloaded extension with commit `0d04af48d3b946b4484b5c5b1d95fdc31b1dfa13`.
