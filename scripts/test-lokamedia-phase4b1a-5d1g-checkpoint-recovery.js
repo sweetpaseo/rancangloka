@@ -90,15 +90,26 @@ class TrackingProvider {
 }
 
 class MockApi {
-  constructor(jobToReturn = null) {
+  constructor(jobToReturn = undefined) {
     this.jobToReturn = jobToReturn;
     this.releases = [];
     this.heartbeats = [];
     this.uploads = [];
   }
 
-  async nextJob() {
-    return { protocol_version: 1, job: this.jobToReturn };
+  async nextJob(deviceId = 'device-test-01') {
+    if (this.jobToReturn !== undefined) {
+      return { protocol_version: 1, job: this.jobToReturn };
+    }
+    return {
+      protocol_version: 1,
+      job: makeJob('mjob_5c0f488d7ee123b9579a58a5', {
+        status: 'LEASED',
+        lease_owner: deviceId || 'device-test-01',
+        lease_expires_at: new Date(Date.now() + 300000).toISOString(),
+        job_revision: 17
+      })
+    };
   }
 
   async releaseJob(jobId, payload) {

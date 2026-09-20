@@ -1,7 +1,7 @@
 import { BackpressureController } from './backpressure.js';
 import { ProviderLane } from './provider-adapter.js';
 import { MockProviderAdapter } from './mock-provider.js';
-import { ReconciliationManager } from './reconciliation-manager.js';
+import { ReconciliationManager, hasValidRecoveryLease } from './reconciliation-manager.js';
 import { UploadWorkerPool } from './upload-worker-pool.js';
 import { HeartbeatManager } from './heartbeat-manager.js';
 import { LOKAMEDIA_PROTOCOL_VERSION } from './constants.js';
@@ -119,10 +119,11 @@ export class LokaMediaController {
             : state.config?.captureBlobProbe
         );
 
-        return await this.runJob(targetJob, {
+        return await this.runCheckpointRecovery(targetJob, {
           runId,
-          runMode: 'checkpoint_capture_recovery',
-          captureBlobProbe
+          acceptedLogged: true,
+          captureBlobProbe,
+          ...options
         });
       }
 
@@ -288,18 +289,36 @@ export class LokaMediaController {
       }
       await this.audit.info('RUN_GATE_CHECK_PASS', { run_id: runId, mode: 'recovery' });
 
-      let job = typeof jobOrJobId === 'object' && jobOrJobId !== null ? jobOrJobId : null;
+      let job = typeof jobOrJobId === 'object' && jobOrJobId !== null ? { ...jobOrJobId } : null;
       if (!job) {
         const jobId = typeof jobOrJobId === 'string' ? jobOrJobId : null;
         if (jobId) {
-          job = state.jobs[jobId];
+          job = state.jobs?.[jobId] ? { ...state.jobs[jobId] } : null;
         } else {
-          job = Object.values(state.jobs ?? {}).find((j) => isRecoverableResultCheckpoint(j.result_checkpoint, j));
+          const found = Object.values(state.jobs ?? {}).find((j) => isRecoverableResultCheckpoint(j.result_checkpoint, j));
+          if (found) job = { ...found };
         }
       }
       if (!job) {
         await this.audit.warn('CHECKPOINT_RECOVERY_FAIL', { run_id: runId, error_code: 'RESULT_CHECKPOINT_MISSING' });
-        return { ok: false, error: 'RESULT_CHECKPOINT_MISSING' };
+        const missErr = new Error('RESULT_CHECKPOINT_MISSING');
+        missErr.code = 'RESULT_CHECKPOINT_MISSING';
+        throw missErr;
+      }
+
+      const storedJob = state.jobs?.[job.job_id] || {};
+      const candidateCheckpoint = job.result_checkpoint || storedJob.result_checkpoint || null;
+      if (!candidateCheckpoint) {
+        await this.audit.warn('CHECKPOINT_RECOVERY_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'RESULT_CHECKPOINT_MISSING' });
+        const missErr = new Error('RESULT_CHECKPOINT_MISSING');
+        missErr.code = 'RESULT_CHECKPOINT_MISSING';
+        throw missErr;
+      }
+      if (!isRecoverableResultCheckpoint(candidateCheckpoint, job)) {
+        await this.audit.warn('CHECKPOINT_RECOVERY_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'RESULT_CHECKPOINT_INVALID' });
+        const invErr = new Error('RESULT_CHECKPOINT_INVALID');
+        invErr.code = 'RESULT_CHECKPOINT_INVALID';
+        throw invErr;
       }
 
       const captureBlobProbe = Boolean(
@@ -308,10 +327,115 @@ export class LokaMediaController {
           : state.config?.captureBlobProbe
       );
 
-      return await this.runJob(job, {
+      const deviceId = state.config.deviceId;
+      let acquireResult = null;
+      let leaseJob = job;
+
+      if (hasValidRecoveryLease(leaseJob, deviceId)) {
+        acquireResult = 'SKIPPED';
+        await this.audit.info('JOB_ACQUIRE_SKIPPED', {
+          run_id: runId,
+          job_id: leaseJob.job_id,
+          reason: 'EXISTING_LEASE_VALID',
+          lease_owner: leaseJob.lease_owner,
+          job_revision: leaseJob.job_revision
+        });
+      } else {
+        await this.audit.info('JOB_ACQUIRE_START', { run_id: runId, mode: 'recovery', expected_job_id: job.job_id });
+        let acquireResponse = null;
+        try {
+          acquireResponse = await this.apiClient.nextJob(deviceId);
+        } catch (acquireErr) {
+          await this.audit.warn('JOB_ACQUIRE_FAIL', {
+            run_id: runId,
+            error_code: acquireErr.code || acquireErr.message || 'ACQUIRE_REQUEST_FAILED',
+            mode: 'recovery'
+          });
+          acquireResult = 'FAILED';
+          const err = new Error(acquireErr.code || acquireErr.message || 'ACQUIRE_REQUEST_FAILED');
+          err.code = acquireErr.code || 'ACQUIRE_REQUEST_FAILED';
+          throw err;
+        }
+
+        if (acquireResponse?.protocol_version && acquireResponse.protocol_version !== LOKAMEDIA_PROTOCOL_VERSION) {
+          await this.audit.error('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: 'PROTOCOL_MISMATCH' });
+          acquireResult = 'FAILED';
+          const err = new Error('PROTOCOL_MISMATCH');
+          err.code = 'PROTOCOL_MISMATCH';
+          throw err;
+        }
+
+        const acquired = acquireResponse?.job;
+        if (!acquired) {
+          const code = acquireResponse?.error || 'NO_JOB_ACQUIRED';
+          await this.audit.warn('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: code, mode: 'recovery' });
+          acquireResult = 'FAILED';
+          const err = new Error(code);
+          err.code = code;
+          throw err;
+        }
+
+        // Fail-closed validation: acquired job_id and slot_key MUST match checkpoint
+        if (acquired.job_id !== job.job_id || acquired.slot_key !== job.slot_key) {
+          await this.audit.warn('JOB_ACQUIRE_FAIL', {
+            run_id: runId,
+            error_code: 'WRONG_ACQUIRED_JOB',
+            expected_job_id: job.job_id,
+            acquired_job_id: acquired.job_id,
+            expected_slot_key: job.slot_key,
+            acquired_slot_key: acquired.slot_key
+          });
+          if (typeof this.apiClient?.releaseJob === 'function') {
+            try {
+              await this.apiClient.releaseJob(acquired.job_id, {
+                expectedJobRevision: acquired.job_revision,
+                intent: 'SAFE_REQUEUE',
+                reasonCode: 'WRONG_ACQUIRED_JOB_DURING_RECOVERY',
+                messageSafe: 'Recovery acquired different job than checkpoint'
+              });
+            } catch (relErr) {
+              this.logger?.warn?.('failed to release mismatched job lease', { error: relErr?.message || relErr });
+            }
+          }
+          acquireResult = 'MISMATCH';
+          const mismatchErr = new Error('WRONG_ACQUIRED_JOB');
+          mismatchErr.code = 'WRONG_ACQUIRED_JOB';
+          throw mismatchErr;
+        }
+
+        acquireResult = 'ACQUIRED';
+        leaseJob = {
+          ...job,
+          ...acquired,
+          result_checkpoint: candidateCheckpoint
+        };
+        await this.storage.upsertJob(leaseJob.job_id, leaseJob);
+        await this.audit.info('JOB_ACQUIRED', {
+          run_id: runId,
+          job_id: leaseJob.job_id,
+          article_id: leaseJob.article_id,
+          slot_key: leaseJob.slot_key,
+          lease_owner: leaseJob.lease_owner,
+          job_revision: leaseJob.job_revision,
+          mode: 'recovery'
+        });
+
+        // Heartbeat policy: issue heartbeat immediately after acquire / before capture
+        if (this.heartbeat && typeof this.heartbeat.beat === 'function') {
+          const beatResult = await this.heartbeat.beat(leaseJob);
+          if (beatResult && !beatResult.ok) {
+            const beatErr = new Error(beatResult.response?.error || 'HEARTBEAT_FAILED');
+            beatErr.code = beatResult.response?.error || 'HEARTBEAT_FAILED';
+            throw beatErr;
+          }
+        }
+      }
+
+      return await this.runJob(leaseJob, {
         runId,
         runMode: 'checkpoint_capture_recovery',
         captureBlobProbe,
+        acquireResult,
         ...options
       });
     } finally {
@@ -319,7 +443,7 @@ export class LokaMediaController {
     }
   }
 
-  async runJob(job, { runId = null, controlledRunOnce = false, providerResultProbe = false, captureBlobProbe = false, runMode = null } = {}) {
+  async runJob(job, { runId = null, controlledRunOnce = false, providerResultProbe = false, captureBlobProbe = false, runMode = null, acquireResult = null } = {}) {
     const isExplicitRecovery = runMode === 'checkpoint_capture_recovery';
     const state = await this.storage.readState();
     const storedJob = state.jobs?.[job.job_id] || {};
@@ -348,7 +472,8 @@ export class LokaMediaController {
       }
       return this._executeCaptureFromCheckpoint(job, candidateCheckpoint, {
         runId,
-        captureBlobProbe
+        captureBlobProbe,
+        acquireResult: acquireResult || 'ACQUIRED'
       });
     }
 
@@ -363,9 +488,10 @@ export class LokaMediaController {
         });
         throw invErr;
       }
-      return this._executeCaptureFromCheckpoint(job, candidateCheckpoint, {
+      return await this.runCheckpointRecovery(job, {
         runId,
-        captureBlobProbe
+        captureBlobProbe,
+        controlledRunOnce
       });
     }
 
@@ -604,7 +730,7 @@ export class LokaMediaController {
     }
   }
 
-  async _executeCaptureFromCheckpoint(job, checkpoint, { runId = null, captureBlobProbe = false } = {}) {
+  async _executeCaptureFromCheckpoint(job, checkpoint, { runId = null, captureBlobProbe = false, acquireResult = 'ACQUIRED' } = {}) {
     const originRunId = checkpoint.run_id;
     const recoveryRunId = runId || `run_rec_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
 
@@ -644,6 +770,14 @@ export class LokaMediaController {
         origin_run_id: originRunId,
         job_id: job.job_id
       });
+
+      const state = await this.storage.readState();
+      const deviceId = state?.config?.deviceId;
+      if (!hasValidRecoveryLease(job, deviceId)) {
+        const leaseErr = new Error('EXPIRED_RECOVERY_LEASE');
+        leaseErr.code = 'EXPIRED_RECOVERY_LEASE';
+        throw leaseErr;
+      }
 
       // Backpressure inspection before capturing & persisting
       const pressure = await this.backpressure.inspect();
@@ -756,6 +890,7 @@ export class LokaMediaController {
           status: 'CAPTURE_BLOB_PROBE_STOPPED',
           execution_mode: 'checkpoint_capture_recovery',
           checkpoint_recovery_used: true,
+          acquire_result: acquireResult,
           origin_run_id: originRunId,
           recovery_run_id: recoveryRunId,
           run_id: recoveryRunId,
@@ -783,8 +918,10 @@ export class LokaMediaController {
         acquired: true,
         execution_mode: 'checkpoint_capture_recovery',
         checkpoint_recovery_used: true,
+        acquire_result: acquireResult,
         origin_run_id: originRunId,
         recovery_run_id: recoveryRunId,
+        run_id: recoveryRunId,
         job_id: job.job_id
       };
     } catch (error) {

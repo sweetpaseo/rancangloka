@@ -9,6 +9,7 @@ import { AuditLogger, formatAuditText, MAX_AUDIT_EVENTS, AUDIT_RETENTION_DAYS } 
 import { ChatGptHandshakeManager } from './providers/chatgpt/handshake.js';
 import { ChatGptTabController } from './providers/chatgpt/tab-controller.js';
 import { CHATGPT_MESSAGE_TYPES } from './providers/chatgpt/constants.js';
+import { reconcileJobState } from './reconciliation-manager.js';
 
 const storage = createChromeStorage();
 const blobStore = new IndexedDbBlobStore();
@@ -74,15 +75,26 @@ async function refreshServerState() {
         }
       for (const job of response.jobs ?? []) {
         const local = nextState.jobs[job.job_id] ?? {};
-        const serverState = job.status;
-        const localState = ACTIVE_QUEUE_STATES.has(local.local_state) && !WAITING_QUEUE_STATES.has(serverState) && serverState !== 'COMPLETE'
-          ? local.local_state
-          : serverState;
-        nextState.jobs[job.job_id] = {
+        const recon = reconcileJobState(local, job);
+        const merged = {
           ...local,
           ...job,
-          local_state: localState
+          local_state: recon.local_state,
+          result_checkpoint: local.result_checkpoint ?? job.result_checkpoint ?? null
         };
+        if (recon.preserved_durable_stage && local.blob_key) {
+          merged.blob_key = local.blob_key;
+          merged.sha256 = local.sha256;
+          merged.mime = local.mime;
+          merged.width = local.width;
+          merged.height = local.height;
+          merged.size = local.size;
+        }
+        if (recon.needs_attention) {
+          merged.needs_attention = true;
+          merged.attention_reason = recon.inconsistency_reason;
+        }
+        nextState.jobs[job.job_id] = merged;
       }
       updateQueueCounters(nextState);
     });
