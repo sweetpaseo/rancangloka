@@ -12,7 +12,8 @@ export const ALLOWED_MEDIA_SCOPES = new Set([
   'media:upload',
   'media:attach',
   'media:device',
-  'media:write:draft'
+  'media:write:draft',
+  'media:reconcile'
 ]);
 
 export const FORBIDDEN_SCOPES = new Set([
