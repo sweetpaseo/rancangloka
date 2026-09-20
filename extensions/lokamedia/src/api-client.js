@@ -161,5 +161,86 @@ export class ApiClient {
       meta
     };
   }
+
+  async uploadDerivative({
+    derivativeId,
+    transformId,
+    jobId = '',
+    slotKey = 'featured',
+    role = 'PUBLIC_DERIVATIVE_CANDIDATE',
+    bytes,
+    mime = 'image/png',
+    width,
+    height,
+    sha256,
+    onProgress
+  }) {
+    if (!bytes) throw new Error('Derivative bytes are required for upload');
+    const total = bytes.byteLength !== undefined ? bytes.byteLength : (bytes.length ?? 0);
+    onProgress?.({ bytesSent: 0, bytesTotal: total });
+
+    const form = new FormData();
+    form.set('derivative_id', derivativeId);
+    form.set('transform_id', transformId);
+    form.set('job_id', jobId);
+    form.set('slot_key', slotKey);
+    form.set('role', role);
+    form.set('mime', mime);
+    form.set('width', String(width));
+    form.set('height', String(height));
+    form.set('byte_size', String(total));
+    form.set('sha256', sha256);
+    form.set('file', new Blob([bytes], { type: mime }), 'derivative.png');
+
+    const response = await this.fetchImpl(
+      `${this.baseUrl}/api/internal/v1/media/derivatives/${encodeURIComponent(derivativeId)}/upload`,
+      {
+        method: 'POST',
+        headers: this.deviceToken ? { Authorization: `Bearer ${this.deviceToken}` } : {},
+        body: form
+      }
+    );
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.message ?? payload.code ?? payload.error ?? `HTTP_${response.status}`);
+      error.code = payload.code ?? payload.error ?? 'UPLOAD_FAILED';
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
+    }
+
+    onProgress?.({ bytesSent: total, bytesTotal: total });
+    return payload;
+  }
+
+  async getDerivativeUploadReceipt(sha256, derivativeId, transformId, extension = 'png') {
+    const params = new URLSearchParams({
+      sha256,
+      transform_id: transformId,
+      extension
+    });
+    const response = await this.fetchImpl(
+      `${this.baseUrl}/api/internal/v1/media/derivatives/${encodeURIComponent(derivativeId)}/upload?${params.toString()}`,
+      {
+        method: 'GET',
+        headers: this.headers()
+      }
+    );
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.message ?? payload.code ?? `HTTP_${response.status}`);
+      error.code = payload.code ?? 'FETCH_RECEIPT_FAILED';
+      error.status = response.status;
+      throw error;
+    }
+
+    return payload.receipt ?? null;
+  }
 }
 

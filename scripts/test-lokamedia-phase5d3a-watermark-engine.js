@@ -469,7 +469,7 @@ const swTestExpression = `(async () => {
   });
 
   // 5. Read-only live fixture evaluation on mjob_5c0f488d7ee123b9579a58a5:1
-  const request = indexedDB.open('lokamedia-extension', 2);
+  const request = indexedDB.open('lokamedia-extension');
   const db = await new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);

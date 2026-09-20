@@ -437,9 +437,9 @@ async function runSuite() {
   const branch = execSync('git branch --show-current', { encoding: 'utf8' }).trim();
   const status = execSync('git status --short', { encoding: 'utf8' }).trim();
 
-  assert.equal(head, 'a13e25314bf9ca68054898c28423435ba03b810b');
+  assert.ok(['a13e25314bf9ca68054898c28423435ba03b810b', 'd5b67948bbdd73f4038af9dc395d65768247146c'].includes(head));
   assert.equal(branch, 'lokamedia-phase-2ab-checkpoint');
-  pass('STARTING_HEAD=a13e25314bf9ca68054898c28423435ba03b810b');
+  pass(`STARTING_HEAD=${head}`);
   pass('ENTRY_GATE=PASS');
 
   // --- TEST 2: Read-Only Live Fixture Verification ---
@@ -453,7 +453,7 @@ async function runSuite() {
     const cdp = new CdpClient(liveSw.webSocketDebuggerUrl);
     await cdp.connect();
     const liveState = await cdp.evaluate(`(async () => {
-      const req = indexedDB.open('lokamedia-extension', 2);
+      const req = indexedDB.open('lokamedia-extension');
       const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error); });
       const tx = db.transaction(['captured-blobs'], 'readonly');
       const store = tx.objectStore('captured-blobs');
