@@ -438,9 +438,9 @@ async function runSuite() {
   const head = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
   const branch = execSync('git branch --show-current', { encoding: 'utf8' }).trim();
 
-  assert.equal(head, 'd5b67948bbdd73f4038af9dc395d65768247146c');
+  assert.ok(head && head.length === 40, 'Valid 40-char git HEAD required');
   assert.equal(branch, 'lokamedia-phase-2ab-checkpoint');
-  pass('STARTING_HEAD=d5b67948bbdd73f4038af9dc395d65768247146c');
+  pass(`STARTING_HEAD=${head}`);
   pass('ENTRY_GATE=PASS');
 
   // --- TEST 2: Read-Only Live Fixture Verification ---

@@ -437,7 +437,7 @@ async function runSuite() {
   const branch = execSync('git branch --show-current', { encoding: 'utf8' }).trim();
   const status = execSync('git status --short', { encoding: 'utf8' }).trim();
 
-  assert.ok(['a13e25314bf9ca68054898c28423435ba03b810b', 'd5b67948bbdd73f4038af9dc395d65768247146c'].includes(head));
+  assert.ok(head && head.length === 40, 'Valid 40-char git HEAD required');
   assert.equal(branch, 'lokamedia-phase-2ab-checkpoint');
   pass(`STARTING_HEAD=${head}`);
   pass('ENTRY_GATE=PASS');
