@@ -154,7 +154,9 @@ export class ChatGptProviderAdapter {
         width: response.width || 1024,
         height: response.height || 768,
         sha256: response.sha256 || `sha256-${job.job_id}`,
-        blobKey: `${job.job_id}:${job.prompt_version ?? 1}`
+        blobKey: `${job.job_id}:${job.prompt_version ?? 1}`,
+        provenance: response.provenance || 'PROVIDER_BINARY',
+        is_canonical_original: response.is_canonical_original ?? (response.provenance !== 'CANVAS_REENCODED')
       };
   }
 

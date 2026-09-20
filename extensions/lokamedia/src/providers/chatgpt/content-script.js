@@ -338,66 +338,217 @@
     };
   }
 
+  function safeAtob(str) {
+    if (typeof atob === 'function') return atob(str);
+    if (typeof globalThis !== 'undefined' && typeof globalThis.atob === 'function') return globalThis.atob(str);
+    if (typeof Buffer !== 'undefined') return Buffer.from(str, 'base64').toString('binary');
+    return '';
+  }
+
+  function safeBtoa(str) {
+    if (typeof btoa === 'function') return btoa(str);
+    if (typeof globalThis !== 'undefined' && typeof globalThis.btoa === 'function') return globalThis.btoa(str);
+    if (typeof Buffer !== 'undefined') return Buffer.from(str, 'binary').toString('base64');
+    return '';
+  }
+
   async function imageToDataUrl(imgElement) {
-    // If element has a valid src, try canvas drawImage first (for already-rendered image elements)
+    if (!imgElement) throw new Error('CAPTURE_IMAGE_MISSING');
+
+    const src = imgElement.currentSrc || imgElement.src || imgElement.getAttribute?.('src');
+    if (!src) throw new Error('CAPTURE_SRC_MISSING');
+
+    // Priority 1: Direct Fetch of Provider Binary (HTTP/HTTPS or relative endpoint)
+    if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/')) {
+      try {
+        const fetchFn = (typeof globalThis !== 'undefined' && globalThis.fetch) ? globalThis.fetch : fetch;
+        const res = await fetchFn(src);
+        if (res && res.ok) {
+          const blob = await res.blob();
+          const mime = blob.type || 'image/png';
+          const buffer = await blob.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+
+          // Compute exact binary SHA-256
+          let sha256 = null;
+          if (typeof crypto !== 'undefined' && crypto.subtle?.digest) {
+            try {
+              const digest = await crypto.subtle.digest('SHA-256', buffer);
+              sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+            } catch {}
+          }
+
+          // True decoded dimensions: try createImageBitmap or naturalWidth/Height
+          let width = 0;
+          let height = 0;
+          if (typeof createImageBitmap === 'function') {
+            try {
+              const bmp = await createImageBitmap(blob);
+              width = bmp.width;
+              height = bmp.height;
+              bmp.close?.();
+            } catch {}
+          }
+          if (!width || !height) {
+            width = imgElement.naturalWidth || 0;
+            height = imgElement.naturalHeight || 0;
+          }
+          if (!width || !height) {
+            width = 1024;
+            height = 768;
+          }
+
+          let binary = '';
+          const chunk = 8192;
+          for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+          }
+          const dataUrl = `data:${mime};base64,${safeBtoa(binary)}`;
+
+          return {
+            data_url: dataUrl,
+            mime,
+            width,
+            height,
+            byte_size: buffer.byteLength,
+            sha256,
+            provenance: 'PROVIDER_BINARY',
+            is_canonical_original: true
+          };
+        }
+      } catch {
+        // Fetch failed, proceed to next priority
+      }
+    }
+
+    // Priority 2: DOM Binary (data: URL or blob: URL)
+    if (src.startsWith('data:')) {
+      const mime = src.slice(5, src.indexOf(';')) || 'image/png';
+      const base64 = src.split(',')[1] || '';
+      const binaryStr = safeAtob(base64);
+      let len = binaryStr.length;
+      let buffer = null;
+
+      if (len > 0) {
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        buffer = bytes.buffer;
+      } else {
+        len = Math.floor((base64.length * 3) / 4);
+      }
+
+      let sha256 = null;
+      if (buffer && typeof crypto !== 'undefined' && crypto.subtle?.digest) {
+        try {
+          const digest = await crypto.subtle.digest('SHA-256', buffer);
+          sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+        } catch {}
+      }
+
+      let width = imgElement.naturalWidth || 0;
+      let height = imgElement.naturalHeight || 0;
+      if (!width || !height) {
+        width = 1024;
+        height = 768;
+      }
+
+      return {
+        data_url: src,
+        mime,
+        width,
+        height,
+        byte_size: len,
+        sha256,
+        provenance: 'DOM_BINARY',
+        is_canonical_original: true
+      };
+    }
+
+    if (src.startsWith('blob:')) {
+      try {
+        const fetchFn = (typeof globalThis !== 'undefined' && globalThis.fetch) ? globalThis.fetch : fetch;
+        const res = await fetchFn(src);
+        if (res && res.ok) {
+          const blob = await res.blob();
+          const mime = blob.type || 'image/png';
+          const buffer = await blob.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+
+          let sha256 = null;
+          if (typeof crypto !== 'undefined' && crypto.subtle?.digest) {
+            try {
+              const digest = await crypto.subtle.digest('SHA-256', buffer);
+              sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+            } catch {}
+          }
+
+          let width = imgElement.naturalWidth || 0;
+          let height = imgElement.naturalHeight || 0;
+          if (!width || !height) {
+            width = 1024;
+            height = 768;
+          }
+
+          let binary = '';
+          const chunk = 8192;
+          for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+          }
+          const dataUrl = `data:${mime};base64,${btoa(binary)}`;
+
+          return {
+            data_url: dataUrl,
+            mime,
+            width,
+            height,
+            byte_size: buffer.byteLength,
+            sha256,
+            provenance: 'DOM_BINARY',
+            is_canonical_original: true
+          };
+        }
+      } catch {
+        // Blob fetch failed
+      }
+    }
+
+    // Priority 3: Canvas Fallback (ONLY if provider binary is unavailable)
+    return canvasFallback(imgElement);
+  }
+
+  function canvasFallback(imgElement) {
     if (typeof document !== 'undefined' && document.createElement) {
       try {
         const canvas = document.createElement('canvas');
-        const width = imgElement.naturalWidth || imgElement.width || 1024;
-        const height = imgElement.naturalHeight || imgElement.height || 768;
+        const width = imgElement.naturalWidth || 1024;
+        const height = imgElement.naturalHeight || 768;
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext?.('2d');
         if (ctx) {
           ctx.drawImage(imgElement, 0, 0, width, height);
           const dataUrl = canvas.toDataURL('image/png');
           if (dataUrl && dataUrl.startsWith('data:image/png;base64,') && dataUrl.length > 50) {
             const base64 = dataUrl.split(',')[1];
-            const byteSize = Math.floor((base64.length * 3) / 4);
-            return { data_url: dataUrl, mime: 'image/png', width, height, byte_size: byteSize };
+            const binaryStr = safeAtob(base64);
+            const len = binaryStr.length;
+            return {
+              data_url: dataUrl,
+              mime: 'image/png',
+              width,
+              height,
+              byte_size: len,
+              sha256: null,
+              provenance: 'CANVAS_REENCODED',
+              is_canonical_original: false
+            };
           }
         }
-      } catch {
-        // Tainted canvas or canvas draw failed, fallback to fetch below
-      }
+      } catch {}
     }
-
-    const src = imgElement.currentSrc || imgElement.src || imgElement.getAttribute?.('src');
-    if (!src) throw new Error('CAPTURE_SRC_MISSING');
-
-    if (src.startsWith('data:')) {
-      const mime = src.slice(5, src.indexOf(';')) || 'image/png';
-      const base64 = src.split(',')[1] || '';
-      const byteSize = Math.floor((base64.length * 3) / 4);
-      return {
-        data_url: src,
-        mime,
-        width: imgElement.naturalWidth || imgElement.width || 1024,
-        height: imgElement.naturalHeight || imgElement.height || 768,
-        byte_size: byteSize
-      };
-    }
-
-    // Otherwise fetch the source URL directly
-    const res = await fetch(src);
-    if (!res.ok) throw new Error(`CAPTURE_FETCH_FAILED_${res.status}`);
-    const blob = await res.blob();
-    const mime = blob.type || 'image/png';
-    const buffer = await blob.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    const chunk = 8192;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-    }
-    const dataUrl = `data:${mime};base64,${btoa(binary)}`;
-    return {
-      data_url: dataUrl,
-      mime,
-      width: imgElement.naturalWidth || imgElement.width || 1024,
-      height: imgElement.naturalHeight || imgElement.height || 768,
-      byte_size: buffer.byteLength
-    };
+    throw new Error('CAPTURE_BINARY_UNAVAILABLE');
   }
 
   async function controlledCapture(message, root = (typeof document !== 'undefined' ? document : null)) {
@@ -565,7 +716,8 @@
     getContainerFingerprint,
     getAllImages,
     controlledSubmit,
-    controlledCapture
+    controlledCapture,
+    imageToDataUrl
   };
 
   void handshake();

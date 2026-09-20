@@ -662,12 +662,22 @@ export class LokaMediaController {
         width: captured.width,
         height: captured.height,
         size: captured.size ?? byteLength,
-        bytes: captured.bytes
+        bytes: captured.bytes,
+        provenance: captured.provenance || 'PROVIDER_BINARY',
+        is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED')
       });
       await this.audit.info('CAPTURE_PERSISTED', {
         run_id: runId,
         job_id: job.job_id,
-        details: { sha256: captured.sha256, mime: captured.mime, width: captured.width, height: captured.height, size: captured.size ?? byteLength }
+        details: {
+          sha256: captured.sha256,
+          mime: captured.mime,
+          width: captured.width,
+          height: captured.height,
+          size: captured.size ?? byteLength,
+          provenance: captured.provenance || 'PROVIDER_BINARY',
+          is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED')
+        }
       });
       await this.storage.upsertJob(job.job_id, {
         local_state: 'CAPTURED',
@@ -675,7 +685,9 @@ export class LokaMediaController {
         sha256: captured.sha256,
         mime: captured.mime,
         width: captured.width,
-        height: captured.height
+        height: captured.height,
+        provenance: captured.provenance || 'PROVIDER_BINARY',
+        is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED')
       });
 
       // Capture Blob Probe boundary: stops immediately after durable persistence
@@ -691,6 +703,8 @@ export class LokaMediaController {
             width: captured.width,
             height: captured.height,
             size: captured.size ?? byteLength,
+            provenance: captured.provenance || 'PROVIDER_BINARY',
+            is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED'),
             local_state: 'CAPTURED'
           }
         });
@@ -705,7 +719,9 @@ export class LokaMediaController {
             mime: captured.mime,
             width: captured.width,
             height: captured.height,
-            size: captured.size ?? byteLength
+            size: captured.size ?? byteLength,
+            provenance: captured.provenance || 'PROVIDER_BINARY',
+            is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED')
           }
         };
       }
@@ -845,7 +861,9 @@ export class LokaMediaController {
         width: captured.width,
         height: captured.height,
         size: captured.size ?? byteLength,
-        bytes: captured.bytes
+        bytes: captured.bytes,
+        provenance: captured.provenance || 'PROVIDER_BINARY',
+        is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED')
       });
 
       await this.audit.info('CAPTURE_PERSISTED', {
@@ -856,7 +874,9 @@ export class LokaMediaController {
           mime: captured.mime,
           width: captured.width,
           height: captured.height,
-          size: captured.size ?? byteLength
+          size: captured.size ?? byteLength,
+          provenance: captured.provenance || 'PROVIDER_BINARY',
+          is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED')
         }
       });
 
@@ -867,7 +887,9 @@ export class LokaMediaController {
         mime: captured.mime,
         width: captured.width,
         height: captured.height,
-        result_checkpoint: checkpoint
+        result_checkpoint: checkpoint,
+        provenance: captured.provenance || 'PROVIDER_BINARY',
+        is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED')
       });
 
       // Capture Blob Probe boundary: stops immediately after durable persistence
@@ -882,6 +904,8 @@ export class LokaMediaController {
             width: captured.width,
             height: captured.height,
             size: captured.size ?? byteLength,
+            provenance: captured.provenance || 'PROVIDER_BINARY',
+            is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED'),
             local_state: 'CAPTURED'
           }
         });
@@ -901,7 +925,9 @@ export class LokaMediaController {
             mime: captured.mime,
             width: captured.width,
             height: captured.height,
-            size: captured.size ?? byteLength
+            size: captured.size ?? byteLength,
+            provenance: captured.provenance || 'PROVIDER_BINARY',
+            is_canonical_original: captured.is_canonical_original ?? (captured.provenance !== 'CANVAS_REENCODED')
           }
         };
       }
