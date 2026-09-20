@@ -23,5 +23,10 @@ export default defineConfig({
     tailwind({
       applyBaseStyles: false
     })
-  ]
+  ],
+  vite: {
+    ssr: {
+      external: ['node:zlib']
+    }
+  }
 });

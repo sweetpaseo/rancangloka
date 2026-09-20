@@ -585,111 +585,195 @@ const humanReasonDescriptions: Record<string, string> = {
     </article>
 
     <!-- Reading Progress & Explicit Editorial Approval Scripts -->
-    <script>
-      // Reading Progress
-      window.addEventListener('scroll', () => {
-        const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
-        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-        const scrolled = (winScroll / height) * 100;
-        const bar = document.getElementById('reading-progress');
-        if (bar) bar.style.width = scrolled + '%';
-      });
+    <script is:inline>
+      (function() {
+        function initApprovalRuntime() {
+          // Reading Progress
+          window.addEventListener('scroll', function() {
+            var winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+            var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            var scrolled = (winScroll / height) * 100;
+            var bar = document.getElementById('reading-progress');
+            if (bar) bar.style.width = scrolled + '%';
+          });
 
-      // Explicit Editorial Approval Client Handler (Phase 5J2)
-      // Strictly requires deliberate human click; NEVER triggers on load or refresh.
-      const approveBtn = document.getElementById('btn-explicit-approve');
-      const revokeBtn = document.getElementById('btn-explicit-revoke');
-      const notesInput = document.getElementById('approval-notes-input') as HTMLInputElement | null;
-      const feedbackEl = document.getElementById('approval-action-feedback');
+          // Explicit Editorial Approval Client Handler (Phase 5J2A)
+          // Strictly requires deliberate human click; NEVER triggers on load or refresh.
+          var approveBtn = document.getElementById('btn-explicit-approve');
+          var revokeBtn = document.getElementById('btn-explicit-revoke');
+          var notesInput = document.getElementById('approval-notes-input');
+          var feedbackEl = document.getElementById('approval-action-feedback');
 
-      function showFeedback(message: string, isError: boolean = false) {
-        if (!feedbackEl) return;
-        feedbackEl.textContent = message;
-        feedbackEl.className = `text-[11px] font-medium p-2 rounded-lg ${
-          isError ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-        }`;
-        feedbackEl.classList.remove('hidden');
-      }
-
-      if (approveBtn) {
-        approveBtn.addEventListener('click', async () => {
-          const articleId = approveBtn.getAttribute('data-article-id');
-          if (!articleId) return;
-
-          const confirmed = window.confirm(
-            'Apakah Anda yakin ingin memberikan Persetujuan Editorial (Approve) untuk artikel ini?\n\nPersetujuan akan mengikat hash konten dan featured media saat ini ke alur publikasi.'
-          );
-          if (!confirmed) return;
-
-          approveBtn.setAttribute('disabled', 'true');
-          const originalText = approveBtn.innerHTML;
-          approveBtn.innerHTML = '<span>⏳ Memproses Persetujuan...</span>';
-
-          try {
-            const notes = notesInput ? notesInput.value.trim() : '';
-            const res = await fetch(`/api/admin/publication/approve/${articleId}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                approved_by: 'editorial_editor',
-                approved_role: 'editor_in_chief',
-                notes: notes || null
-              })
-            });
-
-            const data = await res.json();
-            if (!res.ok) {
-              throw new Error(data.message || 'Gagal menyimpan persetujuan editorial');
-            }
-
-            showFeedback('✓ Persetujuan editorial berhasil dicatat. Memuat ulang pratinjau...', false);
-            setTimeout(() => {
-              window.location.reload();
-            }, 1200);
-          } catch (err: any) {
-            showFeedback(`Error: ${err.message}`, true);
-            approveBtn.removeAttribute('disabled');
-            approveBtn.innerHTML = originalText;
+          function showFeedback(message, isError) {
+            if (!feedbackEl) return;
+            feedbackEl.textContent = message;
+            feedbackEl.className = 'text-[11px] font-medium p-2.5 rounded-lg ' + (
+              isError
+                ? 'bg-rose-50 text-rose-700 border border-rose-200 block'
+                : 'bg-emerald-50 text-emerald-700 border border-emerald-200 block'
+            );
+            feedbackEl.classList.remove('hidden');
           }
-        });
-      }
 
-      if (revokeBtn) {
-        revokeBtn.addEventListener('click', async () => {
-          const articleId = revokeBtn.getAttribute('data-article-id');
-          if (!articleId) return;
+          var isApproveInFlight = false;
+          if (approveBtn) {
+            approveBtn.addEventListener('click', async function() {
+              if (isApproveInFlight) {
+                console.warn('[ApprovalRuntime] Click ignored: approval request already in flight.');
+                return;
+              }
 
-          const confirmed = window.confirm(
-            'Apakah Anda yakin ingin MENCABUT persetujuan editorial untuk artikel ini?'
-          );
-          if (!confirmed) return;
+              var articleId = approveBtn.getAttribute('data-article-id');
+              if (!articleId) {
+                showFeedback('Error: Article ID attribute is missing from approval button.', true);
+                return;
+              }
 
-          revokeBtn.setAttribute('disabled', 'true');
-          try {
-            const res = await fetch(`/api/admin/publication/approve/${articleId}`, {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                revoked_by: 'editorial_editor',
-                notes: 'Dicabut manual dari preview admin'
-              })
+              var confirmed = window.confirm(
+                'Apakah Anda yakin ingin memberikan Persetujuan Editorial (Approve) untuk artikel ini?\n\nPersetujuan akan mengikat hash konten dan featured media saat ini ke alur publikasi.'
+              );
+              if (!confirmed) return;
+
+              isApproveInFlight = true;
+              approveBtn.setAttribute('disabled', 'true');
+              approveBtn.style.opacity = '0.7';
+              approveBtn.style.cursor = 'not-allowed';
+              if (notesInput) notesInput.setAttribute('disabled', 'true');
+
+              var originalText = approveBtn.innerHTML;
+              approveBtn.innerHTML = '<span>⏳ Memproses Persetujuan...</span>';
+
+              try {
+                var notes = notesInput ? notesInput.value.trim() : '';
+                var res = await fetch('/api/admin/publication/approve/' + encodeURIComponent(articleId), {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    approved_by: 'editorial_editor',
+                    approved_role: 'editor_in_chief',
+                    notes: notes || null
+                  })
+                });
+
+                var data = {};
+                try {
+                  data = await res.json();
+                } catch (e) {
+                  data = {};
+                }
+
+                if (!res.ok) {
+                  var errMsg = data && data.message ? data.message : '';
+                  if (res.status === 401) {
+                    errMsg = 'Sesi admin tidak valid atau telah berakhir (401). Silakan login kembali.';
+                  } else if (res.status === 403) {
+                    errMsg = 'Akses ditolak (403): Verifikasi CSRF gagal atau otorisasi tidak mencukupi.';
+                  } else if (res.status === 422) {
+                    errMsg = 'Validasi redaksi gagal (422): ' + (errMsg || 'Syarat kesiapan publikasi belum terpenuhi.');
+                  } else if (!errMsg) {
+                    errMsg = 'Gagal memproses persetujuan (HTTP ' + res.status + ').';
+                  }
+                  throw new Error(errMsg);
+                }
+
+                showFeedback('✓ Persetujuan editorial berhasil dicatat. Memuat ulang pratinjau...', false);
+                approveBtn.innerHTML = '<span>✓ Persetujuan Disimpan</span>';
+                setTimeout(function() {
+                  window.location.reload();
+                }, 1200);
+              } catch (err) {
+                var msg = err && err.message ? err.message : 'Terjadi gangguan jaringan atau kesalahan sistem.';
+                showFeedback('Error: ' + msg, true);
+                isApproveInFlight = false;
+                approveBtn.removeAttribute('disabled');
+                approveBtn.style.opacity = '';
+                approveBtn.style.cursor = '';
+                approveBtn.innerHTML = originalText;
+                if (notesInput) notesInput.removeAttribute('disabled');
+              }
             });
-
-            const data = await res.json();
-            if (!res.ok) {
-              throw new Error(data.message || 'Gagal mencabut persetujuan editorial');
-            }
-
-            showFeedback('Persetujuan berhasil dicabut. Memuat ulang...', false);
-            setTimeout(() => {
-              window.location.reload();
-            }, 1200);
-          } catch (err: any) {
-            showFeedback(`Error: ${err.message}`, true);
-            revokeBtn.removeAttribute('disabled');
           }
-        });
-      }
+
+          var isRevokeInFlight = false;
+          if (revokeBtn) {
+            revokeBtn.addEventListener('click', async function() {
+              if (isRevokeInFlight) {
+                console.warn('[ApprovalRuntime] Click ignored: revoke request already in flight.');
+                return;
+              }
+
+              var articleId = revokeBtn.getAttribute('data-article-id');
+              if (!articleId) {
+                showFeedback('Error: Article ID attribute is missing from revoke button.', true);
+                return;
+              }
+
+              var confirmed = window.confirm(
+                'Apakah Anda yakin ingin MENCABUT persetujuan editorial untuk artikel ini?'
+              );
+              if (!confirmed) return;
+
+              isRevokeInFlight = true;
+              revokeBtn.setAttribute('disabled', 'true');
+              revokeBtn.style.opacity = '0.7';
+              revokeBtn.style.cursor = 'not-allowed';
+
+              var originalRevokeText = revokeBtn.innerHTML;
+              revokeBtn.innerHTML = '<span>⏳ Mencabut Persetujuan...</span>';
+
+              try {
+                var res = await fetch('/api/admin/publication/approve/' + encodeURIComponent(articleId), {
+                  method: 'DELETE',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    revoked_by: 'editorial_editor',
+                    notes: 'Dicabut manual dari preview admin'
+                  })
+                });
+
+                var data = {};
+                try {
+                  data = await res.json();
+                } catch (e) {
+                  data = {};
+                }
+
+                if (!res.ok) {
+                  var errMsg = data && data.message ? data.message : '';
+                  if (res.status === 401) {
+                    errMsg = 'Sesi admin tidak valid atau telah berakhir (401). Silakan login kembali.';
+                  } else if (res.status === 403) {
+                    errMsg = 'Akses ditolak (403): Verifikasi CSRF gagal atau otorisasi tidak mencukupi.';
+                  } else if (!errMsg) {
+                    errMsg = 'Gagal mencabut persetujuan (HTTP ' + res.status + ').';
+                  }
+                  throw new Error(errMsg);
+                }
+
+                showFeedback('Persetujuan berhasil dicabut. Memuat ulang...', false);
+                revokeBtn.innerHTML = '<span>Persetujuan Dicabut</span>';
+                setTimeout(function() {
+                  window.location.reload();
+                }, 1200);
+              } catch (err) {
+                var msg = err && err.message ? err.message : 'Terjadi gangguan jaringan saat mencabut persetujuan.';
+                showFeedback('Error: ' + msg, true);
+                isRevokeInFlight = false;
+                revokeBtn.removeAttribute('disabled');
+                revokeBtn.style.opacity = '';
+                revokeBtn.style.cursor = '';
+                revokeBtn.innerHTML = originalRevokeText;
+              }
+            });
+          }
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initApprovalRuntime);
+        } else {
+          initApprovalRuntime();
+        }
+      })();
     </script>
   </BaseLayout>
 )}
