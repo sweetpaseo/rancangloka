@@ -1,0 +1,735 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db';
+import { getD1WatermarkSettings, DEFAULT_WATERMARK_SETTINGS } from '../../lib/watermark/settings';
+
+const db = await getDb(Astro.locals);
+const initialSettings = await getD1WatermarkSettings(db);
+---
+
+<AdminLayout title="Media Settings — Watermark Engine">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="pb-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🛡️</span>
+          <h1 class="text-2xl font-black text-slate-900 tracking-tight">Watermark Engine Settings</h1>
+        </div>
+        <p class="text-xs text-slate-500 mt-1">
+          Konfigurasi atribusi watermark otomatis untuk derivatif media artikel RancangLoka.
+        </p>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <button
+          type="button"
+          id="reset-default-btn"
+          class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
+        >
+          🔄 Reset Default
+        </button>
+        <button
+          type="button"
+          id="save-watermark-btn"
+          class="rounded-xl bg-[#0066ee] px-5 py-2 text-xs font-bold text-white hover:bg-blue-600 transition shadow-md shadow-blue-500/20 flex items-center gap-1.5"
+        >
+          <span>💾</span>
+          <span id="save-btn-label">Simpan Pengaturan</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Status Notice Area -->
+    <div id="status-notice" class="hidden rounded-xl p-3.5 text-xs font-medium transition-all"></div>
+
+    <!-- Main Grid: Controls (Left) & Live Preview (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- Left Column: Controls (7 cols) -->
+      <div class="lg:col-span-7 space-y-5">
+        <!-- 1. General Activation & Type -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Status Watermark</h2>
+              <p class="text-sm font-bold text-slate-900 mt-0.5">Aktifkan Proteksi & Atribusi Gambar</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="field-enabled" class="sr-only peer" checked={initialSettings.enabled} />
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0066ee]"></div>
+            </label>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Tipe Watermark</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                id="btn-type-text"
+                class="type-toggle-btn rounded-xl py-2 px-3 text-xs font-bold border transition flex items-center justify-center gap-2"
+              >
+                <span>✍️</span>
+                <span>Teks (Default)</span>
+              </button>
+              <button
+                type="button"
+                id="btn-type-image"
+                class="type-toggle-btn rounded-xl py-2 px-3 text-xs font-bold border transition flex items-center justify-center gap-2"
+              >
+                <span>🖼️</span>
+                <span>Logo Transparan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Text Watermark Section -->
+        <div id="section-text-config" class="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <span>✍️</span> Konfigurasi Teks
+          </h2>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Teks Atribusi</label>
+            <input
+              type="text"
+              id="field-text-value"
+              value={initialSettings.text?.value || 'rancangloka.com'}
+              class="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/20 focus:border-[#0066ee]"
+              placeholder="Contoh: rancangloka.com"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-semibold text-slate-700">Ukuran Font</label>
+                <span id="label-font-size" class="text-xs font-bold text-[#0066ee]">2.2%</span>
+              </div>
+              <input
+                type="range"
+                id="field-font-size-ratio"
+                min="1.2"
+                max="5.0"
+                step="0.1"
+                value={(initialSettings.text?.font_size_ratio * 100).toFixed(1)}
+                class="w-full accent-[#0066ee]"
+              />
+              <p class="text-[10px] text-slate-400 mt-0.5">Proporsional terhadap dimensi gambar (1.2% – 5.0%)</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Ketebalan Font (Weight)</label>
+              <select
+                id="field-font-weight"
+                class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/20 focus:border-[#0066ee]"
+              >
+                <option value="400" selected={initialSettings.text?.font_weight === 400}>400 — Regular</option>
+                <option value="500" selected={initialSettings.text?.font_weight === 500 || !initialSettings.text?.font_weight}>500 — Medium (Rekomendasi)</option>
+                <option value="600" selected={initialSettings.text?.font_weight === 600}>600 — Semibold</option>
+                <option value="700" selected={initialSettings.text?.font_weight === 700}>700 — Bold</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Image Watermark Section -->
+        <div id="section-image-config" class="hidden rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <span>🖼️</span> Konfigurasi Logo / Gambar Transparan
+            </h2>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+              Master PNG / WebP
+            </span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Unggah Berkas Logo</label>
+            <input
+              type="file"
+              id="field-image-file"
+              accept="image/png,image/webp"
+              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[#0066ee] hover:file:bg-blue-100 cursor-pointer"
+            />
+            <p class="text-[10px] text-slate-400 mt-1">Hanya format PNG transparan atau WebP transparan (Maks. 2MB). SVG tidak diizinkan.</p>
+          </div>
+
+          <div id="image-preflight-status" class="hidden rounded-xl p-3 text-xs font-medium"></div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold text-slate-700">Ukuran Logo</label>
+              <span id="label-image-width" class="text-xs font-bold text-[#0066ee]">12.0%</span>
+            </div>
+            <input
+              type="range"
+              id="field-image-width-ratio"
+              min="5.0"
+              max="30.0"
+              step="0.5"
+              value={((initialSettings.image?.width_ratio || 0.12) * 100).toFixed(1)}
+              class="w-full accent-[#0066ee]"
+            />
+            <p class="text-[10px] text-slate-400 mt-0.5">Lebar logo relatif terhadap lebar gambar master (5.0% – 30.0%)</p>
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
+            <span class="font-bold text-slate-800">Catatan Penyimpanan:</span>
+            <span id="asset-storage-note">
+              Watermark gambar transparan dapat divalidasi dan di-preview secara live. Penyimpanan binary ke Media Storage permanen akan diselesaikan pada Phase 5D4B.
+            </span>
+          </div>
+        </div>
+
+        <!-- 4. Shared Placement & Opacity -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Posisi & Opasitas Bersama</h2>
+
+          <!-- Position Selector (4 buttons) -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-2">Posisi Penempatan</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                class="pos-btn rounded-xl py-2 px-3 text-xs font-semibold border transition text-center"
+                data-pos="top-left"
+              >
+                Kiri Atas
+              </button>
+              <button
+                type="button"
+                class="pos-btn rounded-xl py-2 px-3 text-xs font-semibold border transition text-center"
+                data-pos="top-right"
+              >
+                Kanan Atas
+              </button>
+              <button
+                type="button"
+                class="pos-btn rounded-xl py-2 px-3 text-xs font-semibold border transition text-center"
+                data-pos="bottom-left"
+              >
+                Kiri Bawah
+              </button>
+              <button
+                type="button"
+                class="pos-btn rounded-xl py-2 px-3 text-xs font-semibold border transition text-center"
+                data-pos="bottom-right"
+              >
+                Kanan Bawah (Default)
+              </button>
+            </div>
+          </div>
+
+          <!-- Opacity Slider -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold text-slate-700">Opasitas (Transparansi Watermark)</label>
+              <span id="label-opacity" class="text-xs font-bold text-[#0066ee]">62%</span>
+            </div>
+            <input
+              type="range"
+              id="field-opacity"
+              min="30"
+              max="90"
+              step="1"
+              value={Math.round(initialSettings.opacity * 100)}
+              class="w-full accent-[#0066ee]"
+            />
+            <p class="text-[10px] text-slate-400 mt-0.5">Subtil dan tidak mengganggu konten arsitektural (30% – 90%)</p>
+          </div>
+
+          <!-- Margins -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-semibold text-slate-700">Margin Horizontal (X)</label>
+                <span id="label-margin-x" class="text-xs font-bold text-[#0066ee]">2.2%</span>
+              </div>
+              <input
+                type="range"
+                id="field-margin-x-ratio"
+                min="1.0"
+                max="8.0"
+                step="0.1"
+                value={(initialSettings.margin_x_ratio * 100).toFixed(1)}
+                class="w-full accent-[#0066ee]"
+              />
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-semibold text-slate-700">Margin Vertikal (Y)</label>
+                <span id="label-margin-y" class="text-xs font-bold text-[#0066ee]">2.8%</span>
+              </div>
+              <input
+                type="range"
+                id="field-margin-y-ratio"
+                min="1.0"
+                max="8.0"
+                step="0.1"
+                value={(initialSettings.margin_y_ratio * 100).toFixed(1)}
+                class="w-full accent-[#0066ee]"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Live Interactive Preview (5 cols) -->
+      <div class="lg:col-span-5 space-y-3 sticky top-4">
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 shadow-xs">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <span>👁️</span> Live Engine Preview
+            </h2>
+            <div class="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+              <span>Mode:</span>
+              <button
+                type="button"
+                id="preview-bg-toggle"
+                class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+              >
+                Foto Arsitektur
+              </button>
+            </div>
+          </div>
+
+          <!-- Canvas Container -->
+          <div class="relative rounded-xl overflow-hidden bg-slate-900 border border-slate-200 shadow-inner flex items-center justify-center">
+            <canvas id="preview-canvas" width="800" height="450" class="w-full h-auto block"></canvas>
+            <div id="disabled-overlay" class="hidden absolute inset-0 bg-slate-950/70 backdrop-blur-xs flex flex-col items-center justify-center text-white">
+              <span class="text-2xl mb-1">🚫</span>
+              <span class="text-xs font-bold uppercase tracking-wider">Watermark Dinonaktifkan</span>
+              <span class="text-[10px] text-slate-400 mt-0.5">Gambar master akan disajikan tanpa modifikasi</span>
+            </div>
+          </div>
+
+          <!-- Spec Details Footer -->
+          <div class="pt-2 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Versi Konfigurasi: <strong id="spec-version" class="text-slate-800">v{initialSettings.watermark_version}</strong></span>
+            <span>Paritas Engine: <span class="text-emerald-600 font-bold">100% Exact Math</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ initialSettings, DEFAULT_WATERMARK_SETTINGS }}>
+    (function () {
+      // Local reactive state clone
+      let state = JSON.parse(JSON.stringify(initialSettings));
+      let currentExpectedVersion = state.watermark_version || 1;
+      let loadedImageBitmap = null;
+      let previewBgMode = 'photo'; // 'photo' | 'checker'
+
+      // DOM references
+      const fieldEnabled = document.getElementById('field-enabled');
+      const btnTypeText = document.getElementById('btn-type-text');
+      const btnTypeImage = document.getElementById('btn-type-image');
+      const sectionTextConfig = document.getElementById('section-text-config');
+      const sectionImageConfig = document.getElementById('section-image-config');
+
+      const fieldTextValue = document.getElementById('field-text-value');
+      const fieldFontSizeRatio = document.getElementById('field-font-size-ratio');
+      const labelFontSize = document.getElementById('label-font-size');
+      const fieldFontWeight = document.getElementById('field-font-weight');
+
+      const fieldImageFile = document.getElementById('field-image-file');
+      const imagePreflightStatus = document.getElementById('image-preflight-status');
+      const fieldImageWidthRatio = document.getElementById('field-image-width-ratio');
+      const labelImageWidth = document.getElementById('label-image-width');
+
+      const posButtons = document.querySelectorAll('.pos-btn');
+      const fieldOpacity = document.getElementById('field-opacity');
+      const labelOpacity = document.getElementById('label-opacity');
+      const fieldMarginXRatio = document.getElementById('field-margin-x-ratio');
+      const labelMarginX = document.getElementById('label-margin-x');
+      const fieldMarginYRatio = document.getElementById('field-margin-y-ratio');
+      const labelMarginY = document.getElementById('label-margin-y');
+
+      const previewCanvas = document.getElementById('preview-canvas');
+      const disabledOverlay = document.getElementById('disabled-overlay');
+      const previewBgToggle = document.getElementById('preview-bg-toggle');
+      const specVersionLabel = document.getElementById('spec-version');
+
+      const saveBtn = document.getElementById('save-watermark-btn');
+      const saveBtnLabel = document.getElementById('save-btn-label');
+      const resetBtn = document.getElementById('reset-default-btn');
+      const statusNotice = document.getElementById('status-notice');
+
+      // Preload a deterministic architectural sample background for preview
+      const sampleBg = new Image();
+      sampleBg.crossOrigin = 'anonymous';
+      // High-resolution architectural photography sample
+      sampleBg.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80';
+      sampleBg.onload = () => renderPreview();
+
+      function updateUiFromState() {
+        fieldEnabled.checked = state.enabled;
+        disabledOverlay.classList.toggle('hidden', state.enabled);
+
+        // Type toggle buttons
+        if (state.type === 'TEXT') {
+          btnTypeText.className = 'type-toggle-btn rounded-xl py-2 px-3 text-xs font-bold border transition flex items-center justify-center gap-2 bg-[#0066ee] text-white border-[#0066ee] shadow-xs';
+          btnTypeImage.className = 'type-toggle-btn rounded-xl py-2 px-3 text-xs font-bold border transition flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100';
+          sectionTextConfig.classList.remove('hidden');
+          sectionImageConfig.classList.add('hidden');
+        } else {
+          btnTypeImage.className = 'type-toggle-btn rounded-xl py-2 px-3 text-xs font-bold border transition flex items-center justify-center gap-2 bg-[#0066ee] text-white border-[#0066ee] shadow-xs';
+          btnTypeText.className = 'type-toggle-btn rounded-xl py-2 px-3 text-xs font-bold border transition flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100';
+          sectionImageConfig.classList.remove('hidden');
+          sectionTextConfig.classList.add('hidden');
+        }
+
+        // Text values
+        if (state.text) {
+          fieldTextValue.value = state.text.value || '';
+          fieldFontSizeRatio.value = (state.text.font_size_ratio * 100).toFixed(1);
+          labelFontSize.textContent = (state.text.font_size_ratio * 100).toFixed(1) + '%';
+          fieldFontWeight.value = String(state.text.font_weight || 500);
+        }
+
+        // Image values
+        if (state.image) {
+          fieldImageWidthRatio.value = (state.image.width_ratio * 100).toFixed(1);
+          labelImageWidth.textContent = (state.image.width_ratio * 100).toFixed(1) + '%';
+        }
+
+        // Positions
+        posButtons.forEach((btn) => {
+          const pos = btn.getAttribute('data-pos');
+          if (pos === state.position) {
+            btn.className = 'pos-btn rounded-xl py-2 px-3 text-xs font-bold border transition text-center bg-[#0066ee] text-white border-[#0066ee] shadow-xs';
+          } else {
+            btn.className = 'pos-btn rounded-xl py-2 px-3 text-xs font-semibold border transition text-center bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100';
+          }
+        });
+
+        // Opacity & Margins
+        fieldOpacity.value = Math.round(state.opacity * 100);
+        labelOpacity.textContent = Math.round(state.opacity * 100) + '%';
+
+        fieldMarginXRatio.value = (state.margin_x_ratio * 100).toFixed(1);
+        labelMarginX.textContent = (state.margin_x_ratio * 100).toFixed(1) + '%';
+
+        fieldMarginYRatio.value = (state.margin_y_ratio * 100).toFixed(1);
+        labelMarginY.textContent = (state.margin_y_ratio * 100).toFixed(1) + '%';
+
+        specVersionLabel.textContent = 'v' + (state.watermark_version || 1);
+        renderPreview();
+      }
+
+      function showNotice(msg, type = 'success') {
+        statusNotice.className = `rounded-xl p-3.5 text-xs font-medium transition-all ${
+          type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+        }`;
+        statusNotice.innerHTML = msg;
+        statusNotice.classList.remove('hidden');
+        statusNotice.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      function clearNotice() {
+        statusNotice.classList.add('hidden');
+      }
+
+      // Parity Rendering Function matching watermark-engine.js math exactly
+      function renderPreview() {
+        const canvas = previewCanvas;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. Draw Background
+        if (previewBgMode === 'photo' && sampleBg.complete && sampleBg.naturalWidth > 0) {
+          ctx.drawImage(sampleBg, 0, 0, w, h);
+        } else {
+          // Subtle architectural dark gradient or grid
+          const grad = ctx.createLinearGradient(0, 0, w, h);
+          grad.addColorStop(0, '#1e293b');
+          grad.addColorStop(1, '#0f172a');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
+
+          // Subtle grid pattern
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+          ctx.lineWidth = 1;
+          for (let x = 0; x < w; x += 40) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+          }
+          for (let y = 0; y < h; y += 40) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+          }
+        }
+
+        if (!state.enabled) return;
+
+        const marginXPx = Math.max(1, Math.round(w * state.margin_x_ratio));
+        const marginYPx = Math.max(1, Math.round(h * state.margin_y_ratio));
+
+        if (state.type === 'TEXT') {
+          const textVal = state.text?.value || 'rancangloka.com';
+          const fontSizePx = Math.max(10, Math.round(Math.min(w, h) * state.text.font_size_ratio));
+          const fontWeight = state.text?.font_weight || 500;
+
+          ctx.save();
+          ctx.globalAlpha = state.opacity;
+          ctx.font = `${fontWeight} ${fontSizePx}px system-ui, -apple-system, sans-serif`;
+
+          const metrics = ctx.measureText(textVal);
+          const itemW = metrics.width;
+          const itemH = metrics.actualBoundingBoxAscent || fontSizePx;
+
+          let x, y;
+          switch (state.position) {
+            case 'top-left':
+              x = marginXPx;
+              y = marginYPx;
+              break;
+            case 'top-right':
+              x = w - marginXPx - itemW;
+              y = marginYPx;
+              break;
+            case 'bottom-left':
+              x = marginXPx;
+              y = h - marginYPx - itemH;
+              break;
+            case 'bottom-right':
+            default:
+              x = w - marginXPx - itemW;
+              y = h - marginYPx - itemH;
+              break;
+          }
+
+          // Exact placement clamping guard
+          x = Math.max(0, Math.min(x, Math.max(0, w - itemW)));
+          y = Math.max(0, Math.min(y, Math.max(0, h - itemH)));
+
+          // Restrained dark drop shadow
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+          ctx.shadowBlur = Math.max(2, Math.round(fontSizePx * 0.15));
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textBaseline = 'top';
+          ctx.fillText(textVal, x, y);
+          ctx.restore();
+        } else if (state.type === 'IMAGE' && loadedImageBitmap) {
+          const targetW = Math.round(w * state.image.width_ratio);
+          const aspect = loadedImageBitmap.height / loadedImageBitmap.width;
+          const targetH = Math.round(targetW * aspect);
+
+          let x, y;
+          switch (state.position) {
+            case 'top-left':
+              x = marginXPx; y = marginYPx; break;
+            case 'top-right':
+              x = w - marginXPx - targetW; y = marginYPx; break;
+            case 'bottom-left':
+              x = marginXPx; y = h - marginYPx - targetH; break;
+            case 'bottom-right':
+            default:
+              x = w - marginXPx - targetW; y = h - marginYPx - targetH; break;
+          }
+
+          x = Math.max(0, Math.min(x, Math.max(0, w - targetW)));
+          y = Math.max(0, Math.min(y, Math.max(0, h - targetH)));
+
+          ctx.save();
+          ctx.globalAlpha = state.opacity;
+          ctx.drawImage(loadedImageBitmap, x, y, targetW, targetH);
+          ctx.restore();
+        }
+      }
+
+      // Preflight Image validation function
+      async function validateImageFile(file) {
+        if (!file) return;
+        const validMimes = ['image/png', 'image/webp'];
+        if (!validMimes.includes(file.type)) {
+          imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200';
+          imagePreflightStatus.textContent = '❌ Format tidak didukung: ' + file.type + '. Gunakan PNG transparan atau WebP transparan.';
+          imagePreflightStatus.classList.remove('hidden');
+          loadedImageBitmap = null;
+          renderPreview();
+          return;
+        }
+
+        try {
+          const bitmap = await createImageBitmap(file);
+          if (bitmap.width <= 0 || bitmap.height <= 0) {
+            throw new Error('Dimensi gambar tidak valid.');
+          }
+
+          // Scan alpha transparency
+          const offCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+          const offCtx = offCanvas.getContext('2d');
+          offCtx.drawImage(bitmap, 0, 0);
+          const imgData = offCtx.getImageData(0, 0, bitmap.width, bitmap.height);
+          const data = imgData.data;
+
+          let transparentCount = 0;
+          for (let i = 3; i < data.length; i += 4) {
+            if (data[i] < 255) {
+              transparentCount++;
+              break;
+            }
+          }
+
+          if (transparentCount === 0) {
+            imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200';
+            imagePreflightStatus.textContent = '⚠️ Peringatan: Gambar tidak memiliki piksel transparan (alpha channel penuh 100%). Watermark logo harus memiliki latar transparan.';
+            imagePreflightStatus.classList.remove('hidden');
+            loadedImageBitmap = bitmap;
+          } else {
+            imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200';
+            imagePreflightStatus.textContent = `✅ Gambar valid: ${bitmap.width}x${bitmap.height} px dengan alpha channel transparan terverifikasi.`;
+            imagePreflightStatus.classList.remove('hidden');
+            loadedImageBitmap = bitmap;
+          }
+          renderPreview();
+        } catch (err) {
+          imagePreflightStatus.className = 'rounded-xl p-3 text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200';
+          imagePreflightStatus.textContent = '❌ Gagal membaca gambar: ' + err.message;
+          imagePreflightStatus.classList.remove('hidden');
+          loadedImageBitmap = null;
+          renderPreview();
+        }
+      }
+
+      // Event Listeners
+      fieldEnabled.addEventListener('change', () => {
+        state.enabled = fieldEnabled.checked;
+        disabledOverlay.classList.toggle('hidden', state.enabled);
+        renderPreview();
+      });
+
+      btnTypeText.addEventListener('click', () => {
+        state.type = 'TEXT';
+        updateUiFromState();
+      });
+
+      btnTypeImage.addEventListener('click', () => {
+        state.type = 'IMAGE';
+        updateUiFromState();
+      });
+
+      fieldTextValue.addEventListener('input', () => {
+        if (!state.text) state.text = {};
+        state.text.value = fieldTextValue.value;
+        renderPreview();
+      });
+
+      fieldFontSizeRatio.addEventListener('input', () => {
+        const val = parseFloat(fieldFontSizeRatio.value);
+        labelFontSize.textContent = val.toFixed(1) + '%';
+        if (!state.text) state.text = {};
+        state.text.font_size_ratio = val / 100;
+        renderPreview();
+      });
+
+      fieldFontWeight.addEventListener('change', () => {
+        if (!state.text) state.text = {};
+        state.text.font_weight = parseInt(fieldFontWeight.value, 10);
+        renderPreview();
+      });
+
+      fieldImageWidthRatio.addEventListener('input', () => {
+        const val = parseFloat(fieldImageWidthRatio.value);
+        labelImageWidth.textContent = val.toFixed(1) + '%';
+        if (!state.image) state.image = {};
+        state.image.width_ratio = val / 100;
+        renderPreview();
+      });
+
+      fieldImageFile.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (file) validateImageFile(file);
+      });
+
+      posButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.position = btn.getAttribute('data-pos');
+          updateUiFromState();
+        });
+      });
+
+      fieldOpacity.addEventListener('input', () => {
+        const val = parseInt(fieldOpacity.value, 10);
+        labelOpacity.textContent = val + '%';
+        state.opacity = val / 100;
+        renderPreview();
+      });
+
+      fieldMarginXRatio.addEventListener('input', () => {
+        const val = parseFloat(fieldMarginXRatio.value);
+        labelMarginX.textContent = val.toFixed(1) + '%';
+        state.margin_x_ratio = val / 100;
+        renderPreview();
+      });
+
+      fieldMarginYRatio.addEventListener('input', () => {
+        const val = parseFloat(fieldMarginYRatio.value);
+        labelMarginY.textContent = val.toFixed(1) + '%';
+        state.margin_y_ratio = val / 100;
+        renderPreview();
+      });
+
+      previewBgToggle.addEventListener('click', () => {
+        previewBgMode = previewBgMode === 'photo' ? 'checker' : 'photo';
+        previewBgToggle.textContent = previewBgMode === 'photo' ? 'Foto Arsitektur' : 'Latar Kontras';
+        renderPreview();
+      });
+
+      resetBtn.addEventListener('click', () => {
+        const confirmReset = confirm('Kembalikan seluruh pengaturan watermark ke standar default rancangloka.com?');
+        if (!confirmReset) return;
+        state = JSON.parse(JSON.stringify(DEFAULT_WATERMARK_SETTINGS));
+        state.watermark_version = currentExpectedVersion;
+        loadedImageBitmap = null;
+        if (fieldImageFile) fieldImageFile.value = '';
+        imagePreflightStatus.classList.add('hidden');
+        updateUiFromState();
+        showNotice('Pengaturan dikembalikan ke standar default. Klik "Simpan Pengaturan" untuk menyimpan ke database.', 'success');
+      });
+
+      saveBtn.addEventListener('click', async () => {
+        clearNotice();
+        saveBtn.disabled = true;
+        saveBtnLabel.textContent = 'Menyimpan...';
+
+        try {
+          const res = await fetch('/api/admin/watermark', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              settings: state,
+              expected_version: currentExpectedVersion
+            })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.message || 'Gagal menyimpan pengaturan');
+          }
+
+          state = data.settings;
+          currentExpectedVersion = state.watermark_version;
+          updateUiFromState();
+          showNotice(data.message || 'Pengaturan watermark berhasil disimpan.', 'success');
+        } catch (err) {
+          showNotice(err.message, 'error');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtnLabel.textContent = 'Simpan Pengaturan';
+        }
+      });
+
+      // Initial UI synchronization
+      updateUiFromState();
+    })();
+  </script>
+</AdminLayout>

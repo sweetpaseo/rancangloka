@@ -47,6 +47,7 @@ const breadcrumbMap: Record<string, string[]> = {
   '/admin/categories': ['Kategori Topik'],
   '/admin/authors': ['Penulis & Editor'],
   '/admin/media': ['Media Library'],
+  '/admin/watermark': ['Media Settings', 'Watermark'],
   '/admin/seo-audit': ['Audit SEO Konten'],
   '/admin/analytics': ['Kesehatan Sistem'],
   '/admin/subscribers': ['Pelanggan Newsletter'],
@@ -79,7 +80,8 @@ const groups = [
     label: 'TOOLS',
     items: [
       { href: '/admin/import', label: 'Import Markdown', icon: 'upload' },
-      { href: '/admin/media', label: 'Media Library', icon: 'image' }
+      { href: '/admin/media', label: 'Media Library', icon: 'image' },
+      { href: '/admin/watermark', label: 'Watermark Media', icon: 'image' }
     ]
   },
   {
