@@ -115,6 +115,10 @@ export interface ReadinessSnapshotPayload {
     human_approval: 'PASS' | 'FAIL';
     publication_metadata: 'PASS' | 'FAIL';
   };
+  policy?: {
+    system_policy_pass: boolean;
+    human_approval_pass: boolean;
+  };
   blockers: FailureCode[];
 }
 

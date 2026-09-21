@@ -199,6 +199,10 @@ export async function evaluateArticleReadiness(
         human_approval: 'FAIL',
         publication_metadata: 'FAIL'
       },
+      policy: {
+        system_policy_pass: false,
+        human_approval_pass: false
+      },
       blockers: [FAILURE_CODES.GUARD_STATE_UNKNOWN, FAILURE_CODES.FAIL_CLOSED]
     };
 
@@ -259,6 +263,10 @@ export async function evaluateArticleReadiness(
         visual_media: 'FAIL',
         human_approval: 'FAIL',
         publication_metadata: 'FAIL'
+      },
+      policy: {
+        system_policy_pass: false,
+        human_approval_pass: false
       },
       blockers: [FAILURE_CODES.ARTICLE_NOT_FOUND]
     };
@@ -542,6 +550,17 @@ export async function evaluateArticleReadiness(
     overallStatus = PUBLICATION_STATUS_BLOCKED;
   }
 
+  // System Policy Pass: strictly deterministic publication gates (excludes human approval)
+  const systemPolicyPass = Boolean(
+    integrityPass &&
+    editorialPass &&
+    evidencePass &&
+    mediaPass &&
+    metadataPass &&
+    article.status === 'draft'
+  );
+  const humanApprovalPass = Boolean(approvalPass);
+
   const snapshot: ReadinessSnapshotPayload = {
     schema_version: 1,
     article_id: articleId,
@@ -559,6 +578,10 @@ export async function evaluateArticleReadiness(
       visual_media: mediaPass ? 'PASS' : 'FAIL',
       human_approval: approvalPass ? 'PASS' : 'FAIL',
       publication_metadata: metadataPass ? 'PASS' : 'FAIL'
+    },
+    policy: {
+      system_policy_pass: systemPolicyPass,
+      human_approval_pass: humanApprovalPass
     },
     blockers: uniqueBlockers
   };
