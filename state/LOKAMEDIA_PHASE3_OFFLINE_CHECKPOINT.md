@@ -4,18 +4,18 @@ Date: 2026-09-15
 
 ## Latest Local Checkpoint
 
-Date: 2026-09-21
+Date: 2026-09-22
 
 Latest clean checkpoint commit:
 
 ```text
-93ac52c0a626d1358fd7b3c91461253b41160c85
+8faf51e86ff4fb69436e8754823168a853169582
 ```
 
 Commit message:
 
 ```text
-test: close phase 5l10 observability gaps
+feat: add canonical automation operator control
 ```
 
 `LOKAMEDIA_PHASE_5L12B=PASS_CANONICAL_AUTOMATION_OPERATOR_CONTROL_FOUNDATION`
@@ -87,9 +87,44 @@ test: close phase 5l10 observability gaps
 `RECEIPT_INTEGRITY_MONITOR_READY=YES`
 `DERIVED_ALERT_ENGINE_READY=YES`
 `ALERT_NOISE_CONTROL=PASS`
+`CONTROL_PLANE_AUDIT_LEDGER_READY=YES`
+`CANONICAL_OPERATOR_API_READY=YES`
+`RAW_SQL_CONTROL_MUTATIONS_FORBIDDEN=YES`
 `PRODUCTION_AUTOMATION_CURRENTLY_ENABLED=NO`
-`READY_FOR_DISABLED_PRODUCTION_DEPLOYMENT=YES`
-`NEXT_RECOMMENDED_ACTION=PHASE_5L11B_DISABLED_PRODUCTION_DEPLOYMENT_EXECUTION`
+`READY_FOR_CANONICAL_CONTROL_PRODUCTION_DEPLOYMENT=YES`
+`NEXT_RECOMMENDED_ACTION=DEPLOY_PHASE_5L12B_CANONICAL_CONTROL_FOUNDATION_TO_PRODUCTION`
+
+Phase 5L12B (Canonical Automation Operator Control Foundation):
+- Additive migration `0020_automation_control_audit.sql`: Created `automation_control_audit` table with performance indexes for tracking control-plane operations (`AUTOMATION_MODE_CHANGED`, `AUTO_SCHEDULE_CHANGED`) with actor attribution, previous/new values, reasons, correlation IDs, and details JSON.
+- Canonical service layer: Implemented `changeAutomationMode` and `changeAutoSchedule` in `src/lib/safety/automation-controller.ts` with atomic batch execution via `db.batch([updateStmt, auditStmt])`. Guaranteed fail-closed semantics (`AUDIT_FAILURE_FAILS_CLOSED=PASS`).
+- Idempotent transitions: Identical mode transition requests (e.g. `OFF → OFF`) return `changed: false` without creating redundant audit rows (`MODE_NOOP_TEST=PASS`).
+- Flag independence: Mode changes leave `auto_schedule_enabled`, `kill_switch_engaged`, `planner_paused`, and `publisher_paused` strictly untouched.
+- Canonical operator API `POST /api/admin/publication/automation/control`: Protected by admin session (`isValidAdminSession`), same-origin CSRF verification (`verifySameOrigin`), media device denial (`403`), and cron secret denial (`403`). Supported by inspection route `GET /api/admin/publication/automation/control`.
+- Operations observability integration: Recent control events exposed within `getPublicationOperationsStatus`.
+- Verification: 15/15 tests pass in `scripts/test-phase5l12b-canonical-operator-control.js`. All 9 prior regression suites PASS. Typecheck, build, and dry-run PASS. Production remains OFF with 0 remote mutations.
+
+Phase 5L12A (Production Control-Path Integrity Closure):
+- Read-only audit of production control path post-5L12. Identified that 5L12 mode mutations used direct remote SQL because canonical HTTP routes and mode-change audit event types did not yet exist.
+- Audited `publication_operator_audit` finding 0 rows (`AUDIT_MISSING`) due to CHECK constraint limitations.
+- Reconciled historical documentation in `HISTORY.md` and checkpoint while preserving behavioral safety verification (`PHASE_5L12_BEHAVIORAL_SAFETY_RESULT=PASS`).
+- Formally locked policy forbidding raw SQL control mutations from Phase 5L13 onward.
+
+Phase 5L12 (Production OBSERVE_ONLY Canary):
+- Executed canary state transition `OFF → OBSERVE_ONLY → OFF` on production Worker `rancangloka` with explicit user approval.
+- Verified native Cloudflare Cron scheduled invocations during `OBSERVE_ONLY` window: Dispatcher recorded `BLOCKED` (`UNATTENDED_PUBLISH_BLOCKED`), Reconciler recorded `BLOCKED` (`AUTOMATION_MODE_BLOCKS_EXECUTION_OBSERVE_ONLY`).
+- Proved 100% zero lifecycle mutations: 0 plans created, 0 executions created, 0 articles published, 0 receipts created. Article counts unchanged (5 draft, 1 published).
+- Verified production site health (Homepage, Article 6, Sitemap 200 OK) and receipt integrity.
+- Returned production mode safely to `OFF`, `auto_schedule_enabled=false`, `kill_switch=0`.
+
+Phase 5L11C (Production Native Cron Heartbeat Closure):
+- Performed pure read-only observation of native Cloudflare edge Cron triggers in production Worker without HTTP emulation.
+- Proved native cron scheduler executes `publication_dispatcher` (1 min) and `auto_execution_reconciler` (5 min), logging durable `BLOCKED` heartbeats in production D1 table `publication_cron_runs` with `automation_mode = 'OFF'`.
+- Verified 0 lifecycle mutations and healthy public site endpoints.
+
+Phase 5L11B (Disabled Production Migration + Deployment):
+- Applied pending additive migrations `0013` through `0019` to production D1 `rancangloka_db` with zero errors. Latest applied migration: `0019_publication_cron_observability.sql`.
+- Deployed Worker `rancangloka` with Cloudflare Cron triggers to production (deployment id: `3404ac08-0e5f-4e11-8e11-2f93b7119a8f`, active 100% traffic).
+- Production controls kept safely disabled: `automation_control.mode = 'OFF'`, `settings.auto_schedule_enabled = 'false'`, `kill_switch_engaged = 0`.
 
 Phase 5L11A (Production Readiness — Read-Only Gate):
 - Environment identity: Cloudflare Worker `rancangloka` (`src/worker.ts`), D1 `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`), R2 `rancangloka-media`. Site: `https://rancangloka.com`.
