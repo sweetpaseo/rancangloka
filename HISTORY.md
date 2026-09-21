@@ -17,6 +17,66 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5K3E1 Article 3 Media Asset Registration Execution 2026-09-21
+
+- Successfully registered the canonical Article 3 watermarked R2 derivative into `media_assets` using metadata and provenance only.
+- Invariants strictly preserved:
+  - ZERO binary retransmissions, ZERO R2 PUT calls (`R2_PUT_CALLS=0`, `BINARY_TRANSFER_CALLS=0`).
+  - ZERO watermark transforms (`WATERMARK_TRANSFORM_CALLS=0`), ZERO provider calls (`PROVIDER_GENERATE_CALLS=0`, `CHATGPT_SUBMISSIONS=0`, `PROVIDER_CAPTURE_CALLS=0`).
+  - ZERO `article_media` attachments created (`ARTICLE_3_ARTICLE_MEDIA_COUNT=0`, deferred to Phase 5K3E2).
+  - ZERO readiness mutations (`READINESS_MUTATIONS=0`, read-only evaluation confirmed blockers `FEATURED_MEDIA_MISSING`, `APPROVAL_MISSING`).
+  - ZERO approval, schedule, or publication mutations (`APPROVAL_MUTATIONS=0`, `ARTICLE_3_STATUS='draft'`).
+  - ZERO mutations to Article 1 golden fixture (`ARTICLE_1_STATUS='draft'`, `APPROVAL_STATUS='APPROVED'`, asset `ast_d230f3d834ae5f1a9f689d7c` 100% unchanged).
+- Verified durable upload receipt in IndexedDB `media-uploads`: `upl_0cde1e3e232210210678297ef7d14f4cc93a1d8669f9426019b78cc8d33193aa`, state `UPLOADED`.
+- Verified local Miniflare R2 object metadata: key `media/articles/derivatives/c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b.png`, size `3725697` bytes, MIME `image/png`, SHA-256 `c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b`.
+- Invoked canonical internal endpoint `POST /api/internal/v1/media/assets/register` with device authentication (`Bearer lkmd_controlled_phase5k3e1_device`, scope `media:device`).
+- Deterministic asset identity verified: `ast_748c29fa012aa3d6eec531fa` (`ast_${sha256(role:sha256:r2_key).substring(0, 24)}`). Differs strictly from Article 1 (`ast_d230f3d834ae5f1a9f689d7c`).
+- First clean registration inserted exactly one row into `media_assets` (`status: 'VALIDATED'`, `role: 'ARTICLE_PUBLIC_DERIVATIVE'`, `dimensions: 1672x941`, `byte_size: 3725697`, full provenance JSON).
+- Audit event recorded in `media_asset_audit` (`action: 'REGISTER'`, safe metadata JSON).
+- Idempotency verified: second invocation returned existing asset (`reused_existing: true`, 0 second inserts, `ARTICLE_3_MEDIA_ASSET_COUNT_AFTER_SECOND=1`).
+- Post-reopen discovery verified against local Miniflare D1 SQLite.
+- Regressions, typecheck (`tsc --noEmit`), and build (`npm run build`) all pass cleanly.
+- Result: `PHASE_5K3E1=PASS`, `MEDIA_ASSET_REGISTRATION_LANE_CLOSED=YES`, `READY_FOR_ARTICLE_3_FEATURED_ATTACHMENT=YES`.
+
+### LokaMedia Phase 5K3D Article 3 Durable Watermarked Derivative Upload 2026-09-21
+
+- Successfully uploaded the canonical Article 3 watermarked derivative (`der_1cbb6f8b677815c4623d73245b9b60daebf729c5c03b0dea684b8297acc2dcd0`, 3725697 bytes, SHA-256 `c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b`) to local Miniflare R2 bucket (`rancangloka-media`).
+- Destination R2 key: `media/articles/derivatives/c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b.png`.
+- Durable upload receipt persisted in IndexedDB `media-uploads`: `upl_0cde1e3e232210210678297ef7d14f4cc93a1d8669f9426019b78cc8d33193aa` (`state: 'UPLOADED'`).
+- Physical blob verified in `.wrangler/state/v3/r2/` (exact 3725697 bytes, SHA-256 matched).
+- Result: `PHASE_5K3D=PASS`, `READY_FOR_MEDIA_ASSET_REGISTRATION=YES`.
+
+### LokaMedia Phase 5K3C Article 3 Deterministic Watermark Derivative 2026-09-21
+
+- Successfully produced exactly one deterministic watermark derivative from the immutable full-res Article 3 original.
+- Input original: `mjob_34d4ad896ffba960eb77666e:1` (1672x941 PNG, 2655415 bytes, SHA `2cdaa0c03b6a85d959aa776e0fcebb51ff3740ad97ea2f7cff264f7081f0958b`).
+- Transform ID: `038276c347d0bfd74c09a92d591f2db0454e25f221e70461bb47ac8d1fa4e148`.
+- Resulting derivative: `der_1cbb6f8b677815c4623d73245b9b60daebf729c5c03b0dea684b8297acc2dcd0` (1672x941 PNG, 3725697 bytes, SHA-256 `c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b`).
+- Persisted durably in IndexedDB `media-derivatives` with role `PUBLIC_DERIVATIVE_CANDIDATE`.
+- Result: `PHASE_5K3C=PASS`, `READY_FOR_UPLOAD_QUEUE=YES`.
+
+### LokaMedia Phase 5K3B-R2 Full-Res ChatGPT Capture Adapter Repair 2026-09-21
+
+- Diagnosed and repaired full-resolution image capture in LokaMedia extension.
+- Root cause: previous capture adapter relied on DOM rendered CSS bounding box (461x259) rather than acquiring full natural resolution (1672x941) binary.
+- Checkpoint commit: `795a4283528dfa2ae9d5239c933a7c320bb80a55` (`fix: preserve full resolution provider image capture`).
+- Hardened capture pipeline: prefers full provider binary via authenticated fetch / natural dimensions, verified with 6 deterministic test cases in `scripts/test-lokamedia-phase5k3b-r2-fullres-capture.js`.
+- Authoritative original recovered: `mjob_34d4ad896ffba960eb77666e:1` (1672x941 PNG, 2655415 bytes, SHA `2cdaa0c03b6a85d959aa776e0fcebb51ff3740ad97ea2f7cff264f7081f0958b`).
+- Result: `PHASE_5K3B_R2=PASS`, `FULL_RES_CAPTURE_ADAPTER_REPAIRED=YES`.
+
+### LokaMedia Phase 5K3A - 5K3B Article 3 Featured Media Job & Provider Generation 2026-09-20
+
+- Created durable featured media job: `job_id: 'mjob_34d4ad896ffba960eb77666e'`, `slot_key: 'featured'`, `article_id: 3`.
+- Executed controlled single ChatGPT generation run without duplicate submissions.
+- Result: `PHASE_5K3A=PASS`, `PHASE_5K3B=PASS`.
+
+### LokaMedia Phase 5K1 - 5K2 Publication-Quality Article Fixture Foundation 2026-09-20
+
+- Audited publication content gate requirements (monetary zero-tolerance, H2 structure, >=300 words, >=3 takeaways, canonical author & category).
+- Ingested publication-quality controlled article fixture: `article_id: 3`, `slug: 'lokamedia-publication-quality-fixture'`, `status: 'draft'`, `image_alt: 'LokaMedia Publication Quality Fixture'`.
+- Article 1 frozen as golden fixture (`article_id: 1`, `status: 'draft'`, `approval: 'APPROVED'`).
+- Result: `PHASE_5K1=PASS`, `PHASE_5K2=PASS`.
+
 ### LokaMedia Phase 5H2 Controlled Article Media Attachment Execution 2026-09-20
 
 - Successfully executed controlled canonical attachment of registered media asset `ast_d230f3d834ae5f1a9f689d7c` to controlled article fixture `article_id: 1`, `slot_key: 'featured'`.

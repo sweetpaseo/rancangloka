@@ -4,20 +4,32 @@ Date: 2026-09-15
 
 ## Latest Local Checkpoint
 
-Date: 2026-09-20
+Date: 2026-09-21
 
 Latest clean checkpoint commit:
 
 ```text
-182726593d11cc7971ad759190eaf18901bca753
+795a4283528dfa2ae9d5239c933a7c320bb80a55
 ```
 
 Commit message:
 
 ```text
-feat: add article media attachment
+fix: preserve full resolution provider image capture
 ```
 
+`LOKAMEDIA_PHASE_5K3E1=PASS_ARTICLE_3_MEDIA_ASSET_REGISTRATION`
+`LOKAMEDIA_PHASE_5K3D=PASS_ARTICLE_3_DURABLE_WATERMARKED_DERIVATIVE_UPLOAD`
+`LOKAMEDIA_PHASE_5K3C=PASS_ARTICLE_3_DETERMINISTIC_WATERMARK_DERIVATIVE`
+`LOKAMEDIA_PHASE_5K3B_R2=PASS_FULL_RES_CHATGPT_CAPTURE_ADAPTER_REPAIR`
+`LOKAMEDIA_PHASE_5K3B=PASS_ARTICLE_3_CONTROLLED_PROVIDER_GENERATION_AND_CAPTURE`
+`LOKAMEDIA_PHASE_5K3A=PASS_ARTICLE_3_DURABLE_FEATURED_MEDIA_JOB_PLANNING`
+`LOKAMEDIA_PHASE_5K2=PASS_PUBLICATION_QUALITY_ARTICLE_FIXTURE_FOUNDATION`
+`LOKAMEDIA_PHASE_5K1=PASS_PUBLICATION_CONTENT_GATE_CONTRACT_AUDIT`
+`LOKAMEDIA_PHASE_5J3=PASS_CONTROLLED_PRODUCTION_REVIEW_SURFACE`
+`LOKAMEDIA_PHASE_5J2=PASS_EDITORIAL_APPROVAL_REPAIR`
+`LOKAMEDIA_PHASE_5J1=PASS_HUMAN_REVIEW_CONTROLS`
+`LOKAMEDIA_PHASE_5I1=PASS_MEDIA_READINESS_RECONCILIATION`
 `LOKAMEDIA_PHASE_5H2=PASS_CONTROLLED_ARTICLE_MEDIA_ATTACHMENT`
 `LOKAMEDIA_PHASE_5H1=PASS_ARTICLE_MEDIA_ATTACHMENT_FOUNDATION`
 `LOKAMEDIA_PHASE_5G2=PASS_CONTROLLED_MEDIA_ASSETS_REGISTRATION`
@@ -32,8 +44,33 @@ feat: add article media attachment
 `MEDIA_PROCESSING_LANE_CLOSED=YES`
 `UPLOAD_LANE_CLOSED=YES`
 `MEDIA_ASSET_REGISTRATION_LANE_CLOSED=YES`
-`ARTICLE_MEDIA_ATTACHMENT_LANE_CLOSED=YES`
-`READY_FOR_READINESS_RECONCILIATION=YES`
+`ARTICLE_MEDIA_ATTACHMENT_LANE_READY=YES`
+`NEXT_RECOMMENDED_ACTION=PHASE_5K3E2_ATTACH_ARTICLE_3_FEATURED_ASSET`
+
+Phase 5K3E1 (Article 3 Media Asset Registration Execution):
+- Registered verified R2 derivative (`media/articles/derivatives/c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b.png`, 3725697 bytes, SHA-256 `c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b`) into `media_assets` as `ast_748c29fa012aa3d6eec531fa`.
+- Role: `ARTICLE_PUBLIC_DERIVATIVE`, status: `VALIDATED`, dimensions: `1672x941`.
+- Bound provenance: `article_id: 3`, `job_id: 'mjob_34d4ad896ffba960eb77666e'`, `slot_key: 'featured'`, `derivative_id: 'der_1cbb6f8b677815c4623d73245b9b60daebf729c5c03b0dea684b8297acc2dcd0'`, `transform_id: '038276c347d0bfd74c09a92d591f2db0454e25f221e70461bb47ac8d1fa4e148'`, `upload_id: 'upl_0cde1e3e232210210678297ef7d14f4cc93a1d8669f9426019b78cc8d33193aa'`.
+- First registration created 1 row; second registration returned existing row (`reused_existing: true`, 0 duplicate rows).
+- Invariants strictly preserved: 0 binary transfers, 0 R2 PUTs, 0 article_media attachments, 0 readiness mutations, 0 approval mutations, Article 1 golden fixture untouched.
+
+Phase 5K3D (Article 3 Durable Watermarked Derivative Upload):
+- Watermarked derivative uploaded to local Miniflare R2 bucket (`rancangloka-media`).
+- Destination R2 key: `media/articles/derivatives/c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b.png`.
+- Durable upload receipt in IndexedDB `media-uploads`: `upl_0cde1e3e232210210678297ef7d14f4cc93a1d8669f9426019b78cc8d33193aa` (`state: UPLOADED`).
+
+Phase 5K3C (Article 3 Deterministic Watermark Derivative):
+- Watermark derivative produced from immutable original `mjob_34d4ad896ffba960eb77666e:1`.
+- Derivative `der_1cbb6f8b677815c4623d73245b9b60daebf729c5c03b0dea684b8297acc2dcd0`, transform `038276c347d0bfd74c09a92d591f2db0454e25f221e70461bb47ac8d1fa4e148`, 1672x941 PNG, 3725697 bytes.
+
+Phase 5K3B-R2 (Full-Res ChatGPT Capture Adapter Repair):
+- Checkpoint commit `795a4283528dfa2ae9d5239c933a7c320bb80a55`.
+- Repaired full-resolution capture to acquire original 1672x941 binary directly, eliminating DOM CSS box (461x259) downscale defect.
+- Authoritative original: `mjob_34d4ad896ffba960eb77666e:1` (1672x941, 2655415 bytes, SHA `2cdaa0c03b6a85d959aa776e0fcebb51ff3740ad97ea2f7cff264f7081f0958b`).
+
+Phase 5K1 - 5K2 (Publication-Quality Article Fixture Foundation):
+- Created Article 3 `lokamedia-publication-quality-fixture` satisfying all publication editorial content gates.
+- Frozen Article 1 as golden fixture.
 
 Phase 5H2 (Controlled Article Media Attachment Execution):
 - Controlled article fixture `article_id: 1`, `slot_key: 'featured'`.
