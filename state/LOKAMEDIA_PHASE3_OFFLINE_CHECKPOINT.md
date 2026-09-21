@@ -9,15 +9,16 @@ Date: 2026-09-21
 Latest clean checkpoint commit:
 
 ```text
-f8026454c136da3b00bcf71e89eea2b81c12f8cb
+93ac52c0a626d1358fd7b3c91461253b41160c85
 ```
 
 Commit message:
 
 ```text
-feat: wire hands off publication cron triggers
+test: close phase 5l10 observability gaps
 ```
 
+`LOKAMEDIA_PHASE_5L11A=PASS_PRODUCTION_READINESS_READ_ONLY_GATE`
 `LOKAMEDIA_PHASE_5L10A=PASS_PRE_PRODUCTION_INTEGRITY_AND_GAP_CLOSURE`
 `LOKAMEDIA_PHASE_5L10=PASS_DURABLE_CRON_HEARTBEAT_AND_OPERATIONS_OBSERVABILITY`
 `LOKAMEDIA_PHASE_5L9=PASS_CLOUDFLARE_CRON_WIRING_AND_SERVER_TRIGGER_AUTH`
@@ -82,8 +83,18 @@ feat: wire hands off publication cron triggers
 `DERIVED_ALERT_ENGINE_READY=YES`
 `ALERT_NOISE_CONTROL=PASS`
 `PRODUCTION_AUTOMATION_CURRENTLY_ENABLED=NO`
-`READY_FOR_PRODUCTION_DEPLOYMENT_READINESS_PHASE=YES`
-`NEXT_RECOMMENDED_ACTION=PHASE_5L11_PRODUCTION_DEPLOYMENT_READINESS_AND_CANARY_PREPARATION`
+`READY_FOR_DISABLED_PRODUCTION_DEPLOYMENT=YES`
+`NEXT_RECOMMENDED_ACTION=PHASE_5L11B_DISABLED_PRODUCTION_DEPLOYMENT_EXECUTION`
+
+Phase 5L11A (Production Readiness — Read-Only Gate):
+- Environment identity: Cloudflare Worker `rancangloka` (`src/worker.ts`), D1 `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`), R2 `rancangloka-media`. Site: `https://rancangloka.com`.
+- Remote migration status: remote D1 is at `0012_articles_created_at.sql`. Pending migrations: `0013`, `0014`, `0015`, `0016`, `0017`, `0018`, `0019`. Destructive risk: zero (`DROP TABLE`/`DROP COLUMN` = 0).
+- Remote control state: `automation_control.mode = 'OFF'`, `kill_switch_engaged = 0`. Safe defaults confirmed: `auto_schedule_enabled` defaults to `'false'`, `scheduling_mode` to `'legacy'`, `manual_hold` to `0`.
+- Remote content inventory: 5 draft articles, 1 published article (`rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`, id: 6). Active plans: 0, active executions: 0, receipts: 0. Zero pending automation work.
+- Production site health: homepage (200 OK) and published article route (200 OK) operating normally.
+- Deployment dry run: `wrangler deploy --dry-run` PASS (4.3 MB bundle, 3 native cron triggers).
+- Active deployment id: `cef16b4b-a5f0-416c-9fff-1924aaee1ecc` (official rollback reference).
+- Readiness classification: `READY_FOR_DISABLED_PRODUCTION_DEPLOYMENT`. Production mutations: D1 writes = 0, R2 writes = 0, deployments = 0.
 
 Phase 5L10A (Pre-Production Integrity + Observability Gap Closure):
 - Ancestry verification: confirmed commit `97c450b` was dropped by historical reset without any functional source loss (`FUNCTIONAL_SOURCE_LOSS_FROM_RESET=NO`); all Phase 5L9 history and checkpoint documentation verified 100% preserved.
@@ -522,7 +533,35 @@ Date: 2026-09-21
   - Golden fixtures (Articles 1, 3, 5, 6) 100% frozen (0 mutations).
   - Production automation strictly disabled: `auto_schedule_enabled=false`, `mode=OFF`, `kill_switch=0`.
   - Zero production mutations, zero remote deployments, zero push.
-- **Phase Status:** `PHASE_5L10=PASS`.
+- **Phase Status:** `PHASE_5L10=PASS`, `PHASE_5L10A=PASS`.
 - **Next Recommended Phase:** Phase 5L11 (production deployment readiness, production migration verification, disabled production deployment, OBSERVE_ONLY canary preparation).
+
+## Phase 5L11A Checkpoint Summary
+
+Date: 2026-09-21
+
+- **Production Target Identity:** Worker `rancangloka` (`src/worker.ts`), D1 `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`), R2 `rancangloka-media`. Site: `https://rancangloka.com`. Target confirmed.
+- **Remote D1 Migration State (Read-Only):**
+  - Current latest applied migration on production D1: `0012_articles_created_at.sql`.
+  - Pending remote migrations: `0013`, `0014`, `0015`, `0016`, `0017`, `0018`, `0019`.
+  - Zero destructive operations (`DROP TABLE`/`DROP COLUMN` = 0).
+  - Safe defaults guaranteed: `auto_schedule_enabled` defaults to `'false'`, `scheduling_mode` to `'legacy'`, `manual_hold` to `0`.
+- **Remote Control State (Read-Only):**
+  - `automation_control.mode = 'OFF'`
+  - `automation_control.kill_switch_engaged = 0`
+- **Remote Content State (Read-Only):**
+  - Articles: 5 draft, 1 published (`rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`, id: 6).
+  - Active plans: 0, active executions: 0, receipts: 0. Zero pending automation work.
+- **Production Baseline Site Health:**
+  - `https://rancangloka.com` -> 200 OK
+  - `https://rancangloka.com/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman` -> 200 OK
+- **Deployment Dry Run & Rollback:**
+  - `wrangler deploy --dry-run` PASS (4.3 MB bundle, 3 native cron triggers).
+  - Active deployment id: `cef16b4b-a5f0-416c-9fff-1924aaee1ecc` (rollback reference).
+- **Production Mutations:** D1 writes = 0, R2 writes = 0, deployments = 0.
+- **Phase Status:** `PHASE_5L11A=PASS`.
+- **Readiness Classification:** `READY_FOR_DISABLED_PRODUCTION_DEPLOYMENT`.
+- **Next Recommended Action:** Phase 5L11B (apply pending migrations 0013-0019 to remote D1, deploy worker in disabled mode `OFF`, verify site health and cron heartbeats, with zero article mutations).
+
 
 

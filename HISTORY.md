@@ -17,6 +17,20 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L11A Production Readiness — Read-Only Gate 2026-09-21
+
+- **Tujuan & Ruang Lingkup:** Melakukan audit read-only komprehensif pada lingkungan produksi Cloudflare Worker (`rancangloka`), database D1 produksi (`rancangloka_db`: `3a86e9ad-410f-4440-884e-2eb813ec4cf7`), dan R2 storage (`rancangloka-media`) sebelum eksekusi migrasi dan deployment dalam keadaan dinonaktifkan (disabled).
+- **Temuan Audit Produksi (Read-Only):**
+  - **Identitas Target:** Terkonfirmasi Worker `rancangloka`, entrypoint `src/worker.ts`, D1 binding `DB`, R2 binding `MEDIA_BUCKET`, dan 3 pemicu Cron native (`0 * * * *`, `*/5 * * * *`, `* * * * *`). Site target: `https://rancangloka.com`.
+  - **Status Migrasi D1 Remote:** Database produksi berada pada migrasi `0012_articles_created_at.sql`. Terdapat 7 migrasi berurutan yang pending: `0013`, `0014`, `0015`, `0016`, `0017`, `0018`, dan `0019`. Seluruhnya aditif tanpa operasi destruktif (`DROP TABLE`/`DROP COLUMN` = 0).
+  - **Status Kontrol Produksi:** `automation_control.mode = 'OFF'`, `kill_switch_engaged = 0`. Setelah migrasi 0017 diterapkan, `auto_schedule_enabled` akan defaulted ke `'false'`, `scheduling_mode` defaulted ke `'legacy'`, dan `manual_hold` defaulted ke `0`.
+  - **Status Pipeline & Artikel Produksi:** D1 produksi saat ini memiliki 5 artikel draft dan 1 artikel published (`rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`, id: 6). Rencana publikasi aktif = 0, eksekusi aktif = 0. Tidak ada backlog atau pekerjaan otomatis yang tertahan.
+  - **Kesehatan Situs Produksi:** Endpoint publik `https://rancangloka.com` (200 OK) dan artikel published `https://rancangloka.com/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman` (200 OK) beroperasi normal.
+  - **Dry-Run & Konfigurasi Secret:** `wrangler deploy --dry-run` PASS (bundle 4.3 MB). Secret admin dan media terpasang. `CRON_SECRET` belum ada di remote (tidak memblokir deployment karena Cron native tidak membutuhkan loopback HTTP; opsional untuk pemantauan HTTP eksternal).
+  - **Versi & Rollback:** Deployment produksi aktif saat ini adalah `cef16b4b-a5f0-416c-9fff-1924aaee1ecc` (menjadi referensi rollback resmi).
+  - **Urutan Eksekusi Phase 5L11B:** 1) Verifikasi referensi rollback -> 2) Terapkan migrasi 0013–0019 ke remote D1 -> 3) Verifikasi skema D1 remote -> 4) Pastikan mode tetap OFF -> 5) Deploy worker (`wrangler deploy`) -> 6) Verifikasi kesehatan situs & operasi status -> 7) Verifikasi detak awal cron berstatus `BLOCKED` dengan 0 mutasi.
+- **Hasil:** `PHASE_5L11A=PASS`, `PRODUCTION_READINESS_CLASSIFICATION=READY_FOR_DISABLED_PRODUCTION_DEPLOYMENT`. Mutasi produksi: D1=0, R2=0, Deploy=0.
+
 ### LokaMedia Phase 5L10A Pre-Production Integrity + Observability Gap Closure 2026-09-21
 
 - **Tujuan & Ruang Lingkup:** Verifikasi integritas komprehensif paska-5L10 sebelum melangkah ke tahap produksi. Memastikan tidak ada kehilangan dokumentasi dari checkpoint `97c450b`, memverifikasi integritas migrasi 0019 pada ledger Wrangler D1 lokal, memperluas cakupan uji deterministik untuk kegagalan finalisasi telemetri (`TELEMETRY_FINALIZE_FAILURE_DOES_NOT_ROLLBACK_BUSINESS_ACTION`), deteksi alert tugas tertahan (`STUCK_PLAN_ALERT_TEST`, `STALE_BINDING_ALERT_TEST`), status kesehatan saat mode `OFF` (`OFF_MODE_CRON_ALIVE_TEST`), serta integritas tanda terima Artikel 6 (`ARTICLE_6_RECEIPT_INTEGRITY`).
