@@ -17,6 +17,29 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L12B Canonical Automation Operator Control Foundation 2026-09-22
+
+- **Tujuan & Ruang Lingkup:** Implementasi fondasi kontrol operator kanonikal terotentikasi dan teraudit secara lokal untuk perubahan mode otomasi global (`automation_control.mode`) dan jadwal otomatis (`settings.auto_schedule_enabled`), menutup celah ketergantungan pada direct SQL yang ditemukan pada Phase 5L12/5L12A.
+- **Fondasi Skema Audit Terdedikasi:**
+  - Menambahkan migrasi aditif `0020_automation_control_audit.sql` yang membuat tabel `automation_control_audit` dengan indeks performa untuk pencatatan riwayat kontrol-plane (`AUTOMATION_MODE_CHANGED`, `AUTO_SCHEDULE_CHANGED`) lengkap dengan `actor_id`, `actor_role`, `source`, `previous_value`, `new_value`, `reason`, `correlation_id`, `details_json`, dan timestamp.
+- **Service Layer Kanonikal & Atomisitas Batch:**
+  - Mengimplementasikan `changeAutomationMode` dan `changeAutoSchedule` pada `src/lib/safety/automation-controller.ts` dengan garansi eksekusi atomik batch via `db.batch([updateStmt, auditStmt])`.
+  - Fail-closed: Jika penulisan audit gagal, mutasi mode dibatalkan sepenuhnya (`AUDIT_FAILURE_FAILS_CLOSED=PASS`).
+  - Idempoten: Permintaan transisi identik (misal `OFF → OFF`) mengembalikan status `changed: false` tanpa memicu pencatatan audit redundan (`MODE_NOOP_TEST=PASS`).
+  - Menjaga independensi flag: Perubahan mode tidak mengubah `auto_schedule_enabled`, `kill_switch_engaged`, `planner_paused`, atau `publisher_paused`.
+- **Rute HTTP API Operator Terproteksi:**
+  - Membuat endpoint kanonikal `POST /api/admin/publication/automation/control`.
+  - Keamanan: Wajib sesi admin terotentikasi (`isValidAdminSession`), pertahanan CSRF lintas origin (`verifySameOrigin`), penolakan mutlak kredensial perangkat media (`MEDIA_DEVICE_FORBIDDEN: 403`), dan penolakan mutlak `CRON_SECRET` (`CRON_SECRET_FORBIDDEN: 403`).
+  - Mendukung inspeksi status dan audit terkini via `GET /api/admin/publication/automation/control`.
+  - Integrasi Observabilitas: Status kontrol dan 5 event audit terkini diintegrasikan ke dalam snapshot `getPublicationOperationsStatus`.
+- **Verifikasi & Regresi:**
+  - Menjalankan test suite baru `scripts/test-phase5l12b-canonical-operator-control.js` (15/15 PASS).
+  - Seluruh 9 test suite regresi yang telah ada (Phase 5L2, 5L3, 5L4, 5L6, 5L6A, 5L9, 5L10, readiness, soak safety) lulus 100%.
+  - Typecheck (`tsc --noEmit`), build Astro, dan dry-run Wrangler seluruhnya PASS.
+- **Firewall Produksi & Langkah Selanjutnya:**
+  - Produksi tetap berada pada mode aman `OFF`, `auto_schedule_enabled=false`, `kill_switch=0`. Nol mutasi pada D1/R2 produksi. Belum dideploy ke produksi.
+  - Siap untuk fase deployment produksi migrasi 0020 dan kode kontrol kanonikal (`READY_FOR_CANONICAL_CONTROL_PRODUCTION_DEPLOYMENT=YES`).
+
 ### LokaMedia Phase 5L12A Production Control-Path Integrity Closure 2026-09-22
 
 - **Tujuan & Ruang Lingkup:** Audit read-only terhadap integritas jalur kontrol produksi pasca Phase 5L12. Menyelidiki dan mengoreksi catatan historis mengenai mekanisme mutasi mode otomasi (`automation_control.mode`) dan status rekonsiliasi tabel audit (`publication_operator_audit`).

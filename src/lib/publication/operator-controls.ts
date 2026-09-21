@@ -12,7 +12,18 @@
 
 import { cancelPlan } from './planner-service.ts';
 import { cancelExecution } from './publisher-service.ts';
-import { getAutomationControl } from '../safety/automation-controller.ts';
+import {
+  getAutomationControl,
+  changeAutomationMode,
+  changeAutoSchedule,
+  getRecentAutomationControlAudit
+} from '../safety/automation-controller.ts';
+
+export {
+  changeAutomationMode,
+  changeAutoSchedule,
+  getRecentAutomationControlAudit
+};
 
 export type OperatorActor = string | { id: string; role?: string };
 

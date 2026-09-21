@@ -12,7 +12,12 @@ import {
   type AutomationControlRecord,
   type AutomationCapabilityMatrix,
   type ActivationGatePredicates,
-  type ActivationGateResult
+  type ActivationGateResult,
+  type AutomationControlAuditRecord,
+  type ChangeAutomationModeOptions,
+  type ChangeAutomationModeResult,
+  type ChangeAutoScheduleOptions,
+  type ChangeAutoScheduleResult
 } from './safety-types.ts';
 
 /**
@@ -242,3 +247,279 @@ export function evaluateActivationGate(
     reason: 'All activation predicates passed'
   };
 }
+
+function generateAuditId(prefix: string): string {
+  if (typeof (globalThis as any).crypto?.randomUUID === 'function') {
+    return prefix + '_' + (globalThis as any).crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  }
+  return prefix + '_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+}
+
+/**
+ * 6. Change Automation Mode with Atomic Audit (Phase 5L12B)
+ *
+ * Canonical operator service to mutate global automation mode.
+ * Guarantees:
+ * - Strict mode validation (OFF, OBSERVE_ONLY, PLAN_ONLY, CONTROLLED, UNATTENDED)
+ * - UNATTENDED requires activation gate pass
+ * - Atomic batch execution: control record + automation_control_audit record commit together
+ * - Fail-closed: If audit record write fails, mode mutation is rolled back
+ * - Idempotent: If target mode === current mode, returns NO_CHANGE (changed = false) without creating audit row
+ * - Preserves kill switch, auto_schedule, and pause flags
+ */
+export async function changeAutomationMode(
+  db: any,
+  options: ChangeAutomationModeOptions
+): Promise<ChangeAutomationModeResult> {
+  const {
+    targetMode,
+    actorId,
+    actorRole = 'admin_operator',
+    source = 'operator_api',
+    reason = null,
+    correlationId = null,
+    activationPredicates
+  } = options;
+
+  if (!AUTOMATION_MODES.includes(targetMode)) {
+    return {
+      success: false,
+      mode: 'OFF',
+      previousMode: 'OFF',
+      changed: false,
+      auditId: null,
+      correlationId: correlationId || null,
+      reason: `INVALID_MODE: Mode '${targetMode}' is not recognized`
+    };
+  }
+
+  const currentControl = await getAutomationControl(db);
+  const previousMode = currentControl.mode;
+
+  // Idempotent NOOP handling
+  if (targetMode === previousMode) {
+    return {
+      success: true,
+      mode: targetMode,
+      previousMode,
+      changed: false,
+      auditId: null,
+      correlationId: correlationId || null,
+      message: `NO_CHANGE: Mode is already ${targetMode}`
+    };
+  }
+
+  // Activation Gate evaluation for UNATTENDED
+  if (targetMode === 'UNATTENDED') {
+    const gateResult = evaluateActivationGate(activationPredicates || {});
+    if (!gateResult.unattended_allowed) {
+      return {
+        success: false,
+        mode: previousMode,
+        previousMode,
+        changed: false,
+        auditId: null,
+        correlationId: correlationId || null,
+        reason: `ACTIVATION_GATE_BLOCKED: ${gateResult.reason}`
+      };
+    }
+  }
+
+  // Generate audit & correlation IDs
+  const auditId = generateAuditId('actl');
+  const finalCorrelationId = correlationId || generateAuditId('corr');
+  const nowIso = new Date().toISOString();
+
+  // Audit secret firewall: sanitize details
+  const safeDetails = {
+    source,
+    actorRole,
+    previousMode,
+    targetMode
+  };
+
+  const updateStmt = db
+    .prepare(`
+      INSERT INTO automation_control (id, mode, kill_switch_engaged, kill_reason, updated_at, updated_by)
+      VALUES (1, ?, 0, NULL, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        mode = excluded.mode,
+        updated_at = excluded.updated_at,
+        updated_by = excluded.updated_by
+    `)
+    .bind(targetMode, nowIso, actorId);
+
+  const auditStmt = db
+    .prepare(`
+      INSERT INTO automation_control_audit (
+        audit_id, event_type, actor_id, actor_role, source,
+        previous_value, new_value, reason, correlation_id, details_json, created_at
+      ) VALUES (?, 'AUTOMATION_MODE_CHANGED', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      auditId,
+      actorId,
+      actorRole,
+      source,
+      previousMode,
+      targetMode,
+      reason,
+      finalCorrelationId,
+      JSON.stringify(safeDetails),
+      nowIso
+    );
+
+  // Atomic batch execution
+  await db.batch([updateStmt, auditStmt]);
+
+  return {
+    success: true,
+    mode: targetMode,
+    previousMode,
+    changed: true,
+    auditId,
+    correlationId: finalCorrelationId,
+    message: `Automation mode changed from ${previousMode} to ${targetMode}`
+  };
+}
+
+/**
+ * 7. Change Auto-Schedule with Atomic Audit (Phase 5L12B)
+ *
+ * Canonical operator service to mutate settings.auto_schedule_enabled.
+ * Guarantees:
+ * - Atomic batch execution: settings update + automation_control_audit record commit together
+ * - Fail-closed on audit write failure
+ * - Idempotent: If target value === current value, returns NO_CHANGE without creating audit row
+ * - Preserves mode, kill switch, and pause flags
+ */
+export async function changeAutoSchedule(
+  db: any,
+  options: ChangeAutoScheduleOptions
+): Promise<ChangeAutoScheduleResult> {
+  const {
+    enabled,
+    actorId,
+    actorRole = 'admin_operator',
+    source = 'operator_api',
+    reason = null,
+    correlationId = null
+  } = options;
+
+  let currentVal = false;
+  try {
+    const setting = await db
+      .prepare("SELECT value FROM settings WHERE key = 'auto_schedule_enabled' LIMIT 1")
+      .first();
+    currentVal = Boolean(setting && (setting.value === 'true' || setting.value === '1'));
+  } catch {
+    currentVal = false;
+  }
+
+  // Idempotent NOOP handling
+  if (enabled === currentVal) {
+    return {
+      success: true,
+      enabled,
+      previousEnabled: currentVal,
+      changed: false,
+      auditId: null,
+      correlationId: correlationId || null,
+      message: `NO_CHANGE: auto_schedule_enabled is already ${enabled}`
+    };
+  }
+
+  const auditId = generateAuditId('ascd');
+  const finalCorrelationId = correlationId || generateAuditId('corr');
+  const nowIso = new Date().toISOString();
+  const stringVal = enabled ? 'true' : 'false';
+
+  const safeDetails = {
+    source,
+    actorRole,
+    previousValue: currentVal,
+    newValue: enabled
+  };
+
+  const updateStmt = db
+    .prepare(`
+      INSERT OR REPLACE INTO settings (key, value, updated_at)
+      VALUES ('auto_schedule_enabled', ?, ?)
+    `)
+    .bind(stringVal, nowIso);
+
+  const auditStmt = db
+    .prepare(`
+      INSERT INTO automation_control_audit (
+        audit_id, event_type, actor_id, actor_role, source,
+        previous_value, new_value, reason, correlation_id, details_json, created_at
+      ) VALUES (?, 'AUTO_SCHEDULE_CHANGED', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      auditId,
+      actorId,
+      actorRole,
+      source,
+      String(currentVal),
+      String(enabled),
+      reason,
+      finalCorrelationId,
+      JSON.stringify(safeDetails),
+      nowIso
+    );
+
+  // Also keep publication_operator_audit updated for backwards compatibility
+  const legacyAuditStmt = db
+    .prepare(`
+      INSERT INTO publication_operator_audit (
+        event_type, article_id, plan_id, execution_id,
+        actor_id, actor_role, reason, details_json, created_at
+      ) VALUES (?, NULL, NULL, NULL, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      enabled ? 'AUTO_SCHEDULE_ENABLED' : 'AUTO_SCHEDULE_DISABLED',
+      actorId,
+      actorRole,
+      reason,
+      JSON.stringify({ auto_schedule_enabled: enabled, source }),
+      nowIso
+    );
+
+  await db.batch([updateStmt, auditStmt, legacyAuditStmt]);
+
+  return {
+    success: true,
+    enabled,
+    previousEnabled: currentVal,
+    changed: true,
+    auditId,
+    correlationId: finalCorrelationId,
+    message: `auto_schedule_enabled changed from ${currentVal} to ${enabled}`
+  };
+}
+
+/**
+ * 8. Retrieve Recent Automation Control Audit Records (Phase 5L12B)
+ */
+export async function getRecentAutomationControlAudit(
+  db: any,
+  limit: number = 20
+): Promise<AutomationControlAuditRecord[]> {
+  const boundedLimit = Math.max(1, Math.min(limit, 100));
+  try {
+    const res = await db
+      .prepare(`
+        SELECT id, audit_id, event_type, actor_id, actor_role, source,
+               previous_value, new_value, reason, correlation_id, details_json, created_at
+        FROM automation_control_audit
+        ORDER BY id DESC
+        LIMIT ?
+      `)
+      .bind(boundedLimit)
+      .all();
+    return res?.results || [];
+  } catch {
+    return [];
+  }
+}
+

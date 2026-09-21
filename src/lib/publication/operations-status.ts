@@ -145,6 +145,18 @@ export interface OperationsStatusSnapshot {
     }>;
   };
   alerts: DerivedAlert[];
+  recent_control_events?: Array<{
+    id: number;
+    audit_id: string;
+    event_type: string;
+    actor_id: string;
+    actor_role: string;
+    previous_value: string;
+    new_value: string;
+    reason: string | null;
+    correlation_id: string | null;
+    created_at: string;
+  }>;
 }
 
 /**
@@ -597,6 +609,34 @@ export async function getPublicationOperationsStatus(
     });
   }
 
+  let recentControlEvents: Array<{
+    id: number;
+    audit_id: string;
+    event_type: string;
+    actor_id: string;
+    actor_role: string;
+    previous_value: string;
+    new_value: string;
+    reason: string | null;
+    correlation_id: string | null;
+    created_at: string;
+  }> = [];
+
+  try {
+    const auditRes = await db
+      .prepare(`
+        SELECT id, audit_id, event_type, actor_id, actor_role,
+               previous_value, new_value, reason, correlation_id, created_at
+        FROM automation_control_audit
+        ORDER BY id DESC
+        LIMIT 5
+      `)
+      .all();
+    recentControlEvents = (auditRes?.results || []) as any;
+  } catch {
+    recentControlEvents = [];
+  }
+
   return {
     timestamp: nowIso,
     controls: {
@@ -631,6 +671,7 @@ export async function getPublicationOperationsStatus(
       duplicate_receipts: duplicateReceipts,
       hash_mismatches: hashMismatches
     },
-    alerts
+    alerts,
+    recent_control_events: recentControlEvents
   };
 }

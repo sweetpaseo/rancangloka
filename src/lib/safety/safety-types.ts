@@ -245,3 +245,64 @@ export interface SoakRunResult {
     unexplainedResidue: number;
   };
 }
+
+// ==========================================
+// 9. AUTOMATION CONTROL AUDIT & MUTATION (Phase 5L12B)
+// ==========================================
+
+export interface AutomationControlAuditRecord {
+  id: number;
+  audit_id: string;
+  event_type: 'AUTOMATION_MODE_CHANGED' | 'AUTO_SCHEDULE_CHANGED';
+  actor_id: string;
+  actor_role: string;
+  source: string;
+  previous_value: string;
+  new_value: string;
+  reason: string | null;
+  correlation_id: string | null;
+  details_json: string;
+  created_at: string;
+}
+
+export interface ChangeAutomationModeOptions {
+  targetMode: AutomationMode;
+  actorId: string;
+  actorRole?: string;
+  source?: string;
+  reason?: string | null;
+  correlationId?: string | null;
+  activationPredicates?: Partial<ActivationGatePredicates>;
+}
+
+export interface ChangeAutomationModeResult {
+  success: boolean;
+  mode: AutomationMode;
+  previousMode: AutomationMode;
+  changed: boolean;
+  auditId: string | null;
+  correlationId: string | null;
+  message?: string;
+  reason?: string;
+}
+
+export interface ChangeAutoScheduleOptions {
+  enabled: boolean;
+  actorId: string;
+  actorRole?: string;
+  source?: string;
+  reason?: string | null;
+  correlationId?: string | null;
+}
+
+export interface ChangeAutoScheduleResult {
+  success: boolean;
+  enabled: boolean;
+  previousEnabled: boolean;
+  changed: boolean;
+  auditId: string | null;
+  correlationId: string | null;
+  message?: string;
+  reason?: string;
+}
+
