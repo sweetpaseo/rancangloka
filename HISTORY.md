@@ -17,6 +17,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L12 Production OBSERVE_ONLY Canary 2026-09-21
+
+- **Tujuan & Ruang Lingkup:** Melakukan validasi canary pada kontrol state otomasi tingkat produksi (`automation_control.mode: OFF → OBSERVE_ONLY → OFF`) dengan otorisasi pengguna eksplisit. Membuktikan bahwa mode `OBSERVE_ONLY` mengeksekusi observasi telemetri terjadwal native Cloudflare Cron secara aman, memblokir seluruh tindakan eksekusi dan publikasi tanpa intervensi manusia (`canPlan=false`, `canSchedule=false`, `canPublish=false`), menghasilkan nol mutasi rencana/eksekusi/artikel, dan berhasil dikembalikan ke `mode=OFF`.
+- **Verifikasi Pra-Canary & Gerbang Entri:**
+  - **HEAD & Worktree:** `HEAD=30b27ff1dc9db33d988db6aa97d68e32bed763c3`, branch `lokamedia-phase-2ab-checkpoint`, worktree bersih.
+  - **Worker & Skema:** Worker `rancangloka`, deployment `3404ac08-0e5f-4e11-8e11-2f93b7119a8f` (0 drift), skema D1 migrasi 0019 (0 drift).
+  - **Kontrol Baseline:** `mode=OFF`, `auto_schedule_enabled=false`, `kill_switch=0`, rencana aktif=0, eksekusi aktif=0.
+- **Transisi Kanonikal & Audit Operator:**
+  - **Mekanisme Mutasi:** Menggunakan mekanisme kontrol operator kanonikal (`setAutomationMode` dengan atribusi `admin_operator`).
+  - **Audit Transisi 1 (OFF → OBSERVE_ONLY):** Tercatat dalam ledger `automation_control` dengan timestamp `2026-09-21 16:45:27`, `updated_by='admin_operator'`.
+  - **Audit Transisi 2 (OBSERVE_ONLY → OFF):** Tercatat dalam ledger `automation_control` dengan timestamp `2026-09-21 16:51:07`, `updated_by='admin_operator'`.
+- **Hasil Observasi Detak Native Cron Selama OBSERVE_ONLY:**
+  - **Detak Dispatcher (`publication_dispatcher`):** Terbukti berjalan native via Cloudflare Cron (`trigger_source='cloudflare_cron'`) merekam `automation_mode='OBSERVE_ONLY'` dengan status `BLOCKED` (`error_summary='UNATTENDED_PUBLISH_BLOCKED'`). Contoh run: `crun_disp_9d9f4299465442bf`, `crun_disp_ee111d3c11a24641`.
+  - **Detak Reconciler (`auto_execution_reconciler`):** Terbukti berjalan native via Cloudflare Cron (`trigger_source='cloudflare_cron'`) pada jadwal 5 menit merekam `automation_mode='OBSERVE_ONLY'` dengan status `BLOCKED` (`error_summary='AUTOMATION_MODE_BLOCKS_EXECUTION_OBSERVE_ONLY'`). Contoh run: `crun_rec_e4f5cc3b3a514dd6`.
+  - **Detak Planner (`publication_planner`):** Status `NOT_YET_DUE` (siklus per jam).
+- **Pembuktian Nol Mutasi Siklus Hidup:**
+  - `NEW_PLAN_COUNT=0` (0 rencana publikasi baru).
+  - `NEW_EXECUTION_COUNT=0` (0 eksekusi baru).
+  - `NEW_PUBLICATION_COUNT=0` (0 artikel dipublikasikan).
+  - `NEW_RECEIPT_COUNT=0` (0 tanda terima baru).
+  - `ARTICLE_STATUS_COUNTS_UNCHANGED=YES` (Draft tetap 5, Published tetap 1).
+  - `PRODUCTION_R2_WRITES=0`, `PRODUCTION_MEDIA_MUTATIONS=0`.
+- **Kesehatan Sistem & Rute Publik:**
+  - Status operasi dan integritas tanda terima: `PROD_OPERATIONS_STATUS_HEALTH=PASS`, `PROD_RECEIPT_INTEGRITY=PASS`.
+  - Rute publik selama canary: Homepage (200 OK), Artikel id 6 (200 OK), Sitemap (200 OK).
+- **Status Akhir Produksi:**
+  - `FINAL_AUTOMATION_MODE=OFF`, `FINAL_AUTO_SCHEDULE_ENABLED=false`, `FINAL_KILL_SWITCH=0`.
+  - `HIGHEST_AUTOMATION_MODE_REACHED=OBSERVE_ONLY`.
+- **Hasil:** `PHASE_5L12=PASS`. Validasi canary OBSERVE_ONLY produksi sukses (`PRODUCTION_OBSERVE_ONLY_CANARY_VERIFIED=YES`). Siap untuk Phase 5L13 (`READY_FOR_PHASE_5L13=YES`).
+
 ### LokaMedia Phase 5L11C Production Native Cron Heartbeat Closure 2026-09-21
 
 - **Tujuan & Ruang Lingkup:** Melakukan verifikasi observasi native Cron heartbeat di lingkungan produksi Cloudflare Worker (`rancangloka`) pasca-deployment Phase 5L11B tanpa mutasi kode, tanpa mutasi skema/konfigurasi, dan tanpa emulasi HTTP (`/__scheduled` / POST manual = 0). Membuktikan detak terjadwal native Cloudflare edge scheduler berjalan dan tercatat secara persisten pada tabel `publication_cron_runs` database D1 produksi (`rancangloka_db`).
