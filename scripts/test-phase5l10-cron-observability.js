@@ -542,6 +542,49 @@ await runTestAsync('Test 14: TELEMETRY_FAILURE_POLICY (fails closed if start can
   assert.ok(caught, 'Must fail closed before executing canonical business logic');
 });
 
+// 14B. Telemetry Finalize Failure Test
+await runTestAsync('Test 14B: TELEMETRY_FINALIZE_FAILURE_TEST (canonical action succeeds and is NOT rolled back when finalize fails)', async () => {
+  const db = createTestD1();
+  let businessActionExecuted = false;
+
+  // Start works normally, but complete throws
+  const originalRun = db.rawDb.prepare.bind(db.rawDb);
+  let failFinalize = false;
+  const mockDb = {
+    prepare(sql) {
+      if (failFinalize && sql.includes('UPDATE publication_cron_runs')) {
+        return {
+          bind() {
+            return {
+              async run() {
+                throw new Error('D1_FINALIZE_WRITE_ERROR');
+              }
+            };
+          }
+        };
+      }
+      return db.prepare(sql);
+    }
+  };
+
+  const result = await runWithCronTelemetry(
+    mockDb,
+    CRON_JOB_PLANNER,
+    'cloudflare_cron',
+    async () => {
+      // Simulate successful business action
+      businessActionExecuted = true;
+      failFinalize = true; // Trigger failure on finalize step
+      return { status: 'success', processedCount: 1 };
+    }
+  );
+
+  assert.equal(businessActionExecuted, true, 'Business action must have executed');
+  assert.equal(result.status, 'success', 'Result must be returned to caller');
+  assert.ok(result.telemetry_finalize_error, 'Telemetry finalize error must be surfaced on result');
+  assert.ok(result.telemetry_finalize_error.includes('D1_FINALIZE_WRITE_ERROR'));
+});
+
 // 15. Admin Operations Dashboard Route / Render Sanity Test
 await runTestAsync('Test 15: OPS_DASHBOARD_RENDER_TEST (operations.astro exists and contains required cards)', async () => {
   const dashboardPath = path.resolve(process.cwd(), 'src/pages/admin/publication/operations.astro');
@@ -606,6 +649,133 @@ await runTestAsync('Test 17: REAL_CONTROL_STATE_AUDIT (mode=OFF, auto_schedule=f
     const autoCtrl = db.prepare('SELECT mode, kill_switch_engaged FROM automation_control WHERE id = 1').get();
     assert.equal(autoCtrl?.mode, 'OFF', 'automation mode must remain OFF in local D1');
     assert.equal(autoCtrl?.kill_switch_engaged, 0, 'kill switch must remain 0 in local D1');
+  }
+});
+
+// 18. Stuck Plan Alert Test
+await runTestAsync('Test 18: STUCK_PLAN_ALERT_TEST (auto_policy plan > 15m old under execution mode emits alert)', async () => {
+  const db = createTestD1();
+  // Enable UNATTENDED mode so reconciler is expected to reconcile
+  db.rawDb.prepare("UPDATE automation_control SET mode = 'UNATTENDED', kill_switch_engaged = 0 WHERE id = 1").run();
+
+  const { articleId } = seedTestArticle(db, 88, { slug: 'slug-stuck-plan-88' });
+  const { planId } = seedTestPlan(db, articleId, 'plan_stuck_88');
+
+  // Backdate plan to 20 minutes ago
+  const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+  db.rawDb.prepare("UPDATE article_publication_plans SET created_at = ? WHERE plan_id = ?").run(twentyMinAgo, planId);
+
+  const status = await getPublicationOperationsStatus(db);
+
+  const foundStuckPlan = status.stuck_work.stuck_plans.find(p => p.plan_id === planId);
+  assert.ok(foundStuckPlan, 'Plan must be detected in stuck_work.stuck_plans');
+
+  const stuckAlert = status.alerts.find(a => a.type === 'STUCK_PLAN_DETECTED' && a.article_id === articleId);
+  assert.ok(stuckAlert, 'STUCK_PLAN_DETECTED alert must be derived');
+  assert.equal(stuckAlert.severity, 'WARNING');
+});
+
+// 19. Stale Binding Alert Test
+await runTestAsync('Test 19: STALE_BINDING_ALERT_TEST (content hash mismatch on active execution emits alert)', async () => {
+  const db = createTestD1();
+  const { articleId, contentHash } = seedTestArticle(db, 89, { slug: 'slug-stale-binding-89' });
+  const { planId, assetId } = seedTestPlan(db, articleId, 'plan_stale_89');
+
+  // Insert execution with old content hash
+  const oldHash = '0000000000000000000000000000000000000000000000000000000000000000';
+  db.rawDb.prepare(`
+    INSERT INTO article_publication_executions (
+      execution_id, plan_id, article_id, content_hash, featured_asset_id,
+      target_publish_at, execution_status, execution_mode, created_at, updated_at
+    ) VALUES ('exec_stale_89', ?, ?, ?, ?, datetime('now'), 'SCHEDULED', 'auto_schedule', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `).run(planId, articleId, oldHash, assetId);
+
+  const status = await getPublicationOperationsStatus(db);
+
+  const foundStaleBinding = status.stale_bindings.find(b => b.execution_id === 'exec_stale_89');
+  assert.ok(foundStaleBinding, 'Execution must be detected in stale_bindings');
+  assert.equal(foundStaleBinding.bound_hash, oldHash);
+  assert.equal(foundStaleBinding.current_hash, contentHash);
+
+  const staleAlert = status.alerts.find(a => a.type === 'STALE_BINDING_BLOCKED' && a.execution_id === 'exec_stale_89');
+  assert.ok(staleAlert, 'STALE_BINDING_BLOCKED alert must be derived');
+  assert.equal(staleAlert.severity, 'WARNING');
+});
+
+// 20. Mode-Aware Heartbeat Test
+await runTestAsync('Test 20: OFF_MODE_CRON_ALIVE_TEST (mode=OFF with BLOCKED heartbeats considered alive without critical alert)', async () => {
+  const db = createTestD1();
+  db.rawDb.prepare("UPDATE automation_control SET mode = 'OFF', kill_switch_engaged = 0 WHERE id = 1").run();
+
+  const freshTime = new Date(Date.now() - 30 * 1000).toISOString(); // 30 seconds ago
+  for (const job of [CRON_JOB_PLANNER, CRON_JOB_RECONCILER, CRON_JOB_DISPATCHER]) {
+    db.rawDb.prepare(`
+      INSERT INTO publication_cron_runs (
+        run_id, job_name, trigger_source, started_at, finished_at, status, created_at
+      ) VALUES (?, ?, 'cloudflare_cron', ?, ?, 'BLOCKED', ?)
+    `).run(`crun_alive_${job}`, job, freshTime, freshTime, freshTime);
+  }
+
+  const status = await getPublicationOperationsStatus(db);
+
+  for (const job of [CRON_JOB_PLANNER, CRON_JOB_RECONCILER, CRON_JOB_DISPATCHER]) {
+    const hb = status.heartbeats[job];
+    assert.equal(hb.health, 'BLOCKED', `${job} health must be BLOCKED`);
+    assert.equal(hb.is_stale, false, `${job} must not be stale`);
+  }
+
+  const criticalHeartbeatAlerts = status.alerts.filter(a => a.type === 'CRON_HEARTBEAT_MISSING' && a.severity === 'CRITICAL');
+  assert.equal(criticalHeartbeatAlerts.length, 0, 'Must not emit any CRITICAL heartbeat alert when cron is alive under mode OFF');
+});
+
+// 21. Article 6 Golden Fixture Receipt Integrity Test
+await runTestAsync('Test 21: ARTICLE_6_RECEIPT_INTEGRITY (Article 6 golden fixture has valid receipt with 0 integrity errors)', async () => {
+  const localD1Path = path.resolve(
+    process.cwd(),
+    '.wrangler/state/v3/d1/miniflare-D1DatabaseObject/37bd9da5950b040e71b09fbfd7ca57290acb451dcd5dc35acb02655fa75fa480.sqlite'
+  );
+
+  if (fs.existsSync(localD1Path)) {
+    const rawDb = new DatabaseSync(localD1Path);
+    // Wrap with D1 shim
+    const db = {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                return rawDb.prepare(sql).get(...args);
+              },
+              async all() {
+                const results = rawDb.prepare(sql).all(...args);
+                return { results };
+              },
+              async run() {
+                return rawDb.prepare(sql).run(...args);
+              }
+            };
+          },
+          async first() {
+            return rawDb.prepare(sql).get();
+          },
+          async all() {
+            const results = rawDb.prepare(sql).all();
+            return { results };
+          },
+          async run() {
+            return rawDb.prepare(sql).run();
+          }
+        };
+      }
+    };
+
+    const status = await getPublicationOperationsStatus(db);
+
+    const a6ReceiptAlerts = status.alerts.filter(a => a.type === 'RECEIPT_INTEGRITY_ERROR' && a.article_id === 6);
+    assert.equal(a6ReceiptAlerts.length, 0, 'Article 6 must have 0 receipt integrity alerts');
+
+    const a6Missing = status.receipt_integrity.missing_receipts.filter(r => r.article_id === 6);
+    assert.equal(a6Missing.length, 0, 'Article 6 must not be in missing receipts');
   }
 });
 

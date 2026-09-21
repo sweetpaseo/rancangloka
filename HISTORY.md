@@ -17,6 +17,19 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L10A Pre-Production Integrity + Observability Gap Closure 2026-09-21
+
+- **Tujuan & Ruang Lingkup:** Verifikasi integritas komprehensif paska-5L10 sebelum melangkah ke tahap produksi. Memastikan tidak ada kehilangan dokumentasi dari checkpoint `97c450b`, memverifikasi integritas migrasi 0019 pada ledger Wrangler D1 lokal, memperluas cakupan uji deterministik untuk kegagalan finalisasi telemetri (`TELEMETRY_FINALIZE_FAILURE_DOES_NOT_ROLLBACK_BUSINESS_ACTION`), deteksi alert tugas tertahan (`STUCK_PLAN_ALERT_TEST`, `STALE_BINDING_ALERT_TEST`), status kesehatan saat mode `OFF` (`OFF_MODE_CRON_ALIVE_TEST`), serta integritas tanda terima Artikel 6 (`ARTICLE_6_RECEIPT_INTEGRITY`).
+- **Penyempurnaan Telemetri & Status Operasi:**
+  - `src/lib/publication/cron-telemetry.ts`: `completeCronRun` mengembalikan status sukses/error dan menyematkan `telemetry_finalize_error` pada objek hasil tanpa membatalkan tindakan publikasi kanonikal yang telah selesai.
+  - `src/lib/publication/operations-status.ts`: Menambahkan `STUCK_PLAN_DETECTED` ke dalam `AlertType` dan menghasilkan alert kategori `WARNING` jika ada rencana `auto_policy` yang tidak terekonsiliasi setelah 15 menit dalam mode eksekusi.
+- **Hasil Pengujian & Verifikasi:**
+  - 22/22 uji lulus bersih pada `scripts/test-phase5l10-cron-observability.js`.
+  - Seluruh regresi (Phase 5L9, 5L6A, 5L6, 5L4, 5L3, 5L2, readiness, soak safety) lulus 100%.
+  - Typecheck (`tsc --noEmit`), build (`astro build`), dan `wrangler deploy --dry-run` lulus 100%.
+  - Fixture Artikel 1, 3, 5, 6 beku 100% (0 mutasi). Kontrol lokal: `mode=OFF`, `auto_schedule_enabled=false`, `kill_switch=0`.
+- **Hasil:** `PHASE_5L10A=PASS`, `READY_FOR_PHASE_5L11=YES`.
+
 ### LokaMedia Phase 5L10 Durable Cron Heartbeat + Operations Observability 2026-09-21
 
 - **Tujuan & Masalah:** Mengatasi celah observabilitas operasional (gap ketiadaan detak run-summary pada auto-execution reconciler dan belum adanya dashboard terpadu pengawasan operasi) dengan mengimplementasikan lapisan detak Cron append-only persisten, layanan status operasi kanonikal read-only, deteksi tugas tersangkut (stuck work), mesin peringatan turunan (derived alert engine) ber-sinyal tinggi, API terotentikasi, serta antarmuka visual minimal untuk pengawasan operator.

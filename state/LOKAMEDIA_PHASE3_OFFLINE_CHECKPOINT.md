@@ -18,6 +18,7 @@ Commit message:
 feat: wire hands off publication cron triggers
 ```
 
+`LOKAMEDIA_PHASE_5L10A=PASS_PRE_PRODUCTION_INTEGRITY_AND_GAP_CLOSURE`
 `LOKAMEDIA_PHASE_5L10=PASS_DURABLE_CRON_HEARTBEAT_AND_OPERATIONS_OBSERVABILITY`
 `LOKAMEDIA_PHASE_5L9=PASS_CLOUDFLARE_CRON_WIRING_AND_SERVER_TRIGGER_AUTH`
 `LOKAMEDIA_PHASE_5L8=PASS_HANDS_OFF_PRODUCTION_HARDENING_AUDIT`
@@ -83,6 +84,15 @@ feat: wire hands off publication cron triggers
 `PRODUCTION_AUTOMATION_CURRENTLY_ENABLED=NO`
 `READY_FOR_PRODUCTION_DEPLOYMENT_READINESS_PHASE=YES`
 `NEXT_RECOMMENDED_ACTION=PHASE_5L11_PRODUCTION_DEPLOYMENT_READINESS_AND_CANARY_PREPARATION`
+
+Phase 5L10A (Pre-Production Integrity + Observability Gap Closure):
+- Ancestry verification: confirmed commit `97c450b` was dropped by historical reset without any functional source loss (`FUNCTIONAL_SOURCE_LOSS_FROM_RESET=NO`); all Phase 5L9 history and checkpoint documentation verified 100% preserved.
+- Migration 0019 integrity: verified `0019_publication_cron_observability.sql` applied in Wrangler D1 migration ledger (`WRANGLER_0019_STATUS=APPLIED`, row id 18 in `d1_migrations`).
+- Publication cron runs schema and indexes: verified all 17 columns and 3 indexes. Completed cron history immutable, exactly 1 row per invocation.
+- Fail-closed & non-rollback policy: verified `TELEMETRY_START_FAILURE_FAILS_CLOSED=YES` (fails closed on start error) and `TELEMETRY_FINALIZE_FAILURE_DOES_NOT_ROLLBACK_BUSINESS_ACTION=YES` (business action completes and surfaces finalize error).
+- Alert engine gap closure: verified `STUCK_PLAN_ALERT_TEST=PASS`, `STALE_BINDING_ALERT_TEST=PASS`, and `OFF_MODE_CRON_ALIVE_TEST=PASS` (mode=OFF with alive crons generates 0 false critical alerts).
+- Golden fixture verification: Article 6 golden fixture valid and produces 0 receipt integrity errors (`ARTICLE_6_RECEIPT_INTEGRITY=PASS`).
+- Deterministic test suite: expanded `scripts/test-phase5l10-cron-observability.js` from 17 to 22 tests (22/22 pass). All prior regressions clean.
 
 Phase 5L10 (Durable Cron Heartbeat + Operations Observability):
 - Additive migration `0019_publication_cron_observability.sql`: Created `publication_cron_runs` table with indexes for unified invocation tracking across planner, reconciler, and dispatcher.

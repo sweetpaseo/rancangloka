@@ -43,6 +43,7 @@ export type AlertType =
   | 'STALE_BINDING_BLOCKED'
   | 'RECEIPT_INTEGRITY_ERROR'
   | 'KILL_SWITCH_ACTIVE'
+  | 'STUCK_PLAN_DETECTED'
   | 'DUPLICATE_RACE_DETECTED';
 
 export interface DerivedAlert {
@@ -524,6 +525,18 @@ export async function getPublicationOperationsStatus(
       detected_at: nowIso,
       article_id: item.article_id,
       execution_id: item.execution_id
+    });
+  }
+
+  // C2. Stuck Plans
+  for (const item of stuckPlans) {
+    alerts.push({
+      type: 'STUCK_PLAN_DETECTED',
+      severity: 'WARNING',
+      message: `Auto-policy plan ${item.plan_id} on article ${item.article_id} has not been reconciled into an execution after 15 minutes.`,
+      detected_at: item.created_at || nowIso,
+      article_id: item.article_id,
+      plan_id: item.plan_id
     });
   }
 

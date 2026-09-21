@@ -156,7 +156,7 @@ export async function completeCronRun(
     detailsJson?: Record<string, any>;
   },
   now: Date = new Date()
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   const finishedAt = now.toISOString();
   const safeErrorSummary = result.errorSummary ? sanitizeErrorSummary(result.errorSummary) : null;
   const safeErrorClass = result.errorClass ? result.errorClass.slice(0, 100) : null;
@@ -187,14 +187,21 @@ export async function completeCronRun(
       detailsStr,
       runContext.runId
     ).run();
+    return { success: true };
   } catch (err: any) {
     // SAFE_SURFACE_ON_FINALIZE: surface failure without canceling already completed actions
     console.error(`[CronTelemetry] ERROR: Failed to finalize heartbeat ${runContext.runId}:`, err);
+    return { success: false, error: err?.message || String(err) };
   }
 }
 
 /**
- * Higher-order execution wrapper that executes a job with comprehensive durable telemetry.
+ * Higher-order wrapper to execute a publication cron job with durable telemetry.
+ *
+ * Implements FAIL_CLOSED_ON_START_SAFE_SURFACE_ON_FINALIZE:
+ * 1. If start fails -> throws error, halting execution before business mutations.
+ * 2. If action fails -> logs error, attempts to record FAILED, and rethrows.
+ * 3. If action succeeds but finalize fails -> logs error, surfaces on result, does NOT rollback.
  */
 export async function runWithCronTelemetry<T extends {
   status: 'success' | 'blocked';
@@ -213,41 +220,54 @@ export async function runWithCronTelemetry<T extends {
 ): Promise<T> {
   const runContext = await startCronRun(db, jobName, triggerSource, now);
 
+  let result: T;
   try {
-    const result = await fn(runContext);
-
-    if (result.status === 'blocked') {
-      await completeCronRun(db, runContext, {
-        status: 'BLOCKED',
-        errorClass: 'SAFETY_BLOCK',
-        errorSummary: result.reason || 'Safety block engaged',
-        processedCount: result.processedCount ?? 0,
-        createdCount: result.createdCount ?? 0,
-        blockedCount: result.blockedCount ?? (result.processedCount ?? 1),
-        failedCount: result.failedCount ?? 0,
-        detailsJson: result.details
-      }, now);
-    } else {
-      await completeCronRun(db, runContext, {
-        status: 'SUCCEEDED',
-        processedCount: result.processedCount ?? 0,
-        createdCount: result.createdCount ?? 0,
-        blockedCount: result.blockedCount ?? 0,
-        failedCount: result.failedCount ?? 0,
-        detailsJson: result.details
-      }, now);
-    }
-
-    return result;
+    result = await fn(runContext);
   } catch (err: any) {
-    await completeCronRun(db, runContext, {
-      status: 'FAILED',
-      errorClass: err?.name || 'Error',
-      errorSummary: sanitizeErrorSummary(err?.message || String(err)),
-      detailsJson: { error: sanitizeErrorSummary(err?.message || String(err)) }
-    }, now);
+    try {
+      await completeCronRun(db, runContext, {
+        status: 'FAILED',
+        errorClass: err?.name || 'Error',
+        errorSummary: sanitizeErrorSummary(err?.message || String(err)),
+        detailsJson: { error: sanitizeErrorSummary(err?.message || String(err)) }
+      }, now);
+    } catch (failedTelemetryErr) {
+      console.error(`[CronTelemetry] ERROR: Could not record FAILED status for ${jobName}:`, failedTelemetryErr);
+    }
     throw err;
   }
+
+  // Canonical business action succeeded. Finalize heartbeat safely without rollback.
+  try {
+    const finalizeRes = result.status === 'blocked'
+      ? await completeCronRun(db, runContext, {
+          status: 'BLOCKED',
+          errorClass: 'SAFETY_BLOCK',
+          errorSummary: result.reason || 'Safety block engaged',
+          processedCount: result.processedCount ?? 0,
+          createdCount: result.createdCount ?? 0,
+          blockedCount: result.blockedCount ?? (result.processedCount ?? 1),
+          failedCount: result.failedCount ?? 0,
+          detailsJson: result.details
+        }, now)
+      : await completeCronRun(db, runContext, {
+          status: 'SUCCEEDED',
+          processedCount: result.processedCount ?? 0,
+          createdCount: result.createdCount ?? 0,
+          blockedCount: result.blockedCount ?? 0,
+          failedCount: result.failedCount ?? 0,
+          detailsJson: result.details
+        }, now);
+
+    if (!finalizeRes.success) {
+      (result as any).telemetry_finalize_error = finalizeRes.error;
+    }
+  } catch (finalizeErr: any) {
+    console.error(`[CronTelemetry] ERROR: Failed to finalize heartbeat for ${jobName} (run_id: ${runContext.runId}):`, finalizeErr);
+    (result as any).telemetry_finalize_error = finalizeErr?.message || String(finalizeErr);
+  }
+
+  return result;
 }
 
 /**
