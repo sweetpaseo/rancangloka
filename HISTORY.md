@@ -17,6 +17,73 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L6 Publisher Dual Authorization Foundation 2026-09-21
+
+- **Tujuan & Masalah:** Mengimplementasikan fondasi dual authorization pada lapisan publisher server-side, mendukung dua mode otorisasi publikasi tanpa celah bypass:
+  1. `editorial_signoff`: Membutuhkan persetujuan manusia (`article_editorial_approvals.approval_status = 'APPROVED'`) yang terikat valid pada `content_hash` terkini dan aset featured media aktif, serta status readiness `READY_TO_SCHEDULE`.
+  2. `auto_policy`: TIDAK memerlukan persetujuan manusia. Wajib terikat secara deterministik pada plan auto-policy yang valid (`article_publication_plans.scheduling_mode = 'auto_policy'`), binding identitas (`article_id`, `content_hash`, `featured_asset_id`), provenance snapshot kebijakan sistem yang valid (`system_policy_pass = true`), re-evaluasi kebijakan mutu deterministik terkini secara live di execution time, `manual_hold = 0`, `kill_switch_engaged = 0`, dan kapabilitas mode otomasi server-side (`CONTROLLED` untuk penjadwalan, `UNATTENDED` untuk publikasi).
+- **Resolver Otorisasi Kanonikal (`src/lib/publication/authorization-resolver.ts`):**
+  - Menerapkan fungsi tunggal `resolvePublicationAuthorization(db, params)` untuk tahap `schedule` dan `prepublish`.
+  - Strict plan-mode routing: Rencana `editorial_signoff` hanya memvalidasi jalur persetujuan manusia; rencana `auto_policy` hanya memvalidasi jalur kebijakan sistem tanpa fallback silang (`PLAN_MODE_AUTHORIZATION_STRICT=YES`).
+  - Rencana berstatus `legacy` dipertahankan wajib persetujuan manusia (`LEGACY_PLAN_AUTO_POLICY_ALLOWED=NO`).
+- **Integrasi Publisher Service (`src/lib/publication/publisher-service.ts`):**
+  - `schedulePlanForExecution`: Memvalidasi otorisasi via resolver kanonikal dan menyematkan atribusi mode eksekusi secara otomatis: `auto_schedule` untuk auto-policy, `scheduled_publish` untuk editorial terencana, `manual_publish` untuk Publish Now.
+  - `validatePrepublishInvariants`: Melakukan double-gate re-evaluasi kanonikal terhadap konten, media, dan kebijakan sebelum mutasi rilis publikasi dilakukan.
+  - `executeAtomicPublication`: Memperkuat guard mutasi rilis publikasi dengan verifikasi atomik `content_hash` dan subquery pengecekan aset aktif featured media (`FEATURED_ASSET_RACE_FAILS_CLOSED=YES`), mencegah race condition konten maupun pergantian media concurrent.
+  - `publishNow`: Dibatasi secara mutlak khusus jalur editorial manusia (`PUBLISH_NOW_WITHOUT_HUMAN_APPROVAL_ALLOWED=NO`). Tombol Publish Now dilarang digunakan untuk bypass rilis auto-policy.
+  - Zero Approval Pollution: Otorisasi dan eksekusi auto-policy menghasilkan 0 baris persetujuan editorial (`AUTO_POLICY_APPROVAL_MUTATIONS=0`).
+- **Pengujian & Validasi:**
+  - 23/23 uji fokus di `scripts/test-phase5l6-dual-authorization.js` lulus.
+  - Seluruh regresi kritis (Phase 5L4, 5L3, 5L2, readiness, soak safety) lulus 100%.
+  - Status beku lokal terjaga: Artikel 1 (`draft`), Artikel 3 (`draft`, `APPROVED`, 0 plan, 0 eksekusi), Artikel 5 (`draft`, `manual_hold = 1`, plan `CANCELLED`), `auto_schedule_enabled = false`, `kill_switch_engaged = 0`.
+- **Hasil:** `PHASE_5L6=PASS`, `READY_FOR_CONTROLLED_AUTO_PUBLICATION_TEST=YES`.
+
+### LokaMedia Phase 5L5 Controlled Local Auto-Policy Plan Creation 2026-09-21
+
+- **Tujuan & Masalah:** Membuktikan alur kerja auto-policy planner dari nol tanpa persetujuan manusia secara lokal pada fixture terkontrol, kemudian mengembalikan status sistem ke kondisi aman.
+- **Solusi & Eksekusi:**
+  - Menyiapkan fixture terkontrol Artikel 5 (`lokamedia-publication-quality-fixture-auto-5`) yang memenuhi seluruh syarat kebijakan deterministik tanpa baris persetujuan manusia (`approval_count = 0`).
+  - Mengaktifkan `settings.auto_schedule_enabled = 'true'` dan `automation_control.mode = 'CONTROLLED'` secara lokal sementara.
+  - Menjalankan `createPublicationPlansForReadyArticles`: Candidate selector memilih Artikel 5 dengan `candidate_source = 'auto_policy'`, menerbitkan tepat satu baris `article_publication_plans` (`scheduling_mode = 'auto_policy'`).
+  - Menguji fungsi rollback operator `returnToDraftAndHold`: Membatalkan plan (`plan_status = 'CANCELLED'`), memasang `manual_hold = 1`, mengembalikan `auto_schedule_enabled = 'false'`, dan memastikan 0 eksekusi serta 0 publikasi terbentuk.
+- **Hasil:** `PHASE_5L5=PASS`, bukti lokal auto-policy planning berhasil tanpa efek samping ke Artikel 1 atau 3.
+
+### LokaMedia Phase 5L4 / 5L4A Admin Override, Manual Hold & D1 Ledger Integrity 2026-09-21
+
+- **Tujuan & Masalah:** Memberikan kontrol darurat manual kepada operator (Manual Hold, Return to Draft & Hold, Global Auto-Schedule Toggle) dan memastikan integritas ledger migrasi D1 Cloudflare.
+- **Solusi:**
+  - Migrasi `0018_publication_operator_audit.sql`: Menambahkan kolom `manual_hold`, `manual_hold_reason`, `manual_hold_at`, `manual_hold_by` pada tabel `articles` serta tabel audit `publication_operator_audit`.
+  - Layanan operator di `src/lib/publication/operator-controls.ts`: `engageManualHold`, `releaseManualHold`, `returnToDraftAndHold`, `setGlobalAutoSchedule`.
+  - Double-gate check pada publisher menolak artikel jika `manual_hold = 1`.
+  - Verifikasi ledger migrasi D1 lokal Miniflare: Memastikan migrasi 0017 dan 0018 tercatat secara resmi di tabel `d1_migrations`.
+- **Hasil:** `PHASE_5L4=PASS`, `PHASE_5L4A=PASS`.
+
+### LokaMedia Phase 5L3 Auto-Planner Candidate Integration 2026-09-21
+
+- **Tujuan:** Mengintegrasikan seleksi kandidat ganda (`editorial_signoff` vs `auto_policy`) pada layanan planner publikasi (`src/lib/publication/planner-service.ts`).
+- **Solusi:**
+  - Menambahkan prioritas deterministik: Jika sebuah artikel memenuhi kedua syarat, kandidat editorial signoff diutamakan.
+  - Memvalidasi prasyarat auto-policy: `auto_schedule_enabled = 'true'`, `manual_hold = 0`, `kill_switch_engaged = 0`, dan mode automasi mengizinkan perencanaan (`PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`).
+  - Menyimpan snapshot provenance kebijakan pada rencana publikasi (`scheduling_mode = 'auto_policy'`).
+- **Hasil:** `PHASE_5L3=PASS`.
+
+### LokaMedia Phase 5L2 System Publication Policy Foundation 2026-09-21
+
+- **Tujuan:** Memisahkan evaluasi kebijakan kualitas otomatis (`system_policy_pass`) dari persetujuan manusia (`human_approval_pass`).
+- **Solusi:**
+  - Memperbarui evaluator kesiapan publikasi (`src/lib/publication/service.ts`) untuk mengevaluasi `system_policy_pass` secara independen dari `human_approval_pass`.
+  - Migrasi `0017_publication_auto_schedule.sql`: Menambahkan `scheduling_mode` pada `article_publication_plans` dan `execution_mode` pada `article_publication_executions`.
+  - Menetapkan nilai default sistem `auto_schedule_enabled = 'false'` untuk keamanan.
+- **Hasil:** `PHASE_5L2=PASS`.
+
+### LokaMedia Phase 5K3E2 - 5K3H Article 3 End-to-End Approval & Readiness Verification 2026-09-21
+
+- **Phase 5K3E2 (Featured Media Attachment):** Mengaitkan aset terdaftar `ast_748c29fa012aa3d6eec531fa` sebagai media featured aktif Artikel 3 (`role = 'featured'`, `is_active = 1`).
+- **Phase 5K3F (Readiness Reconciliation):** Merekonsiliasi status kesiapan Artikel 3 dari `BLOCKED` menjadi `READY_FOR_REVIEW`.
+- **Phase 5K3G (Human Editorial Approval):** Editor manusia memeriksa dan menyetujui Artikel 3 secara manual di halaman preview admin (`/admin/preview/lokamedia-publication-quality-fixture`) menghasilkan status `APPROVED`.
+- **Phase 5K3H (Pre-Publication Readiness Audit):** Audit read-only memastikan Artikel 3 berstatus `READY_TO_SCHEDULE` dengan 0 rencana publikasi dan 0 eksekusi terdaftar.
+- **Hasil:** `ARTICLE_3_STATE=READY_TO_SCHEDULE`.
+
 ### LokaMedia Phase 5K3E1 Article 3 Media Asset Registration Execution 2026-09-21
 
 - Successfully registered the canonical Article 3 watermarked R2 derivative into `media_assets` using metadata and provenance only.

@@ -9,15 +9,26 @@ Date: 2026-09-21
 Latest clean checkpoint commit:
 
 ```text
-795a4283528dfa2ae9d5239c933a7c320bb80a55
+e6da9dda051bc3cec3c3d6775e1eaa304b3167b3
 ```
 
 Commit message:
 
 ```text
-fix: preserve full resolution provider image capture
+feat: add publisher dual authorization
 ```
 
+`LOKAMEDIA_PHASE_5L6=PASS_PUBLISHER_DUAL_AUTHORIZATION`
+`LOKAMEDIA_PHASE_5L5=PASS_CONTROLLED_LOCAL_AUTO_POLICY_PLAN_CREATION`
+`LOKAMEDIA_PHASE_5L4A=PASS_LOCAL_D1_MIGRATION_LEDGER_INTEGRITY`
+`LOKAMEDIA_PHASE_5L4=PASS_ADMIN_OVERRIDE_AND_MANUAL_HOLD_CONTROLS`
+`LOKAMEDIA_PHASE_5L3=PASS_AUTO_PLANNER_CANDIDATE_INTEGRATION`
+`LOKAMEDIA_PHASE_5L2=PASS_SYSTEM_PUBLICATION_POLICY_FOUNDATION`
+`LOKAMEDIA_PHASE_5L1=PASS_HANDS_OFF_AUTO_SCHEDULE_ARCHITECTURE_AUDIT`
+`LOKAMEDIA_PHASE_5K3H=PASS_PRE_PUBLICATION_READINESS_AUDIT`
+`LOKAMEDIA_PHASE_5K3G=PASS_ARTICLE_3_HUMAN_APPROVAL_VERIFICATION`
+`LOKAMEDIA_PHASE_5K3F=PASS_MEDIA_READINESS_RECONCILIATION`
+`LOKAMEDIA_PHASE_5K3E2=PASS_ARTICLE_3_FEATURED_ASSET_ATTACHMENT`
 `LOKAMEDIA_PHASE_5K3E1=PASS_ARTICLE_3_MEDIA_ASSET_REGISTRATION`
 `LOKAMEDIA_PHASE_5K3D=PASS_ARTICLE_3_DURABLE_WATERMARKED_DERIVATIVE_UPLOAD`
 `LOKAMEDIA_PHASE_5K3C=PASS_ARTICLE_3_DETERMINISTIC_WATERMARK_DERIVATIVE`
@@ -44,8 +55,47 @@ fix: preserve full resolution provider image capture
 `MEDIA_PROCESSING_LANE_CLOSED=YES`
 `UPLOAD_LANE_CLOSED=YES`
 `MEDIA_ASSET_REGISTRATION_LANE_CLOSED=YES`
-`ARTICLE_MEDIA_ATTACHMENT_LANE_READY=YES`
-`NEXT_RECOMMENDED_ACTION=PHASE_5K3E2_ATTACH_ARTICLE_3_FEATURED_ASSET`
+`ARTICLE_MEDIA_ATTACHMENT_LANE_CLOSED=YES`
+`PUBLISHER_DUAL_AUTHORIZATION_READY=YES`
+`AUTO_POLICY_REQUIRES_HUMAN_APPROVAL=NO`
+`PUBLISH_NOW_WITHOUT_HUMAN_APPROVAL_ALLOWED=NO`
+`ATOMIC_CONTENT_HASH_PUBLICATION_GUARD=YES`
+`FEATURED_ASSET_RACE_FAILS_CLOSED=YES`
+`NEXT_RECOMMENDED_ACTION=PHASE_5L7_CONTROLLED_NO_HUMAN_APPROVAL_END_TO_END_PUBLISH`
+
+Phase 5L6 (Publisher Dual Authorization Foundation):
+- Implemented canonical server-side publication authorization resolver in `src/lib/publication/authorization-resolver.ts:resolvePublicationAuthorization`.
+- Supports explicit modes: `editorial_signoff` (requires human approval bound to content_hash and active featured asset) and `auto_policy` (requires zero human approval; bound to valid auto_policy plan, deterministic policy provenance, live deterministic gate re-evaluation, safe automation mode, manual_hold=0, kill_switch_engaged=0).
+- Strict plan-mode routing without cross-fallback (`PLAN_MODE_AUTHORIZATION_STRICT=YES`). Legacy plans strictly require human approval.
+- Integrated canonical authorization into `schedulePlanForExecution` and `validatePrepublishInvariants`.
+- Hardened `executeAtomicPublication` with atomic content hash match and featured active media subquery verification (`FEATURED_ASSET_RACE_FAILS_CLOSED=YES`).
+- Manual Publish Now strictly human-only (`PUBLISH_NOW_WITHOUT_HUMAN_APPROVAL_ALLOWED=NO`).
+- Auto-policy authorization and execution creates ZERO human approval mutations (`AUTO_POLICY_APPROVAL_MUTATIONS=0`).
+- 23/23 tests pass in `scripts/test-phase5l6-dual-authorization.js`.
+
+Phase 5L5 (Controlled Local Auto-Policy Plan Creation):
+- Verified end-to-end auto-policy planner on fixture Article 5 (`lokamedia-publication-quality-fixture-auto-5`) without human approval.
+- Successfully planned exactly one auto-policy plan (`scheduling_mode = 'auto_policy'`).
+- Safely cancelled plan via `returnToDraftAndHold`, engaged `manual_hold = 1`, restored `auto_schedule_enabled = false`, leaving Article 1 and Article 3 100% frozen.
+
+Phase 5L4 / 5L4A (Admin Override, Manual Hold & D1 Ledger Integrity):
+- Added `articles.manual_hold` and operator audit logging via migration `0018_publication_operator_audit.sql`.
+- Operator services: `engageManualHold`, `releaseManualHold`, `returnToDraftAndHold`, `setGlobalAutoSchedule`.
+- Verified D1 migration ledger hygiene for migrations 0017 and 0018 in local Miniflare SQLite.
+
+Phase 5L3 (Auto-Planner Candidate Integration):
+- Enhanced publication planner with dual candidate selection (`editorial_signoff` and `auto_policy`).
+- Enforced deterministic priority, capability checks, and bound provenance snapshots.
+
+Phase 5L2 (System Publication Policy Foundation):
+- Decoupled `system_policy_pass` (deterministic quality gates) from `human_approval_pass`.
+- Added `scheduling_mode` and `execution_mode` to schema via migration `0017_publication_auto_schedule.sql`.
+
+Phase 5K3E2 - 5K3H (Article 3 Attachment, Reconciliation, Approval & Readiness):
+- Phase 5K3E2: Attached registered media `ast_748c29fa012aa3d6eec531fa` to Article 3 as featured asset.
+- Phase 5K3F: Media readiness reconciliation transitioned Article 3 to `READY_FOR_REVIEW`.
+- Phase 5K3G: Human editor verified and approved Article 3 in preview UI -> `APPROVED`.
+- Phase 5K3H: Readiness audit confirmed Article 3 `READY_TO_SCHEDULE` with 0 plans and 0 executions.
 
 Phase 5K3E1 (Article 3 Media Asset Registration Execution):
 - Registered verified R2 derivative (`media/articles/derivatives/c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b.png`, 3725697 bytes, SHA-256 `c47f0221350c417c11f2f07664be0d90cee2b62e5082645121eb3e075ebbb01b`) into `media_assets` as `ast_748c29fa012aa3d6eec531fa`.
