@@ -49,63 +49,231 @@ import {
 
 /**
  * 1. Eligible Inventory Query
- * Consumes ONLY articles that have verified READY_TO_SCHEDULE gate status,
- * strictly matching content_hash, active featured media, and approved sign-off.
+ * Evaluates candidate draft articles for publication planning across two distinct paths:
+ * A. EDITORIAL SIGNOFF PATH: Valid human approval + READY_TO_SCHEDULE gate status.
+ * B. AUTO POLICY PATH: system_policy_pass = true + operational auto-schedule eligibility,
+ *    without requiring human approval.
+ * 
+ * Precedence Rule: Explicit valid human approval resolves to candidateSource='editorial_signoff'.
+ * Legacy Snapshot Rule: Snapshots without policy.system_policy_pass fail closed for auto-policy.
  */
-export async function getEligibleReadyCandidates(db: any): Promise<PlannerCandidate[]> {
+export async function getEligibleReadyCandidates(
+  db: any,
+  options?: {
+    plannerMode?: 'all' | 'manual' | 'auto';
+    autoScheduleEnabled?: boolean;
+  }
+): Promise<PlannerCandidate[]> {
+  // A. Resolve auto_schedule_enabled
+  let autoScheduleEnabled = options?.autoScheduleEnabled;
+  if (autoScheduleEnabled === undefined) {
+    try {
+      const row = await db
+        .prepare("SELECT value FROM settings WHERE key = 'auto_schedule_enabled' LIMIT 1")
+        .first();
+      autoScheduleEnabled = Boolean(row && (row.value === 'true' || row.value === '1'));
+    } catch {
+      autoScheduleEnabled = false;
+    }
+  }
+
+  // B. Resolve automation control & capability matrix
+  let autoControl = { mode: 'OFF', kill_switch_engaged: 0 };
+  try {
+    autoControl = await getAutomationControl(db);
+  } catch {
+    autoControl = { mode: 'OFF', kill_switch_engaged: 0 };
+  }
+
+  const killSwitchEngaged = Boolean(autoControl.kill_switch_engaged === 1);
+  const caps = getCapabilityMatrix(autoControl.mode as any, killSwitchEngaged);
+
+  // C. Check if planner is globally paused
+  let plannerPaused = false;
+  try {
+    const pauseSetting = await db
+      .prepare("SELECT value FROM settings WHERE key = 'planner_paused' LIMIT 1")
+      .first();
+    plannerPaused = Boolean(pauseSetting && (pauseSetting.value === '1' || pauseSetting.value === 'true'));
+  } catch {
+    plannerPaused = false;
+  }
+
+  const canAutoPlan = Boolean(
+    autoScheduleEnabled &&
+    !killSwitchEngaged &&
+    caps.canPlan &&
+    !plannerPaused
+  );
+
+  // D. Query draft articles with active featured media, latest readiness snapshot, and latest approval
   const query = `
     SELECT a.id, a.slug, a.title, a.status, a.content_hash, a.category_id,
            a.author_id, a.focus_keyword, a.reading_time_minutes,
            a.is_featured, a.is_trending, a.is_sponsored,
-           r.id as readiness_id, r.is_ready, r.overall_status, r.evaluated_at, r.snapshot_json,
-           app.approved_by, app.approved_asset_id, app.approval_status
+           COALESCE(a.manual_hold, 0) AS manual_hold,
+           am.asset_id AS featured_asset_id,
+           r.id AS readiness_id, r.is_ready, r.overall_status, r.evaluated_at,
+           r.content_hash AS readiness_content_hash, r.snapshot_json,
+           app.id AS approval_id, app.approved_by, app.approved_asset_id,
+           app.approval_status, app.approved_content_hash
     FROM articles a
-    JOIN article_publication_readiness r ON a.id = r.article_id
-    JOIN article_editorial_approvals app ON a.id = app.article_id
     JOIN article_media am ON a.id = am.article_id AND am.role = 'featured' AND am.is_active = 1
-    WHERE a.status = 'draft'
-      AND r.is_ready = 1
-      AND r.overall_status = 'READY_TO_SCHEDULE'
-      AND a.content_hash = r.content_hash
-      AND app.approval_status = 'APPROVED'
-      AND app.approved_content_hash = a.content_hash
-      AND app.approved_asset_id = am.asset_id
+    LEFT JOIN article_publication_readiness r ON a.id = r.article_id
       AND r.id = (
         SELECT id FROM article_publication_readiness
         WHERE article_id = a.id
         ORDER BY evaluated_at DESC, id DESC
         LIMIT 1
       )
+    LEFT JOIN article_editorial_approvals app ON a.id = app.article_id
       AND app.id = (
         SELECT id FROM article_editorial_approvals
         WHERE article_id = a.id
         ORDER BY created_at DESC, id DESC
         LIMIT 1
       )
-    ORDER BY r.evaluated_at ASC;
+    WHERE a.status = 'draft'
+    ORDER BY r.evaluated_at ASC, a.id ASC;
   `;
 
   const result = await db.prepare(query).all();
   const rows = result.results || result || [];
+  const candidates: PlannerCandidate[] = [];
 
-  return rows.map((row: any) => ({
-    articleId: row.id,
-    slug: row.slug,
-    title: row.title,
-    categoryId: row.category_id,
-    authorId: row.author_id,
-    contentHash: row.content_hash,
-    readinessSnapshotId: row.readiness_id,
-    readinessEvaluatedAt: row.evaluated_at,
-    approvedBy: row.approved_by,
-    approvedAssetId: row.approved_asset_id,
-    focusKeyword: row.focus_keyword || null,
-    readingTimeMinutes: row.reading_time_minutes || 3,
-    isFeatured: Boolean(row.is_featured),
-    isTrending: Boolean(row.is_trending),
-    isSponsored: Boolean(row.is_sponsored),
-    operatorPriority: 0
-  }));
+  for (const row of rows) {
+    const manualHold = Boolean(row.manual_hold === 1);
+    if (manualHold) {
+      // Manual hold excludes article from automatic planning
+      continue;
+    }
+
+    // Active or completed execution conflict check
+    let hasActiveExecution = false;
+    try {
+      const activeExec = await db
+        .prepare(
+          `SELECT execution_id FROM article_publication_executions
+           WHERE article_id = ?
+             AND execution_status IN ('SCHEDULED', 'CLAIMED', 'PUBLISHING', 'RETRY_WAIT', 'PUBLISHED')
+           LIMIT 1`
+        )
+        .bind(row.id)
+        .first();
+      hasActiveExecution = Boolean(activeExec);
+    } catch {
+      hasActiveExecution = false;
+    }
+
+    if (hasActiveExecution) {
+      continue;
+    }
+
+    // Active plan conflict check
+    let hasActivePlan = false;
+    try {
+      const activePlan = await db
+        .prepare(
+          `SELECT plan_id FROM article_publication_plans
+           WHERE article_id = ? AND plan_status = 'PLANNED'
+           LIMIT 1`
+        )
+        .bind(row.id)
+        .first();
+      hasActivePlan = Boolean(activePlan);
+    } catch {
+      hasActivePlan = false;
+    }
+
+    // Parse readiness snapshot payload
+    let snapshotPayload: any = null;
+    if (row.snapshot_json) {
+      try {
+        snapshotPayload = JSON.parse(row.snapshot_json);
+      } catch {
+        snapshotPayload = null;
+      }
+    }
+
+    // Resolve system_policy_pass (Fail closed on legacy snapshot missing the field)
+    let systemPolicyPass = false;
+    if (snapshotPayload && typeof snapshotPayload.policy?.system_policy_pass === 'boolean') {
+      systemPolicyPass = snapshotPayload.policy.system_policy_pass;
+    } else {
+      systemPolicyPass = false;
+    }
+
+    // Resolve human approval pass
+    const humanApprovalPass = Boolean(
+      row.approval_id &&
+      row.approval_status === 'APPROVED' &&
+      row.approved_content_hash === row.content_hash &&
+      row.approved_asset_id === row.featured_asset_id
+    );
+
+    // Path A: Editorial Signoff Eligibility
+    const isEditorialEligible = Boolean(
+      humanApprovalPass &&
+      row.readiness_id &&
+      row.is_ready === 1 &&
+      row.overall_status === 'READY_TO_SCHEDULE' &&
+      row.readiness_content_hash === row.content_hash
+    );
+
+    // Path B: Auto Policy Eligibility (no human approval required)
+    const isAutoPolicyEligible = Boolean(
+      canAutoPlan &&
+      systemPolicyPass &&
+      row.readiness_content_hash === row.content_hash &&
+      !hasActivePlan
+    );
+
+    // Precedence: Valid human approval takes precedence as editorial_signoff
+    let candidateSource: 'editorial_signoff' | 'auto_policy' | null = null;
+    if (isEditorialEligible) {
+      candidateSource = 'editorial_signoff';
+    } else if (isAutoPolicyEligible) {
+      candidateSource = 'auto_policy';
+    }
+
+    if (!candidateSource) {
+      continue;
+    }
+
+    // Invocation mode filtering if specified
+    if (options?.plannerMode === 'manual' && candidateSource !== 'editorial_signoff') {
+      continue;
+    }
+    if (options?.plannerMode === 'auto' && candidateSource !== 'auto_policy') {
+      continue;
+    }
+
+    candidates.push({
+      articleId: row.id,
+      slug: row.slug,
+      title: row.title,
+      categoryId: row.category_id,
+      authorId: row.author_id,
+      contentHash: row.content_hash,
+      readinessSnapshotId: row.readiness_id,
+      readinessEvaluatedAt: row.evaluated_at || new Date().toISOString(),
+      approvedBy: candidateSource === 'editorial_signoff' ? row.approved_by : null,
+      approvedAssetId: row.featured_asset_id,
+      focusKeyword: row.focus_keyword || null,
+      readingTimeMinutes: row.reading_time_minutes || 3,
+      isFeatured: Boolean(row.is_featured),
+      isTrending: Boolean(row.is_trending),
+      isSponsored: Boolean(row.is_sponsored),
+      operatorPriority: 0,
+      candidateSource,
+      schedulingMode: candidateSource,
+      systemPolicyPass,
+      humanApprovalPass,
+      manualHold
+    });
+  }
+
+  return candidates;
 }
 
 /**
@@ -135,7 +303,7 @@ export async function validatePlanFreshness(
 
   // Fetch current article
   const art = await db
-    .prepare('SELECT id, status, content_hash FROM articles WHERE id = ? LIMIT 1')
+    .prepare('SELECT id, status, content_hash, COALESCE(manual_hold, 0) AS manual_hold FROM articles WHERE id = ? LIMIT 1')
     .bind(plan.article_id)
     .first();
 
@@ -161,7 +329,41 @@ export async function validatePlanFreshness(
     return { isValid: false, reason: 'MEDIA_CHANGED', plan };
   }
 
-  // Check current approval
+  // Path-specific revalidation:
+  if (plan.scheduling_mode === 'auto_policy') {
+    // A. Manual hold check
+    if (art.manual_hold === 1) {
+      await markPlanBlocked(db, plan.plan_id, plan.article_id, 'MANUAL_HOLD_ENGAGED_AFTER_PLANNING');
+      return { isValid: false, reason: 'MANUAL_HOLD_ENGAGED', plan };
+    }
+
+    // B. Revalidate latest readiness snapshot policy.system_policy_pass
+    const latestReadiness = await db
+      .prepare('SELECT is_ready, overall_status, content_hash, snapshot_json FROM article_publication_readiness WHERE article_id = ? ORDER BY evaluated_at DESC, id DESC LIMIT 1')
+      .bind(plan.article_id)
+      .first();
+
+    let systemPolicyPass = false;
+    if (latestReadiness?.snapshot_json) {
+      try {
+        const payload = JSON.parse(latestReadiness.snapshot_json);
+        if (typeof payload.policy?.system_policy_pass === 'boolean') {
+          systemPolicyPass = payload.policy.system_policy_pass;
+        }
+      } catch {
+        systemPolicyPass = false;
+      }
+    }
+
+    if (!latestReadiness || !systemPolicyPass || latestReadiness.content_hash !== plan.content_hash) {
+      await markPlanBlocked(db, plan.plan_id, plan.article_id, 'SYSTEM_POLICY_INVALIDATED_AFTER_PLANNING');
+      return { isValid: false, reason: 'SYSTEM_POLICY_INVALID', plan };
+    }
+
+    return { isValid: true, plan };
+  }
+
+  // Editorial signoff / legacy path revalidation: requires valid human approval and READY_TO_SCHEDULE
   const latestApproval = await db
     .prepare('SELECT approval_status, approved_content_hash, approved_asset_id FROM article_editorial_approvals WHERE article_id = ? ORDER BY created_at DESC, id DESC LIMIT 1')
     .bind(plan.article_id)
@@ -227,6 +429,8 @@ export async function executePublicationPlanner(
     scoringWeights?: any;
     dryRun?: boolean;
     actor?: string;
+    plannerMode?: 'all' | 'manual' | 'auto';
+    autoScheduleEnabled?: boolean;
   } = {}
 ): Promise<PlannerExecutionResult> {
   const profile = options.profile || PLANNER_PROFILE_GROWING;
@@ -273,7 +477,10 @@ export async function executePublicationPlanner(
   const runId = `prun_${getRandomHex(6)}`;
 
   // 1. Fetch eligible ready candidates
-  const candidates = await getEligibleReadyCandidates(db);
+  const candidates = await getEligibleReadyCandidates(db, {
+    plannerMode: options.plannerMode,
+    autoScheduleEnabled: options.autoScheduleEnabled
+  });
 
   // 2. Fetch operator priority overrides from settings or draft metadata if any
   for (const c of candidates) {
@@ -345,6 +552,11 @@ export async function executePublicationPlanner(
     slotIndex?: number;
     targetPublishLocal?: string;
     reasons: string[];
+    candidateSource?: 'editorial_signoff' | 'auto_policy';
+    schedulingMode?: 'editorial_signoff' | 'auto_policy';
+    systemPolicyPass?: boolean;
+    humanApprovalPass?: boolean;
+    manualHold?: boolean;
   }> = [];
 
   for (const p of planned) {
@@ -353,7 +565,12 @@ export async function executePublicationPlanner(
       action: 'PLANNED',
       slotIndex: p.slotIndex,
       targetPublishLocal: p.targetPublishLocal,
-      reasons: p.reasonCodes
+      reasons: p.reasonCodes,
+      candidateSource: p.candidate.candidateSource,
+      schedulingMode: p.candidate.schedulingMode,
+      systemPolicyPass: p.candidate.systemPolicyPass,
+      humanApprovalPass: p.candidate.humanApprovalPass,
+      manualHold: p.candidate.manualHold
     });
   }
 
@@ -361,7 +578,12 @@ export async function executePublicationPlanner(
     explanations.push({
       articleId: d.articleId,
       action: 'DEFERRED',
-      reasons: ['DAILY_CAPACITY_CEILING_REACHED', 'DEFERRED_TO_NEXT_CYCLE']
+      reasons: ['DAILY_CAPACITY_CEILING_REACHED', 'DEFERRED_TO_NEXT_CYCLE'],
+      candidateSource: d.candidateSource,
+      schedulingMode: d.schedulingMode,
+      systemPolicyPass: d.systemPolicyPass,
+      humanApprovalPass: d.humanApprovalPass,
+      manualHold: d.manualHold
     });
   }
 
@@ -402,14 +624,15 @@ export async function executePublicationPlanner(
       }
 
       // Insert new active plan
+      const planSchedulingMode = candidate.schedulingMode || (candidate.candidateSource === 'auto_policy' ? 'auto_policy' : 'editorial_signoff');
       await db
         .prepare(`
           INSERT INTO article_publication_plans (
             plan_id, article_id, readiness_id, content_hash, featured_asset_id,
             target_publish_at, target_publish_local, timezone, plan_status,
             planner_profile, planner_version, priority_score, slot_index,
-            jitter_seconds, reason_codes, supersedes_plan_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '${PLAN_STATUS_PLANNED}', ?, ?, ?, ?, ?, ?, ?)
+            jitter_seconds, reason_codes, supersedes_plan_id, scheduling_mode
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '${PLAN_STATUS_PLANNED}', ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         .bind(
           planId,
@@ -426,7 +649,8 @@ export async function executePublicationPlanner(
           slotIndex,
           jitterSeconds,
           JSON.stringify(reasonCodes),
-          supersedesId
+          supersedesId,
+          planSchedulingMode
         )
         .run();
 
@@ -436,7 +660,15 @@ export async function executePublicationPlanner(
           INSERT INTO publication_plan_events (plan_id, article_id, event_type, actor_type, actor_id, details_json)
           VALUES (?, ?, 'CREATED', 'planner', 'publication1-planner', ?)
         `)
-        .bind(planId, candidate.articleId, JSON.stringify({ targetPublishLocal, slotIndex }))
+        .bind(
+          planId,
+          candidate.articleId,
+          JSON.stringify({
+            targetPublishLocal,
+            slotIndex,
+            scheduling_mode: planSchedulingMode
+          })
+        )
         .run();
     }
 

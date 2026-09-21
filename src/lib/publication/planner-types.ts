@@ -98,8 +98,8 @@ export interface PlannerCandidate {
   // Readiness Provenance
   readinessSnapshotId: number;
   readinessEvaluatedAt: string;
-  approvedBy: string;
-  approvedAssetId: string;
+  approvedBy: string | null;
+  approvedAssetId: string | null;
   
   // Metadata & Diversity
   focusKeyword?: string | null;
@@ -110,6 +110,13 @@ export interface PlannerCandidate {
   
   // Operator Override / Priority (0 to 100)
   operatorPriority?: number;
+
+  // Phase 5L3: Candidate Source & Scheduling Mode
+  candidateSource?: 'editorial_signoff' | 'auto_policy';
+  schedulingMode?: 'editorial_signoff' | 'auto_policy';
+  systemPolicyPass?: boolean;
+  humanApprovalPass?: boolean;
+  manualHold?: boolean;
 }
 
 /**
@@ -161,6 +168,7 @@ export interface PublicationPlanRecord {
   jitter_seconds: number;
   reason_codes: string;
   supersedes_plan_id: string | null;
+  scheduling_mode?: 'legacy' | 'auto_policy' | 'editorial_signoff' | 'manual_operator';
   created_at: string;
   updated_at: string;
 }
@@ -219,5 +227,11 @@ export interface PlannerExecutionResult {
     slotIndex?: number;
     targetPublishLocal?: string;
     reasons: string[];
+    candidateSource?: 'editorial_signoff' | 'auto_policy';
+    schedulingMode?: 'editorial_signoff' | 'auto_policy';
+    systemPolicyPass?: boolean;
+    humanApprovalPass?: boolean;
+    manualHold?: boolean;
   }>;
 }
+
