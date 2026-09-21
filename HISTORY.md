@@ -17,6 +17,34 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L12C Canonical Control Production Deployment 2026-09-22
+
+- **Tujuan & Ruang Lingkup:** Menerapkan migrasi D1 produksi `0020_automation_control_audit.sql` dan mendeploy Worker `rancangloka` yang berisi fondasi kontrol operator kanonikal terotentikasi & teraudit ke lingkungan produksi Cloudflare dalam kondisi aman non-aktif (`mode=OFF`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`).
+- **Verifikasi Pre-Deploy & Backup:**
+  - Backup D1 produksi dibuat sukses melalui `wrangler d1 export` ke file snapshot lokal aman di luar git (`rancangloka_db_pre_5l12c_backup.sql`).
+  - Seluruh 10 test suite regresi (5L12B, 5L10, 5L9, 5L6A, 5L6, 5L4, 5L3, 5L2, readiness, soak safety) lulus 100%.
+  - Typecheck (`tsc --noEmit`), build Astro, dan Wrangler dry-run seluruhnya PASS.
+- **Eksekusi & Validasi Migrasi 0020:**
+  - Migrasi `0020_automation_control_audit.sql` diaplikasikan ke remote database `rancangloka_db` secara kanonikal via `wrangler d1 migrations apply`.
+  - Tabel terdedikasi `automation_control_audit` dan indeksnya berhasil terbuat tanpa mengubah data yang ada (`MIGRATION_0020_ADDITIVE_ONLY=YES`, `MIGRATION_0020_DESTRUCTIVE_RISK=NONE`).
+  - Nol audit retroaktif terbuat (`RETROACTIVE_CONTROL_AUDITS_CREATED=0`).
+- **Deployment Worker Produksi:**
+  - Worker `rancangloka` berhasil dideploy ke Cloudflare Edge dengan ID versi aktif baru: `d81db579-63f1-40c4-9345-328780f6f694` (deployment sebelumnya: `3404ac08-0e5f-4e11-8e11-2f93b7119a8f` tetap menjadi referensi rollback).
+  - Rute publik tetap sehat: Homepage HTTP 200, artikel terbitan (slug: `rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`) HTTP 200, dan sitemap XML HTTP 200.
+- **Validasi Keamanan Endpoint Kontrol Kanonikal:**
+  - Rute `POST /api/admin/publication/automation/control` terdeploy dan aktif.
+  - Permintaan mutasi anonim ditolak dengan status 401 Unauthorized (`PROD_ANONYMOUS_OPERATOR_MUTATION=DENIED`).
+  - Kredensial cron ditolak (`PROD_CRON_SECRET_OPERATOR_ACCESS=DENIED_BY_DESIGN`).
+  - Tidak ada mutasi mode yang dieksekusi pada fase ini (`AUTHORIZED_OPERATOR_MODE_CHANGE_CALLS=0`).
+- **Observabilitas Native Cron & Invarian Lifecycle:**
+  - Heartbeat native Cron pasca-deploy terpantau aktif dan aman mencatat status `BLOCKED` (alasan: `AUTOMATION_MODE_OFF` untuk dispatcher, `AUTOMATION_MODE_BLOCKS_EXECUTION_OFF` untuk reconciler).
+  - Nol siklus publikasi terjadi: `POST_DEPLOY_NEW_PLAN_COUNT=0`, `POST_DEPLOY_NEW_EXECUTION_COUNT=0`, `POST_DEPLOY_NEW_RECEIPT_COUNT=0`, `POST_DEPLOY_NEW_PUBLICATION_COUNT=0`.
+  - Status artikel tetap konsisten (Draft: 5, Published: 1).
+  - Mutasi raw SQL pada tabel kontrol tetap dilarang (`RAW_SQL_CONTROL_MUTATIONS=0`).
+- **Status Akhir & Kesiapan:**
+  - Status kontrol produksi tetap aman: `FINAL_AUTOMATION_MODE=OFF`, `FINAL_AUTO_SCHEDULE=false`, `FINAL_KILL_SWITCH=0`.
+  - Fondasi kanonikal siap untuk uji round-trip terkontrol pertama `OFF → OBSERVE_ONLY → OFF` via API kanonikal pada Phase 5L12D (`READY_FOR_PHASE_5L12D=YES`).
+
 ### LokaMedia Phase 5L12B Canonical Automation Operator Control Foundation 2026-09-22
 
 - **Tujuan & Ruang Lingkup:** Implementasi fondasi kontrol operator kanonikal terotentikasi dan teraudit secara lokal untuk perubahan mode otomasi global (`automation_control.mode`) dan jadwal otomatis (`settings.auto_schedule_enabled`), menutup celah ketergantungan pada direct SQL yang ditemukan pada Phase 5L12/5L12A.

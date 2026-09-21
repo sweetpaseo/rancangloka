@@ -18,6 +18,7 @@ Commit message:
 feat: add canonical automation operator control
 ```
 
+`LOKAMEDIA_PHASE_5L12C=PASS_CANONICAL_CONTROL_PRODUCTION_DEPLOYMENT`
 `LOKAMEDIA_PHASE_5L12B=PASS_CANONICAL_AUTOMATION_OPERATOR_CONTROL_FOUNDATION`
 `LOKAMEDIA_PHASE_5L12A=PASS_PRODUCTION_CONTROL_PATH_INTEGRITY_CLOSURE`
 `LOKAMEDIA_PHASE_5L12=PASS_PRODUCTION_OBSERVE_ONLY_CANARY`
@@ -88,11 +89,24 @@ feat: add canonical automation operator control
 `DERIVED_ALERT_ENGINE_READY=YES`
 `ALERT_NOISE_CONTROL=PASS`
 `CONTROL_PLANE_AUDIT_LEDGER_READY=YES`
+`CONTROL_PLANE_AUDIT_MIGRATION_APPLIED=YES`
 `CANONICAL_OPERATOR_API_READY=YES`
+`CANONICAL_OPERATOR_API_DEPLOYED=YES`
 `RAW_SQL_CONTROL_MUTATIONS_FORBIDDEN=YES`
 `PRODUCTION_AUTOMATION_CURRENTLY_ENABLED=NO`
-`READY_FOR_CANONICAL_CONTROL_PRODUCTION_DEPLOYMENT=YES`
-`NEXT_RECOMMENDED_ACTION=DEPLOY_PHASE_5L12B_CANONICAL_CONTROL_FOUNDATION_TO_PRODUCTION`
+`PRODUCTION_WORKER_DEPLOYMENT_ID=d81db579-63f1-40c4-9345-328780f6f694`
+`READY_FOR_PHASE_5L12D=YES`
+`NEXT_RECOMMENDED_ACTION=AWAIT_EXPLICIT_APPROVAL_FOR_PHASE_5L12D_CANONICAL_OBSERVE_ONLY_ROUNDTRIP`
+
+Phase 5L12C (Canonical Control Production Deployment):
+- Pre-deploy gates: Verified clean worktree, reconfirmed target (`rancangloka`, `rancangloka_db`), confirmed zero drift from rollback deployment (`3404ac08-0e5f-4e11-8e11-2f93b7119a8f`), D1 export backup created successfully (`rancangloka_db_pre_5l12c_backup.sql`).
+- Pre-deploy regressions: 15/15 Phase 5L12B tests PASS, all 9 prior regression suites PASS, typecheck PASS, Astro build PASS, Wrangler dry-run PASS.
+- Migration 0020 applied: Remote D1 migration `0020_automation_control_audit.sql` executed cleanly via `wrangler d1 migrations apply`. Additive-only schema verified, 0 retroactive audit rows generated.
+- Production Worker deployed: Version `d81db579-63f1-40c4-9345-328780f6f694` deployed to 100% traffic.
+- Route health verified: Homepage HTTP 200, article 6 (`rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`) HTTP 200, sitemap HTTP 200.
+- Endpoint security verified: `POST /api/admin/publication/automation/control` responds with 401 Unauthorized for anonymous mutation attempts (`PROD_ANONYMOUS_OPERATOR_MUTATION=DENIED`). Cron secret denied (`PROD_CRON_SECRET_OPERATOR_ACCESS=DENIED_BY_DESIGN`). Authorized mode change calls in this phase: 0 (`AUTHORIZED_OPERATOR_MODE_CHANGE_CALLS=0`).
+- Observability & Invariants: Cloudflare native edge Cron heartbeats logged `BLOCKED` under `mode=OFF` (dispatcher and reconciler verified). Zero lifecycle mutations occurred (0 plans, 0 executions, 0 receipts, 0 published). Raw SQL mutations remain forbidden (`RAW_SQL_CONTROL_MUTATIONS=0`).
+- Final control state: `mode=OFF`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`. Production ready for Phase 5L12D canonical roundtrip.
 
 Phase 5L12B (Canonical Automation Operator Control Foundation):
 - Additive migration `0020_automation_control_audit.sql`: Created `automation_control_audit` table with performance indexes for tracking control-plane operations (`AUTOMATION_MODE_CHANGED`, `AUTO_SCHEDULE_CHANGED`) with actor attribution, previous/new values, reasons, correlation IDs, and details JSON.
