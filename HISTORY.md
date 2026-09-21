@@ -17,6 +17,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L10 Durable Cron Heartbeat + Operations Observability 2026-09-21
+
+- **Tujuan & Masalah:** Mengatasi celah observabilitas operasional (gap ketiadaan detak run-summary pada auto-execution reconciler dan belum adanya dashboard terpadu pengawasan operasi) dengan mengimplementasikan lapisan detak Cron append-only persisten, layanan status operasi kanonikal read-only, deteksi tugas tersangkut (stuck work), mesin peringatan turunan (derived alert engine) ber-sinyal tinggi, API terotentikasi, serta antarmuka visual minimal untuk pengawasan operator.
+- **Model Data Telemetri & Migrasi (`0019_publication_cron_observability.sql`):**
+  - Membuat tabel `publication_cron_runs` dengan kolom: `run_id` (`crun_<job>_<hex>`), `job_name`, `trigger_source`, `started_at`, `finished_at`, `status`, `automation_mode`, `kill_switch_engaged`, `processed_count`, `created_count`, `blocked_count`, `failed_count`, `error_class`, `error_summary`, `details_json`, `created_at`.
+  - Indeks teroptimasi: `idx_cron_runs_job_created`, `idx_cron_runs_status_created`, `idx_cron_runs_created`.
+  - Migrasi lokal diterapkan secara aman ke database D1 lokal Miniflare SQLite (`0019` tercatat pada `d1_migrations` ID 18).
+- **Semantik Detak & Kebijakan Kegagalan Telemetri (`src/lib/publication/cron-telemetry.ts`):**
+  - Kebijakan `FAIL_CLOSED_ON_START_SAFE_SURFACE_ON_FINALIZE`: Kegagalan penulisan detak `STARTED` menghentikan eksekusi sebelum mutasi bisnis terjadi (fail-closed); kegagalan finalisasi setelah aksi berhasil dicatat sebagai error tanpa membatalkan publikasi yang sah.
+  - Klasifikasi keamanan: Mode `OFF`, kill switch aktif, dan jeda operator dicatat sebagai `BLOCKED`, bukan runtime failure.
+  - Firewall rahasia: Fungsi `sanitizeErrorSummary` membersihkan token bearer, token media, kata sandi, dan header otorisasi.
+- **Integrasi Pemicu Native Cloudflare Cron (`src/lib/publication/cron-router.ts`):**
+  - Membungkus eksekusi `publication_planner`, `auto_execution_reconciler`, dan `publication_dispatcher` dalam `runWithCronTelemetry`.
+  - Menetapkan atribusi pemicu yang tepat (`cloudflare_cron`, `admin_http`, `service_http`, `test`).
+- **Layanan Status Operasi Kanonikal (`src/lib/publication/operations-status.ts`):**
+  - Fungsi read-only `getPublicationOperationsStatus(db, now?)` mengumpulkan:
+    1. Snapshot kontrol sistem (`mode`, `auto_schedule_enabled`, `kill_switch_engaged`, `circuit_breakers`).
+    2. Penghitung pipeline (`eligible_auto_policy_drafts`, `active_planned_count`, `scheduled_count`, `claimed_count`, `publishing_count`, `retry_wait_count`, `failed_count`, `manual_hold_count`, `published_24h_count`).
+    3. Ringkasan detak Cron dengan ambang batas keusangan deterministik (Planner: 9000 dtk; Reconciler: 900 dtk; Dispatcher: 180 dtk).
+    4. Deteksi tugas macet (`stuck_executions`, `stuck_plans`).
+    5. Kegagalan terminal dan deteksi pergeseran hash (`stale_bindings`).
+    6. Pemantau integritas tanda terima rilis (`missing_receipts`, `duplicate_receipts`, `hash_mismatches`).
+    7. Mesin alert turunan (`CRON_HEARTBEAT_MISSING`, `EXECUTION_LEASE_EXPIRED`, `TERMINAL_PUBLICATION_FAILURE`, `STALE_BINDING_BLOCKED`, `RECEIPT_INTEGRITY_ERROR`, `KILL_SWITCH_ACTIVE`).
+  - Pengendalian kebisingan: Kondisi normal seperti mode `OFF` atau `manual_hold` tidak memicu alert kritis (`ALERT_NOISE_CONTROL=PASS`).
+- **API Status Operasi & Dashboard Admin:**
+  - Endpoint `GET /api/admin/publication/operations/status` dengan firewall autentikasi admin ketat (anonim: 401, token media: 403, sesi admin: 200).
+  - Halaman dashboard read-only di `/admin/publication/operations` (`src/pages/admin/publication/operations.astro`) menyajikan 5 kartu pengawasan tanpa kewenangan mutasi (`OPS_DASHBOARD_MUTATION_AUTHORITY=NONE`).
+- **Pengujian & Validasi:**
+  - 17/17 uji fokus di `scripts/test-phase5l10-cron-observability.js` lulus 100%.
+  - Seluruh regresi (Phase 5L9, 5L6A, 5L6, 5L4, 5L3, 5L2, readiness, soak safety) lulus 100%.
+  - Typecheck (`tsc --noEmit`), build (`astro build`), dan `wrangler deploy --dry-run` lulus bersih tanpa error.
+  - Fixture Artikel 1, 3, 5, 6 beku 100%. Kontrol lokal tetap aman: `mode=OFF`, `auto_schedule_enabled=false`, `kill_switch=0`.
+- **Hasil:** `PHASE_5L10=PASS`, `CRON_RUN_HISTORY_DURABLE=YES`, `READY_FOR_PRODUCTION_DEPLOYMENT_READINESS_PHASE=YES`.
+
 ### LokaMedia Phase 5L9 Cloudflare Cron Wiring + Server Trigger Auth Foundation 2026-09-21
 
 - **Tujuan & Ruang Lingkup:** Mengimplementasikan perutean native Cloudflare Worker scheduled cron event langsung ke layanan kanonikal tanpa loopback HTTP (`CRON_USES_SELF_HTTP_FETCH=NO`), serta menyediakan autentikasi rahasia berbasis header (`CRON_SECRET`) untuk trigger endpoints tanpa melemahkan autentikasi admin sesi maupun CSRF browser.
@@ -70,6 +104,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 - **Tujuan & Masalah:** Mengimplementasikan layanan rekonsiliasi kanonikal server-side (`src/lib/publication/auto-policy-reconciler.ts`) yang menjembatani rencana auto-policy berstatus `PLANNED` menjadi eksekusi `SCHEDULED` secara berkala tanpa campur tangan manusia dan tanpa melakukan publikasi prematur.
 - **Hasil:** `PHASE_5L6A=PASS`.
 
+### LokaMedia Phase 5L6 Publisher Dual Authorization Foundation 2026-09-21
 
 - **Tujuan & Masalah:** Mengimplementasikan fondasi dual authorization pada lapisan publisher server-side, mendukung dua mode otorisasi publikasi tanpa celah bypass:
   1. `editorial_signoff`: Membutuhkan persetujuan manusia (`article_editorial_approvals.approval_status = 'APPROVED'`) yang terikat valid pada `content_hash` terkini dan aset featured media aktif, serta status readiness `READY_TO_SCHEDULE`.

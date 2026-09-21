@@ -9,15 +9,16 @@ Date: 2026-09-21
 Latest clean checkpoint commit:
 
 ```text
-e6da9dda051bc3cec3c3d6775e1eaa304b3167b3
+f8026454c136da3b00bcf71e89eea2b81c12f8cb
 ```
 
 Commit message:
 
 ```text
-feat: add publisher dual authorization
+feat: wire hands off publication cron triggers
 ```
 
+`LOKAMEDIA_PHASE_5L10=PASS_DURABLE_CRON_HEARTBEAT_AND_OPERATIONS_OBSERVABILITY`
 `LOKAMEDIA_PHASE_5L9=PASS_CLOUDFLARE_CRON_WIRING_AND_SERVER_TRIGGER_AUTH`
 `LOKAMEDIA_PHASE_5L8=PASS_HANDS_OFF_PRODUCTION_HARDENING_AUDIT`
 `LOKAMEDIA_PHASE_5L7=PASS_TRUE_HANDS_OFF_LOCAL_END_TO_END_PUBLICATION`
@@ -65,7 +66,60 @@ feat: add publisher dual authorization
 `PUBLISH_NOW_WITHOUT_HUMAN_APPROVAL_ALLOWED=NO`
 `ATOMIC_CONTENT_HASH_PUBLICATION_GUARD=YES`
 `FEATURED_ASSET_RACE_FAILS_CLOSED=YES`
-`NEXT_RECOMMENDED_ACTION=PHASE_5L7_CONTROLLED_NO_HUMAN_APPROVAL_END_TO_END_PUBLISH`
+`HANDS_OFF_CRON_WIRING_READY=YES`
+`CRON_USES_SELF_HTTP_FETCH=NO`
+`SERVICE_AUTH_BYPASSES_BROWSER_CSRF_SAFELY=YES`
+`CRON_RUN_HISTORY_DURABLE=YES`
+`CRON_RUN_HISTORY_APPEND_ONLY=YES`
+`RECONCILER_DURABLE_HEARTBEAT=YES`
+`NATIVE_CRON_HEARTBEAT_COVERAGE=YES`
+`OPERATIONS_STATUS_SERVICE_READY=YES`
+`OPERATIONS_STATUS_API_READY=YES`
+`OPERATIONS_DASHBOARD_READY=YES`
+`STUCK_EXECUTION_DETECTION_READY=YES`
+`RECEIPT_INTEGRITY_MONITOR_READY=YES`
+`DERIVED_ALERT_ENGINE_READY=YES`
+`ALERT_NOISE_CONTROL=PASS`
+`PRODUCTION_AUTOMATION_CURRENTLY_ENABLED=NO`
+`READY_FOR_PRODUCTION_DEPLOYMENT_READINESS_PHASE=YES`
+`NEXT_RECOMMENDED_ACTION=PHASE_5L11_PRODUCTION_DEPLOYMENT_READINESS_AND_CANARY_PREPARATION`
+
+Phase 5L10 (Durable Cron Heartbeat + Operations Observability):
+- Additive migration `0019_publication_cron_observability.sql`: Created `publication_cron_runs` table with indexes for unified invocation tracking across planner, reconciler, and dispatcher.
+- Telemetry failure policy `FAIL_CLOSED_ON_START_SAFE_SURFACE_ON_FINALIZE`: Fails closed before executing business action if initial STARTED heartbeat cannot be established; surfaces finalization errors without rolling back completed publication mutations.
+- Heartbeat service `src/lib/publication/cron-telemetry.ts`: Invocation correlation IDs (`crun_<job>_<hex>`), append-only rows, safety block classification (`status = 'BLOCKED'`), and secret firewall sanitization.
+- Native cron router instrumentation `src/lib/publication/cron-router.ts`: Wrapped `executePublicationPlanner`, `reconcileAutoPolicyPlansForExecution`, and `runPublisherDispatcher` in `runWithCronTelemetry`.
+- Canonical read-only operations status service `src/lib/publication/operations-status.ts`: Gathers controls, bounded pipeline counters, job heartbeats with cadence-relative staleness thresholds (Planner: 9000s, Reconciler: 900s, Dispatcher: 180s), stuck execution detection, terminal failures, content drift, receipt integrity verification, and noise-controlled derived alert engine.
+- Authenticated operations API `GET /api/admin/publication/operations/status`: Anonymous rejected with 401, media devices rejected with 403, admin sessions allowed with 200 JSON, secret firewall enforced.
+- Minimal read-only admin operations dashboard at `/admin/publication/operations` (`src/pages/admin/publication/operations.astro`): Displays System Controls, Pipeline Counters, Cron Heartbeat, Problems & Derived Alerts, and Recent Publications with zero mutation authority (`OPS_DASHBOARD_MUTATION_AUTHORITY=NONE`).
+- Deterministic test suite `scripts/test-phase5l10-cron-observability.js`: 17/17 tests pass. All regressions clean.
+
+Phase 5L9 (Cloudflare Cron Wiring + Server Trigger Auth Foundation):
+- Implemented native Cloudflare Worker scheduled cron router directly calling canonical services without loopback HTTP (`CRON_USES_SELF_HTTP_FETCH=NO`).
+- Source-owned worker wrapper `src/worker.ts` configured in `wrangler.toml` (`main = "src/worker.ts"`).
+- Deterministic cron tasks: `publication_planner` (`0 * * * *`), `auto_execution_reconciler` (`*/5 * * * *`), `publication_dispatcher` (`* * * * *`).
+- Native cron tasks do not require external HTTP secrets (`NATIVE_CRON_SECRET_DEPENDENCY=NONE`).
+- Server trigger authentication (`CRON_SECRET`) with constant-time verification for external/monitoring trigger requests on `/api/admin/publication/plans`, `/publish/reconcile`, and `/publish/due`.
+- Bypasses browser CSRF safely for non-browser secret-authenticated calls while strictly enforcing CSRF on browser admin sessions.
+- Enforced media device credential firewall rejecting `lkmd_` / `media:device` tokens with HTTP 403.
+- All 13/13 tests pass in `scripts/test-phase5l9-cron-wiring.js`.
+
+Phase 5L8 (Hands-Off Production Hardening Audit):
+- Verified zero active automated crons in worker runtime prior to wiring.
+- Designed direct invocation architecture for Cloudflare scheduled events, avoiding HTTP loopback hazards.
+- Verified golden article fixtures (1, 3, 5, 6) untouched and production automation safely disabled (`mode=OFF`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`).
+
+Phase 5L7 (True Hands-Off Local End-to-End Publication):
+- Proved 100% hands-off publication lifecycle on golden fixture Article 6 (`phase5l7-hands-off-publish-fixture`).
+- Lifecycle: system policy pass -> auto-policy plan created -> auto-execution reconciler scheduled -> dispatcher published -> immutable receipt generated (`rcpt_6c247016b4ac6ee0`) -> public route verified.
+- Human approval count = 0. Article 6 permanently frozen as local golden fixture.
+
+Phase 5L6A (Auto-Policy Plan -> Execution Reconciler):
+- Implemented server-side reconciler service in `src/lib/publication/auto-policy-reconciler.ts`.
+- Idempotently reconciles `PLANNED` auto-policy plans into `SCHEDULED` executions.
+- Respects automation modes (`OFF`, `PLAN_ONLY` block execution; `CONTROLLED`, `UNATTENDED` permit scheduling).
+- Never publishes immediately during reconciliation (`RECONCILER_PUBLISHES_IMMEDIATELY=NO`).
+- 21/21 tests pass in `scripts/test-phase5l6a-auto-policy-reconciler.js`.
 
 Phase 5L6 (Publisher Dual Authorization Foundation):
 - Implemented canonical server-side publication authorization resolver in `src/lib/publication/authorization-resolver.ts:resolvePublicationAuthorization`.
@@ -431,23 +485,34 @@ All passed locally before checkpoint.
 - `DEPLOYMENTS=0`
 - final worktree was clean after the Phase 3 commit
 
-## Phase 5L9 Checkpoint Summary
+## Phase 5L10 Checkpoint Summary
 
 Date: 2026-09-21
 
-- **Phase 5L7:** True hands-off publication proven on golden fixture Article 6 (`id: 6`, `phase5l7-hands-off-publish-fixture`). Frozen with 0 approvals, status published, plan auto_policy, execution auto_schedule, receipt rcpt_6c247016b4ac6ee0.
-- **Phase 5L8:** Hardening audit completed. Identified cron trigger gap and established direct canonical service invocation architecture.
-- **Phase 5L9:** Cloudflare Cron Wiring + Server Trigger Auth Foundation implemented:
-  - Source-owned wrapper `src/worker.ts` with `main = "src/worker.ts"` in `wrangler.toml`.
-  - Deterministic native cron router `src/lib/publication/cron-router.ts` for `publication_planner`, `auto_execution_reconciler`, and `publication_dispatcher`.
-  - Direct canonical service invocation (`CRON_USES_SELF_HTTP_FETCH=NO`).
-  - Native cron execution does NOT require `CRON_SECRET` (`NATIVE_CRON_SECRET_DEPENDENCY=NONE`).
-  - Server trigger authentication via `CRON_SECRET` with constant-time comparison on trigger endpoints (`/api/admin/publication/plans`, `/publish/reconcile`, `/publish/due`).
-  - Media device firewall (`lkmd_` / `media:device` rejected with 403).
-  - Browser CSRF safely bypassed for secret-authenticated non-browser requests while preserved for browser admin sessions.
-  - Source-level `[triggers] crons` in `wrangler.toml`.
-  - Golden Article Fixtures (1, 3, 5, 6) 100% frozen.
+- **Durable Cron Heartbeat Foundation:**
+  - Generic append-only telemetry table `publication_cron_runs` created via migration `0019_publication_cron_observability.sql`.
+  - Durable lifecycle tracking: `STARTED` -> `SUCCEEDED` / `BLOCKED` / `FAILED`.
+  - Safe error summaries and error classes stored; secrets firewalled.
+  - Fail-safe policy: `FAIL_CLOSED_ON_START_SAFE_SURFACE_ON_FINALIZE`.
+  - Reconciler heartbeat gap closed: reconciler invocations now record durable heartbeats alongside planner and dispatcher.
+  - Native cron router instrumentation: `src/lib/publication/cron-router.ts` instruments all scheduled jobs via `runWithCronTelemetry`.
+  - Attribution: distinct `trigger_source` (`cloudflare_cron`, `admin_http`, `service_http`, `test`).
+- **Canonical Operations Status Service:**
+  - `src/lib/publication/operations-status.ts` (`getPublicationOperationsStatus`).
+  - Read-only structured snapshot: active controls, bounded pipeline counters, job heartbeats with cadence-based staleness evaluation (Planner: 9000s, Reconciler: 900s, Dispatcher: 180s), mode-aware health, stuck execution detection (lease expiration, publishing overrun, retry delay), stuck plan detection, terminal failure reporting, stale binding detection, and receipt integrity monitoring.
+- **Derived Alert Engine:**
+  - Evaluates operational state into discrete alerts: `CRON_HEARTBEAT_MISSING`, `EXECUTION_LEASE_EXPIRED`, `TERMINAL_PUBLICATION_FAILURE`, `STALE_BINDING_BLOCKED`, `RECEIPT_INTEGRITY_ERROR`, `KILL_SWITCH_ACTIVE`.
+  - Three-tier severity: `INFO`, `WARNING`, `CRITICAL`.
+  - Strict noise control: normal `OFF` mode, disabled auto-schedule, and manual holds generate zero critical alerts.
+- **Operations Status API & Admin Dashboard:**
+  - Authenticated read-only API: `GET /api/admin/publication/operations/status`. Enforces admin session authentication. Media devices and anonymous users rejected. Secret-firewalled.
+  - Read-only operations dashboard: `/admin/publication/operations` rendering System Status, Pipeline, Heartbeats, Problems/Alerts, and Recent Publications cards.
+  - Strictly read-only (`OPS_DASHBOARD_MUTATION_AUTHORITY=NONE`).
+- **Safety Invariants Maintained:**
+  - Golden fixtures (Articles 1, 3, 5, 6) 100% frozen (0 mutations).
   - Production automation strictly disabled: `auto_schedule_enabled=false`, `mode=OFF`, `kill_switch=0`.
-- **Phase Status:** `PHASE_5L9=PASS`.
-- **Next Recommended Phase:** `READY_FOR_OBSERVABILITY_HARDENING=YES` (Phase 5L10: durable cron heartbeat, reconciler run summaries, operations status dashboard, stuck-work visibility).
+  - Zero production mutations, zero remote deployments, zero push.
+- **Phase Status:** `PHASE_5L10=PASS`.
+- **Next Recommended Phase:** Phase 5L11 (production deployment readiness, production migration verification, disabled production deployment, OBSERVE_ONLY canary preparation).
+
 

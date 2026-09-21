@@ -1,0 +1,365 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb } from '../../../lib/db';
+import { getPublicationOperationsStatus } from '../../../lib/publication/operations-status';
+
+const db = await getDb(Astro.locals);
+const status = await getPublicationOperationsStatus(db);
+
+const { controls, pipeline, heartbeats, alerts } = status;
+
+// Helper to format timestamps gracefully
+function formatDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }) + ' WIB';
+  } catch {
+    return iso;
+  }
+}
+
+function formatAge(seconds: number | null): string {
+  if (seconds === null) return 'Belum pernah berjalan';
+  if (seconds < 60) return `${seconds} dtk lalu`;
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins} mnt lalu`;
+  const hours = Math.floor(mins / 60);
+  return `${hours} jam lalu`;
+}
+
+// Fetch recent publication receipts for the Recent Publications card (bounded to 5)
+let recentPublications: any[] = [];
+try {
+  const recRows = await db.prepare(`
+    SELECT r.receipt_id, r.article_id, r.slug, r.actual_published_at, e.execution_mode
+    FROM publication_execution_receipts r
+    LEFT JOIN article_publication_executions e ON e.execution_id = r.execution_id
+    ORDER BY r.created_at DESC
+    LIMIT 5
+  `).all();
+  recentPublications = recRows?.results || recRows || [];
+} catch {}
+---
+
+<AdminLayout title="Pengawasan Operasi Publikasi">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="pb-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
+            Phase 5L10 Observability
+          </span>
+          <span class="text-xs text-slate-400">Read-Only Supervisory Surface</span>
+        </div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight mt-1">
+          Pengawasan Operasi Publikasi Otomatis
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Pemantauan detak Cron (heartbeat), antrean pipeline, integritas rilis, dan deteksi dini anomali otomatisasi.
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a
+          href="/admin/settings"
+          class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs"
+        >
+          ⚙️ Kontrol & Pengaturan
+        </a>
+        <button
+          type="button"
+          onclick="window.location.reload()"
+          class="rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition shadow-xs flex items-center gap-1.5"
+        >
+          🔄 Refresh Status
+        </button>
+      </div>
+    </div>
+
+    <!-- 1. System Status Card -->
+    <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-xs">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <span>🛡️</span> Status Kontrol Sistem (System Controls)
+        </h2>
+        <span class="text-[11px] text-slate-400">Periksa mode operasional terkini</span>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <!-- Automation Mode -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="text-[11px] font-medium text-slate-500">Mode Otomasi</div>
+          <div class="mt-1 flex items-center gap-1.5">
+            <span class={`inline-block w-2 h-2 rounded-full ${controls.automation_mode === 'OFF' ? 'bg-slate-400' : controls.automation_mode === 'UNATTENDED' ? 'bg-emerald-500' : 'bg-blue-500'}`}></span>
+            <span class="text-sm font-bold text-slate-800">{controls.automation_mode}</span>
+          </div>
+        </div>
+
+        <!-- Auto Schedule Toggle -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="text-[11px] font-medium text-slate-500">Auto Schedule</div>
+          <div class="mt-1 text-sm font-bold text-slate-800 flex items-center gap-1.5">
+            {controls.auto_schedule_enabled ? (
+              <span class="text-emerald-600 font-bold">Aktif (true)</span>
+            ) : (
+              <span class="text-slate-500">Nonaktif (false)</span>
+            )}
+          </div>
+        </div>
+
+        <!-- Emergency Kill Switch -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="text-[11px] font-medium text-slate-500">Kill Switch</div>
+          <div class="mt-1 text-sm font-bold flex items-center gap-1.5">
+            {controls.kill_switch_engaged ? (
+              <span class="text-rose-600 font-bold">ENGAGED (Aktif)</span>
+            ) : (
+              <span class="text-emerald-600 font-bold">Normal (Aman)</span>
+            )}
+          </div>
+        </div>
+
+        <!-- Planner Pause -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="text-[11px] font-medium text-slate-500">Jeda Perencana</div>
+          <div class="mt-1 text-sm font-bold text-slate-800">
+            {controls.planner_paused ? 'Dijeda' : 'Normal'}
+          </div>
+        </div>
+
+        <!-- Publisher Pause -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="text-[11px] font-medium text-slate-500">Jeda Penerbit</div>
+          <div class="mt-1 text-sm font-bold text-slate-800">
+            {controls.publisher_paused ? 'Dijeda' : 'Normal'}
+          </div>
+        </div>
+
+        <!-- Circuit Breakers -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="text-[11px] font-medium text-slate-500">Circuit Breakers</div>
+          <div class="mt-1 text-sm font-bold text-slate-800">
+            {controls.circuit_breakers.every(cb => cb.state === 'CLOSED') ? (
+              <span class="text-emerald-600">CLOSED (Normal)</span>
+            ) : (
+              <span class="text-amber-600">TRIPPED / OPEN</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Problems & Derived Alerts Card -->
+    <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-xs">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <span>⚠️</span> Masalah & Peringatan Terdeteksi (Derived Alerts)
+        </h2>
+        <span class="text-[11px] text-slate-400">{alerts.length} insiden aktif</span>
+      </div>
+
+      {alerts.length === 0 ? (
+        <div class="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex items-center gap-3">
+          <span class="text-xl">✅</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-900">Semua Sistem Normal</div>
+            <div class="text-[11px] text-emerald-700">Tidak ada insiden otomasi atau kegagalan kritis yang terdeteksi saat ini.</div>
+          </div>
+        </div>
+      ) : (
+        <div class="space-y-2.5">
+          {alerts.map((a) => {
+            const isCritical = a.severity === 'CRITICAL';
+            const isWarning = a.severity === 'WARNING';
+            const bgClass = isCritical ? 'bg-rose-50 border-rose-200' : isWarning ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
+            const textClass = isCritical ? 'text-rose-900' : isWarning ? 'text-amber-900' : 'text-blue-900';
+            const badgeClass = isCritical ? 'bg-rose-600 text-white' : isWarning ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white';
+
+            return (
+              <div class={`p-3 rounded-xl border ${bgClass} flex items-start justify-between gap-3 text-xs`}>
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}`}>
+                      {a.severity}
+                    </span>
+                    <span class={`font-bold ${textClass}`}>{a.type}</span>
+                    {a.article_id && (
+                      <span class="text-[11px] text-slate-500">Artikel #{a.article_id}</span>
+                    )}
+                    {a.execution_id && (
+                      <span class="text-[11px] font-mono text-slate-500">{a.execution_id}</span>
+                    )}
+                  </div>
+                  <div class={`text-[11px] ${textClass}`}>{a.message}</div>
+                </div>
+                <div class="text-[10px] text-slate-400 whitespace-nowrap">
+                  {formatDateTime(a.detected_at)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+
+    <!-- 3. Heartbeat Card & Pipeline Card (2 Columns) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Cron Heartbeat Card -->
+      <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span>💓</span> Detak Cron (Cron Heartbeat Telemetry)
+            </h2>
+            <span class="text-[11px] text-slate-400">Native Scheduled Triggers</span>
+          </div>
+
+          <div class="space-y-3">
+            {[
+              { id: 'publication_planner', name: 'Publication Planner', cadence: 'Setiap Jam (0 * * * *)' },
+              { id: 'auto_execution_reconciler', name: 'Execution Reconciler', cadence: 'Setiap 5 Menit (*/5 * * * *)' },
+              { id: 'publication_dispatcher', name: 'Publication Dispatcher', cadence: 'Setiap Menit (* * * * *)' }
+            ].map((meta) => {
+              const hb = (heartbeats as any)[meta.id];
+              const isBlocked = hb?.last_status === 'BLOCKED';
+              const isFailed = hb?.last_status === 'FAILED';
+              const isSucceeded = hb?.last_status === 'SUCCEEDED';
+              const isStale = hb?.is_stale;
+
+              let statusBadge = 'bg-slate-100 text-slate-600';
+              let statusText = hb?.last_status || 'BELUM PERNAH';
+
+              if (isStale) {
+                statusBadge = 'bg-amber-100 text-amber-800 font-bold';
+                statusText = 'TERHENTI / STALE';
+              } else if (isFailed) {
+                statusBadge = 'bg-rose-100 text-rose-800 font-bold';
+              } else if (isBlocked) {
+                statusBadge = 'bg-slate-100 text-slate-700 font-semibold';
+              } else if (isSucceeded) {
+                statusBadge = 'bg-emerald-100 text-emerald-800 font-bold';
+              }
+
+              return (
+                <div class="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between gap-4">
+                  <div>
+                    <div class="font-bold text-xs text-slate-800">{meta.name}</div>
+                    <div class="text-[10px] text-slate-400">{meta.cadence}</div>
+                    <div class="text-[11px] text-slate-600 mt-1 flex items-center gap-2">
+                      <span>Usia: {formatAge(hb?.age_seconds ?? null)}</span>
+                      <span>•</span>
+                      <span>Terakhir: {formatDateTime(hb?.last_finished_at || hb?.last_started_at)}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span class={`px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider ${statusBadge}`}>
+                      {statusText}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline Card -->
+      <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span>📊</span> Antrean Pipeline Publikasi (Pipeline Counters)
+            </h2>
+            <span class="text-[11px] text-slate-400">Kondisi Alur Realtime</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="text-[11px] text-slate-500">Draft Lolos Mutu</div>
+              <div class="text-lg font-black text-slate-800 mt-0.5">{pipeline.eligible_auto_policy_drafts}</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="text-[11px] text-slate-500">Rencana Terencana</div>
+              <div class="text-lg font-black text-blue-600 mt-0.5">{pipeline.active_planned_count}</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="text-[11px] text-slate-500">Terjadwal (Queue)</div>
+              <div class="text-lg font-black text-indigo-600 mt-0.5">{pipeline.scheduled_count}</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="text-[11px] text-slate-500">In-Flight (Klaim)</div>
+              <div class="text-lg font-black text-amber-600 mt-0.5">{pipeline.claimed_count + pipeline.publishing_count}</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="text-[11px] text-slate-500">Antrean Retry</div>
+              <div class="text-lg font-black text-amber-600 mt-0.5">{pipeline.retry_wait_count}</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="text-[11px] text-slate-500">Gagal Terminal</div>
+              <div class="text-lg font-black text-rose-600 mt-0.5">{pipeline.failed_count}</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="text-[11px] text-slate-500">Manual Hold</div>
+              <div class="text-lg font-black text-slate-700 mt-0.5">{pipeline.manual_hold_count}</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100">
+              <div class="text-[11px] text-emerald-800 font-medium">Terbit (24 Jam)</div>
+              <div class="text-lg font-black text-emerald-700 mt-0.5">{pipeline.published_24h_count}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Recent Publications Card -->
+    <div class="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-xs">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <span>📰</span> Publikasi Otomatis Terakhir (Recent Publications)
+        </h2>
+        <span class="text-[11px] text-slate-400">Bukti Tanda Terima Rilis Resmi</span>
+      </div>
+
+      {recentPublications.length === 0 ? (
+        <div class="text-center py-6 text-xs text-slate-400">
+          Belum ada riwayat artikel terbit otomatis dalam catatan tanda terima.
+        </div>
+      ) : (
+        <div class="divide-y divide-slate-100 text-xs">
+          {recentPublications.map((p) => (
+            <div class="py-2.5 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-2.5">
+                <span class="text-emerald-500 font-bold">✓</span>
+                <div>
+                  <div class="font-bold text-slate-800">{p.slug}</div>
+                  <div class="text-[10px] text-slate-400">Artikel #{p.article_id} • Tanda Terima: <code class="font-mono">{p.receipt_id}</code></div>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
+                  {p.execution_mode || 'auto_schedule'}
+                </span>
+                <div class="text-[10px] text-slate-400 mt-0.5">{formatDateTime(p.actual_published_at)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</AdminLayout>

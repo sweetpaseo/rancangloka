@@ -30,6 +30,11 @@ import {
   type PlannerProfile
 } from './planner-types.ts';
 
+import {
+  runWithCronTelemetry,
+  type CronTriggerSource
+} from './cron-telemetry.ts';
+
 // Explicit internal Cron job identities
 export const CRON_JOB_PLANNER = 'publication_planner' as const;
 export const CRON_JOB_RECONCILER = 'auto_execution_reconciler' as const;
@@ -123,71 +128,109 @@ async function resolvePlannerProfile(db: any): Promise<PlannerProfile> {
 }
 
 /**
- * Executes a single, isolated Cron job by identity.
+ * Executes a single, isolated Cron job by identity wrapped with durable run telemetry.
  */
 export async function executeCronJob(
   job: CronJobIdentity,
   db: any,
-  _env?: any
+  _env?: any,
+  triggerSource: CronTriggerSource = 'cloudflare_cron'
 ): Promise<CronExecutionResult> {
   const startTime = Date.now();
 
   switch (job) {
     case CRON_JOB_PLANNER: {
       try {
-        const profile = await resolvePlannerProfile(db);
-        const result = await executePublicationPlanner(db, {
-          actor: 'cron',
-          plannerMode: 'auto',
-          profile
-        });
+        const result = await runWithCronTelemetry(
+          db,
+          CRON_JOB_PLANNER,
+          triggerSource,
+          async () => {
+            const profile = await resolvePlannerProfile(db);
+            try {
+              const res = await executePublicationPlanner(db, {
+                actor: 'cron',
+                plannerMode: 'auto',
+                profile
+              });
+              return {
+                status: 'success' as const,
+                processedCount: res.eligibleCount || 0,
+                createdCount: res.plannedCount || 0,
+                blockedCount: res.blockedCount || 0,
+                failedCount: 0,
+                details: res
+              };
+            } catch (err: any) {
+              const message = err?.message || String(err);
+              if (
+                message.includes('KILL_SWITCH_ENGAGED') ||
+                message.includes('AUTOMATION_MODE_') ||
+                message.includes('PLANNER_PAUSED')
+              ) {
+                console.warn(`[CronRouter] publication_planner safely blocked: ${message}`);
+                return {
+                  status: 'blocked' as const,
+                  reason: message,
+                  processedCount: 0,
+                  createdCount: 0,
+                  blockedCount: 1,
+                  failedCount: 0,
+                  details: { reason: message }
+                };
+              }
+              console.error(`[CronRouter] publication_planner failed with unexpected error:`, err);
+              throw err;
+            }
+          }
+        );
 
         return {
-          status: 'success',
+          status: result.status,
           job: CRON_JOB_PLANNER,
-          details: result,
+          reason: result.reason,
+          details: result.details,
           durationMs: Date.now() - startTime
         };
       } catch (err: any) {
-        const message = err?.message || String(err);
-        // Catch canonical safety blocks (Kill Switch or Automation Mode)
-        if (
-          message.includes('KILL_SWITCH_ENGAGED') ||
-          message.includes('AUTOMATION_MODE_') ||
-          message.includes('PLANNER_PAUSED')
-        ) {
-          console.warn(`[CronRouter] publication_planner safely blocked: ${message}`);
-          return {
-            status: 'blocked',
-            job: CRON_JOB_PLANNER,
-            reason: message,
-            durationMs: Date.now() - startTime
-          };
-        }
-
-        // Unexpected runtime failure: log and bubble
-        console.error(`[CronRouter] publication_planner failed with unexpected error:`, err);
         throw err;
       }
     }
 
     case CRON_JOB_RECONCILER: {
       try {
-        const result = await reconcileAutoPolicyPlansForExecution(db, {
-          batchLimit: RECONCILER_DEFAULT_BATCH_LIMIT,
-          actor: 'auto_scheduler'
-        });
+        const result = await runWithCronTelemetry(
+          db,
+          CRON_JOB_RECONCILER,
+          triggerSource,
+          async () => {
+            const res = await reconcileAutoPolicyPlansForExecution(db, {
+              batchLimit: RECONCILER_DEFAULT_BATCH_LIMIT,
+              actor: 'auto_scheduler'
+            });
 
-        const status = result.status === 'blocked' ? 'blocked' : 'success';
-        if (status === 'blocked') {
-          console.warn(`[CronRouter] auto_execution_reconciler blocked: ${result.reason}`);
-        }
+            const isBlocked = res.status === 'blocked';
+            if (isBlocked) {
+              console.warn(`[CronRouter] auto_execution_reconciler blocked: ${res.reason}`);
+            }
+
+            return {
+              status: isBlocked ? ('blocked' as const) : ('success' as const),
+              reason: res.reason,
+              processedCount: res.processedCount,
+              createdCount: res.scheduledCount,
+              blockedCount: res.blockedCount,
+              failedCount: res.failedCount,
+              details: res
+            };
+          }
+        );
 
         return {
-          status,
+          status: result.status,
           job: CRON_JOB_RECONCILER,
           reason: result.reason,
-          details: result,
+          details: result.details,
           durationMs: Date.now() - startTime
         };
       } catch (err: any) {
@@ -198,26 +241,42 @@ export async function executeCronJob(
 
     case CRON_JOB_DISPATCHER: {
       try {
-        const result = await runPublisherDispatcher(db, {
-          triggerSource: 'cron'
-        });
+        const result = await runWithCronTelemetry(
+          db,
+          CRON_JOB_DISPATCHER,
+          triggerSource,
+          async () => {
+            const res = await runPublisherDispatcher(db, {
+              triggerSource: 'cron'
+            });
 
-        let status: 'success' | 'blocked' = 'success';
-        if (
-          result.reason === 'KILL_SWITCH_ENGAGED' ||
-          result.reason === 'AUTOMATION_MODE_OFF' ||
-          result.reason === 'UNATTENDED_PUBLISH_BLOCKED' ||
-          result.reason === 'PUBLISHER_PAUSED'
-        ) {
-          status = 'blocked';
-          console.warn(`[CronRouter] publication_dispatcher blocked: ${result.reason}`);
-        }
+            const isBlocked =
+              res.reason === 'KILL_SWITCH_ENGAGED' ||
+              res.reason === 'AUTOMATION_MODE_OFF' ||
+              res.reason === 'UNATTENDED_PUBLISH_BLOCKED' ||
+              res.reason === 'PUBLISHER_PAUSED';
+
+            if (isBlocked) {
+              console.warn(`[CronRouter] publication_dispatcher blocked: ${res.reason}`);
+            }
+
+            return {
+              status: isBlocked ? ('blocked' as const) : ('success' as const),
+              reason: res.reason,
+              processedCount: (res as any).scanned || (res as any).due_count || 0,
+              createdCount: (res as any).published || (res as any).published_count || 0,
+              blockedCount: (res as any).blocked || (res as any).blocked_count || 0,
+              failedCount: (res as any).failed || (res as any).failed_count || 0,
+              details: res
+            };
+          }
+        );
 
         return {
-          status,
+          status: result.status,
           job: CRON_JOB_DISPATCHER,
           reason: result.reason,
-          details: result,
+          details: result.details,
           durationMs: Date.now() - startTime
         };
       } catch (err: any) {

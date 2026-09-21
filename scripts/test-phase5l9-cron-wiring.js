@@ -81,7 +81,8 @@ function createTestD1() {
     '0009_publication_publisher.sql',
     '0011_automation_safety.sql',
     '0017_auto_schedule_and_manual_hold.sql',
-    '0018_publication_operator_audit.sql'
+    '0018_publication_operator_audit.sql',
+    '0019_publication_cron_observability.sql'
   ];
 
   for (const mig of migrations) {
