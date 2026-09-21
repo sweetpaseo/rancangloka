@@ -17,6 +17,27 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L11B Disabled Production Migration + Deployment 2026-09-21
+
+- **Tujuan & Ruang Lingkup:** Menerapkan seluruh migrasi pending (0013–0019) ke database Cloudflare D1 produksi (`rancangloka_db`), mendeploy Cloudflare Worker (`rancangloka`) dengan pemicu native Cron triggers dalam mode nonaktif (`mode=OFF`, `auto_schedule_enabled=false`), memvalidasi kesehatan publik situs, serta membuktikan nol mutasi rencana/eksekusi/publikasi artikel.
+- **Eksekusi & Hasil Gerbang Pra-Mutasi (Pre-Mutation Gates):**
+  - **Identitas Target:** Terkonfirmasi Worker `rancangloka`, D1 `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`), R2 `rancangloka-media`.
+  - **Deployment Eksisting:** Versi aktif sebelum deploy terkonfirmasi identik dengan referensi rollback `cef16b4b-a5f0-416c-9fff-1924aaee1ecc` (0 drift).
+  - **Audit Migrasi 0013–0016:** Bersih, aditif, dan kompatibel mundur. Tidak ada operasi destruktif.
+  - **Audit Migrasi 0017–0019:** Default aman terpasang (`manual_hold=0`, `scheduling_mode='legacy'`, `execution_mode='legacy'`, `auto_schedule_enabled='false'`).
+  - **Backup D1 Remote:** Berhasil diekspor dan disimpan lokal sebagai cadangan sebelum mutasi skema.
+  - **Regresi Pra-Mutasi:** Pengujian 5L10 (22/22 pass), 5L9 (13/13 pass), typecheck (`tsc --noEmit`), build (`astro build`), dan `wrangler deploy --dry-run` seluruhnya lulus 100%.
+- **Eksekusi Mutasi Produksi (Production Mutations):**
+  - **Migrasi D1 Remote:** `npx wrangler d1 migrations apply rancangloka_db --remote` berhasil menerapkan 7 migrasi (`0013` hingga `0019`). Ledger D1 remote berada pada ID 19 (`0019_publication_cron_observability.sql`).
+  - **Status Kontrol Pasca-Migrasi:** `mode='OFF'`, `kill_switch_engaged=0`, `settings.auto_schedule_enabled='false'`.
+  - **Worker Deployment:** `npx wrangler deploy` berhasil menerbitkan versi `3404ac08-0e5f-4e11-8e11-2f93b7119a8f` dengan pemicu jadwal native terpasang (`0 * * * *`, `*/5 * * * *`, `* * * * *`).
+- **Verifikasi Pasca-Deployment (Post-Deployment Verification):**
+  - **Kesehatan Situs Publik:** Homepage (`https://rancangloka.com` -> 200 OK, 164.5 KB) dan artikel published (`https://rancangloka.com/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman` -> 200 OK, 159.8 KB) sehat dan stabil.
+  - **Keamanan Endpoint Operasi:** Anonymous access ditolak (401), media device ditolak (403).
+  - **Integritas Konten & Pipeline:** Artikel draft tetap 5, artikel published tetap 1, rencana publikasi aktif tetap 0, eksekusi aktif tetap 0, tanda terima publikasi tetap 0. Tidak ada mutasi konten.
+  - **Mode Otomasi:** `HIGHEST_AUTOMATION_MODE_REACHED` tetap `OFF`.
+- **Hasil:** `PHASE_5L11B=PASS`. Versi produksi aktif: `3404ac08-0e5f-4e11-8e11-2f93b7119a8f`. Referensi rollback: `cef16b4b-a5f0-416c-9fff-1924aaee1ecc`.
+
 ### LokaMedia Phase 5L11A Production Readiness — Read-Only Gate 2026-09-21
 
 - **Tujuan & Ruang Lingkup:** Melakukan audit read-only komprehensif pada lingkungan produksi Cloudflare Worker (`rancangloka`), database D1 produksi (`rancangloka_db`: `3a86e9ad-410f-4440-884e-2eb813ec4cf7`), dan R2 storage (`rancangloka-media`) sebelum eksekusi migrasi dan deployment dalam keadaan dinonaktifkan (disabled).
