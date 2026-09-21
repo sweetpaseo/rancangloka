@@ -3,7 +3,8 @@ import {
   isValidAdminSession,
   getAdminSessionFromRequest,
   getSafeAdminRedirect,
-  verifySameOrigin
+  verifySameOrigin,
+  isCronServiceAuthenticated
 } from './lib/auth.ts';
 
 export const onRequest: MiddlewareHandler = async (context, next) => {
@@ -33,12 +34,43 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
   // 2. Admin API Protection & CSRF Guard
   if (pathname.startsWith('/api/admin')) {
+    // A. Media Device Firewall: Media/LokaMedia credentials strictly forbidden from admin APIs
+    const authHeader = request.headers.get('Authorization') || '';
+    if (authHeader.toLowerCase().includes('lkmd_') || authHeader.toLowerCase().includes('media:device')) {
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          code: 'MEDIA_DEVICE_FORBIDDEN',
+          message: 'Media devices are strictly forbidden from accessing admin endpoints.'
+        }),
+        {
+          status: 403,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store, private',
+            'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet'
+          }
+        }
+      );
+    }
+
+    // B. Trigger Endpoint Service Authentication Support (Phase 5L9)
+    const isTriggerRoute =
+      pathname === '/api/admin/publication/plans' ||
+      pathname === '/api/admin/publication/publish/reconcile' ||
+      pathname === '/api/admin/publication/publish/due';
+
+    let isServiceAuthed = false;
+    if (isTriggerRoute) {
+      isServiceAuthed = isCronServiceAuthenticated(request, env);
+    }
+
     const sessionCookie = cookies.get('admin_session');
     const token = sessionCookie?.value || getAdminSessionFromRequest(request);
-    const isAuthed = await isValidAdminSession(token, env);
+    const isAdminAuthed = await isValidAdminSession(token, env);
 
     // Rule: Authentication is strictly evaluated before mutation or data processing
-    if (!isAuthed) {
+    if (!isServiceAuthed && !isAdminAuthed) {
       return new Response(
         JSON.stringify({
           status: 'error',
@@ -56,28 +88,41 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
       );
     }
 
-    // Rule: Same-origin check for all mutating methods under /api/admin/*
-    const method = request.method.toUpperCase();
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-      if (!verifySameOrigin(request)) {
-        return new Response(
-          JSON.stringify({
-            status: 'error',
-            code: 'FORBIDDEN_CSRF',
-            message: 'Permintaan lintas-origin (CSRF) ditolak.'
-          }),
-          {
-            status: 403,
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-store, private',
-              'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet'
+    // Annotate context for downstream routes
+    if (isServiceAuthed) {
+      (locals as any).authType = 'cron_service';
+      (locals as any).authActor = 'cron_service';
+    } else {
+      (locals as any).authType = 'admin_session';
+      (locals as any).authActor = 'admin_operator';
+    }
+
+    // Rule: Same-origin check for browser-authenticated mutating methods under /api/admin/*
+    // Non-browser Cron secret-authenticated service calls safely bypass browser CSRF.
+    if (!isServiceAuthed) {
+      const method = request.method.toUpperCase();
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        if (!verifySameOrigin(request)) {
+          return new Response(
+            JSON.stringify({
+              status: 'error',
+              code: 'FORBIDDEN_CSRF',
+              message: 'Permintaan lintas-origin (CSRF) ditolak.'
+            }),
+            {
+              status: 403,
+              headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store, private',
+                'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet'
+              }
             }
-          }
-        );
+          );
+        }
       }
     }
   }
+
 
   // 3. Process the request
   const response = await next();

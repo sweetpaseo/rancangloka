@@ -13,8 +13,17 @@ import { PLANNER_PROFILE_GROWING } from '../../../../lib/publication/planner-typ
  * - Does NOT execute schedule.
  * - Does NOT mutate article bodies.
  */
-export const GET: APIRoute = async ({ url, locals }) => {
+export const GET: APIRoute = async ({ url, locals, request }) => {
   try {
+    // Firewall: Media devices strictly forbidden
+    const authHeader = request.headers.get('Authorization') || '';
+    if (authHeader.toLowerCase().includes('lkmd_') || authHeader.toLowerCase().includes('media:device')) {
+      return new Response(
+        JSON.stringify({ status: 'error', code: 'MEDIA_DEVICE_FORBIDDEN', message: 'Media devices cannot access planner' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const db = (await getDb(locals)) || (locals as any)?.db || (locals as any)?.runtime?.env?.DB;
     const dateStr = url.searchParams.get('date') || undefined;
     const plans = await getActivePlans(db, { dateStr });
@@ -46,6 +55,15 @@ export const GET: APIRoute = async ({ url, locals }) => {
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
+    // Firewall: Media devices strictly forbidden
+    const authHeader = request.headers.get('Authorization') || '';
+    if (authHeader.toLowerCase().includes('lkmd_') || authHeader.toLowerCase().includes('media:device')) {
+      return new Response(
+        JSON.stringify({ status: 'error', code: 'MEDIA_DEVICE_FORBIDDEN', message: 'Media devices cannot trigger planner' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     let body: any = {};
     try {
       body = await request.json();
@@ -57,7 +75,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const targetDate = body.targetDate || undefined;
     const profile = body.profile || PLANNER_PROFILE_GROWING;
     const dryRun = Boolean(body.dryRun);
-    const actor = body.actor || 'admin_operator';
+    const actor = body.actor || (locals as any)?.authActor || 'admin_operator';
+
 
     const result = await executePublicationPlanner(db, {
       targetDate,

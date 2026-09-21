@@ -1,0 +1,279 @@
+/**
+ * RancangLoka — Publication Automation Cron Router
+ * Phase: 5L9
+ *
+ * Implements deterministic routing for native Cloudflare scheduled cron events
+ * to canonical server services without self HTTP loops or secret dependencies.
+ *
+ * Invariants:
+ * 1. DIRECT INVOCATION: Calls executePublicationPlanner, reconcileAutoPolicyPlansForExecution,
+ *    and runPublisherDispatcher directly via D1 bindings (CRON_USES_SELF_HTTP_FETCH = NO).
+ * 2. DETERMINISTIC ROUTING: Maps event.cron or event.job deterministically to a single job identity.
+ * 3. NO CROSS-JOB CASCADE: Each cron job runs in total isolation. Failure in one job never
+ *    opportunistically invokes another.
+ * 4. NATIVE CRON INDEPENDENCE: Scheduled events do not require CRON_SECRET or HTTP headers.
+ * 5. SAFETY & ERROR MODEL: Respects global kill-switch, automation mode capability matrix,
+ *    and pause controls. Safety blocks fail closed returning structured status.
+ *    Unexpected runtime errors are logged and bubbled for execution monitoring.
+ * 6. LIFETIME MANAGEMENT: Coordinates async work via ctx.waitUntil.
+ */
+
+import { executePublicationPlanner } from './planner-service.ts';
+import {
+  reconcileAutoPolicyPlansForExecution,
+  RECONCILER_DEFAULT_BATCH_LIMIT
+} from './auto-policy-reconciler.ts';
+import { runPublisherDispatcher } from './publisher-service.ts';
+import {
+  PLANNER_PROFILE_GROWING,
+  CANONICAL_TIMEZONE,
+  type PlannerProfile
+} from './planner-types.ts';
+
+// Explicit internal Cron job identities
+export const CRON_JOB_PLANNER = 'publication_planner' as const;
+export const CRON_JOB_RECONCILER = 'auto_execution_reconciler' as const;
+export const CRON_JOB_DISPATCHER = 'publication_dispatcher' as const;
+
+export type CronJobIdentity =
+  | typeof CRON_JOB_PLANNER
+  | typeof CRON_JOB_RECONCILER
+  | typeof CRON_JOB_DISPATCHER;
+
+// Canonical Cron Expressions
+export const CRON_PLANNER_EXPRESSION = '0 * * * *';      // Hourly
+export const CRON_RECONCILER_EXPRESSION = '*/5 * * * *';  // Every 5 minutes
+export const CRON_DISPATCHER_EXPRESSION = '* * * * *';   // Every minute
+
+export interface ScheduledEvent {
+  cron?: string;
+  job?: string;
+  scheduledTime?: number;
+  type?: string;
+}
+
+export interface ExecutionContext {
+  waitUntil: (promise: Promise<any>) => void;
+  passThroughOnException?: () => void;
+}
+
+export interface CronExecutionResult {
+  status: 'success' | 'blocked' | 'failed' | 'ignored';
+  job?: CronJobIdentity;
+  cron?: string;
+  reason?: string;
+  error?: string;
+  details?: any;
+  durationMs?: number;
+}
+
+/**
+ * Resolves an incoming ScheduledEvent to an explicit internal CronJobIdentity.
+ * Deterministic mapping:
+ * - Explicit job name match (highest precedence)
+ * - Exact cron expression match
+ */
+export function resolveCronJobIdentity(event: ScheduledEvent): CronJobIdentity | null {
+  if (event.job) {
+    if (
+      event.job === CRON_JOB_PLANNER ||
+      event.job === CRON_JOB_RECONCILER ||
+      event.job === CRON_JOB_DISPATCHER
+    ) {
+      return event.job;
+    }
+  }
+
+  const cron = event.cron?.trim();
+  if (!cron) {
+    return null;
+  }
+
+  if (cron === CRON_PLANNER_EXPRESSION) {
+    return CRON_JOB_PLANNER;
+  }
+
+  if (cron === CRON_RECONCILER_EXPRESSION) {
+    return CRON_JOB_RECONCILER;
+  }
+
+  if (cron === CRON_DISPATCHER_EXPRESSION || cron === '*/1 * * * *') {
+    return CRON_JOB_DISPATCHER;
+  }
+
+  return null;
+}
+
+/**
+ * Retrieves the configured planner profile from database settings, or falls back
+ * to the canonical default PLANNER_PROFILE_GROWING.
+ */
+async function resolvePlannerProfile(db: any): Promise<PlannerProfile> {
+  try {
+    const row = await db
+      .prepare("SELECT value FROM settings WHERE key = 'planner_profile' LIMIT 1")
+      .first();
+    if (row && typeof row.value === 'string' && row.value.trim().length > 0) {
+      return row.value.trim() as PlannerProfile;
+    }
+  } catch {
+    // default to canonical profile
+  }
+  return PLANNER_PROFILE_GROWING;
+}
+
+/**
+ * Executes a single, isolated Cron job by identity.
+ */
+export async function executeCronJob(
+  job: CronJobIdentity,
+  db: any,
+  _env?: any
+): Promise<CronExecutionResult> {
+  const startTime = Date.now();
+
+  switch (job) {
+    case CRON_JOB_PLANNER: {
+      try {
+        const profile = await resolvePlannerProfile(db);
+        const result = await executePublicationPlanner(db, {
+          actor: 'cron',
+          plannerMode: 'auto',
+          profile
+        });
+
+        return {
+          status: 'success',
+          job: CRON_JOB_PLANNER,
+          details: result,
+          durationMs: Date.now() - startTime
+        };
+      } catch (err: any) {
+        const message = err?.message || String(err);
+        // Catch canonical safety blocks (Kill Switch or Automation Mode)
+        if (
+          message.includes('KILL_SWITCH_ENGAGED') ||
+          message.includes('AUTOMATION_MODE_') ||
+          message.includes('PLANNER_PAUSED')
+        ) {
+          console.warn(`[CronRouter] publication_planner safely blocked: ${message}`);
+          return {
+            status: 'blocked',
+            job: CRON_JOB_PLANNER,
+            reason: message,
+            durationMs: Date.now() - startTime
+          };
+        }
+
+        // Unexpected runtime failure: log and bubble
+        console.error(`[CronRouter] publication_planner failed with unexpected error:`, err);
+        throw err;
+      }
+    }
+
+    case CRON_JOB_RECONCILER: {
+      try {
+        const result = await reconcileAutoPolicyPlansForExecution(db, {
+          batchLimit: RECONCILER_DEFAULT_BATCH_LIMIT,
+          actor: 'auto_scheduler'
+        });
+
+        const status = result.status === 'blocked' ? 'blocked' : 'success';
+        if (status === 'blocked') {
+          console.warn(`[CronRouter] auto_execution_reconciler blocked: ${result.reason}`);
+        }
+
+        return {
+          status,
+          job: CRON_JOB_RECONCILER,
+          reason: result.reason,
+          details: result,
+          durationMs: Date.now() - startTime
+        };
+      } catch (err: any) {
+        console.error(`[CronRouter] auto_execution_reconciler failed with unexpected error:`, err);
+        throw err;
+      }
+    }
+
+    case CRON_JOB_DISPATCHER: {
+      try {
+        const result = await runPublisherDispatcher(db, {
+          triggerSource: 'cron'
+        });
+
+        let status: 'success' | 'blocked' = 'success';
+        if (
+          result.reason === 'KILL_SWITCH_ENGAGED' ||
+          result.reason === 'AUTOMATION_MODE_OFF' ||
+          result.reason === 'UNATTENDED_PUBLISH_BLOCKED' ||
+          result.reason === 'PUBLISHER_PAUSED'
+        ) {
+          status = 'blocked';
+          console.warn(`[CronRouter] publication_dispatcher blocked: ${result.reason}`);
+        }
+
+        return {
+          status,
+          job: CRON_JOB_DISPATCHER,
+          reason: result.reason,
+          details: result,
+          durationMs: Date.now() - startTime
+        };
+      } catch (err: any) {
+        console.error(`[CronRouter] publication_dispatcher failed with unexpected error:`, err);
+        throw err;
+      }
+    }
+
+    default: {
+      return {
+        status: 'ignored',
+        reason: `UNKNOWN_CRON_JOB: ${job}`,
+        durationMs: Date.now() - startTime
+      };
+    }
+  }
+}
+
+/**
+ * Main Cloudflare scheduled handler entrypoint.
+ * Routes scheduled events deterministically and protects execution lifecycle.
+ */
+export async function handleScheduledEvent(
+  event: ScheduledEvent,
+  env: any,
+  ctx?: ExecutionContext
+): Promise<CronExecutionResult> {
+  const db = env?.DB;
+  if (!db) {
+    const error = new Error('D1 database binding (DB) is missing from env');
+    console.error('[CronRouter] FATAL: Missing DB binding');
+    throw error;
+  }
+
+  const job = resolveCronJobIdentity(event);
+  if (!job) {
+    console.warn(
+      `[CronRouter] Unrecognized cron expression or job name (cron="${event.cron}", job="${event.job}"). Skipping.`
+    );
+    return {
+      status: 'ignored',
+      cron: event.cron,
+      reason: 'UNRECOGNIZED_CRON_SCHEDULE'
+    };
+  }
+
+  const runPromise = executeCronJob(job, db, env);
+
+  // Lifetime tracking: ensure background task promises are tracked by Cloudflare runtime
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(
+      runPromise.catch((err) => {
+        console.error(`[CronRouter] Uncaught error tracked in ctx.waitUntil for job ${job}:`, err);
+      })
+    );
+  }
+
+  return await runPromise;
+}

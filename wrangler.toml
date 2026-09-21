@@ -1,5 +1,5 @@
 name = "rancangloka"
-main = "dist/_worker.js/index.js"
+main = "src/worker.ts"
 assets = { directory = "dist" }
 compatibility_date = "2024-09-01"
 compatibility_flags = ["nodejs_compat"]
@@ -15,3 +15,12 @@ migrations_dir = "db/migrations"
 [[r2_buckets]]
 binding = "MEDIA_BUCKET"
 bucket_name = "rancangloka-media"
+
+# Source-Level Cron Triggers (Phase 5L9)
+[triggers]
+crons = [
+  "0 * * * *",
+  "*/5 * * * *",
+  "* * * * *"
+]
+

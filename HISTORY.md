@@ -17,7 +17,59 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
-### LokaMedia Phase 5L6 Publisher Dual Authorization Foundation 2026-09-21
+### LokaMedia Phase 5L9 Cloudflare Cron Wiring + Server Trigger Auth Foundation 2026-09-21
+
+- **Tujuan & Ruang Lingkup:** Mengimplementasikan perutean native Cloudflare Worker scheduled cron event langsung ke layanan kanonikal tanpa loopback HTTP (`CRON_USES_SELF_HTTP_FETCH=NO`), serta menyediakan autentikasi rahasia berbasis header (`CRON_SECRET`) untuk trigger endpoints tanpa melemahkan autentikasi admin sesi maupun CSRF browser.
+- **Arsitektur Worker Wrapper (`src/worker.ts`):**
+  - Mengonfigurasi entrypoint sumber `src/worker.ts` di `wrangler.toml` (`main = "src/worker.ts"`).
+  - Mendelegasikan `fetch(request, env, ctx)` ke virtual entrypoint runtime Astro SSR (`dist/_worker.js/index.js`).
+  - Menghubungkan `scheduled(event, env, ctx)` ke perute kanonikal `src/lib/publication/cron-router.ts`.
+- **Perutean Cron Deterministik (`src/lib/publication/cron-router.ts`):**
+  - Mendefinisikan identitas tugas internal eksplisit: `publication_planner` (`0 * * * *`), `auto_execution_reconciler` (`*/5 * * * *`), `publication_dispatcher` (`* * * * *`).
+  - Memanggil langsung layanan kanonikal: `executePublicationPlanner` (dengan profile kanonikal `GROWING` dan timezone `Asia/Jakarta`), `reconcileAutoPolicyPlansForExecution` (batch limit 10), `runPublisherDispatcher` (`triggerSource: 'cron'`).
+  - Model keamanan & isolasi kesalahan: Mematuhi matrix kapabilitas mode otomasi, emergency kill switch, dan pause control secara fail-closed. Kesalahan pada satu tugas terisolasi penuh dan tidak melakukan cascade ke tugas lainnya (`CRON_JOB_FAILURE_ISOLATION=YES`).
+  - Manajemen masa hidup: Menggunakan `ctx.waitUntil` untuk pelacakan promise asinkron Cloudflare.
+- **Autentikasi Server Trigger (`CRON_SECRET`):**
+  - Mendukung `Authorization: Bearer <CRON_SECRET>` dan `X-RancangLoka-Cron-Secret` dengan perbandingan constant-time (`timingSafeEqual`).
+  - Mengizinkan panggilan non-browser yang terotentikasi rahasia pada endpoint `/api/admin/publication/plans`, `/publish/reconcile`, dan `/publish/due` untuk melewati pemeriksaan CSRF browser secara aman (`SERVICE_AUTH_BYPASSES_BROWSER_CSRF_SAFELY=YES`), sementara sesi browser admin tetap wajib lolos validasi CSRF origin.
+  - Firewall kredensial media: Token media (`lkmd_` atau `media:device`) diblokir mutlak dengan HTTP 403.
+  - Pencegahan kebocoran: Nilai `CRON_SECRET` tidak pernah di-log, di-commit, atau dikembalikan dalam response payload.
+- **Konfigurasi Sumber Cloudflare Triggers (`wrangler.toml`):**
+  - Menambahkan konfigurasi trigger cron tingkat sumber: `0 * * * *`, `*/5 * * * *`, `* * * * *`.
+  - Otomasi produksi tetap nonaktif (`mode=OFF`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`).
+- **Pengujian & Validasi:**
+  - 13/13 pengujian fokus di `scripts/test-phase5l9-cron-wiring.js` lulus 100%.
+  - Seluruh regresi kritis (Phase 5L6A, 5L6, 5L4, 5L3, 5L2, readiness, soak safety) lulus 100%.
+  - Fixture Artikel 6 (`phase5l7-hands-off-publish-fixture`) 100% beku tanpa mutasi.
+- **Hasil:** `PHASE_5L9=PASS`, `CRON_USES_SELF_HTTP_FETCH=NO`, `READY_FOR_OBSERVABILITY_HARDENING=YES`.
+
+### LokaMedia Phase 5L8 Hands-Off Production Hardening Audit 2026-09-21
+
+- **Tujuan & Masalah:** Audit kesiapan produksi hands-off read-only pasca keberhasilan Phase 5L7, memverifikasi tidak adanya cron otomatis aktif yang terpasang di tingkat worker runtime, memetakan rantai pemicu kanonikal, dan merumuskan arsitektur pemicu Cloudflare terjadwal native.
+- **Temuan Kunci:**
+  - Pemicu cron otomatis saat ini belum terhubung di runtime worker (`FULL_CRON_CHAIN_CURRENTLY_WIRED=NO`).
+  - Keputusan arsitektur: Memilih pemanggilan layanan internal kanonikal secara langsung (`scheduled` -> services) daripada loopback HTTP self-fetch.
+  - Tangga aktivasi produksi: Membutuhkan pembungkusan entrypoint worker, autentikasi server trigger, instrumen observabilitas (heartbeat & health checks), sebelum aktivasi mode otomasi.
+- **Hasil:** `PHASE_5L8=PASS`.
+
+### LokaMedia Phase 5L7 True Hands-Off Local End-to-End Publication 2026-09-21
+
+- **Tujuan & Masalah:** Membuktikan alur kerja publikasi hands-off penuh tanpa intervensi manusia sama sekali: sistem kebijakan lolos -> perencana otomatis membuat plan auto-policy -> rekonsiliator menjadwalkan eksekusi -> dispatcher menerbitkan artikel -> tanda terima kriptografis immutable terbentuk -> rute publik dapat diakses.
+- **Hasil Eksekusi Fixture Artikel 6 (`phase5l7-hands-off-publish-fixture`):**
+  - Status artikel: `published`.
+  - Jumlah persetujuan manusia: 0 (`approval count = 0`).
+  - Mode perencanaan: `auto_policy` (`plan_id = 'plan_85c9952fb146a92c'`).
+  - Mode eksekusi: `auto_schedule` (`execution_id = 'pexec_161b85cb6789f2bd'`), status `PUBLISHED`.
+  - Tanda terima: `rcpt_6c247016b4ac6ee0`.
+  - Rute publik artikel dan gambar terverifikasi menyajikan konten nyata.
+  - Artikel 6 ditetapkan sebagai frozen golden fixture.
+- **Hasil:** `PHASE_5L7=PASS`, `TRUE_HANDS_OFF_PUBLICATION_PROVEN=YES`.
+
+### LokaMedia Phase 5L6A Auto-Policy Plan -> Execution Reconciler 2026-09-21
+
+- **Tujuan & Masalah:** Mengimplementasikan layanan rekonsiliasi kanonikal server-side (`src/lib/publication/auto-policy-reconciler.ts`) yang menjembatani rencana auto-policy berstatus `PLANNED` menjadi eksekusi `SCHEDULED` secara berkala tanpa campur tangan manusia dan tanpa melakukan publikasi prematur.
+- **Hasil:** `PHASE_5L6A=PASS`.
+
 
 - **Tujuan & Masalah:** Mengimplementasikan fondasi dual authorization pada lapisan publisher server-side, mendukung dua mode otorisasi publikasi tanpa celah bypass:
   1. `editorial_signoff`: Membutuhkan persetujuan manusia (`article_editorial_approvals.approval_status = 'APPROVED'`) yang terikat valid pada `content_hash` terkini dan aset featured media aktif, serta status readiness `READY_TO_SCHEDULE`.

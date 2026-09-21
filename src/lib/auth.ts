@@ -511,3 +511,77 @@ export async function verifyPassword(password: string, storedHash: string): Prom
     return false;
   }
 }
+
+/**
+ * Header names accepted for Cron Secret authorization:
+ * Primary: Authorization: Bearer <CRON_SECRET>
+ * Custom: X-RancangLoka-Cron-Secret: <CRON_SECRET>
+ */
+export const CRON_SECRET_HEADER = 'X-RancangLoka-Cron-Secret';
+
+/**
+ * Extracts a candidate cron secret token from incoming request headers.
+ * Supports:
+ * - Authorization: Bearer <token>
+ * - X-RancangLoka-Cron-Secret: <token>
+ */
+export function getCronSecretFromRequest(request: Request): string | null {
+  const customHeader = request.headers.get(CRON_SECRET_HEADER);
+  if (customHeader && customHeader.trim().length > 0) {
+    return customHeader.trim();
+  }
+
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader) {
+    const parts = authHeader.trim().split(/\s+/);
+    if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+      return parts[1].trim();
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Validates whether the provided token matches the server's configured CRON_SECRET.
+ * 
+ * Invariants:
+ * 1. Fails closed if CRON_SECRET is not configured or empty.
+ * 2. Constant-time comparison using timingSafeEqual.
+ * 3. Media device firewall: Strictly blocks tokens matching media devices (lkmd_ or media:device).
+ * 4. Never logs the secret value.
+ */
+export function isValidCronSecret(token: string | null | undefined, env?: any): boolean {
+  if (!token || typeof token !== 'string') {
+    return false;
+  }
+
+  const trimmedToken = token.trim();
+  if (trimmedToken.length === 0) {
+    return false;
+  }
+
+  // Media Device Firewall: Never authorize media tokens for cron/service access
+  const lower = trimmedToken.toLowerCase();
+  if (lower.startsWith('lkmd_') || lower.includes('media:device')) {
+    return false;
+  }
+
+  const configuredSecret = env?.CRON_SECRET || (globalThis as any).process?.env?.CRON_SECRET;
+  if (!configuredSecret || typeof configuredSecret !== 'string' || configuredSecret.trim().length === 0) {
+    // Fail closed: No secret configured on server
+    return false;
+  }
+
+  return timingSafeEqual(trimmedToken, configuredSecret.trim());
+}
+
+/**
+ * Checks if a request is a legitimate publication service trigger request
+ * authenticated via CRON_SECRET.
+ */
+export function isCronServiceAuthenticated(request: Request, env?: any): boolean {
+  const token = getCronSecretFromRequest(request);
+  return isValidCronSecret(token, env);
+}
+

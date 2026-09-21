@@ -18,6 +18,10 @@ Commit message:
 feat: add publisher dual authorization
 ```
 
+`LOKAMEDIA_PHASE_5L9=PASS_CLOUDFLARE_CRON_WIRING_AND_SERVER_TRIGGER_AUTH`
+`LOKAMEDIA_PHASE_5L8=PASS_HANDS_OFF_PRODUCTION_HARDENING_AUDIT`
+`LOKAMEDIA_PHASE_5L7=PASS_TRUE_HANDS_OFF_LOCAL_END_TO_END_PUBLICATION`
+`LOKAMEDIA_PHASE_5L6A=PASS_AUTO_POLICY_PLAN_EXECUTION_RECONCILER`
 `LOKAMEDIA_PHASE_5L6=PASS_PUBLISHER_DUAL_AUTHORIZATION`
 `LOKAMEDIA_PHASE_5L5=PASS_CONTROLLED_LOCAL_AUTO_POLICY_PLAN_CREATION`
 `LOKAMEDIA_PHASE_5L4A=PASS_LOCAL_D1_MIGRATION_LEDGER_INTEGRITY`
@@ -427,15 +431,23 @@ All passed locally before checkpoint.
 - `DEPLOYMENTS=0`
 - final worktree was clean after the Phase 3 commit
 
-## Next Recommended Phase
+## Phase 5L9 Checkpoint Summary
 
-`READY_FOR_PHASE_4B1A_5D2_CONTROLLED_LIVE_CAPTURE_PROBE=YES`
+Date: 2026-09-21
 
-Phase 4B1A.5D1B successfully wired the real ChatGPT capture adapter with 76 passing deterministic tests and zero regressions.
-When resuming, execute Phase 4B1A.5D2 (Controlled Live ChatGPT Capture + Durable Blob Probe):
-- Exactly one Run Once on existing controlled fixture `mjob_5c0f488d7ee123b9579a58a5`.
-- Exactly one generation, exact result correlation, exactly one capture.
-- Durable persistence into IndexedDB (`local_state=CAPTURED`).
-- Stop at `CAPTURE_BLOB_PROBE_STOP`.
-- Zero R2 upload, zero media assets, zero article attachments.
+- **Phase 5L7:** True hands-off publication proven on golden fixture Article 6 (`id: 6`, `phase5l7-hands-off-publish-fixture`). Frozen with 0 approvals, status published, plan auto_policy, execution auto_schedule, receipt rcpt_6c247016b4ac6ee0.
+- **Phase 5L8:** Hardening audit completed. Identified cron trigger gap and established direct canonical service invocation architecture.
+- **Phase 5L9:** Cloudflare Cron Wiring + Server Trigger Auth Foundation implemented:
+  - Source-owned wrapper `src/worker.ts` with `main = "src/worker.ts"` in `wrangler.toml`.
+  - Deterministic native cron router `src/lib/publication/cron-router.ts` for `publication_planner`, `auto_execution_reconciler`, and `publication_dispatcher`.
+  - Direct canonical service invocation (`CRON_USES_SELF_HTTP_FETCH=NO`).
+  - Native cron execution does NOT require `CRON_SECRET` (`NATIVE_CRON_SECRET_DEPENDENCY=NONE`).
+  - Server trigger authentication via `CRON_SECRET` with constant-time comparison on trigger endpoints (`/api/admin/publication/plans`, `/publish/reconcile`, `/publish/due`).
+  - Media device firewall (`lkmd_` / `media:device` rejected with 403).
+  - Browser CSRF safely bypassed for secret-authenticated non-browser requests while preserved for browser admin sessions.
+  - Source-level `[triggers] crons` in `wrangler.toml`.
+  - Golden Article Fixtures (1, 3, 5, 6) 100% frozen.
+  - Production automation strictly disabled: `auto_schedule_enabled=false`, `mode=OFF`, `kill_switch=0`.
+- **Phase Status:** `PHASE_5L9=PASS`.
+- **Next Recommended Phase:** `READY_FOR_OBSERVABILITY_HARDENING=YES` (Phase 5L10: durable cron heartbeat, reconciler run summaries, operations status dashboard, stuck-work visibility).
 
