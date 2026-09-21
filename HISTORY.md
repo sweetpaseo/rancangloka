@@ -17,6 +17,25 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L12A Production Control-Path Integrity Closure 2026-09-22
+
+- **Tujuan & Ruang Lingkup:** Audit read-only terhadap integritas jalur kontrol produksi pasca Phase 5L12. Menyelidiki dan mengoreksi catatan historis mengenai mekanisme mutasi mode otomasi (`automation_control.mode`) dan status rekonsiliasi tabel audit (`publication_operator_audit`).
+- **Temuan & Rekonsiliasi Jalur Kontrol:**
+  - **Mekanisme Aktual Mutasi 5L12:** Transisi mode (`OFF → OBSERVE_ONLY` dan `OBSERVE_ONLY → OFF`) pada Phase 5L12 dilakukan melalui eksekusi remote SQL langsung ke tabel `automation_control`, bukan melalui rute HTTP operator API kanonikal (`ACTIVATION_MODE_CHANGE_ACTUAL_MECHANISM=DIRECT_SQL`, `RESTORE_MODE_CHANGE_ACTUAL_MECHANISM=DIRECT_SQL`).
+  - **Status Audit Operator:** Tabel `publication_operator_audit` memiliki total 0 baris (`AUDIT_MISSING`). Hal ini karena skema `CHECK (event_type IN (...))` pada tabel tersebut hanya mendukung event manual hold, return to draft, toggle auto schedule, dan pembatalan plan, tanpa event untuk perubahan mode otomasi global.
+  - **Ketersediaan Jalur Kanonikal:** Fungsi `setAutomationMode` ada di `src/lib/safety/automation-controller.ts`, namun belum memiliki rute HTTP API (`CANONICAL_AUTOMATION_MODE_HTTP_ROUTE=NONE`) dan belum mencatat ke `publication_operator_audit`.
+- **Preservasi Hasil Keamanan Perilaku (Behavioral Safety):**
+  - Seluruh bukti perilaku Phase 5L12 tetap valid dan terverifikasi secara independen (`PHASE_5L12_BEHAVIORAL_SAFETY_RESULT=PASS`):
+    - Dispatcher `OBSERVE_ONLY` heartbeat tercatat aman (`BLOCKED`).
+    - Reconciler `OBSERVE_ONLY` heartbeat tercatat aman (`BLOCKED`).
+    - Mutasi rencana baru = 0, eksekusi baru = 0, publikasi baru = 0, tanda terima baru = 0.
+    - Status artikel tidak berubah (Draft: 5, Published: 1).
+- **Kebijakan & Kesiapan Phase 5L13:**
+  - Kebijakan terkunci: Mutasi kontrol via raw SQL dilarang mulai Phase 5L13 (`PHASE_5L13_RAW_SQL_CONTROL_MUTATIONS_ALLOWED=NO`).
+  - Kesiapan jalur kanonikal: `PLAN_ONLY_CANONICAL_ACTIVATION_PATH_READY=NO`, `PLAN_ONLY_CANONICAL_RETURN_PATH_READY=NO`.
+  - Oleh karena itu, sebelum masuk Phase 5L13, jalur kontrol kanonikal (API/service + audit) harus disiapkan terlebih dahulu (`READY_FOR_PHASE_5L13=NO`).
+- **Status Produksi Saat Ini:** `FINAL_AUTOMATION_MODE=OFF`, `FINAL_AUTO_SCHEDULE=false`, `FINAL_KILL_SWITCH=0`. Nol mutasi pada produksi selama Phase 5L12A.
+
 ### LokaMedia Phase 5L12 Production OBSERVE_ONLY Canary 2026-09-21
 
 - **Tujuan & Ruang Lingkup:** Melakukan validasi canary pada kontrol state otomasi tingkat produksi (`automation_control.mode: OFF → OBSERVE_ONLY → OFF`) dengan otorisasi pengguna eksplisit. Membuktikan bahwa mode `OBSERVE_ONLY` mengeksekusi observasi telemetri terjadwal native Cloudflare Cron secara aman, memblokir seluruh tindakan eksekusi dan publikasi tanpa intervensi manusia (`canPlan=false`, `canSchedule=false`, `canPublish=false`), menghasilkan nol mutasi rencana/eksekusi/artikel, dan berhasil dikembalikan ke `mode=OFF`.
@@ -24,10 +43,10 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - **HEAD & Worktree:** `HEAD=30b27ff1dc9db33d988db6aa97d68e32bed763c3`, branch `lokamedia-phase-2ab-checkpoint`, worktree bersih.
   - **Worker & Skema:** Worker `rancangloka`, deployment `3404ac08-0e5f-4e11-8e11-2f93b7119a8f` (0 drift), skema D1 migrasi 0019 (0 drift).
   - **Kontrol Baseline:** `mode=OFF`, `auto_schedule_enabled=false`, `kill_switch=0`, rencana aktif=0, eksekusi aktif=0.
-- **Transisi Kanonikal & Audit Operator:**
-  - **Mekanisme Mutasi:** Menggunakan mekanisme kontrol operator kanonikal (`setAutomationMode` dengan atribusi `admin_operator`).
-  - **Audit Transisi 1 (OFF → OBSERVE_ONLY):** Tercatat dalam ledger `automation_control` dengan timestamp `2026-09-21 16:45:27`, `updated_by='admin_operator'`.
-  - **Audit Transisi 2 (OBSERVE_ONLY → OFF):** Tercatat dalam ledger `automation_control` dengan timestamp `2026-09-21 16:51:07`, `updated_by='admin_operator'`.
+- **Transisi & Audit Operator (KOREKSI PHASE 5L12A):**
+  - **Mekanisme Mutasi:** Dilakukan via remote SQL langsung pada tabel `automation_control` (bukan melalui endpoint HTTP operator API kanonikal).
+  - **Audit Transisi 1 (OFF → OBSERVE_ONLY):** Kolom `updated_at` (`2026-09-21 16:45:27`) dan `updated_by` (`admin_operator`) diperbarui pada baris `automation_control (id=1)`. Baris di `publication_operator_audit` tidak ada (`OBSERVE_ONLY_ACTIVATION_AUDIT_ROW_EXISTS=NO`).
+  - **Audit Transisi 2 (OBSERVE_ONLY → OFF):** Kolom `updated_at` (`2026-09-21 16:51:07`) dan `updated_by` (`admin_operator`) diperbarui pada baris `automation_control (id=1)`. Baris di `publication_operator_audit` tidak ada (`RETURN_TO_OFF_AUDIT_ROW_EXISTS=NO`).
 - **Hasil Observasi Detak Native Cron Selama OBSERVE_ONLY:**
   - **Detak Dispatcher (`publication_dispatcher`):** Terbukti berjalan native via Cloudflare Cron (`trigger_source='cloudflare_cron'`) merekam `automation_mode='OBSERVE_ONLY'` dengan status `BLOCKED` (`error_summary='UNATTENDED_PUBLISH_BLOCKED'`). Contoh run: `crun_disp_9d9f4299465442bf`, `crun_disp_ee111d3c11a24641`.
   - **Detak Reconciler (`auto_execution_reconciler`):** Terbukti berjalan native via Cloudflare Cron (`trigger_source='cloudflare_cron'`) pada jadwal 5 menit merekam `automation_mode='OBSERVE_ONLY'` dengan status `BLOCKED` (`error_summary='AUTOMATION_MODE_BLOCKS_EXECUTION_OBSERVE_ONLY'`). Contoh run: `crun_rec_e4f5cc3b3a514dd6`.
