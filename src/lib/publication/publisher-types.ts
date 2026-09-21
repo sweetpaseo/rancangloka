@@ -76,6 +76,7 @@ export interface PublicationExecutionRecord {
   last_error_class: ErrorClass | null;
   last_error_reason: string | null;
   publisher_version: string;
+  execution_mode?: string;
   actual_published_at: string | null;
   created_at: string;
   updated_at: string;

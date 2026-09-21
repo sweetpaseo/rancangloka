@@ -54,6 +54,18 @@ import {
   DEFAULT_ACTIVATION_ENVELOPE
 } from '../safety/rate-limiter.ts';
 
+import {
+  resolvePublicationAuthorization,
+  type PublicationAuthorizationMode,
+  type PublicationAuthorizationResult
+} from './authorization-resolver.ts';
+
+export {
+  resolvePublicationAuthorization,
+  type PublicationAuthorizationMode,
+  type PublicationAuthorizationResult
+};
+
 function getRandomHex(byteCount: number): string {
   const bytes = new Uint8Array(byteCount);
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
@@ -93,55 +105,18 @@ export async function schedulePlanForExecution(
     throw new Error(`PLAN_NOT_PLANNED: Cannot schedule plan with status '${plan.plan_status}'`);
   }
 
-  // 2. Revalidate article draft state
-  const article = await db
-    .prepare('SELECT id, status, content_hash FROM articles WHERE id = ? LIMIT 1')
-    .bind(plan.article_id)
-    .first();
+  // 2. Canonical Dual Authorization Resolution
+  const auth = await resolvePublicationAuthorization(db, {
+    planId,
+    stage: 'schedule',
+    actor
+  });
 
-  if (!article || article.status !== 'draft') {
-    throw new Error('ARTICLE_NOT_DRAFT: Article is not in draft status');
+  if (!auth.authorized) {
+    throw new Error(`${auth.reason || 'AUTHORIZATION_DENIED'}: ${auth.details?.error || 'Publication authorization failed'}`);
   }
 
-  // 3. Cryptographic and media consistency
-  if (article.content_hash !== plan.content_hash) {
-    throw new Error('CONTENT_HASH_MISMATCH: Article content changed after plan creation');
-  }
-
-  const activeMedia = await db
-    .prepare("SELECT asset_id FROM article_media WHERE article_id = ? AND role = 'featured' AND is_active = 1 LIMIT 1")
-    .bind(plan.article_id)
-    .first();
-
-  if (!activeMedia || activeMedia.asset_id !== plan.featured_asset_id) {
-    throw new Error('FEATURED_MEDIA_MISMATCH: Featured media changed after plan creation');
-  }
-
-  // 4. Revalidate readiness & approval
-  const latestApproval = await db
-    .prepare('SELECT approval_status, approved_content_hash, approved_asset_id FROM article_editorial_approvals WHERE article_id = ? ORDER BY created_at DESC, id DESC LIMIT 1')
-    .bind(plan.article_id)
-    .first();
-
-  if (
-    !latestApproval ||
-    latestApproval.approval_status !== 'APPROVED' ||
-    latestApproval.approved_content_hash !== plan.content_hash ||
-    latestApproval.approved_asset_id !== plan.featured_asset_id
-  ) {
-    throw new Error('APPROVAL_REVOKED_OR_STALE: Valid editorial approval is missing or stale');
-  }
-
-  const latestReadiness = await db
-    .prepare('SELECT is_ready, overall_status FROM article_publication_readiness WHERE article_id = ? ORDER BY evaluated_at DESC, id DESC LIMIT 1')
-    .bind(plan.article_id)
-    .first();
-
-  if (!latestReadiness || latestReadiness.is_ready !== 1 || latestReadiness.overall_status !== 'READY_TO_SCHEDULE') {
-    throw new Error('READINESS_STALE_OR_INVALID: Article is not currently READY_TO_SCHEDULE');
-  }
-
-  // 5. Check if execution already exists for this plan
+  // 3. Check if execution already exists for this plan
   const existingPlanExec = await db
     .prepare('SELECT * FROM article_publication_executions WHERE plan_id = ? LIMIT 1')
     .bind(planId)
@@ -154,7 +129,7 @@ export async function schedulePlanForExecution(
     throw new Error(`ACTIVE_EXECUTION_EXISTS: Plan already has execution in status '${existingPlanExec.execution_status}'`);
   }
 
-  // 6. Check active execution per article
+  // 4. Check active execution per article
   const activeArticleExec = await db
     .prepare(`
       SELECT * FROM article_publication_executions 
@@ -169,25 +144,31 @@ export async function schedulePlanForExecution(
     throw new Error(`ACTIVE_EXECUTION_EXISTS: Article ID ${plan.article_id} already has an active execution ${activeArticleExec.execution_id}`);
   }
 
-  // 7. Insert new execution record
+  // 5. Execution mode attribution
+  const executionMode = auth.authorization_mode === 'auto_policy'
+    ? 'auto_schedule'
+    : (actor === 'manual_publish' ? 'manual_publish' : 'scheduled_publish');
+
+  // 6. Insert new execution record
   const executionId = `pexec_${getRandomHex(8)}`;
   await db
     .prepare(`
       INSERT INTO article_publication_executions (
         execution_id, plan_id, article_id, content_hash, featured_asset_id,
-        target_publish_at, execution_status, publisher_version, created_at, updated_at
+        target_publish_at, execution_status, publisher_version, execution_mode, created_at, updated_at
       ) VALUES (
         ?, ?, ?, ?, ?,
-        ?, '${EXECUTION_STATUS_SCHEDULED}', '${PUBLISHER_VERSION}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        ?, '${EXECUTION_STATUS_SCHEDULED}', '${PUBLISHER_VERSION}', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       )
     `)
     .bind(
       executionId,
       plan.plan_id,
       plan.article_id,
-      plan.content_hash,
-      plan.featured_asset_id,
-      plan.target_publish_at
+      auth.content_hash,
+      auth.featured_asset_id,
+      plan.target_publish_at,
+      executionMode
     )
     .run();
 
@@ -443,43 +424,19 @@ export async function validatePrepublishInvariants(
     };
   }
 
-  // 7. Editorial approval check
-  const latestApproval = await db
-    .prepare('SELECT approval_status, approved_content_hash, approved_asset_id FROM article_editorial_approvals WHERE article_id = ? ORDER BY created_at DESC, id DESC LIMIT 1')
-    .bind(article.id)
-    .first();
+  // 7. Canonical Dual Authorization Check (Revalidated immediately prior to publish)
+  const auth = await resolvePublicationAuthorization(db, {
+    planId: execution.plan_id,
+    executionId: execution.execution_id,
+    stage: 'prepublish'
+  });
 
-  if (
-    !latestApproval ||
-    latestApproval.approval_status !== 'APPROVED' ||
-    latestApproval.approved_content_hash !== execution.content_hash ||
-    latestApproval.approved_asset_id !== execution.featured_asset_id
-  ) {
+  if (!auth.authorized) {
     return {
       isValid: false,
       errorClass: ERROR_CLASS_TERMINAL,
-      reasonCode: 'APPROVAL_REVOKED_OR_STALE',
-      details: { approval_status: latestApproval?.approval_status }
-    };
-  }
-
-  // 8. Publication readiness check
-  const latestReadiness = await db
-    .prepare('SELECT is_ready, overall_status, content_hash FROM article_publication_readiness WHERE article_id = ? ORDER BY evaluated_at DESC, id DESC LIMIT 1')
-    .bind(article.id)
-    .first();
-
-  if (
-    !latestReadiness ||
-    latestReadiness.is_ready !== 1 ||
-    latestReadiness.overall_status !== 'READY_TO_SCHEDULE' ||
-    latestReadiness.content_hash !== execution.content_hash
-  ) {
-    return {
-      isValid: false,
-      errorClass: ERROR_CLASS_TERMINAL,
-      reasonCode: 'READINESS_STALE_OR_INVALID',
-      details: { overall_status: latestReadiness?.overall_status, is_ready: latestReadiness?.is_ready }
+      reasonCode: (auth.reason as PublisherReasonCode) || 'APPROVAL_REVOKED_OR_STALE',
+      details: auth.details || { error: auth.reason }
     };
   }
 
@@ -535,14 +492,25 @@ export async function executeAtomicPublication(
   };
 
   const batchStatements = [
-    // 1. Atomic Article Publish (Guards status = 'draft' AND manual_hold = 0)
+    // 1. Atomic Article Publish (Guards status = 'draft', manual_hold = 0, content_hash match, and active featured asset match)
     db.prepare(`
       UPDATE articles 
       SET status = 'published',
           published_at = ?,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND status = 'draft' AND COALESCE(manual_hold, 0) = 0
-    `).bind(actualPublishedAt, execution.article_id),
+      WHERE id = ? 
+        AND status = 'draft' 
+        AND COALESCE(manual_hold, 0) = 0
+        AND content_hash = ?
+        AND (
+          SELECT asset_id 
+          FROM article_media 
+          WHERE article_id = articles.id 
+            AND role = 'featured' 
+            AND is_active = 1 
+          LIMIT 1
+        ) = ?
+    `).bind(actualPublishedAt, execution.article_id, execution.content_hash, execution.featured_asset_id),
 
     // 2. Execution Record Completion
     db.prepare(`
@@ -1076,13 +1044,25 @@ export async function publishNow(
   }
 
   let execution: PublicationExecutionRecord | null = null;
+  let plan: any = null;
 
   if (planOrExecutionId.startsWith('pexec_')) {
     execution = await db
       .prepare('SELECT * FROM article_publication_executions WHERE execution_id = ? LIMIT 1')
       .bind(planOrExecutionId)
       .first();
+    if (execution) {
+      plan = await db
+        .prepare('SELECT * FROM article_publication_plans WHERE plan_id = ? LIMIT 1')
+        .bind(execution.plan_id)
+        .first();
+    }
   } else {
+    plan = await db
+      .prepare('SELECT * FROM article_publication_plans WHERE plan_id = ? LIMIT 1')
+      .bind(planOrExecutionId)
+      .first();
+
     // Find or create execution for plan
     let existing = await db
       .prepare('SELECT * FROM article_publication_executions WHERE plan_id = ? LIMIT 1')
@@ -1090,9 +1070,26 @@ export async function publishNow(
       .first();
 
     if (!existing) {
-      existing = await schedulePlanForExecution(db, planOrExecutionId, actor);
+      existing = await schedulePlanForExecution(db, planOrExecutionId, 'manual_publish');
     }
     execution = existing as PublicationExecutionRecord;
+  }
+
+  // Gate 24: Publish Now is strictly human-only. Cannot bypass auto_policy without explicit human approval.
+  if (plan && plan.scheduling_mode === 'auto_policy') {
+    throw new Error('PUBLISH_NOW_WITHOUT_HUMAN_APPROVAL_FORBIDDEN: Manual Publish Now cannot be used for auto_policy plans');
+  }
+
+  const targetArticleId = plan ? plan.article_id : execution?.article_id;
+  if (targetArticleId) {
+    const approval = await db
+      .prepare("SELECT approval_status FROM article_editorial_approvals WHERE article_id = ? AND approval_status = 'APPROVED' ORDER BY created_at DESC, id DESC LIMIT 1")
+      .bind(targetArticleId)
+      .first();
+
+    if (!approval) {
+      throw new Error('PUBLISH_NOW_WITHOUT_HUMAN_APPROVAL_FORBIDDEN: Manual Publish Now requires explicit human editorial approval');
+    }
   }
 
   if (!execution) {
