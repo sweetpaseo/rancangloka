@@ -276,7 +276,7 @@ export async function validatePrepublishInvariants(
 ): Promise<PrepublishValidationResult> {
   // 1. Fetch current article
   const article = await db
-    .prepare('SELECT id, slug, title, description, content_md, content_html, content_hash, category_id, author_id, status FROM articles WHERE id = ? LIMIT 1')
+    .prepare('SELECT id, slug, title, description, content_md, content_html, content_hash, category_id, author_id, status, COALESCE(manual_hold, 0) AS manual_hold FROM articles WHERE id = ? LIMIT 1')
     .bind(execution.article_id)
     .first();
 
@@ -286,6 +286,16 @@ export async function validatePrepublishInvariants(
       errorClass: ERROR_CLASS_TERMINAL,
       reasonCode: 'ARTICLE_NOT_DRAFT',
       details: { error: 'Article record not found' }
+    };
+  }
+
+  // Phase 5L4: Manual Hold Double-Gate Fail-Closed
+  if (article.manual_hold === 1) {
+    return {
+      isValid: false,
+      errorClass: ERROR_CLASS_TERMINAL,
+      reasonCode: 'MANUAL_HOLD_ENGAGED',
+      details: { manual_hold: true, error: 'Article is under manual hold' }
     };
   }
 
@@ -525,13 +535,13 @@ export async function executeAtomicPublication(
   };
 
   const batchStatements = [
-    // 1. Atomic Article Publish (Guards status = 'draft')
+    // 1. Atomic Article Publish (Guards status = 'draft' AND manual_hold = 0)
     db.prepare(`
       UPDATE articles 
       SET status = 'published',
           published_at = ?,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND status = 'draft'
+      WHERE id = ? AND status = 'draft' AND COALESCE(manual_hold, 0) = 0
     `).bind(actualPublishedAt, execution.article_id),
 
     // 2. Execution Record Completion
@@ -1124,6 +1134,10 @@ export async function cancelExecution(
 
   if (execution.execution_status === EXECUTION_STATUS_PUBLISHED) {
     throw new Error('CANNOT_CANCEL_PUBLISHED: Execution is already published');
+  }
+
+  if (execution.execution_status === EXECUTION_STATUS_PUBLISHING) {
+    throw new Error('CANNOT_CANCEL_PUBLISHING: Execution is actively publishing');
   }
 
   await db

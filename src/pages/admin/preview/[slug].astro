@@ -11,6 +11,7 @@ import { sanitizeArticleHtml } from '../../../lib/article/renderer.ts';
 import { isValidAdminSession, getSafeAdminRedirect } from '../../../lib/auth';
 import { getArticleApprovalsHistory, getArticleReadiness } from '../../../lib/publication/service.ts';
 import { evaluateArticleMediaReadiness } from '../../../lib/media/readiness-reconciler.ts';
+import { getArticleAutomationState } from '../../../lib/publication/operator-controls.ts';
 
 // 1. Enforce Admin Authentication
 const sessionCookie = Astro.cookies.get('admin_session');
@@ -78,16 +79,17 @@ if (article) {
   ];
 }
 
-// 3. Load Editorial Review, Readiness, and Media Details (Phase 5J2)
+// 3. Load Editorial Review, Readiness, Media Details, and Automation State (Phase 5J2 & 5L4)
 let persistedReadiness: any = null;
 let mediaReadiness: any = null;
 let approvalsHistory: any[] = [];
 let latestApproval: any = null;
 let activeFeaturedMedia: any = null;
+let automationState: any = null;
 
 if (article) {
   try {
-    const [readinessSnapshot, mediaEval, approvals, activeMediaRow] = await Promise.all([
+    const [readinessSnapshot, mediaEval, approvals, activeMediaRow, autoState] = await Promise.all([
       getArticleReadiness(db, article.id).catch(() => null),
       evaluateArticleMediaReadiness(db, article.id).catch(() => null),
       getArticleApprovalsHistory(db, article.id, 10).catch(() => []),
@@ -98,7 +100,8 @@ if (article) {
         JOIN media_assets ma ON am.asset_id = ma.asset_id
         WHERE am.article_id = ? AND am.slot_key = 'featured' AND am.is_active = 1
         LIMIT 1
-      `).bind(article.id).first().catch(() => null)
+      `).bind(article.id).first().catch(() => null),
+      getArticleAutomationState(db, article.id).catch(() => null)
     ]);
 
     persistedReadiness = readinessSnapshot;
@@ -106,6 +109,7 @@ if (article) {
     approvalsHistory = approvals || [];
     latestApproval = approvalsHistory.length > 0 ? approvalsHistory[0] : null;
     activeFeaturedMedia = activeMediaRow || null;
+    automationState = autoState || null;
   } catch (err: any) {
     console.error('Failed to load editorial review metadata:', err.message);
   }
@@ -473,6 +477,95 @@ const humanReasonDescriptions: Record<string, string> = {
             </div>
           </div>
         </div>
+
+        <!-- Phase 5L4: Publication Automation & Supervisor Control Surface -->
+        <div class="border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-sm">🤖</span>
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                  Automation & Hands-Off Supervisor Controls (Phase 5L4)
+                </h3>
+                <p class="text-[11px] text-slate-500">
+                  Kontrol intervensi manual redaksi: Tahan Otomasi, Lanjutkan, atau Kembalikan ke Draft.
+                </p>
+              </div>
+            </div>
+
+            <!-- Auto Schedule Status Badge -->
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-semibold text-slate-500">Status Otomasi:</span>
+              <span class={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                automationState?.displayState === 'HELD'
+                  ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-200'
+                  : automationState?.displayState === 'PUBLISHED'
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : automationState?.displayState === 'SCHEDULED'
+                  ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                  : automationState?.displayState === 'PLANNED'
+                  ? 'bg-blue-100 text-blue-800 border-blue-300'
+                  : automationState?.displayState === 'GLOBAL_AUTO_SCHEDULE_OFF'
+                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                  : 'bg-slate-100 text-slate-800 border-slate-300'
+              }`}>
+                <span>{automationState?.displayState || 'NOT_ELIGIBLE'}</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Metadata info banner if held -->
+          {automationState?.manualHold && (
+            <div class="rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 p-3.5 text-xs text-rose-900 dark:text-rose-200 space-y-1">
+              <div class="font-bold flex items-center gap-1.5">
+                <span>⏸️</span>
+                <span>Artikel Ditahan Manual (HELD) — Penjadwalan otomatis diblokir sepenuhnya.</span>
+              </div>
+              <div class="text-[11px] text-rose-700 dark:text-rose-300">
+                Ditahan oleh <strong>{automationState.manualHoldBy || 'Operator'}</strong> pada {automationState.manualHoldAt ? new Date(automationState.manualHoldAt).toLocaleString('id-ID') : '-'}.
+                {automationState.manualHoldReason && <span> Alasan: "<em>{automationState.manualHoldReason}</em>"</span>}
+              </div>
+            </div>
+          )}
+
+          <!-- Action Buttons Bar -->
+          <div class="flex flex-wrap items-center gap-3 pt-1">
+            {automationState?.manualHold ? (
+              <button
+                type="button"
+                id="btn-resume-automation"
+                data-article-id={article.id}
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition"
+              >
+                <span>▶️</span>
+                <span>Lanjutkan Otomasi (Resume Automation)</span>
+              </button>
+            ) : article.status !== 'published' ? (
+              <button
+                type="button"
+                id="btn-hold-automation"
+                data-article-id={article.id}
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-sm transition"
+              >
+                <span>⏸️</span>
+                <span>Tahan Otomasi (Hold Automation)</span>
+              </button>
+            ) : null}
+
+            {article.status !== 'published' && (
+              <button
+                type="button"
+                id="btn-return-draft-hold"
+                data-article-id={article.id}
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold shadow-sm transition"
+              >
+                <span>↩️</span>
+                <span>Kembalikan ke Draft & Tahan (Return to Draft & Hold)</span>
+              </button>
+            )}
+          </div>
+          <div id="automation-action-feedback" class="text-[11px] font-medium hidden"></div>
+        </div>
       </section>
     </div>
 
@@ -763,6 +856,105 @@ const humanReasonDescriptions: Record<string, string> = {
                 revokeBtn.style.opacity = '';
                 revokeBtn.style.cursor = '';
                 revokeBtn.innerHTML = originalRevokeText;
+              }
+            });
+          }
+          var holdBtn = document.getElementById('btn-hold-automation');
+          var resumeBtn = document.getElementById('btn-resume-automation');
+          var returnDraftBtn = document.getElementById('btn-return-draft-hold');
+          var autoFeedback = document.getElementById('automation-action-feedback');
+
+          function showAutoFeedback(msg, isError) {
+            if (!autoFeedback) return;
+            autoFeedback.className = 'text-[11px] font-medium block mt-2 ' + (isError ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400');
+            autoFeedback.textContent = msg;
+          }
+
+          if (holdBtn) {
+            holdBtn.addEventListener('click', async function() {
+              var articleId = holdBtn.getAttribute('data-article-id');
+              var reason = window.prompt('Alasan penahanan otomasi (opsional):', 'Ditahan manual dari pratinjau redaksi');
+              if (reason === null) return; // user cancelled
+
+              holdBtn.setAttribute('disabled', 'true');
+              holdBtn.style.opacity = '0.7';
+              holdBtn.innerHTML = '<span>⏳ Memproses Penahanan...</span>';
+
+              try {
+                var res = await fetch('/api/admin/publication/operator-control', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'hold', articleId: Number(articleId), reason: reason || undefined })
+                });
+                var data = await res.json().catch(function() { return {}; });
+                if (!res.ok) throw new Error(data.message || 'Gagal menahan otomasi artikel');
+                showAutoFeedback('✓ Otomasi artikel berhasil ditahan (HELD). Memuat ulang...', false);
+                setTimeout(function() { window.location.reload(); }, 1000);
+              } catch (err) {
+                showAutoFeedback('Error: ' + (err.message || 'Terjadi kesalahan sistem'), true);
+                holdBtn.removeAttribute('disabled');
+                holdBtn.style.opacity = '';
+                holdBtn.innerHTML = '<span>⏸️</span><span>Tahan Otomasi (Hold Automation)</span>';
+              }
+            });
+          }
+
+          if (resumeBtn) {
+            resumeBtn.addEventListener('click', async function() {
+              var articleId = resumeBtn.getAttribute('data-article-id');
+              if (!window.confirm('Lanjutkan evaluasi otomasi untuk artikel ini? (Penjadwalan otomatis tidak akan dibuat seketika, menunggu rekonsiliasi planner berikutnya)')) return;
+
+              resumeBtn.setAttribute('disabled', 'true');
+              resumeBtn.style.opacity = '0.7';
+              resumeBtn.innerHTML = '<span>⏳ Melanjutkan Otomasi...</span>';
+
+              try {
+                var res = await fetch('/api/admin/publication/operator-control', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'resume', articleId: Number(articleId) })
+                });
+                var data = await res.json().catch(function() { return {}; });
+                if (!res.ok) throw new Error(data.message || 'Gagal melanjutkan otomasi artikel');
+                showAutoFeedback('✓ Penahanan dilepas. Evaluasi otomasi dipulihkan. Memuat ulang...', false);
+                setTimeout(function() { window.location.reload(); }, 1000);
+              } catch (err) {
+                showAutoFeedback('Error: ' + (err.message || 'Terjadi kesalahan sistem'), true);
+                resumeBtn.removeAttribute('disabled');
+                resumeBtn.style.opacity = '';
+                resumeBtn.innerHTML = '<span>▶️</span><span>Lanjutkan Otomasi (Resume Automation)</span>';
+              }
+            });
+          }
+
+          if (returnDraftBtn) {
+            returnDraftBtn.addEventListener('click', async function() {
+              var articleId = returnDraftBtn.getAttribute('data-article-id');
+              var confirmed = window.confirm('Peringatan: Tindakan ini akan membatalkan rencana publikasi atau eksekusi aktif (yang aman dibatalkan), mengembalikan status artikel ke Draft, dan mengaktifkan Manual Hold. Lanjutkan?');
+              if (!confirmed) return;
+
+              var reason = window.prompt('Alasan pengembalian ke Draft & Hold (opsional):', 'Intervensi supervisor: dikembalikan ke draft');
+              if (reason === null) return;
+
+              returnDraftBtn.setAttribute('disabled', 'true');
+              returnDraftBtn.style.opacity = '0.7';
+              returnDraftBtn.innerHTML = '<span>⏳ Mengembalikan ke Draft...</span>';
+
+              try {
+                var res = await fetch('/api/admin/publication/operator-control', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'return_to_draft_and_hold', articleId: Number(articleId), reason: reason || undefined })
+                });
+                var data = await res.json().catch(function() { return {}; });
+                if (!res.ok) throw new Error(data.message || 'Gagal mengembalikan artikel ke Draft & Hold');
+                showAutoFeedback('✓ Artikel berhasil dikembalikan ke Draft & Otomasi Ditahan. Memuat ulang...', false);
+                setTimeout(function() { window.location.reload(); }, 1000);
+              } catch (err) {
+                showAutoFeedback('Error: ' + (err.message || 'Terjadi kesalahan sistem'), true);
+                returnDraftBtn.removeAttribute('disabled');
+                returnDraftBtn.style.opacity = '';
+                returnDraftBtn.innerHTML = '<span>↩️</span><span>Kembalikan ke Draft & Tahan (Return to Draft & Hold)</span>';
               }
             });
           }

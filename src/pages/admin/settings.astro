@@ -4,6 +4,22 @@ import { getDb, getSiteSettings } from '../../lib/db';
 
 const db = await getDb(Astro.locals);
 const settings = await getSiteSettings(db);
+
+let autoControl = { mode: 'OFF', kill_switch_engaged: 0, kill_reason: null as string | null };
+try {
+  const row = await db.prepare('SELECT id, mode, kill_switch_engaged, kill_reason FROM automation_control WHERE id = 1 LIMIT 1').first() as any;
+  if (row) {
+    autoControl = {
+      mode: row.mode || 'OFF',
+      kill_switch_engaged: Number(row.kill_switch_engaged || 0),
+      kill_reason: row.kill_reason || null
+    };
+  }
+} catch (e) {
+  // fallback
+}
+const isAutoScheduleEnabled = settings.auto_schedule_enabled === 'true';
+const isKillSwitchEngaged = autoControl.kill_switch_engaged === 1;
 ---
 
 <AdminLayout title="Pengaturan & Tema Magazine">
@@ -457,6 +473,84 @@ const settings = await getSiteSettings(db);
         />
       </div>
     </div>
+
+    <!-- 6. Publication Automation & Supervisor Controls (Phase 5L4) -->
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-5 shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <span>🤖</span> Publication Automation & Hands-Off Engine (Supervisor Controls)
+        </h2>
+        <span class="text-[10px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded font-semibold uppercase">Phase 5L4 Operator Controls</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Control 1: Global Auto-Schedule ON/OFF -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3 flex flex-col justify-between">
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <span>🗓️</span> Global Auto-Schedule
+              </span>
+              <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                isAutoScheduleEnabled
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {isAutoScheduleEnabled ? 'ON (Aktif)' : 'OFF (Nonaktif)'}
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              <strong>OFF:</strong> Mencegah pembuatan jadwal publikasi baru oleh sistem auto-policy.<br/>
+              <em>Catatan:</em> Menonaktifkan sakelar ini <strong>tidak</strong> membatalkan rencana atau eksekusi yang sudah terjadwal sebelumnya (harus dibatalkan manual oleh operator).
+            </p>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+            <span class="text-[11px] font-medium text-slate-500">Ubah Status:</span>
+            <button
+              type="button"
+              id="btn-toggle-auto-schedule"
+              data-current-enabled={isAutoScheduleEnabled ? 'true' : 'false'}
+              class={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-xs ${
+                isAutoScheduleEnabled
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              }`}
+            >
+              {isAutoScheduleEnabled ? 'Matikan Auto-Schedule (Turn OFF)' : 'Aktifkan Auto-Schedule (Turn ON)'}
+            </button>
+          </div>
+        </div>
+
+        <!-- Control 2: Emergency Kill Switch Status (Distinct) -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3 flex flex-col justify-between">
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <span>🛑</span> Global Emergency Kill Switch
+              </span>
+              <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                isKillSwitchEngaged
+                  ? 'bg-rose-100 text-rose-800 animate-pulse'
+                  : 'bg-slate-200 text-slate-700'
+              }`}>
+                {isKillSwitchEngaged ? 'ENGAGED (Berhenti Darurat)' : 'DISENGAGED (Normal)'}
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              <strong>Penghentian Darurat Total (Emergency Stop):</strong> Menghentikan secara paksa seluruh operasi otomasi di seluruh sistem (perencana, penerbit, rekonsiliasi).<br/>
+              <em>Pembeda:</em> Berbeda dengan Auto-Schedule OFF yang hanya memblokir pembuatan rencana baru, Kill Switch memblokir eksekusi publikasi seketika.
+            </p>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Mode Sistem: <strong class="font-mono text-slate-700">{autoControl.mode}</strong></span>
+            {isKillSwitchEngaged && <span class="text-rose-600 font-bold">Alasan: {autoControl.kill_reason || 'Manual stop'}</span>}
+          </div>
+        </div>
+      </div>
+      <div id="auto-schedule-feedback" class="text-[11px] font-medium hidden"></div>
+    </div>
   </div>
 
   <script>
@@ -584,6 +678,57 @@ const settings = await getSiteSettings(db);
       } finally {
         saveBtn.disabled = false;
         saveBtn.innerText = '💾 Simpan Pengaturan';
+      }
+    });
+
+    // Toggle Global Auto-Schedule (Phase 5L4)
+    const toggleAutoScheduleBtn = document.getElementById('btn-toggle-auto-schedule') as HTMLButtonElement;
+    const autoScheduleFeedback = document.getElementById('auto-schedule-feedback') as HTMLElement;
+
+    toggleAutoScheduleBtn?.addEventListener('click', async () => {
+      const current = toggleAutoScheduleBtn.getAttribute('data-current-enabled') === 'true';
+      const nextState = !current;
+      const actionLabel = nextState ? 'MENGAKTIFKAN' : 'MENONAKTIFKAN';
+
+      const confirmed = window.confirm(
+        `Apakah Anda yakin ingin ${actionLabel} Global Auto-Schedule?\n\n` +
+        (nextState
+          ? 'Sistem auto-policy akan diizinkan mengevaluasi dan merencanakan publikasi secara otomatis.'
+          : 'Sistem TIDAK AKAN membuat jadwal auto-policy baru. Jadwal yang sudah ada tidak dibatalkan.')
+      );
+      if (!confirmed) return;
+
+      const reason = window.prompt(`Alasan perubahan status auto-schedule (opsional):`, `Operator switch to ${nextState ? 'ON' : 'OFF'}`);
+      if (reason === null) return;
+
+      toggleAutoScheduleBtn.disabled = true;
+      toggleAutoScheduleBtn.innerText = 'Memproses...';
+
+      try {
+        const res = await fetch('/api/admin/publication/operator-control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'toggle_auto_schedule',
+            enabled: nextState,
+            reason: reason || undefined
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Gagal mengubah status auto-schedule');
+
+        if (autoScheduleFeedback) {
+          autoScheduleFeedback.className = 'text-[11px] font-medium block text-emerald-600';
+          autoScheduleFeedback.textContent = `✓ Global Auto-Schedule berhasil diubah menjadi ${nextState ? 'ON' : 'OFF'}. Memuat ulang...`;
+        }
+        setTimeout(() => window.location.reload(), 1000);
+      } catch (err: any) {
+        if (autoScheduleFeedback) {
+          autoScheduleFeedback.className = 'text-[11px] font-medium block text-rose-600';
+          autoScheduleFeedback.textContent = `Error: ${err.message || 'Terjadi kesalahan sistem'}`;
+        }
+        toggleAutoScheduleBtn.disabled = false;
+        toggleAutoScheduleBtn.innerText = current ? 'Matikan Auto-Schedule (Turn OFF)' : 'Aktifkan Auto-Schedule (Turn ON)';
       }
     });
   </script>

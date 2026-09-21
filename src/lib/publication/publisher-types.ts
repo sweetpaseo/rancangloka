@@ -55,6 +55,7 @@ export type PublisherReasonCode =
   | 'ATOMIC_BATCH_FAILED'
   | 'MAX_RETRIES_EXCEEDED'
   | 'CANCELLED_BY_OPERATOR'
+  | 'MANUAL_HOLD_ENGAGED'
   | 'PUBLISHER_PAUSED'
   | 'SUCCESS';
 
