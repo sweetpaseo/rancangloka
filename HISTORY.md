@@ -17,6 +17,29 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L11C Production Native Cron Heartbeat Closure 2026-09-21
+
+- **Tujuan & Ruang Lingkup:** Melakukan verifikasi observasi native Cron heartbeat di lingkungan produksi Cloudflare Worker (`rancangloka`) pasca-deployment Phase 5L11B tanpa mutasi kode, tanpa mutasi skema/konfigurasi, dan tanpa emulasi HTTP (`/__scheduled` / POST manual = 0). Membuktikan detak terjadwal native Cloudflare edge scheduler berjalan dan tercatat secara persisten pada tabel `publication_cron_runs` database D1 produksi (`rancangloka_db`).
+- **Verifikasi Identitas & Gerbang Entri:**
+  - **HEAD & Worktree:** `HEAD=dbb7458178eb808ad2a3f28371429773f34b7eed`, branch `lokamedia-phase-2ab-checkpoint`, worktree bersih (`CLEAN=YES`).
+  - **Worker Aktif:** Terkonfirmasi versi `3404ac08-0e5f-4e11-8e11-2f93b7119a8f` (100% traffic aktif).
+  - **Ledger Migrasi D1:** Migrasi 0019 (`0019_publication_cron_observability.sql`) tetap yang terbaru.
+  - **Firewall Kontrol:** `mode='OFF'`, `kill_switch_engaged=0`, `settings.auto_schedule_enabled='false'`.
+- **Hasil Observasi Detak Native Cron Produksi (Jendela Observasi Edge):**
+  - **Detak Dispatcher (`publication_dispatcher`):** Terbukti berjalan native setiap 1 menit via Cloudflare Cron (`trigger_source='cloudflare_cron'`). Seluruh baris berstatus `BLOCKED` (`error_class='SAFETY_BLOCK'`, `error_summary='AUTOMATION_MODE_OFF'`) dengan `automation_mode='OFF'`.
+  - **Detak Reconciler (`auto_execution_reconciler`):** Terbukti berjalan native setiap 5 menit via Cloudflare Cron (`trigger_source='cloudflare_cron'`). Seluruh baris berstatus `BLOCKED` (`error_class='SAFETY_BLOCK'`, `error_summary='AUTOMATION_MODE_BLOCKS_EXECUTION_OFF'`) dengan `automation_mode='OFF'`.
+  - **Detak Planner (`publication_planner`):** Status `NOT_YET_DUE` (siklus 1 jam sekali pada menit :00).
+  - **Keunikan Telemetri:** Seluruh `run_id` terbukti unik (duplikasi = 0).
+- **Integritas Pipeline & Konten:**
+  - **Mutasi Konten & Siklus Hidup:** Rencana baru = 0, eksekusi baru = 0, tanda terima publikasi baru = 0, publikasi baru = 0.
+  - **Status Artikel:** Artikel draft tetap 5, artikel published tetap 1 (`rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`, id: 6). Mutasi artikel = 0.
+  - **Integritas Tanda Terima & Operasi:** `PROD_OPERATIONS_STATUS_HEALTH=PASS`, `PROD_RECEIPT_INTEGRITY=PASS`.
+- **Kesehatan Endpoint Publik:**
+  - Homepage (`https://rancangloka.com`): 200 OK (164,504 bytes).
+  - Artikel Published (`https://rancangloka.com/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`): 200 OK (159,807 bytes).
+  - Sitemap Index & XML (`/sitemap.xml`, `/post-sitemap.xml`): 200 OK (XML valid).
+- **Hasil:** `PHASE_5L11C=PASS`. Deployment produksi disabled terverifikasi penuh (`PRODUCTION_DISABLED_DEPLOYMENT_FULLY_VERIFIED=YES`). Siap untuk Phase 5L12 (`READY_FOR_PHASE_5L12=YES`). Mode otomasi tertinggi tetap `OFF`.
+
 ### LokaMedia Phase 5L11B Disabled Production Migration + Deployment 2026-09-21
 
 - **Tujuan & Ruang Lingkup:** Menerapkan seluruh migrasi pending (0013–0019) ke database Cloudflare D1 produksi (`rancangloka_db`), mendeploy Cloudflare Worker (`rancangloka`) dengan pemicu native Cron triggers dalam mode nonaktif (`mode=OFF`, `auto_schedule_enabled=false`), memvalidasi kesehatan publik situs, serta membuktikan nol mutasi rencana/eksekusi/publikasi artikel.
