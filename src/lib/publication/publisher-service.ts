@@ -124,6 +124,7 @@ export async function schedulePlanForExecution(
 
   if (existingPlanExec) {
     if (existingPlanExec.execution_status === EXECUTION_STATUS_SCHEDULED) {
+      (existingPlanExec as any).reused_existing = true;
       return existingPlanExec as PublicationExecutionRecord;
     }
     throw new Error(`ACTIVE_EXECUTION_EXISTS: Plan already has execution in status '${existingPlanExec.execution_status}'`);
@@ -151,31 +152,51 @@ export async function schedulePlanForExecution(
 
   // 6. Insert new execution record
   const executionId = `pexec_${getRandomHex(8)}`;
-  await db
-    .prepare(`
-      INSERT INTO article_publication_executions (
-        execution_id, plan_id, article_id, content_hash, featured_asset_id,
-        target_publish_at, execution_status, publisher_version, execution_mode, created_at, updated_at
-      ) VALUES (
-        ?, ?, ?, ?, ?,
-        ?, '${EXECUTION_STATUS_SCHEDULED}', '${PUBLISHER_VERSION}', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  try {
+    await db
+      .prepare(`
+        INSERT INTO article_publication_executions (
+          execution_id, plan_id, article_id, content_hash, featured_asset_id,
+          target_publish_at, execution_status, publisher_version, execution_mode, created_at, updated_at
+        ) VALUES (
+          ?, ?, ?, ?, ?,
+          ?, '${EXECUTION_STATUS_SCHEDULED}', '${PUBLISHER_VERSION}', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+      `)
+      .bind(
+        executionId,
+        plan.plan_id,
+        plan.article_id,
+        auth.content_hash,
+        auth.featured_asset_id,
+        plan.target_publish_at,
+        executionMode
       )
-    `)
-    .bind(
-      executionId,
-      plan.plan_id,
-      plan.article_id,
-      auth.content_hash,
-      auth.featured_asset_id,
-      plan.target_publish_at,
-      executionMode
-    )
-    .run();
+      .run();
+  } catch (err: any) {
+    const errMsg = err?.message || String(err);
+    if (errMsg.includes('UNIQUE constraint failed') || errMsg.includes('uq_active_execution_per_article')) {
+      const existingPlanExec = await db
+        .prepare('SELECT * FROM article_publication_executions WHERE plan_id = ? LIMIT 1')
+        .bind(plan.plan_id)
+        .first();
+
+      if (existingPlanExec && existingPlanExec.execution_status === EXECUTION_STATUS_SCHEDULED) {
+        (existingPlanExec as any).reused_existing = true;
+        return existingPlanExec as PublicationExecutionRecord;
+      }
+    }
+    throw err;
+  }
 
   const record = await db
     .prepare('SELECT * FROM article_publication_executions WHERE execution_id = ? LIMIT 1')
     .bind(executionId)
     .first();
+
+  if (record) {
+    (record as any).reused_existing = false;
+  }
 
   return record as PublicationExecutionRecord;
 }
