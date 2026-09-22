@@ -17,6 +17,34 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L13B-B Single Canary Featured Media Production Canonical Ingest 2026-09-22
+
+- **Tujuan & Ruang Lingkup:** Menyiapkan Artikel 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`) sebagai tepat SATU (*single canary*) kandidat eligible publikasi deterministik di bawah `auto_policy` tanpa mengaktifkan otomasi publikasi, melalui pembuatan aset gambar utama editorial terdedikasi, validasi biner lokal (1315x660 px, WebP), pengunggahan kanonikal melalui endpoint `POST /api/internal/v1/media/upload`, registrasi aset kanonikal `media_assets`, binding relasional `article_media`, serta rekonsiliasi kesiapan publikasi melalui endpoint terotentikasi sesi admin `POST /api/admin/publication/readiness/5`.
+- **Eksekusi Ingest Media Kanonikal Produksi:**
+  - **Aset Gambar Terdedikasi:** Dihasilkan sesuai arahan kreatif terkunci (fotografi arsitektural editorial fotorealistik ruang tinggal tropis Indonesia membandingkan kusen aluminium ramping matte-charcoal dan kusen uPVC multi-chamber hangat berdampingan secara netral tanpa teks/logo/manusia/CGI).
+  - **Validasi Biner Lokal:** Dimensi 1315 × 660 px, format `image/webp`, ukuran 170.790 bytes (170,8 KB), SHA-256: `631baf7a25e9986b9f0d01073633cb434ae162b3df1241ddac56b977026276e9`.
+  - **Jalur Ingest Kanonikal:** Menggunakan `POST /api/internal/v1/media/upload` dengan otentikasi kredensial perangkat lingkungan produksi (`RANCANGLOKA_MEDIA_UPLOAD_KEY`, scope `media:write:draft`). Binary payload langsung diunggah ke Cloudflare R2 bucket `rancangloka-media` dengan storage key `media/images/631baf7a25e9986b9f0d01073633cb434ae162b3df1241ddac56b977026276e9.webp`.
+  - **Registrasi `media_assets`:** Asset ID `ast_mfUpgVe99C_bq_p2d_O4Ge4L`, status `VALIDATED`, source_type `manual_upload`, media_type `image`, dimensi 1315x660, alt text informatif tanpa keyword stuffing.
+  - **Binding Relasional `article_media`:** Record ID 11 mengikat `ast_mfUpgVe99C_bq_p2d_O4Ge4L` ke Artikel 5 (`role='featured'`, `slot_key='featured'`, `is_active=1`). Artikel 1–4 dan 6 sama sekali tidak tersentuh.
+- **Hasil Rekonsiliasi Kesiapan Publikasi (Readiness Snapshot):**
+  - Pemanggilan `POST /api/admin/publication/readiness/5` melalui konteks sesi admin menghasilkan evaluasi deterministik baru:
+  - `checks.article_integrity`: PASS
+  - `checks.editorial_guards`: PASS
+  - `checks.evidence_and_citations`: PASS
+  - `checks.visual_media`: PASS
+  - `checks.publication_metadata`: PASS
+  - `policy.system_policy_pass`: true (`ARTICLE_5_SYSTEM_POLICY_PASS=YES`).
+  - Sisa blocker: `["APPROVAL_MISSING"]` (sesuai semantik arsitektur terkunci, ketiadaan persetujuan manusia tidak menggugurkan kelayakan `auto_policy`).
+- **Pembuktian Calon Tunggal Prospektif (Exactly-One Prospective Candidate):**
+  - Draft 1–4: `PROSPECTIVE_ELIGIBLE = NO` (tidak memiliki binding media relasional aktif di `article_media` dan gagal quality gate deterministik).
+  - Draft 5: `PROSPECTIVE_ELIGIBLE = YES` (lolos seluruh 5 gate deterministik `auto_policy`).
+  - `PROSPECTIVE_AUTO_POLICY_CANDIDATE_COUNT = 1`, `PROSPECTIVE_AUTO_POLICY_CANDIDATE_IDS = [5]`.
+- **Firewall Keamanan & Status Siklus Hidup Tetap Terjaga:**
+  - Mode otomasi tetap non-aktif: `FINAL_MODE=OFF`, `FINAL_AUTO_SCHEDULE=false`, `FINAL_KILL_SWITCH=0`.
+  - Siklus hidup bersih: `NEW_PLANS=0`, `NEW_EXECUTIONS=0`, `NEW_RECEIPTS=0`, `NEW_PUBLICATIONS=0`.
+  - Integritas situs publik: Beranda publik sehat, Artikel 6 terbit tetap utuh, sitemap sehat tanpa kebocoran draft, Artikel 5 tetap berstatus `draft` (404 pada URL publik).
+  - Mutasi raw SQL: 0. Mutasi ad-hoc R2: 0.
+
 ### LokaMedia Phase 5L13B-Pre Production Media Audit & Suitability Decision 2026-09-22
 
 - **Tujuan & Ruang Lingkup:** Melakukan audit mendalam terhadap seluruh aset media yang ada pada database D1 produksi (`media_assets`, `article_media`), Cloudflare R2 bucket (`rancangloka-media`), serta galeri CMS admin untuk mengevaluasi kelayakan penggunaan ulang (*reuse suitability*) sebagai aset gambar utama (*featured media*) bagi Artikel 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
