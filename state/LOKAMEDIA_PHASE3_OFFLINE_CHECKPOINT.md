@@ -9,16 +9,17 @@ Date: 2026-09-22
 Latest clean checkpoint commit:
 
 ```text
-41c000058be6f1717b7aeedc8c7c00f268571392
+04476996d080e941ac1bd6ebc353a9aee41f8903
 ```
 
 Commit message:
 
 ```text
-docs: record phase 5l13a candidate audit and 5l13b pre media suitability
+docs: record phase 5l13b single canary media preparation
 ```
 
 `LOKAMEDIA_PHASE_5L13B_B=PASS_SINGLE_CANARY_FEATURED_MEDIA_CANONICAL_INGEST`
+`LOKAMEDIA_PHASE_5L13B_A=PASS_SINGLE_CANARY_MEDIA_PREPARATION_READONLY`
 `LOKAMEDIA_PHASE_5L13B_PRE=PASS_MEDIA_AUDIT_AND_SUITABILITY_DECISION`
 `LOKAMEDIA_PHASE_5L13A=PASS_PRODUCTION_PLAN_ONLY_CANDIDATE_ISOLATION_AUDIT`
 `LOKAMEDIA_PHASE_5L12D=PASS_CANONICAL_PRODUCTION_OBSERVE_ONLY_ROUNDTRIP`
@@ -631,6 +632,57 @@ Date: 2026-09-21
 - **Phase Status:** `PHASE_5L11A=PASS`.
 - **Readiness Classification:** `READY_FOR_DISABLED_PRODUCTION_DEPLOYMENT`.
 - **Next Recommended Action:** Phase 5L11B (apply pending migrations 0013-0019 to remote D1, deploy worker in disabled mode `OFF`, verify site health and cron heartbeats, with zero article mutations).
+
+## Phase 5L13B-B Checkpoint Summary (Single Canary Media Ingest & Pre-Offline State)
+
+Date: 2026-09-22
+
+- **Target Ingest & Canary Identity:**
+  - Article ID: 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
+  - Status: `draft` (unaltered, permanently non-published in this phase).
+  - Editorial topic: Comparison of aluminium vs uPVC window/door frames in tropical Indonesian climate.
+- **Dedicated Featured Media Asset:**
+  - Asset ID: `ast_mfUpgVe99C_bq_p2d_O4Ge4L`.
+  - Dimensions: 1315 × 660 px (exact target aspect ratio).
+  - MIME: `image/webp`.
+  - Byte size: 170,790 bytes (170.8 KB).
+  - SHA-256: `631baf7a25e9986b9f0d01073633cb434ae162b3df1241ddac56b977026276e9`.
+  - Storage key: `media/images/631baf7a25e9986b9f0d01073633cb434ae162b3df1241ddac56b977026276e9.webp`.
+  - Status: `VALIDATED`.
+  - Alt text: *"Perbandingan kusen aluminium warna gelap dan kusen uPVC putih pada dua bukaan kaca rumah tropis yang terhubung ke teras taman."* (non-keyword-stuffed, true to image content).
+- **Canonical Pipeline Ingest Path:**
+  - Ingest route: `POST /api/internal/v1/media/upload`.
+  - Device authentication: Environment master secret `RANCANGLOKA_MEDIA_UPLOAD_KEY` (`X-RL-Media-Key` / `Authorization: Bearer`), scope `media:write:draft`.
+  - Relational binding: `article_media` record ID 11 (`article_id = 5`, `role = 'featured'`, `slot_key = 'featured'`, `is_active = 1`).
+  - Zero raw SQL writes, zero ad-hoc R2 writes.
+- **Publication Readiness Snapshot (Evaluated via `POST /api/admin/publication/readiness/5`):**
+  - `article_integrity`: PASS
+  - `editorial_guards`: PASS
+  - `evidence_and_citations`: PASS
+  - `visual_media`: PASS
+  - `publication_metadata`: PASS
+  - `policy.system_policy_pass`: `true` (`ARTICLE_5_SYSTEM_POLICY_PASS = YES`).
+  - Remaining blockers: `["APPROVAL_MISSING"]` (human approval remains missing as designed; auto-policy does not require human approval).
+- **Prospective Candidate Isolation Verification:**
+  - Drafts 1–4: `PROSPECTIVE_ELIGIBLE = NO` (zero media bindings, fail deterministic gates).
+  - Draft 5: `PROSPECTIVE_ELIGIBLE = YES` (exactly one prospective auto-policy canary ready).
+  - `PROSPECTIVE_AUTO_POLICY_CANDIDATE_COUNT = 1`, `PROSPECTIVE_AUTO_POLICY_CANDIDATE_IDS = [5]`.
+- **Production Safety Firewall Status (Pre-Offline State):**
+  - `automation_control.mode`: `OFF`
+  - `auto_schedule_enabled`: `false`
+  - `kill_switch_engaged`: `0`
+  - Pipeline counters: `total_plans = 0`, `total_executions = 0`, `total_receipts = 0`.
+  - Inventories: `media_assets = 1`, `article_media = 1`.
+  - Public site status:
+    - Homepage (`https://rancangloka.com`): 200 OK (no draft leakage).
+    - Published Article 6 (`/rekayasa-ventilasi-silang-alami-...`): 200 OK (unaffected).
+    - Public sitemap (`/post-sitemap.xml`): 200 OK (contains Article 6, zero draft leakage).
+    - Draft Article 5 URL (`/kusen-aluminium-vs-upvc-...`): 404 (strictly draft/unexposed).
+- **Pre-Offline Safety Clearance:**
+  - Zero background daemons running.
+  - Production database in 100% resting state (`OFF`).
+  - Next Recommended Phase: Phase 5L13C (Single-Canary Controlled Activation / PLAN_ONLY Verification).
+
 
 
 
