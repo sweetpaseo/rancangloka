@@ -17,6 +17,47 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L13B-Pre Production Media Audit & Suitability Decision 2026-09-22
+
+- **Tujuan & Ruang Lingkup:** Melakukan audit mendalam terhadap seluruh aset media yang ada pada database D1 produksi (`media_assets`, `article_media`), Cloudflare R2 bucket (`rancangloka-media`), serta galeri CMS admin untuk mengevaluasi kelayakan penggunaan ulang (*reuse suitability*) sebagai aset gambar utama (*featured media*) bagi Artikel 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
+- **Hasil Audit Inventaris Media Produksi:**
+  - **D1 `media_assets`:** 0 baris (belum ada aset kanonikal terdaftar).
+  - **D1 `article_media`:** 0 baris (belum ada relasi binding media ke artikel).
+  - **R2 Storage (`rancangloka-media`):** Ditemukan tepat 1 objek biner aktif: `rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman-8422.webp` (148 KB, WebP, resolusi 1200x600 px). Objek ini terikat pada Artikel 6 yang telah terbit.
+  - **Aset Draft Artikel 1–5:** Artikel 1 memiliki referensi gambar bambu laminasi dengan resolusi 400x267 px (gagal batas minimum resolusi kanonikal ≥600x338 px). Artikel 2–5 memiliki nilai `featured_image = ""`.
+  - **Fixture Lokal:** Identitas fixture pada SQLite miniflare lokal (`ast_phase5l5_5`, `ast_phase5l7_fixture`) terbukti tidak ada di D1 maupun R2 produksi.
+- **Evaluasi Kesesuaian (Reuse Suitability) untuk Artikel 5:**
+  - Artikel 5 membahas komparasi material kusen jendela dan pintu tropis (*kusen aluminium vs uPVC*).
+  - Objek R2 yang ada secara tematik dan visual menampilkan rekayasa aliran udara ventilasi silang (milik Artikel 6). Penggunaan ulang objek ini dinilai **TIDAK SESUAI (UNSUITABLE)** dan berisiko merusak integritas konten editorial.
+- **Pemberlakuan Guardrail Keamanan (STOP DULU):**
+  - Mengikuti instruksi ketat: *"kalau tidak ada → STOP dulu, jangan generate sembarangan"*, agen menghentikan proses mutasi dan tidak melakukan pembuatan atau pengunggahan gambar sembarangan tanpa persetujuan eksplisit.
+- **Invarian Keamanan Produksi Tetap Terjaga:**
+  - Mode otomasi tetap non-aktif: `AUTOMATION_MODE=OFF`, `AUTO_SCHEDULE_ENABLED=false`, `KILL_SWITCH=0`.
+  - Status lifecycle bersih: `TOTAL_PLANS=0`, `ACTIVE_PLANS=0`, `TOTAL_EXECUTIONS=0`, `ACTIVE_EXECUTIONS=0`, `TOTAL_RECEIPTS=0`.
+  - Nol mutasi pada produksi (`PRODUCTION_MUTATIONS=0`, `PRODUCTION_R2_WRITES=0`).
+
+### LokaMedia Phase 5L13A Production Plan-Only Candidate Isolation Audit 2026-09-22
+
+- **Tujuan & Ruang Lingkup:** Melakukan audit read-only komprehensif pada 5 draft artikel produksi untuk mengevaluasi kelayakan otomatis terhadap kebijakan publikasi sistem (`auto_policy` / `evaluateAutoScheduleEligibility`) guna menetapkan strategi isolasi deterministik calon kanari (*single-canary strategy*) sebelum aktivasi `PLAN_ONLY`.
+- **Evaluasi 5 Draft Artikel Menggunakan Kebijakan Kanonikal:**
+  - Seluruh 5 draft saat ini berstatus `AUTO_SCHEDULE_ELIGIBLE = NO` dan `SYSTEM_POLICY_PASS = NO`.
+  - Penyebab utama kegagalan deterministik: Ketiadaan binding media utama aktif pada tabel relasional `article_media` (`FEATURED_MEDIA_MISSING`).
+  - Draft 1–4 belum memiliki snapshot evaluasi kesiapan (`article_publication_readiness`).
+  - Draft 5 memiliki snapshot historis dengan status `NOT_READY` dan blocker `FEATURED_MEDIA_MISSING`.
+- **Semantik Persetujuan Kebijakan Otomatis (Locked Architecture):**
+  - Mempertahankan arsitektur yang terkunci: Kelayakan `auto_policy` tidak mewajibkan persetujuan manusia (`AUTO_POLICY_APPROVAL_SEMANTICS_PRESERVED=YES`). Status `HUMAN_APPROVAL_PASS=NO` tidak menggugurkan artikel jika seluruh quality gate deterministik terpenuhi.
+- **Populasi Kandidat & Analisis Risiko:**
+  - Jumlah draft eligible saat ini: `AUTO_POLICY_ELIGIBLE_DRAFT_COUNT=0` (`AUTO_POLICY_ELIGIBLE_ARTICLE_IDS=[]`).
+  - Klasifikasi risiko Exactly-One: `PLAN_ONLY_EXACTLY_ONE_RISK=NO_CANARY_AVAILABLE`.
+- **Pemilihan Calon Kanari Kanonikal:**
+  - Rekomendasi Kanari: Artikel ID 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
+  - Alasan: Artikel 5 merupakan artikel editorial asli (bukan smoke test fixture) yang telah lolos seluruh gate integritas teks, editorial guards, sitasi, dan metadata, serta hanya membutuhkan penyediaan binding media utama yang valid untuk mencapai `system_policy_pass=true`.
+  - Mekanisme isolasi: `NATURALLY_ISOLATED` (tidak memerlukan temporary manual hold karena draft lain belum memenuhi syarat kualitas).
+- **Analisis Kapabilitas Mode `PLAN_ONLY` & Kesiapan Jalur Kontrol:**
+  - Di bawah mode `PLAN_ONLY`: `canPlan=true`, `canScheduleControlled=false`, `canPublishUnattended=false`. Pembuatan rencana diizinkan, namun promosi eksekusi dan penerbitan dilarang mutlak.
+  - Endpoint operator terotentikasi kanonikal `POST /api/admin/publication/automation/control` terverifikasi siap mendukung transisi mode `OFF → PLAN_ONLY → OFF` dan `auto_schedule` `false → true → false` lengkap dengan audit logging.
+- **Hasil Fase:** `PHASE_5L13A=PASS`, `READY_FOR_PHASE_5L13B=YES`. Mutasi produksi: 0.
+
 ### LokaMedia Phase 5L12D Canonical Production OBSERVE_ONLY Round-Trip 2026-09-22
 
 - **Tujuan & Ruang Lingkup:** Menguji validasi round-trip mode otomasi kanonikal produksi pertama (`OFF → OBSERVE_ONLY → OFF`) menggunakan endpoint operator terotentikasi kanonikal `POST /api/admin/publication/automation/control` melalui konteks sesi browser admin yang sah, membuktikan atomisitas pencatatan audit kontrol-plane dan keamanan native Cron tanpa mutasi lifecycle.
