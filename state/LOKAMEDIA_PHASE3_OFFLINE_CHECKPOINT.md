@@ -18,6 +18,7 @@ Commit message:
 feat: add canonical automation operator control
 ```
 
+`LOKAMEDIA_PHASE_5L12D=PASS_CANONICAL_PRODUCTION_OBSERVE_ONLY_ROUNDTRIP`
 `LOKAMEDIA_PHASE_5L12C=PASS_CANONICAL_CONTROL_PRODUCTION_DEPLOYMENT`
 `LOKAMEDIA_PHASE_5L12B=PASS_CANONICAL_AUTOMATION_OPERATOR_CONTROL_FOUNDATION`
 `LOKAMEDIA_PHASE_5L12A=PASS_PRODUCTION_CONTROL_PATH_INTEGRITY_CLOSURE`
@@ -95,8 +96,19 @@ feat: add canonical automation operator control
 `RAW_SQL_CONTROL_MUTATIONS_FORBIDDEN=YES`
 `PRODUCTION_AUTOMATION_CURRENTLY_ENABLED=NO`
 `PRODUCTION_WORKER_DEPLOYMENT_ID=d81db579-63f1-40c4-9345-328780f6f694`
-`READY_FOR_PHASE_5L12D=YES`
-`NEXT_RECOMMENDED_ACTION=AWAIT_EXPLICIT_APPROVAL_FOR_PHASE_5L12D_CANONICAL_OBSERVE_ONLY_ROUNDTRIP`
+`READY_FOR_PHASE_5L13=YES`
+`NEXT_RECOMMENDED_ACTION=AWAIT_EXPLICIT_APPROVAL_FOR_PHASE_5L13`
+
+Phase 5L12D (Canonical Production OBSERVE_ONLY Round-Trip):
+- Authenticated browser context: Verified existing admin session on `https://rancangloka.com/admin` (`AUTHENTICATED_ADMIN_BROWSER_SESSION=YES`).
+- Canonical mutation path: Triggered mode change via same-origin fetch from authenticated browser context (`BROWSER_CANONICAL_REQUEST_METHOD=same_origin_fetch`) to `POST /api/admin/publication/automation/control`.
+- Activation `OFF → OBSERVE_ONLY`: Success (HTTP 200, `changed: true`, audit ID: `actl_b951237dd0934f93`, correlation ID: `corr_bf57b3713580485a`).
+- D1 state verified: `mode=OBSERVE_ONLY`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`.
+- Native Cron observation under `OBSERVE_ONLY`: Both dispatcher (ID 615, `UNATTENDED_PUBLISH_BLOCKED`) and reconciler (ID 616, `AUTOMATION_MODE_BLOCKS_EXECUTION_OBSERVE_ONLY`) logged durable `BLOCKED` heartbeats in production D1 table `publication_cron_runs` triggered by native Cloudflare Cron (`trigger_source=cloudflare_cron`).
+- Return `OBSERVE_ONLY → OFF`: Success (HTTP 200, `changed: true`, audit ID: `actl_af92b730e5834af6`, correlation ID: `corr_b46d420022cc49c9`).
+- Audit exactness: Exactly 2 audit events created in `automation_control_audit` (`NEW_MODE_CHANGE_AUDIT_EVENTS=2`).
+- Zero lifecycle mutation: 0 plans, 0 executions, 0 receipts, 0 published articles. Article counts unchanged (5 draft, 1 published). Raw SQL mutations = 0.
+- Production site health: Homepage HTTP 200, published article HTTP 200, sitemap XML HTTP 200. Final controls: `mode=OFF`, `auto_schedule=false`, `kill_switch=0`.
 
 Phase 5L12C (Canonical Control Production Deployment):
 - Pre-deploy gates: Verified clean worktree, reconfirmed target (`rancangloka`, `rancangloka_db`), confirmed zero drift from rollback deployment (`3404ac08-0e5f-4e11-8e11-2f93b7119a8f`), D1 export backup created successfully (`rancangloka_db_pre_5l12c_backup.sql`).

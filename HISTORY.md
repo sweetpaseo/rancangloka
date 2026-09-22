@@ -17,6 +17,35 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### LokaMedia Phase 5L12D Canonical Production OBSERVE_ONLY Round-Trip 2026-09-22
+
+- **Tujuan & Ruang Lingkup:** Menguji validasi round-trip mode otomasi kanonikal produksi pertama (`OFF → OBSERVE_ONLY → OFF`) menggunakan endpoint operator terotentikasi kanonikal `POST /api/admin/publication/automation/control` melalui konteks sesi browser admin yang sah, membuktikan atomisitas pencatatan audit kontrol-plane dan keamanan native Cron tanpa mutasi lifecycle.
+- **Konteks & Keamanan Sesi Browser:**
+  - Sesi admin terotentikasi aktif pada browser (`AUTHENTICATED_ADMIN_BROWSER_SESSION=YES`).
+  - Permintaan mutasi dikirim melalui same-origin fetch dari konteks browser admin (`BROWSER_CANONICAL_REQUEST_METHOD=same_origin_fetch`), memenuhi pertahanan CSRF tanpa mengekstrak cookie/token rahasia.
+  - Zero raw SQL: Tidak ada manipulasi SQL langsung ke tabel kontrol (`RAW_SQL_CONTROL_MUTATIONS=0`).
+- **Aktivasi OBSERVE_ONLY Kanonikal:**
+  - Transisi mode `OFF → OBSERVE_ONLY` berhasil via API (HTTP 200, `changed: true`).
+  - Tercatat audit event ID: `actl_b951237dd0934f93`, correlation ID: `corr_bf57b3713580485a`, actor: `admin_operator`.
+  - Status D1 produksi terverifikasi: `mode=OBSERVE_ONLY`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`.
+- **Observabilitas Native Cron di Bawah OBSERVE_ONLY:**
+  - Menunggu trigger native Cloudflare Cron alami tanpa pemanggilan manual (`MANUAL_CRON_TRIGGER_CALLS=0`).
+  - Dispatcher native cron mencatat status aman: `BLOCKED` (`UNATTENDED_PUBLISH_BLOCKED`) pada mode `OBSERVE_ONLY` (ID 615).
+  - Reconciler native cron mencatat status aman: `BLOCKED` (`AUTOMATION_MODE_BLOCKS_EXECUTION_OBSERVE_ONLY`) pada mode `OBSERVE_ONLY` (ID 616).
+  - Planner tidak dijadwalkan / belum jatuh tempo (`NOT_YET_DUE`).
+- **Invarian Lifecycle & Kesehatan Publik:**
+  - Mutasi rencana baru = 0 (`NEW_PLAN_COUNT=0`), mutasi eksekusi baru = 0 (`NEW_EXECUTION_COUNT=0`), tanda terima baru = 0 (`NEW_RECEIPT_COUNT=0`), publikasi baru = 0 (`NEW_PUBLICATION_COUNT=0`).
+  - Status artikel konsisten tidak berubah (Draft: 5, Published: 1).
+  - Rute publik tetap sehat: Homepage HTTP 200, artikel terbitan HTTP 200, sitemap XML HTTP 200.
+- **Pengembalian Kanonikal ke OFF:**
+  - Transisi mode `OBSERVE_ONLY → OFF` berhasil dieksekusi dari konteks browser kanonikal yang sama (HTTP 200, `changed: true`).
+  - Tercatat audit event ID kedua: `actl_af92b730e5834af6`, correlation ID: `corr_b46d420022cc49c9`.
+  - Tepat 2 event audit tercatat selama fase ini (`NEW_MODE_CHANGE_AUDIT_EVENTS=2`).
+- **Status Akhir & Kesiapan:**
+  - Mode akhir: `FINAL_MODE=OFF`, `FINAL_AUTO_SCHEDULE=false`, `FINAL_KILL_SWITCH=0`.
+  - Kontrol operator kanonikal terbukti 100% aman dan teraudit secara persisten di produksi (`CANONICAL_PRODUCTION_CONTROL_VERIFIED=YES`).
+  - Siap untuk fase berikutnya Phase 5L13 (`READY_FOR_PHASE_5L13=YES`).
+
 ### LokaMedia Phase 5L12C Canonical Control Production Deployment 2026-09-22
 
 - **Tujuan & Ruang Lingkup:** Menerapkan migrasi D1 produksi `0020_automation_control_audit.sql` dan mendeploy Worker `rancangloka` yang berisi fondasi kontrol operator kanonikal terotentikasi & teraudit ke lingkungan produksi Cloudflare dalam kondisi aman non-aktif (`mode=OFF`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`).
