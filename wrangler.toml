@@ -24,3 +24,8 @@ crons = [
   "* * * * *"
 ]
 
+# Decision Platform (JEV-6)
+[vars]
+JEV_ENABLED = "true"
+JEV_MODE = "shadow"
+

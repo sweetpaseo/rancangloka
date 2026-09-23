@@ -38,10 +38,11 @@ import {
   clearMemoryObservations
 } from './decision-telemetry.ts';
 
-export function getJevConfig(): JevConfig {
-  const env = typeof process !== 'undefined' ? process.env || {} : {};
-  const isEnabled = env.JEV_ENABLED === 'true';
-  const rawMode = env.JEV_MODE?.toLowerCase();
+export function getJevConfig(passedEnv?: any): JevConfig {
+  const procEnv = typeof process !== 'undefined' ? process.env || {} : {};
+  const env = passedEnv ? { ...procEnv, ...passedEnv } : procEnv;
+  const isEnabled = env.JEV_ENABLED === 'true' || env.JEV_ENABLED === true;
+  const rawMode = typeof env.JEV_MODE === 'string' ? env.JEV_MODE.toLowerCase() : '';
   
   // Safety Invariant: active mode is strictly forbidden at this phase.
   const mode = rawMode === 'shadow' ? 'shadow' : (isEnabled ? 'shadow' : 'disabled');
@@ -127,11 +128,12 @@ export async function observeCandidateShadowDecision(
     config?: JevConfig;
     correlationId?: string;
     db?: any;
+    env?: any;
     authoritativeDecision?: string;
     authoritativeReasons?: string[];
   } = {}
 ): Promise<DecisionObservation> {
-  const baseConfig = options.config || getJevConfig();
+  const baseConfig = options.config || getJevConfig(options.env);
   const config = options.provider && !options.config
     ? { ...baseConfig, enabled: true, mode: 'shadow' as const }
     : baseConfig;

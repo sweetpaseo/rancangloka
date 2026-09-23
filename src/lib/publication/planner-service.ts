@@ -63,6 +63,7 @@ export async function getEligibleReadyCandidates(
   options?: {
     plannerMode?: 'all' | 'manual' | 'auto';
     autoScheduleEnabled?: boolean;
+    includeObservationOnly?: boolean;
   }
 ): Promise<PlannerCandidate[]> {
   // A. Resolve auto_schedule_enabled
@@ -103,7 +104,7 @@ export async function getEligibleReadyCandidates(
   const canAutoPlan = Boolean(
     autoScheduleEnabled &&
     !killSwitchEngaged &&
-    caps.canPlan &&
+    (caps.canPlan || (options?.includeObservationOnly && caps.canObserve)) &&
     !plannerPaused
   );
 
@@ -432,6 +433,7 @@ export async function executePublicationPlanner(
     actor?: string;
     plannerMode?: 'all' | 'manual' | 'auto';
     autoScheduleEnabled?: boolean;
+    env?: any;
   } = {}
 ): Promise<PlannerExecutionResult> {
   const profile = options.profile || PLANNER_PROFILE_GROWING;
@@ -461,7 +463,7 @@ export async function executePublicationPlanner(
   // B. Automation Mode Capability Check
   const caps = getCapabilityMatrix(autoControl.mode as any, Boolean(autoControl.kill_switch_engaged));
   const isAutomated = options.actor === 'cron' || options.actor === 'scheduler' || options.actor === 'system';
-  if (isAutomated && !caps.canPlan) {
+  if (isAutomated && !caps.canPlan && !caps.canObserve) {
     throw new Error(`AUTOMATION_MODE_${autoControl.mode}: Publication planning is blocked under mode ${autoControl.mode}`);
   }
 
@@ -480,7 +482,8 @@ export async function executePublicationPlanner(
   // 1. Fetch eligible ready candidates
   const candidates = await getEligibleReadyCandidates(db, {
     plannerMode: options.plannerMode,
-    autoScheduleEnabled: options.autoScheduleEnabled
+    autoScheduleEnabled: options.autoScheduleEnabled,
+    includeObservationOnly: Boolean(caps.canObserve)
   });
 
   // 2. Fetch operator priority overrides from settings or draft metadata if any
@@ -497,19 +500,27 @@ export async function executePublicationPlanner(
 
   // 2b. JEV-SHADOW-1: Trigger non-authoritative shadow decision observation (Minimal State, zero execution authority)
   for (const c of candidates) {
-    observeCandidateShadowDecision({
-      project: 'RancangLoka',
-      articleId: c.articleId,
-      slug: c.slug,
-      articleGenerationCompleted: true,
-      editorialValidationPassed: true,
-      referencesPresent: true,
-      heroImagePresent: true,
-      duplicateSlug: false,
-      readinessStatus: 'READY_TO_SCHEDULE',
-      readingTimeMinutes: c.readingTimeMinutes,
-      isSponsored: c.isSponsored
-    }, { correlationId: runId }).catch(() => {});
+    try {
+      await observeCandidateShadowDecision({
+        project: 'RancangLoka',
+        articleId: c.articleId,
+        slug: c.slug,
+        articleGenerationCompleted: true,
+        editorialValidationPassed: true,
+        referencesPresent: true,
+        heroImagePresent: true,
+        duplicateSlug: false,
+        readinessStatus: 'READY_TO_SCHEDULE',
+        readingTimeMinutes: c.readingTimeMinutes,
+        isSponsored: c.isSponsored
+      }, {
+        correlationId: runId,
+        db,
+        env: options.env
+      });
+    } catch {
+      // Failsafe: zero impact on deterministic planner
+    }
   }
 
   // 3. Fetch historical published articles (last 7 days) for category balancing
@@ -605,8 +616,9 @@ export async function executePublicationPlanner(
     });
   }
 
-  // 7. Persist plans idempotently unless dryRun
-  if (!options.dryRun) {
+  // 7. Persist plans idempotently unless dryRun OR automated planning capability is disabled (e.g. OBSERVE_ONLY)
+  const canPersistPlans = !options.dryRun && (!isAutomated || caps.canPlan);
+  if (canPersistPlans) {
     for (const assignment of planned) {
       const { candidate, planId, slotIndex, targetPublishAt, targetPublishLocal, timezone, jitterSeconds, reasonCodes } = assignment;
 
@@ -721,11 +733,11 @@ export async function executePublicationPlanner(
     profile,
     effectiveCapacity,
     eligibleCount: candidates.length,
-    plannedCount: planned.length,
-    deferredCount: deferred.length,
+    plannedCount: canPersistPlans ? planned.length : 0,
+    deferredCount: canPersistPlans ? deferred.length : 0,
     blockedCount: 0,
-    plans: planned,
-    deferredArticleIds: deferred.map(d => d.articleId),
+    plans: canPersistPlans ? planned : [],
+    deferredArticleIds: canPersistPlans ? deferred.map(d => d.articleId) : [],
     signalsUsed: options.signals || {},
     explanations
   };

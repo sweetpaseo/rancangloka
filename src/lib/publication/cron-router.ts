@@ -151,7 +151,8 @@ export async function executeCronJob(
               const res = await executePublicationPlanner(db, {
                 actor: 'cron',
                 plannerMode: 'auto',
-                profile
+                profile,
+                env: _env
               });
               return {
                 status: 'success' as const,
