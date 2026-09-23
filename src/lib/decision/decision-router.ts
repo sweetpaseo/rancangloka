@@ -23,6 +23,15 @@ import {
   RETRY_ROUTES,
   type PublicationPreflightChoice,
   PUBLICATION_PREFLIGHT_ROUTES,
+  type EditorialMediaRole,
+  EDITORIAL_MEDIA_ROLES,
+  type MediaDensityChoice,
+  MEDIA_DENSITY_CHOICES,
+  type MediaSlotAction,
+  MEDIA_SLOT_ACTIONS,
+  type MediaPlanningSignals,
+  type MediaPlanSlot,
+  type MediaPlanningDecision,
   type DisagreementClassification,
   type ResearchSufficiencySignals,
   type ModelRoutingSignals,
@@ -37,7 +46,10 @@ export {
   RESEARCH_ROUTES,
   REWRITE_ROUTES,
   RETRY_ROUTES,
-  PUBLICATION_PREFLIGHT_ROUTES
+  PUBLICATION_PREFLIGHT_ROUTES,
+  EDITORIAL_MEDIA_ROLES,
+  MEDIA_DENSITY_CHOICES,
+  MEDIA_SLOT_ACTIONS
 };
 
 // ============================================================
@@ -152,6 +164,21 @@ export function classifyDisagreement(
     if (isAuthStop && isJevStop) return 'AGREE_STOP';
     if (isAuthRetry && (isJevStop || jev === 'backoff')) return 'JEV_MORE_CONSERVATIVE';
     if (isAuthStop && isJevRetry) return 'JEV_MORE_PERMISSIVE';
+  }
+
+  if (decisionPoint === 'media_planning') {
+    const densityRank: Record<string, number> = {
+      minimal: 1,
+      standard: 2,
+      rich: 3
+    };
+    const authRank = densityRank[auth] || 2;
+    const jevRank = densityRank[jev] || 2;
+
+    if (auth === jev) return 'AGREE_CONTINUE';
+    if (jevRank < authRank) return 'JEV_MORE_CONSERVATIVE';
+    if (jevRank > authRank) return 'JEV_MORE_PERMISSIVE';
+    return 'AGREE_CONTINUE';
   }
 
   // Exact string match fallback
@@ -287,6 +314,266 @@ export function routeRetryDeterministic(
   return { decision: 'retry', reasons: ['RETRYABLE_ERROR_INITIAL_ATTEMPT'] };
 }
 
+export interface MediaPolicyLimits {
+  min_total_media?: number;
+  max_total_media?: number;
+  require_featured?: boolean;
+  allow_duplicates?: boolean;
+  reuse_first?: boolean;
+}
+
+export const DEFAULT_MEDIA_POLICY: MediaPolicyLimits = {
+  min_total_media: 1,
+  max_total_media: 5,
+  require_featured: true,
+  allow_duplicates: false,
+  reuse_first: true
+};
+
+/**
+ * Validates and enforces deterministic hard policy rules over a media plan recommendation.
+ * Hard rule authority MUST override recommendations that violate boundaries.
+ * Authority: DETERMINISTIC
+ */
+export function validateAndEnforceMediaPlan(
+  recommendation: Partial<MediaPlanningDecision>,
+  signals: MediaPlanningSignals,
+  customPolicy?: MediaPolicyLimits
+): { decision: MediaPlanningDecision; adjustments: string[]; hardRuleApplied: boolean } {
+  const policy = { ...DEFAULT_MEDIA_POLICY, ...customPolicy };
+  const adjustments: string[] = [];
+
+  // 1. Density validation
+  let density: MediaDensityChoice = recommendation.media_density || 'standard';
+  if (!MEDIA_DENSITY_CHOICES.includes(density)) {
+    density = 'standard';
+    adjustments.push('INVALID_DENSITY_NORMALIZED');
+  }
+
+  // 2. Slots validation & copy
+  let slots: MediaPlanSlot[] = Array.isArray(recommendation.slots)
+    ? recommendation.slots.map(s => ({ ...s }))
+    : [];
+
+  // 3. Validate each slot's media_type and action
+  for (const slot of slots) {
+    if (!EDITORIAL_MEDIA_ROLES.includes(slot.media_type)) {
+      slot.media_type = 'section_support';
+      adjustments.push('INVALID_MEDIA_TYPE_NORMALIZED');
+    }
+    if (!MEDIA_SLOT_ACTIONS.includes(slot.action)) {
+      slot.action = 'generate';
+      adjustments.push('INVALID_ACTION_NORMALIZED');
+    }
+  }
+
+  // 4. Featured requirement
+  if (policy.require_featured && !signals.featured_media_present) {
+    const hasFeatured = slots.some(s => s.media_type === 'featured');
+    if (!hasFeatured) {
+      slots.unshift({
+        media_type: 'featured',
+        action: signals.existing_usable_media_count > 0 && policy.reuse_first ? 'reuse' : 'generate',
+        target_section: 'hero',
+        editorial_purpose: 'Mandatory featured header visual (enforced by deterministic rule)',
+        priority: 100,
+        confidence: 1.0
+      });
+      adjustments.push('FEATURED_SLOT_ENFORCED');
+    }
+  }
+
+  // 5. Duplicate featured restriction
+  if (!policy.allow_duplicates) {
+    let featuredFound = false;
+    for (const slot of slots) {
+      if (slot.media_type === 'featured') {
+        if (featuredFound) {
+          slot.media_type = 'context_photo';
+          adjustments.push('DUPLICATE_FEATURED_CONVERTED');
+        } else {
+          featuredFound = true;
+        }
+      }
+    }
+  }
+
+  // 6. Reuse-first & Unrelated Existing Media verification
+  if (signals.existing_usable_media_count === 0) {
+    for (const slot of slots) {
+      if (slot.action === 'reuse') {
+        slot.action = 'generate';
+        adjustments.push('UNRELATED_EXISTING_MEDIA_REJECTED');
+      }
+    }
+  }
+
+  // 7. Clamp minimum total media
+  const minMedia = policy.min_total_media ?? 1;
+  if (slots.length < minMedia) {
+    while (slots.length < minMedia) {
+      slots.push({
+        media_type: 'section_support',
+        action: 'generate',
+        target_section: `section_${slots.length + 1}`,
+        editorial_purpose: 'Minimum required editorial visual support',
+        priority: 50,
+        confidence: 1.0
+      });
+    }
+    adjustments.push('CLAMPED_TO_MINIMUM');
+  }
+
+  // 8. Clamp maximum total media
+  const maxMedia = policy.max_total_media ?? 5;
+  if (slots.length > maxMedia) {
+    slots = slots.slice(0, maxMedia);
+    adjustments.push('CLAMPED_TO_MAXIMUM');
+  }
+
+  // 9. Recompute totals
+  const recommended_total_media = slots.length;
+  const existing_usable_media = slots.filter(s => s.action === 'reuse').length;
+  const new_media_required = slots.filter(s => s.action === 'generate').length;
+
+  return {
+    decision: {
+      media_density: density,
+      recommended_total_media,
+      existing_usable_media,
+      new_media_required,
+      slots
+    },
+    adjustments,
+    hardRuleApplied: adjustments.length > 0
+  };
+}
+
+/**
+ * Deterministic baseline media planning engine.
+ */
+export function routeMediaPlanningDeterministic(
+  signals: MediaPlanningSignals,
+  customPolicy?: MediaPolicyLimits
+): { decision: MediaPlanningDecision; reasons: string[] } {
+  const policy = { ...DEFAULT_MEDIA_POLICY, ...customPolicy };
+  const reasons: string[] = [];
+
+  // 1. Determine density
+  let density: MediaDensityChoice = 'standard';
+  if (
+    signals.word_count < 600 &&
+    signals.visual_explanation_value === 'low' &&
+    !signals.article_has_comparison &&
+    !signals.article_has_process
+  ) {
+    density = 'minimal';
+    reasons.push('SHORT_LOW_VISUAL_VALUE_MINIMAL');
+  } else if (
+    signals.word_count > 1500 ||
+    signals.visualizable_section_count >= 3 ||
+    signals.article_has_comparison ||
+    signals.article_has_material_detail ||
+    signals.visual_explanation_value === 'high'
+  ) {
+    density = 'rich';
+    reasons.push('HIGH_COMPLEXITY_OR_COMPARISON_RICH');
+  } else {
+    reasons.push('STANDARD_EDITORIAL_MEDIA_DENSITY');
+  }
+
+  // 2. Build slots
+  const slots: MediaPlanSlot[] = [];
+  let remainingUsable = signals.existing_usable_media_count;
+
+  // Featured slot
+  if (policy.require_featured) {
+    const isFeaturedAction = remainingUsable > 0 && policy.reuse_first ? 'reuse' : 'generate';
+    if (isFeaturedAction === 'reuse') remainingUsable--;
+    slots.push({
+      media_type: 'featured',
+      action: isFeaturedAction,
+      target_section: 'hero',
+      editorial_purpose: 'Primary article featured header visual',
+      priority: 100,
+      confidence: 1.0
+    });
+  }
+
+  // Comparison slot
+  if (signals.article_has_comparison || signals.comparison_section_count > 0) {
+    const action = remainingUsable > 0 && policy.reuse_first ? 'reuse' : 'generate';
+    if (action === 'reuse') remainingUsable--;
+    slots.push({
+      media_type: 'comparison_visual',
+      action,
+      target_section: 'comparison',
+      editorial_purpose: 'Direct visual comparison of products/materials',
+      priority: 90,
+      confidence: 1.0
+    });
+  }
+
+  // Process slot
+  if (signals.article_has_process || signals.process_section_count > 0) {
+    const action = remainingUsable > 0 && policy.reuse_first ? 'reuse' : 'generate';
+    if (action === 'reuse') remainingUsable--;
+    slots.push({
+      media_type: 'process_visual',
+      action,
+      target_section: 'steps_guide',
+      editorial_purpose: 'Sequential step-by-step workflow guide visual',
+      priority: 85,
+      confidence: 1.0
+    });
+  }
+
+  // Material / Detail slot
+  if (signals.article_has_material_detail) {
+    const action = remainingUsable > 0 && policy.reuse_first ? 'reuse' : 'generate';
+    if (action === 'reuse') remainingUsable--;
+    slots.push({
+      media_type: 'material_detail',
+      action,
+      target_section: 'material_spec',
+      editorial_purpose: 'Close-up technical texture and material detail',
+      priority: 80,
+      confidence: 1.0
+    });
+  }
+
+  // Additional slots for rich density
+  if (density === 'rich' && slots.length < (policy.max_total_media ?? 5)) {
+    const needed = Math.min(
+      (policy.max_total_media ?? 5) - slots.length,
+      Math.max(1, signals.visualizable_section_count - slots.length)
+    );
+    for (let i = 0; i < needed; i++) {
+      const action = remainingUsable > 0 && policy.reuse_first ? 'reuse' : 'generate';
+      if (action === 'reuse') remainingUsable--;
+      slots.push({
+        media_type: i % 2 === 0 ? 'context_photo' : 'section_support',
+        action,
+        target_section: `section_${slots.length + 1}`,
+        editorial_purpose: 'In-context supporting editorial photograph',
+        priority: 70 - i * 5,
+        confidence: 1.0
+      });
+    }
+  }
+
+  // 3. Enforce policy bounds
+  const enforced = validateAndEnforceMediaPlan({
+    media_density: density,
+    slots
+  }, signals, policy);
+
+  return {
+    decision: enforced.decision,
+    reasons: [...reasons, ...enforced.adjustments]
+  };
+}
+
 // ============================================================
 // 4. UNIFIED NORMALIZED DECISION DISPATCHER
 // ============================================================
@@ -349,6 +636,12 @@ export function routeDecision(
         decision = 'continue';
         reasons = ['ALL_PREFLIGHT_CHECKS_PASSED'];
       }
+      break;
+    }
+    case 'media_planning': {
+      const res = routeMediaPlanningDeterministic(signals as MediaPlanningSignals);
+      decision = res.decision.media_density;
+      reasons = res.reasons;
       break;
     }
     default:

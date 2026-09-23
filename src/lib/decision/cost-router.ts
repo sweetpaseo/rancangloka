@@ -13,7 +13,8 @@
 
 import {
   type CostRoutingEstimate,
-  type ModelRouteChoice
+  type ModelRouteChoice,
+  type MediaPlanningCostEstimate
 } from './decision-types.ts';
 
 export interface CostRoutingEvaluationInput {
@@ -66,3 +67,33 @@ export function evaluateCostRouting(
     estimated_output_tokens: normalizedInput.estimated_output_tokens
   };
 }
+
+export interface MediaCostRoutingInput {
+  baseline_static_count?: number;
+  recommended_total_media: number;
+  existing_media_reused: number;
+  new_media_required: number;
+}
+
+/**
+ * Evaluates media planning generation calls avoided vs a static media allocation baseline.
+ * Simulation only: does NOT claim real monetary savings.
+ */
+export function evaluateMediaCostRouting(
+  input: MediaCostRoutingInput
+): MediaPlanningCostEstimate {
+  const baseline = input.baseline_static_count ?? 5;
+  const recommended = input.recommended_total_media;
+  const reused = input.existing_media_reused;
+  const newGen = input.new_media_required;
+  const callsAvoided = Math.max(0, baseline - newGen);
+
+  return {
+    baseline_static_media_count: baseline,
+    jev_recommended_media_count: recommended,
+    existing_media_reused: reused,
+    new_generation_required: newGen,
+    generation_calls_avoided: callsAvoided
+  };
+}
+

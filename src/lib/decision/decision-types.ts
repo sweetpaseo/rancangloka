@@ -107,17 +107,19 @@ export type DecisionPoint =
   | 'research_sufficiency'
   | 'model_routing'
   | 'rewrite_routing'
-  | 'retry_routing';
+  | 'retry_routing'
+  | 'media_planning';
 
 export const DECISION_POINTS: DecisionPoint[] = [
   'publication_preflight',
   'research_sufficiency',
   'model_routing',
   'rewrite_routing',
-  'retry_routing'
+  'retry_routing',
+  'media_planning'
 ];
 
-export type SubjectType = 'article' | 'topic' | 'task' | 'draft' | 'execution';
+export type SubjectType = 'article' | 'topic' | 'task' | 'draft' | 'execution' | 'media';
 
 // ============================================================
 // 3. BOUNDED ROUTING CHOICES
@@ -243,6 +245,94 @@ export interface RetryRoutingSignals {
   error_class: 'RETRYABLE' | 'TERMINAL' | 'SAFETY_BLOCK';
   error_code: string;
   elapsed_seconds: number;
+}
+
+// ============================================================
+// 4B. GENERIC MEDIA PLANNING CONTRACTS
+// ============================================================
+
+export type EditorialMediaRole =
+  | 'featured'
+  | 'context_photo'
+  | 'material_detail'
+  | 'comparison_visual'
+  | 'technical_diagram'
+  | 'process_visual'
+  | 'before_after'
+  | 'section_support';
+
+export const EDITORIAL_MEDIA_ROLES: readonly EditorialMediaRole[] = [
+  'featured',
+  'context_photo',
+  'material_detail',
+  'comparison_visual',
+  'technical_diagram',
+  'process_visual',
+  'before_after',
+  'section_support'
+];
+
+export type MediaDensityChoice = 'minimal' | 'standard' | 'rich';
+
+export const MEDIA_DENSITY_CHOICES: readonly MediaDensityChoice[] = [
+  'minimal',
+  'standard',
+  'rich'
+];
+
+export type MediaSlotAction = 'reuse' | 'generate' | 'skip';
+
+export const MEDIA_SLOT_ACTIONS: readonly MediaSlotAction[] = [
+  'reuse',
+  'generate',
+  'skip'
+];
+
+export interface MediaPlanningSignals {
+  content_type: string; // e.g. 'article', 'review', 'comparison', 'guide', 'news'
+  word_count: number;
+  heading_count: number;
+  major_section_count: number;
+  visualizable_section_count: number;
+  comparison_section_count: number;
+  process_section_count: number;
+  technical_complexity: 'low' | 'medium' | 'high';
+  visual_explanation_value: 'low' | 'medium' | 'high';
+
+  existing_media_count: number;
+  existing_usable_media_count: number;
+  featured_media_present: boolean;
+
+  article_has_comparison: boolean;
+  article_has_process: boolean;
+  article_has_material_detail: boolean;
+  article_has_spatial_explanation: boolean;
+}
+
+export interface MediaPlanSlot {
+  media_type: EditorialMediaRole;
+  action: MediaSlotAction;
+  target_section: string;
+  editorial_purpose: string;
+  priority?: number;
+  confidence?: number;
+  reused_asset_id?: string | null;
+}
+
+export interface MediaPlanningDecision {
+  media_density: MediaDensityChoice;
+  recommended_total_media: number;
+  existing_usable_media: number;
+  new_media_required: number;
+  slots: MediaPlanSlot[];
+}
+
+export interface MediaPlanningCostEstimate {
+  baseline_static_media_count: number;
+  jev_recommended_media_count: number;
+  existing_media_reused: number;
+  new_generation_required: number;
+  generation_calls_avoided: number;
 }
 
 // ============================================================

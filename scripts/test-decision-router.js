@@ -70,7 +70,8 @@ async function run() {
       'research_sufficiency',
       'model_routing',
       'rewrite_routing',
-      'retry_routing'
+      'retry_routing',
+      'media_planning'
     ]);
     assert.deepStrictEqual(MODEL_ROUTES, [
       'skip_llm',
