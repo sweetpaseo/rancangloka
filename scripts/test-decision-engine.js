@@ -640,6 +640,167 @@ async function run() {
     fail('Disabled Jev behavior', err);
   }
 
+  // 19. Cloudflare workerd context binding regression test
+  try {
+    const originalFetch = globalThis.fetch;
+    let invocationContextCorrect = false;
+
+    // Simulate workerd native fetch where this MUST be globalThis
+    globalThis.fetch = function(url, init) {
+      if (this !== globalThis) {
+        throw new TypeError('Illegal invocation');
+      }
+      invocationContextCorrect = true;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          model: 'typesafe/jev-1.13',
+          answers: {
+            nextAction: {
+              type: 'choice',
+              choice: 'continue',
+              probabilities: { continue: 0.95 },
+              confidence: 0.95
+            }
+          }
+        })
+      });
+    };
+
+    try {
+      // Do NOT pass fetchFn in options - let it use wrapped globalThis.fetch
+      const provider = new OpenRouterJevProvider({ apiKey: FAKE_KEY });
+      const { answer, result } = await provider.evaluateChoice(
+        { project: 'RancangLoka', articleId: 5 },
+        'nextAction',
+        { type: 'choice', instructions: 'Test nextAction' }
+      );
+
+      assert.strictEqual(invocationContextCorrect, true, 'fetch was invoked with this === globalThis');
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(answer?.choice, 'continue');
+      assert.strictEqual(answer?.confidence, 0.95);
+      pass('Cloudflare workerd fetch is invoked with valid globalThis context and returns typed decision');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  } catch (err) {
+    fail('Cloudflare workerd context binding test', err);
+  }
+
+  // 20. Provider failure remains fail-safe if fetch throws TypeError
+  try {
+    const mockUnboundFetch = function() {
+      throw new TypeError('Illegal invocation');
+    };
+    const provider = new OpenRouterJevProvider({ apiKey: FAKE_KEY, fetchFn: mockUnboundFetch });
+    const { answer, result } = await provider.evaluateChoice(
+      { project: 'RancangLoka', articleId: 5 },
+      'nextAction',
+      { type: 'choice', instructions: 'Test nextAction' }
+    );
+    assert.strictEqual(result.success, false);
+    assert.strictEqual(result.errorCategory, 'NETWORK');
+    assert.strictEqual(answer, undefined);
+    pass('Provider failure with TypeError remains fail-safe and classified as NETWORK error');
+  } catch (err) {
+    fail('TypeError fail-safe handling', err);
+  }
+
+  // 21. Cloudflare fetch timeout abort handled cleanly
+  try {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = function(url, init) {
+      if (this !== globalThis) {
+        throw new TypeError('Illegal invocation');
+      }
+      return new Promise((resolve, reject) => {
+        if (init?.signal) {
+          init.signal.addEventListener('abort', () => {
+            const err = new Error('The operation was aborted');
+            err.name = 'AbortError';
+            reject(err);
+          });
+        }
+      });
+    };
+
+    try {
+      const provider = new OpenRouterJevProvider({ apiKey: FAKE_KEY, timeoutMs: 20 });
+      const { answer, result } = await provider.evaluateChoice(
+        { project: 'RancangLoka', articleId: 5 },
+        'nextAction',
+        { type: 'choice', instructions: 'Test timeout' }
+      );
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.errorCategory, 'TIMEOUT');
+      pass('Cloudflare fetch timeout correctly aborts and classifies as TIMEOUT');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  } catch (err) {
+    fail('Timeout abort handling', err);
+  }
+
+  // 22. Cloudflare fetch network failure handled cleanly
+  try {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = function(url, init) {
+      if (this !== globalThis) {
+        throw new TypeError('Illegal invocation');
+      }
+      return Promise.reject(new Error('Connection reset by peer'));
+    };
+
+    try {
+      const provider = new OpenRouterJevProvider({ apiKey: FAKE_KEY });
+      const { answer, result } = await provider.evaluateChoice(
+        { project: 'RancangLoka', articleId: 5 },
+        'nextAction',
+        { type: 'choice', instructions: 'Test network error' }
+      );
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.errorCategory, 'NETWORK');
+      pass('Cloudflare fetch network error classifies as NETWORK without throwing');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  } catch (err) {
+    fail('Network error handling', err);
+  }
+
+  // 23. Cloudflare fetch malformed JSON handled cleanly
+  try {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = function(url, init) {
+      if (this !== globalThis) {
+        throw new TypeError('Illegal invocation');
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => { throw new SyntaxError('Unexpected token < in JSON at position 0'); }
+      });
+    };
+
+    try {
+      const provider = new OpenRouterJevProvider({ apiKey: FAKE_KEY });
+      const { answer, result } = await provider.evaluateChoice(
+        { project: 'RancangLoka', articleId: 5 },
+        'nextAction',
+        { type: 'choice', instructions: 'Test malformed JSON' }
+      );
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.errorCategory, 'MALFORMED');
+      pass('Cloudflare fetch malformed JSON response classifies as MALFORMED without throwing');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  } catch (err) {
+    fail('Malformed JSON handling', err);
+  }
+
   console.log('\n=============================================================');
   console.log(`  Tests Completed: ${totalTests}`);
   console.log(`  Passed: ${passedTests}`);

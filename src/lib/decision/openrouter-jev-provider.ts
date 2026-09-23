@@ -52,7 +52,15 @@ export class OpenRouterJevProvider implements DecisionProvider {
     this.endpoint = options.endpoint || OPENROUTER_DECISIONS_ENDPOINT;
     this.timeoutMs = options.timeoutMs ?? JEV_DEFAULT_TIMEOUT_MS;
     this.apiKey = options.apiKey || (typeof process !== 'undefined' ? process.env?.OPENROUTER_API_KEY || '' : '');
-    this.fetchFn = options.fetchFn || (typeof globalThis !== 'undefined' ? globalThis.fetch : fetch);
+    this.fetchFn = (input: RequestInfo | URL, init?: RequestInit) => {
+      if (options.fetchFn) {
+        return options.fetchFn(input, init);
+      }
+      if (typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function') {
+        return globalThis.fetch(input, init);
+      }
+      return fetch(input, init);
+    };
   }
 
   /**
