@@ -47,6 +47,7 @@ import {
   DEFAULT_ACTIVATION_ENVELOPE
 } from '../safety/rate-limiter.ts';
 import { observeCandidateShadowDecision } from '../decision/decision-observer.ts';
+import { buildCanonicalPublicationPreflightState } from '../decision/publication-preflight-state.ts';
 
 /**
  * 1. Eligible Inventory Query
@@ -259,6 +260,8 @@ export async function getEligibleReadyCandidates(
       contentHash: row.content_hash,
       readinessSnapshotId: row.readiness_id,
       readinessEvaluatedAt: row.evaluated_at || new Date().toISOString(),
+      persistedReadinessStatus: row.overall_status || 'NOT_READY',
+      isReady: row.is_ready,
       approvedBy: candidateSource === 'editorial_signoff' ? row.approved_by : null,
       approvedAssetId: row.featured_asset_id,
       focusKeyword: row.focus_keyword || null,
@@ -501,19 +504,22 @@ export async function executePublicationPlanner(
   // 2b. JEV-SHADOW-1: Trigger non-authoritative shadow decision observation (Minimal State, zero execution authority)
   for (const c of candidates) {
     try {
-      await observeCandidateShadowDecision({
-        project: 'RancangLoka',
+      const canonicalState = buildCanonicalPublicationPreflightState({
         articleId: c.articleId,
         slug: c.slug,
-        articleGenerationCompleted: true,
-        editorialValidationPassed: true,
-        referencesPresent: true,
-        heroImagePresent: true,
-        duplicateSlug: false,
-        readinessStatus: 'READY_TO_SCHEDULE',
+        contentHash: c.contentHash,
+        featuredAssetId: c.approvedAssetId,
+        persistedReadinessStatus: c.persistedReadinessStatus,
+        isReady: c.isReady,
         readingTimeMinutes: c.readingTimeMinutes,
-        isSponsored: c.isSponsored
+        isSponsored: c.isSponsored,
+        manualHold: c.manualHold,
+        status: 'draft'
       }, {
+        plannerEligibility: c.candidateSource ? 'ELIGIBLE' : 'NOT_ELIGIBLE'
+      });
+
+      await observeCandidateShadowDecision(canonicalState, {
         correlationId: runId,
         db,
         env: options.env

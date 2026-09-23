@@ -13,7 +13,9 @@
 export const JEV_DEFAULT_MODEL = 'typesafe/jev-1.13';
 export const OPENROUTER_DECISIONS_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
 export const JEV_DEFAULT_TIMEOUT_MS = 5000;
-export const DECISION_SCHEMA_VERSION = '2026-09-23.v1';
+export const DECISION_SCHEMA_VERSION_V1 = '2026-09-23.v1';
+export const DECISION_SCHEMA_VERSION_V2 = '2026-09-23.v2';
+export const DECISION_SCHEMA_VERSION = DECISION_SCHEMA_VERSION_V2;
 export const DECISION_PROMPT_VERSION = 'v1.13';
 
 // ============================================================
@@ -203,7 +205,9 @@ export interface PublicationPreflightSignals {
   referencesPresent: boolean;
   heroImagePresent: boolean;
   duplicateSlug: boolean;
-  readinessStatus: string;
+  persistedReadinessStatus?: 'READY_TO_SCHEDULE' | 'NOT_READY' | 'BLOCKED';
+  plannerEligibilityStatus?: 'ELIGIBLE' | 'NOT_ELIGIBLE';
+  readinessStatus?: string;
   readingTimeMinutes?: number;
   isSponsored?: boolean;
 }

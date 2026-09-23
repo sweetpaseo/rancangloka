@@ -117,6 +117,8 @@ export interface PlannerCandidate {
   systemPolicyPass?: boolean;
   humanApprovalPass?: boolean;
   manualHold?: boolean;
+  persistedReadinessStatus?: string;
+  isReady?: number | boolean;
 }
 
 /**

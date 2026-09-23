@@ -43,6 +43,11 @@ import {
 import {
   computeInputHash
 } from '../src/lib/decision/decision-observer.ts';
+import {
+  DECISION_SCHEMA_VERSION,
+  DECISION_SCHEMA_VERSION_V1,
+  DECISION_SCHEMA_VERSION_V2
+} from '../src/lib/decision/decision-types.ts';
 
 import {
   resolveCronJobIdentity,
@@ -341,7 +346,7 @@ async function run() {
         'obs_test_7', 'publication_preflight', 'article', '5', 'run_test_7',
         'continue', '["DETERMINISTIC_ELIGIBILITY_PASSED"]', 'continue',
         '{"continue":1}', 1.0, 'openrouter', 'typesafe/jev-1.13', '20260917',
-        '2026-09-23.v1', 'v1.13', ?, 250,
+        '${DECISION_SCHEMA_VERSION}', 'v1.13', ?, 250,
         'SUCCESS', 'AGREE_CONTINUE'
       );
     `).run(test7InputHash);
@@ -375,7 +380,7 @@ async function run() {
       ) VALUES (
         'obs_prior_success', 'publication_preflight', 'article', '5', 'run_prior',
         'continue', '["DETERMINISTIC_ELIGIBILITY_PASSED"]', 'continue',
-        'openrouter', 'typesafe/jev-1.13', '20260917', '2026-09-23.v1', 'v1.13',
+        'openrouter', 'typesafe/jev-1.13', '20260917', '${DECISION_SCHEMA_VERSION}', 'v1.13',
         ?, 250, 'SUCCESS', 'AGREE_CONTINUE'
       );
     `).run(test7InputHash);
@@ -408,7 +413,7 @@ async function run() {
       ) VALUES (
         'obs_old_hash', 'publication_preflight', 'article', '5', 'run_old',
         'continue', '["DETERMINISTIC_ELIGIBILITY_PASSED"]', 'continue',
-        'openrouter', 'typesafe/jev-1.13', '20260917', '2026-09-23.v1', 'v1.13',
+        'openrouter', 'typesafe/jev-1.13', '20260917', '${DECISION_SCHEMA_VERSION}', 'v1.13',
         'h_old_hash_123', 250, 'SUCCESS', 'AGREE_CONTINUE'
       );
     `).run();
@@ -450,7 +455,7 @@ async function run() {
       ) VALUES (
         'obs_err_recent', 'publication_preflight', 'article', '5', 'run_err',
         'continue', '["DETERMINISTIC_ELIGIBILITY_PASSED"]', NULL,
-        'openrouter', 'typesafe/jev-1.13', '20260917', '2026-09-23.v1', 'v1.13',
+        'openrouter', 'typesafe/jev-1.13', '20260917', '${DECISION_SCHEMA_VERSION}', 'v1.13',
         'h_err_hash', 0, 'ERROR', 'NETWORK',
         'JEV_UNAVAILABLE', datetime('now', '-30 minutes')
       );
@@ -484,7 +489,7 @@ async function run() {
       ) VALUES (
         'obs_err_old', 'publication_preflight', 'article', '5', 'run_err',
         'continue', '["DETERMINISTIC_ELIGIBILITY_PASSED"]', NULL,
-        'openrouter', 'typesafe/jev-1.13', '20260917', '2026-09-23.v1', 'v1.13',
+        'openrouter', 'typesafe/jev-1.13', '20260917', '${DECISION_SCHEMA_VERSION}', 'v1.13',
         'h_err_old_hash', 0, 'ERROR', 'NETWORK',
         'JEV_UNAVAILABLE', datetime('now', '-400 minutes')
       );
@@ -545,7 +550,7 @@ async function run() {
       ) VALUES (
         'obs_rate_limit', 'publication_preflight', 'article', '5', 'run_rl',
         'continue', '["DETERMINISTIC_ELIGIBILITY_PASSED"]', NULL,
-        'openrouter', 'typesafe/jev-1.13', '20260917', '2026-09-23.v1', 'v1.13',
+        'openrouter', 'typesafe/jev-1.13', '20260917', '${DECISION_SCHEMA_VERSION}', 'v1.13',
         'h_rl_hash', 120, 'ERROR', 'RATE_LIMIT', 'JEV_UNAVAILABLE'
       );
     `).run();
@@ -570,7 +575,7 @@ async function run() {
       ) VALUES (
         'obs_malformed', 'publication_preflight', 'article', '5', 'run_mal',
         'continue', '["DETERMINISTIC_ELIGIBILITY_PASSED"]', NULL,
-        'openrouter', 'typesafe/jev-1.13', '20260917', '2026-09-23.v1', 'v1.13',
+        'openrouter', 'typesafe/jev-1.13', '20260917', '${DECISION_SCHEMA_VERSION}', 'v1.13',
         'h_mal_hash', 150, 'ERROR', 'MALFORMED', 'JEV_UNAVAILABLE'
       );
     `).run();
@@ -624,7 +629,7 @@ async function run() {
         ) VALUES (
           ?, 'publication_preflight', 'article', '5', 'run_daily',
           'continue', '[]', 'continue',
-          'openrouter', 'typesafe/jev-1.13', '20260917', '2026-09-23.v1', 'v1.13',
+          'openrouter', 'typesafe/jev-1.13', '20260917', '${DECISION_SCHEMA_VERSION}', 'v1.13',
           'h_daily', 200, 'SUCCESS', 'AGREE_CONTINUE'
         );
       `).run(`obs_daily_${i}`);
@@ -748,6 +753,38 @@ async function run() {
     pass('Cron router deterministically resolves 17 * * * * to jev_shadow_collector');
   } catch (err) {
     fail('Cron router deterministically resolves 17 * * * * to jev_shadow_collector', err);
+  }
+
+  // Test 23: Schema version isolation: v1 historical observation does not dedupe v2 candidate
+  try {
+    const { d1, dbSync } = setupTestDatabase();
+    dbSync.prepare(`
+      INSERT INTO decision_observations (
+        observation_id, decision_point, subject_type, subject_id, run_id,
+        authoritative_decision, authoritative_reasons_json, jev_decision,
+        provider, model, model_version, input_schema_version, prompt_version,
+        input_hash, latency_ms, provider_status, disagreement_classification
+      ) VALUES (
+        'obs_v1_legacy', 'publication_preflight', 'article', '5', 'run_v1',
+        'continue', '["DETERMINISTIC_ELIGIBILITY_PASSED"]', 'continue',
+        'openrouter', 'typesafe/jev-1.13', '20260917', '2026-09-23.v1', 'v1.13',
+        'h_same_hash', 250, 'SUCCESS', 'AGREE_CONTINUE'
+      );
+    `).run();
+
+    // Query deduplication for v2 schema with same hash
+    const dedupe = await checkDeduplication(d1, {
+      decisionPoint: 'publication_preflight',
+      subjectType: 'article',
+      subjectId: '5',
+      inputHash: 'h_same_hash',
+      inputSchemaVersion: DECISION_SCHEMA_VERSION_V2
+    });
+
+    assert.equal(dedupe.shouldSkip, false, 'v1 observation should NOT dedupe v2 request');
+    pass('Schema Version Isolation: v1 historical observation does not false-dedupe v2 candidate');
+  } catch (err) {
+    fail('Schema Version Isolation: v1 historical observation does not false-dedupe v2 candidate', err);
   }
 
   console.log('\n=============================================================');

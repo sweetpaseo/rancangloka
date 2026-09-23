@@ -11,3 +11,5 @@ export * from './decision-observer.ts';
 export * from './decision-router.ts';
 export * from './decision-telemetry.ts';
 export * from './cost-router.ts';
+export * from './shadow-collector.ts';
+export * from './publication-preflight-state.ts';

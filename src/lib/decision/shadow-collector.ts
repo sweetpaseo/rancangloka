@@ -26,10 +26,12 @@ import {
   DECISION_SCHEMA_VERSION,
   DECISION_PROMPT_VERSION
 } from './decision-types.ts';
+import { observeCandidateShadowDecision } from './decision-observer.ts';
 import {
-  observeCandidateShadowDecision,
-  computeInputHash
-} from './decision-observer.ts';
+  buildCanonicalPublicationPreflightState,
+  computeCanonicalPreflightHash,
+  type PublicationPreflightCanonicalState
+} from './publication-preflight-state.ts';
 
 export interface ShadowCollectorConfig {
   enabled: boolean;
@@ -55,6 +57,8 @@ export interface ProspectiveArticleSubject {
   isSponsored: boolean;
   featuredAssetId: string | null;
   readinessStatus: string;
+  isReady?: number | null;
+  manualHold?: number | null;
   readinessEvaluatedAt: string | null;
 }
 
@@ -130,6 +134,7 @@ export async function selectProspectiveArticles(
   const query = `
     SELECT a.id, a.slug, a.title, a.status, a.content_hash,
            a.reading_time_minutes, a.is_sponsored,
+           COALESCE(a.manual_hold, 0) AS manual_hold,
            am.asset_id AS featured_asset_id,
            COALESCE(r.overall_status, 'NOT_READY') AS readiness_status,
            r.is_ready, r.evaluated_at AS readiness_evaluated_at
@@ -160,6 +165,8 @@ export async function selectProspectiveArticles(
       isSponsored: Boolean(r.is_sponsored),
       featuredAssetId: r.featured_asset_id ? String(r.featured_asset_id) : null,
       readinessStatus: r.is_ready ? 'READY_TO_SCHEDULE' : String(r.readiness_status || 'NOT_READY'),
+      isReady: r.is_ready !== undefined && r.is_ready !== null ? Number(r.is_ready) : null,
+      manualHold: r.manual_hold !== undefined && r.manual_hold !== null ? Number(r.manual_hold) : 0,
       readinessEvaluatedAt: r.readiness_evaluated_at ? String(r.readiness_evaluated_at) : null
     }));
   } catch (err: any) {
@@ -179,6 +186,7 @@ export async function checkDeduplication(
     subjectId: string;
     inputHash: string;
     errorRetryMinutes: number;
+    inputSchemaVersion?: string;
   }
 ): Promise<{
   shouldSkip: boolean;
@@ -186,6 +194,7 @@ export async function checkDeduplication(
   existingObservationId?: string;
 }> {
   try {
+    const schemaVersion = params.inputSchemaVersion || DECISION_SCHEMA_VERSION;
     const row = await db
       .prepare(`
         SELECT observation_id, provider_status, created_at
@@ -194,6 +203,7 @@ export async function checkDeduplication(
           AND subject_type = ?
           AND subject_id = ?
           AND input_hash = ?
+          AND input_schema_version = ?
         ORDER BY created_at DESC
         LIMIT 1;
       `)
@@ -201,7 +211,8 @@ export async function checkDeduplication(
         params.decisionPoint,
         params.subjectType,
         params.subjectId,
-        params.inputHash
+        params.inputHash,
+        schemaVersion
       )
       .first();
 
@@ -262,21 +273,23 @@ export async function getDailyProviderCallCount(db: any): Promise<number> {
 
 /**
  * Builds candidate decision state for publication_preflight.
+ * Delegates to the canonical publication preflight builder.
  */
-export function buildPublicationPreflightState(subject: ProspectiveArticleSubject) {
-  return {
-    project: 'RancangLoka' as const,
+export function buildPublicationPreflightState(
+  subject: ProspectiveArticleSubject
+): PublicationPreflightCanonicalState {
+  return buildCanonicalPublicationPreflightState({
     articleId: subject.id,
     slug: subject.slug,
-    articleGenerationCompleted: true,
-    editorialValidationPassed: Boolean(subject.contentHash),
-    referencesPresent: true,
-    heroImagePresent: Boolean(subject.featuredAssetId),
-    duplicateSlug: false,
-    readinessStatus: subject.readinessStatus,
+    contentHash: subject.contentHash,
+    featuredAssetId: subject.featuredAssetId,
+    persistedReadinessStatus: subject.readinessStatus,
+    isReady: subject.isReady,
     readingTimeMinutes: subject.readingTimeMinutes,
-    isSponsored: subject.isSponsored
-  };
+    isSponsored: subject.isSponsored,
+    manualHold: subject.manualHold,
+    status: subject.status
+  });
 }
 
 /**
@@ -350,15 +363,16 @@ export async function runDecisionShadowCollector(
   // 4. Process each prospective candidate with deduplication & budget guards
   for (const subject of subjects) {
     const candidateState = buildPublicationPreflightState(subject);
-    const inputHash = computeInputHash(candidateState);
+    const inputHash = computeCanonicalPreflightHash(candidateState);
 
-    // 4a. Deduplication check
+    // 4a. Deduplication check (filtered by schema version to prevent v1/v2 cross-dedupe)
     const dedupe = await checkDeduplication(db, {
       decisionPoint: 'publication_preflight',
       subjectType: 'article',
       subjectId: String(subject.id),
       inputHash,
-      errorRetryMinutes: config.errorRetryMinutes
+      errorRetryMinutes: config.errorRetryMinutes,
+      inputSchemaVersion: DECISION_SCHEMA_VERSION
     });
 
     if (dedupe.shouldSkip) {
