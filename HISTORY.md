@@ -1329,14 +1329,33 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
     - Authoritative Decision: `continue` (`DETERMINISTIC_ELIGIBILITY_PASSED`).
     - Jev Decision: `continue` (Confidence: `1.0`, Probabilities: `{"continue":1,"human_review":0,"revise":0,"stop":0}`).
     - Disagreement Classification: `AGREE_CONTINUE`.
-  - **Invarian Keselamatan Publikasi 100% Utuh:**
-    - New publication plans: `0`.
-    - New publication executions: `0`.
-    - New publication receipts: `0`.
-    - New publications: `0`.
-    - Article 5 status: strictly `draft` (hash `c77881c0c35025aadf56bd3e64e3d40348b187c84d408a9c7275e6d0a0d26378` tidak tersentuh).
-    - Status resting produksi akhir: `mode=OFF`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`.
-* **Status Fase:** `JEV_PHASE_6B = PASS`. Sistem siap melanjutkan ke kalibrasi multi-cycle live shadow (Phase JEV-7).
+### Masalah 51: Aktivasi Autonomous Continuous Jev Shadow Collector di Produksi Edge (Phase JEV-7A)
+* **Tujuan & Ruang Lingkup:** Mengaktifkan kolektor telemetri keputusan shadow Jev secara kontinu dan mandiri (*autonomous continuous shadow collector*) di Cloudflare Workers Edge pada jadwal native cron khusus (`17 * * * *`), tanpa memerlukan laptop operator, sesi browser admin, runtime Antigravity, mode `OBSERVE_ONLY`, `auto_schedule=true`, ataupun aktivasi publication planner. Otoritas publikasi tetap terkunci pada `mode=OFF`.
+* **Arsitektur & Komponen Kolektor ([`src/lib/decision/shadow-collector.ts`](file:///src/lib/decision/shadow-collector.ts)):**
+  - **Fungsi Utama (`runDecisionShadowCollector`):** Membaca state editorial secara *read-only*, menyusun sinyal preflight deterministik minimal, memeriksa deduplikasi state dan kuota harian, memanggil provider Jev (`typesafe/jev-1.13-20260917`), dan mencatat observasi terstruktur ke tabel D1 `decision_observations` serta telemetri run ke `publication_cron_runs`.
+  - **Firewall Otoritas Mutlak:** Kolektor tidak memiliki kode/jalur eksekusi untuk membuat rencana publikasi, membuat eksekusi, mempublikasikan artikel, mengubah status artikel/media, ataupun memodifikasi kontrol otomasi.
+  - **Deduplikasi Input Hash:** Mencegah pemanggilan berulang untuk artikel dengan state yang identik (`input_hash`). Error sebelumnya dibatasi dengan cooldown 360 menit (`JEV_SHADOW_ERROR_RETRY_MINUTES=360`).
+  - **Batas Anggaran (*Budget Guards*):** Dibatasi maksimal 3 subjek per run, 3 call per run, dan pagu harian durable maksimal 25 panggilan per 24 jam berbasis kueri D1.
+* **Penerapan Migrasi Skema 0022 ([`db/migrations/0022_allow_jev_shadow_collector_cron.sql`](file:///db/migrations/0022_allow_jev_shadow_collector_cron.sql)):**
+  - Memperluas check constraint `publication_cron_runs` untuk menerima `job_name = 'jev_shadow_collector'`.
+  - Backup D1 remote berhasil dibuat (`2.545.257 bytes`).
+  - Seluruh 3.253 baris riwayat cron run, rentang ID (`min_id=1`, `max_id=3253`), dan 3 index relasional terbukti utuh (*zero data loss*).
+* **Penyebaran Bertahap (*Staged Deployment*):**
+  - **Stage A (Collector Disabled):** Deployed dengan `JEV_SHADOW_COLLECTOR_ENABLED="false"` (Version ID: `e7447f19-fd17-4cec-ab0e-cd7a80971348`). Public health dan rest mode `OFF` terverifikasi.
+  - **Stage B (Collector Enabled):** Deployed dengan `JEV_SHADOW_COLLECTOR_ENABLED="true"` (Version ID: `e47ea5a6-25bf-4aaf-bc53-b5f9dd8e60d2`). Crons aktif: `0 * * * *`, `*/5 * * * *`, `* * * * *`, dan `17 * * * *`.
+* **Bukti Eksekusi Native Cloudflare Cron Pertama (13:17 UTC / 20:17 WIB):**
+  - **Cron Run ID:** `crun_coll_d37d763f64124a70`.
+  - **Trigger Source:** `cloudflare_cron` (Native Cloudflare Edge scheduled worker, 100% independen tanpa laptop/Antigravity/sesi admin).
+  - **Job:** `jev_shadow_collector`, Status: **`SUCCEEDED`**, Runtime: 1.989 ms.
+  - **Durable Observation Row:** `obs_mue4okdt_9j2tor` pada Artikel 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
+  - **Provider Status:** `SUCCESS`, Model: `typesafe/jev-1.13-20260917`, Latency: `980 ms`, Input hash: `h_8fd8affc`.
+  - **Keputusan:** Authoritative `continue`, Jev `revise` (probabilities: `{"stop":0.09,"revise":0.5,"continue":0.29,"human_review":0.12}`, classification: `JEV_MORE_CONSERVATIVE`).
+  - **Telemetry Run Details:** `dailyCallsUsed: 3`, `dailyCallsRemaining: 22`, `dedupeSkippedCount: 0`, `providerCallCount: 1`.
+* **Invarian Keselamatan Produksi Pasca-Run:**
+  - Status resting publikasi: `mode=OFF`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`.
+  - Mutasi publikasi: 0 plan baru, 0 eksekusi baru, 0 receipt baru, 0 artikel dipublikasikan.
+  - Artikel 5 tetap berstatus `draft` dengan content hash `c77881c0c350...` 100% utuh.
+* **Status Fase:** `JEV_PHASE_7A = PASS`. Autonomous shadow collector aktif dan siap untuk observasi multi-cycle lanjutan (Phase JEV-7B).
 
 ---
 
@@ -1345,11 +1364,11 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `aca01976-9e8b-4dc3-be53-22f2857cb2c3`*). |
-| **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `article_media`). |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `e47ea5a6-25bf-4aaf-bc53-b5f9dd8e60d2`*). |
+| **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `0022_allow_jev_shadow_collector_cron`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
-| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Live Provider Validated) | Model `typesafe/jev-1.13` via OpenRouter Decisions API di edge (285ms, SUCCESS, Zero Authority). |
-| **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` mencatat observasi shadow secara durable via `ctx.waitUntil`. |
+| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Continuous Shadow Active) | Autonomous shadow collector berjalan di native cron `17 * * * *` (Zero Authority, mode OFF). |
+| **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` & `publication_cron_runs` mencatat telemetri durable edge. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
 | **Design Problem Solver & Explorer** | ✅ Selesai (Aktif) | Alat diagnosis berbasis kemungkinan penyebab umum & 3-way multi-filter aktif. |

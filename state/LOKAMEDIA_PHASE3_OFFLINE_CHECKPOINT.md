@@ -18,6 +18,7 @@ Commit message:
 fix: stabilize jev provider fetch lifecycle on cloudflare
 ```
 
+`JEV_PHASE_7A=PASS_AUTONOMOUS_CONTINUOUS_SHADOW_COLLECTOR_ACTIVATED`
 `JEV_PHASE_6B=PASS_SUCCESSFUL_LIVE_PROVIDER_SHADOW_PROOF`
 `JEV_PHASE_6B_PREP=PASS_CLOUDFLARE_FETCH_STABILIZED_AND_WINDOW_PAUSED`
 `JEV_PHASE_6=PASS_PRODUCTION_LIVE_SHADOW_DEPLOYMENT_AND_OBSERVATION_PROOF`
@@ -803,7 +804,28 @@ Date: 2026-09-23
     - Article 5: status strictly `draft`, content hash unchanged.
     - Zero raw SQL control mutations, zero article/media mutations.
 - **Phase Status:** `JEV_PHASE_6B = PASS`. `PRODUCTION_LIVE_SUCCESSFUL_JEV_SHADOW = YES`.
-- **Next Milestone:** Ready for Phase JEV-7 (Multi-Cycle Live Shadow Calibration & Telemetry Aggregations).
+- **Phase JEV-7A Autonomous Continuous Shadow Collector Activation:**
+  - Dedicated Module: `src/lib/decision/shadow-collector.ts` implementing `runDecisionShadowCollector`.
+  - Architecture: Dedicated Cloudflare native cron `17 * * * *` executing autonomously without operator presence, laptop, Antigravity, or admin session.
+  - Zero Authority Firewall: Collector has zero paths to create publication plans, executions, receipts, or mutate article/media state. Publication system strictly remains `mode=OFF`, `auto_schedule=false`.
+  - Migration 0022 Applied: `0022_allow_jev_shadow_collector_cron.sql` expanding `CHECK (job_name IN (...))` to include `'jev_shadow_collector'`, preserving 100% of the 3,253 historical cron run rows and indexes.
+  - Staged Deployment:
+    - Stage A: `JEV_SHADOW_COLLECTOR_ENABLED="false"`, Version ID `e7447f19-fd17-4cec-ab0e-cd7a80971348`.
+    - Stage B: `JEV_SHADOW_COLLECTOR_ENABLED="true"`, Version ID `e47ea5a6-25bf-4aaf-bc53-b5f9dd8e60d2`.
+  - First Real Native Cloudflare Cron Proof Observed (13:17 UTC / 20:17 WIB):
+    - Run ID: `crun_coll_d37d763f64124a70`, job: `jev_shadow_collector`, trigger_source: `cloudflare_cron`.
+    - Status: `SUCCEEDED`, duration: 1.989 ms.
+    - Observation ID: `obs_mue4okdt_9j2tor` on Article 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
+    - Provider: `typesafe/jev-1.13-20260917`, status: `SUCCESS`, latency: 980 ms.
+    - Authoritative Decision: `continue`, Jev Decision: `revise` (`JEV_MORE_CONSERVATIVE`).
+    - Budget Guard: dailyCallsUsed=3, dailyCallsRemaining=22, daily budget cap 25 enforced durably from D1.
+    - Deduplication: State hash `h_8fd8affc` registered. Subsequent unchanged runs will dedupe-skip.
+  - Remote Production Safety Invariants:
+    - Resting mode: `OFF`, auto_schedule: `false`, kill_switch: `0`.
+    - New publication plans: `0`, new executions: `0`, new receipts: `0`, new publications: `0`.
+    - Article 5 status strictly `draft`, zero mutations.
+- **Phase Status:** `JEV_PHASE_7A = PASS`. `CONTINUOUS_SHADOW_ACTIVE = YES`.
+- **Next Milestone:** Ready for Phase JEV-7B (Continuous Multi-Cycle Decision Calibration & Aggregated Telemetry).
 
 
 
