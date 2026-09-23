@@ -9,15 +9,17 @@ Date: 2026-09-23
 Latest clean checkpoint commit:
 
 ```text
-efd6573e04543787a70a830026e6ef1bfa98dbad
+f777ebc7f523c59b9f081fc7e4826a2261abb002
 ```
 
 Commit message:
 
 ```text
-fix: stabilize jev provider fetch lifecycle on cloudflare
+feat: canonicalize jev publication preflight state
 ```
 
+`JEV_PHASE_7C=PASS_CANONICAL_PREFLIGHT_STATE_AND_CALIBRATION_VALIDITY`
+`JEV_PHASE_7B=PASS_MULTI_CYCLE_AUTONOMOUS_SHADOW_CALIBRATION`
 `JEV_PHASE_7A=PASS_AUTONOMOUS_CONTINUOUS_SHADOW_COLLECTOR_ACTIVATED`
 `JEV_PHASE_6B=PASS_SUCCESSFUL_LIVE_PROVIDER_SHADOW_PROOF`
 `JEV_PHASE_6B_PREP=PASS_CLOUDFLARE_FETCH_STABILIZED_AND_WINDOW_PAUSED`
@@ -825,7 +827,37 @@ Date: 2026-09-23
     - New publication plans: `0`, new executions: `0`, new receipts: `0`, new publications: `0`.
     - Article 5 status strictly `draft`, zero mutations.
 - **Phase Status:** `JEV_PHASE_7A = PASS`. `CONTINUOUS_SHADOW_ACTIVE = YES`.
-- **Next Milestone:** Ready for Phase JEV-7B (Continuous Multi-Cycle Decision Calibration & Aggregated Telemetry).
+- **Phase JEV-7B Multi-Cycle Autonomous Shadow Calibration:**
+  - Observed 3 continuous native Cloudflare scheduled cycles at `17 * * * *` (Cycle 1 at 20:17 WIB, Cycle 2 at 21:17 WIB, Cycle 3 at 22:17 WIB) without operator laptop or manual trigger.
+  - Multi-cycle deduplication verified stable:
+    - Cycle 2 (`crun_coll_f47a610e2d31...`): Article 5 state unchanged -> `dedupeSkippedCount: 1`, `providerCallCount: 0`, `observationCreatedCount: 0`.
+    - Cycle 3 (`crun_coll_...`): Article 5 state unchanged -> `dedupeSkippedCount: 1`, `providerCallCount: 0`, `observationCreatedCount: 0`.
+    - `AUTONOMOUS_DEDUPE_PROOF = PASS`, `MULTI_CYCLE_DEDUPE_STABLE = YES`.
+  - First-Run Hash Divergence Refined Root Cause:
+    - Controlled hash matrix evaluated:
+      - Hash A (readinessStatus: READY_TO_SCHEDULE, readingTimeMinutes: 3) = `h_df9ac685`
+      - Hash B (readinessStatus: READY_TO_SCHEDULE, readingTimeMinutes: 8) = `h_5431867a` (JEV-6B Observation)
+      - Hash C (readinessStatus: NOT_READY, readingTimeMinutes: 3) = `h_b5cd6b2b`
+      - Hash D (readinessStatus: NOT_READY, readingTimeMinutes: 8) = `h_8fd8affc` (JEV-7A Observation)
+    - Proved that both fields affect hash, but the first-run dedupe miss was solely due to divergence in `readinessStatus` (`READY_TO_SCHEDULE` in Planner vs `NOT_READY` in Collector).
+    - Concluded semantic overloading: Persisted editorial checklist readiness vs Operational planner eligibility.
+  - Phase Status: `JEV_PHASE_7B = PASS`.
+- **Phase JEV-7C Canonical Decision State + Calibration Validity:**
+  - Dedicated Shared Module: `src/lib/decision/publication-preflight-state.ts`.
+  - Canonical Builder: `buildCanonicalPublicationPreflightState` and `computeCanonicalPreflightHash`.
+  - Semantic Delineation:
+    - `persistedReadinessStatus`: Editorial checklist validation state in D1 (`READY_TO_SCHEDULE` | `NOT_READY` | `BLOCKED`).
+    - `plannerEligibilityStatus`: Operational publication scheduling eligibility (`ELIGIBLE` | `NOT_ELIGIBLE`).
+  - Single Canonical Consumer: Both `planner-service.ts` and `shadow-collector.ts` consume the single canonical builder (`DUPLICATE_STATE_BUILDERS = NO`).
+  - Schema Versioning:
+    - Bumped `DECISION_SCHEMA_VERSION = '2026-09-23.v2'` while preserving historical v1 interpretability (`HISTORICAL_OBSERVATIONS_REWRITTEN = NO`).
+    - Added explicit `AND input_schema_version = ?` filter in `checkDeduplication`, guaranteeing `V1_V2_FALSE_DEDUPE_POSSIBLE = NO`.
+  - Parity Proof: Article 5 produces 100% identical state and input hash across planner and collector paths (`PLANNER_COLLECTOR_STATE_PARITY = YES`, `PLANNER_COLLECTOR_HASH_PARITY = YES`).
+  - Local Test Verification: 314 tests passed locally across all safety, publisher, planner, auto-policy, decision, and shadow suites.
+  - Production Guardrails: Zero production deployment (`PRODUCTION_DEPLOYED = NO`), zero production mutations (`PRODUCTION_MUTATIONS = 0`), publication controls strictly resting (`mode=OFF`).
+  - Phase Status: `JEV_PHASE_7C = PASS`.
+- **Next Milestone:** Awaiting operator approval for Phase JEV-7D (Staged Canary Deployment of Canonical State v2 to Production Edge).
+
 
 
 

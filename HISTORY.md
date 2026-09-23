@@ -1357,6 +1357,45 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Artikel 5 tetap berstatus `draft` dengan content hash `c77881c0c350...` 100% utuh.
 * **Status Fase:** `JEV_PHASE_7A = PASS`. Autonomous shadow collector aktif dan siap untuk observasi multi-cycle lanjutan (Phase JEV-7B).
 
+### Masalah 52: Multi-Cycle Autonomous Shadow Calibration & Deduplication Stability (Phase JEV-7B)
+* **Tujuan & Ruang Lingkup:** Mengamati dan memvalidasi stabilitas autonomous shadow collector sepanjang beberapa siklus native cron Cloudflare (`17 * * * *`) tanpa intervensi laptop operator, membuktikan ketahanan deduplikasi input-hash, dan mengaudit divergensi state input antara jalur Planner dan Autonomous Collector.
+* **Hasil Observasi Multi-Cycle Produksi:**
+  - **Siklus 1 (20:17 WIB):** Observasi pertama berhasil dibuat (`obs_mue4okdt_9j2tor`), input hash `h_8fd8affc`, Jev decision: `revise`, authoritative decision: `continue`.
+  - **Siklus 2 (21:17 WIB):** Native cron berhasil dieksekusi (`crun_coll_f47a610e2d31...`), subjek Artikel 5 terdeteksi tidak berubah. Hasil: `dedupeSkippedCount = 1`, `providerCallCount = 0`, `observationCreatedCount = 0`, durasi 204 ms.
+  - **Siklus 3 (22:17 WIB):** Native cron siklus ketiga berhasil dieksekusi secara stabil. Hasil: `dedupeSkippedCount = 1`, `providerCallCount = 0`, `observationCreatedCount = 0`, zero provider error.
+  - **Pembuktian Deduplikasi:** `AUTONOMOUS_DEDUPE_PROOF = PASS`, `MULTI_CYCLE_DEDUPE_STABLE = YES`.
+* **Audit Akar Penyebab Divergensi State (First-Run Hash Divergence):**
+  - Pada JEV-6B (reconstructed planner state): `readinessStatus = READY_TO_SCHEDULE`, `readingTimeMinutes = 8` menghasilkan hash `h_5431867a`.
+  - Pada JEV-7A (collector state): `readinessStatus = NOT_READY`, `readingTimeMinutes = 8` menghasilkan hash `h_8fd8affc`.
+  - Terbukti bahwa `readingTimeMinutes` sudah konsisten pada nilai 8, namun field `readinessStatus` mengalami divergensi semantik (*semantic overloading*):
+    - Jalur Planner memetakan kualifikasi operasional artikel (*planner candidate qualification*).
+    - Jalur Collector membaca status checklist kesiapan editorial dari tabel D1 `article_publication_readiness.overall_status`.
+* **Status Fase:** `JEV_PHASE_7B = PASS`. Direkomendasikan pembentukan kanonikal state builder terpadu (Phase JEV-7C).
+
+### Masalah 53: Kanonikalisasi State Keputusan Jev & Validitas Kalibrasi (Phase JEV-7C)
+* **Tujuan & Ruang Lingkup:** Membangun kontrak state semantik kanonikal tunggal untuk titik keputusan `publication_preflight` yang digunakan secara identik oleh publication planner shadow observer, autonomous shadow collector, dan perangkat kalibrasi masa depan. Implementasi dan pengujian dilakukan 100% lokal tanpa mutasi data produksi dan tanpa mengubah kontrol publikasi (`mode=OFF`).
+* **Audit Semantik Kesiapan Editorial vs Kelayakan Kebijakan:**
+  - Klasifikasi audit: **`DIFFERENT_CONCEPTS_OVERLOADED_IN_ONE_FIELD`**.
+  - Mengeliminasi ambiguitas dengan memisahkan dua konsep ortogonal ke dalam field terpisah:
+    1. `persistedReadinessStatus`: Status checklist editorial yang tersimpan di D1 (`'READY_TO_SCHEDULE'` | `'NOT_READY'` | `'BLOCKED'`).
+    2. `plannerEligibilityStatus`: Kelayakan penjadwalan operasional di bawah kebijakan publikasi aktif (`'ELIGIBLE'` | `'NOT_ELIGIBLE'`).
+* **Implementasi Modul Kanonikal Tunggal ([`src/lib/decision/publication-preflight-state.ts`](file:///src/lib/decision/publication-preflight-state.ts)):**
+  - Mengonsolidasikan pembentukan 12 field primitif ternormalisasi: `project`, `articleId`, `slug`, `articleGenerationCompleted`, `editorialValidationPassed`, `referencesPresent`, `heroImagePresent`, `duplicateSlug`, `persistedReadinessStatus`, `plannerEligibilityStatus`, `readingTimeMinutes`, `isSponsored`.
+  - Fungsi kanonikal: `buildCanonicalPublicationPreflightState` dan `computeCanonicalPreflightHash`.
+  - Baik `planner-service.ts` maupun `shadow-collector.ts` dikonfigurasi untuk mengonsumsi builder kanonikal ini secara seragam (`DUPLICATE_STATE_BUILDERS = NO`).
+* **Versioning Skema & Isolasi Deduplikasi:**
+  - Skema di-bump secara aman menjadi `DECISION_SCHEMA_VERSION = '2026-09-23.v2'`.
+  - Konstanta skema v1 (`'2026-09-23.v1'`) tetap dipertahankan untuk memastikan observasi historis tetap dapat diinterpretasikan (`HISTORICAL_OBSERVATIONS_REWRITTEN = NO`).
+  - Kueri deduplikasi di `shadow-collector.ts` diperketat dengan filter `AND input_schema_version = ?`, menjamin `V1_V2_FALSE_DEDUPE_POSSIBLE = NO`.
+* **Hasil Pengujian Lokal & Paritas:**
+  - Suite baru `scripts/test-publication-preflight-canonical-state.js`: 7/7 tes PASS.
+  - Membuktikan Artikel 5 menghasilkan canonical state dan input hash 100% identik antara jalur Planner dan jalur Collector (`PLANNER_COLLECTOR_STATE_PARITY = YES`, `PLANNER_COLLECTOR_HASH_PARITY = YES`).
+  - Seluruh 314 pengujian lokal (safety, publisher, planner, dual-auth, continuous-shadow, decision suite) lulus tanpa regresi.
+  - Typecheck `tsc --noEmit` dan `astro build` lulus dengan exit code 0.
+* **Firewall Keamanan & Status:**
+  - `PRODUCTION_DEPLOYED = NO`, `PRODUCTION_MUTATIONS = 0`. Otoritas Jev tetap `ZERO`.
+  - Status Fase: `JEV_PHASE_7C = PASS`. Siap untuk canary deployment bertahap (Phase JEV-7D).
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1367,7 +1406,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `e47ea5a6-25bf-4aaf-bc53-b5f9dd8e60d2`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `0022_allow_jev_shadow_collector_cron`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
-| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Continuous Shadow Active) | Autonomous shadow collector berjalan di native cron `17 * * * *` (Zero Authority, mode OFF). |
+| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Canonical State v2 Verified) | State canonical builder v2 selesai secara lokal; autonomous shadow collector aktif di edge `17 * * * *` (Zero Authority, mode OFF). |
 | **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` & `publication_cron_runs` mencatat telemetri durable edge. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
