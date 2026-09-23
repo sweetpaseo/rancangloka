@@ -18,6 +18,7 @@ Commit message:
 feat: canonicalize jev publication preflight state
 ```
 
+`JEV_PHASE_7D=PASS_CANONICAL_V2_PRODUCTION_CANARY_ACTIVE`
 `JEV_PHASE_7C=PASS_CANONICAL_PREFLIGHT_STATE_AND_CALIBRATION_VALIDITY`
 `JEV_PHASE_7B=PASS_MULTI_CYCLE_AUTONOMOUS_SHADOW_CALIBRATION`
 `JEV_PHASE_7A=PASS_AUTONOMOUS_CONTINUOUS_SHADOW_COLLECTOR_ACTIVATED`
@@ -856,7 +857,37 @@ Date: 2026-09-23
   - Local Test Verification: 314 tests passed locally across all safety, publisher, planner, auto-policy, decision, and shadow suites.
   - Production Guardrails: Zero production deployment (`PRODUCTION_DEPLOYED = NO`), zero production mutations (`PRODUCTION_MUTATIONS = 0`), publication controls strictly resting (`mode=OFF`).
   - Phase Status: `JEV_PHASE_7C = PASS`.
-- **Next Milestone:** Awaiting operator approval for Phase JEV-7D (Staged Canary Deployment of Canonical State v2 to Production Edge).
+- **Phase JEV-7D Canonical Publication Preflight State v2 Production Canary:**
+  - Deployment Details:
+    - Previous Version ID: `e47ea5a6-25bf-4aaf-bc53-b5f9dd8e60d2`
+    - v2 Canary Version ID: `a66a0424-9e39-451f-b068-13c1b90832b9`
+    - Schema Migration: None required (`JEV_7D_REQUIRES_DB_MIGRATION = NO`).
+    - Post-deploy Health: All 4 endpoints (homepage, Article 6, sitemap, admin) returned 200/302.
+  - Native Cloudflare Cron Cycle 1 (16:17 UTC / 23:17 WIB):
+    - Run ID: `crun_coll_9652166db5ef4c24` (`trigger_source: cloudflare_cron`, duration: 2.05s).
+    - Status: `SUCCEEDED`, processed: 1, created: 1, dedupe skipped: 0, provider calls: 1.
+    - Schema Isolation: Successfully created v2 observation without false-deduping against v1 rows (`V1_V2_SCHEMA_ISOLATION_PRODUCTION = PASS`).
+    - Observation Created: `obs_mueb41kn_01wr4b` (`input_schema_version: 2026-09-23.v2`, `prompt_version: v1.13`, `input_hash: h_89de9fcf`, `provider_status: SUCCESS`, `jev_decision: continue`, `latency_ms: 957`).
+  - Historical v1 Immutability: All 3 historical v1 observations (`obs_mudvi9qm_tlqcpw`, `obs_mue1xio9_ptu7zj`, `obs_mue4okdt_9j2tor`) remain 100% intact.
+  - Production State & Hash Parity: Read-only evaluation against production Article 5 verified:
+    - `PLANNER_V2_STATE == COLLECTOR_V2_STATE`: `true`
+    - `PLANNER_V2_INPUT_HASH == COLLECTOR_V2_INPUT_HASH`: `true` (`h_89de9fcf`)
+    - `PRODUCTION_V2_STATE_PARITY = YES`, `PRODUCTION_V2_HASH_PARITY = YES`.
+  - Native Cloudflare Cron Cycle 2 (17:17 UTC / 00:17 WIB):
+    - Run ID: `crun_coll_15e5ef111c444fa1` (`trigger_source: cloudflare_cron`, duration: 915ms).
+    - Status: `SUCCEEDED`, processed: 1, created: 0, dedupe skipped: 1, provider calls: 0.
+    - `V2_AUTONOMOUS_DEDUPE_PROOF = PASS`, `V2_DEDUPE_STABLE = YES`.
+    - Provider economy: Cycle 1 = 1 call, Cycle 2 = 0 calls (`dailyCallsUsed` remains at 4 / 25 daily budget).
+  - Absolute Zero-Authority Firewall:
+    - Resting mode: `mode = OFF`, `auto_schedule = false`, `kill_switch = 0`.
+    - Publication mutations: 0 plans, 0 executions, 0 receipts, 0 articles published.
+    - Article 5 status strictly `draft`, zero mutations.
+    - `JEV_AUTHORITY_UNCHANGED = ZERO`.
+  - Calibration Dataset Policy:
+    - Grouping keys: `decision_point, input_schema_version, prompt_version, model_version`.
+    - `CALIBRATION_DATA_VALID_FROM_SCHEMA_VERSION = 2026-09-23.v2`.
+  - Phase Status: `JEV_PHASE_7D = PASS`.
+- **Next Milestone:** Ready for Phase JEV-7E (Dataset Calibration & Calibration Tooling).
 
 
 

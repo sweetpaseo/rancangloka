@@ -1396,6 +1396,47 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - `PRODUCTION_DEPLOYED = NO`, `PRODUCTION_MUTATIONS = 0`. Otoritas Jev tetap `ZERO`.
   - Status Fase: `JEV_PHASE_7C = PASS`. Siap untuk canary deployment bertahap (Phase JEV-7D).
 
+### Masalah 54: Penerapan Canary Skema v2 di Produksi Edge & Pembuktian Deduplikasi Mandiri (Phase JEV-7D)
+* **Tujuan & Ruang Lingkup:** Menerapkan implementasi canonical state v2 (`DECISION_SCHEMA_VERSION = '2026-09-23.v2'`) ke lingkungan produksi Cloudflare Workers Edge sebagai canary terbatas, membuktikan isolasi skema v1 vs v2, memvalidasi pembentukan observasi v2 pertama via native cron, memastikan keutuhan observasi historis v1, membuktikan deduplikasi pada siklus v2 kedua tanpa panggilan provider berlebih, serta mengonfirmasi paritas state & hash produksi antara jalur Planner dan Collector tanpa memberikan otoritas publikasi apa pun kepada Jev.
+* **Penyebaran Produksi (*Production Canary Deployment*):**
+  - **Previous Deployment ID:** `e47ea5a6-25bf-4aaf-bc53-b5f9dd8e60d2`
+  - **v2 Canary Deployment ID:** `a66a0424-9e39-451f-b068-13c1b90832b9`
+  - **Audit Migrasi Database:** `JEV_7D_REQUIRES_DB_MIGRATION = NO` (tabel `decision_observations` telah mendukung kolom versioning dan hash sejak migrasi 0021).
+  - **Uji Kesehatan Pasca-Deploy:** Beranda publik (200), Artikel 6 terbit (200), sitemap XML (200), gateway admin (302) terverifikasi sehat.
+* **Siklus 1 Native Cloudflare Cron v2 (16:17 UTC / 23:17 WIB):**
+  - **Cron Run ID:** `crun_coll_9652166db5ef4c24` (`trigger_source: cloudflare_cron`).
+  - **Status Eksekusi:** `SUCCEEDED` (runtime: 2.049 ms).
+  - **Isolasi Skema Terbukti (*Schema Isolation*):** Karena skema berubah ke v2, collector tidak melakukan false-dedupe terhadap baris historis v1 (`V1_V2_SCHEMA_ISOLATION_PRODUCTION = PASS`).
+  - **Observasi Durable Baru Dibuat:**
+    - `observation_id`: `obs_mueb41kn_01wr4b`
+    - `decision_point`: `publication_preflight`, `subject_id`: `5`
+    - `input_schema_version`: `2026-09-23.v2`, `prompt_version`: `v1.13`
+    - `input_hash`: `h_89de9fcf`
+    - `provider`: `openrouter`, `model`: `typesafe/jev-1.13-20260917`, `latency_ms`: 957
+    - `authoritative_decision`: `continue` (`DETERMINISTIC_ELIGIBILITY_PASSED`)
+    - `jev_decision`: `continue` (confidence: `0.37`, probabilities: `{"stop":0.12,"human_review":0.08,"revise":0.27,"continue":0.53}`)
+    - `disagreement_classification`: `AGREE_CONTINUE`
+* **Keutuhan Observasi Historis v1:**
+  - Jumlah observasi v1 sebelum deploy: 3 (`obs_mudvi9qm_tlqcpw`, `obs_mue1xio9_ptu7zj`, `obs_mue4okdt_9j2tor`).
+  - Jumlah observasi v1 setelah deploy: 3 (`HISTORICAL_V1_OBSERVATIONS_INTACT = YES`).
+* **Pembuktian Paritas State & Hash Produksi:**
+  - Evaluasi read-only pada data produksi Artikel 5 menunjukkan state kanonikal identik antara jalur Planner (candidateSource: `auto_policy`) dan jalur Collector:
+    - `PLANNER_V2_STATE == COLLECTOR_V2_STATE`: `true`
+    - `PLANNER_V2_INPUT_HASH == COLLECTOR_V2_INPUT_HASH`: `true` (`h_89de9fcf`)
+    - `PRODUCTION_V2_STATE_PARITY = YES`, `PRODUCTION_V2_HASH_PARITY = YES`.
+* **Siklus 2 Native Cloudflare Cron v2 (17:17 UTC / 00:17 WIB):**
+  - **Cron Run ID:** `crun_coll_15e5ef111c444fa1` (`trigger_source: cloudflare_cron`).
+  - **Status Eksekusi:** `SUCCEEDED` (runtime: 915 ms).
+  - **Hasil Deduplikasi v2:** Subjek Artikel 5 dengan hash `h_89de9fcf` diidentifikasi tidak berubah -> `dedupeSkippedCount: 1`, `providerCallCount: 0`, `observationCreatedCount: 0`.
+  - `V2_AUTONOMOUS_DEDUPE_PROOF = PASS`, `V2_DEDUPE_STABLE = YES`.
+  - Panggilan provider v2: Siklus 1 = 1, Siklus 2 = 0 (`dailyCallsUsed` tetap di angka 4).
+* **Firewall Keselamatan & Zero-Authority Tetap Absolut:**
+  - Status resting publikasi: `mode=OFF`, `auto_schedule=false`, `kill_switch=0`.
+  - Mutasi publikasi: 0 plan baru, 0 eksekusi baru, 0 receipt baru, 0 artikel dipublikasikan.
+  - Artikel 5 tetap berstatus `draft` dengan content hash `c77881c0c350...` 100% utuh.
+  - `JEV_AUTHORITY_UNCHANGED = ZERO`.
+* **Status Fase:** `JEV_PHASE_7D = PASS`. Canonical state v2 aktif di produksi dan siap untuk Phase JEV-7E (Dataset Calibration & Calibration Tooling).
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1403,10 +1444,10 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `e47ea5a6-25bf-4aaf-bc53-b5f9dd8e60d2`*). |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `a66a0424-9e39-451f-b068-13c1b90832b9`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `0022_allow_jev_shadow_collector_cron`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
-| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Canonical State v2 Verified) | State canonical builder v2 selesai secara lokal; autonomous shadow collector aktif di edge `17 * * * *` (Zero Authority, mode OFF). |
+| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Canonical v2 Active & Dedupe Stable) | Canonical state v2 aktif di edge cron `17 * * * *`, deduplikasi stabil terbukti (Zero Authority, mode OFF). |
 | **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` & `publication_cron_runs` mencatat telemetri durable edge. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
