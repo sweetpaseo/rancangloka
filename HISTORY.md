@@ -1285,6 +1285,20 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - **Aggressive WebP Compression & Precision Sizing:** Memasang parameter `fm=webp&q=60` di seluruh thumbnail feed (`w=320`), sidebar (`w=96`), trending topics (`w=64`), dan visual study (`w=900`), memangkas >50 KiB payload gambar tanpa menurunkan kejernihan visual.
   - **Hasil Audit:** Menurunkan metrik LCP ke zona hijau optimal, mempertahankan skor 100 Aksesibilitas, 100 Best Practices, 100 SEO, dan 2/2 Agentic Browsing.
 
+### Masalah 48: TypeSafe Jev Decision Platform & Live Shadow Observer (Phase JEV-4A hingga JEV-6)
+* **Gejala:** Kebutuhan sistem evaluasi keputusan editorial (probabilitas review manusia, risiko publikasi, rekomendasi aksi) dan media planning adaptif secara otomatis, tanpa mengorbankan keselamatan deterministik (*Zero Authority Invariant*) dan tanpa membebani runtime publishing utama.
+* **Solusi:**
+  - **Typed Decision Core ([`src/lib/decision/engine.ts`](file:///src/lib/decision/engine.ts)):** Mengembangkan kontrak generic typed decision (`DecisionEngine`, `DecisionPointDefinition`, `DecisionEvaluationRequest`) dengan implementasi provider TypeSafe Jev (`OpenRouterJevProvider`) berbasis model `typesafe/jev-1.13` via OpenRouter Decisions API.
+  - **Minimal State Principle:** Jev HANYA menerima metadata faktual ringkas (status validasi editorial, ada/tidaknya referensi/gambar/slug unik), BUKAN naskah artikel utuh demi menjaga efisiensi token dan keamanan editorial.
+  - **Durable Decision Telemetry ([`src/lib/decision/telemetry.ts`](file:///src/lib/decision/telemetry.ts)):** Skema migrasi `0021_decision_observations.sql` di Cloudflare D1 untuk mencatat setiap observasi evaluasi (subject_id, run_id, latency_ms, raw input/output hash, cost tracking) tanpa locking transaksi publikasi.
+  - **Decision Point Media Planning ([`src/lib/decision/media-planning.ts`](file:///src/lib/decision/media-planning.ts)):** Titik keputusan adaptif untuk memandu LokaMedia mengenai kebutuhan gambar hero/inline artikel, rasio aspek, dan slot penempatan sebelum generasi media dilakukan.
+  - **Production Live Shadow Deployment (Version `48196b6d-fa50-493b-ab0d-5d3f8f592b50`):**
+    - Migrasi D1 `0021` diaplikasikan ke remote database `rancangloka_db`.
+    - Secret `OPENROUTER_API_KEY` dikonfigurasi aman pada Cloudflare Workers.
+    - Window kontrol kanonik dijalankan sementara via browser admin terotentikasi: `OFF → OBSERVE_ONLY → OFF` dan `auto_schedule: false → true → false` untuk menguji native cron planner edge.
+    - Terbukti non-blocking: Native Cloudflare cron planner (`crun_plan_f14a3318a8ec495a`) selesai dengan status `SUCCEEDED` dan berhasil menulis rekam jejak `decision_observations` (`obs_mudvi9qm_tlqcpw`) melalui `ctx.waitUntil`.
+    - Zero publication mutation: 0 plan baru, 0 eksekusi, 0 publikasi, dan artikel draft (Article 5) tetap 100% utuh di status `draft`.
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1292,15 +1306,18 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan otomatis via Cloudflare Workers CI dari branch `main` (*Version ID: `fa3f3770`*). |
-| **D1 Database & Skema** | ✅ Selesai (Aktif) | 8 tabel inti (termasuk `subscribers`) + fallback 20 in-memory authoritative articles. |
-| **R2 Storage & Drag-Drop Uploader** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + auto client-side WebP converter aktif. |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `48196b6d-fa50-493b-ab0d-5d3f8f592b50`*). |
+| **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `article_media`). |
+| **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
+| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Shadow Live) | Model `typesafe/jev-1.13` via OpenRouter Decisions API di edge (Zero Authority, non-blocking). |
+| **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` mencatat observasi shadow secara durable via `ctx.waitUntil`. |
+| **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
 | **Design Problem Solver & Explorer** | ✅ Selesai (Aktif) | Alat diagnosis berbasis kemungkinan penyebab umum & 3-way multi-filter aktif. |
 | **Material Comparison Matrix** | ✅ Selesai (Aktif) | Matriks komparasi + box *How We Score* (25%/20%/20%/15%/20%) + Evidence Badges. |
 | **Editorial Standards & Metodologi** | ✅ Selesai (Aktif) | Piagam redaksi independen (`/editorial-standards`) & standar pengujian (`/metodologi`). |
 | **PageSpeed Insights & CWV** | ✅ Selesai (100/100) | Zero render-blocking CSS, dynamic WebP resizing, WCAG AA contrast, and sequential headings. |
-| **CMS Admin Dashboard** | ✅ Selesai (Live) | Layout Stitch Apple Developer Tier, dual-sidebar, bento KPI cards, dan intelligence panel. |
+| **CMS Admin Dashboard** | ✅ Selesai (Live) | Layout Stitch Apple Developer Tier, dual-sidebar, bento KPI cards, dan kanonik operator controls (`/admin/automation`). |
 | **Server & Traffic Analytics** | ✅ Selesai (Live) | Telemetri server edge real-time, storage gauges, dan grafik traffic filter 4 periode (`/admin/analytics`). |
 | **Stealth Mode & Clean Engine** | ✅ Selesai (Aktif) | Path aset disamarkan ke `/assets/`, HTML minified, zero meta generator. |
 | **SEO, News Sitemap & RSS** | ✅ Selesai (Aktif) | Google News XML, Sitemap XML, RSS syndication, Schema.org terverifikasi. |

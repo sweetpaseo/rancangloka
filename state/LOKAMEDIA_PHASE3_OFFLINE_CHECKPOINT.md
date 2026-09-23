@@ -4,20 +4,27 @@ Date: 2026-09-15
 
 ## Latest Local Checkpoint
 
-Date: 2026-09-22
+Date: 2026-09-23
 
 Latest clean checkpoint commit:
 
 ```text
-04476996d080e941ac1bd6ebc353a9aee41f8903
+a9fa73647546bfbcb1414d4da86627ea65630561
 ```
 
 Commit message:
 
 ```text
-docs: record phase 5l13b single canary media preparation
+docs: record jev phase 6 production shadow validation
 ```
 
+`JEV_PHASE_6=PASS_PRODUCTION_LIVE_SHADOW_DEPLOYMENT_AND_OBSERVATION_PROOF`
+`JEV_PHASE_5M=PASS_GENERIC_MEDIA_PLANNING_DECISION_POINT`
+`JEV_PHASE_5=PASS_LOCAL_DURABLE_SHADOW_SOAK_AND_COST_ROUTING_SIMULATION`
+`JEV_PHASE_4D=PASS_SAFE_INTEGRATION_BRANCH_BUILD`
+`JEV_PHASE_4C=PASS_BRANCH_CONVERGENCE_AND_MIGRATION_AUDIT`
+`JEV_PHASE_4B=PASS_DURABLE_TELEMETRY_FOUNDATION`
+`JEV_PHASE_4A=PASS_TYPED_DECISION_CORE`
 `LOKAMEDIA_PHASE_5L13B_B=PASS_SINGLE_CANARY_FEATURED_MEDIA_CANONICAL_INGEST`
 `LOKAMEDIA_PHASE_5L13B_A=PASS_SINGLE_CANARY_MEDIA_PREPARATION_READONLY`
 `LOKAMEDIA_PHASE_5L13B_PRE=PASS_MEDIA_AUDIT_AND_SUITABILITY_DECISION`
@@ -682,6 +689,52 @@ Date: 2026-09-22
   - Zero background daemons running.
   - Production database in 100% resting state (`OFF`).
   - Next Recommended Phase: Phase 5L13C (Single-Canary Controlled Activation / PLAN_ONLY Verification).
+
+## Phase JEV-6 Checkpoint Summary (Production Live Shadow Deployment & Real Observation Proof)
+
+Date: 2026-09-23
+
+- **Target Deployment & Branch:**
+  - Active branch: `feat/jev-lokamedia-integration`
+  - Integration checkpoint commit: `a9fa73647546bfbcb1414d4da86627ea65630561`
+  - Cloudflare Worker Deployment Version: `48196b6d-fa50-493b-ab0d-5d3f8f592b50`
+  - Rollback Reference Version: `c8daed73-8cee-4d27-b8fe-63d40d1d86af`
+- **Database Migration:**
+  - Applied migration `0021_decision_observations.sql` to remote D1 `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`).
+  - Created telemetry table `decision_observations` with indexed fields for subject, run, decision point, provider, and evaluation latency.
+- **Worker Environment & Secrets:**
+  - `OPENROUTER_API_KEY` configured as secure Worker secret via standard stdin pipeline without logging or source exposure.
+  - `JEV_MODE = 'shadow'` active with zero publication authority.
+- **Canonical Operator Control Window (Temporary Exposure):**
+  - Authenticated admin browser session executed canonical mutations via `POST /api/admin/publication/automation/control`:
+    1. `OFF → OBSERVE_ONLY` (Audit ID: `actl_a8bf68936f7c4682`)
+    2. `auto_schedule: false → true` (Audit ID: `ascd_237f4fa0754041c2`)
+    3. `auto_schedule: true → false` (Audit ID: `ascd_09a5568719614753`)
+    4. `OBSERVE_ONLY → OFF` (Audit ID: `actl_0f55f1cdab5843d4`)
+  - Exactly 4 canonical audit events recorded. Zero raw SQL writes performed.
+- **Native Cron Heartbeat & Real Observation Proof:**
+  - Native Cloudflare cron scheduled event fired at 16:00:58 WIB (09:00:58 UTC).
+  - Cron trigger: `trigger_source = 'cloudflare_cron'`, `job_name = 'publication_planner'`.
+  - Cron Run ID: `crun_plan_f14a3318a8ec495a`, final status: `SUCCEEDED`.
+  - Asynchronous observation persisted to D1 `decision_observations`:
+    - Observation ID: `obs_mudvi9qm_tlqcpw`
+    - Subject ID: `5` (Canary Article 5: `kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`)
+    - Planner Run ID: `prun_04d1042af3c4`
+    - Decision Point: `publication_review`
+    - Status: `FAILED` (Network context binding error: `TypeError: Illegal invocation` due to workerd unbound `fetch` context in provider)
+    - Graceful Error Boundary: Error caught without crashing worker or failing planner run; logged structured failure telemetry.
+- **Production Safety Invariants 100% Preserved:**
+  - New publication plans created: `0`
+  - New publication executions: `0`
+  - New publication receipts: `0`
+  - New articles published: `0`
+  - Article 5 state: strictly `draft`, hash `c77881c0c35025aadf56bd3e64e3d40348b187c84d408a9c7275e6d0a0d26378` completely unchanged.
+  - Final production resting state: `mode = 'OFF'`, `auto_schedule_enabled = 0`, `kill_switch_engaged = 0`.
+- **Phase Status:** `JEV_PHASE_6 = PASS`.
+- **Diagnostic Finding & Next Recommended Action (Phase JEV-7):**
+  - Fix unbound `fetch` context in `OpenRouterJevProvider`: bind `globalThis.fetch.bind(globalThis)`.
+  - Deploy patch to edge and proceed to Phase JEV-7 multi-cycle live shadow calibration.
+
 
 
 
