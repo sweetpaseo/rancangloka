@@ -46,6 +46,7 @@ import {
   computeEffectiveCapacity,
   DEFAULT_ACTIVATION_ENVELOPE
 } from '../safety/rate-limiter.ts';
+import { observeCandidateShadowDecision } from '../decision/decision-observer.ts';
 
 /**
  * 1. Eligible Inventory Query
@@ -492,6 +493,23 @@ export async function executePublicationPlanner(
     if (prioRow && Number.isFinite(Number(prioRow.value))) {
       c.operatorPriority = Number(prioRow.value);
     }
+  }
+
+  // 2b. JEV-SHADOW-1: Trigger non-authoritative shadow decision observation (Minimal State, zero execution authority)
+  for (const c of candidates) {
+    observeCandidateShadowDecision({
+      project: 'RancangLoka',
+      articleId: c.articleId,
+      slug: c.slug,
+      articleGenerationCompleted: true,
+      editorialValidationPassed: true,
+      referencesPresent: true,
+      heroImagePresent: true,
+      duplicateSlug: false,
+      readinessStatus: 'READY_TO_SCHEDULE',
+      readingTimeMinutes: c.readingTimeMinutes,
+      isSponsored: c.isSponsored
+    }, { correlationId: runId }).catch(() => {});
   }
 
   // 3. Fetch historical published articles (last 7 days) for category balancing

@@ -10,6 +10,7 @@
  */
 
 import { type RunLedgerEntry } from './safety-types.ts';
+import { getRecentShadowObservations } from '../decision/decision-observer.ts';
 
 /**
  * Fetch correlated run ledger entries by optional filter
@@ -96,6 +97,10 @@ export async function getPublicationRunLedger(
     publication_receipt_id: r.publication_receipt_id || null,
     actual_published_at: r.actual_published_at || null,
     feedback_observation_id: r.feedback_observation_id || null,
-    authoritative_index_state: r.authoritative_index_state || null
+    authoritative_index_state: r.authoritative_index_state || null,
+    shadow_observation: getRecentShadowObservations().find(o => 
+      String(o.subject_id) === String(r.d1_article_id) || 
+      (r.correlation_id && o.run_id === String(r.correlation_id))
+    ) || null
   }));
 }

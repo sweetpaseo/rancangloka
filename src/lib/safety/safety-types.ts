@@ -12,6 +12,9 @@
  * - Subsystem Health Model
  */
 
+import type { DecisionObservation } from '../decision/decision-types.ts';
+export type { DecisionObservation };
+
 // ==========================================
 // 1. GLOBAL AUTOMATION MODE
 // ==========================================
@@ -220,6 +223,7 @@ export interface RunLedgerEntry {
   actual_published_at: string | null;
   feedback_observation_id: string | null;
   authoritative_index_state: string | null;
+  shadow_observation?: DecisionObservation | null;
 }
 
 // ==========================================
