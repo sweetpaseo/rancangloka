@@ -9,15 +9,16 @@ Date: 2026-09-23
 Latest clean checkpoint commit:
 
 ```text
-a9fa73647546bfbcb1414d4da86627ea65630561
+efd6573e04543787a70a830026e6ef1bfa98dbad
 ```
 
 Commit message:
 
 ```text
-docs: record jev phase 6 production shadow validation
+fix: stabilize jev provider fetch lifecycle on cloudflare
 ```
 
+`JEV_PHASE_6B_PREP=PASS_CLOUDFLARE_FETCH_STABILIZED_AND_WINDOW_PAUSED`
 `JEV_PHASE_6=PASS_PRODUCTION_LIVE_SHADOW_DEPLOYMENT_AND_OBSERVATION_PROOF`
 `JEV_PHASE_5M=PASS_GENERIC_MEDIA_PLANNING_DECISION_POINT`
 `JEV_PHASE_5=PASS_LOCAL_DURABLE_SHADOW_SOAK_AND_COST_ROUTING_SIMULATION`
@@ -734,6 +735,44 @@ Date: 2026-09-23
 - **Diagnostic Finding & Next Recommended Action (Phase JEV-7):**
   - Fix unbound `fetch` context in `OpenRouterJevProvider`: bind `globalThis.fetch.bind(globalThis)`.
   - Deploy patch to edge and proceed to Phase JEV-7 multi-cycle live shadow calibration.
+
+## Phase JEV-6B Checkpoint Summary (Fetch Stabilization & Paused State Before Offline)
+
+Date: 2026-09-23
+
+- **Target Deployment & Branch:**
+  - Active branch: `feat/jev-lokamedia-integration`
+  - Fix commit: `efd6573e04543787a70a830026e6ef1bfa98dbad` (`fix: stabilize jev provider fetch lifecycle on cloudflare`)
+  - Cloudflare Worker Deployment Version: `aca01976-9e8b-4dc3-be53-22f2857cb2c3`
+  - Previous Version: `48196b6d-fa50-493b-ab0d-5d3f8f592b50`
+- **Cloudflare workerd Fetch Binding Fix:**
+  - In `OpenRouterJevProvider`, wrapped `globalThis.fetch(input, init)` in an arrow function so native workerd `fetch` is explicitly invoked with `this === globalThis`, completely eliminating `TypeError: Illegal invocation`.
+  - Added 5 regression tests in `scripts/test-decision-engine.js` (Tests 19–23) simulating workerd context requirements, timeout, network failure, and malformed JSON. All 23/23 tests pass.
+  - Complete local regression passed: 54 soak-safety, 67 planner, 48 publisher, 11 auto-policy, 23 dual-auth, 15 operator-control, 14 router, 8 telemetry, 16 media-planning, 5 integration, `tsc --noEmit`, and `astro build`.
+- **Public Edge Health Verification:**
+  - `https://rancangloka.com` -> 200 OK
+  - `https://rancangloka.com/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman` (Article 6) -> 200 OK
+  - `https://rancangloka.com/post-sitemap.xml` -> 200 OK
+  - `https://rancangloka.com/admin` -> 302 Found (Auth redirect)
+- **Canonical Operator Control Sequence:**
+  - Opened shadow window:
+    1. `OFF → OBSERVE_ONLY` (Audit ID: `actl_49562feed38444ef`)
+    2. `auto_schedule: false → true` (Audit ID: `ascd_88896f4ea6ea40aa`)
+  - Canary candidate isolated: exactly candidate `[5]`.
+  - Paused safely before operator offline:
+    3. `auto_schedule: true → false` (Audit ID: `ascd_7fe9d63c5a7042a9`, Reason: `JEV-6B paused before operator offline`)
+    4. `OBSERVE_ONLY → OFF` (Audit ID: `actl_ebbf1712ba6c41b6`, Reason: `JEV-6B paused before operator offline`)
+- **Remote D1 Production Safety State Verified:**
+  - `mode = 'OFF'`
+  - `auto_schedule_enabled = false`
+  - `kill_switch_engaged = 0`
+  - `article_publication_plans = 0`
+  - `article_publication_executions = 0`
+  - `publication_execution_receipts = 0`
+  - `articles[id=5].status = 'draft'` (content hash untouched)
+- **Phase Status:** `JEV_6B_WINDOW_PAUSED = YES`. Production is in 100% resting state `OFF`.
+- **Next Action:** When operator is back online, re-open canonical window (`OFF → OBSERVE_ONLY`, `auto_schedule false → true`) for the next native Cloudflare planner cron to record the successful OpenRouter Jev decision observation.
+
 
 
 

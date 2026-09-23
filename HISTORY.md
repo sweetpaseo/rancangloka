@@ -1299,6 +1299,17 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
     - Terbukti non-blocking: Native Cloudflare cron planner (`crun_plan_f14a3318a8ec495a`) selesai dengan status `SUCCEEDED` dan berhasil menulis rekam jejak `decision_observations` (`obs_mudvi9qm_tlqcpw`) melalui `ctx.waitUntil`.
     - Zero publication mutation: 0 plan baru, 0 eksekusi, 0 publikasi, dan artikel draft (Article 5) tetap 100% utuh di status `draft`.
 
+### Masalah 49: Stabilisasi Workerd Fetch Binding & Deployment Edge aca01976 (Phase JEV-6B Prep)
+* **Gejala:** Observasi live shadow Jev pada eksekusi native cron di Cloudflare workerd menghasilkan error internal `TypeError: Illegal invocation` dengan `latency_ms: 0` karena instance provider memanggil `fetch` sebagai method tanpa context binding eksplisit ke `globalThis`.
+* **Solusi:**
+  - **Workerd Fetch Context Wrapper ([`src/lib/decision/openrouter-jev-provider.ts`](file:///src/lib/decision/openrouter-jev-provider.ts)):** Mengubah inisialisasi `this.fetchFn` menjadi wrapper arrow function `(input, init) => globalThis.fetch(input, init)`. Pola ini menjamin native fetch dieksekusi dengan `globalThis` sebagai receiver/callee di lingkungan runtime Cloudflare Workers.
+  - **Suite Regresi Tambahan ([`scripts/test-decision-engine.js`](file:///scripts/test-decision-engine.js)):** Menambahkan pengujian kontekstual workerd, error handling fail-safe terhadap `TypeError`, timeout abort, kegagalan network, dan response JSON malformed (23/23 tes PASS).
+  - **Edge Deployment Baru:** Berhasil di-deploy ke Cloudflare Workers dengan Version ID `aca01976-9e8b-4dc3-be53-22f2857cb2c3`.
+  - **Siklus Kontrol Kanonik & Pre-Offline Safety:**
+    - Window kanonik dibuka via admin API: `OFF → OBSERVE_ONLY` dan `auto_schedule: false → true` (kandidat terisolasi tepat `[5]`).
+    - Sebelum operator offline, window di-pause secara kanonik: `auto_schedule: true → false` (Audit ID: `ascd_7fe9d63c5a7042a9`) dan `OBSERVE_ONLY → OFF` (Audit ID: `actl_ebbf1712ba6c41b6`).
+    - Verifikasi D1 remote mengonfirmasi status resting sempurna: `mode=OFF`, `auto_schedule=false`, 0 plan, 0 eksekusi, 0 receipt, dan Article 5 tetap utuh berstatus `draft`.
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1306,7 +1317,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `48196b6d-fa50-493b-ab0d-5d3f8f592b50`*). |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `aca01976-9e8b-4dc3-be53-22f2857cb2c3`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `article_media`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
 | **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Shadow Live) | Model `typesafe/jev-1.13` via OpenRouter Decisions API di edge (Zero Authority, non-blocking). |
