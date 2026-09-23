@@ -18,6 +18,7 @@ Commit message:
 fix: stabilize jev provider fetch lifecycle on cloudflare
 ```
 
+`JEV_PHASE_6B=PASS_SUCCESSFUL_LIVE_PROVIDER_SHADOW_PROOF`
 `JEV_PHASE_6B_PREP=PASS_CLOUDFLARE_FETCH_STABILIZED_AND_WINDOW_PAUSED`
 `JEV_PHASE_6=PASS_PRODUCTION_LIVE_SHADOW_DEPLOYMENT_AND_OBSERVATION_PROOF`
 `JEV_PHASE_5M=PASS_GENERIC_MEDIA_PLANNING_DECISION_POINT`
@@ -770,8 +771,39 @@ Date: 2026-09-23
   - `article_publication_executions = 0`
   - `publication_execution_receipts = 0`
   - `articles[id=5].status = 'draft'` (content hash untouched)
-- **Phase Status:** `JEV_6B_WINDOW_PAUSED = YES`. Production is in 100% resting state `OFF`.
-- **Next Action:** When operator is back online, re-open canonical window (`OFF → OBSERVE_ONLY`, `auto_schedule false → true`) for the next native Cloudflare planner cron to record the successful OpenRouter Jev decision observation.
+- **Phase Status:** `JEV_6B_WINDOW_PAUSED = RESOLVED`. Proceeded to live proof.
+- **Phase JEV-6B Live Execution & Successful Provider Proof:**
+  - Active Deployment: `aca01976-9e8b-4dc3-be53-22f2857cb2c3` on branch `feat/jev-lokamedia-integration`.
+  - Canonical window opened via authenticated browser session:
+    1. `OFF → OBSERVE_ONLY` (Audit ID: `actl_b5248c85f07b4f57`, reason: `JEV-6B successful live provider shadow proof`)
+    2. `auto_schedule: false → true` (Audit ID: `ascd_9e355cabcd974780`, reason: `JEV-6B expose isolated Article 5 for provider success proof`)
+  - Native Cloudflare Cron Event Fired:
+    - Cron Run ID: `crun_plan_ddff89e83d6c4642` (19:00:47 WIB / 12:00:47 UTC, `0 * * * *`).
+    - Trigger Source: `cloudflare_cron`, job: `publication_planner`, final status: `SUCCEEDED`.
+    - Planner Run ID: `prun_0420952a2f29`, eligibleCount: `1`, plannedCount: `0`.
+  - Durable Observation Row (`decision_observations`):
+    - Observation ID: `obs_mue1xio9_ptu7zj`.
+    - Subject: Article `5` (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
+    - Decision Point: `publication_preflight`.
+    - Provider: `openrouter`, Model: `typesafe/jev-1.13-20260917`, Version: `20260917`.
+    - Provider Status: **`SUCCESS`** (`provider_error_class: null`).
+    - Evaluation Latency: **`285 ms`** (Live HTTP egress to OpenRouter Decisions API verified).
+    - Authoritative Decision: `continue` (`DETERMINISTIC_ELIGIBILITY_PASSED`).
+    - Jev Decision: `continue` (Confidence: `1.0`, Probabilities: `{"continue":1,"human_review":0,"revise":0,"stop":0}`).
+    - Disagreement Classification: `AGREE_CONTINUE`.
+  - Canonical Window Closed Immediately:
+    3. `auto_schedule: true → false` (Audit ID: `ascd_1b4489297ad944f0`, reason: `JEV-6B completed live provider proof, returning to resting state`)
+    4. `OBSERVE_ONLY → OFF` (Audit ID: `actl_63fa2c69540a4d71`, reason: `JEV-6B completed live provider proof, returning to resting state`)
+  - Remote Production Safety Invariants:
+    - Final mode: `OFF`, auto_schedule: `false`, kill_switch: `0`.
+    - New publication plans: `0`.
+    - New publication executions: `0`.
+    - New publication receipts: `0`.
+    - New publications: `0`.
+    - Article 5: status strictly `draft`, content hash unchanged.
+    - Zero raw SQL control mutations, zero article/media mutations.
+- **Phase Status:** `JEV_PHASE_6B = PASS`. `PRODUCTION_LIVE_SUCCESSFUL_JEV_SHADOW = YES`.
+- **Next Milestone:** Ready for Phase JEV-7 (Multi-Cycle Live Shadow Calibration & Telemetry Aggregations).
 
 
 

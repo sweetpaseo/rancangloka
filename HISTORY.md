@@ -1308,7 +1308,35 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - **Siklus Kontrol Kanonik & Pre-Offline Safety:**
     - Window kanonik dibuka via admin API: `OFF → OBSERVE_ONLY` dan `auto_schedule: false → true` (kandidat terisolasi tepat `[5]`).
     - Sebelum operator offline, window di-pause secara kanonik: `auto_schedule: true → false` (Audit ID: `ascd_7fe9d63c5a7042a9`) dan `OBSERVE_ONLY → OFF` (Audit ID: `actl_ebbf1712ba6c41b6`).
-    - Verifikasi D1 remote mengonfirmasi status resting sempurna: `mode=OFF`, `auto_schedule=false`, 0 plan, 0 eksekusi, 0 receipt, dan Article 5 tetap utuh berstatus `draft`.
+### Masalah 50: Pembuktian Sukses Live Provider TypeSafe Jev di Produksi Edge (Phase JEV-6B)
+* **Tujuan & Ruang Lingkup:** Menguji eksekusi live provider TypeSafe Jev via OpenRouter Decisions API di lingkungan produksi Cloudflare Workers pada native hourly planner cron (`0 * * * *`), memastikan perbaikan workerd fetch context binding berhasil secara sempurna, menghasilkan keputusan berbobot terstruktur (`SUCCESS`), mencatat observasi durable di D1 tanpa memblokir atau mengubah siklus hidup publikasi.
+* **Hasil Eksekusi & Bukti Produksi:**
+  - **Siklus Kontrol Kanonik (4 Event Audit):**
+    1. `OFF → OBSERVE_ONLY` (Audit ID: `actl_b5248c85f07b4f57`, Reason: `JEV-6B successful live provider shadow proof`)
+    2. `auto_schedule: false → true` (Audit ID: `ascd_9e355cabcd974780`, Reason: `JEV-6B expose isolated Article 5 for provider success proof`)
+    3. `auto_schedule: true → false` (Audit ID: `ascd_1b4489297ad944f0`, Reason: `JEV-6B completed live provider proof, returning to resting state`)
+    4. `OBSERVE_ONLY → OFF` (Audit ID: `actl_63fa2c69540a4d71`, Reason: `JEV-6B completed live provider proof, returning to resting state`)
+    - Zero raw SQL control mutations (`RAW_SQL_CONTROL_MUTATIONS=0`).
+  - **Native Cloudflare Cron Heartbeat (Pukul 19:00 WIB / 12:00 UTC):**
+    - Cron Run ID: `crun_plan_ddff89e83d6c4642`, job: `publication_planner`, trigger: `cloudflare_cron`.
+    - Status: `SUCCEEDED`, processed_count: `1`, created_count: `0`.
+    - Planner Run ID: `prun_0420952a2f29`, eligible candidate: Article 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
+  - **Durable Observation Row (`decision_observations`):**
+    - Observation ID: `obs_mue1xio9_ptu7zj` (D1 `rancangloka_db`).
+    - Provider: `openrouter` (Model: `typesafe/jev-1.13-20260917`, Version: `20260917`).
+    - Provider Status: **`SUCCESS`** (Zero network error, `provider_error_class: null`).
+    - Latency: **`285 ms`** (Live external HTTP egress ke OpenRouter Decisions API terverifikasi).
+    - Authoritative Decision: `continue` (`DETERMINISTIC_ELIGIBILITY_PASSED`).
+    - Jev Decision: `continue` (Confidence: `1.0`, Probabilities: `{"continue":1,"human_review":0,"revise":0,"stop":0}`).
+    - Disagreement Classification: `AGREE_CONTINUE`.
+  - **Invarian Keselamatan Publikasi 100% Utuh:**
+    - New publication plans: `0`.
+    - New publication executions: `0`.
+    - New publication receipts: `0`.
+    - New publications: `0`.
+    - Article 5 status: strictly `draft` (hash `c77881c0c35025aadf56bd3e64e3d40348b187c84d408a9c7275e6d0a0d26378` tidak tersentuh).
+    - Status resting produksi akhir: `mode=OFF`, `auto_schedule_enabled=false`, `kill_switch_engaged=0`.
+* **Status Fase:** `JEV_PHASE_6B = PASS`. Sistem siap melanjutkan ke kalibrasi multi-cycle live shadow (Phase JEV-7).
 
 ---
 
@@ -1320,7 +1348,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `aca01976-9e8b-4dc3-be53-22f2857cb2c3`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `article_media`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
-| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Shadow Live) | Model `typesafe/jev-1.13` via OpenRouter Decisions API di edge (Zero Authority, non-blocking). |
+| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Live Provider Validated) | Model `typesafe/jev-1.13` via OpenRouter Decisions API di edge (285ms, SUCCESS, Zero Authority). |
 | **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` mencatat observasi shadow secara durable via `ctx.waitUntil`. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
