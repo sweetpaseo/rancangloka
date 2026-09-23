@@ -32,23 +32,28 @@ import {
 
 import {
   runWithCronTelemetry,
+  CRON_JOB_SHADOW_COLLECTOR,
   type CronTriggerSource
 } from './cron-telemetry.ts';
+import { runDecisionShadowCollector } from '../decision/shadow-collector.ts';
 
 // Explicit internal Cron job identities
 export const CRON_JOB_PLANNER = 'publication_planner' as const;
 export const CRON_JOB_RECONCILER = 'auto_execution_reconciler' as const;
 export const CRON_JOB_DISPATCHER = 'publication_dispatcher' as const;
+export { CRON_JOB_SHADOW_COLLECTOR } from './cron-telemetry.ts';
 
 export type CronJobIdentity =
   | typeof CRON_JOB_PLANNER
   | typeof CRON_JOB_RECONCILER
-  | typeof CRON_JOB_DISPATCHER;
+  | typeof CRON_JOB_DISPATCHER
+  | typeof CRON_JOB_SHADOW_COLLECTOR;
 
 // Canonical Cron Expressions
 export const CRON_PLANNER_EXPRESSION = '0 * * * *';      // Hourly
 export const CRON_RECONCILER_EXPRESSION = '*/5 * * * *';  // Every 5 minutes
 export const CRON_DISPATCHER_EXPRESSION = '* * * * *';   // Every minute
+export const CRON_COLLECTOR_EXPRESSION = '17 * * * *';   // 17 minutes past every hour (JEV-7A)
 
 export interface ScheduledEvent {
   cron?: string;
@@ -83,7 +88,8 @@ export function resolveCronJobIdentity(event: ScheduledEvent): CronJobIdentity |
     if (
       event.job === CRON_JOB_PLANNER ||
       event.job === CRON_JOB_RECONCILER ||
-      event.job === CRON_JOB_DISPATCHER
+      event.job === CRON_JOB_DISPATCHER ||
+      event.job === CRON_JOB_SHADOW_COLLECTOR
     ) {
       return event.job;
     }
@@ -104,6 +110,10 @@ export function resolveCronJobIdentity(event: ScheduledEvent): CronJobIdentity |
 
   if (cron === CRON_DISPATCHER_EXPRESSION || cron === '*/1 * * * *') {
     return CRON_JOB_DISPATCHER;
+  }
+
+  if (cron === CRON_COLLECTOR_EXPRESSION) {
+    return CRON_JOB_SHADOW_COLLECTOR;
   }
 
   return null;
@@ -282,6 +292,48 @@ export async function executeCronJob(
         };
       } catch (err: any) {
         console.error(`[CronRouter] publication_dispatcher failed with unexpected error:`, err);
+        throw err;
+      }
+    }
+
+    case CRON_JOB_SHADOW_COLLECTOR: {
+      try {
+        const result = await runWithCronTelemetry(
+          db,
+          CRON_JOB_SHADOW_COLLECTOR,
+          triggerSource,
+          async (runContext) => {
+            const res = await runDecisionShadowCollector(db, _env, {
+              triggerSource,
+              runId: runContext.runId
+            });
+
+            const isBlocked = res.status === 'blocked';
+            return {
+              status: isBlocked ? ('blocked' as const) : ('success' as const),
+              reason: res.reason,
+              processedCount: res.processedCount,
+              createdCount: res.observationCreatedCount,
+              blockedCount: isBlocked ? 1 : 0,
+              failedCount: res.providerErrorCount,
+              details: {
+                ...res.details,
+                dedupeSkippedCount: res.dedupeSkippedCount,
+                providerCallCount: res.providerCallCount
+              }
+            };
+          }
+        );
+
+        return {
+          status: result.status,
+          job: CRON_JOB_SHADOW_COLLECTOR,
+          reason: result.reason,
+          details: result.details,
+          durationMs: Date.now() - startTime
+        };
+      } catch (err: any) {
+        console.error(`[CronRouter] jev_shadow_collector failed with unexpected error:`, err);
         throw err;
       }
     }

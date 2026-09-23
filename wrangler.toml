@@ -16,16 +16,19 @@ migrations_dir = "db/migrations"
 binding = "MEDIA_BUCKET"
 bucket_name = "rancangloka-media"
 
-# Source-Level Cron Triggers (Phase 5L9)
+# Source-Level Cron Triggers (Phase 5L9 + JEV-7A)
 [triggers]
 crons = [
   "0 * * * *",
   "*/5 * * * *",
-  "* * * * *"
+  "* * * * *",
+  "17 * * * *"
 ]
 
-# Decision Platform (JEV-6)
+# Decision Platform (JEV-6 + JEV-7A)
 [vars]
 JEV_ENABLED = "true"
 JEV_MODE = "shadow"
+JEV_SHADOW_COLLECTOR_ENABLED = "false"
+
 

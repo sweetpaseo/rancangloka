@@ -95,7 +95,7 @@ export function buildCandidateQuestions(): Record<string, DecisionQuestion> {
   };
 }
 
-function computeInputHash(data: any): string {
+export function computeInputHash(data: any): string {
   const json = JSON.stringify(data, Object.keys(data).sort());
   let h = 0x811c9dc5;
   for (let i = 0; i < json.length; i++) {

@@ -24,11 +24,16 @@ import { getAutomationControl } from '../safety/automation-controller.ts';
 export const CRON_JOB_PLANNER = 'publication_planner' as const;
 export const CRON_JOB_RECONCILER = 'auto_execution_reconciler' as const;
 export const CRON_JOB_DISPATCHER = 'publication_dispatcher' as const;
+export const CRON_JOB_SHADOW_COLLECTOR = 'jev_shadow_collector' as const;
 
-export type CronJobIdentity =
+export type PublicationCronJobIdentity =
   | typeof CRON_JOB_PLANNER
   | typeof CRON_JOB_RECONCILER
   | typeof CRON_JOB_DISPATCHER;
+
+export type CronJobIdentity =
+  | PublicationCronJobIdentity
+  | typeof CRON_JOB_SHADOW_COLLECTOR;
 
 export type CronTriggerSource =
   | 'cloudflare_cron'
@@ -80,7 +85,9 @@ export function generateCronRunId(jobName: CronJobIdentity): string {
     ? 'plan'
     : jobName === CRON_JOB_RECONCILER
     ? 'rec'
-    : 'disp';
+    : jobName === CRON_JOB_DISPATCHER
+    ? 'disp'
+    : 'coll';
   const rand = crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).substring(2, 10);
   return `crun_${shortName}_${rand}`;
 }
@@ -124,6 +131,17 @@ export async function startCronRun(
       startedAt
     ).run();
   } catch (err: any) {
+    if (jobName === CRON_JOB_SHADOW_COLLECTOR) {
+      console.warn(`[CronTelemetry] WARNING: Failed to insert STARTED heartbeat for ${jobName}:`, err.message);
+      return {
+        runId,
+        jobName,
+        triggerSource,
+        startedAt,
+        automationMode: mode,
+        killSwitchEngaged: killSwitch === 1
+      };
+    }
     console.error(`[CronTelemetry] FATAL: Failed to establish STARTED heartbeat for ${jobName}:`, err);
     throw new Error(`CRON_TELEMETRY_START_FAILED: ${err.message}`);
   }

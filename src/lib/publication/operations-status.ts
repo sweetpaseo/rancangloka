@@ -19,6 +19,7 @@ import {
   CRON_JOB_PLANNER,
   CRON_JOB_RECONCILER,
   CRON_JOB_DISPATCHER,
+  CRON_JOB_SHADOW_COLLECTOR,
   type CronJobIdentity,
   sanitizeErrorSummary
 } from './cron-telemetry.ts';
@@ -28,10 +29,12 @@ import {
 // - Planner: hourly cadence (3600s). Multiplier 2.5x -> 9000s to allow for scheduling jitter.
 // - Reconciler: 5-minute cadence (300s). Multiplier 3.0x -> 900s to tolerate brief worker reloads.
 // - Dispatcher: 1-minute cadence (60s). Multiplier 3.0x -> 180s to quickly detect publishing loop stalls.
+// - Shadow Collector: hourly cadence (3600s). Multiplier 2.5x -> 9000s.
 export const CADENCE_CONFIG: Record<CronJobIdentity, { cadenceSeconds: number; staleThresholdSeconds: number }> = {
   [CRON_JOB_PLANNER]: { cadenceSeconds: 3600, staleThresholdSeconds: 9000 },
   [CRON_JOB_RECONCILER]: { cadenceSeconds: 300, staleThresholdSeconds: 900 },
-  [CRON_JOB_DISPATCHER]: { cadenceSeconds: 60, staleThresholdSeconds: 180 }
+  [CRON_JOB_DISPATCHER]: { cadenceSeconds: 60, staleThresholdSeconds: 180 },
+  [CRON_JOB_SHADOW_COLLECTOR]: { cadenceSeconds: 3600, staleThresholdSeconds: 9000 }
 };
 
 export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
