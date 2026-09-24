@@ -181,3 +181,73 @@ export function computeCanonicalPreflightHash(
 ): string {
   return computeInputHash(state);
 }
+
+/**
+ * Authoritatively loads the canonical publication preflight input for an article from D1.
+ *
+ * Invariant: Active featured media is resolved strictly from `article_media`
+ * (role = 'featured' AND is_active = 1). Legacy `articles.featured_image` is
+ * treated as a non-authoritative presentation mirror and NEVER used as canonical featuredAssetId.
+ */
+export async function loadCanonicalPublicationPreflightInput(
+  db: any,
+  articleId: number | string,
+  overrides?: Partial<CanonicalPublicationPreflightInput>
+): Promise<CanonicalPublicationPreflightInput | null> {
+  const numericId = Number(articleId);
+  if (!numericId || !Number.isFinite(numericId)) {
+    return null;
+  }
+
+  const query = `
+    SELECT a.id, a.slug, a.status, a.content_hash, a.reading_time_minutes, a.is_sponsored,
+           COALESCE(a.manual_hold, 0) AS manual_hold,
+           ((a.content_md IS NOT NULL AND LENGTH(a.content_md) > 0) OR (a.content_html IS NOT NULL AND LENGTH(a.content_html) > 0)) AS has_content,
+           am.asset_id AS featured_asset_id,
+           COALESCE(r.overall_status, 'NOT_READY') AS readiness_status,
+           r.is_ready
+    FROM articles a
+    LEFT JOIN article_media am ON a.id = am.article_id AND am.role = 'featured' AND am.is_active = 1
+    LEFT JOIN article_publication_readiness r ON a.id = r.article_id
+      AND r.id = (
+        SELECT id FROM article_publication_readiness
+        WHERE article_id = a.id
+        ORDER BY evaluated_at DESC, id DESC
+        LIMIT 1
+      )
+    WHERE a.id = ?
+    LIMIT 1;
+  `;
+
+  let row: any = null;
+  try {
+    row = await db.prepare(query).bind(numericId).first();
+  } catch {
+    return null;
+  }
+
+  if (!row) {
+    return null;
+  }
+
+  const baseInput: CanonicalPublicationPreflightInput = {
+    project: 'RancangLoka',
+    articleId: numericId,
+    slug: String(row.slug || '').trim().toLowerCase(),
+    contentHash: row.content_hash ? String(row.content_hash) : null,
+    hasContent: Boolean(row.has_content),
+    featuredAssetId: row.featured_asset_id ? String(row.featured_asset_id) : null,
+    persistedReadinessStatus: String(row.readiness_status || 'NOT_READY'),
+    isReady: row.is_ready !== undefined && row.is_ready !== null ? Number(row.is_ready) : null,
+    readingTimeMinutes: Math.max(1, Math.round(Number(row.reading_time_minutes) || 5)),
+    isSponsored: Boolean(row.is_sponsored),
+    manualHold: Number(row.manual_hold) || 0,
+    status: String(row.status || 'draft')
+  };
+
+  if (overrides) {
+    return { ...baseInput, ...overrides };
+  }
+
+  return baseInput;
+}

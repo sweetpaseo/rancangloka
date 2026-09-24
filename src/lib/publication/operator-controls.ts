@@ -25,7 +25,8 @@ import {
 } from '../decision/trajectory-ledger.ts';
 import {
   buildCanonicalPublicationPreflightState,
-  computeCanonicalPreflightHash
+  computeCanonicalPreflightHash,
+  loadCanonicalPublicationPreflightInput
 } from '../decision/publication-preflight-state.ts';
 
 export {
@@ -154,11 +155,12 @@ export async function holdArticle(
 
   let ledgerStatements: any[] = [];
   try {
-    const beforeInput = {
+    const loadedBefore = await loadCanonicalPublicationPreflightInput(db, articleId, { manualHold: 0 });
+    const beforeInput = loadedBefore || {
       articleId,
       slug: article.slug,
       contentHash: article.content_hash,
-      featuredAssetId: article.featured_image,
+      featuredAssetId: null,
       manualHold: 0,
       readingTimeMinutes: article.reading_time_minutes,
       isSponsored: Boolean(article.is_sponsored),
@@ -286,11 +288,12 @@ export async function resumeArticleAutomation(
 
   let ledgerStatements: any[] = [];
   try {
-    const beforeInput = {
+    const loadedBefore = await loadCanonicalPublicationPreflightInput(db, articleId, { manualHold: 1 });
+    const beforeInput = loadedBefore || {
       articleId,
       slug: article.slug,
       contentHash: article.content_hash,
-      featuredAssetId: article.featured_image,
+      featuredAssetId: null,
       manualHold: 1,
       readingTimeMinutes: article.reading_time_minutes,
       isSponsored: Boolean(article.is_sponsored),

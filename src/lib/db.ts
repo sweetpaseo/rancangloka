@@ -1371,7 +1371,7 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
       slug,
       contentHash: content_hash,
       hasContent: Boolean(content_md || content_html),
-      featuredAssetId: featured_image || null,
+      featuredAssetId: null,
       readingTimeMinutes: reading_time_minutes,
       isSponsored: Boolean(is_sponsored),
       status
@@ -1380,7 +1380,7 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
       db,
       state,
       content_hash || 'empty',
-      featured_image || null,
+      null,
       'article_insert'
     );
 
@@ -1477,12 +1477,20 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
     // Prepare trajectory ledger capture
     let ledgerStatements: any[] = [];
     try {
+      // Resolve active featured media from authoritative article_media table
+      const activeMedia = await db
+        .prepare('SELECT asset_id FROM article_media WHERE article_id = ? AND role = "featured" AND is_active = 1 LIMIT 1')
+        .bind(id)
+        .first()
+        .catch(() => null);
+      const activeFeaturedAssetId = activeMedia?.asset_id ? String(activeMedia.asset_id) : null;
+
       const beforeInput = {
         articleId: id,
         slug: existing.slug,
         contentHash: existing.content_hash,
         hasContent: Boolean(existing.content_md || existing.content_html),
-        featuredAssetId: existing.featured_image || null,
+        featuredAssetId: activeFeaturedAssetId,
         readingTimeMinutes: existing.reading_time_minutes,
         isSponsored: Boolean(existing.is_sponsored),
         status: existing.status
@@ -1492,7 +1500,7 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
         slug: updatedData.slug,
         contentHash: updatedData.content_hash,
         hasContent: Boolean(updatedData.content_md || updatedData.content_html),
-        featuredAssetId: updatedData.featured_image || null,
+        featuredAssetId: activeFeaturedAssetId,
         readingTimeMinutes: updatedData.reading_time_minutes,
         isSponsored: Boolean(updatedData.is_sponsored),
         status: updatedData.status
@@ -2007,7 +2015,7 @@ export async function insertHermesArticleAndReceipt(
     slug: articleData.slug,
     contentHash: articleData.content_hash,
     hasContent: Boolean(articleData.content_md || articleData.content_html),
-    featuredAssetId: articleData.featured_image || null,
+    featuredAssetId: null,
     readingTimeMinutes: articleData.reading_time_minutes,
     isSponsored: Boolean(articleData.is_sponsored),
     status: 'draft'
@@ -2016,7 +2024,7 @@ export async function insertHermesArticleAndReceipt(
     db,
     state,
     articleData.content_hash || 'empty',
-    articleData.featured_image || null,
+    null,
     'hermes_ingest'
   );
 
