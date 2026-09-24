@@ -17,6 +17,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### MEDIA-A1 & MEDIA-A1.1 Headless Image Provider Adapter & Fal.ai Autonomous Pipeline 2026-09-25
+
+- **Tujuan & Ruang Lingkup:** Menggantikan ketergantungan generasi gambar manual pada browser/ekstensi Chrome dengan adapter API provider headless netral-provider (`ImageProviderAdapter`), memisahkan arsitektur generasi otonom (`fal.ai API` / FLUX) dan generasi manual (`ChatGPT Plus UI` via ekstensi LokaMedia), mengimplementasikan validasi biner deterministik lokal, hashing prompt deterministik, penanganan error bertipe, pelindung panggilan tunggal (`MAX_PROVIDER_GENERATE_CALLS=1`), pencatatan provenance lokal, serta kontrak serah-terima ke tahapan MEDIA-A2.
+- **Klarifikasi Arsitektur Provider Terpisah (Provider Separation):**
+  - **Otonom (Server-Side / Background):** `fal.ai API` menggunakan model `fal-ai/flux/dev` via `FalImageProviderAdapter`. Menggunakan endpoint API komersial terstruktur, mendukung rasio lanskap arsitektural editorial (1312×672 / 1312×656 mendekati ~2:1), materialisasi download URL ke byte lokal, dan otentikasi via `FAL_KEY`.
+  - **Manual (Human-Supervised):** `ChatGPT Plus browser UI` via ekstensi browser LokaMedia / CDP bridge.
+  - **Konvergensi Kontrak:** Kedua jalur generasi menormalkan output ke kontrak downstream kanonikal yang persis sama: `ImageGenerationResult` / `GeneratedImageArtifact`.
+- **Implementasi Abstraksi Netral-Provider (`src/lib/media/`):**
+  - **`image-provider-types.ts`:** Mendefinisikan interface `ImageProviderAdapter`, kontrak permintaan `ImageGenerationRequest`, hasil `ImageGenerationResult`, metadata biaya `ImageCostMetadata`, dan model error bertipe `ImageProviderError` dengan kode: `AUTH_ERROR`, `RATE_LIMIT`, `TIMEOUT`, `PROVIDER_5XX`, `INVALID_RESPONSE`, `CONTENT_POLICY_BLOCK`, `DOWNLOAD_FAILURE`, `UNKNOWN_PROVIDER_ERROR`.
+  - **`image-validation.ts`:** Validator biner deterministik memeriksa magic bytes signature untuk PNG, JPEG, dan WebP, mengekstraksi dimensi piksel asli, menolak payload teks/HTML/error yang menyamar sebagai gambar, serta menghitung hash SHA-256 melalui Web Crypto.
+  - **`headless-image-pipeline.ts`:** Koordinator pipeline headless yang menegakkan kuota panggilan keras canary (`MAX_CALLS`), menghitung SHA-256 prompt yang dinormalisasi (`computePromptSha256`), menyimpan artefak biner lokal, menyusun provenance terverifikasi bebas rahasia, dan memformat kontrak serah-terima `MediaA2InputContract`.
+  - **`fal-image-adapter.ts`:** Adapter resmi fal.ai mengintegrasikan `@fal-ai/client`, menangani pemetaan rasio gambar, pengunduhan biner dari hosted URL, redaksi total rahasia token (`[REDACTED_FAL_KEY]`), dan pemetaan error fal.ai ke model error kanonikal.
+  - **`openai-image-adapter.ts`:** Adapter OpenAI DALL-E 3 yang mendukung mode `b64_json` dengan sanitasi ketat pesan error gateway.
+- **Hasil Pengujian & Verifikasi Unit:**
+  - **`test-headless-image-provider.js`:** 7/7 tes unit lulus (pemetaan permintaan, normalisasi respons, redaksi rahasia, hash prompt deterministik, validasi biner, klasifikasi error bertipe, dan batas 1-panggilan keras).
+  - **`test-fal-image-provider.js`:** 7/7 tes unit fal.ai lulus (pemetaan dimensi fal 1312x672/1024x1024/672x1312, normalisasi URL & download byte, proteksi kredensial, validasi biner, pemetaan error API, dan koordinasi batas panggilan tunggal).
+- **Hasil Regresi & Build Komprehensif:**
+  - `node scripts/test-decision-media-planning.js`: 16/16 PASSED.
+  - `node scripts/test-lokamedia-phase5d4a-watermark-settings.js`: 14/14 PASSED.
+  - `node scripts/test-lokamedia-phase5d4b-watermark-asset-storage.js`: 12/12 PASSED.
+  - `node scripts/test-lokamedia-phase5g1-asset-registration.js`: 40/40 PASSED.
+  - `npx tsc --noEmit`: 0 error tipe.
+  - `npm run build`: Astro production SSR build PASSED (5.86s).
+- **Status Eksekusi Live Canary & Guardrail Kredensial:**
+  - **Canary OpenAI:** 1 panggilan genuine dikirim ke endpoint OpenAI; gateway mengembalikan HTTP 401 (`AUTH_ERROR`) non-billable (`Incorrect API key provided: [REDACTED_KEY]`). Eksekusi berhenti deterministik tanpa mutasi atau tagihan.
+  - **Canary Fal.ai:** Mengikuti guardrail keselamatan Bagian 1 & 2 (*"Check only: FAL_KEY_PRESENT=YES|NO. If NO: STOP"*), sistem memeriksa lingkungan: `FAL_KEY_PRESENT=NO`. Eksekusi berhenti aman sebelum pemanggilan jaringan (`FAL_API_REQUEST_ATTEMPTS=0`, `OFFLINE_BINARY_VALIDATOR_TESTS=PASS`, `LIVE_IMAGE_BINARY_VALIDATION=N/A`).
+- **Invarian Keamanan Produksi:**
+  - `PRODUCTION_D1_MUTATIONS=0`, `PRODUCTION_R2_UPLOADS=0`, `ARTICLE_MEDIA_ATTACHMENTS=0`, `ARTICLE_MUTATIONS=0`, `PUBLICATION_MUTATIONS=0`, `PRODUCTION_DEPLOYED=NO`.
+  - Tidak ada kunci rahasia yang tercetak di log, tersimpan di sumber, atau tersimpan di file provenance.
+  - Artefak lokal berada dalam direktori `artifacts/` yang telah diabaikan oleh Git (`.gitignore`).
+- **Commit Repositori:**
+  - `bbd6d3d`: `feat: add headless image provider adapter`
+  - `eee93ee`: `feat: add fal image provider adapter`
+
 ### MEDIA-W1 Watermark Production End-to-End Canary 2026-09-24
 
 - **Tujuan & Ruang Lingkup:** Membuktikan alur kerja watermark media RancangLoka end-to-end pada lingkungan produksi nyata (`SOURCE IMAGE → WATERMARK CONFIG → DERIVATIVE RENDER → DERIVATIVE BYTES → R2 → MEDIA_ASSETS → FRONTEND DELIVERY`) tanpa memutasi artikel produksi (Artikel 1, 5, 6 tetap utuh), membuktikan imutabilitas mutlak byte sumber asli, serta menjaga seluruh batas kontrol keselamatan (`mode=OFF`, `auto_schedule=false`, `kill_switch=0`, `JEV authority=ZERO`).
