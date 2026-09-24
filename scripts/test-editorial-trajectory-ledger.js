@@ -415,11 +415,12 @@ async function runTestSuite() {
       actorType: 'pipeline_daemon'
     });
 
-    assert.strictEqual(capture1.transitionCreated, true, 'Initial state capture must create transition');
-    assert.strictEqual(capture1.transitionType, 'UNKNOWN_CHANGE', 'Initial capture transition type is UNKNOWN_CHANGE');
-    assert.strictEqual(capture1.statements.length, 2, 'Snapshot + Transition statements present');
+    assert.strictEqual(capture1.transitionCreated, false, 'Initial state capture must NOT create transition');
+    assert.strictEqual(capture1.transitionType, null, 'Initial capture transition type is null');
+    assert.strictEqual(capture1.statements.length, 1, 'Only snapshot statement generated for initial article state');
     await dbMock.batch(capture1.statements);
-    pass('Initial capture produces snapshot and transition');
+    assert.strictEqual(dbMock.transitions.size, 0, 'No transition recorded for initial state');
+    pass('Initial capture produces immutable snapshot with no transition predecessor (INITIAL_STATE_CREATES_TRANSITION=NO)');
 
     // Second evaluation: IDENTICAL readiness re-evaluation (NOOP rule)
     const captureNoop = prepareStateMutationCapture(dbMock, {
@@ -436,7 +437,7 @@ async function runTestSuite() {
     assert.strictEqual(captureNoop.statements.length, 1, 'Only snapshot statement generated (which will dedupe)');
     await dbMock.batch(captureNoop.statements);
 
-    assert.strictEqual(dbMock.transitions.size, 1, 'No new transition rows recorded for NOOP readiness');
+    assert.strictEqual(dbMock.transitions.size, 0, 'No new transition rows recorded for NOOP readiness');
     pass('Identical readiness recomputation creates zero transitions (NOOP_READINESS_REEVALUATION_CREATES_TRANSITION=NO)');
 
     // Third evaluation: Real state change (Manual Hold Engaged)
@@ -453,7 +454,7 @@ async function runTestSuite() {
     assert.strictEqual(captureHeld.transitionCreated, true, 'State change must create transition');
     assert.strictEqual(captureHeld.transitionType, 'MANUAL_HOLD_CHANGED', 'Transition type is MANUAL_HOLD_CHANGED');
     await dbMock.batch(captureHeld.statements);
-    assert.strictEqual(dbMock.transitions.size, 2, 'Transition count increased to 2');
+    assert.strictEqual(dbMock.transitions.size, 1, 'Transition count increased to 1');
     pass('Actual state mutation creates transition row');
   } catch (err) {
     fail('NOOP readiness rule verification failed', err);

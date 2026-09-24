@@ -131,7 +131,8 @@ function createD1TestDb() {
     '0007_publication_readiness_and_approvals.sql',
     '0008_publication_planner.sql',
     '0009_publication_publisher.sql',
-    '0017_auto_schedule_and_manual_hold.sql'
+    '0017_auto_schedule_and_manual_hold.sql',
+    '0023_editorial_trajectory_ledger.sql'
   ];
 
   for (const mig of migrations) {

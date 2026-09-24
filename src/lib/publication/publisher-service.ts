@@ -59,6 +59,15 @@ import {
   type PublicationAuthorizationMode,
   type PublicationAuthorizationResult
 } from './authorization-resolver.ts';
+import {
+  prepareOutcomeCapture,
+  isDecisionQualityFailure,
+  type FailureClass
+} from '../decision/trajectory-ledger.ts';
+import {
+  buildCanonicalPublicationPreflightState,
+  computeCanonicalPreflightHash
+} from '../decision/publication-preflight-state.ts';
 
 export {
   resolvePublicationAuthorization,
@@ -573,6 +582,34 @@ export async function executeAtomicPublication(
     )
   ];
 
+  try {
+    const currentPreflightState = buildCanonicalPublicationPreflightState({
+      articleId: execution.article_id,
+      slug: articleSlug,
+      contentHash: execution.content_hash,
+      featuredAssetId: execution.featured_asset_id
+    });
+    const currentHash = computeCanonicalPreflightHash(currentPreflightState);
+
+    const outcomeCapture = prepareOutcomeCapture(db, {
+      articleId: execution.article_id,
+      inputHash: currentHash,
+      outcomeType: 'publication_succeeded',
+      outcomeClass: 'PUBLICATION',
+      outcomeSource: 'system_publisher',
+      sourceRecordId: receiptId,
+      evidenceReference: `receipt:${receiptId}`,
+      actorType: 'system_publisher',
+      actorId: execution.claimed_by_worker || 'publisher_worker',
+      metadata: telemetryDetails,
+      occurredAt: actualPublishedAt
+    });
+
+    batchStatements.push(outcomeCapture.statement);
+  } catch (ledgerErr) {
+    console.warn('[PublisherService] Non-fatal trajectory outcome preparation failed:', ledgerErr);
+  }
+
   const batchRes = await db.batch(batchStatements);
 
   // Validate that the article update affected exactly 1 row
@@ -667,7 +704,7 @@ export async function processSingleExecution(
 
     if (errorClass === ERROR_CLASS_TERMINAL) {
       // Terminal failure: Fail closed. Set FAILED, do not retry. Block associated plan.
-      await db
+      const updateExecStmt = db
         .prepare(`
           UPDATE article_publication_executions
           SET execution_status = '${EXECUTION_STATUS_FAILED}',
@@ -677,28 +714,67 @@ export async function processSingleExecution(
               updated_at = CURRENT_TIMESTAMP
           WHERE execution_id = ?
         `)
-        .bind(attemptNumber, errorClass, reasonCode, execution.execution_id)
-        .run();
+        .bind(attemptNumber, errorClass, reasonCode, execution.execution_id);
 
       // Block upstream plan
-      await db
+      const updatePlanStmt = db
         .prepare(`
           UPDATE article_publication_plans
           SET plan_status = '${PLAN_STATUS_BLOCKED}', updated_at = CURRENT_TIMESTAMP
           WHERE plan_id = ?
         `)
-        .bind(execution.plan_id)
-        .run();
+        .bind(execution.plan_id);
 
       // Record attempt
-      await db
+      const insertAttemptStmt = db
         .prepare(`
           INSERT INTO publication_execution_attempts (
             execution_id, attempt_number, claimed_by_worker, outcome, error_class, reason_code, duration_ms
           ) VALUES (?, ?, ?, 'TERMINAL_ERROR', ?, ?, ?)
         `)
-        .bind(execution.execution_id, attemptNumber, workerId, errorClass, reasonCode, durationMs)
-        .run();
+        .bind(execution.execution_id, attemptNumber, workerId, errorClass, reasonCode, durationMs);
+
+      const failStatements = [updateExecStmt, updatePlanStmt, insertAttemptStmt];
+
+      try {
+        const currentPreflightState = buildCanonicalPublicationPreflightState({
+          articleId: execution.article_id,
+          slug: gateResult.article ? gateResult.article.slug : '',
+          contentHash: execution.content_hash,
+          featuredAssetId: execution.featured_asset_id
+        });
+        const currentHash = computeCanonicalPreflightHash(currentPreflightState);
+
+        const failureClass: FailureClass = (reasonCode.includes('EDITORIAL') || reasonCode.includes('CONTENT'))
+          ? 'EDITORIAL_FAILURE'
+          : (reasonCode.includes('POLICY') || reasonCode.includes('READINESS') || reasonCode.includes('HOLD')
+            ? 'POLICY_FAILURE'
+            : 'INFRASTRUCTURE_FAILURE');
+
+        const outcomeCapture = prepareOutcomeCapture(db, {
+          articleId: execution.article_id,
+          inputHash: currentHash,
+          outcomeType: 'publication_failed',
+          outcomeClass: isDecisionQualityFailure(failureClass) ? 'PUBLICATION' : 'INFRASTRUCTURE',
+          outcomeSource: 'system_publisher',
+          sourceRecordId: `fail_${execution.execution_id}_${attemptNumber}`,
+          evidenceReference: `execution:${execution.execution_id}:failed`,
+          actorType: 'system_publisher',
+          actorId: workerId,
+          failureClass,
+          metadata: {
+            error_class: errorClass,
+            reason_code: reasonCode,
+            attempt_number: attemptNumber
+          }
+        });
+
+        failStatements.push(outcomeCapture.statement);
+      } catch (ledgerErr) {
+        console.warn('[PublisherService] Non-fatal ledger outcome capture preparation failed on terminal error:', ledgerErr);
+      }
+
+      await db.batch(failStatements);
 
       return {
         executionId: execution.execution_id,
@@ -775,7 +851,7 @@ async function handleRetryableError(
 
   if (attemptNumber >= maxAttempts) {
     // Max attempts exceeded -> Transition to FAILED
-    await db
+    const updateExecStmt = db
       .prepare(`
         UPDATE article_publication_executions
         SET execution_status = '${EXECUTION_STATUS_FAILED}',
@@ -785,17 +861,51 @@ async function handleRetryableError(
             updated_at = CURRENT_TIMESTAMP
         WHERE execution_id = ?
       `)
-      .bind(attemptNumber, ERROR_CLASS_TERMINAL, execution.execution_id)
-      .run();
+      .bind(attemptNumber, ERROR_CLASS_TERMINAL, execution.execution_id);
 
-    await db
+    const insertAttemptStmt = db
       .prepare(`
         INSERT INTO publication_execution_attempts (
           execution_id, attempt_number, claimed_by_worker, outcome, error_class, reason_code, duration_ms
         ) VALUES (?, ?, ?, 'TERMINAL_ERROR', ?, 'MAX_RETRIES_EXCEEDED', ?)
       `)
-      .bind(execution.execution_id, attemptNumber, workerId, ERROR_CLASS_TERMINAL, durationMs)
-      .run();
+      .bind(execution.execution_id, attemptNumber, workerId, ERROR_CLASS_TERMINAL, durationMs);
+
+    const retryFailStatements = [updateExecStmt, insertAttemptStmt];
+
+    try {
+      const currentPreflightState = buildCanonicalPublicationPreflightState({
+        articleId: execution.article_id,
+        slug: (execution as any).slug || '',
+        contentHash: execution.content_hash,
+        featuredAssetId: execution.featured_asset_id
+      });
+      const currentHash = computeCanonicalPreflightHash(currentPreflightState);
+
+      const outcomeCapture = prepareOutcomeCapture(db, {
+        articleId: execution.article_id,
+        inputHash: currentHash,
+        outcomeType: 'publication_failed',
+        outcomeClass: 'INFRASTRUCTURE',
+        outcomeSource: 'system_publisher',
+        sourceRecordId: `retry_fail_${execution.execution_id}_${attemptNumber}`,
+        evidenceReference: `execution:${execution.execution_id}:max_retries_exceeded`,
+        actorType: 'system_publisher',
+        actorId: workerId,
+        failureClass: 'INFRASTRUCTURE_FAILURE',
+        metadata: {
+          error_class: ERROR_CLASS_TERMINAL,
+          reason_code: 'MAX_RETRIES_EXCEEDED',
+          attempt_number: attemptNumber
+        }
+      });
+
+      retryFailStatements.push(outcomeCapture.statement);
+    } catch (ledgerErr) {
+      console.warn('[PublisherService] Non-fatal ledger outcome capture preparation failed on max retries:', ledgerErr);
+    }
+
+    await db.batch(retryFailStatements);
 
     return {
       executionId: execution.execution_id,
@@ -1158,7 +1268,7 @@ export async function cancelExecution(
     throw new Error('CANNOT_CANCEL_PUBLISHING: Execution is actively publishing');
   }
 
-  await db
+  const cancelStmt = db
     .prepare(`
       UPDATE article_publication_executions
       SET execution_status = '${EXECUTION_STATUS_CANCELLED}',
@@ -1168,17 +1278,46 @@ export async function cancelExecution(
           updated_at = CURRENT_TIMESTAMP
       WHERE execution_id = ?
     `)
-    .bind(reason, executionId)
-    .run();
+    .bind(reason, executionId);
 
-  await db
+  const eventStmt = db
     .prepare(`
       INSERT INTO publication_plan_events (
         plan_id, article_id, event_type, actor_type, actor_id, details_json
       ) VALUES (?, ?, 'CANCELLED', 'operator', ?, ?)
     `)
-    .bind(execution.plan_id, execution.article_id, actor, JSON.stringify({ executionId, reason }))
-    .run();
+    .bind(execution.plan_id, execution.article_id, actor, JSON.stringify({ executionId, reason }));
+
+  const cancelStatements = [cancelStmt, eventStmt];
+
+  try {
+    const currentPreflightState = buildCanonicalPublicationPreflightState({
+      articleId: execution.article_id,
+      slug: (execution as any).slug || '',
+      contentHash: execution.content_hash,
+      featuredAssetId: execution.featured_asset_id
+    });
+    const currentHash = computeCanonicalPreflightHash(currentPreflightState);
+
+    const outcomeCapture = prepareOutcomeCapture(db, {
+      articleId: execution.article_id,
+      inputHash: currentHash,
+      outcomeType: 'publication_cancelled',
+      outcomeClass: 'PUBLICATION',
+      outcomeSource: 'operator_control',
+      sourceRecordId: `cancel_${execution.execution_id}`,
+      evidenceReference: `execution:${execution.execution_id}:cancelled`,
+      actorType: 'admin_operator',
+      actorId: actor,
+      metadata: { reason, executionId }
+    });
+
+    cancelStatements.push(outcomeCapture.statement);
+  } catch (ledgerErr) {
+    console.warn('[PublisherService] Non-fatal ledger outcome capture preparation failed on cancellation:', ledgerErr);
+  }
+
+  await db.batch(cancelStatements);
 }
 
 /**

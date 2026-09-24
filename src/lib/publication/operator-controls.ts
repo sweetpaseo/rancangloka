@@ -18,6 +18,14 @@ import {
   changeAutoSchedule,
   getRecentAutomationControlAudit
 } from '../safety/automation-controller.ts';
+import {
+  prepareStateMutationCapture,
+  generateMutationOperationId
+} from '../decision/trajectory-ledger.ts';
+import {
+  buildCanonicalPublicationPreflightState,
+  computeCanonicalPreflightHash
+} from '../decision/publication-preflight-state.ts';
 
 export {
   changeAutomationMode,
@@ -89,7 +97,7 @@ export async function holdArticle(
   const { actorId, actorRole } = parseActor(actor);
 
   const article = await db
-    .prepare('SELECT id, status, COALESCE(manual_hold, 0) AS manual_hold, manual_hold_reason, manual_hold_at, manual_hold_by FROM articles WHERE id = ? LIMIT 1')
+    .prepare('SELECT id, slug, status, content_hash, featured_image, reading_time_minutes, is_sponsored, COALESCE(manual_hold, 0) AS manual_hold, manual_hold_reason, manual_hold_at, manual_hold_by FROM articles WHERE id = ? LIMIT 1')
     .bind(articleId)
     .first();
 
@@ -115,7 +123,7 @@ export async function holdArticle(
     };
   }
 
-  await db
+  const updateStmt = db
     .prepare(`
       UPDATE articles
       SET manual_hold = 1,
@@ -125,18 +133,59 @@ export async function holdArticle(
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `)
-    .bind(reason, actorId, articleId)
-    .run();
+    .bind(reason, actorId, articleId);
 
-  // Audit event
-  await logOperatorAudit(db, {
-    eventType: 'MANUAL_HOLD_SET',
-    articleId,
-    actorId,
-    actorRole,
-    reason,
-    details: { previousManualHold: 0, newManualHold: 1 }
-  });
+  const auditStmt = db
+    .prepare(`
+      INSERT INTO publication_operator_audit (
+        event_type, article_id, plan_id, execution_id,
+        actor_id, actor_role, reason, details_json, created_at
+      ) VALUES (?, ?, NULL, NULL, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `)
+    .bind(
+      'MANUAL_HOLD_SET',
+      articleId,
+      actorId,
+      actorRole || 'admin_operator',
+      reason,
+      JSON.stringify({ previousManualHold: 0, newManualHold: 1 })
+    );
+
+  let ledgerStatements: any[] = [];
+  try {
+    const beforeInput = {
+      articleId,
+      slug: article.slug,
+      contentHash: article.content_hash,
+      featuredAssetId: article.featured_image,
+      manualHold: 0,
+      readingTimeMinutes: article.reading_time_minutes,
+      isSponsored: Boolean(article.is_sponsored),
+      status: article.status
+    };
+    const afterInput = {
+      ...beforeInput,
+      manualHold: 1
+    };
+    const fromHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(beforeInput));
+    const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
+    const mopId = generateMutationOperationId('manual_hold_engaged', articleId, fromHash, toHash);
+
+    const capture = prepareStateMutationCapture(db, {
+      articleId,
+      beforeInput,
+      afterInput,
+      captureSource: 'operator_controls',
+      mutationOperationId: mopId,
+      actorType: 'admin_operator',
+      actorId
+    });
+    ledgerStatements = capture.statements;
+  } catch {
+    // safe fallback
+  }
+
+  await db.batch([updateStmt, auditStmt, ...ledgerStatements]);
 
   return {
     success: true,
@@ -167,7 +216,7 @@ export async function resumeArticleAutomation(
   const { actorId, actorRole } = parseActor(actor);
 
   const article = await db
-    .prepare('SELECT id, status, COALESCE(manual_hold, 0) AS manual_hold FROM articles WHERE id = ? LIMIT 1')
+    .prepare('SELECT id, slug, status, content_hash, featured_image, reading_time_minutes, is_sponsored, COALESCE(manual_hold, 0) AS manual_hold FROM articles WHERE id = ? LIMIT 1')
     .bind(articleId)
     .first();
 
@@ -188,7 +237,7 @@ export async function resumeArticleAutomation(
     };
   }
 
-  await db
+  const updateStmt = db
     .prepare(`
       UPDATE articles
       SET manual_hold = 0,
@@ -198,18 +247,59 @@ export async function resumeArticleAutomation(
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `)
-    .bind(articleId)
-    .run();
+    .bind(articleId);
 
-  // Audit event
-  await logOperatorAudit(db, {
-    eventType: 'MANUAL_HOLD_CLEARED',
-    articleId,
-    actorId,
-    actorRole,
-    reason,
-    details: { previousManualHold: 1, newManualHold: 0 }
-  });
+  const auditStmt = db
+    .prepare(`
+      INSERT INTO publication_operator_audit (
+        event_type, article_id, plan_id, execution_id,
+        actor_id, actor_role, reason, details_json, created_at
+      ) VALUES (?, ?, NULL, NULL, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `)
+    .bind(
+      'MANUAL_HOLD_CLEARED',
+      articleId,
+      actorId,
+      actorRole || 'admin_operator',
+      reason,
+      JSON.stringify({ previousManualHold: 1, newManualHold: 0 })
+    );
+
+  let ledgerStatements: any[] = [];
+  try {
+    const beforeInput = {
+      articleId,
+      slug: article.slug,
+      contentHash: article.content_hash,
+      featuredAssetId: article.featured_image,
+      manualHold: 1,
+      readingTimeMinutes: article.reading_time_minutes,
+      isSponsored: Boolean(article.is_sponsored),
+      status: article.status
+    };
+    const afterInput = {
+      ...beforeInput,
+      manualHold: 0
+    };
+    const fromHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(beforeInput));
+    const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
+    const mopId = generateMutationOperationId('manual_hold_cleared', articleId, fromHash, toHash);
+
+    const capture = prepareStateMutationCapture(db, {
+      articleId,
+      beforeInput,
+      afterInput,
+      captureSource: 'operator_controls',
+      mutationOperationId: mopId,
+      actorType: 'admin_operator',
+      actorId
+    });
+    ledgerStatements = capture.statements;
+  } catch {
+    // safe fallback
+  }
+
+  await db.batch([updateStmt, auditStmt, ...ledgerStatements]);
 
   return {
     success: true,

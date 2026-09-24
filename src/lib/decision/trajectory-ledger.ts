@@ -491,7 +491,18 @@ export function prepareStateMutationCapture(
     fromSnapshotId = `snp_${fromHash}_${params.articleId}`;
   }
 
-  // 2. Derive transition type & Check for NOOP
+  // 2. Initial state check: a newly created article has no previous snapshot; capture snapshot only, NO fake transition
+  if (!params.beforeInput) {
+    return {
+      statements,
+      transitionCreated: false,
+      toInputHash: toHash,
+      fromInputHash: null,
+      transitionType: null
+    };
+  }
+
+  // 3. Derive transition type & Check for NOOP
   const transitionType = deriveTransitionType(params.beforeInput, params.afterInput);
   if (transitionType === null) {
     return {
@@ -595,3 +606,55 @@ export function prepareOutcomeCapture(
     outcomeId
   };
 }
+
+/**
+ * Executes state mutation capture directly against D1 (useful when not batching with outer statements).
+ */
+export async function recordStateTransition(
+  db: any,
+  params: CaptureTransitionParams
+): Promise<{
+  transitionCreated: boolean;
+  toInputHash: string;
+  fromInputHash: string | null;
+  transitionType: TransitionType | null;
+}> {
+  const capture = prepareStateMutationCapture(db, params);
+  if (capture.statements.length > 0) {
+    await db.batch(capture.statements);
+  }
+  return {
+    transitionCreated: capture.transitionCreated,
+    toInputHash: capture.toInputHash,
+    fromInputHash: capture.fromInputHash,
+    transitionType: capture.transitionType
+  };
+}
+
+/**
+ * Executes outcome recording directly against D1.
+ */
+export async function recordDecisionOutcome(
+  db: any,
+  params: Parameters<typeof prepareOutcomeCapture>[1]
+): Promise<{ outcomeId: string; idempotencyKey: string }> {
+  const { statement, outcomeId, idempotencyKey } = prepareOutcomeCapture(db, params);
+  await statement.run();
+  return { outcomeId, idempotencyKey };
+}
+
+/**
+ * Persists an immutable canonical snapshot for an article state.
+ */
+export async function persistCanonicalSnapshot(
+  db: any,
+  state: PublicationPreflightCanonicalState,
+  contentHash: string,
+  featuredAssetId: string | null,
+  captureSource: string,
+  occurredAt?: string
+): Promise<void> {
+  const stmt = prepareCaptureSnapshotStatement(db, state, contentHash, featuredAssetId, captureSource, occurredAt);
+  await stmt.run();
+}
+

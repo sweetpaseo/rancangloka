@@ -9,6 +9,16 @@ import {
   DatabaseConstraintError,
   ArticleNotFoundError
 } from './errors.ts';
+import {
+  prepareStateMutationCapture,
+  prepareCaptureSnapshotStatement,
+  generateMutationOperationId,
+  computeLightweightDiffMetrics
+} from './decision/trajectory-ledger.ts';
+import {
+  buildCanonicalPublicationPreflightState,
+  computeCanonicalPreflightHash
+} from './decision/publication-preflight-state.ts';
 
 export interface Article {
   id: number;
@@ -1385,6 +1395,30 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
       throw new DatabaseWriteError(`Artikel dengan ID ${insertedId} tidak dapat diverifikasi setelah INSERT.`);
     }
 
+    // Trajectory Ledger: Record initial immutable state snapshot (INITIAL_STATE_CREATES_TRANSITION = NO)
+    try {
+      const state = buildCanonicalPublicationPreflightState({
+        articleId: insertedId,
+        slug: persisted.slug,
+        contentHash: persisted.content_hash,
+        hasContent: Boolean(persisted.content_md || persisted.content_html),
+        featuredAssetId: persisted.featured_image || null,
+        readingTimeMinutes: persisted.reading_time_minutes,
+        isSponsored: Boolean(persisted.is_sponsored),
+        status: persisted.status
+      });
+      const snapStmt = prepareCaptureSnapshotStatement(
+        db,
+        state,
+        persisted.content_hash || 'empty',
+        persisted.featured_image || null,
+        'article_insert'
+      );
+      await snapStmt.run();
+    } catch {
+      // safe fallback
+    }
+
     return persisted;
   }
 
@@ -1454,40 +1488,87 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
       updated_at: new Date().toISOString()
     };
 
+    // Prepare trajectory ledger capture
+    let ledgerStatements: any[] = [];
     try {
-      await db
-        .prepare(`
-          UPDATE articles SET
-            title = ?, slug = ?, description = ?, content_md = ?, content_html = ?,
-            featured_image = ?, image_alt = ?, category_id = ?, author_id = ?,
-            status = ?, reading_time_minutes = ?, key_takeaways = ?, focus_keyword = ?,
-            content_hash = ?, is_featured = ?, is_trending = ?, is_sponsored = ?,
-            disable_internal_links = ?, updated_at = ?
-          WHERE id = ?
-        `)
-        .bind(
-          updatedData.title,
-          updatedData.slug,
-          updatedData.description,
-          updatedData.content_md,
-          updatedData.content_html,
-          updatedData.featured_image,
-          updatedData.image_alt,
-          updatedData.category_id,
-          updatedData.author_id,
-          updatedData.status,
-          updatedData.reading_time_minutes,
-          updatedData.key_takeaways,
-          updatedData.focus_keyword,
-          updatedData.content_hash,
-          updatedData.is_featured,
-          updatedData.is_trending,
-          updatedData.is_sponsored,
-          updatedData.disable_internal_links,
-          updatedData.updated_at,
-          id
-        )
-        .run();
+      const beforeInput = {
+        articleId: id,
+        slug: existing.slug,
+        contentHash: existing.content_hash,
+        hasContent: Boolean(existing.content_md || existing.content_html),
+        featuredAssetId: existing.featured_image || null,
+        readingTimeMinutes: existing.reading_time_minutes,
+        isSponsored: Boolean(existing.is_sponsored),
+        status: existing.status
+      };
+      const afterInput = {
+        articleId: id,
+        slug: updatedData.slug,
+        contentHash: updatedData.content_hash,
+        hasContent: Boolean(updatedData.content_md || updatedData.content_html),
+        featuredAssetId: updatedData.featured_image || null,
+        readingTimeMinutes: updatedData.reading_time_minutes,
+        isSponsored: Boolean(updatedData.is_sponsored),
+        status: updatedData.status
+      };
+      const fromHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(beforeInput));
+      const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
+      const mopId = generateMutationOperationId('content_edit', id, fromHash, toHash, (article as any).mutation_operation_id);
+      const diffMetrics = computeLightweightDiffMetrics(existing.content_md, updatedData.content_md);
+
+      const capture = prepareStateMutationCapture(db, {
+        articleId: id,
+        beforeInput,
+        afterInput,
+        captureSource: 'article_content_edit',
+        mutationOperationId: mopId,
+        actorType: 'admin_operator',
+        metadata: diffMetrics ? { diff_metrics: diffMetrics } : undefined
+      });
+      ledgerStatements = capture.statements;
+    } catch {
+      // safe fallback if ledger preparation encounters untracked fields
+    }
+
+    const updateStmt = db
+      .prepare(`
+        UPDATE articles SET
+          title = ?, slug = ?, description = ?, content_md = ?, content_html = ?,
+          featured_image = ?, image_alt = ?, category_id = ?, author_id = ?,
+          status = ?, reading_time_minutes = ?, key_takeaways = ?, focus_keyword = ?,
+          content_hash = ?, is_featured = ?, is_trending = ?, is_sponsored = ?,
+          disable_internal_links = ?, updated_at = ?
+        WHERE id = ?
+      `)
+      .bind(
+        updatedData.title,
+        updatedData.slug,
+        updatedData.description,
+        updatedData.content_md,
+        updatedData.content_html,
+        updatedData.featured_image,
+        updatedData.image_alt,
+        updatedData.category_id,
+        updatedData.author_id,
+        updatedData.status,
+        updatedData.reading_time_minutes,
+        updatedData.key_takeaways,
+        updatedData.focus_keyword,
+        updatedData.content_hash,
+        updatedData.is_featured,
+        updatedData.is_trending,
+        updatedData.is_sponsored,
+        updatedData.disable_internal_links,
+        updatedData.updated_at,
+        id
+      );
+
+    try {
+      if (ledgerStatements.length > 0) {
+        await db.batch([updateStmt, ...ledgerStatements]);
+      } else {
+        await updateStmt.run();
+      }
     } catch (err: any) {
       const msg = err?.message || String(err);
       if (msg.includes('UNIQUE constraint failed') || msg.includes('PRIMARY KEY must be unique')) {
@@ -1956,6 +2037,30 @@ export async function insertHermesArticleAndReceipt(
 
   if (!persistedArticle || !persistedReceipt) {
     throw new DatabaseWriteError('Verifikasi konsistensi artikel dan receipt setelah commit batch gagal.');
+  }
+
+  // Trajectory Ledger: Record initial immutable snapshot for newly ingested Hermes article (INITIAL_STATE_CREATES_TRANSITION = NO)
+  try {
+    const state = buildCanonicalPublicationPreflightState({
+      articleId: insertedArticleId,
+      slug: persistedArticle.slug,
+      contentHash: persistedArticle.content_hash,
+      hasContent: Boolean(persistedArticle.content_md || persistedArticle.content_html),
+      featuredAssetId: persistedArticle.featured_image || null,
+      readingTimeMinutes: persistedArticle.reading_time_minutes,
+      isSponsored: Boolean(persistedArticle.is_sponsored),
+      status: 'draft'
+    });
+    const snapStmt = prepareCaptureSnapshotStatement(
+      db,
+      state,
+      persistedArticle.content_hash || 'empty',
+      persistedArticle.featured_image || null,
+      'hermes_ingest'
+    );
+    await snapStmt.run();
+  } catch {
+    // safe fallback
   }
 
   return {

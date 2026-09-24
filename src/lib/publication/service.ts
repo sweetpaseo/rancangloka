@@ -31,6 +31,15 @@ import {
   type ReadinessSnapshotPayload,
   type EditorialApprovalRecord
 } from './types.ts';
+import {
+  prepareStateMutationCapture,
+  prepareOutcomeCapture,
+  generateMutationOperationId
+} from '../decision/trajectory-ledger.ts';
+import {
+  buildCanonicalPublicationPreflightState,
+  computeCanonicalPreflightHash
+} from '../decision/publication-preflight-state.ts';
 
 export const BANNED_PLACEHOLDERS = [
   '[EVIDENCE NEEDED]',
@@ -586,9 +595,9 @@ export async function evaluateArticleReadiness(
     blockers: uniqueBlockers
   };
 
-  // Persist immutable snapshot into article_publication_readiness
+  // Persist immutable snapshot into article_publication_readiness and trajectory ledger
   try {
-    await db
+    const insertReadinessStmt = db
       .prepare(
         `INSERT INTO article_publication_readiness (
           article_id, is_ready, overall_status, content_hash, snapshot_json, evaluated_at
@@ -600,8 +609,65 @@ export async function evaluateArticleReadiness(
         overallStatus,
         currentContentHash,
         JSON.stringify(snapshot)
-      )
-      .run();
+      );
+
+    let ledgerStatements: any[] = [];
+    try {
+      const priorStateRow = await db
+        .prepare('SELECT input_hash, persisted_readiness_status, planner_eligibility_status FROM article_state_snapshots WHERE article_id = ? ORDER BY captured_at DESC LIMIT 1')
+        .bind(articleId)
+        .first();
+
+      const normalizedReadiness = overallStatus === PUBLICATION_STATUS_READY_TO_SCHEDULE
+        ? 'READY_TO_SCHEDULE'
+        : (overallStatus === PUBLICATION_STATUS_BLOCKED ? 'BLOCKED' : 'NOT_READY');
+
+      const currentPreflightInput: any = {
+        articleId,
+        slug: article.slug || '',
+        contentHash: currentContentHash,
+        hasContent: Boolean(article.content_md || article.content_html),
+        featuredAssetId: mediaSnapshotInfo.asset_id || null,
+        referencesPresent: Boolean(evidencePass),
+        persistedReadinessStatus: normalizedReadiness,
+        isReady: isReady ? 1 : 0,
+        readingTimeMinutes: article.reading_time_minutes || 5,
+        isSponsored: Boolean(article.is_sponsored),
+        manualHold: article.manual_hold || 0,
+        status: article.status || 'draft'
+      };
+
+      let beforePreflightInput: any = null;
+      if (priorStateRow) {
+        beforePreflightInput = {
+          ...currentPreflightInput,
+          persistedReadinessStatus: priorStateRow.persisted_readiness_status
+        };
+      }
+
+      const currentCanonical = buildCanonicalPublicationPreflightState(currentPreflightInput);
+      const toHash = computeCanonicalPreflightHash(currentCanonical);
+      const fromHash = priorStateRow?.input_hash || null;
+      const mopId = generateMutationOperationId('readiness_eval', articleId, fromHash, toHash);
+
+      const capture = prepareStateMutationCapture(db, {
+        articleId,
+        beforeInput: beforePreflightInput,
+        afterInput: currentPreflightInput,
+        captureSource: 'readiness_evaluation',
+        mutationOperationId: mopId,
+        actorType: 'pipeline_daemon'
+      });
+      ledgerStatements = capture.statements;
+    } catch {
+      // safe fallback
+    }
+
+    if (ledgerStatements.length > 0) {
+      await db.batch([insertReadinessStmt, ...ledgerStatements]);
+    } else {
+      await insertReadinessStmt.run();
+    }
   } catch (err: any) {
     console.error('Failed to persist publication readiness snapshot:', err.message);
   }
@@ -654,8 +720,8 @@ export async function recordEditorialApproval(
   const approvedRole = params.approvedRole || 'editor_in_chief';
   const notes = params.notes || null;
 
-  // 3. Insert into article_editorial_approvals
-  const insertResult = await db
+  // 3. Insert into article_editorial_approvals and trajectory decision outcomes
+  const insertApprovalStmt = db
     .prepare(
       `INSERT INTO article_editorial_approvals (
         article_id, approved_by, approved_role, approval_status,
@@ -670,10 +736,44 @@ export async function recordEditorialApproval(
       article.content_hash,
       mediaBinding.asset_id,
       notes
-    )
-    .run();
+    );
 
-  const approvalId = insertResult.lastRowId || insertResult.meta?.last_row_id || 1;
+  let outcomeStmt: any = null;
+  try {
+    const currentPreflightState = buildCanonicalPublicationPreflightState({
+      articleId: params.articleId,
+      slug: article.slug,
+      contentHash: article.content_hash,
+      featuredAssetId: mediaBinding.asset_id
+    });
+    const currentHash = computeCanonicalPreflightHash(currentPreflightState);
+
+    const outcomeCapture = prepareOutcomeCapture(db, {
+      articleId: params.articleId,
+      inputHash: currentHash,
+      outcomeType: 'human_approved',
+      outcomeClass: 'HUMAN_EDITORIAL',
+      outcomeSource: 'admin_preview',
+      sourceRecordId: `appr_a${params.articleId}_${Date.now()}`,
+      evidenceReference: `dual_approval_editor_${params.approvedBy}`,
+      actorType: 'human_editor',
+      actorId: params.approvedBy,
+      metadata: { approved_role: approvedRole, notes }
+    });
+    outcomeStmt = outcomeCapture.statement;
+  } catch {
+    // safe fallback
+  }
+
+  let insertResult: any;
+  if (outcomeStmt) {
+    const batchRes = await db.batch([insertApprovalStmt, outcomeStmt]);
+    insertResult = batchRes[0];
+  } else {
+    insertResult = await insertApprovalStmt.run();
+  }
+
+  const approvalId = insertResult?.lastRowId || insertResult?.meta?.last_row_id || 1;
 
   const approvalRecord: EditorialApprovalRecord = {
     id: approvalId,
@@ -714,8 +814,8 @@ export async function revokeEditorialApproval(
     throw new Error(`ARTICLE_NOT_FOUND: Article with ID ${params.articleId} not found`);
   }
 
-  // Insert revocation record
-  await db
+  // Insert revocation record and outcome
+  const insertRevokeStmt = db
     .prepare(
       `INSERT INTO article_editorial_approvals (
         article_id, approved_by, approved_role, approval_status,
@@ -727,8 +827,39 @@ export async function revokeEditorialApproval(
       params.revokedBy,
       APPROVAL_STATUS_REVOKED,
       params.notes || 'Approval explicitly revoked'
-    )
-    .run();
+    );
+
+  let outcomeStmt: any = null;
+  try {
+    const currentPreflightState = buildCanonicalPublicationPreflightState({
+      articleId: params.articleId,
+      slug: article.slug,
+      contentHash: article.content_hash
+    });
+    const currentHash = computeCanonicalPreflightHash(currentPreflightState);
+
+    const outcomeCapture = prepareOutcomeCapture(db, {
+      articleId: params.articleId,
+      inputHash: currentHash,
+      outcomeType: 'human_approval_revoked',
+      outcomeClass: 'HUMAN_EDITORIAL',
+      outcomeSource: 'admin_preview',
+      sourceRecordId: `revk_a${params.articleId}_${Date.now()}`,
+      evidenceReference: `revocation_by_${params.revokedBy}`,
+      actorType: 'human_editor',
+      actorId: params.revokedBy,
+      metadata: { notes: params.notes }
+    });
+    outcomeStmt = outcomeCapture.statement;
+  } catch {
+    // safe fallback
+  }
+
+  if (outcomeStmt) {
+    await db.batch([insertRevokeStmt, outcomeStmt]);
+  } else {
+    await insertRevokeStmt.run();
+  }
 
   // Re-evaluate readiness
   const snapshot = await evaluateArticleReadiness(db, params.articleId);

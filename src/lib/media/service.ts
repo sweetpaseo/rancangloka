@@ -11,6 +11,15 @@
  * 6. Least-privilege authentication (independent of Hermes ingest).
  */
 
+import {
+  prepareStateMutationCapture,
+  generateMutationOperationId
+} from '../decision/trajectory-ledger.ts';
+import {
+  buildCanonicalPublicationPreflightState,
+  computeCanonicalPreflightHash
+} from '../decision/publication-preflight-state.ts';
+
 export const MEDIA_TYPE_IMAGE = 'image';
 export const MEDIA_TYPE_VIDEO = 'video'; // Reserved
 
@@ -652,14 +661,15 @@ export async function processMediaUpload(
     articleMediaId = Number(existingActiveBinding.id);
   } else {
     if (params.role === ROLE_FEATURED) {
+      const priorAssetId = existingActiveBinding?.asset_id || null;
+
       // Deactivate previous active featured binding on this article
-      await db
+      const deactivateStmt = db
         .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE article_id = ? AND slot_key = ? AND is_active = 1')
-        .bind(params.articleId, slotKey)
-        .run();
+        .bind(params.articleId, slotKey);
 
       // Create new active featured binding
-      const insertRes = await db
+      const insertMediaStmt = db
         .prepare(
           `
           INSERT INTO article_media (
@@ -667,16 +677,58 @@ export async function processMediaUpload(
           ) VALUES (?, ?, ?, ?, 1, 0, ?);
         `
         )
-        .bind(params.articleId, assetId, ROLE_FEATURED, slotKey, params.caption || null)
-        .run();
-      articleMediaId = Number(insertRes?.meta?.last_row_id ?? insertRes?.lastInsertRowid ?? 0) || null;
+        .bind(params.articleId, assetId, ROLE_FEATURED, slotKey, params.caption || null);
 
       // Update compatibility mirrors on articles table
       // (content_md, content_html, content_hash remain UNTOUCHED; status remains DRAFT)
-      await db
+      const updateArticleStmt = db
         .prepare('UPDATE articles SET featured_image = ?, image_alt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?')
-        .bind(publicUrl, cleanAlt, params.articleId, 'draft')
-        .run();
+        .bind(publicUrl, cleanAlt, params.articleId, 'draft');
+
+      // Trajectory Ledger Capture
+      let ledgerStatements: any[] = [];
+      try {
+        const article = await db.prepare('SELECT slug, content_hash, manual_hold, reading_time_minutes, is_sponsored, status FROM articles WHERE id = ?').bind(params.articleId).first();
+        if (article) {
+          const beforeInput = {
+            articleId: params.articleId,
+            slug: article.slug,
+            contentHash: article.content_hash,
+            featuredAssetId: priorAssetId,
+            manualHold: article.manual_hold,
+            readingTimeMinutes: article.reading_time_minutes,
+            isSponsored: Boolean(article.is_sponsored),
+            status: article.status
+          };
+          const afterInput = {
+            ...beforeInput,
+            featuredAssetId: assetId
+          };
+          const fromHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(beforeInput));
+          const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
+          const mopId = generateMutationOperationId('media_binding', params.articleId, fromHash, toHash);
+
+          const capture = prepareStateMutationCapture(db, {
+            articleId: params.articleId,
+            beforeInput,
+            afterInput,
+            captureSource: 'featured_media_binding',
+            mutationOperationId: mopId,
+            actorType: 'admin_operator'
+          });
+          ledgerStatements = capture.statements;
+        }
+      } catch {
+        // safe fallback
+      }
+
+      const batchResults = await db.batch([
+        deactivateStmt,
+        insertMediaStmt,
+        updateArticleStmt,
+        ...ledgerStatements
+      ]);
+      articleMediaId = Number(batchResults[1]?.meta?.last_row_id ?? batchResults[1]?.lastInsertRowid ?? 0) || null;
     } else {
       // Inline media
       await db
@@ -766,3 +818,176 @@ export async function processMediaUpload(
     receiptType: receiptId ? 'ATTACHMENT_CONFIRMED' : undefined
   };
 }
+
+/**
+ * Unbinds / removes active featured media from an article.
+ * Triggers MEDIA_REMOVED transition.
+ */
+export async function unbindFeaturedMedia(
+  db: any,
+  articleId: number,
+  actorId?: string
+): Promise<{ success: boolean; previousAssetId: string | null }> {
+  const existing = await db
+    .prepare("SELECT asset_id, slot_key FROM article_media WHERE article_id = ? AND role = 'featured' AND is_active = 1 LIMIT 1")
+    .bind(articleId)
+    .first();
+
+  if (!existing) {
+    return { success: true, previousAssetId: null };
+  }
+
+  const deactivateStmt = db
+    .prepare("UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE article_id = ? AND role = 'featured' AND is_active = 1")
+    .bind(articleId);
+
+  const updateArticleStmt = db
+    .prepare("UPDATE articles SET featured_image = '', image_alt = '', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .bind(articleId);
+
+  let ledgerStatements: any[] = [];
+  try {
+    const article = await db.prepare('SELECT slug, content_hash, manual_hold, reading_time_minutes, is_sponsored, status FROM articles WHERE id = ?').bind(articleId).first();
+    if (article) {
+      const beforeInput = {
+        articleId,
+        slug: article.slug,
+        contentHash: article.content_hash,
+        featuredAssetId: existing.asset_id,
+        manualHold: article.manual_hold,
+        readingTimeMinutes: article.reading_time_minutes,
+        isSponsored: Boolean(article.is_sponsored),
+        status: article.status
+      };
+      const afterInput = {
+        ...beforeInput,
+        featuredAssetId: null
+      };
+      const fromHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(beforeInput));
+      const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
+      const mopId = generateMutationOperationId('media_unbind', articleId, fromHash, toHash);
+
+      const capture = prepareStateMutationCapture(db, {
+        articleId,
+        beforeInput,
+        afterInput,
+        captureSource: 'featured_media_unbind',
+        mutationOperationId: mopId,
+        actorType: 'admin_operator',
+        actorId
+      });
+      ledgerStatements = capture.statements;
+    }
+  } catch {
+    // safe fallback
+  }
+
+  await db.batch([deactivateStmt, updateArticleStmt, ...ledgerStatements]);
+  return { success: true, previousAssetId: existing.asset_id };
+}
+
+/**
+ * Binds an existing validated media asset to an article with role.
+ * Triggers MEDIA_ADDED or MEDIA_REPLACED transition atomically via D1 batch.
+ */
+export async function bindMediaToArticle(
+  db: any,
+  params: {
+    articleId: number;
+    assetId: string;
+    role?: string;
+    slotKey?: string;
+    publicUrl?: string;
+    altText?: string;
+    caption?: string;
+    boundBy?: string;
+  }
+): Promise<{ success: boolean; articleMediaId: number | null }> {
+  const role = params.role || ROLE_FEATURED;
+  const slotKey = params.slotKey || (role === ROLE_FEATURED ? 'featured' : 'inline');
+  const cleanAlt = (params.altText || '').trim();
+  const publicUrl = params.publicUrl || `https://rancangloka.com/media/${params.assetId}.webp`;
+
+  let existingActiveBinding = await db
+    .prepare('SELECT id, asset_id FROM article_media WHERE article_id = ? AND slot_key = ? AND is_active = 1')
+    .bind(params.articleId, slotKey)
+    .first();
+  if (!existingActiveBinding) {
+    existingActiveBinding = await db
+      .prepare('SELECT id, asset_id FROM article_media WHERE article_id = ? AND asset_id = ? AND role = ? AND is_active = 1')
+      .bind(params.articleId, params.assetId, role)
+      .first();
+  }
+
+  if (existingActiveBinding && existingActiveBinding.asset_id === params.assetId) {
+    return { success: true, articleMediaId: Number(existingActiveBinding.id) };
+  }
+
+  const priorAssetId = existingActiveBinding?.asset_id || null;
+
+  const deactivateStmt = db
+    .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE article_id = ? AND slot_key = ? AND is_active = 1')
+    .bind(params.articleId, slotKey);
+
+  const insertMediaStmt = db
+    .prepare(
+      `
+      INSERT INTO article_media (
+        article_id, asset_id, role, slot_key, is_active, sort_order, caption
+      ) VALUES (?, ?, ?, ?, 1, 0, ?);
+    `
+    )
+    .bind(params.articleId, params.assetId, role, slotKey, params.caption || null);
+
+  const updateArticleStmt = db
+    .prepare('UPDATE articles SET featured_image = ?, image_alt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?')
+    .bind(publicUrl, cleanAlt, params.articleId, 'draft');
+
+  let ledgerStatements: any[] = [];
+  try {
+    const article = await db.prepare('SELECT slug, content_hash, manual_hold, reading_time_minutes, is_sponsored, status FROM articles WHERE id = ?').bind(params.articleId).first();
+    if (article) {
+      const beforeInput = {
+        articleId: params.articleId,
+        slug: article.slug,
+        contentHash: article.content_hash,
+        featuredAssetId: priorAssetId,
+        manualHold: article.manual_hold,
+        readingTimeMinutes: article.reading_time_minutes,
+        isSponsored: Boolean(article.is_sponsored),
+        status: article.status
+      };
+      const afterInput = {
+        ...beforeInput,
+        featuredAssetId: params.assetId
+      };
+      const fromHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(beforeInput));
+      const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
+      const mopId = generateMutationOperationId('media_binding', params.articleId, fromHash, toHash);
+
+      const capture = prepareStateMutationCapture(db, {
+        articleId: params.articleId,
+        beforeInput,
+        afterInput,
+        captureSource: 'featured_media_binding',
+        mutationOperationId: mopId,
+        actorType: 'admin_operator',
+        actorId: params.boundBy
+      });
+      ledgerStatements = capture.statements;
+    }
+  } catch {
+    // safe fallback
+  }
+
+  const batchResults = await db.batch([
+    deactivateStmt,
+    insertMediaStmt,
+    updateArticleStmt,
+    ...ledgerStatements
+  ]);
+
+  const articleMediaId = Number(batchResults[1]?.meta?.last_row_id ?? batchResults[1]?.lastInsertRowid ?? 0) || null;
+  return { success: true, articleMediaId };
+}
+
