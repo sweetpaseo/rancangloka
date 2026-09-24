@@ -9,15 +9,16 @@ Date: 2026-09-24
 Latest clean checkpoint commit:
 
 ```text
-ef4beade5c9ca6ecb70c86a378211c147c4aec32
+f03744744fa23b1f9febe8a9ae5b63749cbcb17f
 ```
 
 Commit message:
 
 ```text
-docs: activate editorial trajectory ledger in production
+fix: unify canonical publication state loading
 ```
 
+`JEV_PHASE_7M_2=PASS_CANONICAL_PUBLICATION_STATE_PARITY_FIX_DEPLOYED`
 `JEV_PHASE_7M=PASS_PRODUCTION_EDITORIAL_TRAJECTORY_LEDGER_CANARY`
 `JEV_PHASE_7L_2=PASS_OCC_ATOMICITY_AND_INITIAL_SNAPSHOT_HARDENED`
 `JEV_PHASE_7L_1=PASS_MUTATION_PATH_CAPTURE_WIRING_AND_E2E_PROVEN`
@@ -123,9 +124,24 @@ docs: activate editorial trajectory ledger in production
 `CANONICAL_OPERATOR_API_DEPLOYED=YES`
 `RAW_SQL_CONTROL_MUTATIONS_FORBIDDEN=YES`
 `PRODUCTION_AUTOMATION_CURRENTLY_ENABLED=NO`
-`PRODUCTION_WORKER_DEPLOYMENT_ID=d81db579-63f1-40c4-9345-328780f6f694`
+`PRODUCTION_WORKER_DEPLOYMENT_ID=46da7f3f-b4d4-43b2-863e-3a25b51ac824`
 `READY_FOR_PHASE_5L13=YES`
 `NEXT_RECOMMENDED_ACTION=AWAIT_EXPLICIT_APPROVAL_FOR_PHASE_5L13`
+
+Phase JEV-7M.2 (Canonical Publication State Parity Fix Production Deployment):
+- Identified canonical data source drift root cause: shadow collector/planner resolved featured media strictly from active `article_media(role='featured', is_active=1)` while operator controls and db helper read `articles.featured_image` presentation fallback.
+- Confirmed active `article_media` is sole authoritative featured media source of truth; `articles.featured_image` is non-authoritative presentation fallback for SEO Open Graph tags.
+- Verified Article 1 underwent zero genuine business state changes between JEV-7G and JEV-7M (ARTICLE_1_GENUINE_STATE_CHANGE_BETWEEN_7G_AND_7M=NO).
+- Unified canonical loading under `loadCanonicalPublicationPreflightInput` in commit `f03744744fa23b1f9febe8a9ae5b63749cbcb17f`.
+- Preserved historical JEV-7M canary ledger rows as `VALID_CANARY_BUT_SEMANTICALLY_INCOMPATIBLE` without rewriting or deleting.
+- Deployed parity fix to production Worker: deployment ID `46da7f3f-b4d4-43b2-863e-3a25b51ac824` (previous: `cafaa01f-9355-409b-97ca-e8bd58cb0166`).
+- Proved read-only canonical reconstruction on production Article 1 yields `featuredAssetId=null`, `heroImagePresent=false`, `plannerEligibilityStatus=NOT_ELIGIBLE`, and exact historical hash `h_1a9ca364` (PRODUCTION_HASH_MATCHES_HISTORICAL_JEV=YES).
+- Verified legacy featured image fallback cannot alter canonical state (LEGACY_FEATURED_IMAGE_CAN_AFFECT_CANONICAL_STATE=NO).
+- Verified future decision to snapshot joins are deterministic and reliable (FUTURE_DECISION_TO_SNAPSHOT_JOIN_RELIABLE=YES).
+- Verified zero business mutations: production article mutations=0, media mutations=0, plans=0, executions=0, receipts=0, new publications=0.
+- Verified safety controls resting state: mode=OFF, auto_schedule=false, kill_switch=0. Jev authority unchanged: ZERO.
+- Verified public health: Homepage 200, Published Article 6 200, Sitemap XML 200, Admin Gateway 302.
+- Full post-deploy regression passed: 16 test suites PASS, TypeScript clean, Astro build clean.
 
 Phase JEV-7M (Production Editorial Trajectory Ledger Canary):
 - Applied migration 0023_editorial_trajectory_ledger.sql to production D1 database rancangloka_db (MIGRATION_0023_PRODUCTION=PASS).

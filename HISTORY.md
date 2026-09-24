@@ -1627,6 +1627,43 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Regresi lokal pasca-canary: 100% PASS (`POST_7M_REGRESSION = PASS`).
 * **Status Fase:** `JEV_PHASE_7M = PASS`. Editorial Trajectory Ledger resmi aktif di lingkungan produksi.
 
+### Jev Phase 7M.2 Canonical Publication State Parity Fix Production Deployment 2026-09-24
+
+- **Tujuan & Ruang Lingkup:** Menyelesaikan disparitas sumber data kanonikal (*canonical data source drift*) yang ditemukan pasca-canary JEV-7M, di mana jalur TypeSafe Jev shadow collector dan publication planner mengonsumsi aset gambar utama secara ketat dari `article_media(role='featured', is_active=1)`, sedangkan jalur operator controls dan mutasi artikel membaca kolom cermin `articles.featured_image`. Hal ini menyebabkan Artikel 1 menghasilkan `input_hash = 'h_1ec85cbf'` pada pra-kanari 7M (karena membaca cermin legacy non-null), berbeda dari observasi kanonikal historis JEV-7G (`h_1a9ca364`).
+- **Analisis Akar Masalah (Root Cause: SOURCE_OF_TRUTH_DRIFT):**
+  - Kolom `articles.featured_image` merupakan cermin presentasi warisan (*presentation fallback*) untuk backward compatibility CMS dan SEO Open Graph tags, bukan otoritas kanonikal siklus hidup publikasi.
+  - Sumber kebenaran tunggal (*sole source of truth*) yang otoritatif adalah `article_media` aktif (`role='featured' AND is_active=1`).
+  - Tidak ada perubahan status bisnis riil pada Artikel 1 (`ARTICLE_1_GENUINE_STATE_CHANGE_BETWEEN_7G_AND_7M = NO`).
+- **Perbaikan Kode Lokal & Arsitektur Terpadu (Commit `f03744744fa23b1f9febe8a9ae5b63749cbcb17f`):**
+  - Mengimplementasikan loader terpadu `loadCanonicalPublicationPreflightInput(db, articleId, overrides)` di `src/lib/decision/publication-preflight-state.ts` yang memuat artikel, meresolusi featured media secara eksklusif dari relasi aktif `article_media`, dan mengabaikan nilai `articles.featured_image`.
+  - Menghubungkan loader kanonikal ke `src/lib/publication/operator-controls.ts` (`holdArticle`, `resumeArticleAutomation`) dan `src/lib/db.ts` (`updateArticle`, `insertArticle`, `insertHermesArticleAndReceipt`).
+  - Menambahkan test suite paritas: `scripts/test-canonical-state-parity.js` (8/8 PASS).
+  - Skema kanonikal tidak berubah (`SCHEMA_VERSION_BUMP_REQUIRED = NO`, tetap `2026-09-23.v2`).
+- **Klasifikasi Rekaman Kanari Historis JEV-7M:**
+  - Baris kanari 7M yang ada (`ast_1_1790235931854_haxp2` dan `ast_1_1790236157117_5sj5p`) diklasifikasikan sebagai `VALID_CANARY_BUT_SEMANTICALLY_INCOMPATIBLE`.
+  - Sesuai prinsip *append-only*, baris historis ini dipertahankan utuh dan **TIDAK DIHAPUS / TIDAK DITULIS ULANG**.
+- **Deployment Produksi & Verifikasi Pasca-Deploy:**
+  - **Persetujuan Operator:** Diotorisasi penuh oleh operator untuk rilis Worker tanpa mutasi artikel/media.
+  - **Deployment ID Sebelumnya:** `cafaa01f-9355-409b-97ca-e8bd58cb0166`.
+  - **Deployment ID Paritas 7M.2:** `46da7f3f-b4d4-43b2-863e-3a25b51ac824`.
+  - **Bukti Paritas Kanonikal Produksi (Read-Only):**
+    - `PRODUCTION_CANONICAL_FEATURED_ASSET = null`
+    - `PRODUCTION_HERO_IMAGE_PRESENT = false`
+    - `PRODUCTION_PLANNER_ELIGIBILITY = NOT_ELIGIBLE`
+    - `PRODUCTION_ARTICLE_1_CANONICAL_HASH = h_1a9ca364` (`PRODUCTION_HASH_MATCHES_HISTORICAL_JEV = YES`).
+    - `LEGACY_FEATURED_IMAGE_CAN_AFFECT_CANONICAL_STATE = NO`.
+    - `PLANNER_COLLECTOR_LEDGER_PARITY = PASS`.
+    - `FUTURE_DECISION_TO_SNAPSHOT_JOIN_RELIABLE = YES`.
+- **Firewall Keamanan, Zero Mutation & Zero Authority:**
+  - Mutasi artikel bisnis: 0 (`PRODUCTION_ARTICLE_MUTATIONS = 0`).
+  - Mutasi media: 0 (`PRODUCTION_MEDIA_MUTATIONS = 0`).
+  - Rencana publikasi baru: 0, eksekusi baru: 0, receipt baru: 0, publikasi baru: 0.
+  - Jev authority: `ZERO` (`JEV_CAN_WRITE_SNAPSHOTS = NO`, `JEV_CAN_WRITE_TRANSITIONS = NO`, `JEV_CAN_WRITE_OUTCOMES = NO`).
+  - Kontrol produksi: `FINAL_MODE = OFF`, `FINAL_AUTO_SCHEDULE = false`, `FINAL_KILL_SWITCH = 0`.
+  - Kesehatan publik: Beranda (200), Artikel 6 (200), Sitemap XML (200), Admin Gateway (302).
+  - Regresi lengkap: 16 test suite PASS, TypeScript clean, Astro build clean.
+- **Status Fase:** `JEV_PHASE_7M_2 = PASS`. Paritas pemuatan status kanonikal aktif di produksi. Platform siap untuk *Natural Trajectory Collection*.
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1634,12 +1671,12 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `cafaa01f-9355-409b-97ca-e8bd58cb0166`*). |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `46da7f3f-b4d4-43b2-863e-3a25b51ac824`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 19+ tabel (termasuk migrasi `0021_decision_observations`, `0022_allow_jev_shadow_collector_cron`, & `0023_editorial_trajectory_ledger`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
 | **Decision Engine (TypeSafe Jev)** | ✅ Selesai (5-State Dataset Active & Dedupe Steady) | Dataset 5-state kanonikal v2 lengkap di edge cron `17 * * * *`, deduplikasi mapan terbukti (Zero Authority, mode OFF). |
 | **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` & `publication_cron_runs` mencatat telemetri durable edge. |
-| **Editorial Trajectory Ledger** | ✅ Selesai (Aktif di Produksi) | Skema D1 migrasi 0023 aktif di edge, deployment `cafaa01f-9355-409b-97ca-e8bd58cb0166`, terbukti melalui kanari Article 1 (0 -> 1 -> 0), snapshot dedupe A->B->A lulus, append-only terbukti, zero authority. |
+| **Editorial Trajectory Ledger** | ✅ Selesai (Aktif di Produksi) | Skema D1 migrasi 0023 aktif di edge, deployment `46da7f3f-b4d4-43b2-863e-3a25b51ac824`, paritas sumber data kanonikal terpadu (JEV-7M.2), append-only terbukti, zero authority. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
 | **Design Problem Solver & Explorer** | ✅ Selesai (Aktif) | Alat diagnosis berbasis kemungkinan penyebab umum & 3-way multi-filter aktif. |
