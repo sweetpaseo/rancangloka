@@ -55,12 +55,14 @@ export interface ImageGenerationRequest {
   article_id?: number;
   slot_key?: string;
   timeout_ms?: number;
+  model_override?: string;
 }
 
 export interface ImageCostMetadata {
   estimated_cost_usd?: number;
   billed_units?: number;
   pricing_tier?: string;
+  is_billable?: boolean;
 }
 
 export interface ImageGenerationResult {
