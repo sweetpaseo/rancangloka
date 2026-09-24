@@ -20,7 +20,8 @@ import {
 } from '../safety/automation-controller.ts';
 import {
   prepareStateMutationCapture,
-  generateMutationOperationId
+  generateMutationOperationId,
+  type OCCGuardCondition
 } from '../decision/trajectory-ledger.ts';
 import {
   buildCanonicalPublicationPreflightState,
@@ -131,7 +132,7 @@ export async function holdArticle(
           manual_hold_at = CURRENT_TIMESTAMP,
           manual_hold_by = ?,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = ? AND COALESCE(manual_hold, 0) = 0
     `)
     .bind(reason, actorId, articleId);
 
@@ -171,6 +172,11 @@ export async function holdArticle(
     const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
     const mopId = generateMutationOperationId('manual_hold_engaged', articleId, fromHash, toHash);
 
+    const occCondition: OCCGuardCondition = {
+      whereExistsSql: 'SELECT 1 FROM articles WHERE id = ? AND manual_hold = 1',
+      params: [articleId]
+    };
+
     const capture = prepareStateMutationCapture(db, {
       articleId,
       beforeInput,
@@ -178,14 +184,27 @@ export async function holdArticle(
       captureSource: 'operator_controls',
       mutationOperationId: mopId,
       actorType: 'admin_operator',
-      actorId
+      actorId,
+      condition: occCondition
     });
     ledgerStatements = capture.statements;
   } catch {
     // safe fallback
   }
 
-  await db.batch([updateStmt, auditStmt, ...ledgerStatements]);
+  const batchResults = await db.batch([updateStmt, auditStmt, ...ledgerStatements]);
+  const changes = batchResults[0]?.meta?.changes ?? batchResults[0]?.changes ?? 0;
+  if (changes === 0) {
+    return {
+      success: true,
+      articleId,
+      idempotent: true,
+      held: true,
+      alreadyHeld: true,
+      message: 'Article is already under manual hold or modified concurrently',
+      details: { manual_hold: true }
+    };
+  }
 
   return {
     success: true,
@@ -245,7 +264,7 @@ export async function resumeArticleAutomation(
           manual_hold_at = NULL,
           manual_hold_by = NULL,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = ? AND manual_hold = 1
     `)
     .bind(articleId);
 
@@ -285,6 +304,11 @@ export async function resumeArticleAutomation(
     const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
     const mopId = generateMutationOperationId('manual_hold_cleared', articleId, fromHash, toHash);
 
+    const occCondition: OCCGuardCondition = {
+      whereExistsSql: 'SELECT 1 FROM articles WHERE id = ? AND manual_hold = 0',
+      params: [articleId]
+    };
+
     const capture = prepareStateMutationCapture(db, {
       articleId,
       beforeInput,
@@ -292,14 +316,27 @@ export async function resumeArticleAutomation(
       captureSource: 'operator_controls',
       mutationOperationId: mopId,
       actorType: 'admin_operator',
-      actorId
+      actorId,
+      condition: occCondition
     });
     ledgerStatements = capture.statements;
   } catch {
     // safe fallback
   }
 
-  await db.batch([updateStmt, auditStmt, ...ledgerStatements]);
+  const batchResults = await db.batch([updateStmt, auditStmt, ...ledgerStatements]);
+  const changes = batchResults[0]?.meta?.changes ?? batchResults[0]?.changes ?? 0;
+  if (changes === 0) {
+    return {
+      success: true,
+      articleId,
+      idempotent: true,
+      resumed: true,
+      alreadyActive: true,
+      message: 'Article is already active for automation (manual_hold = 0) or modified concurrently',
+      details: { manual_hold: false }
+    };
+  }
 
   return {
     success: true,

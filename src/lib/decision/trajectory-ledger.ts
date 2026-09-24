@@ -311,8 +311,14 @@ export function generateOutcomeIdempotencyKey(
 // 4. PREPARED STATEMENTS BUILDERS (SQLITE / D1 COMPATIBLE)
 // ============================================================
 
+export interface OCCGuardCondition {
+  whereExistsSql: string;
+  params: any[];
+}
+
 /**
  * Prepares the SQL statement to insert/dedupe an immutable canonical state snapshot.
+ * Supports conditional execution via OCCGuardCondition (WHERE EXISTS).
  */
 export function prepareCaptureSnapshotStatement(
   db: any,
@@ -320,23 +326,14 @@ export function prepareCaptureSnapshotStatement(
   contentHash: string,
   featuredAssetId: string | null,
   captureSource: string,
-  occurredAt?: string
+  occurredAt?: string,
+  condition?: OCCGuardCondition
 ): any {
   const inputHash = computeCanonicalPreflightHash(state);
   const snapshotId = `snp_${inputHash}_${state.articleId}`;
   const now = occurredAt || new Date().toISOString();
 
-  const query = `
-    INSERT OR IGNORE INTO article_state_snapshots (
-      snapshot_id, article_id, input_hash, content_hash, slug,
-      featured_asset_id, hero_image_present, references_present,
-      persisted_readiness_status, planner_eligibility_status,
-      editorial_validation_passed, manual_hold, reading_time_minutes,
-      is_sponsored, input_schema_version, captured_at, capture_source
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-  `;
-
-  return db.prepare(query).bind(
+  const baseValues = [
     snapshotId,
     state.articleId,
     inputHash,
@@ -354,26 +351,46 @@ export function prepareCaptureSnapshotStatement(
     DECISION_SCHEMA_VERSION,
     now,
     captureSource
-  );
+  ];
+
+  if (condition && condition.whereExistsSql) {
+    const query = `
+      INSERT OR IGNORE INTO article_state_snapshots (
+        snapshot_id, article_id, input_hash, content_hash, slug,
+        featured_asset_id, hero_image_present, references_present,
+        persisted_readiness_status, planner_eligibility_status,
+        editorial_validation_passed, manual_hold, reading_time_minutes,
+        is_sponsored, input_schema_version, captured_at, capture_source
+      )
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE EXISTS (${condition.whereExistsSql});
+    `;
+    return db.prepare(query).bind(...baseValues, ...condition.params);
+  }
+
+  const query = `
+    INSERT OR IGNORE INTO article_state_snapshots (
+      snapshot_id, article_id, input_hash, content_hash, slug,
+      featured_asset_id, hero_image_present, references_present,
+      persisted_readiness_status, planner_eligibility_status,
+      editorial_validation_passed, manual_hold, reading_time_minutes,
+      is_sponsored, input_schema_version, captured_at, capture_source
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  `;
+
+  return db.prepare(query).bind(...baseValues);
 }
 
 /**
  * Prepares the SQL statement to insert an append-only article state transition.
+ * Supports conditional execution via OCCGuardCondition (WHERE EXISTS).
  */
 export function prepareRecordTransitionStatement(
   db: any,
-  transition: ArticleStateTransitionRecord
+  transition: ArticleStateTransitionRecord,
+  condition?: OCCGuardCondition
 ): any {
-  const query = `
-    INSERT OR IGNORE INTO article_state_transitions (
-      transition_id, article_id, from_snapshot_id, to_snapshot_id,
-      from_input_hash, to_input_hash, from_observation_id, to_observation_id,
-      transition_type, transition_source, mutation_operation_id,
-      occurred_at, recorded_at, actor_type, actor_id, evidence_reference, metadata_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-  `;
-
-  return db.prepare(query).bind(
+  const baseValues = [
     transition.transition_id,
     transition.article_id,
     transition.from_snapshot_id,
@@ -391,26 +408,44 @@ export function prepareRecordTransitionStatement(
     transition.actor_id || null,
     transition.evidence_reference || null,
     transition.metadata_json || null
-  );
+  ];
+
+  if (condition && condition.whereExistsSql) {
+    const query = `
+      INSERT OR IGNORE INTO article_state_transitions (
+        transition_id, article_id, from_snapshot_id, to_snapshot_id,
+        from_input_hash, to_input_hash, from_observation_id, to_observation_id,
+        transition_type, transition_source, mutation_operation_id,
+        occurred_at, recorded_at, actor_type, actor_id, evidence_reference, metadata_json
+      )
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE EXISTS (${condition.whereExistsSql});
+    `;
+    return db.prepare(query).bind(...baseValues, ...condition.params);
+  }
+
+  const query = `
+    INSERT OR IGNORE INTO article_state_transitions (
+      transition_id, article_id, from_snapshot_id, to_snapshot_id,
+      from_input_hash, to_input_hash, from_observation_id, to_observation_id,
+      transition_type, transition_source, mutation_operation_id,
+      occurred_at, recorded_at, actor_type, actor_id, evidence_reference, metadata_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  `;
+
+  return db.prepare(query).bind(...baseValues);
 }
 
 /**
  * Prepares the SQL statement to insert an append-only decision outcome.
+ * Supports conditional execution via OCCGuardCondition (WHERE EXISTS).
  */
 export function prepareRecordOutcomeStatement(
   db: any,
-  outcome: DecisionOutcomeRecord
+  outcome: DecisionOutcomeRecord,
+  condition?: OCCGuardCondition
 ): any {
-  const query = `
-    INSERT OR IGNORE INTO decision_outcomes (
-      outcome_id, article_id, decision_observation_id, snapshot_id,
-      input_hash, outcome_type, outcome_class, outcome_source,
-      source_record_id, idempotency_key, occurred_at, recorded_at,
-      actor_type, actor_id, evidence_reference, metadata_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-  `;
-
-  return db.prepare(query).bind(
+  const baseValues = [
     outcome.outcome_id,
     outcome.article_id,
     outcome.decision_observation_id || null,
@@ -427,7 +462,32 @@ export function prepareRecordOutcomeStatement(
     outcome.actor_id || null,
     outcome.evidence_reference,
     outcome.metadata_json || null
-  );
+  ];
+
+  if (condition && condition.whereExistsSql) {
+    const query = `
+      INSERT OR IGNORE INTO decision_outcomes (
+        outcome_id, article_id, decision_observation_id, snapshot_id,
+        input_hash, outcome_type, outcome_class, outcome_source,
+        source_record_id, idempotency_key, occurred_at, recorded_at,
+        actor_type, actor_id, evidence_reference, metadata_json
+      )
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE EXISTS (${condition.whereExistsSql});
+    `;
+    return db.prepare(query).bind(...baseValues, ...condition.params);
+  }
+
+  const query = `
+    INSERT OR IGNORE INTO decision_outcomes (
+      outcome_id, article_id, decision_observation_id, snapshot_id,
+      input_hash, outcome_type, outcome_class, outcome_source,
+      source_record_id, idempotency_key, occurred_at, recorded_at,
+      actor_type, actor_id, evidence_reference, metadata_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  `;
+
+  return db.prepare(query).bind(...baseValues);
 }
 
 // ============================================================
@@ -445,6 +505,7 @@ export interface CaptureTransitionParams {
   evidenceReference?: string | null;
   metadata?: Record<string, any>;
   occurredAt?: string;
+  condition?: OCCGuardCondition;
 }
 
 /**
@@ -477,7 +538,8 @@ export function prepareStateMutationCapture(
       params.afterInput.contentHash || 'empty',
       params.afterInput.featuredAssetId || null,
       params.captureSource,
-      params.occurredAt
+      params.occurredAt,
+      params.condition
     )
   );
 
@@ -534,7 +596,7 @@ export function prepareStateMutationCapture(
     metadata_json: params.metadata ? JSON.stringify(params.metadata) : null
   };
 
-  statements.push(prepareRecordTransitionStatement(db, transitionRecord));
+  statements.push(prepareRecordTransitionStatement(db, transitionRecord, params.condition));
 
   return {
     statements,
@@ -564,6 +626,7 @@ export function prepareOutcomeCapture(
     failureClass?: FailureClass;
     metadata?: Record<string, any>;
     occurredAt?: string;
+    condition?: OCCGuardCondition;
   }
 ): { statement: any; idempotencyKey: string; outcomeId: string } {
   const now = params.occurredAt || new Date().toISOString();
@@ -601,7 +664,7 @@ export function prepareOutcomeCapture(
   };
 
   return {
-    statement: prepareRecordOutcomeStatement(db, outcomeRecord),
+    statement: prepareRecordOutcomeStatement(db, outcomeRecord, params.condition),
     idempotencyKey,
     outcomeId
   };

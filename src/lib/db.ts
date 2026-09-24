@@ -13,7 +13,8 @@ import {
   prepareStateMutationCapture,
   prepareCaptureSnapshotStatement,
   generateMutationOperationId,
-  computeLightweightDiffMetrics
+  computeLightweightDiffMetrics,
+  type OCCGuardCondition
 } from './decision/trajectory-ledger.ts';
 import {
   buildCanonicalPublicationPreflightState,
@@ -1319,41 +1320,72 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
 
   // Case A: Real D1 Database Binding exists
   if (db) {
-    let runResult: any;
-    try {
-      runResult = await db
-        .prepare(`
-          INSERT INTO articles (
-            slug, title, description, content_md, content_html, featured_image, image_alt,
-            category_id, author_id, status, reading_time_minutes, key_takeaways,
-            focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
-            disable_internal_links, published_at, updated_at
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `)
-        .bind(
-          slug,
-          title,
-          description,
-          content_md,
-          content_html,
-          featured_image,
-          image_alt,
-          category_id,
-          author_id,
-          status,
-          reading_time_minutes,
-          key_takeaways,
-          focus_keyword,
-          content_hash,
-          is_featured,
-          is_trending,
-          is_sponsored,
-          disable_internal_links,
-          published_at,
-          updated_at
+    let insertedId: number;
+    if (article.id !== undefined && article.id !== null) {
+      insertedId = Number(article.id);
+    } else {
+      const nextIdRow = await db.prepare(`
+        SELECT MAX(COALESCE(s.seq, 0), COALESCE(a.max_id, 0)) + 1 AS next_id
+        FROM (SELECT MAX(id) as max_id FROM articles) a
+        LEFT JOIN sqlite_sequence s ON s.name = 'articles'
+      `).first();
+      insertedId = Number(nextIdRow?.next_id || 1);
+    }
+
+    const insertArticleStmt = db
+      .prepare(`
+        INSERT INTO articles (
+          id, slug, title, description, content_md, content_html, featured_image, image_alt,
+          category_id, author_id, status, reading_time_minutes, key_takeaways,
+          focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
+          disable_internal_links, published_at, updated_at
         )
-        .run();
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        insertedId,
+        slug,
+        title,
+        description,
+        content_md,
+        content_html,
+        featured_image,
+        image_alt,
+        category_id,
+        author_id,
+        status,
+        reading_time_minutes,
+        key_takeaways,
+        focus_keyword,
+        content_hash,
+        is_featured,
+        is_trending,
+        is_sponsored,
+        disable_internal_links,
+        published_at,
+        updated_at
+      );
+
+    const state = buildCanonicalPublicationPreflightState({
+      articleId: insertedId,
+      slug,
+      contentHash: content_hash,
+      hasContent: Boolean(content_md || content_html),
+      featuredAssetId: featured_image || null,
+      readingTimeMinutes: reading_time_minutes,
+      isSponsored: Boolean(is_sponsored),
+      status
+    });
+    const snapStmt = prepareCaptureSnapshotStatement(
+      db,
+      state,
+      content_hash || 'empty',
+      featured_image || null,
+      'article_insert'
+    );
+
+    try {
+      await db.batch([insertArticleStmt, snapStmt]);
     } catch (err: any) {
       const msg = err?.message || String(err);
       if (msg.includes('UNIQUE constraint failed') || msg.includes('PRIMARY KEY must be unique')) {
@@ -1368,55 +1400,9 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
       throw new DatabaseWriteError(`Gagal melakukan INSERT artikel ke D1: ${msg}`, err);
     }
 
-    // Determine actual database-generated ID
-    let insertedId: number | undefined;
-    if (runResult?.meta?.last_row_id !== undefined && runResult.meta.last_row_id !== null) {
-      insertedId = Number(runResult.meta.last_row_id);
-    } else {
-      try {
-        const lastRow = await db.prepare('SELECT last_insert_rowid() as id').first();
-        if (lastRow?.id) {
-          insertedId = Number(lastRow.id);
-        }
-      } catch {
-        const bySlug = await db.prepare('SELECT id FROM articles WHERE slug = ? LIMIT 1').bind(slug).first();
-        if (bySlug?.id) {
-          insertedId = Number(bySlug.id);
-        }
-      }
-    }
-
-    if (!insertedId) {
-      throw new DatabaseWriteError('D1 INSERT berhasil tetapi gagal memperoleh ID baris yang dihasilkan database.');
-    }
-
     const persisted = await getArticleById(db, insertedId);
     if (!persisted) {
       throw new DatabaseWriteError(`Artikel dengan ID ${insertedId} tidak dapat diverifikasi setelah INSERT.`);
-    }
-
-    // Trajectory Ledger: Record initial immutable state snapshot (INITIAL_STATE_CREATES_TRANSITION = NO)
-    try {
-      const state = buildCanonicalPublicationPreflightState({
-        articleId: insertedId,
-        slug: persisted.slug,
-        contentHash: persisted.content_hash,
-        hasContent: Boolean(persisted.content_md || persisted.content_html),
-        featuredAssetId: persisted.featured_image || null,
-        readingTimeMinutes: persisted.reading_time_minutes,
-        isSponsored: Boolean(persisted.is_sponsored),
-        status: persisted.status
-      });
-      const snapStmt = prepareCaptureSnapshotStatement(
-        db,
-        state,
-        persisted.content_hash || 'empty',
-        persisted.featured_image || null,
-        'article_insert'
-      );
-      await snapStmt.run();
-    } catch {
-      // safe fallback
     }
 
     return persisted;
@@ -1516,6 +1502,11 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
       const mopId = generateMutationOperationId('content_edit', id, fromHash, toHash, (article as any).mutation_operation_id);
       const diffMetrics = computeLightweightDiffMetrics(existing.content_md, updatedData.content_md);
 
+      const occCondition: OCCGuardCondition = {
+        whereExistsSql: 'SELECT 1 FROM articles WHERE id = ? AND content_hash = ?',
+        params: [id, updatedData.content_hash]
+      };
+
       const capture = prepareStateMutationCapture(db, {
         articleId: id,
         beforeInput,
@@ -1523,12 +1514,17 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
         captureSource: 'article_content_edit',
         mutationOperationId: mopId,
         actorType: 'admin_operator',
-        metadata: diffMetrics ? { diff_metrics: diffMetrics } : undefined
+        metadata: diffMetrics ? { diff_metrics: diffMetrics } : undefined,
+        condition: occCondition
       });
       ledgerStatements = capture.statements;
     } catch {
       // safe fallback if ledger preparation encounters untracked fields
     }
+
+    const expectedHash = (article as any).expected_content_hash !== undefined
+      ? (article as any).expected_content_hash
+      : existing.content_hash;
 
     const updateStmt = db
       .prepare(`
@@ -1538,7 +1534,7 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
           status = ?, reading_time_minutes = ?, key_takeaways = ?, focus_keyword = ?,
           content_hash = ?, is_featured = ?, is_trending = ?, is_sponsored = ?,
           disable_internal_links = ?, updated_at = ?
-        WHERE id = ?
+        WHERE id = ? AND (content_hash = ? OR (content_hash IS NULL AND ? IS NULL))
       `)
       .bind(
         updatedData.title,
@@ -1560,14 +1556,18 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
         updatedData.is_sponsored,
         updatedData.disable_internal_links,
         updatedData.updated_at,
-        id
+        id,
+        expectedHash || '',
+        expectedHash || ''
       );
 
+    let batchResults: any[] = [];
     try {
       if (ledgerStatements.length > 0) {
-        await db.batch([updateStmt, ...ledgerStatements]);
+        batchResults = await db.batch([updateStmt, ...ledgerStatements]);
       } else {
-        await updateStmt.run();
+        const res = await updateStmt.run();
+        batchResults = [res];
       }
     } catch (err: any) {
       const msg = err?.message || String(err);
@@ -1578,6 +1578,11 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
         throw new DatabaseConstraintError(`Pelanggaran constraint unik saat UPDATE: ${msg}`, err);
       }
       throw new DatabaseWriteError(`Gagal melakukan UPDATE artikel ID ${id} di D1: ${msg}`, err);
+    }
+
+    const updateChanges = batchResults[0]?.meta?.changes ?? batchResults[0]?.changes ?? 0;
+    if (updateChanges === 0) {
+      throw new DatabaseWriteError(`OPTIMISTIC_CONCURRENCY_CONFLICT: Artikel ${id} telah berubah atau content_hash tidak cocok.`);
     }
 
     const updated = await getArticleById(db, id);
@@ -1939,16 +1944,25 @@ export async function insertHermesArticleAndReceipt(
     throw new DatabaseWriteError('Database D1 tidak tersedia untuk machine ingestion Hermes.');
   }
 
+  // Pre-calculate deterministic article ID for atomic D1 batch inclusion
+  const nextIdRow = await db.prepare(`
+    SELECT MAX(COALESCE(s.seq, 0), COALESCE(a.max_id, 0)) + 1 AS next_id
+    FROM (SELECT MAX(id) as max_id FROM articles) a
+    LEFT JOIN sqlite_sequence s ON s.name = 'articles'
+  `).first();
+  const insertedArticleId = Number(nextIdRow?.next_id || 1);
+
   // 1. Prepare Article Insert Statement
   const insertArticleStmt = db.prepare(`
     INSERT INTO articles (
-      slug, title, description, content_md, content_html, featured_image, image_alt,
+      id, slug, title, description, content_md, content_html, featured_image, image_alt,
       category_id, author_id, status, reading_time_minutes, key_takeaways,
       focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
       disable_internal_links, published_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
+    insertedArticleId,
     articleData.slug,
     articleData.title,
     articleData.description,
@@ -1971,25 +1985,44 @@ export async function insertHermesArticleAndReceipt(
     articleData.updated_at || new Date().toISOString()
   );
 
-  // 2. Prepare Receipt Insert Statement using last_insert_rowid()
+  // 2. Prepare Receipt Insert Statement
   const insertReceiptStmt = db.prepare(`
     INSERT INTO article_ingest_receipts (
       job_id, source, source_article_id, content_sha256, article_content_hash, article_id, contract_version
     )
-    VALUES (?, ?, ?, ?, ?, last_insert_rowid(), ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     receiptData.job_id,
     receiptData.source,
     receiptData.source_article_id,
     receiptData.content_sha256,
     receiptData.article_content_hash,
+    insertedArticleId,
     receiptData.contract_version
   );
 
-  // 3. Execute atomic batch
-  let batchResults: any[];
+  // 3. Prepare Initial Canonical State Snapshot (INITIAL_STATE_CREATES_TRANSITION = NO)
+  const state = buildCanonicalPublicationPreflightState({
+    articleId: insertedArticleId,
+    slug: articleData.slug,
+    contentHash: articleData.content_hash,
+    hasContent: Boolean(articleData.content_md || articleData.content_html),
+    featuredAssetId: articleData.featured_image || null,
+    readingTimeMinutes: articleData.reading_time_minutes,
+    isSponsored: Boolean(articleData.is_sponsored),
+    status: 'draft'
+  });
+  const snapStmt = prepareCaptureSnapshotStatement(
+    db,
+    state,
+    articleData.content_hash || 'empty',
+    articleData.featured_image || null,
+    'hermes_ingest'
+  );
+
+  // 4. Execute atomic batch: article + receipt + initial snapshot
   try {
-    batchResults = await db.batch([insertArticleStmt, insertReceiptStmt]);
+    await db.batch([insertArticleStmt, insertReceiptStmt, snapStmt]);
   } catch (err: any) {
     const msg = err?.message || String(err);
     if (msg.includes('UNIQUE constraint failed') || msg.includes('SQLITE_CONSTRAINT')) {
@@ -2010,57 +2043,11 @@ export async function insertHermesArticleAndReceipt(
     throw new DatabaseWriteError(`Gagal mengeksekusi D1 atomic batch: ${msg}`, err);
   }
 
-  // 4. Verify batch results and extract generated article_id
-  const articleMeta = batchResults[0]?.meta;
-  let insertedArticleId: number | undefined;
-  if (articleMeta?.last_row_id !== undefined && articleMeta.last_row_id !== null) {
-    insertedArticleId = Number(articleMeta.last_row_id);
-  }
-
-  if (!insertedArticleId) {
-    // Fallback lookup by job_id from the receipt just inserted in the same batch
-    const savedReceipt = await db
-      .prepare('SELECT article_id FROM article_ingest_receipts WHERE job_id = ?')
-      .bind(receiptData.job_id)
-      .first();
-    if (savedReceipt?.article_id) {
-      insertedArticleId = Number(savedReceipt.article_id);
-    }
-  }
-
-  if (!insertedArticleId) {
-    throw new DatabaseWriteError('D1 batch berhasil namun ID artikel tidak dapat diverifikasi.');
-  }
-
   const persistedArticle = await getArticleById(db, insertedArticleId);
   const persistedReceipt = await getReceiptByJobId(db, receiptData.job_id);
 
   if (!persistedArticle || !persistedReceipt) {
     throw new DatabaseWriteError('Verifikasi konsistensi artikel dan receipt setelah commit batch gagal.');
-  }
-
-  // Trajectory Ledger: Record initial immutable snapshot for newly ingested Hermes article (INITIAL_STATE_CREATES_TRANSITION = NO)
-  try {
-    const state = buildCanonicalPublicationPreflightState({
-      articleId: insertedArticleId,
-      slug: persistedArticle.slug,
-      contentHash: persistedArticle.content_hash,
-      hasContent: Boolean(persistedArticle.content_md || persistedArticle.content_html),
-      featuredAssetId: persistedArticle.featured_image || null,
-      readingTimeMinutes: persistedArticle.reading_time_minutes,
-      isSponsored: Boolean(persistedArticle.is_sponsored),
-      status: 'draft'
-    });
-    const snapStmt = prepareCaptureSnapshotStatement(
-      db,
-      state,
-      persistedArticle.content_hash || 'empty',
-      persistedArticle.featured_image || null,
-      'hermes_ingest'
-    );
-    await snapStmt.run();
-  } catch {
-    // safe fallback
   }
 
   return {

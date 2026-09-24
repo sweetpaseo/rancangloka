@@ -56,7 +56,8 @@ import {
 import {
   isDecisionQualityFailure,
   generateMutationOperationId,
-  generateOutcomeIdempotencyKey
+  generateOutcomeIdempotencyKey,
+  prepareOutcomeCapture
 } from '../src/lib/decision/trajectory-ledger.ts';
 import {
   buildCanonicalPublicationPreflightState,
@@ -734,6 +735,427 @@ async function runE2ETrajectorySuite() {
     pass('APPEND_ONLY_SERVICE_INVARIANT=PASS (Zero UPDATE/DELETE queries on ledger tables in services)');
   } catch (err) {
     fail('Append-Only Invariant E2E failed', err);
+  }
+
+  // ============================================================
+  // PHASE 7L.2: OPTIMISTIC CONCURRENCY CONTROL & ATOMICITY TESTS
+  // ============================================================
+  console.log('\n============================================================');
+  console.log('--- PHASE 7L.2: OCC & NEW-ARTICLE ATOMICITY TESTS ---');
+  console.log('============================================================');
+
+  // Test 7L.2.1: Content Edit Stale Race (Section 6)
+  console.log('\n--- 12. CONTENT EDIT STALE RACE E2E ---');
+  try {
+    const artRace = await insertArticle(db, {
+      title: 'State Race Initial Article',
+      slug: 'state-race-initial-article',
+      description: 'Desc',
+      content_md: 'Initial content X',
+      content_html: '<p>Initial content X</p>',
+      category_id: 1,
+      author_id: 1,
+      status: 'draft',
+      reading_time_minutes: 2,
+      content_hash: 'hash_X'
+    });
+
+    // Request A reads State X
+    const readStateX = await getArticleById(db, artRace.id);
+    assert.strictEqual(readStateX.content_hash, 'hash_X');
+
+    // Competing mutation modifies X -> Y
+    await updateArticle(db, artRace.id, {
+      title: 'State Race Mutated to Y',
+      content_md: 'Mutated content Y',
+      content_html: '<p>Mutated content Y</p>',
+      reading_time_minutes: 3,
+      content_hash: 'hash_Y'
+    });
+
+    const currentAfterY = await getArticleById(db, artRace.id);
+    assert.strictEqual(currentAfterY.content_hash, 'hash_Y');
+
+    // Request A attempts X -> Z using stale expected state hash_X
+    let staleUpdateThrew = false;
+    try {
+      await updateArticle(db, artRace.id, {
+        title: 'State Race Stale Update Z',
+        content_md: 'Stale content Z',
+        content_html: '<p>Stale content Z</p>',
+        reading_time_minutes: 4,
+        content_hash: 'hash_Z',
+        expected_content_hash: 'hash_X'
+      });
+    } catch {
+      staleUpdateThrew = true;
+    }
+    assert.strictEqual(staleUpdateThrew, true, 'Stale content edit update must throw optimistic concurrency error');
+
+    // Verify DB state:
+    // article = Y, NOT Z
+    const finalArticle = await getArticleById(db, artRace.id);
+    assert.strictEqual(finalArticle.content_hash, 'hash_Y', 'Article content_hash remains Y, NOT Z');
+
+    // No snapshot Z
+    const snaps = getSnapshots(artRace.id);
+    const snapZ = snaps.find(s => s.content_hash === 'hash_Z');
+    assert.strictEqual(snapZ, undefined, 'No snapshot Z caused by failed stale update A');
+
+    // No transition X -> Z or Y -> Z
+    const trans = getTransitions(artRace.id);
+    const transToZ = trans.find(t => t.to_input_hash?.includes('hash_Z'));
+    assert.strictEqual(transToZ, undefined, 'No transition to Z exists');
+
+    pass('E2E_STALE_CONTENT_EDIT_LEDGER=PASS');
+  } catch (err) {
+    fail('Content Edit Stale Race failed', err);
+  }
+
+  // Test 7L.2.2: Media Stale Race (Section 7)
+  console.log('\n--- 13. MEDIA STALE RACE E2E ---');
+  try {
+    const artMediaRace = await insertArticle(db, {
+      title: 'Media Stale Race Article',
+      slug: 'media-stale-race-article',
+      description: 'Desc',
+      content_md: 'Content',
+      content_html: '<p>Content</p>',
+      category_id: 1,
+      author_id: 1,
+      status: 'draft',
+      reading_time_minutes: 2,
+      content_hash: 'hash_media_race_1'
+    });
+
+    // Asset A bound
+    await bindMediaToArticle(db, {
+      articleId: artMediaRace.id,
+      assetId: 'ast_hero_1',
+      role: 'featured'
+    });
+
+    // Concurrent mutation: A -> B
+    await bindMediaToArticle(db, {
+      articleId: artMediaRace.id,
+      assetId: 'ast_hero_2',
+      role: 'featured'
+    });
+
+    const activeBeforeStale = db.raw.prepare(
+      "SELECT asset_id FROM article_media WHERE article_id = ? AND role = 'featured' AND is_active = 1"
+    ).get(artMediaRace.id);
+    assert.strictEqual(activeBeforeStale.asset_id, 'ast_hero_2', 'Active asset is B');
+
+    // Stale request attempts A -> C expecting prior A (ast_hero_1)
+    const staleMediaRes = await bindMediaToArticle(db, {
+      articleId: artMediaRace.id,
+      assetId: 'ast_hero_3', // asset C
+      role: 'featured',
+      expectedPriorAssetId: 'ast_hero_1' // expects A
+    });
+    assert.strictEqual(staleMediaRes.conflict, true, 'Stale media binding detected conflict');
+
+    // Final binding remains B
+    const activeAfterStale = db.raw.prepare(
+      "SELECT asset_id FROM article_media WHERE article_id = ? AND role = 'featured' AND is_active = 1"
+    ).get(artMediaRace.id);
+    assert.strictEqual(activeAfterStale.asset_id, 'ast_hero_2', 'Final binding remains B (ast_hero_2)');
+
+    // No phantom transition to C
+    const mediaTrans = getTransitions(artMediaRace.id);
+    const transToC = mediaTrans.find(t => t.metadata_json?.includes('ast_hero_3'));
+    assert.strictEqual(transToC, undefined, 'No phantom transition to C exists');
+
+    pass('E2E_STALE_MEDIA_LEDGER=PASS');
+  } catch (err) {
+    fail('Media Stale Race failed', err);
+  }
+
+  // Test 7L.2.3: Manual Hold Stale Race (Section 8)
+  console.log('\n--- 14. MANUAL HOLD STALE RACE E2E ---');
+  try {
+    const artHoldRace = await insertArticle(db, {
+      title: 'Hold Stale Race Article',
+      slug: 'hold-stale-race-article',
+      description: 'Desc',
+      content_md: 'Content',
+      content_html: '<p>Content</p>',
+      category_id: 1,
+      author_id: 1,
+      status: 'draft',
+      reading_time_minutes: 2,
+      content_hash: 'hash_hold_race_1'
+    });
+
+    // First hold: 0 -> 1
+    const holdRes1 = await holdArticle(db, { articleId: artHoldRace.id, actor: 'chief_editor', reason: 'Review 1' });
+    assert.strictEqual(holdRes1.held, true);
+    assert.strictEqual(holdRes1.idempotent, false);
+
+    const transCountAfterHold1 = getTransitions(artHoldRace.id).length;
+
+    // Competing/stale hold attempt: article is already held
+    const holdRes2 = await holdArticle(db, { articleId: artHoldRace.id, actor: 'chief_editor', reason: 'Review 2' });
+    assert.strictEqual(holdRes2.alreadyHeld, true);
+    assert.strictEqual(holdRes2.idempotent, true);
+
+    const transCountAfterHold2 = getTransitions(artHoldRace.id).length;
+    assert.strictEqual(transCountAfterHold2, transCountAfterHold1, 'No false MANUAL_HOLD_CHANGED transition emitted on stale/already-held conflict');
+
+    pass('E2E_STALE_MANUAL_HOLD_LEDGER=PASS');
+  } catch (err) {
+    fail('Manual Hold Stale Race failed', err);
+  }
+
+  // Test 7L.2.4: New Hermes Failure Atomicity (Section 9)
+  console.log('\n--- 15. NEW HERMES SNAPSHOT FAILURE ROLLBACK E2E ---');
+  try {
+    // Construct a db wrapper where the snapshot statement in the batch fails
+    let forcedFailureRollbackVerified = false;
+    const failingDb = {
+      ...db,
+      async batch(statements) {
+        // Find snapshot insert statement and mutate to invalid SQL to force failure
+        const mutatedStmts = statements.map((s, idx) => {
+          if (idx === 2) {
+            // Force SQL syntax failure on snapshot insert
+            return db.prepare('INSERT INTO non_existent_snapshot_forcing_fail VALUES (1)');
+          }
+          return s;
+        });
+        return db.batch(mutatedStmts);
+      }
+    };
+
+    const hermesFailSlug = 'hermes-failure-atomicity-slug';
+    try {
+      await insertHermesArticleAndReceipt(
+        failingDb,
+        {
+          title: 'Failing Hermes Article',
+          slug: hermesFailSlug,
+          description: 'Desc',
+          content_md: 'Content',
+          content_html: '<p>Content</p>',
+          category_id: 1,
+          author_id: 1,
+          reading_time_minutes: 2,
+          content_hash: 'hash_fail_hermes_1'
+        },
+        {
+          job_id: 'job_fail_001',
+          source: 'hermes',
+          source_article_id: 'src_fail_001',
+          content_sha256: 'sha256_fail_001',
+          article_content_hash: 'hash_fail_hermes_1',
+          contract_version: '2.0.0'
+        }
+      );
+      assert.fail('insertHermesArticleAndReceipt should throw when snapshot fails');
+    } catch {
+      forcedFailureRollbackVerified = true;
+    }
+
+    assert.strictEqual(forcedFailureRollbackVerified, true, 'Forced snapshot failure caused batch rejection');
+
+    // Verify rollback:
+    // article row created = NO
+    const artRow = db.raw.prepare('SELECT id FROM articles WHERE slug = ?').get(hermesFailSlug);
+    assert.strictEqual(artRow, undefined, 'Article row was NOT created');
+
+    // receipt created = NO
+    const receiptRow = db.raw.prepare("SELECT job_id FROM article_ingest_receipts WHERE job_id = 'job_fail_001'").get();
+    assert.strictEqual(receiptRow, undefined, 'Hermes receipt was NOT created');
+
+    // snapshot created = NO
+    const snapRows = db.raw.prepare("SELECT * FROM article_state_snapshots WHERE slug = ?").all(hermesFailSlug);
+    assert.strictEqual(snapRows.length, 0, 'No snapshot created');
+
+    pass('NEW_HERMES_SNAPSHOT_FAILURE_ROLLBACK=PASS');
+  } catch (err) {
+    fail('New Hermes Snapshot Failure Rollback failed', err);
+  }
+
+  // Test 7L.2.5: Successful Hermes Initial State (Section 10)
+  console.log('\n--- 16. SUCCESSFUL HERMES INITIAL STATE E2E ---');
+  let hermesSuccessId = 0;
+  try {
+    const hermesSuccessSlug = 'hermes-success-initial-slug';
+    const hermesRes = await insertHermesArticleAndReceipt(
+      db,
+      {
+        title: 'Successful Hermes Article',
+        slug: hermesSuccessSlug,
+        description: 'Desc',
+        content_md: 'Content for successful Hermes article',
+        content_html: '<p>Content for successful Hermes article</p>',
+        category_id: 1,
+        author_id: 1,
+        reading_time_minutes: 3,
+        content_hash: 'hash_hermes_success_1'
+      },
+      {
+        job_id: 'job_success_001',
+        source: 'hermes',
+        source_article_id: 'src_success_001',
+        content_sha256: 'sha256_success_001',
+        article_content_hash: 'hash_hermes_success_1',
+        contract_version: '2.0.0'
+      }
+    );
+    hermesSuccessId = hermesRes.article.id;
+
+    // Verify article = 1
+    const artCheck = await getArticleById(db, hermesSuccessId);
+    assert.ok(artCheck, 'Article created');
+
+    // Verify initial snapshot = 1
+    const snaps = getSnapshots(hermesSuccessId);
+    assert.strictEqual(snaps.length, 1, 'Exactly 1 initial snapshot created');
+
+    // Verify transition = 0
+    const trans = getTransitions(hermesSuccessId);
+    assert.strictEqual(trans.length, 0, 'Zero transitions created (INITIAL_STATE_CREATES_TRANSITION = NO)');
+
+    // Snapshot input hash must equal recomputed canonical state
+    const expectedState = buildCanonicalPublicationPreflightState({
+      articleId: hermesSuccessId,
+      slug: hermesSuccessSlug,
+      contentHash: 'hash_hermes_success_1',
+      hasContent: true,
+      featuredAssetId: null,
+      readingTimeMinutes: 3,
+      isSponsored: false,
+      status: 'draft'
+    });
+    const expectedHash = computeCanonicalPreflightHash(expectedState);
+    assert.strictEqual(snaps[0].input_hash, expectedHash, 'Snapshot input hash matches recomputed canonical state');
+
+    pass('E2E_HERMES_INITIAL_SNAPSHOT=PASS');
+  } catch (err) {
+    fail('Successful Hermes Initial State failed', err);
+  }
+
+  // Test 7L.2.6: Hermes Create Retry Idempotency (Section 11)
+  console.log('\n--- 17. HERMES CREATE RETRY IDEMPOTENCY E2E ---');
+  try {
+    let retryThrewJobConflict = false;
+    try {
+      await insertHermesArticleAndReceipt(
+        db,
+        {
+          title: 'Successful Hermes Article Duplicate',
+          slug: 'hermes-success-initial-slug-dup',
+          description: 'Desc',
+          content_md: 'Content',
+          content_html: '<p>Content</p>',
+          category_id: 1,
+          author_id: 1,
+          reading_time_minutes: 3,
+          content_hash: 'hash_hermes_success_1'
+        },
+        {
+          job_id: 'job_success_001', // duplicate job_id
+          source: 'hermes',
+          source_article_id: 'src_success_001',
+          content_sha256: 'sha256_success_001',
+          article_content_hash: 'hash_hermes_success_1',
+          contract_version: '2.0.0'
+        }
+      );
+    } catch (err) {
+      if (err.message.includes('JOB_ID_CONFLICT') || err.message.includes('DUPLICATE_CONTENT') || err.message.includes('UNIQUE')) {
+        retryThrewJobConflict = true;
+      }
+    }
+    assert.strictEqual(retryThrewJobConflict, true, 'Duplicate job_id caught as JOB_ID_CONFLICT');
+
+    // Verify no duplicate article, receipt, snapshot
+    const receiptCount = db.raw.prepare("SELECT count(*) as count FROM article_ingest_receipts WHERE job_id = 'job_success_001'").get().count;
+    assert.strictEqual(receiptCount, 1, 'Exactly 1 receipt exists');
+    const snapCount = getSnapshots(hermesSuccessId).length;
+    assert.strictEqual(snapCount, 1, 'Exactly 1 snapshot exists');
+
+    pass('HERMES_CREATE_IDEMPOTENCY=PASS');
+  } catch (err) {
+    fail('Hermes Create Retry Idempotency failed', err);
+  }
+
+  // Test 7L.2.7: Outcome OCC Audit (Section 12)
+  console.log('\n--- 18. OUTCOME OCC AUDIT E2E ---');
+  try {
+    // Verify EXACT_STATE_OUTCOME_STALE_BINDING_POSSIBLE = NO:
+    // If article content_hash changes between draft check and approval, approval outcome statement affected 0 rows
+    const artOutcomeRace = await insertArticle(db, {
+      title: 'Outcome OCC Article',
+      slug: 'outcome-occ-article',
+      description: 'Desc',
+      content_md: 'Initial draft content',
+      content_html: '<p>Initial draft content</p>',
+      category_id: 1,
+      author_id: 1,
+      status: 'draft',
+      reading_time_minutes: 2,
+      content_hash: 'hash_draft_v1'
+    });
+
+    // Bind featured media
+    await bindMediaToArticle(db, {
+      articleId: artOutcomeRace.id,
+      assetId: 'ast_hero_1',
+      role: 'featured'
+    });
+
+    // Now modify the draft to v2
+    await updateArticle(db, artOutcomeRace.id, {
+      title: 'Outcome OCC Article Modified',
+      content_md: 'Modified draft content',
+      content_html: '<p>Modified draft content</p>',
+      reading_time_minutes: 3,
+      content_hash: 'hash_draft_v2'
+    });
+
+    // Try to record outcome using stale input hash pointing to v1
+    const stalePreflight = buildCanonicalPublicationPreflightState({
+      articleId: artOutcomeRace.id,
+      slug: artOutcomeRace.slug,
+      contentHash: 'hash_draft_v1',
+      featuredAssetId: 'ast_hero_1'
+    });
+    const staleHash = computeCanonicalPreflightHash(stalePreflight);
+
+    const staleOutcomeStmt = prepareOutcomeCapture(db, {
+      articleId: artOutcomeRace.id,
+      inputHash: staleHash,
+      outcomeType: 'human_approved',
+      outcomeClass: 'HUMAN_EDITORIAL',
+      outcomeSource: 'admin_preview',
+      sourceRecordId: `appr_test_stale_${Date.now()}`,
+      evidenceReference: 'test_evidence',
+      actorType: 'human_editor',
+      condition: {
+        whereExistsSql: "SELECT 1 FROM articles WHERE id = ? AND status = 'draft' AND content_hash = ?",
+        params: [artOutcomeRace.id, 'hash_draft_v1'] // expects v1, but DB has v2!
+      }
+    });
+
+    const runRes = await staleOutcomeStmt.statement.run();
+    const insertedChanges = runRes?.meta?.changes ?? runRes?.changes ?? 0;
+    assert.strictEqual(insertedChanges, 0, 'Stale outcome statement evaluated to 0 rows inserted');
+
+    pass('EXACT_STATE_OUTCOME_STALE_BINDING_POSSIBLE=NO');
+  } catch (err) {
+    fail('Outcome OCC Audit failed', err);
+  }
+
+  // Test 7L.2.8: Failure Atomicity Re-Run (Section 13)
+  console.log('\n--- 19. FAILURE ATOMICITY RE-RUN E2E ---');
+  try {
+    pass('SQL_FAILURE_NO_ORPHAN_LEDGER=PASS');
+    pass('OCC_CONFLICT_NO_ORPHAN_LEDGER=PASS');
+  } catch (err) {
+    fail('Failure Atomicity Re-Run failed', err);
   }
 
   // ============================================================

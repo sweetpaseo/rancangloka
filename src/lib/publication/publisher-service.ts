@@ -62,7 +62,8 @@ import {
 import {
   prepareOutcomeCapture,
   isDecisionQualityFailure,
-  type FailureClass
+  type FailureClass,
+  type OCCGuardCondition
 } from '../decision/trajectory-ledger.ts';
 import {
   buildCanonicalPublicationPreflightState,
@@ -591,6 +592,11 @@ export async function executeAtomicPublication(
     });
     const currentHash = computeCanonicalPreflightHash(currentPreflightState);
 
+    const occCondition: OCCGuardCondition = {
+      whereExistsSql: "SELECT 1 FROM articles WHERE id = ? AND status = 'published' AND content_hash = ?",
+      params: [execution.article_id, execution.content_hash]
+    };
+
     const outcomeCapture = prepareOutcomeCapture(db, {
       articleId: execution.article_id,
       inputHash: currentHash,
@@ -602,7 +608,8 @@ export async function executeAtomicPublication(
       actorType: 'system_publisher',
       actorId: execution.claimed_by_worker || 'publisher_worker',
       metadata: telemetryDetails,
-      occurredAt: actualPublishedAt
+      occurredAt: actualPublishedAt,
+      condition: occCondition
     });
 
     batchStatements.push(outcomeCapture.statement);

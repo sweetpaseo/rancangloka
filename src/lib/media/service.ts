@@ -13,7 +13,8 @@
 
 import {
   prepareStateMutationCapture,
-  generateMutationOperationId
+  generateMutationOperationId,
+  type OCCGuardCondition
 } from '../decision/trajectory-ledger.ts';
 import {
   buildCanonicalPublicationPreflightState,
@@ -901,8 +902,9 @@ export async function bindMediaToArticle(
     altText?: string;
     caption?: string;
     boundBy?: string;
+    expectedPriorAssetId?: string | null;
   }
-): Promise<{ success: boolean; articleMediaId: number | null }> {
+): Promise<{ success: boolean; articleMediaId: number | null; conflict?: boolean }> {
   const role = params.role || ROLE_FEATURED;
   const slotKey = params.slotKey || (role === ROLE_FEATURED ? 'featured' : 'inline');
   const cleanAlt = (params.altText || '').trim();
@@ -924,24 +926,43 @@ export async function bindMediaToArticle(
   }
 
   const priorAssetId = existingActiveBinding?.asset_id || null;
+  const expectedPrior = params.expectedPriorAssetId !== undefined ? params.expectedPriorAssetId : priorAssetId;
 
   const deactivateStmt = db
-    .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE article_id = ? AND slot_key = ? AND is_active = 1')
-    .bind(params.articleId, slotKey);
+    .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE article_id = ? AND slot_key = ? AND is_active = 1 AND asset_id = ?')
+    .bind(params.articleId, slotKey, expectedPrior || '');
 
   const insertMediaStmt = db
     .prepare(
       `
       INSERT INTO article_media (
         article_id, asset_id, role, slot_key, is_active, sort_order, caption
-      ) VALUES (?, ?, ?, ?, 1, 0, ?);
+      )
+      SELECT ?, ?, ?, ?, 1, 0, ?
+      WHERE COALESCE((
+        SELECT asset_id FROM article_media WHERE article_id = ? AND slot_key = ? AND is_active = 1 LIMIT 1
+      ), '') = ?;
     `
     )
-    .bind(params.articleId, params.assetId, role, slotKey, params.caption || null);
+    .bind(
+      params.articleId,
+      params.assetId,
+      role,
+      slotKey,
+      params.caption || null,
+      params.articleId,
+      slotKey,
+      expectedPrior || ''
+    );
 
   const updateArticleStmt = db
-    .prepare('UPDATE articles SET featured_image = ?, image_alt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?')
-    .bind(publicUrl, cleanAlt, params.articleId, 'draft');
+    .prepare(`
+      UPDATE articles SET featured_image = ?, image_alt = ?, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ? AND status = ? AND EXISTS (
+        SELECT 1 FROM article_media WHERE article_id = ? AND slot_key = ? AND role = 'featured' AND is_active = 1 AND asset_id = ?
+      )
+    `)
+    .bind(publicUrl, cleanAlt, params.articleId, 'draft', params.articleId, slotKey, params.assetId);
 
   let ledgerStatements: any[] = [];
   try {
@@ -965,6 +986,11 @@ export async function bindMediaToArticle(
       const toHash = computeCanonicalPreflightHash(buildCanonicalPublicationPreflightState(afterInput));
       const mopId = generateMutationOperationId('media_binding', params.articleId, fromHash, toHash);
 
+      const occCondition: OCCGuardCondition = {
+        whereExistsSql: "SELECT 1 FROM article_media WHERE article_id = ? AND slot_key = ? AND role = 'featured' AND is_active = 1 AND asset_id = ?",
+        params: [params.articleId, slotKey, params.assetId]
+      };
+
       const capture = prepareStateMutationCapture(db, {
         articleId: params.articleId,
         beforeInput,
@@ -972,7 +998,8 @@ export async function bindMediaToArticle(
         captureSource: 'featured_media_binding',
         mutationOperationId: mopId,
         actorType: 'admin_operator',
-        actorId: params.boundBy
+        actorId: params.boundBy,
+        condition: occCondition
       });
       ledgerStatements = capture.statements;
     }
@@ -981,13 +1008,18 @@ export async function bindMediaToArticle(
   }
 
   const batchResults = await db.batch([
-    deactivateStmt,
     insertMediaStmt,
+    deactivateStmt,
     updateArticleStmt,
     ...ledgerStatements
   ]);
 
-  const articleMediaId = Number(batchResults[1]?.meta?.last_row_id ?? batchResults[1]?.lastInsertRowid ?? 0) || null;
+  const insertChanges = batchResults[0]?.meta?.changes ?? batchResults[0]?.changes ?? 0;
+  if (insertChanges === 0) {
+    return { success: false, articleMediaId: null, conflict: true };
+  }
+
+  const articleMediaId = Number(batchResults[0]?.meta?.last_row_id ?? batchResults[0]?.lastInsertRowid ?? 0) || null;
   return { success: true, articleMediaId };
 }
 

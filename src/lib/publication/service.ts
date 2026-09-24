@@ -34,7 +34,8 @@ import {
 import {
   prepareStateMutationCapture,
   prepareOutcomeCapture,
-  generateMutationOperationId
+  generateMutationOperationId,
+  type OCCGuardCondition
 } from '../decision/trajectory-ledger.ts';
 import {
   buildCanonicalPublicationPreflightState,
@@ -748,6 +749,11 @@ export async function recordEditorialApproval(
     });
     const currentHash = computeCanonicalPreflightHash(currentPreflightState);
 
+    const occCondition: OCCGuardCondition = {
+      whereExistsSql: "SELECT 1 FROM articles WHERE id = ? AND status = 'draft' AND content_hash = ?",
+      params: [params.articleId, article.content_hash]
+    };
+
     const outcomeCapture = prepareOutcomeCapture(db, {
       articleId: params.articleId,
       inputHash: currentHash,
@@ -758,7 +764,8 @@ export async function recordEditorialApproval(
       evidenceReference: `dual_approval_editor_${params.approvedBy}`,
       actorType: 'human_editor',
       actorId: params.approvedBy,
-      metadata: { approved_role: approvedRole, notes }
+      metadata: { approved_role: approvedRole, notes },
+      condition: occCondition
     });
     outcomeStmt = outcomeCapture.statement;
   } catch {
