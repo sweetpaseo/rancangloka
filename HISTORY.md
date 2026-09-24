@@ -1437,6 +1437,61 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - `JEV_AUTHORITY_UNCHANGED = ZERO`.
 * **Status Fase:** `JEV_PHASE_7D = PASS`. Canonical state v2 aktif di produksi dan siap untuk Phase JEV-7E (Dataset Calibration & Calibration Tooling).
 
+### Masalah 55: Audit Kesiapan Dataset v2 & Rancangan Ekspansi Cakupan Shadow (Phase JEV-7E & JEV-7F)
+* **Tujuan & Ruang Lingkup:** Melakukan audit read-only komprehensif terhadap observasi v2 yang telah dikumpulkan di D1 produksi, mengevaluasi independensi state kandidat, dan merancang ekspansi cakupan observasi shadow agar mencakup seluruh draf editorial yang dapat dievaluasi secara semantik tanpa mengorbankan keamanan publikasi.
+* **Hasil Audit Baseline Dataset v2 Produksi (Phase JEV-7E):**
+  - Total observasi produksi: 4 baris (3 baris v1, 1 baris v2 `obs_mueb41kn_01wr4b`).
+  - Total kandidat unik terobservasi v2: Tepat 1 subjek (Artikel 5, `h_89de9fcf`).
+  - Evaluasi Kesiapan Kalibrasi: `DATASET_READY_FOR_REAL_CALIBRATION = NO` (1 subjek belum mencukupi secara statistik untuk kalibrasi multi-aksi dan evaluasi risiko).
+  - Populasi Draf Produksi: 6 artikel (5 draft, 1 published). Kolektor otonom sebelumnya hanya memindai kandidat `READY_TO_SCHEDULE` yang memiliki media aktif.
+* **Prinsip Ekspansi Cakupan Shadow (Phase JEV-7F):**
+  - **Pemisahan Konseptual Tegas:** `PUBLISHABLE_SUBJECT != SHADOW_EVALUABLE_SUBJECT`.
+  - Sebuah draf editorial dinyatakan *shadow evaluable* jika sistem dapat membentuk canonical decision state yang lengkap dan valid tanpa mutasi data, terlepas dari apakah draf tersebut berstatus `NOT_READY`, belum memiliki gambar utama (*missing featured media*), referensi belum lengkap, atau berstatus `manual_hold`.
+  - Pembaruan Predikat: `isShadowEvaluable({ id, slug, status })` memvalidasi kelayakan struktural draf tanpa mengharuskan kelayakan terbit.
+  - Relaksasi Selektor: Menggunakan `LEFT JOIN article_media` pada `selectProspectiveArticles` agar draf tanpa media tetap dapat dievaluasi dalam shadow mode.
+* **Firewall Keamanan & Zero Authority:**
+  - Evaluasi shadow terhadap draf yang belum siap tidak mengubah kelayakan terbit deterministik artikel tersebut (`SHADOW_EVALUATION_DOES_NOT_IMPLY_PUBLICATION_ELIGIBILITY = YES`).
+  - Kolektor tetap memiliki otoritas nol (`JEV_AUTHORITY_UNCHANGED = ZERO`).
+
+### Masalah 56: Pengerasan Semantik Taksonomi, Taksonomi Exact Action Agreement & Audit Historis D1 (Phase JEV-7F.1 & JEV-7F.2)
+* **Tujuan & Ruang Lingkup:** Memperjelas dan mengeraskan semantik klasifikasi ketidaksepakatan (*disagreement classification*) antara otoritas deterministik dan model Jev, memisahkan arah ketidaksepakatan dari perataan gerbang publikasi, menambahkan klasifikasi eksplisit `AGREE_REVISE`, serta mengaudit seluruh data historis D1 untuk membuktikan ketiadaan tabrakan data (*zero semantic collision*).
+* **Pengerasan Matriks Ketidaksepakatan (Phase JEV-7F.1):**
+  - Analisis menemukan bahwa kasus `authoritative = revise` vs `jev = stop` sebelumnya secara keliru dapat terklasifikasi sebagai `AGREE_STOP`.
+  - Matriks direvisi secara ketat:
+    - `authoritative = revise` vs `jev = stop` -> `JEV_MORE_CONSERVATIVE`
+    - `authoritative = stop` vs `jev = revise` -> `JEV_MORE_PERMISSIVE`
+  - Pemisahan Fungsi: Memperkenalkan `computePublicationGateAlignment(authoritative, jev)` untuk menilai keselarasan biner gerbang (`PASS` jika keduanya `continue`, `BLOCK` jika keduanya `revise/stop`, `DIVERGENT` jika berseberangan), sehingga `classifyDisagreement` murni merefleksikan arah rekomendasi analitis.
+  - Stabilitas Hash Artikel 5: Terverifikasi tetap `h_89de9fcf` (`HASH_BEHAVIOR_CHANGED = NO`).
+* **Pengerasan Taksonomi Exact Action Agreement & Audit Historis Produksi (Phase JEV-7F.2):**
+  - Menghilangkan ambiguitas di mana `authoritative = revise` vs `jev = revise` sebelumnya tersimpan sebagai `AGREE_STOP`.
+  - Menambahkan nilai klasifikasi resmi baru: `AGREE_REVISE` pada enum TypeScript `DecisionDisagreementClassification` dan validasi router.
+  - **Audit Read-Only D1 Produksi `decision_observations`:**
+    - Total observasi: 4 baris (v1: 1 `JEV_UNAVAILABLE`, 1 `AGREE_CONTINUE`, 1 `JEV_MORE_CONSERVATIVE`; v2: 1 `AGREE_CONTINUE`).
+    - Baris dengan `disagreement_classification = 'AGREE_STOP'`: **0 baris**.
+    - `LEGACY_REVISE_REVISE_STORED_AS_AGREE_STOP_COUNT = 0`.
+    - Kesimpulan: `DISAGREEMENT_TAXONOMY_VERSIONING_REQUIRED = NO`. Penambahan `AGREE_REVISE` 100% aditif dan bebas dari tabrakan semantik historis.
+
+### Masalah 57: Eliminasi Starvasi, Fairness Multi-Window & Keyset Cursor Berputar Bounded Skala Besar (Phase JEV-7F.3 & JEV-7F.4)
+* **Tujuan & Ruang Lingkup:** Mengidentifikasi dan memperbaiki potensi starvasi subjek editorial pada selektor kolektor otonom, memisahkan batas pemindaian kandidat dari batas pemanggilan provider, dan menerapkan cursor keyset berputar yang durabel (*durable rotating keyset cursor with cyclic wraparound*) untuk menjamin keadilan (*fairness*) evaluasi pada kumpulan subjek berskala besar.
+* **Audit Starvasi & Pemisahan Batas Pemindaian (Phase JEV-7F.3):**
+  - **Cacat Arsitektural Sebelumnya:** `selectProspectiveArticles` menggunakan `maxSubjectsPerRun = 3` langsung sebagai `LIMIT ?` pada SQL.
+  - Akibat: Pada kumpulan 5 draf (Artikel 1..5) dengan `ORDER BY id ASC`, setelah Artikel 1..3 diobservasi dan terdeduplikasi, setiap eksekusi cron berikutnya selalu mengambil Artikel 1..3 dan berhenti karena deduplikasi, menyebabkan Artikel 4 dan 5 mengalami **starvasi permanen** (`STARVATION_DETECTED = YES`).
+  - **Solusi Arsitektur:** Memisahkan batas pemindaian kandidat (`maxCandidatesScannedPerRun = 25`) dari batas pemanggilan provider (`maxCallsPerRun = 3`). Loop kandidat terus berjalan melewati subjek yang terdeduplikasi (biaya 0 panggilan) hingga batas anggaran provider per eksekusi tercapai.
+  - Simulasi membuktikan seluruh 5 subjek akhirnya diobservasi dalam 2 siklus, dan siklus ke-3 mencapai kondisi mapan (*steady state*) 100% dedupe-skip.
+* **Penanganan Kumpulan Subjek Besar & Keyset Cursor Berputar Durabel (Phase JEV-7F.4):**
+  - **Masalah Skalabilitas:** Jika jumlah draf melebihi `maxCandidatesScannedPerRun` (misal 30 draf dengan batas scan 25), pemindaian statis `ORDER BY id ASC LIMIT 25` akan membuat Artikel 26..30 mengalami starvasi permanen (`LARGE_POOL_STARVATION_DETECTED = YES`).
+  - **Implementasi Keyset Cursor Berputar:**
+    - Query kandidat diubah menjadi: `SELECT ... WHERE a.status = 'draft' AND a.id > ? ORDER BY a.id ASC LIMIT ?`.
+    - **Cyclic Wraparound:** Jika `cursorArticleId > 0` dan jumlah draf yang tersisa setelah cursor lebih sedikit dari `scanLimit`, query secara otomatis melakukan wraparound ke `a.id > 0` untuk mengisi sisa kapasitas jendela pemindaian hingga batas `scanLimit`.
+    - **Durabilitas Tanpa Migrasi Skema:** Cursor terakhir (`nextCursorArticleId`) diambil dan disimpan secara durabel melalui kolom `details_json` pada tabel `publication_cron_runs` (yang sudah ada sejak migrasi 0019/0022). Tidak memerlukan tabel atau migrasi database baru (`NEW_DB_MIGRATION_REQUIRED = NO`).
+    - **Ketahanan Edge-Case:** Mampu menangani penghapusan artikel, jarak ID renggang (*sparse ID gaps*), dan penambahan artikel baru dengan ID lebih tinggi secara alami.
+* **Hasil Pengujian & Verifikasi Skala:**
+  - Suite pengujian `scripts/test-shadow-coverage-expansion.js` diperluas menjadi 18 tes komprehensif (18/18 PASS).
+  - Skala 30 subjek: Terbukti seluruh 30 subjek berhasil diobservasi dalam beberapa siklus dan mencapai steady state (`ALL_30_EVENTUALLY_OBSERVED = YES`).
+  - Skala 100 subjek: Terbukti jendela pemindaian berputar melintasi seluruh 100 subjek dalam 4 siklus dan melakukan wraparound bersih pada siklus ke-5 (`ALL_100_EVENTUALLY_SCANNED = YES`, `SCAN_WRAPAROUND_WORKS = YES`).
+  - Seluruh pengujian regresi (soak-safety, planner, publisher, continuous-shadow, decision-engine, media-planning, router, telemetry, lokamedia-integration) lulus 100%. Kompilasi `tsc --noEmit` dan `npm run build` sukses.
+* **Status Fase:** `JEV_PHASE_7F_4 = PASS`. Sistem siap untuk peluncuran canary produksi Phase JEV-7G setelah persetujuan operator.
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1447,7 +1502,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `a66a0424-9e39-451f-b068-13c1b90832b9`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `0022_allow_jev_shadow_collector_cron`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
-| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Canonical v2 Active & Dedupe Stable) | Canonical state v2 aktif di edge cron `17 * * * *`, deduplikasi stabil terbukti (Zero Authority, mode OFF). |
+| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Phase 7F.4 Hardened & Canary Ready) | Keyset rotating cursor dengan cyclic wraparound, exact action agreement taxonomy (AGREE_REVISE), dan shadow coverage expansion siap untuk deploy canary 7G (Zero Authority, mode OFF). |
 | **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` & `publication_cron_runs` mencatat telemetri durable edge. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |

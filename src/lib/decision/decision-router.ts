@@ -119,15 +119,27 @@ export function classifyDisagreement(
   }
 
   if (decisionPoint === 'publication_preflight') {
-    const isAuthContinue = auth === 'continue' || auth === 'ready';
-    const isJevContinue = jev === 'continue';
-    const isAuthStop = auth === 'stop' || auth === 'hold' || auth === 'blocked';
-    const isJevStop = jev === 'stop';
+    // Exact agreement pairs
+    if ((auth === 'continue' || auth === 'ready') && jev === 'continue') return 'AGREE_CONTINUE';
+    if (auth === 'revise' && jev === 'revise') return 'AGREE_REVISE';
+    if ((auth === 'stop' || auth === 'hold' || auth === 'blocked') && jev === 'stop') return 'AGREE_STOP';
 
-    if (isAuthContinue && isJevContinue) return 'AGREE_CONTINUE';
-    if (isAuthStop && isJevStop) return 'AGREE_STOP';
-    if (isAuthContinue && (isJevStop || jev === 'revise')) return 'JEV_MORE_CONSERVATIVE';
-    if (isAuthStop && isJevContinue) return 'JEV_MORE_PERMISSIVE';
+    // Jev more conservative (auth is more permissive than Jev)
+    // continue > revise > stop
+    if ((auth === 'continue' || auth === 'ready') && (jev === 'revise' || jev === 'stop')) {
+      return 'JEV_MORE_CONSERVATIVE';
+    }
+    if (auth === 'revise' && jev === 'stop') {
+      return 'JEV_MORE_CONSERVATIVE';
+    }
+
+    // Jev more permissive (Jev is more permissive than auth)
+    if (jev === 'continue' && (auth === 'revise' || auth === 'stop' || auth === 'hold' || auth === 'blocked')) {
+      return 'JEV_MORE_PERMISSIVE';
+    }
+    if (jev === 'revise' && (auth === 'stop' || auth === 'hold' || auth === 'blocked')) {
+      return 'JEV_MORE_PERMISSIVE';
+    }
   }
 
   if (decisionPoint === 'research_sufficiency') {
@@ -187,6 +199,42 @@ export function classifyDisagreement(
   }
 
   return 'JEV_MORE_CONSERVATIVE';
+}
+
+export type PublicationGateAlignment = 'BOTH_CONTINUE' | 'BOTH_HALT' | 'DIVERGENT';
+
+/**
+ * Gate-level binary publication alignment metric.
+ * Treats revise and stop as BOTH_HALT from the operational publication gate perspective,
+ * without replacing or modifying action-level disagreement_classification.
+ */
+export function computePublicationGateAlignment(
+  decisionPoint: DecisionPoint,
+  authoritativeDecision: string,
+  jevDecision: string | null
+): PublicationGateAlignment | 'NOT_APPLICABLE' {
+  if (decisionPoint !== 'publication_preflight' || !jevDecision) {
+    return 'NOT_APPLICABLE';
+  }
+
+  const auth = authoritativeDecision.toLowerCase().trim();
+  const jev = jevDecision.toLowerCase().trim();
+
+  const isAuthContinue = auth === 'continue' || auth === 'ready';
+  const isJevContinue = jev === 'continue';
+
+  if (isAuthContinue && isJevContinue) {
+    return 'BOTH_CONTINUE';
+  }
+
+  const isAuthHalt = auth === 'revise' || auth === 'stop' || auth === 'hold' || auth === 'blocked';
+  const isJevHalt = jev === 'revise' || jev === 'stop';
+
+  if (isAuthHalt && isJevHalt) {
+    return 'BOTH_HALT';
+  }
+
+  return 'DIVERGENT';
 }
 
 // ============================================================

@@ -32,9 +32,11 @@ import {
   computeCanonicalPreflightHash,
   type PublicationPreflightCanonicalState
 } from './publication-preflight-state.ts';
+import { routeDecision } from './decision-router.ts';
 
 export interface ShadowCollectorConfig {
   enabled: boolean;
+  maxCandidatesScannedPerRun: number;
   maxSubjectsPerRun: number;
   maxCallsPerRun: number;
   maxCallsPerDay: number;
@@ -45,6 +47,7 @@ export interface ShadowCollectorRunOptions {
   triggerSource?: string;
   config?: Partial<ShadowCollectorConfig>;
   runId?: string;
+  cursorArticleId?: number;
 }
 
 export interface ProspectiveArticleSubject {
@@ -60,6 +63,36 @@ export interface ProspectiveArticleSubject {
   isReady?: number | null;
   manualHold?: number | null;
   readinessEvaluatedAt: string | null;
+}
+
+/**
+ * Deterministic predicate to evaluate whether an article is eligible for shadow observation.
+ *
+ * SHADOW_EVALUABLE != PUBLISHABLE.
+ *
+ * A subject is shadow evaluable if the system can construct a complete,
+ * well-formed canonical decision state without mutation, regardless of whether
+ * it has missing media, missing references, manual hold, or NOT_READY status.
+ */
+export function isShadowEvaluable(article: {
+  id?: number | string | null;
+  slug?: string | null;
+  status?: string | null;
+}): boolean {
+  if (!article || article.id === null || article.id === undefined) {
+    return false;
+  }
+  const idNum = Number(article.id);
+  if (!Number.isFinite(idNum) || idNum <= 0) {
+    return false;
+  }
+  if (!article.slug || typeof article.slug !== 'string' || article.slug.trim().length === 0) {
+    return false;
+  }
+  if (article.status !== 'draft') {
+    return false;
+  }
+  return true;
 }
 
 export interface SubjectEvaluationSummary {
@@ -87,11 +120,15 @@ export interface ShadowCollectorRunResult {
     subjects: SubjectEvaluationSummary[];
     dailyCallsUsed?: number;
     dailyCallsRemaining?: number;
+    cursorArticleId?: number;
+    lastScannedArticleId?: number;
+    nextCursorArticleId?: number;
   };
 }
 
 export const DEFAULT_SHADOW_COLLECTOR_CONFIG: ShadowCollectorConfig = {
   enabled: false,
+  maxCandidatesScannedPerRun: 25,
   maxSubjectsPerRun: 3,
   maxCallsPerRun: 3,
   maxCallsPerDay: 25,
@@ -109,66 +146,139 @@ export function getShadowCollectorConfig(env?: any): ShadowCollectorConfig {
     mergedEnv.JEV_SHADOW_COLLECTOR_ENABLED === 'true' ||
     mergedEnv.JEV_SHADOW_COLLECTOR_ENABLED === true;
 
+  const maxCandidates = Number(mergedEnv.JEV_SHADOW_MAX_CANDIDATES_SCANNED_PER_RUN);
   const maxSubjects = Number(mergedEnv.JEV_SHADOW_MAX_SUBJECTS_PER_RUN);
   const maxCallsRun = Number(mergedEnv.JEV_SHADOW_MAX_CALLS_PER_RUN);
   const maxCallsDay = Number(mergedEnv.JEV_SHADOW_MAX_CALLS_PER_DAY);
   const retryMinutes = Number(mergedEnv.JEV_SHADOW_ERROR_RETRY_MINUTES);
 
+  const resolvedMaxSubjects = Number.isFinite(maxSubjects) && maxSubjects > 0
+    ? maxSubjects
+    : DEFAULT_SHADOW_COLLECTOR_CONFIG.maxSubjectsPerRun;
+
+  const resolvedMaxCandidates = Number.isFinite(maxCandidates) && maxCandidates > 0
+    ? maxCandidates
+    : Math.max(DEFAULT_SHADOW_COLLECTOR_CONFIG.maxCandidatesScannedPerRun, resolvedMaxSubjects);
+
   return {
     enabled: isEnabled,
-    maxSubjectsPerRun: Number.isFinite(maxSubjects) && maxSubjects > 0 ? maxSubjects : DEFAULT_SHADOW_COLLECTOR_CONFIG.maxSubjectsPerRun,
+    maxCandidatesScannedPerRun: resolvedMaxCandidates,
+    maxSubjectsPerRun: resolvedMaxSubjects,
     maxCallsPerRun: Number.isFinite(maxCallsRun) && maxCallsRun > 0 ? maxCallsRun : DEFAULT_SHADOW_COLLECTOR_CONFIG.maxCallsPerRun,
     maxCallsPerDay: Number.isFinite(maxCallsDay) && maxCallsDay > 0 ? maxCallsDay : DEFAULT_SHADOW_COLLECTOR_CONFIG.maxCallsPerDay,
     errorRetryMinutes: Number.isFinite(retryMinutes) && retryMinutes >= 0 ? retryMinutes : DEFAULT_SHADOW_COLLECTOR_CONFIG.errorRetryMinutes
   };
 }
 
+let lastMemoryCursor = 0;
+
+export function resetMemoryCursor(cursor: number = 0): void {
+  lastMemoryCursor = cursor;
+}
+
+export function getMemoryCursor(): number {
+  return lastMemoryCursor;
+}
+
+/**
+ * Durably retrieves the last scanned article ID cursor from publication_cron_runs telemetry.
+ * Safe read-only: fails safe to 0 if table is missing or unpopulated.
+ */
+export async function getDurableCursorArticleId(db: any): Promise<number> {
+  try {
+    const row = await db.prepare(`
+      SELECT details_json
+      FROM publication_cron_runs
+      WHERE job_name = 'jev_shadow_collector'
+        AND status IN ('SUCCEEDED', 'success')
+      ORDER BY id DESC
+      LIMIT 1;
+    `).first();
+
+    if (!row || !row.details_json) {
+      return 0;
+    }
+    const details = typeof row.details_json === 'string'
+      ? JSON.parse(row.details_json)
+      : row.details_json;
+
+    const cursor = Number(details?.nextCursorArticleId ?? details?.lastScannedArticleId ?? details?.cursorArticleId ?? 0);
+    return Number.isFinite(cursor) && cursor > 0 ? cursor : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Selects prospective draft articles for publication_preflight observation.
  * Strict READ-ONLY semantics: does not mutate readiness or article status.
+ *
+ * Implements keyset pagination with cyclic wraparound:
+ * 1. Fetches up to `limit` draft articles with `a.id > cursorArticleId`.
+ * 2. If `cursorArticleId > 0` and fewer than `limit` rows are returned, it wraps around to `a.id > 0`
+ *    to fill the remaining scan capacity, guaranteeing zero starvation across large subject pools.
  */
 export async function selectProspectiveArticles(
   db: any,
-  limit: number = 3
+  limit: number = 25,
+  cursorArticleId: number = 0
 ): Promise<ProspectiveArticleSubject[]> {
-  const query = `
-    SELECT a.id, a.slug, a.title, a.status, a.content_hash,
-           a.reading_time_minutes, a.is_sponsored,
-           COALESCE(a.manual_hold, 0) AS manual_hold,
-           am.asset_id AS featured_asset_id,
-           COALESCE(r.overall_status, 'NOT_READY') AS readiness_status,
-           r.is_ready, r.evaluated_at AS readiness_evaluated_at
-    FROM articles a
-    JOIN article_media am ON a.id = am.article_id AND am.role = 'featured' AND am.is_active = 1
-    LEFT JOIN article_publication_readiness r ON a.id = r.article_id
-      AND r.id = (
-        SELECT id FROM article_publication_readiness
-        WHERE article_id = a.id
-        ORDER BY evaluated_at DESC, id DESC
-        LIMIT 1
-      )
-    WHERE a.status = 'draft'
-    ORDER BY a.id ASC
-    LIMIT ?;
-  `;
+  const fetchQuery = async (afterId: number, count: number): Promise<any[]> => {
+    const query = `
+      SELECT a.id, a.slug, a.title, a.status, a.content_hash,
+             a.reading_time_minutes, a.is_sponsored,
+             COALESCE(a.manual_hold, 0) AS manual_hold,
+             am.asset_id AS featured_asset_id,
+             COALESCE(r.overall_status, 'NOT_READY') AS readiness_status,
+             r.is_ready, r.evaluated_at AS readiness_evaluated_at
+      FROM articles a
+      LEFT JOIN article_media am ON a.id = am.article_id AND am.role = 'featured' AND am.is_active = 1
+      LEFT JOIN article_publication_readiness r ON a.id = r.article_id
+        AND r.id = (
+          SELECT id FROM article_publication_readiness
+          WHERE article_id = a.id
+          ORDER BY evaluated_at DESC, id DESC
+          LIMIT 1
+        )
+      WHERE a.status = 'draft' AND a.id > ?
+      ORDER BY a.id ASC
+      LIMIT ?;
+    `;
+    const res = await db.prepare(query).bind(afterId, count).all();
+    return res.results || res || [];
+  };
 
   try {
-    const res = await db.prepare(query).bind(limit).all();
-    const rows = res.results || res || [];
-    return rows.map((r: any) => ({
-      id: Number(r.id),
-      slug: String(r.slug),
-      title: String(r.title),
-      status: String(r.status),
-      contentHash: r.content_hash ? String(r.content_hash) : null,
-      readingTimeMinutes: Number(r.reading_time_minutes) || 5,
-      isSponsored: Boolean(r.is_sponsored),
-      featuredAssetId: r.featured_asset_id ? String(r.featured_asset_id) : null,
-      readinessStatus: r.is_ready ? 'READY_TO_SCHEDULE' : String(r.readiness_status || 'NOT_READY'),
-      isReady: r.is_ready !== undefined && r.is_ready !== null ? Number(r.is_ready) : null,
-      manualHold: r.manual_hold !== undefined && r.manual_hold !== null ? Number(r.manual_hold) : 0,
-      readinessEvaluatedAt: r.readiness_evaluated_at ? String(r.readiness_evaluated_at) : null
-    }));
+    let rawRows = await fetchQuery(cursorArticleId, limit);
+
+    // Bounded cyclic wraparound: if cursorArticleId > 0 and rawRows.length < limit, fill remaining from id > 0
+    if (cursorArticleId > 0 && rawRows.length < limit) {
+      const remainingLimit = limit - rawRows.length;
+      const wrappedRows = await fetchQuery(0, remainingLimit);
+      const existingIds = new Set(rawRows.map((r: any) => Number(r.id)));
+      for (const wRow of wrappedRows) {
+        if (!existingIds.has(Number(wRow.id))) {
+          rawRows.push(wRow);
+        }
+      }
+    }
+
+    return rawRows
+      .filter((r: any) => isShadowEvaluable({ id: r.id, slug: r.slug, status: r.status }))
+      .map((r: any) => ({
+        id: Number(r.id),
+        slug: String(r.slug),
+        title: String(r.title),
+        status: String(r.status),
+        contentHash: r.content_hash ? String(r.content_hash) : null,
+        readingTimeMinutes: Number(r.reading_time_minutes) || 5,
+        isSponsored: Boolean(r.is_sponsored),
+        featuredAssetId: r.featured_asset_id ? String(r.featured_asset_id) : null,
+        readinessStatus: r.is_ready ? 'READY_TO_SCHEDULE' : String(r.readiness_status || 'NOT_READY'),
+        isReady: r.is_ready !== undefined && r.is_ready !== null ? Number(r.is_ready) : null,
+        manualHold: r.manual_hold !== undefined && r.manual_hold !== null ? Number(r.manual_hold) : 0,
+        readinessEvaluatedAt: r.readiness_evaluated_at ? String(r.readiness_evaluated_at) : null
+      }));
   } catch (err: any) {
     console.error('[ShadowCollector] Failed to query prospective articles:', err);
     return [];
@@ -276,14 +386,14 @@ export async function getDailyProviderCallCount(db: any): Promise<number> {
  * Delegates to the canonical publication preflight builder.
  */
 export function buildPublicationPreflightState(
-  subject: ProspectiveArticleSubject
+  subject: ProspectiveArticleSubject | any
 ): PublicationPreflightCanonicalState {
   return buildCanonicalPublicationPreflightState({
-    articleId: subject.id,
+    articleId: subject.id ?? subject.articleId,
     slug: subject.slug,
     contentHash: subject.contentHash,
     featuredAssetId: subject.featuredAssetId,
-    persistedReadinessStatus: subject.readinessStatus,
+    persistedReadinessStatus: subject.readinessStatus ?? subject.persistedReadinessStatus,
     isReady: subject.isReady,
     readingTimeMinutes: subject.readingTimeMinutes,
     isSponsored: subject.isSponsored,
@@ -357,8 +467,23 @@ export async function runDecisionShadowCollector(
     };
   }
 
-  // 3. Select prospective publication candidates
-  const subjects = await selectProspectiveArticles(db, config.maxSubjectsPerRun);
+  // 3. Resolve starting cursor and select prospective publication candidates (bounded scan, decoupled from provider call cap)
+  let startCursor = options.cursorArticleId;
+  if (startCursor === undefined || startCursor === null) {
+    const durableCursor = await getDurableCursorArticleId(db);
+    startCursor = durableCursor > 0 ? durableCursor : lastMemoryCursor;
+  }
+
+  const scanLimit = config.maxCandidatesScannedPerRun ?? Math.max(
+    DEFAULT_SHADOW_COLLECTOR_CONFIG.maxCandidatesScannedPerRun,
+    config.maxSubjectsPerRun
+  );
+  const subjects = await selectProspectiveArticles(db, scanLimit, startCursor);
+
+  const nextCursor = subjects.length > 0
+    ? subjects[subjects.length - 1].id
+    : startCursor;
+  lastMemoryCursor = nextCursor;
 
   // 4. Process each prospective candidate with deduplication & budget guards
   for (const subject of subjects) {
@@ -412,12 +537,13 @@ export async function runDecisionShadowCollector(
     // 4d. Invoke Jev shadow observer
     try {
       providerCalls++;
+      const deterministicRouting = routeDecision('publication_preflight', candidateState);
       const observation = await observeCandidateShadowDecision(candidateState, {
         db,
         env,
         correlationId: runId,
-        authoritativeDecision: 'continue',
-        authoritativeReasons: ['DETERMINISTIC_ELIGIBILITY_PASSED']
+        authoritativeDecision: deterministicRouting.normalized_choice,
+        authoritativeReasons: deterministicRouting.reasons
       });
 
       if (observation.provider_status === 'SUCCESS') {
@@ -468,7 +594,10 @@ export async function runDecisionShadowCollector(
       collectorEnabled: true,
       subjects: subjectsSummary,
       dailyCallsUsed: dailyCallsUsed + providerCalls,
-      dailyCallsRemaining: Math.max(0, config.maxCallsPerDay - (dailyCallsUsed + providerCalls))
+      dailyCallsRemaining: Math.max(0, config.maxCallsPerDay - (dailyCallsUsed + providerCalls)),
+      cursorArticleId: startCursor,
+      lastScannedArticleId: nextCursor,
+      nextCursorArticleId: nextCursor
     }
   };
 }

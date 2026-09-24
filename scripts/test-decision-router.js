@@ -321,13 +321,16 @@ async function run() {
   // 12. Disagreement Classification: Full Matrix
   try {
     assert.strictEqual(classifyDisagreement('publication_preflight', 'continue', 'continue', 'SUCCESS'), 'AGREE_CONTINUE');
+    assert.strictEqual(classifyDisagreement('publication_preflight', 'revise', 'revise', 'SUCCESS'), 'AGREE_REVISE');
     assert.strictEqual(classifyDisagreement('publication_preflight', 'stop', 'stop', 'SUCCESS'), 'AGREE_STOP');
     assert.strictEqual(classifyDisagreement('publication_preflight', 'continue', 'stop', 'SUCCESS'), 'JEV_MORE_CONSERVATIVE');
+    assert.strictEqual(classifyDisagreement('publication_preflight', 'revise', 'stop', 'SUCCESS'), 'JEV_MORE_CONSERVATIVE');
     assert.strictEqual(classifyDisagreement('publication_preflight', 'stop', 'continue', 'SUCCESS'), 'JEV_MORE_PERMISSIVE');
+    assert.strictEqual(classifyDisagreement('publication_preflight', 'stop', 'revise', 'SUCCESS'), 'JEV_MORE_PERMISSIVE');
     assert.strictEqual(classifyDisagreement('publication_preflight', 'continue', 'human_review', 'SUCCESS'), 'JEV_HUMAN_REVIEW');
     assert.strictEqual(classifyDisagreement('publication_preflight', 'continue', null, 'ERROR'), 'JEV_UNAVAILABLE');
     assert.strictEqual(classifyDisagreement('publication_preflight', 'continue', null, 'FALLBACK'), 'JEV_UNAVAILABLE');
-    pass('Disagreement classification handles all 6 analytical categories accurately');
+    pass('Disagreement classification handles all analytical categories accurately (including AGREE_REVISE)');
   } catch (err) {
     fail('Disagreement Classification Matrix', err);
   }

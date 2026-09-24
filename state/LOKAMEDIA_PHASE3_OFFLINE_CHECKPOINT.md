@@ -18,6 +18,12 @@ Commit message:
 feat: canonicalize jev publication preflight state
 ```
 
+`JEV_PHASE_7F_4=PASS_MULTI_WINDOW_FAIRNESS_AND_LARGE_SUBJECT_POOL_HARDENING`
+`JEV_PHASE_7F_3=PASS_SHADOW_COLLECTOR_FAIRNESS_AND_STARVATION_HARDENING`
+`JEV_PHASE_7F_2=PASS_EXACT_ACTION_AGREEMENT_AND_HISTORICAL_TAXONOMY_AUDIT`
+`JEV_PHASE_7F_1=PASS_CALIBRATION_SEMANTICS_AND_HASH_IDENTITY_HARDENING`
+`JEV_PHASE_7F=PASS_SHADOW_COVERAGE_EXPANSION_DESIGN`
+`JEV_PHASE_7E=PASS_CANONICAL_V2_DATASET_READINESS_AND_CALIBRATION_BASELINE`
 `JEV_PHASE_7D=PASS_CANONICAL_V2_PRODUCTION_CANARY_ACTIVE`
 `JEV_PHASE_7C=PASS_CANONICAL_PREFLIGHT_STATE_AND_CALIBRATION_VALIDITY`
 `JEV_PHASE_7B=PASS_MULTI_CYCLE_AUTONOMOUS_SHADOW_CALIBRATION`
@@ -887,7 +893,47 @@ Date: 2026-09-23
     - Grouping keys: `decision_point, input_schema_version, prompt_version, model_version`.
     - `CALIBRATION_DATA_VALID_FROM_SCHEMA_VERSION = 2026-09-23.v2`.
   - Phase Status: `JEV_PHASE_7D = PASS`.
-- **Next Milestone:** Ready for Phase JEV-7E (Dataset Calibration & Calibration Tooling).
+- **Phase JEV-7E Canonical v2 Dataset Readiness & Calibration Baseline Audit:**
+  - Audit Scope: Read-only evaluation of production `decision_observations` under schema `2026-09-23.v2`.
+  - Findings: Total v2 observations = 1 (Article 5, `obs_mueb41kn_01wr4b`, hash `h_89de9fcf`). Total unique state count = 1.
+  - Evaluation: `DATASET_READY_FOR_REAL_CALIBRATION = NO`. Current autonomous collector only observes candidates that are fully publishable/eligible with featured media.
+  - Direction: Expand shadow observation coverage to all semantically evaluable editorial drafts while strictly preserving zero publication authority.
+  - Phase Status: `JEV_PHASE_7E = PASS`.
+- **Phase JEV-7F Shadow Coverage Expansion & Calibration Data Acquisition Design:**
+  - Conceptual Invariant: `PUBLISHABLE_SUBJECT != SHADOW_EVALUABLE_SUBJECT`.
+  - Predicate Implementation: `isShadowEvaluable({ id, slug, status })` validates structural completeness for draft articles.
+  - Selector Relaxation: `selectProspectiveArticles` updated with `LEFT JOIN article_media` so drafts without featured media are included in shadow evaluation.
+  - Authority Firewall: `SHADOW_EVALUATION_DOES_NOT_IMPLY_PUBLICATION_ELIGIBILITY = YES`, `JEV_AUTHORITY_UNCHANGED = ZERO`.
+  - Phase Status: `JEV_PHASE_7F = PASS`.
+- **Phase JEV-7F.1 Calibration Semantics & Hash Identity Hardening:**
+  - Disagreement Semantics Resolution: Corrected `authoritative = revise` vs `jev = stop` from legacy `AGREE_STOP` to `JEV_MORE_CONSERVATIVE`.
+  - Separation of Concerns: Introduced `computePublicationGateAlignment` for binary gate alignment (`PASS`, `BLOCK`, `DIVERGENT`), keeping `classifyDisagreement` pure for analytical directionality.
+  - Hash Parity: Article 5 canonical v2 hash strictly preserved as `h_89de9fcf` (`HASH_BEHAVIOR_CHANGED = NO`).
+  - Phase Status: `JEV_PHASE_7F_1 = PASS`.
+- **Phase JEV-7F.2 Exact Action Agreement Semantics & Production Taxonomy Audit:**
+  - Taxonomy Hardening: Added `AGREE_REVISE` to `DecisionDisagreementClassification` to explicitly capture exact agreement on `revise` recommendations.
+  - Production D1 Audit: Grouped query across production `decision_observations` confirmed 4 total rows (3 v1, 1 v2).
+  - Exact `AGREE_STOP` Count: Exactly 0 historical rows. `LEGACY_REVISE_REVISE_STORED_AS_AGREE_STOP_COUNT = 0`.
+  - Determination: `DISAGREEMENT_TAXONOMY_VERSIONING_REQUIRED = NO`. `AGREE_REVISE` is 100% additive with zero historical semantic collision.
+  - Phase Status: `JEV_PHASE_7F_2 = PASS`.
+- **Phase JEV-7F.3 Autonomous Shadow Collector Fairness & Starvation Hardening:**
+  - Defect Found: `selectProspectiveArticles` passed `maxSubjectsPerRun = 3` directly as SQL `LIMIT ?`. With 5 evaluable drafts and `ORDER BY id ASC`, Articles 4 & 5 permanently starved after Articles 1..3 were observed and dedupe-skipped (`STARVATION_DETECTED = YES`).
+  - Architectural Solution: Decoupled candidate scan bound (`maxCandidatesScannedPerRun = 25`) from provider call cap (`maxCallsPerRun = 3`). Candidate loop continues scanning past deduped early IDs (0 provider calls) until per-run provider call budget is reached.
+  - Verification: Proved all 5 subjects are observed in 2 cycles, and cycle 3 reaches steady-state dedupe-only (`STARVATION_DETECTED = NO`).
+  - Phase Status: `JEV_PHASE_7F_3 = PASS`.
+- **Phase JEV-7F.4 Multi-Window Fairness & Large Subject Pool Hardening:**
+  - Scalability Audit: When pool > `maxCandidatesScannedPerRun` (e.g. 30 subjects with limit 25), static `ORDER BY id ASC LIMIT 25` causes IDs 26..30 to permanently starve (`LARGE_POOL_STARVATION_DETECTED = YES`).
+  - Hardening Architecture:
+    - Keyset pagination with cyclic wraparound: `SELECT ... WHERE a.status = 'draft' AND a.id > ? ORDER BY a.id ASC LIMIT ?`.
+    - If `cursorArticleId > 0` and remaining rows < scanLimit, automatically wraps around to `a.id > 0` to fill remaining scan capacity.
+    - Durability: Cursor is persisted into and retrieved from `publication_cron_runs.details_json` (`job_name = 'jev_shadow_collector'`). Survives Worker restarts with zero new database migrations (`NEW_DB_MIGRATION_REQUIRED = NO`).
+    - Robustness: Handles deleted articles, arbitrary ID gaps, and new higher ID arrivals seamlessly.
+  - Test Scale Proofs:
+    - 30-subject pool: All 30 observed across cycles and enters steady-state dedupe-only (`ALL_30_EVENTUALLY_OBSERVED = YES`).
+    - 100-subject scale test: 4 windows traverse all 100 distinct subjects, 5th window cleanly wraps around (`ALL_100_EVENTUALLY_SCANNED = YES`, `SCAN_WRAPAROUND_WORKS = YES`).
+  - All Local Tests: 18/18 tests in `test-shadow-coverage-expansion.js` and all existing regression suites PASS cleanly.
+  - Phase Status: `JEV_PHASE_7F_4 = PASS`.
+- **Next Milestone:** Ready for Phase JEV-7G Production Canary Deployment (Shadow Coverage Expansion + Exact Action Agreement Taxonomy + Rotating Keyset Cursor).
 
 
 

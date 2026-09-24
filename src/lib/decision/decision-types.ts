@@ -345,6 +345,7 @@ export interface MediaPlanningCostEstimate {
 
 export type DisagreementClassification =
   | 'AGREE_CONTINUE'
+  | 'AGREE_REVISE'
   | 'AGREE_STOP'
   | 'JEV_MORE_CONSERVATIVE'
   | 'JEV_MORE_PERMISSIVE'
