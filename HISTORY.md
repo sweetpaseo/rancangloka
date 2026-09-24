@@ -17,6 +17,30 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### MEDIA-W1 Watermark Production End-to-End Canary 2026-09-24
+
+- **Tujuan & Ruang Lingkup:** Membuktikan alur kerja watermark media RancangLoka end-to-end pada lingkungan produksi nyata (`SOURCE IMAGE → WATERMARK CONFIG → DERIVATIVE RENDER → DERIVATIVE BYTES → R2 → MEDIA_ASSETS → FRONTEND DELIVERY`) tanpa memutasi artikel produksi (Artikel 1, 5, 6 tetap utuh), membuktikan imutabilitas mutlak byte sumber asli, serta menjaga seluruh batas kontrol keselamatan (`mode=OFF`, `auto_schedule=false`, `kill_switch=0`, `JEV authority=ZERO`).
+- **Audit Subkoleksi Logo & Konfigurasi:**
+  - Konfigurasi aktif di D1 produksi: `type='TEXT'`, `text='rancangloka.com'`, `position='bottom-right'`, `opacity=0.65`, `margin_x_ratio=0.022`, `margin_y_ratio=0.028`, `version=2`.
+  - Audit logo resmi RancangLoka (`site_watermark_assets`): 0 baris di D1 produksi, tidak ada aset logo resmi di repositori. Sesuai batasan operasional, pembuatan logo fiktif dilarang keras, sehingga canary IMAGE di-skip secara bersih (`IMAGE_WATERMARK_CANARY=SKIPPED_NO_OFFICIAL_ASSET`).
+- **Pemilihan Aset Sumber Aman (Safe Source Asset):**
+  - Menggunakan aset internal non-kritis milik proyek: `canary-source-stitch-dashboard.png` (512 × 410 px, `image/png`, 42.919 bytes, SHA-256: `eb76a0a608e64422d74d697ce66b0631c45113e1f2ff54c3595cc0952ecf1998`).
+  - Terdaftar di `media_assets` D1 produksi dengan Asset ID: `ast_993f8cdef94bc30f403082c2`, role: `ORIGINAL`.
+  - Byte asli di Cloudflare R2 bucket `rancangloka-media` diverifikasi sebelum dan sesudah eksekusi canary (`ORIGINAL_SOURCE_IMMUTABLE=PASS`, `SOURCE_BEFORE_SHA256 === SOURCE_AFTER_SHA256`).
+- **Eksekusi Pipeline Derivatif Teks (Text Derivative Pipeline):**
+  - **Render Kanonikal:** Dijalankan melalui mesin rendering kanonikal dengan OffscreenCanvas native browser (`applyWatermarkTransform`): 512 × 410 px, 62.080 bytes, SHA-256: `d89bf7d4074e29d2d16762ad34b1a8e5023d03f697c3114dc36fe922fb751bc2` (`TEXT_RENDER_SUCCESS=YES`).
+  - **Identitas Deterministik:** Transform ID `2803c1761da301dff63a2f444346f3b7777212de5eae70c5526c5bb71252468e`, Derivative ID `der_c3c4ab6d62d5c05b85fe7a2a907e92b72cfc114d982874a94a4c93d811208629`.
+  - **Upload R2 Produksi:** Diunggah ke bucket `rancangloka-media` dengan key `canary-text-derivative-d89bf7d4.png`. Hash terbaca dari R2 cocok 100% dengan hash byte lokal (`TEXT_R2_UPLOAD=PASS`).
+  - **Registrasi `media_assets`:** Asset ID `ast_e29a1bb65e754877158e7ec0` tersimpan di database D1 produksi dengan `provenance_json` lengkap (`source_media_asset_id`, `watermark_config`, `derivative_id`, `transform_id`) (`TEXT_MEDIA_REGISTRATION=PASS`).
+  - **Frontend Delivery:** Permintaan `GET /media/canary-text-derivative-d89bf7d4.png` menyajikan derivatif dengan status HTTP 200, Content-Type `image/png`, 62.080 bytes, SHA-256 sesuai (`TEXT_FRONTEND_DELIVERY=PASS`).
+  - **Visual QA:** Teks "rancangloka.com" tampil kontras, bersih, putih dengan bayangan jatuh tipis di sudut kanan bawah, opasitas proporsional, konten gambar asli tetap jelas tanpa artefak deformasi (`TEXT_VISUAL_QA=PASS`).
+- **Firewall Keamanan & Integritas Produksi:**
+  - `NEW_CANARY_ARTICLE_MEDIA_BINDINGS=0`, `ARTICLE_MEDIA_FIREWALL=PASS`.
+  - `NEW_PUBLICATION_PLANS=0`, `NEW_PUBLICATION_EXECUTIONS=0`, `NEW_PUBLICATION_RECEIPTS=0`, `NEW_PUBLICATIONS=0`.
+  - Mode otomasi tetap: `mode=OFF`, `auto_schedule=false`, `kill_switch=0`, `JEV authority=ZERO`.
+  - Status kesehatan publik: 5 dari 5 endpoint lulus (`FINAL_PUBLIC_HEALTH=PASS`).
+  - Klasifikasi akhir: `WATERMARK_STATUS=TEXT_PRODUCTION_PROVEN_IMAGE_AWAITING_OFFICIAL_ASSET`, `WATERMARK_E2E_PRODUCTION_PROVEN=PARTIAL`.
+
 ### LokaMedia Phase 5L13B-B Single Canary Featured Media Production Canonical Ingest 2026-09-22
 
 - **Tujuan & Ruang Lingkup:** Menyiapkan Artikel 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`) sebagai tepat SATU (*single canary*) kandidat eligible publikasi deterministik di bawah `auto_policy` tanpa mengaktifkan otomasi publikasi, melalui pembuatan aset gambar utama editorial terdedikasi, validasi biner lokal (1315x660 px, WebP), pengunggahan kanonikal melalui endpoint `POST /api/internal/v1/media/upload`, registrasi aset kanonikal `media_assets`, binding relasional `article_media`, serta rekonsiliasi kesiapan publikasi melalui endpoint terotentikasi sesi admin `POST /api/admin/publication/readiness/5`.

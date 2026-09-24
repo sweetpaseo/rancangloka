@@ -18,6 +18,9 @@ Commit message:
 fix: unify canonical publication state loading
 ```
 
+`MEDIA_W1=PASS_WATERMARK_PRODUCTION_CANARY_PROVEN`
+`WATERMARK_STATUS=TEXT_PRODUCTION_PROVEN_IMAGE_AWAITING_OFFICIAL_ASSET`
+`WATERMARK_E2E_PRODUCTION_PROVEN=PARTIAL`
 `JEV_PHASE_7M_2=PASS_CANONICAL_PUBLICATION_STATE_PARITY_FIX_DEPLOYED`
 `JEV_PHASE_7M=PASS_PRODUCTION_EDITORIAL_TRAJECTORY_LEDGER_CANARY`
 `JEV_PHASE_7L_2=PASS_OCC_ATOMICITY_AND_INITIAL_SNAPSHOT_HARDENED`
@@ -374,7 +377,24 @@ Phase 5H1 (Article Media Attachment Foundation):
 
 Phase 5G2 (Controlled Media Assets Registration Execution):
 - Verified R2 derivative `media/articles/derivatives/458a8367c669185e25e284d88bcedce01a0afa85745b94a357e923a784a9deff.png` (3847117 bytes) registered into `media_assets` as `ast_d230f3d834ae5f1a9f689d7c`.
-- Provenance stored in `provenance_json`. Audit event recorded in `media_asset_audit`. Idempotency verified.
+Phase MEDIA-W1 (Watermark Production End-to-End Canary):
+- Date: 2026-09-24
+- Status: `PASS_WATERMARK_PRODUCTION_CANARY_PROVEN` (TEXT: PROVEN, IMAGE: SKIPPED_NO_OFFICIAL_ASSET)
+- Safe Source Asset: `canary-source-stitch-dashboard.png` (Asset ID: `ast_993f8cdef94bc30f403082c2`, 512x410 px, 42,919 bytes, SHA-256: `eb76a0a608e64422d74d697ce66b0631c45113e1f2ff54c3595cc0952ecf1998`, role: `ORIGINAL`).
+- Source Immutability: SHA-256 verified 100% identical before and after canary (`ORIGINAL_SOURCE_IMMUTABLE=PASS`).
+- Text Derivative Pipeline:
+  - Rendered via canonical engine: 512x410 px, 62,080 bytes, SHA-256: `d89bf7d4074e29d2d16762ad34b1a8e5023d03f697c3114dc36fe922fb751bc2`.
+  - Transform ID: `2803c1761da301dff63a2f444346f3b7777212de5eae70c5526c5bb71252468e`.
+  - Derivative ID: `der_c3c4ab6d62d5c05b85fe7a2a907e92b72cfc114d982874a94a4c93d811208629`.
+  - Production R2 Upload: Key `canary-text-derivative-d89bf7d4.png` verified in bucket `rancangloka-media` (`TEXT_R2_UPLOAD=PASS`).
+  - Production D1 Registration: Asset ID `ast_e29a1bb65e754877158e7ec0` registered in `media_assets` with complete provenance (`TEXT_MEDIA_REGISTRATION=PASS`).
+  - Frontend Delivery: `GET /media/canary-text-derivative-d89bf7d4.png` returns HTTP 200, Content-Type `image/png`, 62,080 bytes (`TEXT_FRONTEND_DELIVERY=PASS`).
+  - Visual QA: Text "rancangloka.com" crisp, white with subtle shadow, bottom-right placement, opacity 0.65, original content visible (`TEXT_VISUAL_QA=PASS`).
+- Firewalls Verified:
+  - `article_media` attachments: 0 new bindings created (`NEW_CANARY_ARTICLE_MEDIA_BINDINGS=0`, `ARTICLE_MEDIA_FIREWALL=PASS`).
+  - Publication engine: 0 plans, 0 executions, 0 receipts, 0 publications (`NEW_PUBLICATIONS=0`).
+  - Production controls: `mode=OFF`, `auto_schedule=false`, `kill_switch=0`, `JEV authority=ZERO`.
+  - Production health: All 5 endpoints PASS.
 
 Phase 5G1 (Media Asset Registration Foundation):
 - Commit `861baa58bc90a4dae2a9f6c5f8cd01cf9d562730` (`feat: add media asset registration`).
