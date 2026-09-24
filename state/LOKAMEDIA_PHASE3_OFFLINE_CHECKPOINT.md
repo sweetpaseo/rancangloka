@@ -9,15 +9,16 @@ Date: 2026-09-23
 Latest clean checkpoint commit:
 
 ```text
-f777ebc7f523c59b9f081fc7e4826a2261abb002
+367cde24b8cb9c7e68a3881900ee9971b9cfb694
 ```
 
 Commit message:
 
 ```text
-feat: canonicalize jev publication preflight state
+feat: expand jev shadow coverage and collection fairness
 ```
 
+`JEV_PHASE_7G=PASS_EXPANDED_SHADOW_COVERAGE_PRODUCTION_CANARY_ACTIVE`
 `JEV_PHASE_7F_4=PASS_MULTI_WINDOW_FAIRNESS_AND_LARGE_SUBJECT_POOL_HARDENING`
 `JEV_PHASE_7F_3=PASS_SHADOW_COLLECTOR_FAIRNESS_AND_STARVATION_HARDENING`
 `JEV_PHASE_7F_2=PASS_EXACT_ACTION_AGREEMENT_AND_HISTORICAL_TAXONOMY_AUDIT`
@@ -933,7 +934,37 @@ Date: 2026-09-23
     - 100-subject scale test: 4 windows traverse all 100 distinct subjects, 5th window cleanly wraps around (`ALL_100_EVENTUALLY_SCANNED = YES`, `SCAN_WRAPAROUND_WORKS = YES`).
   - All Local Tests: 18/18 tests in `test-shadow-coverage-expansion.js` and all existing regression suites PASS cleanly.
   - Phase Status: `JEV_PHASE_7F_4 = PASS`.
-- **Next Milestone:** Ready for Phase JEV-7G Production Canary Deployment (Shadow Coverage Expansion + Exact Action Agreement Taxonomy + Rotating Keyset Cursor).
+- **Phase JEV-7G Expanded Shadow Coverage & Fairness Production Canary:**
+  - Implementation Commit: `367cde24b8cb9c7e68a3881900ee9971b9cfb694`
+  - Canary Deployment ID: `f6aaa7a9-639f-42ea-9c27-4435f0fec9de` (Previous: `a66a0424-9e39-451f-b068-13c1b90832b9`).
+  - Pre/Post Public Health: PASS (all 4 endpoints 200/302).
+  - DB Migration: None required (`JEV_7G_REQUIRES_DB_MIGRATION = NO`).
+  - Native Cloudflare Cron Cycle 1 (`02:17 UTC` / run ID `4255`):
+    - Scanned: `[1, 2, 3, 4, 5]`, provider calls: `3` (Articles 1, 2, 3), dedupe skipped: `1` (Article 5 `h_89de9fcf`), budget skipped: `1` (Article 4).
+    - Observations created: `obs_muewjpdv_1swhuj` (Art 1), `obs_muewjqcs_juo14h` (Art 2), `obs_muewjr72_h355tc` (Art 3).
+    - Cursor persisted: `"nextCursorArticleId": 5`.
+  - Native Cloudflare Cron Cycle 2 (`03:17 UTC` / run ID `4328`):
+    - Loaded cursor `5`, cyclic wraparound scanned `[1, 2, 3, 4, 5]`.
+    - Dedupe skipped: `4` (Articles 1, 2, 3, 5), provider calls: `1` (Article 4).
+    - Observation created: `obs_mueyovol_js1pt3` (Art 4, `auth=revise`, `jev=stop`, `disagreement=JEV_MORE_CONSERVATIVE`, `gate=BOTH_HALT`).
+    - Eventual coverage proof: `ALL_ARTICLES_1_TO_4_SUCCESSFULLY_OBSERVED = YES`.
+  - Native Cloudflare Cron Cycle 3 Steady State (`04:17 UTC` / run ID `4403`):
+    - Provider calls: `0`, observations created: `0`, dedupe skipped: `5`.
+    - `STEADY_STATE_DEDUPE_ONLY = YES`.
+  - Exact-Action Agreement & Taxonomy Validation:
+    - Articles 1–4: `authoritative=revise` vs `jev=stop` -> `JEV_MORE_CONSERVATIVE`, `publication_gate_alignment=BOTH_HALT`.
+    - Article 5: `authoritative=continue` vs `jev=continue` -> `AGREE_CONTINUE`, `publication_gate_alignment=BOTH_CONTINUE`.
+  - Final Canonical 5-State Dataset:
+    - 5 unique subjects, 5 unique input hashes, 0 historical regressions.
+    - Distribution: Authoritative: revise=4, continue=1; Jev: stop=4, continue=1.
+  - Zero Publication Authority Firewall:
+    - Automation controls: `mode = OFF`, `auto_schedule = false`, `kill_switch = 0`.
+    - Plans: 0, Executions: 0, Receipts: 0, Publications: 0.
+    - Article mutations: 0, Media mutations: 0. `JEV_AUTHORITY_UNCHANGED = ZERO`.
+  - Calibration Readiness: `DESCRIPTIVE_DATA_READY = YES`, `CONFIDENCE_CALIBRATION_READY = NO` (Jev authority remains strictly ZERO).
+  - Phase Status: `JEV_PHASE_7G = PASS`.
+- **Next Milestone:** Ready for Phase JEV-7H (Descriptive Calibration & Tooling).
+
 
 
 

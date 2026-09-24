@@ -1492,6 +1492,52 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Seluruh pengujian regresi (soak-safety, planner, publisher, continuous-shadow, decision-engine, media-planning, router, telemetry, lokamedia-integration) lulus 100%. Kompilasi `tsc --noEmit` dan `npm run build` sukses.
 * **Status Fase:** `JEV_PHASE_7F_4 = PASS`. Sistem siap untuk peluncuran canary produksi Phase JEV-7G setelah persetujuan operator.
 
+### Masalah 58: Peluncuran Canary Produksi JEV Phase 7G — Ekspansi Cakupan Shadow, Taksonomi Exact-Action & Keyset Cursor Berputar (Phase JEV-7G)
+* **Tujuan & Ruang Lingkup:** Meluncurkan implementasi JEV-7F (ekspansi cakupan shadow draf tanpa media, klasifikasi ketidaksepakatan exact-action `AGREE_REVISE`, perataan gerbang publikasi biner, batas pemindaian decoupled, dan keyset cursor durabel berputar) ke lingkungan Cloudflare Workers produksi, memverifikasi akuisisi observasi multi-siklus pada native Cloudflare Cron (`17 * * * *`), membuktikan pembentukan dataset 5-state kanonikal lengkap, serta memverifikasi status mapan deduplikasi penuh (*steady-state dedupe-only*) dengan zero otoritas publikasi.
+* **Deployment Canary Produksi:**
+  - **Commit Implementasi:** `367cde24b8cb9c7e68a3881900ee9971b9cfb694`
+  - **Previous Deployment ID:** `a66a0424-9e39-451f-b068-13c1b90832b9`
+  - **Canary Deployment ID:** `f6aaa7a9-639f-42ea-9c27-4435f0fec9de` (01:19 UTC)
+  - **Migrasi Database:** Tidak diperlukan (`JEV_7G_REQUIRES_DB_MIGRATION = NO`).
+  - **Kesehatan Publik & Keselamatan Kontrol:** Beranda (200), Artikel 6 (200), Sitemap (200), Admin (302) terverifikasi sehat. Kontrol otomasi tetap non-aktif: `mode = OFF`, `auto_schedule = false`, `kill_switch = 0`.
+* **Siklus 1 Native Cloudflare Cron (02:17 UTC / Run ID 4255):**
+  - **Trigger Source:** `cloudflare_cron` (durasi 5,65s).
+  - **Subjek Dipindai:** `[1, 2, 3, 4, 5]`.
+  - **Panggilan Provider:** 3 panggilan (Artikel 1, 2, 3).
+  - **Dedupe Skipped:** 1 (Artikel 5, `h_89de9fcf`).
+  - **Budget Skipped:** 1 (Artikel 4, batas per-run 3 panggilan ditaati ketat).
+  - **Observasi Dibuat:**
+    - `obs_muewjpdv_1swhuj` (Artikel 1): `auth=revise` vs `jev=stop` -> `JEV_MORE_CONSERVATIVE`, `gate=BOTH_HALT`.
+    - `obs_muewjqcs_juo14h` (Artikel 2): `auth=revise` vs `jev=stop` -> `JEV_MORE_CONSERVATIVE`, `gate=BOTH_HALT`.
+    - `obs_muewjr72_h355tc` (Artikel 3): `auth=revise` vs `jev=stop` -> `JEV_MORE_CONSERVATIVE`, `gate=BOTH_HALT`.
+  - **Durabilitas Cursor:** Tersimpan di `publication_cron_runs.details_json` dengan `"nextCursorArticleId": 5`.
+* **Siklus 2 Native Cloudflare Cron (03:17 UTC / Run ID 4328):**
+  - **Trigger Source:** `cloudflare_cron` (durasi 3,82s).
+  - **Keyset Cursor:** Memuat cursor 5, cyclic wraparound aktif memindai `[1, 2, 3, 4, 5]`.
+  - **Dedupe Skipped:** 4 (Artikel 1, 2, 3, dan 5 dedupe-skip secara otonom).
+  - **Panggilan Provider:** 1 panggilan (Artikel 4).
+  - **Observasi Dibuat:**
+    - `obs_mueyovol_js1pt3` (Artikel 4): `auth=revise` vs `jev=stop` -> `JEV_MORE_CONSERVATIVE`, `gate=BOTH_HALT`.
+  - **Hasil Evaluasi:** `ALL_ARTICLES_1_TO_4_SUCCESSFULLY_OBSERVED = YES`.
+* **Siklus 3 Native Cloudflare Cron Steady State (04:17 UTC / Run ID 4403):**
+  - **Trigger Source:** `cloudflare_cron` (durasi 3,04s).
+  - **Panggilan Provider:** 0 panggilan.
+  - **Observasi Baru:** 0.
+  - **Dedupe Skipped:** 5 subjek (100% dedupe).
+  - **Hasil Kondisi Mapan:** `STEADY_STATE_DEDUPE_ONLY = YES`.
+* **Pembuktian Dataset 5-State Kanonikal & Evaluasi Deskriptif:**
+  - 5 subjek draf editorial (Artikel 1..5) terwakili dengan 5 hash unik independen: `h_1a9ca364`, `h_707bc71`, `h_d1426e50`, `h_7c3cc747`, `h_89de9fcf`.
+  - Distribusi Otoritatif: `revise = 4`, `continue = 1`.
+  - Distribusi Jev: `stop = 4`, `continue = 1`.
+  - Taksonomi Ketidaksepakatan: `AGREE_CONTINUE = 1` (Artikel 5), `JEV_MORE_CONSERVATIVE = 4` (Artikel 1..4).
+  - Perataan Gerbang: `BOTH_CONTINUE = 1` (Artikel 5), `BOTH_HALT = 4` (Artikel 1..4).
+* **Firewall Keselamatan Publikasi & Zero Authority:**
+  - Mode akhir: `mode = OFF`, `auto_schedule = false`, `kill_switch = 0`.
+  - Mutasi artikel = 0, mutasi media = 0, rencana publikasi baru = 0, eksekusi baru = 0, penerbitan = 0.
+  - `JEV_AUTHORITY_UNCHANGED = ZERO`.
+* **Kesiapan Kalibrasi:** `DESCRIPTIVE_DATA_READY = YES`, `PRELIMINARY_AGREEMENT_READY = NO`, `CONFIDENCE_CALIBRATION_READY = NO` (Otoritas Jev tetap nol mutlak).
+* **Status Fase:** `JEV_PHASE_7G = PASS`.
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1499,10 +1545,10 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `a66a0424-9e39-451f-b068-13c1b90832b9`*). |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `f6aaa7a9-639f-42ea-9c27-4435f0fec9de`*). |
 | **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `0022_allow_jev_shadow_collector_cron`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
-| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (Phase 7F.4 Hardened & Canary Ready) | Keyset rotating cursor dengan cyclic wraparound, exact action agreement taxonomy (AGREE_REVISE), dan shadow coverage expansion siap untuk deploy canary 7G (Zero Authority, mode OFF). |
+| **Decision Engine (TypeSafe Jev)** | ✅ Selesai (5-State Dataset Active & Dedupe Steady) | Dataset 5-state kanonikal v2 lengkap di edge cron `17 * * * *`, deduplikasi mapan terbukti (Zero Authority, mode OFF). |
 | **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` & `publication_cron_runs` mencatat telemetri durable edge. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
