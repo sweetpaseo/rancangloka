@@ -26,3 +26,6 @@ workspace/rejected/*
 workspace/logs/*
 !workspace/logs/.gitkeep
 
+# Canary artifacts & local test outputs
+artifacts/
+
