@@ -1584,6 +1584,49 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Seluruh rangkaian regresi lulus 100%: 47 unit ledger tests, 67 planner tests, 48 publisher tests, 16 operator control tests, 23 dual authorization tests, 16 media planning tests, 8 telemetry tests, 23 decision engine tests, 14 router tests, 5 lokamedia integration tests, 54 soak safety tests, TypeScript typecheck clean, dan build Astro sukses.
 * **Status Fase:** `JEV_PHASE_7L_2 = PASS`. Sistem lokal 100% siap untuk peluncuran canary produksi JEV-7M.
 
+### Masalah 62: Peluncuran Canary Produksi JEV Phase 7M — Editorial Trajectory Ledger, Migrasi 0023 & Bounded Canary Hold/Resume (Phase JEV-7M)
+* **Tujuan & Ruang Lingkup:** Menerapkan migrasi D1 aditif `0023_editorial_trajectory_ledger.sql` ke produksi Cloudflare, men-deploy implementasi Worker sadar-ledger yang teruji, mengeksekusi tepat SATU mutasi kanari terbalikkan terkendali (*bounded reversible canary*): `Article 1 manual_hold 0 -> 1 -> 0` melalui jalur API/service operator kanonikal, membuktikan perekaman snapshot dan transisi atomik secara append-only, deduplikasi snapshot kanonikal saat kembali ke kondisi awal, ketiadaan outcome palsu, serta mempertahankan integritas keselamatan publikasi dan otoritas nol Jev.
+* **Aktivasi Migrasi D1 Produksi & Deployment Worker:**
+  - **Migrasi D1:** `0023_editorial_trajectory_ledger.sql` berhasil diterapkan ke database `rancangloka_db` (`MIGRATION_0023_PRODUCTION = PASS`). Tabel baru terverifikasi: `article_state_snapshots`, `article_state_transitions`, `decision_outcomes`.
+  - **Baseline Pra-Canary:** `PRE_CANARY_SNAPSHOT_COUNT = 0`, `PRE_CANARY_TRANSITION_COUNT = 0`, `PRE_CANARY_OUTCOME_COUNT = 0` (`HISTORICAL_TRANSITIONS_SYNTHESIZED = NO`).
+  - **Deployment ID Sebelumnya:** `f6aaa7a9-639f-42ea-9c27-4435f0fec9de`.
+  - **Deployment ID Canary JEV-7M:** `cafaa01f-9355-409b-97ca-e8bd58cb0166`.
+  - **Kesehatan Publik & Kontrol Pasca-Deploy:** Beranda (200), Artikel 6 (200), Sitemap XML (200), Admin (302 redirect). Kontrol publikasi: `mode = OFF`, `auto_schedule = false`, `kill_switch = 0`.
+* **Eksekusi Kanari Mutasi A (Hold Artikel 1: 0 -> 1):**
+  - **Jalur Operator Kanonikal:** `POST /api/admin/publication/operator-control` via browser admin yang terotentikasi sah dengan payload `{ action: 'hold', article_id: 1, reason: 'JEV-7M Production Canary Hold', actor: 'admin_operator' }`.
+  - **Hasil Aksi:** `HOLD_ACTION_SUCCESS = YES`, `manual_hold = 1`, status tetap `draft`, `content_hash` tetap utuh (`0b88aa50b672...`).
+  - **Bukti Ledger:**
+    - Transisi tercipta: ID `ast_1_1790235931854_haxp2`.
+    - `transition_type = 'MANUAL_HOLD_CHANGED'`.
+    - `from_input_hash = 'h_1ec85cbf'`, `to_input_hash = 'h_1e0929a1'`.
+    - `mutation_operation_id = 'mop_manual_hold_engaged_a1_1ec85cbf_to_1e0929a1'`.
+    - Audit operator tercipta: ID 9 `MANUAL_HOLD_SET`.
+    - Outcome keputusan tercipta: 0 (`HOLD_CREATED_OUTCOME_ROWS = 0`).
+* **Eksekusi Kanari Mutasi B (Resume Artikel 1: 1 -> 0):**
+  - **Jalur Operator Kanonikal:** `POST /api/admin/publication/operator-control` dengan payload `{ action: 'resume', article_id: 1, actor: 'admin_operator' }`.
+  - **Hasil Aksi:** `RESUME_ACTION_SUCCESS = YES`, `manual_hold = 0`, status tetap `draft`, `content_hash` tetap utuh.
+  - **Bukti Ledger:**
+    - Transisi tercipta: ID `ast_1_1790236157117_5sj5p`.
+    - `transition_type = 'MANUAL_HOLD_CHANGED'`.
+    - `from_input_hash = 'h_1e0929a1'`, `to_input_hash = 'h_1ec85cbf'`.
+    - `mutation_operation_id = 'mop_manual_hold_cleared_a1_1e0929a1_to_1ec85cbf'`.
+    - Audit operator tercipta: ID 10 `MANUAL_HOLD_CLEARED`.
+* **Pembuktian Deduplikasi Snapshot & Sifat Append-Only:**
+  - **Topologi Snapshot:** A (`snp_h_1ec85cbf_1`, `manual_hold = 0`) -> B (`snp_h_1e0929a1_1`, `manual_hold = 1`) -> A (`snp_h_1ec85cbf_1`, `manual_hold = 0`).
+  - Saat Artikel 1 kembali ke kondisi awal, snapshot A di-*reuse* dan di-deduplikasi (`RETURN_TO_ORIGINAL_SNAPSHOT_DEDUPE = PASS`).
+  - Total snapshot kanari unik di tabel: tepat 2 (`ARTICLE_1_UNIQUE_CANARY_SNAPSHOT_COUNT = 2`).
+  - Total transisi kanari tersimpan di tabel: tepat 2 (`ARTICLE_1_CANARY_TRANSITION_COUNT = 2`). Keduanya tersimpan permanen tanpa UPDATE/DELETE (`PRODUCTION_APPEND_ONLY_PROOF = PASS`).
+  - Pemulihan status bisnis: `ARTICLE_1_BUSINESS_STATE_RESTORED = YES` (`ARTICLE_1_FINAL_INPUT_HASH == ARTICLE_1_PRE_INPUT_HASH == 'h_1ec85cbf'`).
+* **Firewall Hasil Keputusan, Keselamatan Publikasi & Otoritas Nol Jev:**
+  - Outcome baru: 0 (`NEW_CANARY_DECISION_OUTCOMES = 0`, `OUTCOME_FIREWALL_PRODUCTION = PASS`).
+  - Rencana publikasi baru: 0, eksekusi baru: 0, receipt baru: 0, publikasi baru: 0.
+  - Artikel 5 tetap `draft`, Artikel 6 tetap terbit.
+  - Jev tidak menulis snapshot, transisi, maupun outcome (`JEV_CAN_WRITE_SNAPSHOTS = NO`, `JEV_CAN_WRITE_TRANSITIONS = NO`, `JEV_CAN_WRITE_OUTCOMES = NO`, `JEV_AUTHORITY_UNCHANGED = ZERO`).
+  - Kontrol akhir: `FINAL_MODE = OFF`, `FINAL_AUTO_SCHEDULE = false`, `FINAL_KILL_SWITCH = 0`.
+  - Kesehatan publik akhir: Beranda (200), Artikel 6 (200), Sitemap (200), Admin (302).
+  - Regresi lokal pasca-canary: 100% PASS (`POST_7M_REGRESSION = PASS`).
+* **Status Fase:** `JEV_PHASE_7M = PASS`. Editorial Trajectory Ledger resmi aktif di lingkungan produksi.
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1591,12 +1634,12 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | Komponen | Status | Catatan |
 |---|---|---|
 | **Aplikasi Web & UI** | ✅ Selesai (Live) | Layout Apple-aesthetic, responsive, Outfit + Plus Jakarta Sans + JetBrains Mono. |
-| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `f6aaa7a9-639f-42ea-9c27-4435f0fec9de`*). |
-| **D1 Database & Skema** | ✅ Selesai (Aktif) | 16+ tabel (termasuk migrasi `0021_decision_observations` & `0022_allow_jev_shadow_collector_cron`). |
+| **Kompilasi & Deployment** | ✅ Selesai (Live) | Berjalan di Cloudflare Workers Edge (*Version ID: `cafaa01f-9355-409b-97ca-e8bd58cb0166`*). |
+| **D1 Database & Skema** | ✅ Selesai (Aktif) | 19+ tabel (termasuk migrasi `0021_decision_observations`, `0022_allow_jev_shadow_collector_cron`, & `0023_editorial_trajectory_ledger`). |
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
 | **Decision Engine (TypeSafe Jev)** | ✅ Selesai (5-State Dataset Active & Dedupe Steady) | Dataset 5-state kanonikal v2 lengkap di edge cron `17 * * * *`, deduplikasi mapan terbukti (Zero Authority, mode OFF). |
 | **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` & `publication_cron_runs` mencatat telemetri durable edge. |
-| **Editorial Trajectory Ledger** | ✅ Selesai (Lokal Teruji Penuh) | Skema D1 migrasi 0023, 8 jalur mutasi riil terhubung, OCC zero-row guard, 38/38 tes E2E + 47 unit tests PASS. Siap untuk JEV-7M. |
+| **Editorial Trajectory Ledger** | ✅ Selesai (Aktif di Produksi) | Skema D1 migrasi 0023 aktif di edge, deployment `cafaa01f-9355-409b-97ca-e8bd58cb0166`, terbukti melalui kanari Article 1 (0 -> 1 -> 0), snapshot dedupe A->B->A lulus, append-only terbukti, zero authority. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
 | **Design Problem Solver & Explorer** | ✅ Selesai (Aktif) | Alat diagnosis berbasis kemungkinan penyebab umum & 3-way multi-filter aktif. |

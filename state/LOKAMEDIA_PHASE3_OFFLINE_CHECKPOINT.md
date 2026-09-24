@@ -9,15 +9,16 @@ Date: 2026-09-24
 Latest clean checkpoint commit:
 
 ```text
-16151d6ca181b7425dd41d8469d7e29ce4cadf1e
+ef4beade5c9ca6ecb70c86a378211c147c4aec32
 ```
 
 Commit message:
 
 ```text
-fix: harden trajectory ledger atomicity
+docs: activate editorial trajectory ledger in production
 ```
 
+`JEV_PHASE_7M=PASS_PRODUCTION_EDITORIAL_TRAJECTORY_LEDGER_CANARY`
 `JEV_PHASE_7L_2=PASS_OCC_ATOMICITY_AND_INITIAL_SNAPSHOT_HARDENED`
 `JEV_PHASE_7L_1=PASS_MUTATION_PATH_CAPTURE_WIRING_AND_E2E_PROVEN`
 `JEV_PHASE_7L=PASS_EDITORIAL_TRAJECTORY_EVIDENCE_LEDGER_FOUNDATION`
@@ -125,6 +126,22 @@ fix: harden trajectory ledger atomicity
 `PRODUCTION_WORKER_DEPLOYMENT_ID=d81db579-63f1-40c4-9345-328780f6f694`
 `READY_FOR_PHASE_5L13=YES`
 `NEXT_RECOMMENDED_ACTION=AWAIT_EXPLICIT_APPROVAL_FOR_PHASE_5L13`
+
+Phase JEV-7M (Production Editorial Trajectory Ledger Canary):
+- Applied migration 0023_editorial_trajectory_ledger.sql to production D1 database rancangloka_db (MIGRATION_0023_PRODUCTION=PASS).
+- Verified baseline counts before canary: snapshots=0, transitions=0, outcomes=0 (HISTORICAL_TRANSITIONS_SYNTHESIZED=NO).
+- Deployed tested ledger-aware Worker: deployment ID cafaa01f-9355-409b-97ca-e8bd58cb0166.
+- Executed canonical operator canary on Article 1 via authenticated same-origin POST /api/admin/publication/operator-control:
+  1. Hold Article 1 (0 -> 1): transition ast_1_1790235931854_haxp2 recorded (type: MANUAL_HOLD_CHANGED, from: h_1ec85cbf to: h_1e0929a1, mop: mop_manual_hold_engaged_a1_1ec85cbf_to_1e0929a1). Operator audit ID 9 MANUAL_HOLD_SET created. Outcomes=0.
+  2. Resume Article 1 (1 -> 0): transition ast_1_1790236157117_5sj5p recorded (type: MANUAL_HOLD_CHANGED, from: h_1e0929a1 to: h_1ec85cbf, mop: mop_manual_hold_cleared_a1_1e0929a1_to_1ec85cbf). Operator audit ID 10 MANUAL_HOLD_CLEARED created. Outcomes=0.
+- Verified snapshot deduplication: exactly 2 unique snapshots (snp_h_1ec85cbf_1 and snp_h_1e0929a1_1) exist. Snapshot A was reused and deduped upon return to original state (PRODUCTION_SNAPSHOT_DEDUPE=PASS).
+- Verified append-only integrity: exactly 2 transitions exist in production, zero updates or deletions occurred (PRODUCTION_APPEND_ONLY_PROOF=PASS).
+- Verified business state restoration: Article 1 manual_hold=0, draft, content_hash unchanged, final input hash equals pre-canary hash h_1ec85cbf (ARTICLE_1_BUSINESS_STATE_RESTORED=YES).
+- Verified safety firewalls: zero outcomes created (NEW_CANARY_DECISION_OUTCOMES=0), zero publication plans, zero executions, zero receipts, zero published articles.
+- Verified zero authority: Jev cannot write snapshots, transitions, or outcomes (JEV_AUTHORITY_UNCHANGED=ZERO).
+- Verified controls resting state: mode=OFF, auto_schedule=false, kill_switch=0.
+- Verified public health: Homepage HTTP 200, Article 6 HTTP 200, Sitemap XML HTTP 200, Admin HTTP 302.
+- Full post-canary local regression passed 100% (POST_7M_REGRESSION=PASS).
 
 Phase JEV-7L.2 (OCC Atomicity & Initial Snapshot Hardening):
 - Fixed Hermes initial snapshot atomicity gap: combined article insert, receipt insert, and initial canonical state snapshot into the exact same D1 atomic batch (`db.batch([insertArticleStmt, insertReceiptStmt, snapStmt])`) using deterministic pre-allocated row ID.
