@@ -1538,6 +1538,52 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Kesiapan Kalibrasi:** `DESCRIPTIVE_DATA_READY = YES`, `PRELIMINARY_AGREEMENT_READY = NO`, `CONFIDENCE_CALIBRATION_READY = NO` (Otoritas Jev tetap nol mutlak).
 * **Status Fase:** `JEV_PHASE_7G = PASS`.
 
+### Masalah 59: Fondasi Editorial Trajectory Evidence Ledger & Schema Immutability (Phase JEV-7L)
+* **Tujuan & Ruang Lingkup:** Membangun fondasi bukti trajektori editorial (*editorial trajectory evidence ledger*) untuk melacak evolusi status artikel, transisi mutasi, dan pencatatan hasil keputusan (*decision outcomes*) secara persisten, append-only, dan deduped pada SQLite/Cloudflare D1 lokal, sebagai prasyarat evaluasi retrospektif model TypeSafe Jev.
+* **Skema D1 & Migrasi `0023_editorial_trajectory_ledger.sql`:**
+  - `article_state_snapshots`: Snapshot status kanonikal artikel yang tidak dapat diubah (*immutable*), di-deduplikasi berdasarkan kombinasi unik `(article_id, input_hash, input_schema_version)`.
+  - `article_state_transitions`: Log append-only untuk setiap mutasi status artikel (`transition_id`, `from_snapshot_id`, `to_snapshot_id`, `from_input_hash`, `to_input_hash`, `transition_type`, `mutation_operation_id`, dll.) dengan index pencarian cepat.
+  - `decision_outcomes`: Log append-only hasil keputusan hilir independen (`outcome_id`, `article_id`, `snapshot_id`, `input_hash`, `outcome_type`, `outcome_class`, `idempotency_key`, dll.) yang terikat pada bukti kanonikal.
+* **Layanan `trajectory-ledger.ts`:**
+  - Taksonomi transisi terstandardisasi: `CONTENT_CHANGED`, `MEDIA_ADDED`, `MEDIA_REPLACED`, `MEDIA_REMOVED`, `MANUAL_HOLD_CHANGED`, `READINESS_CHANGED`, `MULTI_FACTOR_CHANGE`, `UNKNOWN_CHANGE`.
+  - Pembatasan NOOP: Jika status kanonikal sebelum dan sesudah mutasi identik, transisi tidak dibuat (`NOOP_READINESS_REEVALUATION_CREATES_TRANSITION = NO`).
+  - Aturan Inisial: Artikel baru hanya menghasilkan snapshot inisial tanpa pendahulu transisi fiktif (`INITIAL_STATE_CREATES_TRANSITION = NO`).
+  - Firewall Kegagalan: Memisahkan kegagalan keputusan (`EDITORIAL_FAILURE`, `POLICY_FAILURE`) dari kegagalan infrastruktur/jaringan (`INFRASTRUCTURE_FAILURE`, `PROVIDER_FAILURE`, `UNKNOWN_FAILURE`) agar tidak mencemari bukti evaluasi model.
+  - Diff Metrics Ringan: Menghitung metrik perubahan teks (`bytes_delta`, `words_delta`, `headings_delta`, `references_delta`) tanpa menyimpan naskah lengkap.
+* **Hasil Pengujian Unit:** 47/47 tes lulus pada `scripts/test-editorial-trajectory-ledger.js`.
+* **Status Fase:** `JEV_PHASE_7L = PASS`.
+
+### Masalah 60: Integrasi Nyata Callsite Trajectory Ledger & Pengujian End-to-End Komprehensif (Phase JEV-7L.1)
+* **Tujuan & Ruang Lingkup:** Mengintegrasikan pemanggilan runtime trajectory ledger ke seluruh titik mutasi produksi riil pada kode sumber lokal, dan membuktikan siklus hidup trajektori secara end-to-end tanpa mock dangkal.
+* **Audit Callsite & Hasil Integrasi:**
+  - Audit menemukan bahwa commit awal `51130e9d` hanya memuat skema dan unit test, tanpa callsite terpasang pada service riil (`WERE_CAPTURE_POINTS_ACTUALLY_INTEGRATED_IN_COMMIT_51130e9d = NO`).
+  - Integrasi penuh dilakukan pada 8 jalur mutasi riil:
+    1. *Article content edit:* `updateArticle` di `src/lib/db.ts` merekam snapshot & transisi `CONTENT_CHANGED`.
+    2. *Hermes ingest:* `insertHermesArticleAndReceipt` di `src/lib/db.ts` merekam snapshot inisial artikel baru.
+    3. *Featured media binding:* `bindMediaToArticle` & `unbindFeaturedMedia` di `src/lib/media/service.ts` merekam `MEDIA_ADDED`, `MEDIA_REPLACED`, `MEDIA_REMOVED`.
+    4. *Manual hold mutation:* `holdArticle` & `resumeArticleAutomation` di `src/lib/publication/operator-controls.ts` merekam `MANUAL_HOLD_CHANGED`.
+    5. *Readiness evaluation:* `evaluateArticleReadiness` di `src/lib/publication/service.ts` mematuhi aturan NOOP (0 transisi redundant).
+    6. *Human editorial outcome:* `recordEditorialApproval` & `revokeEditorialApproval` merekam outcome `human_approved` dan `human_approval_revoked`.
+    7. *Publication outcome & receipt:* `executeAtomicPublication` & `cancelExecution` di `src/lib/publication/publisher-service.ts` merekam `publication_succeeded` dan `publication_cancelled` dengan pelindung firewall kegagalan.
+* **Hasil Pengujian End-to-End:** 29/29 tes lulus pada `scripts/test-editorial-trajectory-e2e.js`.
+* **Status Fase:** `JEV_PHASE_7L_1 = PASS`.
+
+### Masalah 61: Pengerasan Atomisitas Ingest Hermes & Optimistic Concurrency Control (Phase JEV-7L.2)
+* **Tujuan & Ruang Lingkup:** Menjamin atomisitas sejati pembentukan draf artikel Hermes baru dan snapshot kanonikal inisial dalam batch D1 tunggal, mencegah event phantom pada konflik konkurensi optimistik (*stale-read races*), serta membuktikan ketahanan rollback kegagalan secara lokal.
+* **Penyelesaian Celah Atomisitas Hermes:**
+  - Sebelum perbaikan: Artikel dan receipt dimasukkan via `db.batch`, lalu snapshot dieksekusi terpisah di luar batch.
+  - Solusi: Alokasi ID artikel secara deterministik di awal (`SELECT MAX(...) + 1`), lalu menggabungkan `insertArticleStmt`, `insertReceiptStmt`, dan `snapStmt` ke dalam **satu batch D1 atomik tunggal** (`NEW_ARTICLE_INITIAL_SNAPSHOT_ATOMIC = YES`).
+* **Strategi OCC dengan Zero-Row Detection (`CONDITIONAL_WHERE_EXISTS_WITH_ZERO_ROW_DETECTION`):**
+  - Pada SQLite/D1, `UPDATE` yang tidak mengubah baris karena predikat OCC yang basi tidak melempar error SQL sehingga query lain dalam batch berisiko tetap commit.
+  - Implementasi: Seluruh builder statement ledger (`prepareCaptureSnapshotStatement`, `prepareRecordTransitionStatement`, `prepareRecordOutcomeStatement`) diperbarui untuk mendukung `OCCGuardCondition` (`INSERT ... SELECT ... WHERE EXISTS (...)`).
+  - Jika mutasi bisnis memodifikasi 0 baris, klausa `WHERE EXISTS` otomatis bernilai `FALSE`, memastikan 0 baris masuk ke tabel ledger (`STALE_MUTATION_CAN_CREATE_PHANTOM_LEDGER_EVENT = NO`, `EXACT_STATE_OUTCOME_STALE_BINDING_POSSIBLE = NO`).
+  - Service memeriksa `changes === 0` dan segera melempar `OPTIMISTIC_CONCURRENCY_CONFLICT`.
+  - Pada `bindMediaToArticle`, urutan eksekusi dibalik sehingga conditional INSERT berjalan mendahului deactivation update untuk membaca status aktif yang konsisten.
+* **Hasil Pengujian & Regresi Lengkap:**
+  - Suite E2E diperluas menjadi 38 tes komprehensif (`scripts/test-editorial-trajectory-e2e.js`: 38/38 PASS).
+  - Seluruh rangkaian regresi lulus 100%: 47 unit ledger tests, 67 planner tests, 48 publisher tests, 16 operator control tests, 23 dual authorization tests, 16 media planning tests, 8 telemetry tests, 23 decision engine tests, 14 router tests, 5 lokamedia integration tests, 54 soak safety tests, TypeScript typecheck clean, dan build Astro sukses.
+* **Status Fase:** `JEV_PHASE_7L_2 = PASS`. Sistem lokal 100% siap untuk peluncuran canary produksi JEV-7M.
+
 ---
 
 ## 📍 3. Status Terkini (Current Milestone Progress)
@@ -1550,6 +1596,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 | **R2 Storage & Media Library** | ✅ Selesai (Aktif) | Bucket `rancangloka-media` + asset registration & pipeline derivative storage. |
 | **Decision Engine (TypeSafe Jev)** | ✅ Selesai (5-State Dataset Active & Dedupe Steady) | Dataset 5-state kanonikal v2 lengkap di edge cron `17 * * * *`, deduplikasi mapan terbukti (Zero Authority, mode OFF). |
 | **Decision Telemetry** | ✅ Selesai (Aktif) | Tabel D1 `decision_observations` & `publication_cron_runs` mencatat telemetri durable edge. |
+| **Editorial Trajectory Ledger** | ✅ Selesai (Lokal Teruji Penuh) | Skema D1 migrasi 0023, 8 jalur mutasi riil terhubung, OCC zero-row guard, 38/38 tes E2E + 47 unit tests PASS. Siap untuk JEV-7M. |
 | **Publication & Safety Engine** | ✅ Selesai (Aktif) | Capability matrix (`OFF`, `OBSERVE_ONLY`, `PLAN_ONLY`, `CONTROLLED`, `UNATTENDED`), Circuit breaker, Run ledger. Status produksi: resting `OFF`. |
 | **Pilar Konten & Editorial Scope** | ✅ Selesai (Aktif) | 13 pilar materi arsitektur, interior, konstruksi & biaya terdokumentasi di Blueprint Master. |
 | **Design Problem Solver & Explorer** | ✅ Selesai (Aktif) | Alat diagnosis berbasis kemungkinan penyebab umum & 3-way multi-filter aktif. |

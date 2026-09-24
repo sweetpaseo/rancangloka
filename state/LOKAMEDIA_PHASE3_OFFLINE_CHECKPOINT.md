@@ -4,20 +4,23 @@ Date: 2026-09-15
 
 ## Latest Local Checkpoint
 
-Date: 2026-09-23
+Date: 2026-09-24
 
 Latest clean checkpoint commit:
 
 ```text
-367cde24b8cb9c7e68a3881900ee9971b9cfb694
+16151d6ca181b7425dd41d8469d7e29ce4cadf1e
 ```
 
 Commit message:
 
 ```text
-feat: expand jev shadow coverage and collection fairness
+fix: harden trajectory ledger atomicity
 ```
 
+`JEV_PHASE_7L_2=PASS_OCC_ATOMICITY_AND_INITIAL_SNAPSHOT_HARDENED`
+`JEV_PHASE_7L_1=PASS_MUTATION_PATH_CAPTURE_WIRING_AND_E2E_PROVEN`
+`JEV_PHASE_7L=PASS_EDITORIAL_TRAJECTORY_EVIDENCE_LEDGER_FOUNDATION`
 `JEV_PHASE_7G=PASS_EXPANDED_SHADOW_COVERAGE_PRODUCTION_CANARY_ACTIVE`
 `JEV_PHASE_7F_4=PASS_MULTI_WINDOW_FAIRNESS_AND_LARGE_SUBJECT_POOL_HARDENING`
 `JEV_PHASE_7F_3=PASS_SHADOW_COLLECTOR_FAIRNESS_AND_STARVATION_HARDENING`
@@ -122,6 +125,35 @@ feat: expand jev shadow coverage and collection fairness
 `PRODUCTION_WORKER_DEPLOYMENT_ID=d81db579-63f1-40c4-9345-328780f6f694`
 `READY_FOR_PHASE_5L13=YES`
 `NEXT_RECOMMENDED_ACTION=AWAIT_EXPLICIT_APPROVAL_FOR_PHASE_5L13`
+
+Phase JEV-7L.2 (OCC Atomicity & Initial Snapshot Hardening):
+- Fixed Hermes initial snapshot atomicity gap: combined article insert, receipt insert, and initial canonical state snapshot into the exact same D1 atomic batch (`db.batch([insertArticleStmt, insertReceiptStmt, snapStmt])`) using deterministic pre-allocated row ID.
+- Implemented Optimistic Concurrency Control (OCC) guard strategy with zero-row detection (`CONDITIONAL_WHERE_EXISTS_WITH_ZERO_ROW_DETECTION`):
+  - Statements use `INSERT OR IGNORE INTO <table...> SELECT ... WHERE EXISTS (<condition>)`.
+  - Stale mutations (stale content hash, stale active media, stale manual hold) modify 0 rows and immediately fail closed without writing phantom snapshots, transitions, or outcomes (`STALE_MUTATION_CAN_CREATE_PHANTOM_LEDGER_EVENT=NO`).
+- Fixed media binding execution order in D1 batch: conditional insert precedes deactivation update to ensure atomic evaluation of current active asset.
+- Extended E2E suite to 38 comprehensive tests (`scripts/test-editorial-trajectory-e2e.js`: 38/38 PASS).
+- Full regression passed: 47 unit ledger tests, 67 planner tests, 48 publisher tests, 16 operator control tests, 23 dual authorization tests, 16 media planning tests, 8 telemetry tests, 23 decision engine tests, 14 router tests, 5 lokamedia integration tests, 54 soak safety tests, TypeScript typecheck clean, Astro production build clean.
+
+Phase JEV-7L.1 (Capture Wiring & End-to-End Local Proof):
+- Audited repository for trajectory ledger callsites: confirmed commit `51130e9d` contained only schema and tests without active runtime callsites (`WERE_CAPTURE_POINTS_ACTUALLY_INTEGRATED_IN_COMMIT_51130e9d=NO`).
+- Wired real mutation paths to the trajectory ledger service:
+  1. Article content edit: `updateArticle` in `src/lib/db.ts` captures before/after states and emits `CONTENT_CHANGED`.
+  2. Hermes machine ingest: `insertHermesArticleAndReceipt` in `src/lib/db.ts` captures immutable initial snapshot with zero transitions (`INITIAL_STATE_CREATES_TRANSITION=NO`).
+  3. Featured media binding: `bindMediaToArticle` & `unbindFeaturedMedia` in `src/lib/media/service.ts` emit `MEDIA_ADDED`, `MEDIA_REPLACED`, `MEDIA_REMOVED`.
+  4. Manual hold operator controls: `holdArticle` & `resumeArticleAutomation` in `src/lib/publication/operator-controls.ts` emit `MANUAL_HOLD_CHANGED`.
+  5. Readiness evaluation: `evaluateArticleReadiness` in `src/lib/publication/service.ts` enforces NOOP rule (0 transitions on recomputation).
+  6. Human editorial outcome: `recordEditorialApproval` & `revokeEditorialApproval` in `src/lib/publication/service.ts` emit `human_approved` and `human_approval_revoked`.
+  7. Publication terminal outcome & receipt: `executeAtomicPublication` & `cancelExecution` in `src/lib/publication/publisher-service.ts` emit `publication_succeeded` and `publication_cancelled` with failure quality firewall.
+- Implemented and verified end-to-end local test suite with 29 passing tests.
+
+Phase JEV-7L (Editorial Trajectory Evidence Ledger Foundation):
+- Created schema migration `0023_editorial_trajectory_ledger.sql`:
+  - `article_state_snapshots`: Immutable canonical state snapshots deduplicated by `(article_id, input_hash, input_schema_version)`.
+  - `article_state_transitions`: Append-only transition log with `from_snapshot_id`, `to_snapshot_id`, `mutation_operation_id`, transition types, and lightweight diff metrics.
+  - `decision_outcomes`: Append-only authoritative outcomes tied to canonical input hash with idempotency keys.
+- Implemented `src/lib/decision/trajectory-ledger.ts` providing canonical state hashing, transition type derivation, failure firewall (`isDecisionQualityFailure`), diff metrics computation, and D1 statement builders.
+- Verified unit test suite with 47 passing tests in `scripts/test-editorial-trajectory-ledger.js`.
 
 Phase 5L12D (Canonical Production OBSERVE_ONLY Round-Trip):
 - Authenticated browser context: Verified existing admin session on `https://rancangloka.com/admin` (`AUTHENTICATED_ADMIN_BROWSER_SESSION=YES`).
