@@ -62,6 +62,9 @@ export interface MediaAssetRegistrationParams {
   height: number;
   byte_size: number;
   role?: string;
+  source_type?: 'manual_upload' | 'lokamedia_extension' | 'fal_generated' | string;
+  source_origin?: string;
+  provenance?: Record<string, any>;
 
   // Provenance metadata (optional / preserved when schema supports)
   watermark_settings_version?: number;
@@ -131,6 +134,9 @@ export async function registerMediaAsset(
     height,
     byte_size,
     role = REGISTERED_MEDIA_ASSET_ROLE,
+    source_type,
+    source_origin,
+    provenance,
     watermark_settings_version,
     watermark_engine_version,
     source_sha256,
@@ -140,6 +146,17 @@ export async function registerMediaAsset(
     upload_receipt,
     upload_state
   } = params;
+
+  // Validate Ingestion Source Type (constrained by 0005 schema CHECK constraint)
+  const allowedSourceTypes = new Set(['manual_upload', 'lokamedia_extension', 'fal_generated']);
+  const cleanSourceType = source_type ? String(source_type).trim() : 'lokamedia_extension';
+  if (!allowedSourceTypes.has(cleanSourceType)) {
+    throw new MediaRegistrationError(
+      'INVALID_SOURCE_TYPE',
+      `Source type '${cleanSourceType}' tidak valid. Nilai yang diizinkan: ${Array.from(allowedSourceTypes).join(', ')}.`,
+      422
+    );
+  }
 
   // 1. Validate required identity fields
   if (!upload_id || typeof upload_id !== 'string' || !upload_id.trim()) {
@@ -318,13 +335,15 @@ export async function registerMediaAsset(
     const widthConflict = Number(existingAsset.width) !== width;
     const heightConflict = Number(existingAsset.height) !== height;
     const roleConflict = existingAsset.role && existingAsset.role !== canonicalRole;
+    const sourceConflict = existingAsset.source_type && existingAsset.source_type !== cleanSourceType;
 
-    if (storageConflict || mimeConflict || sizeConflict || widthConflict || heightConflict || roleConflict) {
+    if (storageConflict || mimeConflict || sizeConflict || widthConflict || heightConflict || roleConflict || sourceConflict) {
       throw new MediaRegistrationError(
         'MEDIA_ASSET_IDENTITY_CONFLICT',
         `Asset dengan identitas yang sama sudah terdaftar tetapi memiliki metadata bertentangan ` +
         `(storage=${existingAsset.storage_key}, size=${existingAsset.file_size}, mime=${existingAsset.mime_type}, ` +
-        `width=${existingAsset.width}, height=${existingAsset.height}, role=${existingAsset.role || 'default'}). Registrasi ditolak.`,
+        `width=${existingAsset.width}, height=${existingAsset.height}, role=${existingAsset.role || 'default'}, ` +
+        `source_type=${existingAsset.source_type}). Registrasi ditolak.`,
         409
       );
     }
@@ -349,9 +368,11 @@ export async function registerMediaAsset(
 
   // 7. Insert new record into media_assets
   const provenancePayload = {
+    ...(provenance || {}),
     derivative_id,
     transform_id,
     upload_id,
+    source_origin: source_origin ?? provenance?.source_origin ?? provenance?.source_type ?? null,
     watermark_settings_version: watermark_settings_version ?? null,
     watermark_engine_version: watermark_engine_version ?? null,
     source_sha256: source_sha256 ?? null,
@@ -371,10 +392,11 @@ export async function registerMediaAsset(
           asset_id, media_type, source_type, storage_key, public_url,
           mime_type, width, height, file_size, sha256, alt_text, status,
           role, upload_id, derivative_id, transform_id, provenance_json
-        ) VALUES (?, 'image', 'lokamedia_extension', ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         assetId,
+        cleanSourceType,
         r2_key,
         publicUrl,
         mime,
@@ -434,10 +456,11 @@ export async function registerMediaAsset(
             `INSERT INTO media_assets (
               asset_id, media_type, source_type, storage_key, public_url,
               mime_type, width, height, file_size, sha256, alt_text, status
-            ) VALUES (?, 'image', 'lokamedia_extension', ?, ?, ?, ?, ?, ?, ?, '', ?)`
+            ) VALUES (?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, '', ?)`
           )
           .bind(
             assetId,
+            cleanSourceType,
             r2_key,
             publicUrl,
             mime,

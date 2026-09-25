@@ -252,6 +252,10 @@ async function runTests() {
   assert.equal(row.status, MEDIA_ASSET_REGISTERED_STATE);
   assert.equal(row.role, REGISTERED_MEDIA_ASSET_ROLE);
   assert.equal(row.source_type, 'lokamedia_extension');
+  const prov = JSON.parse(row.provenance_json);
+  assert.equal(prov.source_origin, 'local_fixture');
+  assert.equal(prov.source_type, 'lokamedia_extension');
+  assert.equal(prov.phase, 'MEDIA_A4A');
   pass('DRY_RUN_INITIAL_REGISTRATION_PASS');
 
   // 6. Idempotency & Duplicate Registration Proof

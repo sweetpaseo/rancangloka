@@ -288,7 +288,8 @@ export async function buildMediaAssetRegistrationPayload(
     storage_provider: storedArtifact.storage_provider,
     bucket: storedArtifact.bucket,
     storage_key: storedArtifact.storage_key,
-    source_type: storedArtifact.source_type,
+    source_type: 'lokamedia_extension',
+    source_origin: storedArtifact.source_type,
     watermark_engine_version: derivativeProv.engine_version || '1.0.0',
     watermark_settings_version: derivativeProv.watermark_version || 1,
     transform_id: transformId,
@@ -298,6 +299,10 @@ export async function buildMediaAssetRegistrationPayload(
   };
 
   const sanitizedProv = sanitizeProvenance(rawProvenance);
+
+  const publicUrl = storedArtifact.storage_key.startsWith('media/')
+    ? `/${storedArtifact.storage_key}`
+    : `/media/${storedArtifact.storage_key}`;
 
   const params: MediaAssetRegistrationParams = {
     upload_id: uploadId,
@@ -310,6 +315,9 @@ export async function buildMediaAssetRegistrationPayload(
     height: storedArtifact.height,
     byte_size: storedArtifact.byte_size,
     role,
+    source_type: 'lokamedia_extension',
+    source_origin: storedArtifact.source_type,
+    provenance: sanitizedProv,
     source_sha256: derivativeProv.source_sha256 || storedArtifact.provenance?.sha256,
     watermark_settings_version: derivativeProv.watermark_version || 1,
     watermark_engine_version: derivativeProv.engine_version || '1.0.0',
@@ -329,6 +337,6 @@ export async function buildMediaAssetRegistrationPayload(
     assetId,
     params,
     sanitizedProvenance: sanitizedProv,
-    publicUrl: `/${storedArtifact.storage_key}`
+    publicUrl
   };
 }
