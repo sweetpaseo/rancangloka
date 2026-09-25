@@ -104,9 +104,11 @@ export {
 
 export type {
   StoredGeneratedImageArtifact,
-  WatermarkDerivativeResult
+  WatermarkDerivativeResult,
+  MediaAssetRegistrationPayload
 } from './stored-image-artifact.ts';
 export {
   renderTextWatermarkDerivative,
-  createStoredGeneratedImageArtifact
+  createStoredGeneratedImageArtifact,
+  buildMediaAssetRegistrationPayload
 } from './stored-image-artifact.ts';

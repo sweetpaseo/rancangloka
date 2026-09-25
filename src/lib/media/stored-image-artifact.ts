@@ -20,8 +20,14 @@ import {
   type NormalizedProvenance,
   validateArtifactBinary,
   computeArtifactId,
-  MediaArtifactError
+  MediaArtifactError,
+  sanitizeProvenance
 } from './generated-image-artifact.ts';
+import {
+  REGISTERED_MEDIA_ASSET_ROLE,
+  computeMediaAssetId,
+  type MediaAssetRegistrationParams
+} from './asset-registration.ts';
 import {
   computeBinarySha256
 } from './image-validation.ts';
@@ -234,5 +240,95 @@ export function createStoredGeneratedImageArtifact(options: {
     watermark_config_hash: options.derivative.watermark_config_hash,
     provenance: fullProvenance,
     created_at: new Date().toISOString()
+  };
+}
+
+export interface MediaAssetRegistrationPayload {
+  assetId: string;
+  params: MediaAssetRegistrationParams;
+  sanitizedProvenance: Record<string, any>;
+  publicUrl: string;
+}
+
+/**
+ * Builds canonical media registration params and sanitized provenance from a StoredGeneratedImageArtifact.
+ * Enforces:
+ * - Deterministic asset identity calculation
+ * - Sanitized provenance payload with secret firewall applied
+ * - Canonical storage_key, sha256, mime, and dimensions matching
+ */
+export async function buildMediaAssetRegistrationPayload(
+  storedArtifact: StoredGeneratedImageArtifact,
+  options: {
+    role?: string;
+    phase?: string;
+    purpose?: string;
+    uploadId?: string;
+    derivativeId?: string;
+    transformId?: string;
+  } = {}
+): Promise<MediaAssetRegistrationPayload> {
+  const role = options.role || REGISTERED_MEDIA_ASSET_ROLE;
+  const assetId = await computeMediaAssetId(role, storedArtifact.sha256, storedArtifact.storage_key);
+
+  const derivativeProv = storedArtifact.provenance?.derivative_provenance || {};
+  const transformId = options.transformId || derivativeProv.transform_id || storedArtifact.watermark_config_hash;
+  const derivativeId = options.derivativeId || `der_${storedArtifact.sha256.substring(0, 24)}`;
+  const uploadId = options.uploadId || `upl_${storedArtifact.artifact_id.replace(/^art_/, '')}`;
+
+  const rawProvenance = {
+    phase: options.phase || 'MEDIA_A4A',
+    purpose: options.purpose || 'MEDIA_A3_DERIVATIVE_REGISTRATION',
+    source_artifact_id: storedArtifact.source_artifact_id,
+    source_sha256: derivativeProv.source_sha256 || storedArtifact.provenance?.sha256,
+    derivative_sha256: storedArtifact.sha256,
+    watermark_applied: storedArtifact.watermark_applied,
+    watermark_type: storedArtifact.watermark_type,
+    watermark_text: derivativeProv.watermark_text || 'rancangloka.com',
+    storage_provider: storedArtifact.storage_provider,
+    bucket: storedArtifact.bucket,
+    storage_key: storedArtifact.storage_key,
+    source_type: storedArtifact.source_type,
+    watermark_engine_version: derivativeProv.engine_version || '1.0.0',
+    watermark_settings_version: derivativeProv.watermark_version || 1,
+    transform_id: transformId,
+    derivative_id: derivativeId,
+    upload_id: uploadId,
+    created_at: storedArtifact.created_at
+  };
+
+  const sanitizedProv = sanitizeProvenance(rawProvenance);
+
+  const params: MediaAssetRegistrationParams = {
+    upload_id: uploadId,
+    derivative_id: derivativeId,
+    transform_id: transformId,
+    r2_key: storedArtifact.storage_key,
+    sha256: storedArtifact.sha256,
+    mime: storedArtifact.mime_type,
+    width: storedArtifact.width,
+    height: storedArtifact.height,
+    byte_size: storedArtifact.byte_size,
+    role,
+    source_sha256: derivativeProv.source_sha256 || storedArtifact.provenance?.sha256,
+    watermark_settings_version: derivativeProv.watermark_version || 1,
+    watermark_engine_version: derivativeProv.engine_version || '1.0.0',
+    upload_state: 'UPLOADED',
+    upload_receipt: {
+      upload_id: uploadId,
+      state: 'UPLOADED',
+      r2_key: storedArtifact.storage_key,
+      sha256: storedArtifact.sha256,
+      byte_size: storedArtifact.byte_size,
+      mime: storedArtifact.mime_type,
+      uploaded_at: storedArtifact.created_at
+    }
+  };
+
+  return {
+    assetId,
+    params,
+    sanitizedProvenance: sanitizedProv,
+    publicUrl: `/${storedArtifact.storage_key}`
   };
 }
