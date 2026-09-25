@@ -101,3 +101,12 @@ export {
   computeArtifactId,
   createMediaA3Contract
 } from './generated-image-artifact.ts';
+
+export type {
+  StoredGeneratedImageArtifact,
+  WatermarkDerivativeResult
+} from './stored-image-artifact.ts';
+export {
+  renderTextWatermarkDerivative,
+  createStoredGeneratedImageArtifact
+} from './stored-image-artifact.ts';
