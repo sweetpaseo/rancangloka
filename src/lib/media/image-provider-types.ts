@@ -87,3 +87,17 @@ export interface ImageProviderAdapter {
   readonly providerName: string;
   generate(request: ImageGenerationRequest): Promise<ImageGenerationResult>;
 }
+
+export type {
+  GeneratedImageArtifact,
+  NormalizedProvenance,
+  MediaA3InputContract,
+  ArtifactSourceType,
+  MediaA2ErrorCode
+} from './generated-image-artifact.ts';
+export {
+  MediaArtifactError,
+  ARTIFACT_IDENTITY_RULE,
+  computeArtifactId,
+  createMediaA3Contract
+} from './generated-image-artifact.ts';
