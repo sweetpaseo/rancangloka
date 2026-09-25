@@ -17,6 +17,58 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### MEDIA-A3 Watermark Derivative Engine & Production R2 Storage Canary 2026-09-25
+
+- **Tujuan & Ruang Lingkup:** Mengimplementasikan proses transformasi watermark teks kanonikal (`rancangloka.com`, `bottom-right`, `opacity=0.62`, `font_size_ratio=0.022`) pada artefak gambar terverifikasi (`GeneratedImageArtifact`), menjaga imutabilitas sumber asli 100%, menghasilkan derivatif gambar deterministik lokal, melakukan satu kali upload live kanonikal ke Cloudflare R2 bucket produksi (`rancangloka-media`), mengunduh ulang secara independen untuk pembuktian hash dan integritas byte (`R2_BYTE_INTEGRITY=PASS`), serta menyusun kontrak serah-terima kanonikal `StoredGeneratedImageArtifact` untuk tahapan MEDIA-A4.
+- **Otorisasi & Batasan Mutasi Produksi:**
+  - **Otorisasi Terbatas:** Operator telah memberikan otorisasi untuk tepat 1 objek derivatif baru pada Cloudflare R2 bucket `rancangloka-media`.
+  - **Firewall Keamanan Produksi:** Dilarang melakukan mutasi D1 (`PRODUCTION_D1_MUTATIONS=0`), dilarang menambah baris pada `media_assets` (`MEDIA_ASSETS_ROWS_CREATED=0`), dilarang membuat binding `article_media` (`ARTICLE_MEDIA_ATTACHMENTS=0`), dilarang mengubah status draf/artikel (`ARTICLE_MUTATIONS=0`), dilarang memicu pipeline publikasi (`PUBLICATION_MUTATIONS=0`), dilarang deploy worker baru (`PRODUCTION_DEPLOYED=NO`), dan dilarang memanggil provider berbayar (`FAL_API_CALLS=0`).
+- **Implementasi Engine Derivatif (`src/lib/media/stored-image-artifact.ts`):**
+  - **`renderTextWatermarkDerivative()`:** Merender watermark teks menggunakan W3C Canvas 2D engine (`@napi-rs/canvas`) dengan rumus metriks dan penempatan deterministik dari `extensions/lokamedia/src/watermark-engine.js`.
+  - **Preservasi Dimensi:** Dimensi piksel sumber (169×512) dipertahankan mutlak tanpa peregangan atau distorsi pada derivatif (169×512).
+  - **`createStoredGeneratedImageArtifact()`:** Membangun kontrak `StoredGeneratedImageArtifact` yang mencakup identitas deterministik `artifact_id`, `source_artifact_id`, namespace R2 `storage_key`, `sha256`, `byte_size`, `watermark_applied=true`, `watermark_config_hash`, dan provenance terverifikasi lengkap.
+- **Hasil Eksekusi Live Canary R2 Produksi (`scripts/run-media-a3-r2-canary.js`):**
+  - **Sumber Aman:** `public/stitch-homepage.png` (`SOURCE_BEFORE_SHA256: 92eca8e32eb2f0f4e176054d82ce8830faf103044ddb75f59f778e204763676d`, 169×512 px, 58.941 bytes).
+  - **Derivatif Lokal:** `DERIVATIVE_SHA256: 7b30ab30e36c781674cbf3f2108b37619ddfb352c236a9621db79b02ec945967`, 169×512 px, 66.377 bytes, MIME `image/png`.
+  - **Idempotensi Lokal:** Terverifikasi 100% deterministik (`R2_DERIVATIVE_IDEMPOTENCY: PASS`).
+  - **Pemeriksaan Pra-Upload (Fail-Closed Guard):** Kunci `media/canary/media-a3/7b30ab30e36c781674cbf3f2108b37619ddfb352c236a9621db79b02ec945967.png` diverifikasi terlebih dahulu di bucket `rancangloka-media`; terkonfirmasi objek belum ada (HTTP 404).
+  - **Upload R2 Produksi:** Tepat 1 kali percobaan upload via `wrangler r2 object put` menggunakan `CLOUDFLARE_ACCOUNT_ID=a8e6d11d45dc2d14fe49fe3b84958ee8` (`PRODUCTION_R2_UPLOAD_ATTEMPTS=1`, `PRODUCTION_R2_UPLOAD_SUCCESS=YES`).
+  - **Re-Download & Pembuktian Integritas:** Objek diunduh ulang dari bucket produksi, dihitung ulang SHA-256 dan byte size-nya, dan terbukti 100% identik dengan derivatif lokal (`R2_BYTE_INTEGRITY: PASS`).
+  - **Imutabilitas Sumber Asli:** `SOURCE_AFTER_SHA256` terbukti persis sama dengan `SOURCE_BEFORE_SHA256` (`SOURCE_IMMUTABLE: PASS`).
+  - **Pengiriman Publik:** `PUBLIC_MEDIA_DELIVERY: NOT_APPLICABLE_UNTIL_MEDIA_A4` (route `/media/[key]` single segment tanpa slash, sesuai antisipasi spesifikasi).
+  - **Kontrak Serah-Terima:** Disimpan di `artifacts/stored-generated-image-artifact.json` (`MEDIA_A4_STORAGE_CONTRACT: READY`).
+- **Pengujian Unit & Regresi (`scripts/test-media-a3-r2-canary.js`):**
+  - 6/6 tes unit MEDIA-A3 LULUS (immutability, render deterministik, preservasi dimensi, validasi magic bytes, pembuatan kontrak, dan firewall rahasia).
+  - Seluruh rangkaian regresi sistem (A2, watermark settings, asset storage, headless provider, fal mock, fullres capture, asset registration, media planning, typecheck tsc, build astro) lulus 100%.
+- **Commit Repositori:**
+  - `2e617c3`: `feat: watermark and store production media artifact`
+
+### MEDIA-A2 Provider-Neutral Image Artifact Normalization & Validation 2026-09-25
+
+- **Tujuan & Ruang Lingkup:** Membangun lapisan normalisasi dan validasi artefak media netral-provider (`GeneratedImageArtifact`) untuk menjembatani output dari berbagai sumber pembuatan gambar (jalur otonom `fal.ai FLUX`, jalur manual browser bridge `ChatGPT Plus / LokaMedia`, dan aset fixture repositori lokal) ke dalam format kanonikal tunggal tanpa bergantung pada struktur respons spesifik vendor atau DOM browser, dilengkapi validasi biner asli, ekstraksi dimensi, deteksi anti-spoofing MIME, hashing SHA-256 deterministik, aturan identitas content-addressed, model error bertipe, dan firewall privasi/rahasia.
+- **Implementasi Normalisasi & Validasi (`src/lib/media/generated-image-artifact.ts`):**
+  - **Kontrak `GeneratedImageArtifact`:** Memuat `artifact_id`, `source_type` (`fal_api` / `chatgpt_browser_bridge` / `local_fixture`), `provider`, `model`, `image_bytes`, `mime_type`, `width`, `height`, `byte_size`, `sha256`, `prompt_hash`, `prompt_version`, `media_role`, `purpose`, `created_at`, dan `provenance`.
+  - **Aturan Identitas Kanonikal:** `ARTIFACT_IDENTITY_RULE = 'art_${sha256.substring(0, 24)}'`. Dua biner yang persis sama akan selalu menghasilkan `artifact_id` yang identik.
+  - **Fungsi Normalisasi:**
+    - `normalizeHeadlessResult`: Menormalkan `ImageGenerationResult` dari provider otonom.
+    - `normalizeChatGptBridgeResult`: Menormalkan objek tangkapan dari ekstensi browser LokaMedia (`bytes`, `data_url`, `blobKey`, dsb).
+    - `normalizeLocalFixture`: Menormalkan aset berkas lokal terverifikasi.
+  - **Validasi Biner & Anti-Spoofing:** Memeriksa magic bytes asli (PNG, JPEG, WebP), mengekstraksi dimensi asli, menolak biner kosong/terpotong (`EMPTY_IMAGE`), menolak respon HTML/JSON error provider (`INVALID_IMAGE_SIGNATURE`), serta mendeteksi ketidaksesuaian deklarasi MIME (`UNSUPPORTED_MIME`) dan dimensi (`DIMENSION_INVALID`).
+  - **Secret & Privacy Firewall:** Fungsi `sanitizeProvenance()` dan `sanitizeUrl()` memindai dan menghapus seluruh token otentikasi (`FAL_KEY`, `authorization: Bearer ...`, cookies, session tokens, serta query parameter URL sensitif seperti `?key=`, `?sig=`, `?token=`).
+  - **Kontrak Serah-Terima MEDIA-A3:** Fungsi `createMediaA3Contract` memformat input tervalidasi yang siap dikonsumsi tahapan watermark dan R2 storage.
+- **Pengujian Unit MEDIA-A2 (`scripts/test-media-a2-normalization.js`):**
+  - 14/14 tes unit deterministik offline lulus 100% (headless normalization, chatgpt bridge normalization, local fixture canary, binary magic bytes, MIME anti-spoofing, dimension anti-spoofing, SHA-256 hashing, artifact identity semantics, provenance normalization, secret firewall, HTML error rejection, JSON error rejection, empty bytes fail-closed, dan media-a3 contract creation).
+- **Canary Fixture Lokal Riil:**
+  - `CANARY_SOURCE`: `public/stitch-homepage.png`
+  - `CANARY_SOURCE_TYPE`: `local_fixture`
+  - `ARTIFACT_ID`: `art_92eca8e32eb2f0f4e176054d`
+  - `ARTIFACT_SHA256`: `92eca8e32eb2f0f4e176054d82ce8830faf103044ddb75f59f778e204763676d`
+  - `ARTIFACT_BYTE_SIZE`: `58941`
+  - `ARTIFACT_WIDTH`: `169`, `ARTIFACT_HEIGHT`: `512`
+  - `ARTIFACT_MIME`: `image/png`
+- **Commit Repositori:**
+  - `f8bc39f`: `feat: normalize generated media artifacts`
+
 ### MEDIA-A1 & MEDIA-A1.1 Headless Image Provider Adapter & Fal.ai Autonomous Pipeline 2026-09-25
 
 - **Tujuan & Ruang Lingkup:** Menggantikan ketergantungan generasi gambar manual pada browser/ekstensi Chrome dengan adapter API provider headless netral-provider (`ImageProviderAdapter`), memisahkan arsitektur generasi otonom (`fal.ai API` / FLUX) dan generasi manual (`ChatGPT Plus UI` via ekstensi LokaMedia), mengimplementasikan validasi biner deterministik lokal, hashing prompt deterministik, penanganan error bertipe, pelindung panggilan tunggal (`MAX_PROVIDER_GENERATE_CALLS=1`), pencatatan provenance lokal, serta kontrak serah-terima ke tahapan MEDIA-A2.
