@@ -17,6 +17,63 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### MEDIA-A4B.1 Canonical Article Media Detach / Deactivate Service 2026-09-26
+
+- **Tujuan & Ruang Lingkup:** Mengimplementasikan layanan pelepasan/deaktivasi kanonikal (`detachArticleMedia`) dan endpoint internal (`/api/internal/v1/media/article-media/detach`) yang bekerja secara soft-deactivation (`is_active = 0`) untuk memulihkan status kanonikal artikel tanpa memutasi kolom legasi `articles.featured_image`, tabel `media_assets`, atau tabel publikasi, menyediakan jalur *canonical rollback* aman sebelum eksekusi canary produksi MEDIA-A4B.
+- **Akar Masalah Jalur Legasi (`unbindFeaturedMedia`):**
+  - Jalur unbind legasi di `src/lib/media/service.ts` melakukan mutasi langsung pada `articles.featured_image = ''` dan `articles.image_alt = ''`.
+  - Hal ini tidak kompatibel dengan arsitektur media modern RancangLoka karena sumber kebenaran kanonikal untuk gambar artikel adalah tabel relasi `article_media WHERE role = 'featured' AND is_active = 1`.
+  - Mengosongkan kolom legasi berisiko merusak metadata artikel dan tidak dapat dibatalkan (non-reversible).
+- **Implementasi Layanan Kanonikal (`src/lib/media/article-media.ts`):**
+  - **Fungsi:** `detachArticleMedia(params: ArticleMediaDetachParams, db: any): Promise<ArticleMediaDetachResult>`.
+  - **Target Terfokus (Exact Scope):** Memerlukan kombinasi eksplisit `article_id` dan `asset_id` (serta opsional `slot_key` dan `binding_id`). Menolak kueri broad deactivation tanpa kriteria identitas.
+  - **Soft-Deactivation Semantics:** Menjalankan `UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_active = 1`. Baris historis tetap tersimpan untuk keperluan audit.
+  - **Pembebasan Unique Slot:** Begitu `is_active` menjadi 0, partial unique index SQLite `idx_article_media_one_active_slot` pada `(article_id, slot_key) WHERE is_active = 1` langsung terbebaskan, sehingga slot editorial dapat digunakan oleh aset baru.
+  - **Imutabilitas Mutlak Kolom Legasi:** Tidak ada mutasi pada tabel `articles` (`articles.featured_image` tetap utuh).
+  - **Idempotensi & Concurrency Safety:** Jika binding sudah berstatus `is_active = 0`, layanan mengembalikan `already_inactive: true` secara deterministik tanpa error. Kueri scoped pada primary key `id` dan `is_active = 1` mencegah race condition.
+  - **Audit Logging:** Mencatat aksi `'DETACH'` ke dalam tabel `media_asset_audit`.
+- **Implementasi Endpoint Internal API (`src/pages/api/internal/v1/media/article-media/detach.ts`):**
+  - Rute: `POST /api/internal/v1/media/article-media/detach`.
+  - Otentikasi: Menggunakan `authenticateDeviceRequest` (HMAC berpasangan) dengan paritas penuh terhadap endpoint attach.
+  - Firewall Payload: Menolak biner/multipart (`BINARY_PAYLOAD_NOT_ACCEPTED`, HTTP 415).
+  - Validasi Input: Validasi ketat untuk `article_id`, `asset_id`, dan format `slot_key`.
+- **Pengujian & Verifikasi Komprehensif (`scripts/test-media-a4b1-detach.js`):**
+  - 8/8 pengujian deterministik offline lulus 100%:
+    1. `LEGACY_FEATURED_IMAGE_IMMUTABILITY_TEST_PASS`: Kolom `articles.featured_image` identik sebelum, saat, dan sesudah detach.
+    2. `CANONICAL_STATE_ROUNDTRIP_PASS`: Hash preflight kanonikal pasca-detach sama persis 100% dengan baseline pre-attach (`h_29741012`).
+    3. `ACTIVE_SLOT_REUSE_PASS`: Slot `'featured'` yang dilepas sukses diisi oleh aset pengganti.
+    4. `DETACH_IDEMPOTENCY_PASS`: Detach berulang aman dan mengembalikan `already_inactive: true`.
+    5. `DETACH_CONFLICT_HANDLING_PASS`: Fail-closed untuk artikel 404, aset 404, binding 404, role mismatch 422, dan invalid slot 400.
+    6. `DETACH_MUTATION_SCOPE_PASS`: Tabel `articles` dan `media_assets` tidak mengalami mutasi efek samping.
+    7. `DETACH_LEDGER_DECOUPLING_PASS`: Trajectory ledger tetap bersih (0 row).
+    8. `LOCAL_FULL_ROUNDTRIP_PASS`: Siklus canary lokal A4B (baseline → attach → verify → detach → hash match) terbukti deterministik.
+- **Commit Repositori:**
+  - `b5a4d18`: `feat: add canonical article media detach lifecycle`
+
+### MEDIA-A4A Media Asset Registration, Nested Delivery & Source Provenance 2026-09-25 / 2026-09-26
+
+- **Tujuan & Ruang Lingkup:** Mendaftarkan artefak gambar terverifikasi dari Cloudflare R2 (`media/canary/media-a3/...`, sha256 `7b30ab30...`) ke dalam tabel database D1 `media_assets` produksi, memperbaiki penanganan kunci penyimpanan bersarang pada rute publik `/media/[...key]`, mempertahankan semantik asal sumber (`source_origin: 'local_fixture'`), serta menguji delivery langsung via HTTPS.
+- **Perbaikan Rute Pengiriman Media Bersarang (`src/pages/media/[...key].ts`):**
+  - **Akar Masalah:** Rute single-segment `/media/[key].ts` menolak URL yang memiliki subdirektori (misal `media/canary/...`).
+  - **Solusi:** Diubah menjadi rest parameter `/media/[...key].ts`, dinormalisasi dari path traversal (`..`, `%2e%2e`), trailing slashes, dan penanganan decoding yang aman.
+  - **Tes Regresi:** 16/16 tes pada `scripts/test-media-delivery-route.js` lulus 100%.
+  - **Commit:** `67cdbe0`: `fix: support nested media storage keys`.
+- **Preservasi Semantik Sumber Asal (`src/lib/media/asset-registration.ts`):**
+  - **Akar Masalah:** Logika lama menetapkan `source_type: 'lokamedia_extension'` secara flat tanpa merekam sumber upstream (`local_fixture`, `chatgpt_browser_bridge`, atau `fal_api`).
+  - **Solusi:** Ditambahkan `buildMediaAssetRegistrationPayload` yang merefleksikan metadata provenance secara presisi ke dalam kolom `provenance_json`.
+  - **Commit:** `12def9e`: `fix: preserve media source provenance semantics`.
+- **Eksekusi Produksi (MEDIA-A4A.2 Canary Live):**
+  - Dideploy ke Cloudflare Edge Worker (Deployment ID: `d35528c0-7695-4c85-9a9d-ee39e6097c2a`).
+  - Registrasi 1 baris ke D1 `media_assets`:
+    - `asset_id`: `ast_8321f8f3eb7b039c59c222ba`
+    - `storage_key`: `media/canary/media-a3/7b30ab30e36c781674cbf3f2108b37619ddfb352c236a9621db79b02ec945967.png`
+    - `sha256`: `7b30ab30e36c781674cbf3f2108b37619ddfb352c236a9621db79b02ec945967`
+    - `status`: `VALIDATED`, `role`: `ARTICLE_PUBLIC_DERIVATIVE`
+  - Verifikasi Live Delivery: HTTP 200 OK dengan sha256 dan ukuran biner cocok 100%.
+- **Commit Terkait:**
+  - `d31c618`: `feat: add media asset registration payload builder and prep test suite`
+  - `5e0d76b`: `test: add MEDIA-A4B preparation and dry-run test suite`
+
 ### MEDIA-A3 Watermark Derivative Engine & Production R2 Storage Canary 2026-09-25
 
 - **Tujuan & Ruang Lingkup:** Mengimplementasikan proses transformasi watermark teks kanonikal (`rancangloka.com`, `bottom-right`, `opacity=0.62`, `font_size_ratio=0.022`) pada artefak gambar terverifikasi (`GeneratedImageArtifact`), menjaga imutabilitas sumber asli 100%, menghasilkan derivatif gambar deterministik lokal, melakukan satu kali upload live kanonikal ke Cloudflare R2 bucket produksi (`rancangloka-media`), mengunduh ulang secara independen untuk pembuktian hash dan integritas byte (`R2_BYTE_INTEGRITY=PASS`), serta menyusun kontrak serah-terima kanonikal `StoredGeneratedImageArtifact` untuk tahapan MEDIA-A4.

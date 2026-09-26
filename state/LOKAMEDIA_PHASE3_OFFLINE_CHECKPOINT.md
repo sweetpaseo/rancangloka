@@ -4,20 +4,28 @@ Date: 2026-09-15
 
 ## Latest Local Checkpoint
 
-Date: 2026-09-24
+Date: 2026-09-26
 
 Latest clean checkpoint commit:
 
 ```text
-f03744744fa23b1f9febe8a9ae5b63749cbcb17f
+b5a4d18d0f5806342fcf8eace33529417753e617
 ```
 
 Commit message:
 
 ```text
-fix: unify canonical publication state loading
+feat: add canonical article media detach lifecycle
 ```
 
+`MEDIA_A4B1=PASS_CANONICAL_ARTICLE_MEDIA_DETACH_IMPLEMENTED_LOCAL`
+`MEDIA_A4B_PREP=PASS_ATTACHMENT_AND_DRYRUN_VERIFIED`
+`MEDIA_A4A=PASS_PRODUCTION_MEDIA_ASSET_REGISTERED`
+`MEDIA_A4A_1=PASS_NESTED_DELIVERY_AND_SOURCE_SEMANTICS_DEPLOYED`
+`MEDIA_A3=PASS_WATERMARK_DERIVATIVE_AND_R2_CANARY_PROVEN`
+`MEDIA_A2=PASS_PROVIDER_NEUTRAL_IMAGE_NORMALIZATION`
+`MEDIA_A1_1=PASS_FAL_ADAPTER_IMPLEMENTED`
+`MEDIA_A1=PASS_HEADLESS_PROVIDER_ABSTRACTION`
 `MEDIA_W1=PASS_WATERMARK_PRODUCTION_CANARY_PROVEN`
 `WATERMARK_STATUS=TEXT_PRODUCTION_PROVEN_IMAGE_AWAITING_OFFICIAL_ASSET`
 `WATERMARK_E2E_PRODUCTION_PROVEN=PARTIAL`
@@ -1050,10 +1058,27 @@ Date: 2026-09-23
   - Phase Status: `JEV_PHASE_7G = PASS`.
 - **Next Milestone:** Ready for Phase JEV-7H (Descriptive Calibration & Tooling).
 
+---
 
+## Phase MEDIA-A4A & MEDIA-A4B.1 Checkpoint Summary (Media Registration, Delivery & Detach Lifecycle)
 
-
-
-
-
-
+- **Date:** 2026-09-26
+- **Branch:** `feat/jev-lokamedia-integration`
+- **Clean Commits:**
+  - `d31c618` (`feat: add media asset registration payload builder and prep test suite`)
+  - `67cdbe0` (`fix: support nested media storage keys`)
+  - `12def9e` (`fix: preserve media source provenance semantics`)
+  - `5e0d76b` (`test: add MEDIA-A4B preparation and dry-run test suite`)
+  - `b5a4d18` (`feat: add canonical article media detach lifecycle`)
+- **Key Outcomes:**
+  1. **MEDIA-A4A.1 Delivery Route Fix:** Rest parameter `/media/[...key].ts` deployed to support nested R2 keys with full traversal and encoding security (`16/16 test-media-delivery-route.js PASS`).
+  2. **MEDIA-A4A.1 Provenance Semantics:** `buildMediaAssetRegistrationPayload` preserves authentic `source_origin` (`local_fixture`).
+  3. **MEDIA-A4A.2 Production Asset Registration:** Asset `ast_8321f8f3eb7b039c59c222ba` successfully registered in production D1 `media_assets` with live R2 object verified via HTTPS 200 delivery.
+  4. **MEDIA-A4B.1 Canonical Detach Service:**
+     - Function `detachArticleMedia` implemented with soft-deactivation (`is_active = 0`).
+     - Hard invariant maintained: `articles.featured_image` is NEVER mutated.
+     - Unlocks unique active slot `idx_article_media_one_active_slot` for future attachments.
+     - Internal API route `POST /api/internal/v1/media/article-media/detach` implemented with device authentication parity.
+     - All 8 canonical detach tests passed (`test-media-a4b1-detach.js PASS`).
+  5. **Production Safety Invariant:** 0 mutations to production D1/R2 during A4B.1, 0 article mutations, 0 publication mutations.
+- **Status:** `MEDIA_A4A=PASS`, `MEDIA_A4B1=PASS_LOCAL`. Ready for MEDIA-A4B.1 deployment before production canary.
