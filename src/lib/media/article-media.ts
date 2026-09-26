@@ -392,3 +392,232 @@ export async function attachArticleMedia(
     }
   };
 }
+
+export interface ArticleMediaDetachParams {
+  article_id: number;
+  asset_id: string;
+  slot_key?: string | null;
+  role?: string | null;
+  binding_id?: number | null;
+  actor_id?: string | null;
+}
+
+export interface DetachedArticleMedia {
+  id: number;
+  article_id: number;
+  slot_key: string;
+  asset_id: string;
+  role: string;
+  is_active: number;
+  updated_at: string;
+}
+
+export interface ArticleMediaDetachResult {
+  status: 'success';
+  detached: boolean;
+  already_inactive: boolean;
+  binding: DetachedArticleMedia;
+}
+
+/**
+ * Deactivates an existing article_media binding.
+ *
+ * Invariants:
+ * 1. Scope: Exactly targets (article_id, asset_id, [slot_key], [binding_id]).
+ * 2. Soft-deactivation: UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP.
+ * 3. ZERO article mutations: articles table (and legacy articles.featured_image) are NEVER touched.
+ * 4. ZERO media_assets mutations: media_assets status and data are NEVER touched.
+ * 5. ZERO publication mutations: publication engine / controls are NEVER touched.
+ * 6. Idempotent: If the exact binding is already is_active = 0, returns already_inactive = true safely.
+ * 7. OCC concurrency safe: Scoped to exact primary key id AND is_active = 1.
+ */
+export async function detachArticleMedia(
+  params: ArticleMediaDetachParams,
+  db: any
+): Promise<ArticleMediaDetachResult> {
+  const {
+    article_id,
+    asset_id,
+    slot_key = null,
+    role = null,
+    binding_id = null,
+    actor_id = null
+  } = params;
+
+  // 1. Input Validation
+  if (!db || typeof db.prepare !== 'function') {
+    throw new MediaAttachmentError('DATABASE_UNAVAILABLE', 'Database connection is unavailable', 503);
+  }
+
+  if (typeof article_id !== 'number' || article_id <= 0 || !Number.isInteger(article_id)) {
+    throw new MediaAttachmentError('INVALID_ARTICLE_ID', 'article_id harus berupa bilangan bulat positif.', 400);
+  }
+
+  if (!asset_id || typeof asset_id !== 'string' || !asset_id.trim()) {
+    throw new MediaAttachmentError('INVALID_ASSET_ID', 'asset_id wajib disertakan.', 400);
+  }
+  const cleanAssetId = asset_id.trim();
+
+  if (slot_key) {
+    assertValidSlotKey(slot_key);
+  }
+
+  // 2. Article Existence Check
+  const article = await db
+    .prepare('SELECT id, status FROM articles WHERE id = ?')
+    .bind(article_id)
+    .first();
+
+  if (!article) {
+    throw new MediaAttachmentError(
+      'ARTICLE_NOT_FOUND',
+      `Artikel dengan id ${article_id} tidak ditemukan. Detach ditolak.`,
+      404
+    );
+  }
+
+  // 3. Media Asset Existence Check
+  const asset = await db
+    .prepare('SELECT asset_id, role, status, storage_key, sha256, upload_id, derivative_id, transform_id FROM media_assets WHERE asset_id = ?')
+    .bind(cleanAssetId)
+    .first();
+
+  if (!asset) {
+    throw new MediaAttachmentError(
+      'MEDIA_ASSET_NOT_FOUND',
+      `Media asset '${cleanAssetId}' tidak ditemukan di database. Detach ditolak.`,
+      404
+    );
+  }
+
+  // 4. Locate Target Binding with Scoped Query
+  let targetRow: any = null;
+
+  if (binding_id) {
+    targetRow = await db
+      .prepare('SELECT id, article_id, asset_id, role, slot_key, is_active, updated_at FROM article_media WHERE id = ? AND article_id = ? AND asset_id = ?')
+      .bind(Number(binding_id), article_id, cleanAssetId)
+      .first();
+  } else if (slot_key) {
+    targetRow = await db
+      .prepare('SELECT id, article_id, asset_id, role, slot_key, is_active, updated_at FROM article_media WHERE article_id = ? AND asset_id = ? AND slot_key = ? ORDER BY is_active DESC, id DESC LIMIT 1')
+      .bind(article_id, cleanAssetId, slot_key.trim().toLowerCase())
+      .first();
+  } else {
+    targetRow = await db
+      .prepare('SELECT id, article_id, asset_id, role, slot_key, is_active, updated_at FROM article_media WHERE article_id = ? AND asset_id = ? ORDER BY is_active DESC, id DESC LIMIT 1')
+      .bind(article_id, cleanAssetId)
+      .first();
+  }
+
+  if (!targetRow) {
+    throw new MediaAttachmentError(
+      'ARTICLE_MEDIA_BINDING_NOT_FOUND',
+      `Relasi article_media untuk artikel ${article_id} dan asset '${cleanAssetId}'` +
+      (slot_key ? ` pada slot '${slot_key}'` : '') +
+      ' tidak ditemukan.',
+      404
+    );
+  }
+
+  // Role validation if explicitly declared
+  if (role) {
+    const cleanRole = role.trim().toLowerCase();
+    if (targetRow.role.toLowerCase() !== cleanRole) {
+      throw new MediaAttachmentError(
+        'ROLE_MISMATCH',
+        `Role relasi '${targetRow.role}' tidak cocok dengan declared role '${cleanRole}'.`,
+        422
+      );
+    }
+  }
+
+  // Slot validation if explicitly declared
+  if (slot_key) {
+    const cleanSlot = slot_key.trim().toLowerCase();
+    if (targetRow.slot_key.toLowerCase() !== cleanSlot) {
+      throw new MediaAttachmentError(
+        'SLOT_MISMATCH',
+        `Slot relasi '${targetRow.slot_key}' tidak cocok dengan declared slot '${cleanSlot}'.`,
+        422
+      );
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  const bindingId = Number(targetRow.id);
+
+  // 5. If already inactive, return idempotent success
+  if (Number(targetRow.is_active) === 0) {
+    return {
+      status: 'success',
+      detached: false,
+      already_inactive: true,
+      binding: {
+        id: bindingId,
+        article_id: Number(targetRow.article_id),
+        slot_key: targetRow.slot_key,
+        asset_id: targetRow.asset_id,
+        role: targetRow.role,
+        is_active: 0,
+        updated_at: targetRow.updated_at || nowIso
+      }
+    };
+  }
+
+  // 6. Optimistic Concurrency Deactivation (Scoped to exact id and is_active = 1)
+  const updateRes = await db
+    .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_active = 1')
+    .bind(bindingId)
+    .run();
+
+  const changes = Number(updateRes?.meta?.changes ?? updateRes?.changes ?? 0);
+
+  // 7. Record Audit Log in media_asset_audit
+  try {
+    const auditId = `aud_det_${cleanAssetId.substring(4)}_${Date.now()}`;
+    await db
+      .prepare(
+        `INSERT INTO media_asset_audit (
+          audit_id, asset_id, action, role, upload_id, derivative_id, transform_id, sha256, r2_key, safe_metadata_json
+        ) VALUES (?, ?, 'DETACH', ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(
+        auditId,
+        cleanAssetId,
+        targetRow.role,
+        asset.upload_id || null,
+        asset.derivative_id || null,
+        asset.transform_id || null,
+        asset.sha256,
+        asset.storage_key,
+        JSON.stringify({
+          article_id,
+          slot_key: targetRow.slot_key,
+          binding_id: bindingId,
+          action: 'DETACH',
+          already_inactive: changes === 0,
+          actor_id: actor_id || null
+        })
+      )
+      .run();
+  } catch (auditErr: any) {
+    console.warn('Media detachment audit write warning:', auditErr.message);
+  }
+
+  return {
+    status: 'success',
+    detached: changes > 0,
+    already_inactive: changes === 0,
+    binding: {
+      id: bindingId,
+      article_id: Number(targetRow.article_id),
+      slot_key: targetRow.slot_key,
+      asset_id: targetRow.asset_id,
+      role: targetRow.role,
+      is_active: 0,
+      updated_at: nowIso
+    }
+  };
+}
+
