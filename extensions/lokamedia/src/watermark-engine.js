@@ -232,7 +232,8 @@ export async function computeSha256(data) {
   }
 
   // Node.js fallback if subtle is unavailable
-  const { createHash } = await import('node:crypto');
+  const cryptoMod = 'node' + ':crypto';
+  const { createHash } = await import(/* @vite-ignore */ cryptoMod);
   return createHash('sha256').update(bytes).digest('hex');
 }
 

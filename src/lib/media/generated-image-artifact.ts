@@ -12,7 +12,6 @@
  * - Zero production mutations: zero D1 writes, zero R2 uploads, zero publication side effects
  */
 
-import fs from 'node:fs';
 import {
   type ImageGenerationResult,
   type ImageGenerationRequest
@@ -22,6 +21,16 @@ import {
   computeBinarySha256,
   type ValidatedImageBinary
 } from './image-validation.ts';
+
+async function getFsModule(): Promise<any | null> {
+  try {
+    if (typeof process !== 'undefined' && process.versions?.node) {
+      const modName = 'node' + ':fs';
+      return await import(/* @vite-ignore */ modName);
+    }
+  } catch (_) {}
+  return null;
+}
 
 export type MediaA2ErrorCode =
   | 'EMPTY_IMAGE'
@@ -392,8 +401,11 @@ export async function normalizeHeadlessResult(
   }
 
   let rawBytes: Uint8Array = result.image_bytes;
-  if ((!rawBytes || rawBytes.byteLength === 0) && options.local_path && fs.existsSync(options.local_path)) {
-    rawBytes = fs.readFileSync(options.local_path);
+  if ((!rawBytes || rawBytes.byteLength === 0) && options.local_path) {
+    const fsMod = await getFsModule();
+    if (fsMod && fsMod.existsSync(options.local_path)) {
+      rawBytes = fsMod.readFileSync(options.local_path);
+    }
   }
 
   const binaryValidation = await validateArtifactBinary(rawBytes, {
@@ -499,8 +511,11 @@ export async function normalizeChatGptBridgeResult(
     const base64 = bridgeResult.data_url.split(',')[1] || '';
     const binaryStr = Buffer.from(base64, 'base64');
     rawBytes = new Uint8Array(binaryStr);
-  } else if (options.local_path && fs.existsSync(options.local_path)) {
-    rawBytes = fs.readFileSync(options.local_path);
+  } else if (options.local_path) {
+    const fsMod = await getFsModule();
+    if (fsMod && fsMod.existsSync(options.local_path)) {
+      rawBytes = fsMod.readFileSync(options.local_path);
+    }
   }
 
   if (!rawBytes) {
@@ -580,13 +595,14 @@ export async function normalizeLocalFixture(options: {
   let rawBytes: Uint8Array;
 
   if (options.filePath) {
-    if (!fs.existsSync(options.filePath)) {
+    const fsMod = await getFsModule();
+    if (!fsMod || !fsMod.existsSync(options.filePath)) {
       throw new MediaArtifactError({
         code: 'SOURCE_MISSING',
         message: `Local fixture image file not found: "${options.filePath}".`
       });
     }
-    rawBytes = fs.readFileSync(options.filePath);
+    rawBytes = fsMod.readFileSync(options.filePath);
   } else if (options.bytes) {
     rawBytes = options.bytes instanceof Uint8Array ? options.bytes : new Uint8Array(options.bytes);
   } else {

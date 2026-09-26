@@ -14,7 +14,6 @@
  * - Zero paid provider calls
  */
 
-import { createCanvas, loadImage } from '@napi-rs/canvas';
 import {
   type GeneratedImageArtifact,
   type NormalizedProvenance,
@@ -92,6 +91,9 @@ export async function renderTextWatermarkDerivative(
   const bytes = sourceBytes instanceof Uint8Array ? sourceBytes : new Uint8Array(sourceBytes);
   const sourceSha = options.sourceMeta?.sha256 || (await computeBinarySha256(bytes));
 
+  const canvasModName = '@napi-rs/' + 'canvas';
+  const { createCanvas, loadImage } = await import(/* @vite-ignore */ canvasModName);
+
   const img = await loadImage(Buffer.from(bytes));
   const sourceWidth = img.width;
   const sourceHeight = img.height;
@@ -158,8 +160,11 @@ export async function renderTextWatermarkDerivative(
   });
 
   const canonicalConfigStr = computeCanonicalConfigString(config);
-  const { createHash } = await import('node:crypto');
-  const watermarkConfigHash = createHash('sha256').update(canonicalConfigStr).digest('hex');
+  const cfgBytes = new TextEncoder().encode(canonicalConfigStr);
+  const cfgDigest = await crypto.subtle.digest('SHA-256', cfgBytes);
+  const watermarkConfigHash = Array.from(new Uint8Array(cfgDigest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 
   const transformId = await computeTransformId({
     sourceSha256: sourceSha,
