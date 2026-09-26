@@ -91,7 +91,7 @@ function parseWebpDimensions(bytes: Uint8Array): { width: number; height: number
 
   if (formatTag === 'VP8X') {
     const width = 1 + (view.getUint32(24, true) & 0x00ffffff);
-    const height = 1 + ((view.getUint32(27, true) >> 8) & 0x00ffffff);
+    const height = 1 + (view.getUint32(27, true) & 0x00ffffff);
     return { width, height };
   }
 
