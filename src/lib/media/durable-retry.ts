@@ -20,6 +20,8 @@
 
 import {
   decideMediaRetryPolicy,
+  classifyMediaRetry,
+  getMaxStageAttemptsForStage,
   type MediaRetryDecision,
   type MediaRetryPolicyInput,
   type MediaRetryStage
@@ -39,6 +41,8 @@ import {
   getMediaJobById,
   type MediaJobRecord
 } from './jobs-service.ts';
+
+export { classifyMediaRetry, getMaxStageAttemptsForStage };
 
 export interface ApplyMediaRetryDecisionParams {
   jobId: string;
@@ -84,21 +88,47 @@ export function sanitizeErrorMessage(message: string | null | undefined): string
 
 /**
  * Counts durable stage retries recorded in media_job_events for a specific job and stage.
+ * Tolerates legacy events where safe_payload_json has no retry_stage, is malformed,
+ * or is null without throwing.
  */
 export async function countStageRetries(db: any, jobId: string, stage: string): Promise<number> {
-  const row = await db
-    .prepare(
+  try {
+    const { results } = await db
+      .prepare(
+        `
+        SELECT stage, safe_payload_json
+        FROM media_job_events
+        WHERE job_id = ?
       `
-      SELECT COUNT(*) as cnt
-      FROM media_job_events
-      WHERE job_id = ?
-        AND stage = ?
-    `
-    )
-    .bind(jobId, stage)
-    .first();
+      )
+      .bind(jobId)
+      .all();
 
-  return Number(row?.cnt || 0);
+    if (!results || !Array.isArray(results)) return 0;
+
+    let count = 0;
+    for (const row of results) {
+      if (row.stage === stage) {
+        count++;
+        continue;
+      }
+      if (row.safe_payload_json) {
+        try {
+          const payload = typeof row.safe_payload_json === 'string'
+            ? JSON.parse(row.safe_payload_json)
+            : row.safe_payload_json;
+          if (payload && typeof payload === 'object' && payload.retry_stage === stage) {
+            count++;
+          }
+        } catch {
+          // Ignore malformed legacy JSON safely
+        }
+      }
+    }
+    return count;
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -114,7 +144,7 @@ export async function applyMediaRetryDecision(
     expectedJobRevision,
     now = new Date(),
     idempotencyKey,
-    maxStageAttempts = 3
+    maxStageAttempts = getMaxStageAttemptsForStage(decision.retry_stage)
   } = params;
 
   // 1. Fetch current durable job state

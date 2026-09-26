@@ -676,3 +676,26 @@ export function decideMediaRetryPolicy(input: MediaRetryPolicyInput): MediaRetry
     evidence: baseEvidence
   };
 }
+
+/**
+ * Canonical alias for decideMediaRetryPolicy per MEDIA-A5.4 single authority rule.
+ */
+export const classifyMediaRetry = decideMediaRetryPolicy;
+
+/**
+ * Stage retry budgets: number of permissible retries per stage before escalating to FAILED_TERMINAL.
+ * 2 retries per stage (e.g. 1 initial attempt + 2 retries = 3 total attempts for that stage),
+ * exactly matching generation budget semantics without consuming generation attempts.
+ */
+export const DEFAULT_STAGE_RETRY_CONFIG: Record<string, number> = {
+  TRANSFORM: 2,
+  STORAGE: 2,
+  DELIVERY_VERIFY: 2,
+  ATTACHMENT: 0,
+  DEFAULT: 2
+};
+
+export function getMaxStageAttemptsForStage(stage: string): number {
+  return DEFAULT_STAGE_RETRY_CONFIG[stage] ?? DEFAULT_STAGE_RETRY_CONFIG.DEFAULT;
+}
+
