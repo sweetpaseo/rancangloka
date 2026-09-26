@@ -17,6 +17,75 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### MEDIA-A5.4 Media Pipeline Orchestrator & Local DI Runtime 2026-09-26
+
+- **Tujuan & Ruang Lingkup:** Mengintegrasikan mesin orkestrasi pipeline media terpadu (`processMediaJob`) di `src/lib/media/orchestrator.ts` dengan eksekusi berbasis dependency injection (DI), mekanisme pemulihan minimal stage (*Minimal Stage Resume*), proteksi konkurensi sewa (lease), serta pendelegasian penuh keputusan retry ke satu otoritas (`classifyMediaRetry` + `applyMediaRetryDecision`).
+- **Fitur & Arsitektur Utama:**
+  - **Minimal Stage Resume:** Memanfaatkan cache artefak intermediat (`artifactStore`). Kegagalan pada `TRANSFORM` (misal `WATERMARK_FAILED`) hanya mengulang tahap transformasi saat di-reclaim tanpa mengulang pembuatan gambar sumber (`sourceExecutor`). Begitu pula kegagalan di `STORAGE` atau `DELIVERY_VERIFY` langsung melanjutkan pada tahap terkait tanpa membuang kerja upstream.
+  - **Single Authority Policy Parity:** 100% evaluasi kegagalan didelegasikan ke `classifyMediaRetry` (`src/lib/media/retry-policy.ts`) dan persistensi ke `applyMediaRetryDecision` (`src/lib/media/durable-retry.ts`). Orchestrator tidak memiliki pemetaan kode kegagalan manual sendiri.
+  - **Firewall Status Non-Runnable:** Memblokir eksekusi otomatis pada 7 status tidak dapat dijalankan (`COMPLETE`, `FAILED_TERMINAL`, `SUPERSEDED`, `CANCELLED`, `AUTH_REQUIRED`, `PROVIDER_BLOCKED`, `USER_ACTION_REQUIRED`).
+  - **Ketahanan Concurrency & Crash:** Memverifikasi kepemilikan dan masa berlaku lease; menolak penulisan dari pekerja usang (OCC revision conflict); mendukung pemulihan crash sebelum atau sesudah persistensi keputusan.
+- **Pengujian & Verifikasi (`scripts/test-media-a5-orchestrator.js`):**
+  - 18/18 tes lulus 100% mencakup: Happy path end-to-end, source retry, transform retry, storage retry, delivery retry, manual bridge routing, auth failure isolation, provider content block, generation budget exhaustion, stage retry exhaustion, single active lease, stale worker rejection, duplicate dispatch idempotency, pre-persist & post-persist crash recovery, non-runnable firewall, kompatibilitas event legasi, dan policy parity.
+- **Commit:** `c9a62ab` (`feat: integrate media retry orchestrator`).
+
+### MEDIA-A5.3 Durable Retry Accounting & Decision Policy Integration 2026-09-26
+
+- **Tujuan & Ruang Lingkup:** Mengimplementasikan lapisan adapter persistensi durabel (`applyMediaRetryDecision` di `src/lib/media/durable-retry.ts`) antara keputusan kebijakan retry dan tabel database SQLite/D1 (`media_jobs`, `media_job_events`, `media_job_receipts`) tanpa mutasi skema database (`SCHEMA_CHANGE_REQUIRED=NO`).
+- **Akar Masalah Akuntansi Percobaan (`ATTEMPT_COUNTER_GAP`):**
+  - Pada implementasi awal, `media_jobs.attempt` adalah satu-satunya counter global. Jika retry tahap `TRANSFORM` atau `STORAGE` menaikkan counter ini, kuota generasi provider akan terbuang sia-sia dan memicu kegagalan terminal prematur.
+- **Solusi Akuntansi Percobaan Berjenjang:**
+  - `media_jobs.attempt` hanya dinaikkan untuk retry pada level sumber/generasi (`consume_attempt = true`).
+  - Retry tingkat tahap (`TRANSFORM`, `STORAGE`) menetapkan `consume_attempt = false` sehingga `media_jobs.attempt` dipertahankan utuh. Jumlah retry tahap dihitung durabel dari tabel `media_job_events`.
+  - Angka batas percobaan tahap (`maxStageAttempts`) dikonfigurasikan secara eksplisit via `DEFAULT_STAGE_RETRY_CONFIG` (default 2 retries per stage = 3 kali percobaan total), menghapus magic constant.
+- **Fitur Keselamatan:**
+  - **Firewall Redaksi Rahasia:** Token, header Authorization Bearer, cookie, dan kunci API disaring otomatis (`[REDACTED_SECRET]`) sebelum ditulis ke database.
+  - **Proteksi Status Terminal:** Menolak pembukaan kembali pekerjaan terminal (`COMPLETE`, `FAILED_TERMINAL`, `SUPERSEDED`, `CANCELLED`).
+  - **Idempotensi & OCC:** Optimistic Concurrency Control via `job_revision` dan idempotency receipt untuk mencegah eksekusi ganda.
+- **Pengujian & Verifikasi (`scripts/test-media-a5-durable-retry.js`):**
+  - 17/17 tes lulus 100% membuktikan akuntansi generasi vs stage, firewall rahasia, mitigasi konflik slot, isolasi kegagalan auth/blokir, determinisme waktu `next_retry_at`, dan rekonstruksi pekerja pasca-restart.
+- **Commit:** `6cff6aa` (`feat: integrate durable media retry decisions`).
+
+### MEDIA-A5.2 Media Retry Classification & Pure Decision Policy 2026-09-26
+
+- **Tujuan & Ruang Lingkup:** Membangun modul penentu keputusan retry murni (*pure decision engine*, 100% side-effect free) di `src/lib/media/retry-policy.ts` yang memetakan kode kegagalan QA teknis dan upstream provider ke rekomendasi tindakan kanonikal.
+- **Klasifikasi Retry Terstruktur:**
+  - `RETRY_SAME_STAGE`: Retry pada artefak derivatif yang ada (`WATERMARK_FAILED` -> `TRANSFORM`, `R2_UPLOAD_FAILED` -> `STORAGE`).
+  - `RETRY_FROM_SOURCE`: Pengambilan ulang tanpa merubah prompt (`PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMIT`).
+  - `RETRY_WITH_REPROMPT`: Pembuatan ulang dengan penyesuaian parameter teknis.
+  - `OPERATOR_REQUIRED`: Penahanan untuk tindakan editor manusia (`PROVIDER_AUTH_FAILED`, `PROVIDER_CONTENT_REJECTED`, atau kegagalan pada `MANUAL_BROWSER_BRIDGE`).
+  - `TERMINAL`: Kegagalan fatal yang tidak dapat diulang (kebocoran rahasia `SECRET_LEAK`, batas kuota habis).
+  - `NO_RETRY`: Non-kegagalan atau mitigasi konflik slot editorial (`SLOT_OCCUPIED`).
+- **Fitur Pendukung:** Perhitungan delay backoff eksponensial deterministik (`computeRetryDelay`) tanpa fungsi sleep/timer non-deterministik.
+- **Pengujian & Verifikasi (`scripts/test-media-a5-retry-policy.js`):**
+  - 25/25 tes lulus 100% mencakup seluruh matriks kegagalan dan firewall jembatan manual.
+- **Commit:** `a008e82` (`feat: add media retry decision policy`).
+
+### MEDIA-A5.1 Deterministic Technical Media QA Service & Failure Taxonomy 2026-09-26
+
+- **Tujuan & Ruang Lingkup:** Menyediakan layanan jaminan kualitas teknis otomatis (`qa-service.ts`) yang mengevaluasi integritas biner, kesesuaian format, dimensi peran, serta firewall provenance dan privasi secara deterministik tanpa efek samping.
+- **Taksonomi & Evaluasi Mutu:**
+  - **QA-0 (Artifact Integrity):** Pemeriksaan biner kosong (`EMPTY_BYTES`), deteksi format rusak (`DECODE_OR_HEADER_INVALID`), validasi magic byte PNG/JPEG/WebP, dan deteksi payload error HTML/JSON (`ERROR_PAYLOAD`).
+  - **QA-1 (Technical Quality):** Pemisahan aturan dimensi peran (`featured`: min 1200×630 px; `inline`: min 600×338 px), rasio aspek, dan batas byte file (min 20 KiB, max 5 MiB).
+  - **QA-2 (Provenance & Privacy):** Validasi kelengkapan provenance dan penolakan langsung terhadap kebocoran kredensial (`SECRET_LEAK`).
+  - **QA-3 s/d QA-5:** Evaluasi eligibilitas watermark, upload R2, dan lampiran slot artikel (`SLOT_OCCUPIED`).
+  - **Batas Evaluator Semantik:** Evaluasi visi semantik secara ketat menghasilkan status `DEFERRED` (tidak pernah false `PASS`) jika model semantik belum dieksekusi.
+- **Pengujian & Verifikasi (`scripts/test-media-a5-technical-qa.js`):**
+  - 39/39 tes lulus 100% membuktikan ketepatan taksonomi, deteksi biner canary 169×512, dan imutabilitas skema database.
+- **Commit:** `f24cd7a` (`feat: add deterministic media QA contract`).
+
+### MEDIA-A4B Production Reversible Canary Execution 2026-09-26
+
+- **Tujuan & Ruang Lingkup:** Melakukan uji coba kanonikal produksi (*production canary*) yang sepenuhnya dapat dibatalkan (*reversible*) untuk memverifikasi siklus penautan aset featured (`article_media`), pembuktian perubahan status preflight kanonikal artikel, dan pemulihan status ke baseline awal secara 100% identik menggunakan endpoint detach kanonikal.
+- **Kronologi Eksekusi:**
+  1. **Deployment Detach Endpoint:** Berhasil dideploy ke Cloudflare Edge Worker (`9fae7b79-c6b1-4b0c-8e92-2391d1cbe958`).
+  2. **Baseline State:** Artikel ID 1 memiliki status preflight kanonikal dengan hash `h_29741012`.
+  3. **Canonical Attach:** Menautkan aset `ast_8321f8f3eb7b039c59c222ba` sebagai media featured aktif (`binding_id: 12`).
+  4. **State Transition:** Hash preflight kanonikal berubah secara deterministik menjadi `h_10b404c9`. Kesiapan publikasi tetap `NOT_READY` karena kontrol editorial tetap ditegakkan.
+  5. **Canonical Detach (Rollback):** Memanggil endpoint `/api/internal/v1/media/article-media/detach` untuk menonaktifkan binding ID 12 (`is_active = 0`).
+  6. **Restoration Verification:** Status kanonikal artikel ID 1 kembali 100% persis ke hash baseline awal (`h_29741012`). Kolom legasi `articles.featured_image` tetap tidak tersentuh.
+- **Hasil Mutasi Produksi:** Zero side-effects; binding tersimpan dalam status inaktif untuk audit trail; slot editorial kembali bersih.
+
 ### MEDIA-A4B.1 Canonical Article Media Detach / Deactivate Service 2026-09-26
 
 - **Tujuan & Ruang Lingkup:** Mengimplementasikan layanan pelepasan/deaktivasi kanonikal (`detachArticleMedia`) dan endpoint internal (`/api/internal/v1/media/article-media/detach`) yang bekerja secara soft-deactivation (`is_active = 0`) untuk memulihkan status kanonikal artikel tanpa memutasi kolom legasi `articles.featured_image`, tabel `media_assets`, atau tabel publikasi, menyediakan jalur *canonical rollback* aman sebelum eksekusi canary produksi MEDIA-A4B.
