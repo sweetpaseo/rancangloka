@@ -17,6 +17,64 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### MEDIA-A5.7-P2B Production Deployment & Ephemeral Device Lifecycle Verification 2026-09-27
+
+- **Tujuan & Ruang Lingkup:** Melakukan deployment kanonikal kode lifecycle kredensial perangkat (`6268e4e`) ke Cloudflare Worker produksi (`rancangloka`), memverifikasi isolasi rute manajemen perangkat yang dilindungi oleh sesi admin operator, menegakkan firewall pencegahan self-provisioning perangkat media, serta mengonfirmasi bahwa status operasional pekerja media tetap sepenuhnya `OFF` (*dormant*) sebelum pengujian probe diautentikasi.
+- **Hasil Deployment Produksi:**
+  - **Deployment ID Aktif:** `5bb91a9f-d9cc-46e7-af5d-4bff0fbd7d1c` (commit `6268e4ed3c630ae422b8237d694e96afe80a057f`).
+  - **Status Kesehatan:** Beranda (`/`) 200 OK, SSR artikel terbit (`/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`) 200 OK.
+  - **Status Dual-Gate Media Worker:** `MEDIA_WORKER_ENV_GATE = true`, `MEDIA_WORKER_DB_GATE = UNSET / false`, `EFFECTIVE_STATE = OFF` (invarian gerbang ganda terjaga 100%).
+  - **Verifikasi Endpoint Tanpa Autentikasi:** `POST /api/internal/v1/media/jobs/run-next` menolak dengan 401 (`AUTHENTICATION_REQUIRED`); `GET` menolak dengan 405 (`METHOD_NOT_ALLOWED`).
+- **Verifikasi Keamanan API Manajemen Perangkat:**
+  - `GET /api/internal/v1/media/devices` (unauthenticated) -> 401 `UNAUTHORIZED` (`Operator admin session required.`).
+  - `POST /api/internal/v1/media/devices` (unauthenticated) -> 401 `UNAUTHORIZED` (`Operator admin session required.`).
+  - **Firewall Self-Provisioning:** Kredensial dengan prefix `lkmd_` atau scope `media:device` ditolak secara mutlak dengan 403 `MEDIA_DEVICE_FORBIDDEN` (`Media device credentials cannot access device management APIs.`), menjamin nol *trust loop*.
+- **Koreksi Otoritas Operasional:**
+  - Menegakkan prinsip bahwa akses infrastruktur database D1 (`npx wrangler d1 execute`) bukan merupakan otoritas pendaftaran perangkat tingkat aplikasi.
+  - Alur pendaftaran perangkat kanonikal yang sah ditetapkan melalui sesi browser operator terautentikasi (`admin_session` cookie via `POST /api/internal/v1/media/devices`).
+- **Status Database Baseline:** `media_devices` = 0, `media_jobs` = 0, `media_job_events` = 0, `media_job_receipts` = 0, kontrol publikasi = `OFF` / `false` / `0`.
+
+### MEDIA-A5.7-P2A Canonical Ephemeral Device Auth Lifecycle & Management API 2026-09-27
+
+- **Tujuan & Ruang Lingkup:** Mengimplementasikan layanan siklus hidup kanonikal (*canonical lifecycle services*) untuk pendaftaran, pencabutan, dan verifikasi perangkat media LokaMedia (`registerMediaDevice`, `revokeMediaDevice`, `getMediaDevice`, `listMediaDevices`) serta endpoint internal HTTP yang dilindungi otoritas admin operator (`POST /api/internal/v1/media/devices`, `GET`, `DELETE /api/internal/v1/media/devices/[device_id]`).
+- **Fitur Kriptografis & Keamanan:**
+  - **Entropi Tinggi:** Token perangkat digenerasi menggunakan Web Crypto `crypto.getRandomValues` dengan entropi 256-bit (32 byte acak) berawalan `lkmd_` (total 69 karakter string heksadesimal).
+  - **Hash-Only Storage:** Database Cloudflare D1 hanya menyimpan digest SHA-256 (`token_hash`). Plaintext token tidak pernah disimpan di disk/database dan tidak pernah dicetak dalam log sistem. Token plaintext dikembalikan tepat satu kali (*once-only*) pada respons pendaftaran.
+  - **Fail-Closed Revocation Hardening:** Mengubah kueri pencocokan token di `authenticateDeviceRequest` untuk mengambil status perangkat berdasarkan `token_hash`. Jika status tercatat `REVOKED`, autentikasi langsung ditolak secara fail-closed (401 `Token perangkat LokaMedia tidak valid atau telah dicabut.`) tanpa *fallthrough* ke env secret atau dev test bypass.
+  - **Idempotensi & Pencegahan Duplikasi:** Pendaftaran perangkat menolak ID perangkat yang sudah aktif dengan status 409 Conflict. Pencabutan perangkat bersifat idempoten (aman dipanggil berulang kali).
+  - **Media Device Firewall:** Memblokir seluruh kredensial perangkat media dari rute admin dan provisioning guna mencegah loop self-provisioning.
+- **Pengujian & Verifikasi (`scripts/test-media-device-lifecycle.js`):**
+  - 28/28 pengujian lulus 100% membuktikan entropi token, penyimpanan hash, autentikasi sukses, penolakan token salah/kadaluwarsa/dicabut, penolakan scope terlarang, idempoten pencabutan, zero plaintext leak pada log, serta proteksi API internal.
+- **Commit:** `6268e4e` (`feat: add canonical media device lifecycle`).
+
+### MEDIA-A5.7-P1 Dormant Production Deployment & Strict Dual-Gate Enforcement 2026-09-27
+
+- **Tujuan & Ruang Lingkup:** Melakukan deployment kode runtime media worker yang telah diaudit ke Cloudflare Worker produksi (`rancangloka`) dengan kondisi pekerja media tetap berstatus *dormant* (OFF total) untuk memvalidasi kompatibilitas edge runtime tanpa mutasi database atau eksekusi pekerjaan aktif.
+- **Verifikasi Kontrol & Invarian:**
+  - Deployment ID: `f660293d-acc5-4cdf-9089-b1660f7e4255` (commit `11e3e06a82c161912495edb1dbd1d8fbba7189c8`).
+  - Gerbang Environment `MEDIA_WORKER_ENABLED = true` disinkronkan via `wrangler.toml`.
+  - Gerbang Database D1 `settings.media_worker_enabled` dipertahankan tidak disetel (*UNSET*) / `false`.
+  - Formula kontrol gerbang ganda `WORKER_ENABLED = env === true AND db === true` menghasilkan status efektif `OFF`.
+  - Endpoint publik dan SSR berjalan normal; kueri tanpa token ke endpoint worker internal menghasilkan 401; mutasi artikel dan media nol.
+
+### MEDIA-A5.6 Safe Media Worker Handoff & Dual-Control Gate Invariant 2026-09-27
+
+- **Tujuan & Ruang Lingkup:** Membangun lapisan pelari pekerja media kanonikal (`src/lib/media/worker-runner.ts`) dan endpoint trigger eksekusi (`POST /api/internal/v1/media/jobs/run-next`, `POST /api/internal/v1/media/worker/control`) yang menerapkan arsitektur gerbang ganda (*Dual-Gate AND Semantics*): pekerja HANYA dapat aktif jika `env.MEDIA_WORKER_ENABLED === true` DAN `settings.media_worker_enabled === true`.
+- **Fitur Utama:**
+  - **Dual-Control Fail-Closed:** Jika salah satu atau kedua gerbang bernilai non-true, worker langsung keluar dengan `{ status: 'success', code: 'WORKER_DISABLED', executed: false }`.
+  - **Lease & Heartbeat Management:** Pengambilan pekerjaan tunggal per siklus dengan durasi sewa 180 detik dan verifikasi kepemilikan sewa.
+  - **Pengujian & Verifikasi (`scripts/test-media-a5-worker-runner.js` & `test-media-a5-7-canonical-canary.js`):**
+    - 21/21 tes worker runner lulus 100%.
+    - 27/27 tes canary kanonikal lulus 100%.
+- **Commit:** `11810de`, `a63de3b`, `9dbcd53`.
+
+### MEDIA-A5.5 Deterministic Media Soak Runner & Concurrency Stress 2026-09-26
+
+- **Tujuan & Ruang Lingkup:** Menguji ketahanan, stabilitas memori, dan determinisme antrean media serta orkestrator di bawah beban siklus multi-iterasi (*soak test*) menggunakan mock database D1 in-memory.
+- **Hasil Verifikasi (`scripts/test-media-a5-soak.js`):**
+  - 12 siklus soak multi-skenario lulus 100% tanpa memory leak, race condition, atau residu sewa menggantung.
+- **Commit:** `ae978d5` (`test: add deterministic media orchestration soak`).
+
 ### MEDIA-A5.4 Media Pipeline Orchestrator & Local DI Runtime 2026-09-26
 
 - **Tujuan & Ruang Lingkup:** Mengintegrasikan mesin orkestrasi pipeline media terpadu (`processMediaJob`) di `src/lib/media/orchestrator.ts` dengan eksekusi berbasis dependency injection (DI), mekanisme pemulihan minimal stage (*Minimal Stage Resume*), proteksi konkurensi sewa (lease), serta pendelegasian penuh keputusan retry ke satu otoritas (`classifyMediaRetry` + `applyMediaRetryDecision`).
