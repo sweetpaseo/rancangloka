@@ -92,6 +92,75 @@ export async function isMediaWorkerEnabled(db?: any, env: Record<string, any> = 
   return true;
 }
 
+export interface SetMediaWorkerEnabledOptions {
+  actorId?: string;
+  source?: string;
+  reason?: string;
+}
+
+export interface SetMediaWorkerEnabledResult {
+  success: boolean;
+  enabled: boolean;
+  previousEnabled: boolean;
+  changed: boolean;
+  message?: string;
+}
+
+/**
+ * Canonical control service to mutate settings.media_worker_enabled in D1.
+ * Guarantees:
+ * - Modifies ONLY the database setting 'media_worker_enabled' in the settings table.
+ * - Idempotent: If target value === current value, returns changed: false without redundant writes.
+ * - Preserves strict dual-gate semantics: does not touch env bindings, publication controls, or kill switch.
+ * - Safe fail-closed error handling.
+ */
+export async function setMediaWorkerEnabled(
+  db: any,
+  enabled: boolean,
+  options: SetMediaWorkerEnabledOptions = {}
+): Promise<SetMediaWorkerEnabledResult> {
+  if (!db) {
+    throw new Error('Database connection is required to update media_worker_enabled.');
+  }
+
+  let currentVal = false;
+  try {
+    const row = await db.prepare("SELECT value FROM settings WHERE key = 'media_worker_enabled'").first();
+    currentVal = Boolean(row && (row.value === 'true' || row.value === true));
+  } catch {
+    currentVal = false;
+  }
+
+  if (enabled === currentVal) {
+    return {
+      success: true,
+      enabled,
+      previousEnabled: currentVal,
+      changed: false,
+      message: `NO_CHANGE: media_worker_enabled is already ${enabled}`
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const stringVal = enabled ? 'true' : 'false';
+
+  await db
+    .prepare(`
+      INSERT OR REPLACE INTO settings (key, value, updated_at)
+      VALUES ('media_worker_enabled', ?, ?)
+    `)
+    .bind(stringVal, nowIso)
+    .run();
+
+  return {
+    success: true,
+    enabled,
+    previousEnabled: currentVal,
+    changed: true,
+    message: `media_worker_enabled changed from ${currentVal} to ${enabled}`
+  };
+}
+
 /**
  * Resolves safe executors enforcing provider and bridge boundaries.
  */

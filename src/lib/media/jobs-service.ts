@@ -1140,3 +1140,71 @@ export function publicLeasePayload(job: MediaJobRecord): Record<string, any> {
     attempt: job.attempt
   };
 }
+
+export const CANARY_ARTICLE_ID = 1;
+export const CANARY_SLOT_KEY = 'inline_canary_a57';
+export const CANARY_IDEMPOTENCY_KEY = 'a57_canary_idemp_20260927';
+export const CANARY_PROVENANCE_MARKER = 'RANCANGLOKA_A57_PRODUCTION_CANARY';
+
+/**
+ * Canonical helper to cancel a media job.
+ * Transitions to CANCELLED and records optional error message.
+ * Safe from QUEUED, LEASED, and WAITING_RETRY.
+ */
+export async function cancelMediaJob(
+  db: any,
+  jobId: string,
+  options: { reason?: string } = {}
+): Promise<MediaJobRecord> {
+  return transitionMediaJob(db, jobId, JOB_STATUS_CANCELLED, {
+    errorMessageSafe: options.reason || 'Pekerjaan dibatalkan oleh operator.'
+  });
+}
+
+/**
+ * Canonical helper to create or retrieve the production canary media job.
+ * Enforces Article 1, inline slot, LOCAL_FIXTURE metadata, and idempotency.
+ */
+export async function createCanaryMediaJob(
+  db: any,
+  options: { jobId?: string; prompt?: string; altText?: string } = {}
+): Promise<{ job: MediaJobRecord; created: boolean }> {
+  // Check if active canary job already exists
+  const existingRows = await listMediaJobs(db, { articleId: CANARY_ARTICLE_ID, limit: 10 });
+  const activeCanary = existingRows.find(
+    (j) => j.slot_key === CANARY_SLOT_KEY && !TERMINAL_STATES.has(normalizeJobStatus(j.status))
+  );
+
+  if (activeCanary) {
+    return {
+      job: activeCanary,
+      created: false
+    };
+  }
+
+  const article = await db
+    .prepare('SELECT id, slug, title, status FROM articles WHERE id = ? LIMIT 1')
+    .bind(CANARY_ARTICLE_ID)
+    .first();
+
+  if (!article) {
+    throw new Error(`Canary article ID ${CANARY_ARTICLE_ID} not found.`);
+  }
+
+  const job = await createMediaJob(db, {
+    job_id: options.jobId,
+    article_id: CANARY_ARTICLE_ID,
+    article_slug: article.slug,
+    article_title: article.title,
+    role: 'inline',
+    slot_key: CANARY_SLOT_KEY,
+    prompt: options.prompt || `A5.7 Production Canary: contemporary architectural timber louvers [${CANARY_PROVENANCE_MARKER}]`,
+    alt_text: options.altText || 'A5.7 Production Canary Alt Text',
+    priority: 100
+  });
+
+  return {
+    job,
+    created: true
+  };
+}
