@@ -211,6 +211,7 @@ function createTestDatabase() {
     INSERT INTO categories (id, name, slug) VALUES (1, 'Arsitektur', 'arsitektur');
     INSERT INTO articles (id, slug, title, content_md, content_html, status) 
     VALUES (1, 'rumah-minimalis-modern', 'Rumah Minimalis', '# Rumah Minimalis\n\nKonten artikel arsitektur.', '<p>Konten artikel arsitektur.</p>', 'draft');
+    INSERT INTO settings (key, value) VALUES ('media_worker_enabled', 'true');
   `);
 
   return asD1(db);
@@ -250,25 +251,68 @@ async function runTestSuite() {
   console.log('=============================================================\n');
 
   // -------------------------------------------------------------------------
-  // TEST 1: Worker Activation Gate Defaults to OFF
+  // TEST 1: Worker Activation Gate: Strict Dual-Control AND-Gate Truth Table
   // -------------------------------------------------------------------------
-  console.log('--- Phase 1: Worker Activation Gate Defaults to OFF ---');
+  console.log('--- Phase 1: Worker Activation Gate Defaults to OFF & Strict AND-Gate ---');
   {
     const db = createTestDatabase();
 
-    // Default env (empty)
+    // 1A. Default env (empty) + db true -> OFF (fail-closed)
     const enabledDefault = await isMediaWorkerEnabled(db, {});
     assert.equal(enabledDefault, false, 'Default activation must be false (OFF)');
 
-    // Explicit OFF
-    const enabledExplicit = await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'false' });
-    assert.equal(enabledExplicit, false);
+    // 1B. env false + db false -> OFF
+    db.prepare("UPDATE settings SET value = 'false' WHERE key = 'media_worker_enabled'").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'false' }), false);
 
-    // Explicit ON
-    const enabledOn = await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'true' });
-    assert.equal(enabledOn, true);
+    // 1C. env false + db true -> OFF
+    db.prepare("UPDATE settings SET value = 'true' WHERE key = 'media_worker_enabled'").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'false' }), false);
+
+    // 1D. env true + db false -> OFF
+    db.prepare("UPDATE settings SET value = 'false' WHERE key = 'media_worker_enabled'").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'true' }), false);
+
+    // 1E. env true + db true -> ON (The ONLY enabling condition)
+    db.prepare("UPDATE settings SET value = 'true' WHERE key = 'media_worker_enabled'").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'true' }), true);
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: true }), true);
+
+    // 1F. env unset + db true -> OFF
+    assert.equal(await isMediaWorkerEnabled(db, {}), false);
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: undefined }), false);
+
+    // 1G. env true + db row missing -> OFF
+    db.prepare("DELETE FROM settings WHERE key = 'media_worker_enabled'").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'true' }), false);
+
+    // 1H. both missing / db null -> OFF
+    assert.equal(await isMediaWorkerEnabled(null, {}), false);
+    assert.equal(await isMediaWorkerEnabled(null, { MEDIA_WORKER_ENABLED: 'true' }), false);
+
+    // 1I. Malformed / unexpected env values -> OFF
+    db.prepare("INSERT INTO settings (key, value) VALUES ('media_worker_enabled', 'true')").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: '1' }), false);
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'yes' }), false);
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'TRUE' }), false);
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: '' }), false);
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: null }), false);
+
+    // 1J. Malformed / unexpected db values -> OFF
+    db.prepare("UPDATE settings SET value = '1' WHERE key = 'media_worker_enabled'").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'true' }), false);
+    db.prepare("UPDATE settings SET value = 'yes' WHERE key = 'media_worker_enabled'").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'true' }), false);
+    db.prepare("UPDATE settings SET value = '' WHERE key = 'media_worker_enabled'").run();
+    assert.equal(await isMediaWorkerEnabled(db, { MEDIA_WORKER_ENABLED: 'true' }), false);
+
+    // Restore to true for subsequent test fixtures
+    db.prepare("UPDATE settings SET value = 'true' WHERE key = 'media_worker_enabled'").run();
 
     pass('WORKER_ACTIVATION_GATE_DEFAULT_OFF=PASS');
+    pass('MEDIA_WORKER_CONTROL_TRUTH_TABLE_TEST=PASS');
+    pass('MEDIA_WORKER_CONTROL_FAIL_CLOSED=PASS');
+    pass('WORKER_DUAL_GATE_ENABLED_CASE=PASS');
   }
 
   // -------------------------------------------------------------------------
@@ -794,7 +838,22 @@ async function runTestSuite() {
     assert.equal(enabledJson.executed, true);
     assert.ok(enabledJson.job_id);
 
+    // 14F. Parity check: Valid auth + env=true but DB settings=false -> must return disabled
+    db.prepare("UPDATE settings SET value = 'false' WHERE key = 'media_worker_enabled'").run();
+    const dualGateBlockedRes = await runNextHandler({
+      request: validEnabledReq,
+      locals: { db, runtime: { env: { MEDIA_WORKER_ENABLED: 'true' } } }
+    });
+    assert.equal(dualGateBlockedRes.status, 200);
+    const dualGateBlockedJson = await dualGateBlockedRes.json();
+    assert.equal(dualGateBlockedJson.status, 'disabled');
+    assert.equal(dualGateBlockedJson.code, 'MEDIA_WORKER_DISABLED');
+
+    // Restore setting for clean state
+    db.prepare("UPDATE settings SET value = 'true' WHERE key = 'media_worker_enabled'").run();
+
     pass('WORKER_ENTRYPOINT_AUTH=PASS');
+    pass('RUN_NEXT_CONTROL_PARITY=PASS');
     pass('CLOUDFLARE_LOCAL_RUNTIME_TEST=PASS');
   }
 

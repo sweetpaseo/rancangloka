@@ -37,7 +37,6 @@ export interface RunNextMediaJobOptions {
   idempotencyKey?: string;
   sourceChannel?: string;
   provider?: string;
-  forceWorkerEnabled?: boolean;
   allowMockSource?: boolean;
 }
 
@@ -54,30 +53,43 @@ export interface RunNextMediaJobResult {
 /**
  * Checks whether the media worker execution is activated.
  * Default is strictly OFF (false).
+ *
+ * STRICT DUAL-CONTROL AND-GATE INVARIANT:
+ * WORKER_ENABLED = ENV_GATE_EXPLICITLY_TRUE AND D1_SETTINGS_GATE_EXPLICITLY_TRUE
+ *
+ * If either control is OFF, unset, malformed, or missing, the media worker MUST remain OFF.
+ * Only explicit boolean true or canonical string "true" is accepted.
  */
 export async function isMediaWorkerEnabled(db?: any, env: Record<string, any> = {}): Promise<boolean> {
-  // 1. Environment variable / Worker binding takes precedence
-  if (env.MEDIA_WORKER_ENABLED === 'true' || env.MEDIA_WORKER_ENABLED === true) {
-    return true;
-  }
-  if (env.MEDIA_WORKER_ENABLED === 'false' || env.MEDIA_WORKER_ENABLED === false) {
+  // 1. Evaluate Environment Gate (Fail-Closed: must be explicitly true or 'true')
+  const envVal = env.MEDIA_WORKER_ENABLED;
+  const envEnabled = envVal === true || envVal === 'true';
+  if (!envEnabled) {
     return false;
   }
 
-  // 2. Fall back to D1 settings table if present
-  if (db) {
-    try {
-      const row = await db.prepare("SELECT value FROM settings WHERE key = 'media_worker_enabled'").first();
-      if (row && (row.value === 'true' || row.value === '1')) {
-        return true;
-      }
-    } catch {
-      // Ignore database read errors and fail safe
-    }
+  // 2. Evaluate Database Settings Gate (Fail-Closed: db must exist, row must exist, value must be explicitly 'true')
+  if (!db) {
+    return false;
   }
 
-  // Default: strictly OFF
-  return false;
+  try {
+    const row = await db.prepare("SELECT value FROM settings WHERE key = 'media_worker_enabled'").first();
+    if (!row) {
+      return false;
+    }
+    const dbVal = row.value;
+    const dbEnabled = dbVal === true || dbVal === 'true';
+    if (!dbEnabled) {
+      return false;
+    }
+  } catch {
+    // Database read errors fail closed
+    return false;
+  }
+
+  // Both gates explicitly true
+  return true;
 }
 
 /**
@@ -136,10 +148,8 @@ export async function runNextMediaJob(
   const now = options.now || new Date();
   const deviceId = options.deviceId || 'canonical_media_worker';
 
-  // 1. Activation Gate: Check if media worker execution is enabled
-  const enabled = options.forceWorkerEnabled !== undefined
-    ? options.forceWorkerEnabled
-    : await isMediaWorkerEnabled(db, env);
+  // 1. Activation Gate: Check if media worker execution is enabled (Strict dual-control AND gate)
+  const enabled = await isMediaWorkerEnabled(db, env);
 
   if (!enabled) {
     return {
