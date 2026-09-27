@@ -30,5 +30,7 @@ crons = [
 JEV_ENABLED = "true"
 JEV_MODE = "shadow"
 JEV_SHADOW_COLLECTOR_ENABLED = "true"
+MEDIA_WORKER_ENABLED = "true"
+
 
 
