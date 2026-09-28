@@ -7,7 +7,7 @@ import RelatedArticles from '../components/RelatedArticles.astro';
 import SocialShareBar from '../components/SocialShareBar.astro';
 import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
-import { sanitizeArticleHtml } from '../lib/article/renderer.ts';
+import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../lib/article/renderer.ts';
 import { renderMediaSlotAnchors } from '../lib/media/renderer.ts';
 import { getQuarantineRedirect, getArticleRobotsDirective, getArticleXRobotsTag } from '../lib/quarantine';
 
@@ -57,8 +57,18 @@ if (article) {
     getAllArticles(db, 1000, 0, 'published')
   ]);
 
-  relatedArticles = fetchedRelated;
-  const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(article.content_html));
+  let rawContentHtml = article.content_html;
+  const isMalformedHtml =
+    !rawContentHtml ||
+    typeof rawContentHtml !== 'string' ||
+    rawContentHtml.trim() === '[object Object]' ||
+    rawContentHtml.trim().length < 50;
+
+  if (isMalformedHtml && article.content_md) {
+    rawContentHtml = await renderArticleMarkdownSafely(article.content_md);
+  }
+
+  const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(rawContentHtml));
   toc = extractTableOfContents(safeArticleHtml);
   processedHtml = processArticleContent(
     safeArticleHtml,
@@ -355,110 +365,8 @@ if (article) {
       </div>
     </div>
 
-    <!-- 4. SIGNATURE FEATURE: "Editorial Spatial Assessment" -->
-    {article.is_sponsored !== 1 && (
-      <div class="my-9 rounded-2xl sm:rounded-[2rem] border border-black/[0.08] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-900/60 p-5 sm:p-8 shadow-sm">
-        <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-3 mb-6">
-          <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] flex items-center gap-1.5">
-            <span>✦</span> EVALUASI SPASIAL REDAKSI
-          </span>
-          <a href="/metodologi" class="text-[11px] font-mono text-slate-400 hover:text-[#0066ee] transition underline">
-            Metodologi Penilaian →
-          </a>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
-            <div>
-              <span class="block text-slate-500 dark:text-slate-400 text-[10px] uppercase">Pencahayaan Alami (Daylight)</span>
-              <span class="font-bold text-slate-900 dark:text-white text-sm">Optimal</span>
-            </div>
-            <span class="px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-200/60">
-              Grade A
-            </span>
-          </div>
-
-          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
-            <div>
-              <span class="block text-slate-500 dark:text-slate-400 text-[10px] uppercase">Ventilasi Silang (Airflow)</span>
-              <span class="font-bold text-slate-900 dark:text-white text-sm">Kuat</span>
-            </div>
-            <span class="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-200/60">
-              Efektif
-            </span>
-          </div>
-
-          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
-            <div>
-              <span class="block text-slate-500 dark:text-slate-400 text-[10px] uppercase">Kenyamanan Termal Pasif</span>
-              <span class="font-bold text-slate-900 dark:text-white text-sm">Tinggi</span>
-            </div>
-            <span class="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/60">
-              Tropis
-            </span>
-          </div>
-
-          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
-            <div>
-              <span class="block text-slate-500 dark:text-slate-400 text-[10px] uppercase">Efisiensi Spasial (Utility)</span>
-              <span class="font-bold text-slate-900 dark:text-white text-sm">Maksimal</span>
-            </div>
-            <span class="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200/60">
-              Kompak
-            </span>
-          </div>
-        </div>
-      </div>
-    )}
-
-    <!-- 5. SIGNATURE FEATURE: "Why This Works?" (Kenapa Desain Ini Bekerja?) -->
-    {article.is_sponsored !== 1 && (
-      <div class="my-9 rounded-2xl sm:rounded-[2rem] border border-blue-100 bg-blue-50/60 dark:border-blue-900/40 dark:bg-blue-950/20 p-5 sm:p-8 shadow-sm">
-        <h3 class="flex items-center gap-2 text-sm sm:text-base font-black text-slate-900 dark:text-white mb-4">
-          <span class="text-[#0066ee] font-mono">✦</span>
-          <span>Kenapa Keputusan Spasial Ini Berhasil? (Why This Works)</span>
-        </h3>
-        <div class="space-y-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
-          <div class="flex items-start gap-3">
-            <span class="font-mono font-bold text-[#0066ee] text-sm">01</span>
-            <div>
-              <strong class="font-bold text-slate-900 dark:text-white block mb-0.5">Orientasi & Pembiasan Radiasi Panas:</strong>
-              Bukaan kaca utama tidak menghadap langsung ke barat, melainkan dinaungi kisi-kisi atau kanopi gantung sehingga cahaya melimpah tanpa menaikkan suhu ruangan.
-            </div>
-          </div>
-          <div class="flex items-start gap-3">
-            <span class="font-mono font-bold text-[#0066ee] text-sm">02</span>
-            <div>
-              <strong class="font-bold text-slate-900 dark:text-white block mb-0.5">Hirarki & Kontinuitas Visual:</strong>
-              Peniadaan sekat masif di area komunal melipatgandakan persepsi luas ruang, menghubungkan taman dalam dengan ruang keluarga.
-            </div>
-          </div>
-          <div class="flex items-start gap-3">
-            <span class="font-mono font-bold text-[#0066ee] text-sm">03</span>
-            <div>
-              <strong class="font-bold text-slate-900 dark:text-white block mb-0.5">Kejujuran Materialitas Alami:</strong>
-              Tekstur serat kayu dan batu berpori memberi keseimbangan taktil yang mereduksi kontras visual tajam pada ruang privat.
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-
     <!-- 6. Main Prose Article Body (With In-Article TOC, Dateline, and BACA JUGA) -->
     <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-6" set:html={processedHtml} />
-
-    <!-- 6.5 Sources & Editorial Citations (Integrity & E-E-A-T) -->
-    <div class="my-8 max-w-full rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-black/[0.05] dark:border-white/[0.06] p-5 sm:p-6 text-xs text-slate-500 dark:text-slate-400 font-mono space-y-2 rl-safe-wrap">
-      <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-black/[0.04] dark:border-white/[0.06] pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-        <span class="flex items-center gap-1.5"><span class="text-[#0066ee]">✦</span> SUMBER & REFERENSI TEKNIS:</span>
-        <span>Standar Terverifikasi</span>
-      </div>
-      <ul class="space-y-1.5 list-decimal list-inside text-[11px] leading-relaxed pt-1">
-        <li>Standar Nasional Indonesia (SNI 03-6572) — Tata Cara Perancangan Sistem Ventilasi & Pengkondisian Udara Tropis.</li>
-        <li>Kementerian PUPR — Pedoman Teknis Selubung Bangunan Gedung Hijau Ramah Energi.</li>
-        <li>Dokumentasi Spesifikasi Materialitas Pabrikan & Panduan Konstruksi Lapangan Independen.</li>
-      </ul>
-    </div>
 
     <!-- 6.6 Social Share Bar -->
     <SocialShareBar title={article.title} siteSettings={siteSettings} />
