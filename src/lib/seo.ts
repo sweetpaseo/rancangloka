@@ -3,6 +3,7 @@
  */
 
 import { sanitizeArticleHtml } from './article/renderer.ts';
+import { isPubliclyDiscoverable } from './quarantine.ts';
 
 export interface TableOfContentItem {
   id: string;
@@ -251,7 +252,7 @@ export function injectTableOfContents(html: string, toc: TableOfContentItem[]): 
  * Spaced out naturally (before 2nd or 3rd H2).
  */
 export function injectInArticleRelated(html: string, relatedArticle?: any): string {
-  if (!relatedArticle || !relatedArticle.slug || !relatedArticle.title) {
+  if (!relatedArticle || !relatedArticle.slug || !relatedArticle.title || !isPubliclyDiscoverable(relatedArticle)) {
     return html;
   }
 
@@ -310,7 +311,7 @@ export function injectAutoKeywordLinks(
   const candidates: { keyword: string; slug: string }[] = [];
 
   for (const art of allArticles) {
-    if (art.id === currentArticleId || art.status !== 'published') continue;
+    if (art.id === currentArticleId || art.status !== 'published' || !isPubliclyDiscoverable(art)) continue;
 
     if (art.focus_keyword && art.focus_keyword.trim().length >= 4) {
       candidates.push({ keyword: art.focus_keyword.trim(), slug: art.slug });

@@ -9,8 +9,16 @@ import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, ge
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
 import { sanitizeArticleHtml } from '../lib/article/renderer.ts';
 import { renderMediaSlotAnchors } from '../lib/media/renderer.ts';
+import { getQuarantineRedirect, getArticleRobotsDirective, getArticleXRobotsTag } from '../lib/quarantine';
 
 const { slug } = Astro.params;
+
+// 1. One-hop 301 permanent redirect for quarantined consolidation slugs
+const quarantineRedirect = getQuarantineRedirect(slug || '');
+if (quarantineRedirect) {
+  return Astro.redirect(quarantineRedirect, 301);
+}
+
 const db = await getDb(Astro.locals);
 
 const [article, page, categories, siteSettings] = await Promise.all([
@@ -37,6 +45,11 @@ let keyTakeaways: string[] = [];
 let jsonLdSchema: any = null;
 let breadcrumbItems: any[] = [];
 let authorObj: any = null;
+const robotsDirective = article ? getArticleRobotsDirective(article.slug, siteSettings.allow_indexing) : undefined;
+const xRobotsTag = article ? getArticleXRobotsTag(article.slug, siteSettings.allow_indexing) : null;
+if (xRobotsTag) {
+  Astro.response.headers.set('X-Robots-Tag', xRobotsTag);
+}
 
 if (article) {
   const [fetchedRelated, allArticles] = await Promise.all([
@@ -158,6 +171,7 @@ if (article) {
     siteSettings={siteSettings}
     isArticlePage={!isStaticPage}
     jsonLdSchema={jsonLdSchema}
+    robotsDirective={robotsDirective}
     publishedTime={article && article.published_at ? new Date(article.published_at).toISOString() : undefined}
     modifiedTime={article && (article.updated_at || article.published_at) ? new Date(article.updated_at || article.published_at).toISOString() : undefined}
     articleAuthor={article ? (authorObj.slug ? `${siteUrl}/author/${authorObj.slug}` : `${siteUrl}/author/redaksi`) : undefined}

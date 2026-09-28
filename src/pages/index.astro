@@ -66,78 +66,80 @@ const websiteSchema = {
     <HeroKompas articles={heroArticles.length > 0 ? heroArticles : articles.slice(0, 3)} />
 
     <!-- 3. Main 2-Column Layout (Left Stream + Right Sidebar) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 my-10 items-start">
-      <!-- Left Column: Article Stream Feed (Col 1-8: 65%) -->
-      <main class="lg:col-span-8 space-y-8">
-        <!-- Section Header -->
-        <div class="flex items-center justify-between pb-3 border-b-2 border-[#003366] dark:border-blue-400">
-          <h2 class="font-sans text-base sm:text-lg font-black uppercase tracking-wider text-[#003366] dark:text-blue-400">
-            Kajian Terkini
-          </h2>
-          <a href="/explore" class="text-xs font-bold text-[#003366] dark:text-blue-400 hover:underline flex items-center gap-1">
-            <span>Lihat Semua Arsip</span>
-            <span>❯</span>
-          </a>
-        </div>
+    {feedArticles.length > 0 && (
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 my-10 items-start">
+        <!-- Left Column: Article Stream Feed (Col 1-8: 65%) -->
+        <main class="lg:col-span-8 space-y-8">
+          <!-- Section Header -->
+          <div class="flex items-center justify-between pb-3 border-b-2 border-[#003366] dark:border-blue-400">
+            <h2 class="font-sans text-base sm:text-lg font-black uppercase tracking-wider text-[#003366] dark:text-blue-400">
+              Kajian Terkini
+            </h2>
+            <a href="/explore" class="text-xs font-bold text-[#003366] dark:text-blue-400 hover:underline flex items-center gap-1">
+              <span>Lihat Semua Arsip</span>
+              <span>❯</span>
+            </a>
+          </div>
 
-        <!-- Feed List: Kompas.id Horizontal Cards -->
-        <div class="divide-y divide-slate-200 dark:divide-slate-800">
-          {feedArticles.map((art) => (
-            <article class="py-6 first:pt-0 flex flex-col sm:flex-row gap-5 group">
-              <!-- Content Left (60-70%) -->
-              <div class="flex-1 flex flex-col justify-between order-2 sm:order-1">
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                      {art.category_name || 'ARSITEKTUR'}
-                    </span>
-                    <span class="text-slate-600 dark:text-slate-400 text-xs">•</span>
-                    <span class="text-[11px] font-mono font-medium text-slate-600 dark:text-slate-400">
-                      ⏱️ {art.reading_time_minutes || 4} mnt baca
-                    </span>
+          <!-- Feed List: Kompas.id Horizontal Cards -->
+          <div class="divide-y divide-slate-200 dark:divide-slate-800">
+            {feedArticles.map((art) => (
+              <article class="py-6 first:pt-0 flex flex-col sm:flex-row gap-5 group">
+                <!-- Content Left (60-70%) -->
+                <div class="flex-1 flex flex-col justify-between order-2 sm:order-1">
+                  <div>
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                        {art.category_name || 'ARSITEKTUR'}
+                      </span>
+                      <span class="text-slate-600 dark:text-slate-400 text-xs">•</span>
+                      <span class="text-[11px] font-mono font-medium text-slate-600 dark:text-slate-400">
+                        ⏱️ {art.reading_time_minutes || 4} mnt baca
+                      </span>
+                    </div>
+
+                    <h3 class="font-serif text-lg sm:text-xl font-bold leading-snug text-slate-900 dark:text-white group-hover:text-[#003366] dark:group-hover:text-blue-400 transition mb-2">
+                      <a href={`/${art.slug}`}>{art.title}</a>
+                    </h3>
+
+                    {art.description && (
+                      <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2 font-normal">
+                        {art.description}
+                      </p>
+                    )}
                   </div>
 
-                  <h3 class="font-serif text-lg sm:text-xl font-bold leading-snug text-slate-900 dark:text-white group-hover:text-[#003366] dark:group-hover:text-blue-400 transition mb-2">
-                    <a href={`/${art.slug}`}>{art.title}</a>
-                  </h3>
-
-                  {art.description && (
-                    <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2 font-normal">
-                      {art.description}
-                    </p>
-                  )}
+                  <div class="mt-4 text-[11px] text-slate-600 dark:text-slate-400 font-mono font-medium flex items-center gap-2">
+                    <span>Oleh {art.author_name || 'Dewan Redaksi Spasial'}</span>
+                  </div>
                 </div>
 
-                <div class="mt-4 text-[11px] text-slate-600 dark:text-slate-400 font-mono font-medium flex items-center gap-2">
-                  <span>Oleh {art.author_name || 'Dewan Redaksi Spasial'}</span>
-                </div>
-              </div>
+                <!-- Thumbnail Right (30-40%) -->
+                <a
+                  href={`/${art.slug}`}
+                  class="w-full sm:w-52 h-44 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 order-1 sm:order-2"
+                >
+                  <img
+                    src={getFeedThumb(art.featured_image)}
+                    alt={art.title}
+                    width="360"
+                    height="225"
+                    class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </a>
+              </article>
+            ))}
+          </div>
+        </main>
 
-              <!-- Thumbnail Right (30-40%) -->
-              <a
-                href={`/${art.slug}`}
-                class="w-full sm:w-52 h-44 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 order-1 sm:order-2"
-              >
-                <img
-                  src={getFeedThumb(art.featured_image)}
-                  alt={art.title}
-                  width="360"
-                  height="225"
-                  class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </a>
-            </article>
-          ))}
+        <!-- Right Column: Sidebar (Col 9-12: 35%) -->
+        <div class="lg:col-span-4">
+          <SidebarPopular popularArticles={popularArticles} />
         </div>
-      </main>
-
-      <!-- Right Column: Sidebar (Col 9-12: 35%) -->
-      <div class="lg:col-span-4">
-        <SidebarPopular popularArticles={popularArticles} />
       </div>
-    </div>
+    )}
   </div>
 
   <!-- 4. Featured Visual Study Monolith -->

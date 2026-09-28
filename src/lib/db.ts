@@ -20,6 +20,8 @@ import {
   buildCanonicalPublicationPreflightState,
   computeCanonicalPreflightHash
 } from './decision/publication-preflight-state.ts';
+import { isPubliclyDiscoverable } from './quarantine.ts';
+export { isPubliclyDiscoverable, isIndexableArticle, getQuarantineState } from './quarantine.ts';
 
 export interface Article {
   id: number;
@@ -914,7 +916,13 @@ export function sanitizePage(p: Page): Page {
   };
 }
 
-export async function getAllArticles(db: any, limit = 50, offset = 0, status = 'published'): Promise<Article[]> {
+export async function getAllArticles(
+  db: any,
+  limit = 50,
+  offset = 0,
+  status = 'published',
+  options?: { q?: string; category?: string; sort?: string; includeQuarantined?: boolean }
+): Promise<Article[]> {
   const inMemFiltered = inMemoryArticles
     .filter(a => status === 'all' || a.status === status)
     .map(sanitizeArticle);
@@ -945,7 +953,29 @@ export async function getAllArticles(db: any, limit = 50, offset = 0, status = '
   // Combine: inMemoryArticles are authoritative, plus any new dynamic DB articles
   const inMemSlugs = new Set(inMemFiltered.map(a => a.slug));
   const newFromDb = dbArticles.filter(a => !inMemSlugs.has(a.slug));
-  const combined = [...inMemFiltered, ...newFromDb];
+  let combined = [...inMemFiltered, ...newFromDb];
+
+  // Apply centralized quarantine filter for public published surfaces
+  if (status === 'published' && !options?.includeQuarantined) {
+    combined = combined.filter((a) => isPubliclyDiscoverable(a));
+  }
+
+  if (options?.q) {
+    const qLower = options.q.toLowerCase();
+    combined = combined.filter(a =>
+      a.title.toLowerCase().includes(qLower) ||
+      (a.description && a.description.toLowerCase().includes(qLower)) ||
+      (a.category_name && a.category_name.toLowerCase().includes(qLower))
+    );
+  }
+
+  if (options?.category && options.category !== 'all') {
+    combined = combined.filter(a => a.category_slug === options.category || String(a.category_id) === options.category);
+  }
+
+  if (options?.sort === 'oldest') {
+    combined.sort((a, b) => new Date(a.published_at || 0).getTime() - new Date(b.published_at || 0).getTime());
+  }
 
   return combined.slice(offset, offset + limit);
 }
@@ -1057,18 +1087,24 @@ export async function getRelatedArticles(db: any, currentId: number, categoryId:
           LEFT JOIN authors au ON a.author_id = au.id
           WHERE a.id != ? AND a.category_id = ? AND a.status = 'published'
           ORDER BY a.published_at DESC
-          LIMIT ?
         `)
-        .bind(currentId, categoryId, limit)
+        .bind(currentId, categoryId)
         .all();
-      if (results && results.length > 0) return (results as Article[]).map(sanitizeArticle);
+      if (results && results.length > 0) {
+        const filtered = (results as Article[]).map(sanitizeArticle).filter((a) => isPubliclyDiscoverable(a));
+        if (filtered.length > 0) return filtered.slice(0, limit);
+      }
     } catch (e) {
       console.warn('D1 Query fallback:', e);
     }
   }
-  const related = inMemoryArticles.filter(a => a.id !== currentId && a.category_id === categoryId && a.status === 'published');
+  const related = inMemoryArticles
+    .filter(a => a.id !== currentId && a.category_id === categoryId && a.status === 'published')
+    .filter((a) => isPubliclyDiscoverable(a));
   if (related.length < limit) {
-    const others = inMemoryArticles.filter(a => a.id !== currentId && a.category_id !== categoryId && a.status === 'published');
+    const others = inMemoryArticles
+      .filter(a => a.id !== currentId && a.category_id !== categoryId && a.status === 'published')
+      .filter((a) => isPubliclyDiscoverable(a));
     return [...related, ...others].slice(0, limit).map(sanitizeArticle);
   }
   return related.slice(0, limit).map(sanitizeArticle);
