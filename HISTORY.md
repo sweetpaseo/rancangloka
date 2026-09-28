@@ -17,6 +17,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### ARTICLE-RENDER-INTEGRITY-1: Emergency Repair of Article 5 Public Rendering 2026-09-28
+
+- **Tujuan & Ruang Lingkup:** Memperbaiki bug rendering kritis produksi pada halaman publik Artikel 5 (`/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`). Memulihkan penampilan naskah editorial kanonikal (~2.100 kata), mengeliminasi string literal `[object Object]`, menghapus blok prototype hardcoded yang tidak terkait ("EVALUASI SPASIAL REDAKSI", "Why This Works: Orientasi & Pembiasan...", dan sitasi ventilasi SNI 03-6572), serta menambahkan uji regresi integritas rendering deterministik.
+- **Akar Masalah (Root Causes):**
+  1. **Naskah Hilang & Literal `[object Object]`:** Kolom database `articles.content_html` pada baris Artikel 5 di D1 produksi secara keliru terisi string literal 15-karakter `"[object Object]"` akibat serialisasi lampau saat ingest draf otomatis, sementara naskah kanonikal 2.117 kata di `articles.content_md` tetap utuh. Pada `src/pages/[slug].astro`, kode sebelumnya langsung meneruskan `sanitizeArticleHtml(article.content_html)` ke pemroses konten tanpa memvalidasi keabsahan HTML, sehingga Markdown kanonikal terabaikan dan halaman merender literal `[object Object]`.
+  2. **Modul Penilaian Spasial & Sitasi Fiktif:** Baris 358–445 dan 450–461 pada `src/pages/[slug].astro` memuat markup kartu hardcoded dari era prototipe yang dievaluasi murni via `{article.is_sponsored !== 1 && (...)}`, sehingga muncul di semua artikel terbit tanpa memandang relevansi topik.
+- **Solusi & Arsitektur Perbaikan:**
+  - **Fallback Aman Markdown Kanonikal:** Mengimpor `renderArticleMarkdownSafely` ke `src/pages/[slug].astro`. Menambahkan validasi `isMalformedHtml` (`!rawContentHtml || typeof rawContentHtml !== 'string' || rawContentHtml.trim() === '[object Object]' || rawContentHtml.trim().length < 50`). Jika HTML tidak valid, sistem secara dinamis merender HTML aman langsung dari `article.content_md`.
+  - **Eliminasi Prototype Filler:** Menghapus blok hardcoded evaluasi spasial, "Why This Works", dan sitasi ventilasi dari template `[slug].astro`. Menegakkan alur visual linier murni: *Judul/Metadata → Executive Summary → Featured Hero Image → Naskah Editorial Kanonikal Penuh (termasuk Matriks Komparasi, Verdict RancangLoka, Catatan Rujukan Standar) → Social Share Bar → Author Card → CTA → Footer*.
+- **Pintu Integritas Rendering (`scripts/test-article-render-integrity.js`):**
+  - Menguji pemuatan naskah kanonikal via fixture `scripts/fixtures/article5_canonical.json`.
+  - Memverifikasi keberadaan seluruh 8 tajuk utama kanonikal Artikel 5.
+  - Memastikan retensi kata naskah editorial ter-render >= 90% dari naskah kanonikal Markdown (terverifikasi: 2.167 kata rendered vs 2.117 kata canonical = 102,4% retensi).
+  - Memastikan string `[object Object]` serta komponen prototipe fiktif 100% absen dari template.
+- **Hasil Verifikasi Live Produksi:**
+  - Deployment ID: `fa1c8b93-b410-4800-8296-f4c88e5d809e` (commit `8d82e3b`).
+  - Halaman Artikel 5 (`/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`): HTTP 200, robots `index, follow, max-image-preview:large`, schema `@type: "Article"`, 8 tajuk utama hadir utuh, 2.167 kata editorial terlihat, literal `[object Object]` lenyap.
+  - Halaman Artikel 6 (`/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman`): HTTP 200, `X-Robots-Tag: noindex, follow`, terisolasi dari sitemap dan RSS feed.
+- **Invarian Keselamatan:** `AUTOMATION_MODE = OFF`, `auto_schedule = false`, `kill switch = disengaged`, `JEV = shadow / OBSERVE_ONLY`, `media worker = OFF`. Naskah `content_md`, approval ID 9, receipt `rcpt_bbae85b48e1b2f8d`, dan content hash Artikel 5 (`14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`) 100% IMMUTABLE.
+
+### CONTENT-QUARANTINE-1: Prototype & Unsafe Corpus Isolation 2026-09-28
+
+- **Tujuan & Ruang Lingkup:** Mengisolasi 20 artikel prototipe internal di `src/lib/db.ts` dan artikel produksi belum terverifikasi (Artikel 6) dari permukaan publikasi terbuka (Google News sitemap, XML sitemap biasa, RSS feed, pencarian situs, internal-linking otomatis, dan rekomendasi artikel terkait), tanpa merusak akses langsung operator maupun integritas data historis.
+- **Implementasi:**
+  - Membuat registry karantina `QUARANTINE_REGISTRY` di `src/lib/quarantine.ts`.
+  - Menerapkan header `X-Robots-Tag: noindex, follow` dan meta tag `noindex` untuk rute artikel karantina.
+  - Menyiapkan pengalihan 301 konsolidasi untuk slug prototipe `panduan-kusen-aluminium-ekstrusi-daerah-lembap` menuju Artikel 5 kanonikal.
+  - Memastikan Artikel 5 terproteksi penuh dari benturan ID in-memory dan tetap terindeks secara publik (`index, follow`).
+- **Verifikasi:** 19/19 uji regresi `scripts/test-content-quarantine.js` lulus. Commit: `b67ced3`.
+
 ### CONTENT-GOLIVE-1-STABILIZE: Production Source & Publication Clock Stabilization 2026-09-28
 
 - **Tujuan & Ruang Lingkup:** Menstabilkan baseline kode produksi pasca-penerbitan artikel perdana (Article ID 5, "Kusen Aluminium vs uPVC untuk Rumah Tropis di Indonesia"), memperbaiki sumber jam publikasi (*publication clock source*) agar selalu mengambil waktu server Cloudflare D1/SQLite kanonikal, mendokumentasikan anomali *clock-skew* workstation operator pada rekaman historis penerbitan perdana tanpa memalsukan data historis, menambahkan uji regresi *clock-skew*, serta mengonsolidasikan seluruh perbaikan SEO/SSR ke dalam satu commit bersih.
