@@ -36,6 +36,7 @@ let processedHtml = '';
 let keyTakeaways: string[] = [];
 let jsonLdSchema: any = null;
 let breadcrumbItems: any[] = [];
+let authorObj: any = null;
 
 if (article) {
   const [fetchedRelated, allArticles] = await Promise.all([
@@ -61,11 +62,11 @@ if (article) {
     } catch (e) {}
   }
 
-  const authorObj = {
+  authorObj = {
     name: article.author_name,
     avatar: article.author_avatar,
     role: article.author_role,
-    slug: article.author_name ? article.author_name.toLowerCase().replace(/\s+/g, '-') : 'redaksi'
+    slug: article.author_slug || (article.author_name ? article.author_name.toLowerCase().replace(/\s+/g, '-') : 'redaksi')
   };
   jsonLdSchema = generateArticleSchema(article, siteUrl, authorObj, siteSettings);
 
@@ -157,6 +158,10 @@ if (article) {
     siteSettings={siteSettings}
     isArticlePage={!isStaticPage}
     jsonLdSchema={jsonLdSchema}
+    publishedTime={article && article.published_at ? new Date(article.published_at).toISOString() : undefined}
+    modifiedTime={article && (article.updated_at || article.published_at) ? new Date(article.updated_at || article.published_at).toISOString() : undefined}
+    articleAuthor={article ? (authorObj.slug ? `${siteUrl}/author/${authorObj.slug}` : `${siteUrl}/author/redaksi`) : undefined}
+    articleSection={article?.category_name}
   >
   <!-- Apple-Style Dynamic Reading Progress Bar (Top) -->
   <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-[#0066ee] z-50 transition-all duration-100 ease-out" style="width: 0%;"></div>
@@ -298,8 +303,13 @@ if (article) {
 
         <div class="text-left sm:text-right text-[11px]">
           <div>
-            Diterbitkan {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            Diterbitkan <time itemprop="datePublished" datetime={new Date(article.published_at).toISOString()}>{new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</time>
           </div>
+          {article.updated_at && article.published_at && (new Date(article.updated_at).getTime() - new Date(article.published_at).getTime() > 60000) && (
+            <div class="text-[10px] text-muted/80 dark:text-stone/60 mt-0.5">
+              Diperbarui <time itemprop="dateModified" datetime={new Date(article.updated_at).toISOString()}>{new Date(article.updated_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</time>
+            </div>
+          )}
         </div>
       </div>
     </header>

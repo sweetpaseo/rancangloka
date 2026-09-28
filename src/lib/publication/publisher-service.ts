@@ -223,7 +223,22 @@ export async function getDueExecutions(
     limit?: number;
   } = {}
 ): Promise<PublicationExecutionRecord[]> {
-  const now = options.nowUtc || new Date().toISOString();
+  let now = options.nowUtc;
+  if (!now) {
+    try {
+      const timeRow = await db
+        .prepare("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS server_now")
+        .first();
+      if (timeRow?.server_now) {
+        now = timeRow.server_now;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  if (!now) {
+    now = new Date().toISOString();
+  }
   const limit = options.limit || 10;
 
   const query = `
@@ -251,9 +266,33 @@ export async function claimExecutionLease(
   leaseDurationSeconds: number = 300,
   nowUtc?: string
 ): Promise<{ acquired: boolean; leaseExpiresAt?: string }> {
-  const now = nowUtc ? new Date(nowUtc) : new Date();
-  const leaseExpiresAt = new Date(now.getTime() + leaseDurationSeconds * 1000).toISOString();
-  const nowIso = now.toISOString();
+  let nowIso: string;
+  let leaseExpiresAt: string;
+
+  if (nowUtc) {
+    const now = new Date(nowUtc);
+    nowIso = now.toISOString();
+    leaseExpiresAt = new Date(now.getTime() + leaseDurationSeconds * 1000).toISOString();
+  } else {
+    try {
+      const timeRow = await db
+        .prepare("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS server_now")
+        .first();
+      if (timeRow?.server_now) {
+        nowIso = timeRow.server_now;
+        const now = new Date(nowIso);
+        leaseExpiresAt = new Date(now.getTime() + leaseDurationSeconds * 1000).toISOString();
+      } else {
+        const now = new Date();
+        nowIso = now.toISOString();
+        leaseExpiresAt = new Date(now.getTime() + leaseDurationSeconds * 1000).toISOString();
+      }
+    } catch {
+      const now = new Date();
+      nowIso = now.toISOString();
+      leaseExpiresAt = new Date(now.getTime() + leaseDurationSeconds * 1000).toISOString();
+    }
+  }
 
   const query = `
     UPDATE article_publication_executions
@@ -493,7 +532,8 @@ export async function executeAtomicPublication(
   db: any,
   execution: PublicationExecutionRecord,
   articleSlug: string,
-  attemptNumber: number = 1
+  attemptNumber: number = 1,
+  trustedServerTime?: string
 ): Promise<{ receiptId: string; actualPublishedAt: string; canonicalUrl: string }> {
   // Check if article is ALREADY published and receipt exists (Crash recovery / Idempotency)
   const existingReceipt = await db
@@ -509,7 +549,24 @@ export async function executeAtomicPublication(
     };
   }
 
-  const actualPublishedAt = new Date().toISOString();
+  // Authoritative publication timestamp directly from database server
+  let actualPublishedAt = trustedServerTime;
+  if (!actualPublishedAt) {
+    try {
+      const timeRow = await db
+        .prepare("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS server_now")
+        .first();
+      if (timeRow?.server_now) {
+        actualPublishedAt = timeRow.server_now;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  if (!actualPublishedAt) {
+    actualPublishedAt = new Date().toISOString();
+  }
+
   const receiptId = `rcpt_${getRandomHex(8)}`;
   const canonicalUrl = `https://rancangloka.com/${articleSlug}`;
 
@@ -802,7 +859,8 @@ export async function processSingleExecution(
       db,
       execution,
       gateResult.article!.slug,
-      attemptNumber
+      attemptNumber,
+      nowUtc
     );
 
     const durationMs = Date.now() - startTime;

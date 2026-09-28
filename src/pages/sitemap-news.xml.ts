@@ -1,5 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getDb, getAllArticles, getSiteSettings } from '../lib/db';
+import { isNewsArticleEligible } from '../lib/seo';
+
+export { isNewsArticleEligible };
 
 export const GET: APIRoute = async ({ locals }) => {
   const db = await getDb(locals);
@@ -11,20 +14,17 @@ export const GET: APIRoute = async ({ locals }) => {
   const siteUrl = settings.site_url || 'https://rancangloka.com';
   const siteTitle = settings.site_title || 'RancangLoka';
 
-  // Filter articles published in the last 48 hours for Google News
+  // Filter strictly eligible news articles published in the last 48 hours
   const fortyEightHoursAgo = Date.now() - 48 * 3600 * 1000;
-  const recentArticles = articles.filter(
-    (a) => new Date(a.published_at).getTime() >= fortyEightHoursAgo
-  );
-
-  const targetArticles = recentArticles.length > 0 ? recentArticles : articles.slice(0, 10);
+  const targetArticles = articles.filter((a) => isNewsArticleEligible(a, fortyEightHoursAgo));
 
   const urls = targetArticles
     .map((a) => {
       const pubDate = new Date(a.published_at).toISOString();
+      const lastMod = new Date(a.updated_at || a.published_at).toISOString();
       return `  <url>
     <loc>${siteUrl}/${a.slug}</loc>
-    <lastmod>${pubDate}</lastmod>
+    <lastmod>${lastMod}</lastmod>
     <news:news>
       <news:publication>
         <news:name>${siteTitle}</news:name>

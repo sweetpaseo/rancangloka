@@ -19,6 +19,10 @@ interface Props {
   isArticlePage?: boolean;
   jsonLdSchema?: any;
   noindex?: boolean;
+  publishedTime?: string;
+  modifiedTime?: string;
+  articleAuthor?: string;
+  articleSection?: string;
 }
 
 const {
@@ -31,15 +35,22 @@ const {
   siteSettings = {},
   isArticlePage = false,
   jsonLdSchema,
-  noindex = false
+  noindex = false,
+  publishedTime,
+  modifiedTime,
+  articleAuthor,
+  articleSection
 } = Astro.props;
 
 const siteTitle = siteSettings.site_title || 'RancangLoka';
 const siteFavicon = siteSettings.site_favicon || '🏡';
 const fullTitle = title ? `${title} | ${siteTitle}` : `${siteTitle} - ${siteSettings.site_tagline || 'Inspirasi Desain Interior, Arsitektur & Smart Living'}`;
-const metaDesc = description || siteSettings.site_description || 'Platform editorial terdepan untuk inspirasi arsitektur modern, desain interior estetik, dan hunian impian di rancangloka.com.';
-const metaImage = ogImage || siteSettings.seo_default_og_image || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&auto=format&fit=crop&q=80';
+const rawImage = ogImage || siteSettings.seo_default_og_image || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&auto=format&fit=crop&q=80';
+const metaImage = rawImage.startsWith('http://') || rawImage.startsWith('https://')
+  ? rawImage
+  : `${siteSettings.site_url || 'https://rancangloka.com'}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
 const currentCanonical = canonicalUrl || Astro.url.href;
+const metaDesc = description || siteSettings.site_description || 'Inspirasi Desain Interior, Arsitektur & Smart Living';
 
 // Dynamic CSS Variables from Site Settings (Titanium Monochrome & Electric Sapphire)
 const primaryColor = siteSettings.theme_primary_color || '#111215';
@@ -115,6 +126,18 @@ const customHeadScripts = siteSettings.custom_head_scripts || '';
     <meta property="og:description" content={metaDesc} />
     <meta property="og:image" content={metaImage} />
     <meta property="og:site_name" content={siteTitle} />
+    {isArticlePage && publishedTime && (
+      <meta property="article:published_time" content={publishedTime} />
+    )}
+    {isArticlePage && modifiedTime && (
+      <meta property="article:modified_time" content={modifiedTime} />
+    )}
+    {isArticlePage && articleAuthor && (
+      <meta property="article:author" content={articleAuthor} />
+    )}
+    {isArticlePage && articleSection && (
+      <meta property="article:section" content={articleSection} />
+    )}
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />

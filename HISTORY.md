@@ -17,6 +17,29 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### CONTENT-GOLIVE-1-STABILIZE: Production Source & Publication Clock Stabilization 2026-09-28
+
+- **Tujuan & Ruang Lingkup:** Menstabilkan baseline kode produksi pasca-penerbitan artikel perdana (Article ID 5, "Kusen Aluminium vs uPVC untuk Rumah Tropis di Indonesia"), memperbaiki sumber jam publikasi (*publication clock source*) agar selalu mengambil waktu server Cloudflare D1/SQLite kanonikal, mendokumentasikan anomali *clock-skew* workstation operator pada rekaman historis penerbitan perdana tanpa memalsukan data historis, menambahkan uji regresi *clock-skew*, serta mengonsolidasikan seluruh perbaikan SEO/SSR ke dalam satu commit bersih.
+- **Dokumentasi Provenance & Anomali Clock-Skew Historis Article 5:**
+  - Operasi penerbitan kanonikal aktual (`publishNow`) terlaksana di server Cloudflare D1 sekitar pukul **2026-09-28 06:16:33 UTC**.
+  - Nilai publik historis `published_at` (`2026-09-28T06:10:39.816Z`) tercipta dari jam lokal workstation operator (*Windows workstation clock*) yang saat eksekusi tertinggal ~5 menit 54 detik dari UTC sebenarnya.
+  - Timestamp persetujuan redaksi manusia (`article_editorial_approvals.created_at = 2026-09-28 06:15:42 UTC`) menggunakan waktu server D1 (`CURRENT_TIMESTAMP`).
+  - **Invarian Persetujuan TIDAK Dilanggar:** Persetujuan manusia sah tercatat terlebih dahulu di server D1 sebelum operasi `publishNow` dijalankan. Perbedaan tampilan timestamp murni diakibatkan oleh penggunaan `new Date().toISOString()` lokal workstation pada fungsi `executeAtomicPublication`.
+  - **Kebijakan Integritas:** Rekaman historis Article 5 (approval ID 9, receipt `rcpt_bbae85b48e1b2f8d`, execution ID 1, `published_at`) **TIDAK diubah / difalsifikasi** guna menjaga integritas audit jejak sejarah.
+- **Perbaikan Sumber Jam Publikasi (Canonical Server Clock Source):**
+  - Mengganti evaluasi `new Date().toISOString()` lokal pada `getDueExecutions`, `claimExecutionLease`, dan `executeAtomicPublication` (`src/lib/publication/publisher-service.ts`) dengan kueri waktu server database: `SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS server_now`.
+  - Menjamin `articles.published_at`, `article_publication_executions.actual_published_at`, dan `publication_execution_receipts.actual_published_at` selalu berasal dari SATU timestamp server D1 yang identik dan berformat ISO-8601 UTC.
+- **Uji Regresi Deterministi Clock-Skew (`scripts/test-publication-clock-skew.js`):**
+  - Menguji skenario ekstrim di mana jam workstation operator tertinggal 15 menit dari UTC.
+  - Membuktikan bahwa `publishNow` mengabaikan jam lokal workstation, mengambil waktu server D1, dan menjamin `published_at >= approval.created_at` serta kesesuaian 100% pada execution dan receipt.
+- **Konsolidasi Perbaikan SEO, SSR & Sitemap:**
+  - `src/layouts/BaseLayout.astro`: fallback `metaDesc` eksplisit untuk mencegah error SSR.
+  - `src/pages/[slug].astro`: pengangkatan deklarasi variabel `authorObj` ke lingkup teratas frontmatter.
+  - `src/lib/seo.ts` & `src/pages/sitemap-news.xml.ts`: pengetatan filter News Sitemap khusus artikel bertipe `news` yang terbit < 48 jam.
+  - `scripts/test-schema-compatibility.js`: pembaruan assertion agar dinamis menguji seluruh 22 file migrasi.
+  - `scripts/test-seo-date-pipeline.js`: 14 pengujian komprehensif tanggal SEO, Schema.org, dan Google News Sitemap.
+- **Status Keamanan:** `AUTOMATION_MODE = OFF`, `auto_schedule = false`, `kill_switch = disengaged`, `JEV = shadow / OBSERVE_ONLY`, `media_worker = OFF`.
+
 ### MEDIA-A5.7-P2B Production Deployment & Ephemeral Device Lifecycle Verification 2026-09-27
 
 - **Tujuan & Ruang Lingkup:** Melakukan deployment kanonikal kode lifecycle kredensial perangkat (`6268e4e`) ke Cloudflare Worker produksi (`rancangloka`), memverifikasi isolasi rute manajemen perangkat yang dilindungi oleh sesi admin operator, menegakkan firewall pencegahan self-provisioning perangkat media, serta mengonfirmasi bahwa status operasional pekerja media tetap sepenuhnya `OFF` (*dormant*) sebelum pengujian probe diautentikasi.

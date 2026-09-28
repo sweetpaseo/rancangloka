@@ -67,31 +67,67 @@ export function injectHeadingIds(html: string): string {
 }
 
 /**
- * Generates JSON-LD Structured Data Schema for NewsArticle / BlogPosting
+ * Ensures an image or asset URL is absolute using canonical siteUrl
+ */
+export function ensureAbsoluteUrl(rawUrl: string | undefined, siteUrl: string): string {
+  if (!rawUrl) return `${siteUrl}/favicon.svg`;
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
+  return `${siteUrl}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+}
+
+/**
+ * Generates JSON-LD Structured Data Schema for Article / NewsArticle
  */
 export function generateArticleSchema(article: any, siteUrl: string, author: any, siteSettings: Record<string, string>) {
   const articleUrl = `${siteUrl}/${article.slug}`;
   const publisherName = siteSettings.site_title || 'RancangLoka';
-  const logoUrl = siteSettings.site_logo || `${siteUrl}/favicon.svg`;
+  const logoUrl = ensureAbsoluteUrl(siteSettings.site_logo, siteUrl);
+
+  const isNews = Boolean(
+    article.is_news === 1 ||
+    article.is_news === true ||
+    article.schema_type === 'NewsArticle' ||
+    article.category_slug === 'news' ||
+    article.category_slug === 'berita'
+  );
+  const schemaType = isNews ? 'NewsArticle' : 'Article';
+
+  const authorName = author?.name || 'Redaksi';
+  const isOrgAuthor = Boolean(
+    authorName.toLowerCase().includes('desk') ||
+    authorName.toLowerCase().includes('redaksi') ||
+    authorName.toLowerCase().includes('editorial') ||
+    authorName.toLowerCase().includes('team') ||
+    author?.type === 'Organization'
+  );
+  const authorType = isOrgAuthor ? 'Organization' : 'Person';
+  const authorUrl = author?.slug ? `${siteUrl}/author/${author.slug}` : siteUrl;
+
+  const authorPayload: any = {
+    '@type': authorType,
+    name: authorName,
+    url: authorUrl
+  };
+  if (authorType === 'Person' && author?.role) {
+    authorPayload.jobTitle = author.role;
+  }
+
+  const rawFeaturedImage = article.featured_image || siteSettings.seo_default_og_image;
+  const absoluteImage = ensureAbsoluteUrl(rawFeaturedImage, siteUrl);
 
   return {
     '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
+    '@type': schemaType,
     mainEntityOfPage: {
       '@type': 'WebPage',
       '@id': articleUrl
     },
     headline: article.title,
     description: article.description || article.title,
-    image: [article.featured_image || siteSettings.seo_default_og_image],
+    image: [absoluteImage],
     datePublished: new Date(article.published_at || Date.now()).toISOString(),
     dateModified: new Date(article.updated_at || article.published_at || Date.now()).toISOString(),
-    author: {
-      '@type': 'Person',
-      name: author?.name || 'Redaksi',
-      url: author?.slug ? `${siteUrl}/author/${author.slug}` : siteUrl,
-      jobTitle: author?.role || 'Author'
-    },
+    author: authorPayload,
     publisher: {
       '@type': 'Organization',
       name: publisherName,
@@ -349,5 +385,26 @@ export function processArticleContent(
   html = injectAutoKeywordLinks(html, article.id, allArticles, 2);
 
   return sanitizeArticleHtml(html);
+}
+
+/**
+ * Determines whether an article is strictly eligible for the Google News sitemap.
+ * Criteria:
+ * 1. Must be explicitly news (is_news flag, NewsArticle schema, or news/berita category).
+ * 2. Must be published within the last 48 hours.
+ * Evergreen editorial guides and older articles are strictly excluded.
+ */
+export function isNewsArticleEligible(article: any, fortyEightHoursAgo: number): boolean {
+  if (!article || !article.published_at) return false;
+  const isNews = Boolean(
+    article.is_news === 1 ||
+    article.is_news === true ||
+    article.schema_type === 'NewsArticle' ||
+    article.category_slug === 'news' ||
+    article.category_slug === 'berita'
+  );
+  if (!isNews) return false;
+  const pubTime = new Date(article.published_at).getTime();
+  return !isNaN(pubTime) && pubTime >= fortyEightHoursAgo;
 }
 
