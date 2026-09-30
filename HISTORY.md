@@ -17,6 +17,47 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-8: Mission Control Production Hardening & Go-Live Readiness 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan audit kesiapan produksi komprehensif, verifikasi skema database D1, audit autentikasi/otorisasi, mitigasi kebocoran rahasia, penerapan migrasi produksi, deployment terkendali Cloudflare Workers, dan pengujian asap live (smoke testing) untuk seluruh tumpukan Hermes Mission Control (MC-1 s.d. MC-7).
+  - Invarian Keselamatan Produksi Wajib (Strict Safety Invariants):
+    - `automation_mode = OFF` dipertahankan secara absolut.
+    - `media_worker = DISABLED` dipertahankan secara absolut.
+    - `JEV_MODE = shadow` (otoritas eksekusi = 0) dipertahankan secara absolut.
+    - Zero autonomous article publication (tidak ada artikel yang diterbitkan otomatis).
+    - Zero real media jobs (tidak ada eksekusi AI/gambar berbayar fiktif).
+    - Zero Social activation (departemen Social tetap nonaktif / unstaffed).
+    - Mission Control beroperasi secara murni sebagai infrastruktur pengawasan operasional (*supervisory infrastructure*).
+- **Audit & Eksekusi Migrasi Produksi (Cloudflare D1):**
+  - Mengaudit status migrasi remote D1 `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`):
+    - `0024_mission_control_chat_and_commands.sql`: Dinilai `MIGRATION_0024_SAFE = true` (100% aditif, membuat tabel `mission_control_conversations`, `mission_control_messages`, `mission_control_commands` beserta indeks terkait tanpa DROP atau ALTER destruktif).
+    - `0025_mission_control_anomalies.sql`: Dinilai `MIGRATION_0025_SAFE = true` (100% aditif, membuat tabel `mission_control_anomalies`, `mission_control_anomaly_events` beserta indeks terkait tanpa modifikasi tabel inti).
+  - Menerapkan kedua migrasi secara terpisah dan berurutan pada basis data remote D1 produksi (`npx wrangler d1 migrations apply rancangloka_db --remote`).
+  - Memverifikasi keberadaan seluruh tabel dan indeks baru, serta memvalidasi invarian jumlah baris tabel inti sebelum vs sesudah migrasi: `articles = 6`, `article_publication_plans = 1`, `media_jobs = 0`, `publication_execution_receipts = 1`, `automation_control.mode = OFF`, `kill_switch_engaged = 0` (zero unexpected delta).
+- **Audit Autentikasi & Otorisasi:**
+  - Seluruh rute antarmuka pengguna (`/admin/mission-control`, `/staff`, `/departments`, `/office`, `/alerts`, `/staff/[agent_id]/chat`) dilindungi middleware sesi admin. Permintaan tanpa autentikasi dialihkan dengan kode HTTP 302 ke `/admin/login`.
+  - Seluruh endpoint API internal (`/api/admin/mission-control/state`, `/alerts`, `/chat/[agent_id]`) dilindungi dan mengembalikan HTTP 401 UNAUTHORIZED untuk permintaan tanpa sesi valid.
+  - Perintah chat divalidasi dengan model otoritas 4-tier: permintaan `READ_ONLY` dijawab dari telemetri; perintah `OPERATOR_COMMAND` dimasukkan ke antrean teraudit; permintaan tingkat tinggi `ADMIN_CONTROL` (misal aktivasi worker/kill switch) dan `DANGEROUS_PRODUCTION_ACTION` (misal force publish, raw SQL, raw shell) ditolak fail-closed dengan kode kesalahan eksplisit.
+- **Deployment Produksi Cloudflare Workers:**
+  - Build produksi Astro dan deployment Cloudflare Workers berhasil (`npm run deploy`):
+    - **Deployment Version ID:** `5caeb3bf-91e6-4bc2-b67b-c1765b2a3110` (aktif 100% di produksi).
+    - **Previous Deployment Version:** `fa1c8b93-b410-4800-8296-f4c88e5d809e`.
+    - **Source Git Commit:** `97e4eb90c07b0ccf703dd8423f8971b37b837253`.
+- **Pengujian Asap & Verifikasi Live (Smoke Tests):**
+  - Uji negatif keamanan live memverifikasi pengalihan 302 dan respons 401 fail-closed pada domain publik `https://rancangloka.com`.
+  - Uji interaksi live pada tabel D1 memverifikasi persistensi percakapan staf (`conv_evidence_researcher_lead`) dan penolakan otomatis perintah di luar allowlist (`COMMAND_NOT_ALLOWED`) tanpa eksekusi mutasi operasional.
+  - Uji anomali memverifikasi kondisi istirahat terencana (`media_worker = DISABLED`, `automation_mode = OFF`) dipetakan sebagai status yang diharapkan (`EXPECTED` / `INFO`) tanpa memicu alarm merah darurat.
+  - Seluruh suite pengujian lokal (MC-1 s.d. MC-7, soak safety, TypeScript typecheck, Astro production build) lulus 100%.
+- **Dokumentasi & Prosedur Rollback:**
+  - Membuat dokumen panduan operasional dan kesiapan go-live: `docs/HERMES_MC_8_PRODUCTION_HARDENING.md`.
+  - Mendokumentasikan prosedur rollback cepat Cloudflare Worker (`npx wrangler rollback fa1c8b93-b410-4800-8296-f4c88e5d809e`), strategi forward-fix skema D1, serta saklar darurat global (Emergency Kill Switch).
+- **Status Akhir:**
+  - `HERMES-MC-8 = COMPLETE`.
+  - Klasifikasi Go-Live: **`PRODUCTION_READY`**.
+  - Frontier saat ini: `HERMES-MC-8/COMPLETE`.
+  - Seluruh target milestone Hermes Mission Control (MC-1 s.d. MC-8) telah selesai diimplementasikan, dikeraskan, dimigrasikan, dan diterapkan di lingkungan produksi.
+
 ### HERMES-MC-7: Extensible Department Architecture & Organizational Expansion Framework 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**
