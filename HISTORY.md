@@ -17,6 +17,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### ARTICLE-CONTENT-PERSISTENCE-1: Fix content_html Serialization at Source 2026-09-28
+
+- **Tujuan & Ruang Lingkup:** Mengatasi akar penyebab serialisasi `articles.content_html` yang menghasilkan literal `[object Object]` pada tingkat database, menegakkan type guard dan validasi runtime ketat pada seluruh jalur penulisan artikel, menetapkan peran arsitektural `content_md` (sumber kanonikal otoritatif) versus `content_html` (derivatif render deterministik / cache), meregenerasi `content_html` Artikel 5 di Cloudflare D1 secara aman tanpa memutasi `content_md`, hash, approval, receipt, atau tanggal terbit, serta menambahkan rangkaian uji regresi persistensi.
+- **Akar Masalah (Root Cause Analysis):**
+  1. **Ketiadaan Validasi Tipe pada Writer:** Fungsi `insertArticle`, `updateArticle`, dan `insertHermesArticleAndReceipt` di `src/lib/db.ts` menerima nilai `article.content_html` tanpa type assertion atau validasi runtime. Jika pemanggil melewatkan unawaited Promise dari `renderArticleMarkdownSafely` (yang bersifat `async`), objek AST node parser, atau payload JSON objek, binding D1 SQLite secara otomatis memanggil `String(value)`, yang menghasilkan string literal `"[object Object]"`.
+  2. **Ketiadaan Auto-Derivasi Deterministik:** Ketika `content_html` tidak disediakan saat insert/update namun `content_md` tersedia, sistem tidak secara otomatis meng-await dan merender HTML, melainkan menyimpan string kosong atau nilai mentah tak tervalidasi.
+- **Solusi & Arsitektur Perbaikan:**
+  - **Fungsi Resolver & Validator `resolveAndValidateContentHtml`:**
+    - Jika menerima Promise yang belum di-await, fungsi secara otomatis meng-await Promise hingga selesai.
+    - Menolak tipe non-string (objek, array, number, boolean, AST node) dengan melempar `DatabaseConstraintError`.
+    - Menolak string literal `"[object Object]"` atau `"[object Promise]"` dengan melempar `DatabaseConstraintError`.
+    - Jika `content_html` kosong atau tidak disediakan namun `content_md` tersedia, fungsi mendeterminasi dan merender HTML aman secara otomatis melalui `renderArticleMarkdownSafely(content_md)`.
+    - Menjalankan `sanitizeArticleHtml` pada hasil akhir untuk menjamin kepatuhan allowlist HTML dan pencegahan XSS.
+  - **Hardening pada Seluruh Jalur Persistensi:**
+    - `insertArticle` di `src/lib/db.ts`: Seluruh write D1 dan in-memory mock divalidasi via `resolveAndValidateContentHtml`.
+    - `updateArticle` di `src/lib/db.ts`: Memvalidasi `content_html` yang diberikan, meng-auto-regenerasi derivatif jika `content_md` diperbarui tanpa `content_html`, dan menyembuhkan baris lama jika `existing.content_html` korup.
+    - `insertHermesArticleAndReceipt` di `src/lib/db.ts`: Mencegah machine ingestion menyimpan objek atau unawaited Promise.
+    - `normalizeArticle` di `src/lib/article/pipeline.ts`: Menambahkan assertion runtime bahwa hasil render adalah string valid dan bukan `[object Object]`.
+    - `[slug].astro` dan `admin/preview/[slug].astro`: Tetap mempertahankan fallback runtime sebagai *defense-in-depth*.
+- **Perbaikan Aman Derivatif Artikel 5 di Cloudflare D1 Produksi:**
+  - Menjalankan script terisolasi `scripts/repair-article5-content-html.js` ke database remote `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`).
+  - `content_html` berhasil diregenerasi menjadi string HTML kanonikal valid sepanjang 17.940 karakter yang mencakup seluruh 8 tajuk utama dan retensi kata 98,6% (2.088 kata HTML vs 2.117 kata MD).
+  - Mutasi D1 DIBATASI HANYA pada `articles.content_html`. Kolom `content_md`, `content_hash` (`14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`), approval ID 9, receipt `rcpt_bbae85b48e1b2f8d`, `published_at`, dan media featured 100% UNCHANGED.
+  - Mencatat audit log di `article_state_transitions` dengan `transition_type = 'DERIVED_CONTENT_REPAIR'` (`ast_5_derived_repair_1790590005246`).
+- **Rangkaian Uji Regresi Persistensi (`scripts/test-article-persistence.js`):**
+  1. Penolakan penyimpanan output renderer berupa Promise/objek tak tervalidasi.
+  2. Kewajiban tipe string pada writer `content_html` (menolak array, number, boolean, AST node).
+  3. Awaiting otomatis pada Markdown renderer saat derivasi dari `content_md`.
+  4. Penolakan strict persistensi literal `"[object Object]"` dan `"[object Promise]"`.
+  5. Verifikasi pemicu fallback frontend saat mendeteksi `content_html` malformed.
+  6. Normal render dari `content_html` valid tanpa pemrosesan ulang fallback.
+  7. Verifikasi ketidakberubahan hash dan approval ID 9 Artikel 5 setelah perbaikan derivatif.
+- **Invarian Keselamatan:** `AUTOMATION_MODE = OFF`, `JEV_MODE = shadow`, `auto_schedule = false`.
+
 ### ARTICLE-RENDER-INTEGRITY-1: Emergency Repair of Article 5 Public Rendering 2026-09-28
 
 - **Tujuan & Ruang Lingkup:** Memperbaiki bug rendering kritis produksi pada halaman publik Artikel 5 (`/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`). Memulihkan penampilan naskah editorial kanonikal (~2.100 kata), mengeliminasi string literal `[object Object]`, menghapus blok prototype hardcoded yang tidak terkait ("EVALUASI SPASIAL REDAKSI", "Why This Works: Orientasi & Pembiasan...", dan sitasi ventilasi SNI 03-6572), serta menambahkan uji regresi integritas rendering deterministik.

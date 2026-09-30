@@ -110,6 +110,9 @@ export async function normalizeArticle(rawContent: string, db: any): Promise<Nor
   const contentHash = await generateContentHash(markdownBody);
   const readingTime = calculateReadingTime(markdownBody);
   const contentHtml = await renderArticleMarkdownSafely(markdownBody);
+  if (typeof contentHtml !== 'string' || contentHtml.trim() === '[object Object]' || contentHtml.trim().startsWith('[object ')) {
+    throw new Error('Pipeline error: normalizeArticle rendered invalid content_html');
+  }
 
   // 5. Generate Slug
   const title = String(frontmatter.title).trim();

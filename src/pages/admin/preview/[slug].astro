@@ -7,7 +7,7 @@ import RelatedArticles from '../../../components/RelatedArticles.astro';
 import SocialShareBar from '../../../components/SocialShareBar.astro';
 import { getDb, getArticleBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../../../lib/db';
 import { extractTableOfContents, processArticleContent } from '../../../lib/seo';
-import { sanitizeArticleHtml } from '../../../lib/article/renderer.ts';
+import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../../../lib/article/renderer.ts';
 import { isValidAdminSession, getSafeAdminRedirect } from '../../../lib/auth';
 import { getArticleApprovalsHistory, getArticleReadiness } from '../../../lib/publication/service.ts';
 import { evaluateArticleMediaReadiness } from '../../../lib/media/readiness-reconciler.ts';
@@ -56,7 +56,18 @@ if (article) {
   ]);
 
   relatedArticles = fetchedRelated;
-  const safeArticleHtml = sanitizeArticleHtml(article.content_html);
+  let rawContentHtml = article.content_html;
+  const isMalformedHtml =
+    !rawContentHtml ||
+    typeof rawContentHtml !== 'string' ||
+    rawContentHtml.trim() === '[object Object]' ||
+    rawContentHtml.trim().length < 50;
+
+  if (isMalformedHtml && article.content_md) {
+    rawContentHtml = await renderArticleMarkdownSafely(article.content_md);
+  }
+
+  const safeArticleHtml = sanitizeArticleHtml(rawContentHtml);
   toc = extractTableOfContents(safeArticleHtml);
   processedHtml = processArticleContent(
     safeArticleHtml,
