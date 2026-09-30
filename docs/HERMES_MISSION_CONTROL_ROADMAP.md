@@ -114,6 +114,16 @@ The **HERMES-MC** (Hermes Mission Control) track establishes the operational vis
   - Strict secret redaction on all event and activity feeds.
   - Reconnection resilience and WebSocket / polling failover.
   - Sub-second UI responsiveness under event spikes.
+- **Status:** **[COMPLETED]**
+
+### HERMES-MC-9 — Role & Job Animation Layer
+- **Objective:** Deterministic, presentation-only job animation layer for Pixel Office so staff visually reflect real executing tasks without fake work or random movement.
+- **Requirements:**
+  - Strict mapping: `REAL TASK → CAPABILITY → STAFF → JOB VISUAL STATE → ROLE-SPECIFIC ANIMATION`.
+  - Zero fake work: Idle staff remain in Lounge (`IDLE_STANDBY`).
+  - Command queue state distinction: `QUEUED` does not animate work; `RUNNING` activates role animation; `COMPLETED` halts animation.
+  - Zero schema changes; full accessibility via `prefers-reduced-motion`.
+- **Status:** **[COMPLETED]**
 
 ---
 
@@ -132,15 +142,16 @@ The **HERMES-MC** (Hermes Mission Control) track establishes the operational vis
 
 ```
 1. MEDIA-A5.7-CLOSEOUT   [COMPLETED]
-2. HERMES-MC-0           [NEXT — Capability & Data Discovery]
-3. HERMES-MC-1           [Mission Control Core]
-4. HERMES-MC-2           [Staff Identity Registry]
-5. HERMES-MC-3           [Departments & Operational State]
-6. HERMES-MC-4           [Pixel Office V1]
-7. HERMES-MC-5           [Direct Staff Interaction]
-8. HERMES-MC-6           [Alert & Anomaly Escalation]
-9. HERMES-MC-7           [Department Expansion]
-10. HERMES-MC-8          [Production Hardening]
+2. HERMES-MC-0           [COMPLETED — Capability & Data Discovery]
+3. HERMES-MC-1           [COMPLETED — Mission Control Core]
+4. HERMES-MC-2           [COMPLETED — Staff Identity Registry]
+5. HERMES-MC-3           [COMPLETED — Departments & Operational State]
+6. HERMES-MC-4           [COMPLETED — Pixel Office V1]
+7. HERMES-MC-5           [COMPLETED — Direct Staff Interaction & Safe Queue]
+8. HERMES-MC-6           [COMPLETED — Alert & Anomaly Escalation]
+9. HERMES-MC-7           [COMPLETED — Department Expansion Architecture]
+10. HERMES-MC-8          [COMPLETED — Production Hardening & Go-Live]
+11. HERMES-MC-9          [COMPLETED — Role & Job Animation Layer]
 ── Parallel Track ──
-11. SOCIAL-S0+           [Social Pipeline Core & MC Department Integration]
+12. SOCIAL-S0+           [READY — Social Pipeline Core & MC Department Integration]
 ```
