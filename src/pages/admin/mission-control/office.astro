@@ -264,13 +264,13 @@ const getRoomHealthBadge = (health: string) => {
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 relative z-10">
         {rooms.map((room) => {
           const healthBadge = getRoomHealthBadge(room.health);
-          const isSocial = room.room_key === 'social_room';
+          const isUnavailable = !room.is_available;
           const isLounge = room.room_key === 'lounge';
 
           return (
             <div
               class={`rounded-2xl border transition relative overflow-hidden flex flex-col justify-between ${
-                isSocial
+                isUnavailable
                   ? 'bg-slate-900/40 border-slate-800/60 border-dashed min-h-[220px]'
                   : isLounge
                     ? 'bg-amber-950/20 border-amber-900/40 hover:border-amber-800/60 min-h-[260px]'
@@ -304,14 +304,14 @@ const getRoomHealthBadge = (health: string) => {
 
               <!-- Room Interior (Floor & Furniture) -->
               <div class="p-4 flex-1 flex flex-col justify-center relative">
-                {isSocial ? (
-                  <!-- Unstaffed Social Bay -->
+                {isUnavailable ? (
+                  <!-- Unstaffed / Unavailable Future Bay -->
                   <div class="flex flex-col items-center justify-center py-6 text-center space-y-2">
                     <div class="w-12 h-12 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-xl text-slate-500">
                       🔒
                     </div>
                     <div class="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
-                      RUANG DISTRIBUSI SOSIAL
+                      {room.title}
                     </div>
                     <div class="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono font-bold">
                       COMING LATER • NOT AVAILABLE

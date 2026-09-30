@@ -17,6 +17,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-7: Extensible Department Architecture & Organizational Expansion Framework 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengonversi arsitektur organisasi Mission Control dari struktur 6 departemen dan 6 staf yang bersifat fixed/hardcoded menjadi kerangka kerja extensible berbasis kontrak registri modular:
+    1. **Kontrak Registri Kapabilitas (`MissionControlCapabilityDefinition`):** Mendefinisikan kapabilitas mesin operasional kanonikal (`ARTICLE_WRITING`, `EVIDENCE_RESEARCH`, `EDITORIAL_QA`, `MEDIA_OPERATIONS`, `PUBLICATION_OPERATIONS`, `SYSTEM_TELEMETRY`, `SOCIAL_DISTRIBUTION`), keluarga perintah (`command_families`), read models, dan kelas anomali.
+    2. **Kontrak Plugin Departemen (`MissionControlDepartmentDefinition`):** Mendefinisikan unit organisasi, ketersediaan operasional, adapter kesehatan/tugas/aktivitas, metadata ruangan, zona kerja, urutan tampil, dan fungsionalitas registrasi dinamis (`registerDepartment`, `unregisterDepartment`, `resetDepartmentRegistry`, `getRegisteredDepartments`).
+    3. **Kontrak Registri Peran Staf (`MissionControlStaffDefinition`):** Menstandarisasi model identitas staf persona manusia di atas ID mesin kanonikal, mendukung pemetaan kapabilitas fleksibel, serta registrasi dinamis (`registerStaffMember`, `unregisterStaffMember`, `resetStaffRegistry`, `getStaffDefinitions`).
+  - Menghilangkan asumsi organisasi kaku dari komponen generik:
+    - Pixel Office merender ruangan secara dinamis dari `getRegisteredDepartments()` dengan ruang `Executive Lounge` (`lounge`) terintegrasi sebagai area rehat siaga bersama. Ruang yang belum tersedia secara runtime dirender sebagai `COMING LATER • NOT AVAILABLE`.
+    - Pixel Office merender sprite karakter secara dinamis dari seluruh staf aktif yang terdaftar dalam registri.
+    - Atribusi tugas (`attributeTaskOwnership`) mendukung perutean berbasis kapabilitas (`task.capability_id -> capability -> department -> staff`) serta pencocokan subsystem departemen terdaftar, dengan fallback fail-safe ke `UNASSIGNED`.
+    - Perutean anomali (`routeAnomalyByCapability`) memetakan anomali ke departemen dan staf berdasarkan metadata kapabilitas terdaftar.
+    - Penemuan perintah chat (`getAllowlistedCommandsForAgent`) menyelesaikan allowlist perintah dari kapabilitas staf tanpa eksekusi arbitrer.
+  - Membangun model baca terpadu organisasi: `getMissionControlOrganization(snapshot)` dan endpoint API `/api/admin/mission-control/organization`.
+  - Mempertahankan integritas departemen Social: `social` tetap terdaftar dengan status `NOT_AVAILABLE` dan `is_staffed: false` tanpa pembuatan agen palsu atau pipa penerbitan media sosial fiktif (track independen `SOCIAL-S0+`).
+- **Pengujian & Validasi:**
+  - Rangkaian pengujian ekspansi terfokus `scripts/test-mission-control-expansion.js` lulus 100% (12/12 tes) memverifikasi: registrasi dinamis departemen/staf/kapabilitas, penolakan duplikasi ID, resolusi kepemilikan kapabilitas, atribusi tugas & anomali dinamis, resolusi allowlist chat, ruangan & sprite Pixel Office dinamis, pemisahan display name vs machine ID, invarian unstaffed Social, model organisasi kanonikal, serta integritas deregistrasi dan reset.
+  - Pengujian Anomali `scripts/test-mission-control-anomalies.js` lulus 100% (20/20 tes).
+  - Pengujian Chat `scripts/test-mission-control-chat.js` lulus 100% (20/20 tes).
+  - Pengujian Pixel Office `scripts/test-mission-control-pixel-office.js` lulus 100% (20/20 tes).
+  - Pengujian Departemen `scripts/test-mission-control-departments.js` lulus 100% (18/18 tes).
+  - Pengujian Staff Registry `scripts/test-staff-registry.js` lulus 100% (16/16 tes).
+  - Pengujian Mission Control `scripts/test-mission-control.js` lulus 100% (10/10 tes).
+  - Pengujian regresi keselamatan `scripts/test-soak-safety.js` lulus 100% (54/54 tes).
+  - Validasi tipe `npx tsc --noEmit` lulus bersih tanpa kesalahan.
+  - Build produksi `npm run build` sukses (4.80s).
+- **Status Akhir:**
+  - `HERMES-MC-7 = COMPLETE`.
+  - Frontier saat ini: `HERMES-MC-8/READY`.
+
 ### HERMES-MC-6: Mission Control Anomaly Detection & Staff Escalation 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**

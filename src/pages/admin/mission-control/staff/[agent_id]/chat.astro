@@ -19,7 +19,7 @@ import {
   getStaffDefinitionByAgentId,
   getOrCreateConversation,
   getConversationMessages,
-  COMMAND_ALLOWLIST
+  getAllowlistedCommandsForAgent
 } from '../../../../../lib/mission-control/index.ts';
 
 const { agent_id } = Astro.params;
@@ -40,10 +40,8 @@ const staffState = snapshot.staff?.staff?.find((s: any) => s.agent_id === staff.
 const conversation = await getOrCreateConversation(db, staff.agent_id);
 const messages = await getConversationMessages(db, conversation.conversation_id);
 
-// Allowed commands for this staff member
-const allowedCommandDefs = Object.values(COMMAND_ALLOWLIST).filter((cmd) =>
-  cmd.target_agent_ids.includes(staff.agent_id)
-);
+// Allowed commands for this staff member resolved from capability registry contracts
+const allowedCommandDefs = getAllowlistedCommandsForAgent(staff.agent_id);
 
 const stateColor = (st: string) => {
   switch (st) {

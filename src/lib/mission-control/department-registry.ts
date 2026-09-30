@@ -25,6 +25,11 @@ import {
   getStaffRoster,
   getStaffDefinitions
 } from './staff-registry.ts';
+import {
+  type MissionControlCapabilityDefinition,
+  getCapabilityDefinition,
+  resolveCapabilityOwnership
+} from './capability-registry.ts';
 import { sanitizeString } from './redact.ts';
 
 export type DepartmentHealth =
@@ -36,7 +41,11 @@ export type DepartmentHealth =
   | 'UNKNOWN'
   | 'NOT_AVAILABLE';
 
-export type DepartmentAvailability = 'AVAILABLE' | 'NOT_AVAILABLE';
+export type DepartmentAvailability =
+  | 'AVAILABLE'
+  | 'NOT_AVAILABLE'
+  | 'AVAILABLE_READ_ONLY'
+  | 'AVAILABLE_CONTROLLED';
 
 export type ResponsibilityConfidence = 'EXACT' | 'DERIVED' | 'UNASSIGNED';
 
@@ -71,18 +80,29 @@ export interface DepartmentHandoff {
   evidence: string;
 }
 
-export interface DepartmentCanonicalConfig {
+export interface MissionControlDepartmentDefinition {
   department_id: DepartmentId;
   display_name: string;
+  short_name?: string;
   description: string;
   availability: DepartmentAvailability;
   is_staffed: boolean;
   capabilities: string[];
   source_systems: string[];
+  staff_roles?: string[];
   room_key: string;
   workstation_zone: string;
   display_order: number;
+  health_adapter?: string | null;
+  task_adapter?: string | null;
+  activity_adapter?: string | null;
+  anomaly_adapter?: string | null;
+  conversation_enabled?: boolean;
+  pixel_office_enabled?: boolean;
+  feature_flags?: Record<string, boolean>;
 }
+
+export type DepartmentCanonicalConfig = MissionControlDepartmentDefinition;
 
 export interface DepartmentOperationalStatus extends DepartmentCanonicalConfig {
   health: DepartmentHealth;
@@ -204,6 +224,55 @@ export const CANONICAL_DEPARTMENTS: DepartmentCanonicalConfig[] = [
   }
 ];
 
+// In-memory dynamic department store initialized with canonical baseline
+let dynamicDepartmentStore: Map<string, MissionControlDepartmentDefinition> = new Map(
+  CANONICAL_DEPARTMENTS.map((d) => [d.department_id, { ...d }])
+);
+
+/**
+ * Register a new department dynamically into Mission Control.
+ * Throws if department_id is missing or already registered.
+ */
+export function registerDepartment(definition: MissionControlDepartmentDefinition): void {
+  if (!definition || !definition.department_id) {
+    throw new Error('[DepartmentRegistry] Department registration requires a valid department_id');
+  }
+
+  if (dynamicDepartmentStore.has(definition.department_id)) {
+    throw new Error(`[DepartmentRegistry] Department with ID '${definition.department_id}' is already registered.`);
+  }
+
+  dynamicDepartmentStore.set(definition.department_id, { ...definition });
+}
+
+/**
+ * Unregister a department (primarily used in tests).
+ */
+export function unregisterDepartment(departmentId: string): boolean {
+  return dynamicDepartmentStore.delete(departmentId);
+}
+
+/**
+ * Reset department store to canonical baseline.
+ */
+export function resetDepartmentRegistry(): void {
+  dynamicDepartmentStore = new Map(CANONICAL_DEPARTMENTS.map((d) => [d.department_id, { ...d }]));
+}
+
+/**
+ * Retrieve all currently registered departments.
+ */
+export function getRegisteredDepartments(): MissionControlDepartmentDefinition[] {
+  return Array.from(dynamicDepartmentStore.values()).sort((a, b) => a.display_order - b.display_order);
+}
+
+/**
+ * Retrieve a specific department definition by machine ID.
+ */
+export function getDepartmentDefinition(departmentId: string): MissionControlDepartmentDefinition | null {
+  return dynamicDepartmentStore.get(departmentId) || null;
+}
+
 export const STAFF_ROOM_MAP: Record<string, string> = {
   content_writer_primary: 'editorial_room',
   editorial_qa_primary: 'editorial_room',
@@ -291,7 +360,33 @@ export function attributeTaskOwnership(task: TaskCard): TaskOwnershipInfo {
     };
   }
 
-  // 8. Unassigned fallback
+  // 8. Dynamic Capability-based attribution
+  const taskCapability = (task as any).capability_id;
+  if (taskCapability) {
+    const ownership = resolveCapabilityOwnership(taskCapability);
+    if (ownership.department_id) {
+      return {
+        department_id: ownership.department_id,
+        responsible_agent_id: ownership.responsible_agent_id,
+        responsibility_confidence: 'EXACT'
+      };
+    }
+  }
+
+  // 9. Dynamic registered department subsystem match
+  if (sub) {
+    const matchedDept = getDepartmentDefinition(sub);
+    if (matchedDept) {
+      const staffList = getStaffDefinitions().filter((s) => s.department_id === matchedDept.department_id);
+      return {
+        department_id: matchedDept.department_id,
+        responsible_agent_id: staffList.length === 1 ? staffList[0].agent_id : null,
+        responsibility_confidence: 'DERIVED'
+      };
+    }
+  }
+
+  // 10. Unassigned fallback
   return {
     department_id: null,
     responsible_agent_id: null,
@@ -806,8 +901,10 @@ export function getOrganizationSnapshot(snapshot: MissionControlSnapshot | null)
   const allTasks = snapshot?.pipeline?.tasks || [];
   const allActivities = snapshot?.activity || [];
 
+  const registeredDepts = getRegisteredDepartments();
+
   const summary: OrganizationSummary = {
-    total_departments: CANONICAL_DEPARTMENTS.length,
+    total_departments: registeredDepts.length,
     active_departments: 0,
     healthy_departments: 0,
     degraded_departments: 0,
@@ -825,7 +922,7 @@ export function getOrganizationSnapshot(snapshot: MissionControlSnapshot | null)
     total_blockers: 0
   };
 
-  const departments: DepartmentOperationalStatus[] = CANONICAL_DEPARTMENTS.map((deptConfig) => {
+  const departments: DepartmentOperationalStatus[] = registeredDepts.map((deptConfig) => {
     // 1. Filter staff members belonging to this department
     const deptStaff = staffRoster.staff.filter((s) => s.department_id === deptConfig.department_id);
 

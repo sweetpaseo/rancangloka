@@ -16,6 +16,11 @@
 
 import type { MissionControlSnapshot, TaskCard } from './types.ts';
 import { getStaffDefinitionByAgentId } from './staff-registry.ts';
+import {
+  getCapabilityDefinition,
+  resolveCapabilityOwnership,
+  getRegisteredCapabilities
+} from './capability-registry.ts';
 import { redactSensitiveString } from './redact.ts';
 import { getOrCreateConversation, appendMessage } from './chat.ts';
 
@@ -584,6 +589,47 @@ export function scanRawAnomaliesFromSnapshot(
   }
 
   return candidates;
+}
+
+/**
+ * Routes an arbitrary anomaly class or subsystem to its owning department and responsible staff
+ * using the Capability Registry and Department Registry contracts.
+ */
+export function routeAnomalyByCapability(
+  anomalyClass: string,
+  sourceSystem?: string
+): {
+  department_id: string | null;
+  responsible_agent_id: string | null;
+} {
+  if (!anomalyClass) {
+    return { department_id: null, responsible_agent_id: null };
+  }
+
+  // Look through registered capabilities for a match in anomaly_classes or source_systems
+  const registeredCaps = getRegisteredCapabilities();
+  for (const cap of registeredCaps) {
+    if (cap.anomaly_classes && cap.anomaly_classes.includes(anomalyClass)) {
+      return {
+        department_id: cap.owning_department_id,
+        responsible_agent_id: cap.default_agent_id
+      };
+    }
+  }
+
+  // Fallback to source system match if available
+  if (sourceSystem) {
+    for (const cap of registeredCaps) {
+      if (cap.source_systems && cap.source_systems.includes(sourceSystem)) {
+        return {
+          department_id: cap.owning_department_id,
+          responsible_agent_id: cap.default_agent_id
+        };
+      }
+    }
+  }
+
+  return { department_id: null, responsible_agent_id: null };
 }
 
 // ============================================================================

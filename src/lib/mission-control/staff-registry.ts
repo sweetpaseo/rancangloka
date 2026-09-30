@@ -38,13 +38,7 @@ export type StaffOperationalState =
   | 'OFFLINE'
   | 'UNKNOWN';
 
-export type DepartmentId =
-  | 'editorial'
-  | 'research_evidence'
-  | 'media'
-  | 'publication_operations'
-  | 'engineering_telemetry'
-  | 'social';
+export type DepartmentId = string;
 
 export interface DepartmentDefinition {
   department_id: DepartmentId;
@@ -56,18 +50,28 @@ export interface DepartmentDefinition {
   sort_order: number;
 }
 
-export interface StaffDefinition {
+export interface MissionControlStaffDefinition {
   agent_id: string;
   display_name: string;
   role: string;
   department_id: DepartmentId;
   description: string;
   avatar_key: string;
-  capabilities: StaffCapability[];
+  capabilities: string[];
   source_system: string;
   active: boolean;
   sort_order: number;
+  source_systems?: string[];
+  capability_ids?: string[];
+  state_adapter?: string | null;
+  task_adapter?: string | null;
+  activity_adapter?: string | null;
+  conversation_policy?: Record<string, any>;
+  alert_policy?: Record<string, any>;
+  room_policy?: Record<string, any>;
 }
+
+export type StaffDefinition = MissionControlStaffDefinition;
 
 export interface StaffCurrentTask {
   current_task_id: string;
@@ -249,6 +253,11 @@ const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
   }
 ];
 
+// In-memory dynamic staff registry store initialized with defaults
+let dynamicStaffStore: Map<string, MissionControlStaffDefinition> = new Map(
+  DEFAULT_STAFF_DEFINITIONS.map((s) => [s.agent_id, { ...s }])
+);
+
 // Central in-memory registry of display name overrides
 let customDisplayNames: Record<string, string> = {};
 
@@ -267,10 +276,44 @@ export function resetStaffDisplayNames(): void {
 }
 
 /**
+ * Register a new staff member dynamically into Mission Control.
+ * Throws if agent_id is invalid or already registered.
+ */
+export function registerStaffMember(definition: MissionControlStaffDefinition): void {
+  if (!definition || !definition.agent_id) {
+    throw new Error('[StaffRegistry] Staff registration requires a valid agent_id');
+  }
+
+  if (dynamicStaffStore.has(definition.agent_id)) {
+    throw new Error(`[StaffRegistry] Staff member with ID '${definition.agent_id}' is already registered.`);
+  }
+
+  dynamicStaffStore.set(definition.agent_id, {
+    ...definition,
+    capabilities: definition.capabilities || definition.capability_ids || []
+  });
+}
+
+/**
+ * Unregister a staff member (primarily for testing and dynamic teardown).
+ */
+export function unregisterStaffMember(agentId: string): boolean {
+  return dynamicStaffStore.delete(agentId);
+}
+
+/**
+ * Reset staff definitions store and display names to canonical defaults.
+ */
+export function resetStaffRegistry(): void {
+  dynamicStaffStore = new Map(DEFAULT_STAFF_DEFINITIONS.map((s) => [s.agent_id, { ...s }]));
+  customDisplayNames = {};
+}
+
+/**
  * Get active staff definitions with any centrally configured display names applied.
  */
 export function getStaffDefinitions(): StaffDefinition[] {
-  return DEFAULT_STAFF_DEFINITIONS.map((def) => ({
+  return Array.from(dynamicStaffStore.values()).map((def) => ({
     ...def,
     display_name: customDisplayNames[def.agent_id] || def.display_name
   }));

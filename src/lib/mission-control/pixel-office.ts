@@ -22,7 +22,9 @@ import {
 } from './staff-registry.ts';
 import {
   type DepartmentHealth,
-  getOrganizationSnapshot
+  getOrganizationSnapshot,
+  getRegisteredDepartments,
+  getDepartmentDefinition
 } from './department-registry.ts';
 
 export type OfficeStateReasonCategory =
@@ -238,8 +240,9 @@ export function deriveSpriteSpatialState(
   snapshot: MissionControlSnapshot | null,
   activeAnomalies: any[] = []
 ): OfficeStaffSprite {
-  const homeRoom = STAFF_HOME_ROOMS[staff.agent_id] || 'editorial_room';
-  const workPositionKey = STAFF_WORKSTATION_POSITIONS[staff.agent_id] || 'editorial_writer_desk';
+  const deptDef = getDepartmentDefinition(staff.department_id);
+  const homeRoom = STAFF_HOME_ROOMS[staff.agent_id] || deptDef?.room_key || 'editorial_room';
+  const workPositionKey = STAFF_WORKSTATION_POSITIONS[staff.agent_id] || `${staff.agent_id}_workstation`;
   const stateReason = evaluateStateReason(staff, snapshot);
 
   let targetRoomKey = homeRoom;
@@ -381,65 +384,51 @@ export function getPixelOfficeState(
     return deriveSpriteSpatialState(s, indexForLounge, snapshot, activeAnomalies);
   });
 
-  // Canonical rooms configuration
-  const roomConfigs = [
-    {
-      room_key: 'editorial_room',
-      title: 'Editorial Room',
-      subtitle: 'Penulisan & Kontrol Mutu',
-      zone: 'Zone E - Writing & Editorial QA',
-      department_id: 'editorial' as DepartmentId,
-      is_available: true
-    },
-    {
-      room_key: 'research_lab',
-      title: 'Research & Evidence Lab',
-      subtitle: 'Riset Fakta & Standar SNI',
-      zone: 'Zone R - Fact Checking & Reference Lab',
-      department_id: 'research_evidence' as DepartmentId,
-      is_available: true
-    },
-    {
-      room_key: 'media_room',
-      title: 'Media Operations',
-      subtitle: 'Generasi Visual & Aset R2',
-      zone: 'Zone M - Visual Processing Queue',
-      department_id: 'media' as DepartmentId,
-      is_available: true
-    },
-    {
-      room_key: 'publication_room',
-      title: 'Publication Operations',
-      subtitle: 'Konsol Dispatch & Gate',
-      zone: 'Zone P - Dispatch Console & Safety Gates',
-      department_id: 'publication_operations' as DepartmentId,
-      is_available: true
-    },
-    {
-      room_key: 'operations_room',
-      title: 'Engineering & Telemetry',
-      subtitle: 'Monolith Telemetri & JEV',
-      zone: 'Zone O - Telemetry Monolith & Decision Console',
-      department_id: 'engineering_telemetry' as DepartmentId,
-      is_available: true
-    },
-    {
+  // Dynamic rooms derived from registered departments + shared lounge
+  const registeredDepts = getRegisteredDepartments();
+  const roomConfigs: Array<{
+    room_key: string;
+    title: string;
+    subtitle: string;
+    zone: string;
+    department_id: string;
+    is_available: boolean;
+  }> = [];
+
+  for (const dept of registeredDepts) {
+    // If we've reached departments ordered after operations (or social), ensure lounge is inserted
+    if (dept.display_order >= 6 && !roomConfigs.some((r) => r.room_key === 'lounge')) {
+      roomConfigs.push({
+        room_key: 'lounge',
+        title: 'Executive Lounge',
+        subtitle: 'Area Rehat & Siaga',
+        zone: 'Zone L - Neutral Standby Lounge',
+        department_id: 'lounge',
+        is_available: true
+      });
+    }
+
+    roomConfigs.push({
+      room_key: dept.room_key,
+      title: dept.display_name,
+      subtitle: dept.department_id === 'social' ? 'Kapasitas Masa Depan (Unstaffed)' : dept.workstation_zone.split(' - ')[1] || dept.description.slice(0, 30),
+      zone: dept.workstation_zone,
+      department_id: dept.department_id,
+      is_available: dept.availability !== 'NOT_AVAILABLE' && dept.is_staffed
+    });
+  }
+
+  // Ensure lounge is always present if not already added
+  if (!roomConfigs.some((r) => r.room_key === 'lounge')) {
+    roomConfigs.push({
       room_key: 'lounge',
       title: 'Executive Lounge',
       subtitle: 'Area Rehat & Siaga',
       zone: 'Zone L - Neutral Standby Lounge',
-      department_id: 'lounge' as const,
+      department_id: 'lounge',
       is_available: true
-    },
-    {
-      room_key: 'social_room',
-      title: 'Social & Distribution',
-      subtitle: 'Kapasitas Masa Depan (Unstaffed)',
-      zone: 'Zone S - Unstaffed Distribution Bay',
-      department_id: 'social' as DepartmentId,
-      is_available: false
-    }
-  ];
+    });
+  }
 
   const rooms: OfficeRoom[] = roomConfigs.map((cfg) => {
     const occupants = sprites.filter((spr) => spr.room_key === cfg.room_key);

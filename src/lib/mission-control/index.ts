@@ -23,6 +23,7 @@ import { getStaffRoster } from './staff-registry.ts';
 import { getOrganizationSnapshot } from './department-registry.ts';
 import { getPixelOfficeState } from './pixel-office.ts';
 import { getAnomaliesSnapshot } from './anomalies.ts';
+import { getRegisteredCapabilities } from './capability-registry.ts';
 
 export * from './types.ts';
 export * from './redact.ts';
@@ -31,11 +32,70 @@ export * from './tasks.ts';
 export * from './activity.ts';
 export * from './scheduler.ts';
 export * from './summaries.ts';
+export * from './capability-registry.ts';
 export * from './staff-registry.ts';
 export * from './department-registry.ts';
 export * from './pixel-office.ts';
 export * from './chat.ts';
 export * from './anomalies.ts';
+
+export interface MissionControlOrganization {
+  generated_at: string;
+  departments: any[];
+  staff: any[];
+  capabilities: any[];
+  rooms: any[];
+  summary: any;
+  availability: Record<string, string>;
+  health: Record<string, string>;
+  workload: {
+    active_tasks: number;
+    blockers: number;
+  };
+  alerts: {
+    active_anomalies: number;
+    critical_count: number;
+    error_count: number;
+  };
+}
+
+export function getMissionControlOrganization(
+  snapshot: MissionControlSnapshot | null
+): MissionControlOrganization {
+  const orgSnapshot = getOrganizationSnapshot(snapshot);
+  const staffRoster = getStaffRoster(snapshot);
+  const capabilities = getRegisteredCapabilities();
+  const officeState = getPixelOfficeState(snapshot, snapshot?.anomalies?.active_anomalies || []);
+  const anomalies = snapshot?.anomalies;
+
+  const availabilityMap: Record<string, string> = {};
+  const healthMap: Record<string, string> = {};
+
+  for (const dept of orgSnapshot.departments) {
+    availabilityMap[dept.department_id] = dept.availability;
+    healthMap[dept.department_id] = dept.health;
+  }
+
+  return {
+    generated_at: new Date().toISOString(),
+    departments: orgSnapshot.departments,
+    staff: staffRoster.staff,
+    capabilities,
+    rooms: officeState.rooms,
+    summary: orgSnapshot.summary,
+    availability: availabilityMap,
+    health: healthMap,
+    workload: {
+      active_tasks: orgSnapshot.summary.total_active_tasks,
+      blockers: orgSnapshot.summary.total_blockers
+    },
+    alerts: {
+      active_anomalies: anomalies?.open_anomalies_count || 0,
+      critical_count: anomalies?.critical_count || 0,
+      error_count: anomalies?.error_count || 0
+    }
+  };
+}
 
 export async function getMissionControlSnapshot(db: any, env?: any): Promise<MissionControlSnapshot> {
   const [

@@ -14,6 +14,7 @@
 
 import { sanitizeString } from './redact.ts';
 import { getStaffDefinitionByAgentId } from './staff-registry.ts';
+import { getCapabilityDefinition } from './capability-registry.ts';
 import type { MissionControlSnapshot } from './types.ts';
 
 // ============================================================================
@@ -355,6 +356,51 @@ export const COMMAND_ALLOWLIST: Record<string, CommandDefinition> = {
     required_parameters: []
   }
 };
+
+/**
+ * Resolves allowlisted command definitions for a given staff agent.
+ * Combines explicit COMMAND_ALLOWLIST targets with command families declared
+ * in registered capabilities.
+ */
+export function getAllowlistedCommandsForAgent(agentId: string): CommandDefinition[] {
+  const staff = getStaffDefinitionByAgentId(agentId);
+  if (!staff) return [];
+
+  const allowedCmds: CommandDefinition[] = [];
+  const staffCapabilities = staff.capabilities || [];
+  const allowedFamilies = new Set<string>();
+
+  // Fetch command families from capability registry
+  for (const cid of staffCapabilities) {
+    const capDef = getCapabilityDefinition(cid);
+    if (capDef && Array.isArray(capDef.command_families)) {
+      for (const cmdType of capDef.command_families) {
+        allowedFamilies.add(cmdType);
+      }
+    }
+  }
+
+  // Iterate over COMMAND_ALLOWLIST
+  for (const cmd of Object.values(COMMAND_ALLOWLIST)) {
+    const isExplicitlyTargeted = cmd.target_agent_ids.includes(agentId);
+    const isShared = cmd.department_id === 'shared';
+    const isCapabilityAllowed = allowedFamilies.has(cmd.command_type);
+
+    if (isExplicitlyTargeted || isShared || isCapabilityAllowed) {
+      allowedCmds.push(cmd);
+    }
+  }
+
+  return allowedCmds;
+}
+
+/**
+ * Check if a command type is permitted for a specific agent based on registry contracts.
+ */
+export function isCommandAllowedForAgent(agentId: string, commandType: string): boolean {
+  const allowed = getAllowlistedCommandsForAgent(agentId);
+  return allowed.some((c) => c.command_type === commandType);
+}
 
 // ============================================================================
 // In-Memory Storage & D1 Bridge (Dual Storage Fallback)
