@@ -17,6 +17,42 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-4: RancangLoka Pixel Office — Spatial Operations Visualization 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Membangun visualisasi spasial 2D Pixel Office pertama untuk Hermes Mission Control pada rute `/admin/mission-control/office` dan API `/api/admin/mission-control/office`.
+  - Menerjemahkan status operasional nyata staf dan departemen ke dalam denah kantor spasial retro deterministik (bukan simulasi game; tanpa fabrikasi tugas, tanpa berkeliaran/wandering acak, tanpa obrolan sintetis).
+  - Mengamankan invarian pengawasan *read-only*: dilarang menerapkan chat staf langsung, eksekusi perintah, tombol publish, tombol retry, pengaktifan media worker, pengubahan otomasi publikasi, maupun otoritas JEV.
+  - Memetakan staf dan ruangan secara deterministik:
+    - `WORKING`: Staf berada di meja kerja departemen masing-masing (Joko di meja tulis editorial, Irwan di lab riset, Budi di konsol media, Sari di konsol publikasi, Dimas di konsol telemetri).
+    - `REVIEWING`: Rina ditempatkan di meja review editorial (`editorial_review_desk`).
+    - `IDLE`: Staf siaga ditempatkan di Executive Lounge (`lounge_seat_1` .. `6`).
+    - `BLOCKED`: Staf tetap di departemen dengan suar peringatan kritis berdenyut (*pulsing warning beacon*).
+    - `OFFLINE`: Membedakan secara visual penonaktifan sengaja (Budi: `media_worker = DISABLED` ditampilkan sebagai `Worker Disabled`, redup/dimmed, tanpa suar darurat merah) vs kegagalan telemetri (daemon offline ditampilkan `Offline` dengan peringatan).
+    - `UNKNOWN`: Posisi netral di ruang asal dengan label eksplisit `UNKNOWN`.
+    - `social_room`: Secara ketat unstaffed dan berlabel jelas `COMING LATER • NOT AVAILABLE`.
+  - Menggunakan aset SVG pixel-art lokal berbobot ultra-ringan (`image-rendering: pixelated;`), tanpa engine game berat (bebas Phaser/Unity), serta mendukung penuh preferensi aksesibilitas `prefers-reduced-motion`.
+- **Komponen & Arsitektur Terpasang (`src/lib/mission-control/pixel-office.ts`):**
+  1. **Registri Posisi Kantor (`OFFICE_POSITIONS`):** 13 titik koordinat persentase stabil di 6 ruangan departemen, lounge, dan social bay kosong.
+  2. **Evaluasi Alasan Status (`evaluateStateReason`):** Pembedaan deterministik antara `INTENTIONAL_DISABLED` vs `TELEMETRY_OFFLINE`.
+  3. **Penurunan Spasial Sprite (`deriveSpriteSpatialState`):** Pemetaan posisi non-overlapping, penentuan mode visual (`ACTIVE`, `IDLE`, `REVIEWING`, `BLOCKED`, `DIMMED`, `UNKNOWN`), dan tingkat peringatan.
+  4. **Master Assembler Snapshot (`getPixelOfficeState`):** Agregasi snapshot spasial kantor lengkap dengan metrik ringkasan staf, ruangan, dan event aktivitas riil D1.
+- **Antarmuka & Rute Web:**
+  - **Halaman Pixel Office (`/admin/mission-control/office.astro`):** Denah kantor 2D retro bergaya pixel art modern, 6 kartu ruangan departemen/lounge/social, sprite karakter SVG dengan ciri visual unik (rompi & kacamata Joko, seragam riset Irwan, kardigan QA Rina, earphone teknisi Budi, seragam dispatch Sari, hoodie terminal Dimas), status bar operasional, strip aktivitas riil D1, serta modal inspeksi murni read-only untuk staf dan ruangan.
+  - **API Pixel Office (`/api/admin/mission-control/office.ts`):** Rute GET terautentikasi sesi admin untuk pertukaran data JSON status spasial kantor.
+  - **Integrasi Navigasi (`AdminLayout.astro`, `index.astro`, `staff.astro`, `departments/index.astro`):** Penambahan sub-navigasi 4 tab (Cockpit, Staff Registry, Departemen, Pixel Office) dan breadcrumbs admin.
+- **Pengujian & Validasi:**
+  - Rangkaian pengujian terfokus `scripts/test-mission-control-pixel-office.js` lulus 100% (20/20 tes) memverifikasi: validitas kunci avatar, ruang asal staf, resolusi posisi, pemetaan WORKING/IDLE/REVIEWING/BLOCKED/OFFLINE/UNKNOWN, pembedaan worker disabled tanpa alarm palsu, kestabilan posisi tanpa tumpang tindih, ruang Social kosong, sifat model read-only (nol mutasi), dukungan reduced-motion, dan akurasi counter ringkasan.
+  - Pengujian Departemen `scripts/test-mission-control-departments.js` lulus 100% (18/18 tes).
+  - Pengujian Staff Registry `scripts/test-staff-registry.js` lulus 100% (16/16 tes).
+  - Pengujian Mission Control `scripts/test-mission-control.js` lulus 100% (10/10 tes).
+  - Validasi tipe `npx tsc --noEmit` lulus bersih tanpa kesalahan.
+  - Build produksi `npm run build` sukses (5.30s).
+  - Pengujian regresi keselamatan `test-soak-safety.js` (54 tes) lulus sempurna.
+- **Status Akhir:**
+  - `HERMES-MC-4 = COMPLETE`.
+  - Frontier saat ini: `HERMES-MC-5/READY`.
+
 ### HERMES-MC-3: Mission Control Department Operations & Organizational State 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**

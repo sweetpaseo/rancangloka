@@ -1,0 +1,792 @@
+---
+/**
+ * RancangLoka Hermes Mission Control — Pixel Office (2D Spatial Visualization)
+ * Milestone: HERMES-MC-4
+ * Route: /admin/mission-control/office
+ * 
+ * Strict Invariants:
+ * 1. Read-only spatial visualization layer.
+ * 2. Visualizes REAL Mission Control state — zero simulated or fabricated activity.
+ * 3. Media Worker DISABLED is visually distinct (Worker Disabled, dimmed, NO red emergency beacon).
+ * 4. IDLE staff appear in Lounge; WORKING staff appear at department workstation.
+ * 5. REVIEWING has deterministic review desk placement.
+ * 6. BLOCKED staff remain in department with critical warning markers.
+ * 7. Social room is strictly unstaffed and labeled COMING LATER / NOT AVAILABLE.
+ * 8. Zero command/chat execution authority (no chat, no retry, no dispatch).
+ * 9. Reduced motion supported; mobile responsive with scrollable floor plan.
+ */
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb } from '../../../lib/db.ts';
+import { getMissionControlSnapshot, getPixelOfficeState } from '../../../lib/mission-control/index.ts';
+import type { OfficeStaffSprite, OfficeRoom } from '../../../lib/mission-control/pixel-office.ts';
+
+const env = (Astro.locals as any)?.runtime?.env || (globalThis as any).process?.env || {};
+const db = (await getDb(Astro.locals)) || env.DB || (Astro.locals as any)?.db;
+
+const snapshot = await getMissionControlSnapshot(db, env);
+const office = getPixelOfficeState(snapshot);
+const { rooms, sprites, summary, recent_activity } = office;
+
+// State badge styling helper
+const getStateBadgeStyle = (sprite: OfficeStaffSprite) => {
+  switch (sprite.visual_mode) {
+    case 'ACTIVE':
+      return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+    case 'REVIEWING':
+      return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40';
+    case 'IDLE':
+      return 'bg-slate-700 text-slate-300 border-slate-600';
+    case 'BLOCKED':
+      return 'bg-rose-500/30 text-rose-300 border-rose-500/50 animate-pulse';
+    case 'DIMMED':
+      if (sprite.state_reason.category === 'INTENTIONAL_DISABLED') {
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+      }
+      return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+    default:
+      return 'bg-slate-800 text-slate-400 border-slate-700';
+  }
+};
+
+const getRoomHealthBadge = (health: string) => {
+  switch (health) {
+    case 'HEALTHY':
+      return { text: 'HEALTHY', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+    case 'ACTIVE':
+      return { text: 'ACTIVE', bg: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+    case 'STANDBY':
+      return { text: 'STANDBY', bg: 'bg-slate-700/50 text-slate-300 border-slate-600/50' };
+    case 'DEGRADED':
+      return { text: 'DEGRADED', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+    case 'BLOCKED':
+      return { text: 'BLOCKED', bg: 'bg-rose-500/20 text-rose-400 border-rose-500/40' };
+    case 'UNSTAFFED':
+      return { text: 'TIDAK TERSEDIA', bg: 'bg-zinc-800 text-zinc-500 border-zinc-700' };
+    default:
+      return { text: health, bg: 'bg-slate-800 text-slate-400 border-slate-700' };
+  }
+};
+---
+
+<AdminLayout title="Hermes Mission Control — Pixel Office">
+  <div class="space-y-5 pb-16 font-sans">
+    <!-- 1. Header Banner -->
+    <div class="bg-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl space-y-4">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              HERMES MISSION CONTROL
+            </span>
+            <span class="text-slate-600">•</span>
+            <span class="text-xs font-mono text-slate-400">2D Pixel Office • Spatial Operations</span>
+            <span class="text-slate-600">•</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              READ-ONLY
+            </span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-outfit font-black text-white tracking-tight mt-1.5 flex items-center gap-2.5">
+            <span>👾</span>
+            <span>RancangLoka Pixel Office</span>
+          </h1>
+          <p class="text-xs text-slate-400 mt-1 max-w-3xl font-mono">
+            Visualisasi spasial operasional 2D retro berbasis telemetri riil Mission Control. Staf ditempatkan secara deterministik berdasarkan status kerja: meja penulisan, meja review, lab riset, konsol dispatch, hingga sofa siaga di Lounge.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-right hidden sm:block">
+            <div class="text-[10px] font-mono uppercase text-slate-500">Evaluasi Telemetri</div>
+            <div class="text-xs font-mono text-slate-300" id="live-time-display">
+              {new Date(office.generated_at).toLocaleTimeString('id-ID', { hour12: false })} WIB
+            </div>
+          </div>
+          <button
+            type="button"
+            id="btn-refresh-office"
+            class="rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 text-xs font-outfit font-bold transition flex items-center gap-2 shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          >
+            <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+              <path d="M16 21h5v-5"></path>
+            </svg>
+            <span>Segarkan</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Sub-Tabs -->
+      <div class="flex items-center gap-2 border-t border-slate-800/80 pt-4 text-xs font-outfit font-bold overflow-x-auto pb-1">
+        <a
+          href="/admin/mission-control"
+          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2 whitespace-nowrap"
+        >
+          <span>🛰️</span>
+          <span>Cockpit Operasional</span>
+        </a>
+        <a
+          href="/admin/mission-control/staff"
+          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2 whitespace-nowrap"
+        >
+          <span>👥</span>
+          <span>Staff Registry</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">6 Staf</span>
+        </a>
+        <a
+          href="/admin/mission-control/departments"
+          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2 whitespace-nowrap"
+        >
+          <span>🏢</span>
+          <span>Departemen</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">6 Divisi</span>
+        </a>
+        <a
+          href="/admin/mission-control/office"
+          class="px-4 py-2 rounded-xl bg-blue-600 text-white shadow-xs flex items-center gap-2 whitespace-nowrap"
+        >
+          <span>👾</span>
+          <span>Pixel Office</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-blue-700 text-[10px] font-mono">2D</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 2. Office Status Bar & Envelopes -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs font-mono">
+      <!-- Working -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Bekerja</span>
+        </div>
+        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.working}</div>
+      </div>
+      <!-- Reviewing -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+          <span>Review</span>
+        </div>
+        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.reviewing}</div>
+      </div>
+      <!-- Idle -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <span>Lounge</span>
+        </div>
+        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.idle}</div>
+      </div>
+      <!-- Blocked -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <span>Terblokir</span>
+        </div>
+        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.blocked}</div>
+      </div>
+      <!-- Offline -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-zinc-400"></span>
+          <span>Offline</span>
+        </div>
+        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.offline}</div>
+      </div>
+      <!-- Automation -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+        <div class="text-[10px] text-slate-500 uppercase font-bold">Automation</div>
+        <div class="text-sm font-bold text-slate-800 font-outfit mt-1">
+          <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${summary.automation_mode === 'OFF' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+            {summary.automation_mode}
+          </span>
+        </div>
+      </div>
+      <!-- Media Worker -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+        <div class="text-[10px] text-slate-500 uppercase font-bold">Media Worker</div>
+        <div class="text-sm font-bold text-slate-800 font-outfit mt-1">
+          <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${summary.media_worker === 'DISABLED' ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-800'}`}>
+            {summary.media_worker}
+          </span>
+        </div>
+      </div>
+      <!-- Jev Mode -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+        <div class="text-[10px] text-slate-500 uppercase font-bold">JEV Mode</div>
+        <div class="text-sm font-bold text-slate-800 font-outfit mt-1">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
+            {summary.jev_mode}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. MAIN PIXEL OFFICE 2D FLOOR PLAN -->
+    <div class="bg-[#14161f] border-2 border-slate-800/90 rounded-3xl p-4 sm:p-6 shadow-2xl relative overflow-hidden">
+      <!-- Retro Scanline / Pixel Grid Overlay (Subtle) -->
+      <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(#2d3348_1px,transparent_1px)] [background-size:16px_16px] opacity-25"></div>
+
+      <!-- Floor Header -->
+      <div class="relative z-10 flex items-center justify-between border-b border-slate-800/80 pb-4 mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+          <div>
+            <h2 class="text-base font-outfit font-black text-slate-100 tracking-wide uppercase flex items-center gap-2">
+              <span>Denah Kantor Operasional RancangLoka</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 bg-slate-800 text-slate-400 rounded">Floor Plan 2D</span>
+            </h2>
+            <p class="text-[11px] font-mono text-slate-400">
+              Klik pada karakter staf atau ruangan untuk melihat telemetri mendalam tanpa kontrol mutasi.
+            </p>
+          </div>
+        </div>
+
+        <div class="hidden sm:flex items-center gap-3 text-[11px] font-mono text-slate-400">
+          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Kerja</span>
+          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Review</span>
+          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-400"></span> Lounge</span>
+          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Terblokir</span>
+        </div>
+      </div>
+
+      <!-- 2D OFFICE GRID ROOMS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 relative z-10">
+        {rooms.map((room) => {
+          const healthBadge = getRoomHealthBadge(room.health);
+          const isSocial = room.room_key === 'social_room';
+          const isLounge = room.room_key === 'lounge';
+
+          return (
+            <div
+              class={`rounded-2xl border transition relative overflow-hidden flex flex-col justify-between ${
+                isSocial
+                  ? 'bg-slate-900/40 border-slate-800/60 border-dashed min-h-[220px]'
+                  : isLounge
+                    ? 'bg-amber-950/20 border-amber-900/40 hover:border-amber-800/60 min-h-[260px]'
+                    : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 min-h-[260px]'
+              }`}
+              id={`room-card-${room.room_key}`}
+            >
+              <!-- Room Header Bar -->
+              <button
+                type="button"
+                class="w-full text-left p-3.5 bg-slate-950/60 border-b border-slate-800/80 flex items-center justify-between gap-2 hover:bg-slate-900/80 transition cursor-pointer"
+                data-room-inspect={room.room_key}
+                title="Klik untuk inspeksi ruangan"
+              >
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-outfit font-bold text-slate-100">{room.title}</span>
+                    <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${healthBadge.bg}`}>
+                      {healthBadge.text}
+                    </span>
+                  </div>
+                  <div class="text-[10px] font-mono text-slate-400 mt-0.5">{room.subtitle}</div>
+                </div>
+
+                <div class="text-right">
+                  <span class="text-[10px] font-mono px-2 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                    {room.occupants.length} Staf
+                  </span>
+                </div>
+              </button>
+
+              <!-- Room Interior (Floor & Furniture) -->
+              <div class="p-4 flex-1 flex flex-col justify-center relative">
+                {isSocial ? (
+                  <!-- Unstaffed Social Bay -->
+                  <div class="flex flex-col items-center justify-center py-6 text-center space-y-2">
+                    <div class="w-12 h-12 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-xl text-slate-500">
+                      🔒
+                    </div>
+                    <div class="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      RUANG DISTRIBUSI SOSIAL
+                    </div>
+                    <div class="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono font-bold">
+                      COMING LATER • NOT AVAILABLE
+                    </div>
+                    <p class="text-[10px] font-mono text-slate-500 max-w-[200px]">
+                      Ruang kapasitas masa depan. Dilarang diisi staf persona fiktif.
+                    </p>
+                  </div>
+                ) : (
+                  <!-- Active Room Floor with Workstations & Sprites -->
+                  <div class="space-y-3">
+                    {room.occupants.length === 0 ? (
+                      <div class="py-6 text-center text-[11px] font-mono text-slate-500 italic">
+                        Tidak ada staf di ruangan ini (semua staf sedang di Lounge atau pos lain).
+                      </div>
+                    ) : (
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {room.occupants.map((spr) => {
+                          const badgeStyle = getStateBadgeStyle(spr);
+                          const isDimmed = spr.visual_mode === 'DIMMED';
+                          const isBlocked = spr.visual_mode === 'BLOCKED';
+
+                          return (
+                            <button
+                              type="button"
+                              class={`group relative p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                                isBlocked
+                                  ? 'bg-rose-950/30 border-rose-800/80 hover:border-rose-600'
+                                  : isDimmed
+                                    ? 'bg-slate-950/40 border-slate-800/60 opacity-60 hover:opacity-100 hover:border-slate-700'
+                                    : 'bg-slate-950/70 border-slate-800/90 hover:border-blue-500/50 hover:bg-slate-900'
+                              }`}
+                              data-staff-inspect={spr.agent_id}
+                              title={`Klik untuk melihat detail ${spr.display_name}`}
+                            >
+                              <!-- Pixel Avatar Character -->
+                              <div class="relative flex-shrink-0">
+                                <div class="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden pixel-avatar-box">
+                                  {(spr.avatar_key === 'editorial_writer_01' || spr.avatar_key === 'avatar_joko') && (
+                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                      {/* Joko: Editorial Lead - Brown vest, glasses, pen */}
+                                      <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
+                                      <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
+                                      <rect x="10" y="12" width="4" height="2" fill="#1e293b" />
+                                      <rect x="18" y="12" width="4" height="2" fill="#1e293b" />
+                                      <rect x="14" y="13" width="4" height="1" fill="#94a3b8" />
+                                      <rect x="13" y="16" width="6" height="1" fill="#d97706" />
+                                      <rect x="8" y="18" width="16" height="10" fill="#78350f" />
+                                      <rect x="12" y="20" width="8" height="8" fill="#f8fafc" />
+                                      <rect x="14" y="22" width="4" height="6" fill="#0284c7" />
+                                    </svg>
+                                  )}
+                                  {(spr.avatar_key === 'editorial_qa_01' || spr.avatar_key === 'avatar_irina') && (
+                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                      {/* Rina: Editorial QA - Burgundy cardigan, sharp glasses */}
+                                      <rect x="8" y="4" width="16" height="7" fill="#4c0519" />
+                                      <rect x="10" y="10" width="12" height="8" fill="#ffedd5" />
+                                      <rect x="11" y="12" width="4" height="2" fill="#be123c" />
+                                      <rect x="17" y="12" width="4" height="2" fill="#be123c" />
+                                      <rect x="15" y="13" width="2" height="1" fill="#be123c" />
+                                      <rect x="13" y="16" width="6" height="1" fill="#e11d48" />
+                                      <rect x="8" y="18" width="16" height="10" fill="#881337" />
+                                      <rect x="12" y="19" width="8" height="9" fill="#fdf2f8" />
+                                    </svg>
+                                  )}
+                                  {(spr.avatar_key === 'research_evidence_01' || spr.avatar_key === 'avatar_irwan') && (
+                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                      {/* Irwan: Research Specialist - Teal/Blue shirt, notebook */}
+                                      <rect x="9" y="4" width="14" height="6" fill="#1e293b" />
+                                      <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                      <rect x="11" y="13" width="3" height="2" fill="#0f172a" />
+                                      <rect x="18" y="13" width="3" height="2" fill="#0f172a" />
+                                      <rect x="13" y="16" width="6" height="1" fill="#b45309" />
+                                      <rect x="8" y="18" width="16" height="10" fill="#0f766e" />
+                                      <rect x="13" y="19" width="6" height="9" fill="#ccfbf1" />
+                                    </svg>
+                                  )}
+                                  {(spr.avatar_key === 'media_ops_01' || spr.avatar_key === 'avatar_budi') && (
+                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                      {/* Budi: Media Technician - Orange gear, headphones */}
+                                      <rect x="6" y="9" width="3" height="6" fill="#ea580c" />
+                                      <rect x="23" y="9" width="3" height="6" fill="#ea580c" />
+                                      <rect x="8" y="7" width="16" height="2" fill="#ea580c" />
+                                      <rect x="9" y="5" width="14" height="5" fill="#334155" />
+                                      <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
+                                      <rect x="11" y="13" width="3" height="2" fill="#1e293b" />
+                                      <rect x="18" y="13" width="3" height="2" fill="#1e293b" />
+                                      <rect x="8" y="18" width="16" height="10" fill="#c2410c" />
+                                    </svg>
+                                  )}
+                                  {(spr.avatar_key === 'publication_ops_01' || spr.avatar_key === 'avatar_sari') && (
+                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                      {/* Sari: Publication Dispatcher - Emerald green jacket, clock */}
+                                      <rect x="8" y="4" width="16" height="6" fill="#14532d" />
+                                      <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
+                                      <rect x="11" y="13" width="3" height="2" fill="#052e16" />
+                                      <rect x="18" y="13" width="3" height="2" fill="#052e16" />
+                                      <rect x="13" y="16" width="6" height="1" fill="#ca8a04" />
+                                      <rect x="8" y="18" width="16" height="10" fill="#15803d" />
+                                      <rect x="12" y="19" width="8" height="9" fill="#dcfce7" />
+                                    </svg>
+                                  )}
+                                  {(spr.avatar_key === 'telemetry_01' || spr.avatar_key === 'avatar_dimas') && (
+                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                      {/* Dimas: Engineering & Telemetry - Dark purple hoodie, terminal badge */}
+                                      <rect x="8" y="4" width="16" height="7" fill="#312e81" />
+                                      <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                      <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
+                                      <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
+                                      <rect x="13" y="16" width="6" height="1" fill="#4338ca" />
+                                      <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
+                                      <rect x="12" y="20" width="8" height="8" fill="#1e1b4b" />
+                                    </svg>
+                                  )}
+                                </div>
+
+                                <!-- Subtle Status Marker on Sprite -->
+                                {isBlocked && (
+                                  <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 border-2 border-slate-900 flex items-center justify-center text-[8px] text-white font-bold animate-ping">
+                                    !
+                                  </span>
+                                )}
+                              </div>
+
+                              <!-- Info & State Text -->
+                              <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-1">
+                                  <div class="text-xs font-outfit font-bold text-slate-100 group-hover:text-blue-400 transition truncate">
+                                    {spr.display_name}
+                                  </div>
+                                </div>
+                                <div class="text-[10px] font-mono text-slate-400 truncate">
+                                  {spr.role}
+                                </div>
+                                <div class="mt-1 flex items-center gap-1.5 flex-wrap">
+                                  <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${badgeStyle}`}>
+                                    {spr.badge_text}
+                                  </span>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <!-- Room Footer Info Bar -->
+              <div class="p-3 bg-slate-950/80 border-t border-slate-800/60 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                <span class="truncate max-w-[180px]">{room.zone}</span>
+                <span class="text-slate-500 flex items-center gap-1">
+                  <span>Tugas:</span>
+                  <strong class="text-slate-300 font-bold">{room.active_tasks_count}</strong>
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    <!-- 4. LIVE ACTIVITY STRIP -->
+    <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-2xs space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+          <h3 class="text-sm font-outfit font-bold text-slate-900">Aktivitas Operasional Terkini</h3>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-500">Real D1 Telemetry</span>
+        </div>
+        <span class="text-[10px] font-mono text-slate-400">Zero Synthetic Chatter</span>
+      </div>
+
+      <div class="divide-y divide-slate-100">
+        {recent_activity.length === 0 ? (
+          <div class="py-4 text-center text-xs font-mono text-slate-400 italic">
+            Belum ada aktivitas baru tercatat dalam jendela waktu ini.
+          </div>
+        ) : (
+          recent_activity.slice(0, 5).map((act) => (
+            <div class="py-2.5 flex items-center justify-between gap-3 text-xs">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold shrink-0">
+                  {act.type}
+                </span>
+                <span class="text-slate-700 font-medium truncate">{act.summary}</span>
+              </div>
+              <div class="text-[10px] font-mono text-slate-400 shrink-0">
+                {new Date(act.timestamp).toLocaleTimeString('id-ID', { hour12: false })} WIB
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+
+    <!-- 5. INSPECTION MODAL (Purely Read-Only, No Action Authority) -->
+    <div
+      id="inspect-modal"
+      class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div class="bg-[#14161f] border-2 border-slate-700/80 rounded-3xl max-w-lg w-full p-6 text-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+        <!-- Modal Header -->
+        <div class="flex items-start justify-between border-b border-slate-800 pb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="modal-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold uppercase border border-blue-500/30">
+                STAFF INSPECTOR
+              </span>
+              <span class="text-[10px] font-mono text-slate-500">READ-ONLY</span>
+            </div>
+            <h3 id="modal-title" class="text-xl font-outfit font-black text-white mt-1">
+              Detail Inspeksi
+            </h3>
+            <p id="modal-subtitle" class="text-xs font-mono text-slate-400 mt-0.5">
+              Identitas mesin & telemetri operasional
+            </p>
+          </div>
+          <button
+            type="button"
+            id="modal-close-btn"
+            class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xl leading-none"
+            aria-label="Tutup dialog inspeksi"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Modal Body Content -->
+        <div id="modal-body" class="space-y-4 text-xs font-mono">
+          <!-- Populated dynamically via client script -->
+        </div>
+
+        <!-- Modal Footer Actions (Links Only, Zero Command Buttons) -->
+        <div class="border-t border-slate-800 pt-4 flex items-center justify-between gap-3">
+          <div class="text-[10px] text-slate-500 font-mono">
+            Zero mutation authority.
+          </div>
+          <div class="flex items-center gap-2">
+            <a
+              id="modal-staff-link"
+              href="/admin/mission-control/staff"
+              class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-outfit font-bold text-xs border border-slate-700 transition"
+            >
+              Buka Staff Registry →
+            </a>
+            <button
+              type="button"
+              id="modal-ok-btn"
+              class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-outfit font-bold text-xs transition cursor-pointer"
+            >
+              Selesai
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Raw State Payload for Client Hydration & Safe Inspection -->
+  <script id="office-data-payload" type="application/json" set:html={JSON.stringify(office)}></script>
+
+  <style>
+    /* Crisp retro pixel rendering */
+    .pixelated {
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+    }
+
+    /* Accessibility: Respect Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      ::before,
+      ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+
+  <script is:inline>
+    (function () {
+      const payloadEl = document.getElementById('office-data-payload');
+      if (!payloadEl) return;
+
+      let officeData;
+      try {
+        officeData = JSON.parse(payloadEl.textContent || '{}');
+      } catch (e) {
+        console.error('Failed to parse office telemetry payload', e);
+        return;
+      }
+
+      const modal = document.getElementById('inspect-modal');
+      const modalTag = document.getElementById('modal-tag');
+      const modalTitle = document.getElementById('modal-title');
+      const modalSubtitle = document.getElementById('modal-subtitle');
+      const modalBody = document.getElementById('modal-body');
+      const modalCloseBtn = document.getElementById('modal-close-btn');
+      const modalOkBtn = document.getElementById('modal-ok-btn');
+      const modalStaffLink = document.getElementById('modal-staff-link');
+
+      function closeModal() {
+        if (modal) modal.classList.add('hidden');
+      }
+
+      if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+      if (modalOkBtn) modalOkBtn.addEventListener('click', closeModal);
+      if (modal) {
+        modal.addEventListener('click', function (e) {
+          if (e.target === modal) closeModal();
+        });
+      }
+
+      // Handle staff inspection
+      document.querySelectorAll('[data-staff-inspect]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const agentId = btn.getAttribute('data-staff-inspect');
+          const sprite = (officeData.sprites || []).find(function (s) {
+            return s.agent_id === agentId;
+          });
+          if (!sprite || !modal) return;
+
+          modalTag.textContent = 'STAFF INSPECTOR';
+          modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold uppercase border border-blue-500/30';
+          modalTitle.textContent = sprite.display_name;
+          modalSubtitle.textContent = sprite.role + ' • ' + sprite.agent_id;
+
+          if (modalStaffLink) {
+            modalStaffLink.href = '/admin/mission-control/staff?staff=' + encodeURIComponent(sprite.agent_id);
+            modalStaffLink.textContent = 'Lihat di Staff Registry →';
+            modalStaffLink.classList.remove('hidden');
+          }
+
+          modalBody.innerHTML = `
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Status Operasional:</span>
+                <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
+                  sprite.visual_mode === 'ACTIVE'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : sprite.visual_mode === 'BLOCKED'
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    : 'bg-slate-800 text-slate-300 border border-slate-700'
+                }">${sprite.badge_text}</span>
+              </div>
+              <div class="flex items-start justify-between gap-2">
+                <span class="text-slate-400">Penjelasan Telemetri:</span>
+                <span class="text-slate-200 text-right font-medium max-w-[280px]">${sprite.state_reason.summary}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Ruangan Spasial:</span>
+                <span class="text-slate-200 font-bold">${sprite.room_key}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Posisi Kerja:</span>
+                <span class="text-slate-300">${sprite.position_key}</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+              <div class="text-slate-400 font-bold">Tugas Berjalan:</div>
+              <div class="text-slate-200">${sprite.current_task_title || 'Tidak ada tugas aktif (Siaga)'}</div>
+              ${sprite.current_task_status ? `<div class="text-[10px] text-blue-400">Tahap: ${sprite.current_task_status}</div>` : ''}
+            </div>
+
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+              <div class="text-slate-400 font-bold">Kapabilitas Mesin:</div>
+              <div class="flex flex-wrap gap-1 mt-1">
+                ${(sprite.capabilities || []).map(function (c) {
+                  return `<span class="px-1.5 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 rounded text-[9px]">${c}</span>`;
+                }).join('')}
+              </div>
+            </div>
+          `;
+
+          modal.classList.remove('hidden');
+        });
+      });
+
+      // Handle room inspection
+      document.querySelectorAll('[data-room-inspect]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const roomKey = btn.getAttribute('data-room-inspect');
+          const room = (officeData.rooms || []).find(function (r) {
+            return r.room_key === roomKey;
+          });
+          if (!room || !modal) return;
+
+          modalTag.textContent = 'ROOM INSPECTOR';
+          modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase border border-amber-500/30';
+          modalTitle.textContent = room.title;
+          modalSubtitle.textContent = room.zone;
+
+          if (modalStaffLink) {
+            if (room.department_id && room.department_id !== 'lounge' && room.department_id !== 'social') {
+              modalStaffLink.href = '/admin/mission-control/departments/' + encodeURIComponent(room.department_id);
+              modalStaffLink.textContent = 'Buka Detail Departemen →';
+              modalStaffLink.classList.remove('hidden');
+            } else {
+              modalStaffLink.classList.add('hidden');
+            }
+          }
+
+          modalBody.innerHTML = `
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Kesehatan Ruangan:</span>
+                <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-slate-800 text-slate-200 border border-slate-700">${room.health}</span>
+              </div>
+              <div class="flex items-start justify-between gap-2">
+                <span class="text-slate-400">Bukti Evaluasi:</span>
+                <span class="text-slate-200 text-right font-medium max-w-[280px]">${room.health_evidence}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Jumlah Penghuni:</span>
+                <span class="text-slate-200 font-bold">${room.occupants.length} Staf</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Tugas Aktif:</span>
+                <span class="text-slate-300">${room.active_tasks_count}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Penghambat (Blockers):</span>
+                <span class="text-slate-300 font-bold ${room.blockers_count > 0 ? 'text-rose-400' : 'text-slate-300'}">${room.blockers_count}</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+              <div class="text-slate-400 font-bold">Staf di Ruangan:</div>
+              <div class="space-y-1 mt-1">
+                ${room.occupants.length === 0
+                  ? '<div class="text-slate-500 italic">Ruangan kosong</div>'
+                  : room.occupants.map(function (o) {
+                      return `<div class="flex items-center justify-between py-0.5">
+                        <span class="text-slate-200">${o.display_name} (${o.role})</span>
+                        <span class="text-[10px] text-slate-400">${o.badge_text}</span>
+                      </div>`;
+                    }).join('')}
+              </div>
+            </div>
+          `;
+
+          modal.classList.remove('hidden');
+        });
+      });
+
+      // Manual refresh button handler
+      const refreshBtn = document.getElementById('btn-refresh-office');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function () {
+          window.location.reload();
+        });
+      }
+
+      // Safe 30s auto-refresh polling (client-side only, no heavy game loop)
+      let refreshTimeout = setTimeout(function poll() {
+        fetch('/api/admin/mission-control/office')
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data && data.generated_at) {
+              // Update live time display
+              const timeDisplay = document.getElementById('live-time-display');
+              if (timeDisplay) {
+                timeDisplay.textContent = new Date(data.generated_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
+              }
+            }
+          })
+          .catch(function (err) {
+            console.warn('Auto-refresh poll skipped', err);
+          })
+          .finally(function () {
+            refreshTimeout = setTimeout(poll, 30000);
+          });
+      }, 30000);
+    })();
+  </script>
+</AdminLayout>

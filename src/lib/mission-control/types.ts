@@ -208,4 +208,5 @@ export interface MissionControlSnapshot {
   jev: JevObservabilitySummary;
   staff?: any;
   organization?: any;
+  office?: any;
 }
