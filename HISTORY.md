@@ -17,6 +17,47 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-9: Mission Control Role & Job Animation Layer 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengembangkan lapisan animasi peran dan tugas (*Role & Job Animation Layer*) untuk dasbor Pixel Office Hermes Mission Control.
+  - Memastikan setiap staf menampilkan animasi visual yang sesuai secara deterministik hanya jika terdapat tugas riil yang sedang diproses (`REAL TASK` → `CAPABILITY` → `STAFF` → `JOB VISUAL STATE` → `ROLE-SPECIFIC ANIMATION`).
+  - Strict Presentation-Only Invariant: Dilarang keras merekayasa aktivitas (*zero fake work*), menggerakkan staf secara acak (*zero random movement*), atau mengubah otoritas eksekusi produksi (`automation_mode = OFF`, `media_worker = DISABLED`, `JEV = shadow / zero authority`).
+- **Komponen Utama yang Dibangun:**
+  1. **Model Status Visual Pekerjaan (`StaffWorkVisualState`):**
+     - Didefinisikan pada `src/lib/mission-control/job-animation-registry.ts`.
+     - Menyimpan atribut: `agent_id`, `capability_id`, `task_id`, `task_type`, `task_status`, `task_label`, `animation_key`, `workstation_key`, `visual_detail`, `started_at`, `freshness`, `evidence_reference`, dan `is_actively_working`.
+  2. **Registri Animasi Sentral (`JOB_ANIMATION_REGISTRY`):**
+     - Mengelola 17 kunci animasi standar: `IDLE_STANDBY`, `ARTICLE_TYPING`, `ARTICLE_REWRITE`, `RESEARCH_BROWSING`, `EVIDENCE_READING`, `QA_REVIEW`, `QA_CHECKLIST`, `MEDIA_PROCESSING`, `MEDIA_REVIEW`, `PUBLICATION_MONITORING`, `PUBLICATION_DISPATCH`, `TELEMETRY_MONITORING`, `JEV_ANALYSIS`, `BLOCKED_WARNING`, `OFFLINE_DISABLED`, `UNKNOWN_NEUTRAL`, `WORKING_GENERIC`.
+  3. **Visualisasi Spesifik Peran Staf:**
+     - **Joko (Content Writer):** `ARTICLE_TYPING` (mengetik naskah) dan `ARTICLE_REWRITE` (revisi) hanya saat tugas aktif berjalan; `IDLE_STANDBY` di Lounge saat kosong.
+     - **Irwan (Research & Evidence):** `RESEARCH_BROWSING` (riset standar bangunan) dan `EVIDENCE_READING` (evaluasi sitasi).
+     - **Rina (Editorial QA):** `QA_REVIEW` (review naskah) dan `QA_CHECKLIST` (pemeriksaan checklist First Article Gate, bukan persetujuan otomatis).
+     - **Budi (Media Operations):** Tetap `OFFLINE_DISABLED` (lencana Worker Disabled, konsol temaram, tanpa alarm) karena `media_worker = DISABLED`.
+     - **Sari (Publication Operations):** `PUBLICATION_MONITORING` (pemantauan jadwal terencana) karena `automation_mode = OFF`; tidak pernah berpura-pura melakukan `PUBLICATION_DISPATCH`.
+     - **Dimas (Engineering & Telemetry):** `TELEMETRY_MONITORING` dan `JEV_ANALYSIS` (hanya saat evaluasi bayangan aktif, zero publication authority).
+  4. **Pembedaan Status Antrean Perintah (MC-5):**
+     - `QUEUED`: Staf tetap di Lounge dengan `IDLE_STANDBY` (tidak mengetik atau bekerja prematur).
+     - `RUNNING`: Staf berpindah ke workstation dan menampilkan animasi kerja spesifik peran.
+     - `COMPLETED`: Animasi kerja berhenti seketika dan staf kembali ke Lounge.
+  5. **Label Tugas Riil & Modal Inspektur:**
+     - Menampilkan label ringkas dari judul tugas nyata (misal `Menulis: Struktur Beton Bertulang`), tanpa teks rekayasa.
+     - Modal inspeksi staf menyajikan rincian animasi, deskripsi visual, status kesegaran telemetri, dan penanda `⚡ Visualisasi berdasarkan telemetry nyata`.
+  6. **Aksesibilitas & Performa Ringan:**
+     - Didukung penuh oleh CSS murni berakselerasi perangkat keras (zero game engine / Phaser / PixiJS).
+     - Mematuhi preferensi `prefers-reduced-motion` (menonaktifkan seluruh loop animasi dan pernapasan tanpa menghilangkan konteks spasial dan teks).
+- **Pengujian & Verifikasi:**
+  - Membuat test suite `scripts/test-mission-control-job-animation.js` (21 skenario uji lulus 100%).
+  - Menjalankan seluruh rangkaian regresi Mission Control (MC-1 s.d. MC-8, soak safety, TypeScript typecheck, Astro build) dengan hasil lulus 100%.
+  - Verifikasi browser live pada production URL (`https://rancangloka.com/admin/mission-control/office`) memvalidasi tampilan denah, tata letak staf, lencana siaga/offline, dan interaktivitas modal inspektur.
+- **Deployment Produksi:**
+  - Deployment presentasi berhasil ke Cloudflare Workers (`npx wrangler deploy`).
+  - Current Version ID: `b2f29a65-643c-4ce3-9e5e-8af93c3cc560`.
+  - Zero schema change / zero database migration.
+- **Status Akhir:**
+  - `HERMES-MC-9 = COMPLETE`.
+  - Frontier saat ini: `HERMES-MC-9/COMPLETE`.
+
 ### HERMES-MC-8: Mission Control Production Hardening & Go-Live Readiness 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**

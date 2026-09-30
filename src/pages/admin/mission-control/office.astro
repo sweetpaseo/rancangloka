@@ -18,7 +18,11 @@
 
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { getDb } from '../../../lib/db.ts';
-import { getMissionControlSnapshot, getPixelOfficeState } from '../../../lib/mission-control/index.ts';
+import {
+  getMissionControlSnapshot,
+  getPixelOfficeState,
+  JOB_ANIMATION_REGISTRY
+} from '../../../lib/mission-control/index.ts';
 import type { OfficeStaffSprite, OfficeRoom } from '../../../lib/mission-control/pixel-office.ts';
 
 const env = (Astro.locals as any)?.runtime?.env || (globalThis as any).process?.env || {};
@@ -349,7 +353,7 @@ const getRoomHealthBadge = (health: string) => {
                             >
                               <!-- Pixel Avatar Character -->
                               <div class="relative flex-shrink-0">
-                                <div class="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden pixel-avatar-box">
+                                <div class={`w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden pixel-avatar-box ${spr.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[spr.animation_key]?.css_animation_class || '') : ''}`}>
                                   {(spr.avatar_key === 'editorial_writer_01' || spr.avatar_key === 'avatar_joko') && (
                                     <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
                                       {/* Joko: Editorial Lead - Brown vest, glasses, pen */}
@@ -434,6 +438,11 @@ const getRoomHealthBadge = (health: string) => {
                                     !
                                   </span>
                                 )}
+                                {spr.work_visual_state?.is_actively_working && (
+                                  <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 border border-slate-900 flex items-center justify-center text-[8px] text-white font-bold shadow-xs" title={spr.work_visual_state.visual_detail}>
+                                    {JOB_ANIMATION_REGISTRY[spr.animation_key]?.prop_icon || '⚡'}
+                                  </span>
+                                )}
                               </div>
 
                               <!-- Info & State Text -->
@@ -450,6 +459,11 @@ const getRoomHealthBadge = (health: string) => {
                                   <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${badgeStyle}`}>
                                     {spr.badge_text}
                                   </span>
+                                  {spr.task_label && (
+                                    <span class="text-[9px] font-mono text-emerald-400 font-semibold truncate max-w-[140px]" title={spr.task_label}>
+                                      {spr.task_label}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </button>
@@ -593,6 +607,112 @@ const getRoomHealthBadge = (health: string) => {
       image-rendering: crisp-edges;
     }
 
+    /* Role-Specific Work Animations (Subtle & Non-distracting) */
+    @keyframes typingPulse {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-1.5px); }
+    }
+    .animate-typing-loop {
+      animation: typingPulse 0.9s infinite ease-in-out;
+    }
+
+    @keyframes rewritePulse {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 1; filter: drop-shadow(0 0 2px #38bdf8); }
+    }
+    .animate-rewrite-pulse {
+      animation: rewritePulse 1.2s infinite ease-in-out;
+    }
+
+    @keyframes researchScan {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.25); }
+    }
+    .animate-research-scan {
+      animation: researchScan 1.6s infinite ease-in-out;
+    }
+
+    @keyframes evidenceFlip {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .animate-evidence-flip {
+      animation: evidenceFlip 1.8s infinite ease-in-out;
+    }
+
+    @keyframes qaReview {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-1.5deg); }
+      75% { transform: rotate(1.5deg); }
+    }
+    .animate-qa-review {
+      animation: qaReview 2s infinite ease-in-out;
+    }
+
+    @keyframes checklistCheck {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 1; filter: drop-shadow(0 0 3px #10b981); }
+    }
+    .animate-checklist-check {
+      animation: checklistCheck 1.4s infinite ease-in-out;
+    }
+
+    @keyframes mediaRender {
+      0%, 100% { filter: drop-shadow(0 0 1px #f97316); }
+      50% { filter: drop-shadow(0 0 4px #ea580c); }
+    }
+    .animate-media-render {
+      animation: mediaRender 2s infinite ease-in-out;
+    }
+
+    @keyframes mediaInspect {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    .animate-media-inspect {
+      animation: mediaInspect 2.2s infinite ease-in-out;
+    }
+
+    @keyframes schedulePulse {
+      0%, 100% { opacity: 0.85; }
+      50% { opacity: 1; filter: drop-shadow(0 0 2px #10b981); }
+    }
+    .animate-schedule-pulse {
+      animation: schedulePulse 1.5s infinite ease-in-out;
+    }
+
+    @keyframes dispatchPulse {
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(1.04); filter: brightness(1.3); }
+    }
+    .animate-dispatch-pulse {
+      animation: dispatchPulse 1s infinite ease-in-out;
+    }
+
+    @keyframes telemetryWave {
+      0%, 100% { filter: drop-shadow(0 0 1px #818cf8); }
+      50% { filter: drop-shadow(0 0 4px #6366f1); }
+    }
+    .animate-telemetry-wave {
+      animation: telemetryWave 1.6s infinite ease-in-out;
+    }
+
+    @keyframes jevRadar {
+      0%, 100% { filter: drop-shadow(0 0 1px #c084fc); }
+      50% { filter: drop-shadow(0 0 5px #a855f7); }
+    }
+    .animate-jev-radar {
+      animation: jevRadar 1.8s infinite ease-in-out;
+    }
+
+    @keyframes idleBreathing {
+      0%, 100% { transform: translateY(0); opacity: 0.95; }
+      50% { transform: translateY(-0.8px); opacity: 1; }
+    }
+    .animate-idle-breathing {
+      animation: idleBreathing 3s infinite ease-in-out;
+    }
+
     /* Accessibility: Respect Reduced Motion */
     @media (prefers-reduced-motion: reduce) {
       *,
@@ -602,6 +722,8 @@ const getRoomHealthBadge = (health: string) => {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+        transform: none !important;
+        filter: none !important;
       }
     }
   </style>
@@ -668,7 +790,7 @@ const getRoomHealthBadge = (health: string) => {
           }
 
           modalBody.innerHTML = `
-            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
+            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-slate-400">Status Operasional:</span>
                 <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
@@ -680,8 +802,12 @@ const getRoomHealthBadge = (health: string) => {
                 }">${sprite.badge_text}</span>
               </div>
               <div class="flex items-start justify-between gap-2">
-                <span class="text-slate-400">Penjelasan Telemetri:</span>
-                <span class="text-slate-200 text-right font-medium max-w-[280px]">${sprite.state_reason.summary}</span>
+                <span class="text-slate-400">Animasi Kerja:</span>
+                <span class="text-emerald-400 font-mono font-bold text-[11px]">${sprite.animation_key || 'IDLE_STANDBY'}</span>
+              </div>
+              <div class="flex items-start justify-between gap-2">
+                <span class="text-slate-400">Detail Visual:</span>
+                <span class="text-slate-200 text-right font-medium max-w-[280px]">${(sprite.work_visual_state && sprite.work_visual_state.visual_detail) || sprite.state_reason.summary}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-slate-400">Ruangan Spasial:</span>
@@ -693,19 +819,29 @@ const getRoomHealthBadge = (health: string) => {
               </div>
             </div>
 
-            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
-              <div class="text-slate-400 font-bold">Tugas Berjalan:</div>
-              <div class="text-slate-200">${sprite.current_task_title || 'Tidak ada tugas aktif (Siaga)'}</div>
-              ${sprite.current_task_status ? `<div class="text-[10px] text-blue-400">Tahap: ${sprite.current_task_status}</div>` : ''}
+            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-bold">Tugas Berjalan:</span>
+                <span class="text-[10px] text-slate-500 font-mono">Task ID: ${(sprite.work_visual_state && sprite.work_visual_state.task_id) || '-'}</span>
+              </div>
+              <div class="text-slate-200 font-medium">${sprite.task_label || sprite.current_task_title || 'Tidak ada tugas aktif (Siaga di Lounge)'}</div>
+              <div class="text-[10px] text-slate-400 font-mono flex items-center justify-between border-t border-slate-800/60 pt-1.5">
+                <span>Tahap: <strong class="text-blue-400">${sprite.current_task_status || '-'}</strong></span>
+                <span>Kesegaran: <strong class="text-slate-300">${(sprite.work_visual_state && sprite.work_visual_state.freshness) || 'RECENT'}</strong></span>
+              </div>
             </div>
 
-            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
               <div class="text-slate-400 font-bold">Kapabilitas Mesin:</div>
               <div class="flex flex-wrap gap-1 mt-1">
                 ${(sprite.capabilities || []).map(function (c) {
                   return `<span class="px-1.5 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 rounded text-[9px]">${c}</span>`;
                 }).join('')}
               </div>
+            </div>
+
+            <div class="text-[10px] font-mono text-slate-500 text-center pt-1 border-t border-slate-800/60">
+              ⚡ Visualisasi berdasarkan telemetry nyata • Zero synthetic animation
             </div>
           `;
 

@@ -994,7 +994,9 @@ export function deriveStaffState(
  */
 export function getStaffRoster(snapshot: MissionControlSnapshot | null): StaffRosterSnapshot {
   const definitions = getStaffDefinitions();
-  const activities = snapshot?.activity || [];
+  const activities = Array.isArray(snapshot?.activity)
+    ? snapshot.activity
+    : (Array.isArray((snapshot?.activity as any)?.events) ? (snapshot?.activity as any).events : []);
 
   const summary: StaffSummaryCounts = {
     total: definitions.length,

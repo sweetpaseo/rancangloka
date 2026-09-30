@@ -26,6 +26,12 @@ import {
   getRegisteredDepartments,
   getDepartmentDefinition
 } from './department-registry.ts';
+import {
+  type JobAnimationKey,
+  type StaffWorkVisualState,
+  deriveStaffWorkVisualState,
+  getAnimationDefinition
+} from './job-animation-registry.ts';
 
 export type OfficeStateReasonCategory =
   | 'ACTIVE_WORK'
@@ -71,6 +77,9 @@ export interface OfficeStaffSprite {
   last_activity_at: string | null;
   active_anomaly_title?: string | null;
   active_anomaly_severity?: string | null;
+  animation_key: JobAnimationKey;
+  work_visual_state: StaffWorkVisualState;
+  task_label: string | null;
 }
 
 export interface OfficeRoom {
@@ -244,6 +253,7 @@ export function deriveSpriteSpatialState(
   const homeRoom = STAFF_HOME_ROOMS[staff.agent_id] || deptDef?.room_key || 'editorial_room';
   const workPositionKey = STAFF_WORKSTATION_POSITIONS[staff.agent_id] || `${staff.agent_id}_workstation`;
   const stateReason = evaluateStateReason(staff, snapshot);
+  const workVisualState = deriveStaffWorkVisualState(staff, snapshot);
 
   let targetRoomKey = homeRoom;
   let targetPositionKey = workPositionKey;
@@ -268,7 +278,7 @@ export function deriveSpriteSpatialState(
       targetRoomKey = homeRoom;
       targetPositionKey = workPositionKey;
       visualMode = 'ACTIVE';
-      badgeText = 'Bekerja';
+      badgeText = workVisualState.task_label || 'Bekerja';
       break;
     }
 
@@ -276,7 +286,7 @@ export function deriveSpriteSpatialState(
       targetRoomKey = homeRoom;
       targetPositionKey = staff.agent_id === 'editorial_qa_primary' ? 'editorial_review_desk' : workPositionKey;
       visualMode = 'REVIEWING';
-      badgeText = 'Review Naskah';
+      badgeText = workVisualState.task_label || 'Review Naskah';
       break;
     }
 
@@ -359,7 +369,10 @@ export function deriveSpriteSpatialState(
     capabilities: staff.capabilities,
     last_activity_at: staff.last_activity_at,
     active_anomaly_title: activeAnomTitle,
-    active_anomaly_severity: activeAnomSeverity
+    active_anomaly_severity: activeAnomSeverity,
+    animation_key: workVisualState.animation_key,
+    work_visual_state: workVisualState,
+    task_label: workVisualState.task_label
   };
 }
 

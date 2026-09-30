@@ -36,6 +36,7 @@ export * from './capability-registry.ts';
 export * from './staff-registry.ts';
 export * from './department-registry.ts';
 export * from './pixel-office.ts';
+export * from './job-animation-registry.ts';
 export * from './chat.ts';
 export * from './anomalies.ts';
 
