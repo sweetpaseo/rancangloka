@@ -1,0 +1,414 @@
+---
+/**
+ * RancangLoka Hermes Mission Control — Direct Staff Chat & Command Thread
+ * Milestone: HERMES-MC-5
+ * Route: /admin/mission-control/staff/[agent_id]/chat
+ * 
+ * Strict Invariants:
+ * 1. Conversational interface to canonical Hermes capabilities.
+ * 2. Zero arbitrary shell, SQL, or unrestricted MCP execution.
+ * 3. Commands strictly matched against allowlist and capability boundaries.
+ * 4. High-authority actions fail closed.
+ * 5. Protected by admin_session middleware.
+ */
+
+import AdminLayout from '../../../../../layouts/AdminLayout.astro';
+import { getDb } from '../../../../../lib/db.ts';
+import {
+  getMissionControlSnapshot,
+  getStaffDefinitionByAgentId,
+  getOrCreateConversation,
+  getConversationMessages,
+  COMMAND_ALLOWLIST
+} from '../../../../../lib/mission-control/index.ts';
+
+const { agent_id } = Astro.params;
+if (!agent_id) {
+  return Astro.redirect('/admin/mission-control/staff');
+}
+
+const staff = getStaffDefinitionByAgentId(agent_id);
+if (!staff) {
+  return Astro.redirect('/admin/mission-control/staff');
+}
+
+const env = (Astro.locals as any)?.runtime?.env || (globalThis as any).process?.env || {};
+const db = (await getDb(Astro.locals)) || env.DB || (Astro.locals as any)?.db;
+
+const snapshot = await getMissionControlSnapshot(db, env);
+const staffState = snapshot.staff?.staff?.find((s: any) => s.agent_id === staff.agent_id);
+const conversation = await getOrCreateConversation(db, staff.agent_id);
+const messages = await getConversationMessages(db, conversation.conversation_id);
+
+// Allowed commands for this staff member
+const allowedCommandDefs = Object.values(COMMAND_ALLOWLIST).filter((cmd) =>
+  cmd.target_agent_ids.includes(staff.agent_id)
+);
+
+const stateColor = (st: string) => {
+  switch (st) {
+    case 'WORKING': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    case 'REVIEWING': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+    case 'BLOCKED': return 'bg-rose-500/20 text-rose-400 border-rose-500/30 animate-pulse';
+    case 'OFFLINE': return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+    default: return 'bg-slate-800 text-slate-300 border-slate-700';
+  }
+};
+---
+
+<AdminLayout title={`Chat dengan ${staff.display_name} | Hermes Mission Control`}>
+  <div class="space-y-4 pb-12 font-sans max-w-5xl mx-auto">
+    <!-- 1. Header Banner & Identity Card -->
+    <div class="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <!-- Avatar Icon -->
+          <div class="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl flex-shrink-0 shadow-inner">
+            {staff.agent_id === 'content_writer_primary' && '✍️'}
+            {staff.agent_id === 'evidence_researcher_lead' && '🔬'}
+            {staff.agent_id === 'editorial_qa_primary' && '📋'}
+            {staff.agent_id === 'lokamedia_worker_primary' && '🎨'}
+            {staff.agent_id === 'publication_dispatcher_core' && '🚀'}
+            {staff.agent_id === 'telemetry_observer_jev' && '🛰️'}
+          </div>
+
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider">
+                {staff.department_id.replace('_', ' ')}
+              </span>
+              <span class="text-slate-600">•</span>
+              <span class="text-[10px] font-mono text-slate-400">ID: {staff.agent_id}</span>
+              <span class="text-slate-600">•</span>
+              <span class={`px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold border ${stateColor(staffState?.state || 'IDLE')}`}>
+                {staffState?.state || 'IDLE'}
+              </span>
+            </div>
+            <h1 class="text-xl sm:text-2xl font-outfit font-black text-white tracking-tight mt-0.5">
+              Percakapan: {staff.display_name}
+            </h1>
+            <p class="text-xs text-slate-400 font-mono">
+              {staff.role} • Saluran interaksi operator berbasis allowlist dan telemetri riil Hermes.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 self-start sm:self-center">
+          <a
+            href="/admin/mission-control/staff"
+            class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-outfit font-bold transition flex items-center gap-1.5"
+          >
+            ← Staff Registry
+          </a>
+          <a
+            href="/admin/mission-control/office"
+            class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-outfit font-bold transition flex items-center gap-1.5"
+          >
+            👾 Pixel Office
+          </a>
+        </div>
+      </div>
+
+      <!-- Current Task Banner if active -->
+      {staffState?.current_task && (
+        <div class="bg-blue-950/30 border border-blue-900/50 rounded-2xl p-3 flex items-center justify-between gap-3 text-xs font-mono">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse flex-shrink-0"></span>
+            <span class="text-slate-400">Tugas Aktif:</span>
+            <span class="text-blue-200 font-bold truncate">{staffState.current_task.current_task_title}</span>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 text-[10px] font-bold shrink-0">
+            {staffState.current_task.current_task_status}
+          </span>
+        </div>
+      )}
+    </div>
+
+    <!-- 2. Conversation Body Container -->
+    <div class="bg-[#14161f] border-2 border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col h-[520px]">
+      <!-- Messages Thread Scroll Area -->
+      <div id="messages-container" class="flex-1 overflow-y-auto space-y-4 pr-1 text-xs font-mono">
+        {messages.length === 0 ? (
+          <div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-400">
+            <div class="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-2xl">
+              💬
+            </div>
+            <div>
+              <div class="font-outfit font-bold text-slate-200 text-sm">Belum Ada Riwayat Percakapan</div>
+              <p class="text-xs text-slate-500 max-w-sm mt-1">
+                Kirimkan pertanyaan status operasional atau instruksi terstruktur untuk {staff.display_name}.
+              </p>
+            </div>
+          </div>
+        ) : (
+          messages.map((msg) => {
+            const isOperator = msg.sender_type === 'OPERATOR';
+            const isSystem = msg.sender_type === 'SYSTEM';
+            const isError = msg.message_type === 'ERROR';
+            const isCommandStatus = msg.message_type === 'COMMAND_STATUS';
+
+            return (
+              <div class={`flex flex-col ${isOperator ? 'items-end' : 'items-start'}`}>
+                <!-- Sender label & time -->
+                <div class="flex items-center gap-1.5 mb-1 px-1 text-[10px] text-slate-500">
+                  <span class="font-bold">{isOperator ? 'Operator' : isSystem ? 'Mission Control Guard' : staff.display_name}</span>
+                  <span>•</span>
+                  <span>{new Date(msg.created_at).toLocaleTimeString('id-ID', { hour12: false })}</span>
+                </div>
+
+                <!-- Bubble Card -->
+                <div
+                  class={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3.5 shadow-md leading-relaxed whitespace-pre-line ${
+                    isOperator
+                      ? 'bg-blue-600 text-white rounded-tr-xs'
+                      : isError
+                        ? 'bg-rose-950/70 border border-rose-800 text-rose-200 rounded-tl-xs'
+                        : isCommandStatus
+                          ? 'bg-slate-900 border border-blue-500/40 text-blue-200 rounded-tl-xs'
+                          : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-xs'
+                  }`}
+                >
+                  {msg.content}
+
+                  {msg.related_command_id && (
+                    <div class="mt-2 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between gap-2">
+                      <span>Command Ref: <code class="text-blue-300">{msg.related_command_id}</code></span>
+                      <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 text-[9px] font-bold">QUEUED</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <!-- Quick Suggestion Chips -->
+      <div class="pt-3 pb-2 border-t border-slate-800/80 mt-2 flex items-center gap-1.5 overflow-x-auto text-[11px] font-mono">
+        <span class="text-[10px] text-slate-500 uppercase font-bold shrink-0">Contoh:</span>
+        <button
+          type="button"
+          class="quick-chip px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition whitespace-nowrap cursor-pointer"
+          data-text="Lagi ngerjain tugas apa sekarang?"
+        >
+          🔍 Tanya tugas aktif
+        </button>
+        <button
+          type="button"
+          class="quick-chip px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition whitespace-nowrap cursor-pointer"
+          data-text="Ringkasan aktivitas telemetri terakhir"
+        >
+          📊 Riwayat aktivitas
+        </button>
+        {staff.agent_id === 'content_writer_primary' && (
+          <button
+            type="button"
+            class="quick-chip px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition whitespace-nowrap cursor-pointer"
+            data-text="Tolong cek naskah Artikel 5 fokus ke struktur pembuka"
+          >
+            📝 Review Artikel 5
+          </button>
+        )}
+        {staff.agent_id === 'evidence_researcher_lead' && (
+          <button
+            type="button"
+            class="quick-chip px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition whitespace-nowrap cursor-pointer"
+            data-text="Riset standar SNI untuk mortar semen dinding bata"
+          >
+            🔬 Riset SNI Mortar
+          </button>
+        )}
+        {staff.agent_id === 'editorial_qa_primary' && (
+          <button
+            type="button"
+            class="quick-chip px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition whitespace-nowrap cursor-pointer"
+            data-text="Periksa kepatuhan First Article Gate naskah Artikel 5"
+          >
+            📋 QA Gate Artikel 5
+          </button>
+        )}
+        {staff.agent_id === 'telemetry_observer_jev' && (
+          <button
+            type="button"
+            class="quick-chip px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition whitespace-nowrap cursor-pointer"
+            data-text="Bagaimana status observasi bayangan JEV terbaru?"
+          >
+            🛰️ Status JEV Shadow
+          </button>
+        )}
+      </div>
+
+      <!-- 3. Message Input Form -->
+      <form id="chat-form" class="mt-2 flex items-center gap-2.5">
+        <input
+          type="text"
+          id="chat-input"
+          placeholder={`Ketik instruksi atau pertanyaan untuk ${staff.display_name}...`}
+          autocomplete="off"
+          class="flex-1 rounded-2xl bg-slate-900 border border-slate-700/80 px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition shadow-inner"
+        />
+        <button
+          type="submit"
+          id="chat-submit-btn"
+          class="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-outfit font-bold text-xs transition flex items-center gap-2 shadow-md cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span>Kirim</span>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <!-- 4. Safety Invariants & Allowed Commands Guide -->
+    <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-2xs space-y-3 text-xs font-mono">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <h3 class="font-outfit font-bold text-slate-900 text-sm">Panduan Kapabilitas Staf Terdaftar</h3>
+        </div>
+        <span class="text-[10px] font-mono text-slate-400">Strict Allowlist Only</span>
+      </div>
+
+      <p class="text-slate-600 leading-relaxed">
+        Pesan operator dinormalisasi ke dalam tipe perintah terstruktur di bawah ini. Perintah publikasi langsung (*Dangerous Production Action*) atau pengaktifan worker (*Admin Control*) ditolak otomatis demi keselamatan sistem.
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+        {allowedCommandDefs.map((cmd) => (
+          <div class="p-2.5 rounded-xl border border-slate-100 bg-slate-50/80 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800 text-[11px]">{cmd.label}</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase bg-blue-100 text-blue-700">
+                {cmd.authority_level}
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-500 line-clamp-2">{cmd.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ targetAgentId: staff.agent_id }}>
+    (function () {
+      const container = document.getElementById('messages-container');
+      const form = document.getElementById('chat-form');
+      const input = document.getElementById('chat-input');
+      const submitBtn = document.getElementById('chat-submit-btn');
+
+      // Auto-scroll to bottom
+      function scrollToBottom() {
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+      scrollToBottom();
+
+      // Quick chip clicks
+      document.querySelectorAll('.quick-chip').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const text = btn.getAttribute('data-text');
+          if (input && text) {
+            input.value = text;
+            input.focus();
+          }
+        });
+      });
+
+      // Submit message
+      if (form) {
+        form.addEventListener('submit', async function (e) {
+          e.preventDefault();
+          const text = input ? input.value.trim() : '';
+          if (!text) return;
+
+          // Disable input during request
+          if (input) input.disabled = true;
+          if (submitBtn) submitBtn.disabled = true;
+
+          try {
+            const res = await fetch('/api/admin/mission-control/chat/' + encodeURIComponent(targetAgentId), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: text })
+            });
+
+            const data = await res.json();
+            if (data && Array.isArray(data.messages)) {
+              renderMessages(data.messages);
+              if (input) input.value = '';
+            } else if (data && data.message) {
+              alert('Error: ' + data.message);
+            }
+          } catch (err) {
+            console.error('Chat error', err);
+            alert('Gagal mengirim pesan ke sistem telemetri.');
+          } finally {
+            if (input) {
+              input.disabled = false;
+              input.focus();
+            }
+            if (submitBtn) submitBtn.disabled = false;
+            scrollToBottom();
+          }
+        });
+      }
+
+      function renderMessages(messages) {
+        if (!container) return;
+        container.innerHTML = messages.map(function (msg) {
+          const isOp = msg.sender_type === 'OPERATOR';
+          const isSys = msg.sender_type === 'SYSTEM';
+          const isErr = msg.message_type === 'ERROR';
+          const isStatus = msg.message_type === 'COMMAND_STATUS';
+
+          const bubbleClass = isOp
+            ? 'bg-blue-600 text-white rounded-tr-xs'
+            : isErr
+            ? 'bg-rose-950/70 border border-rose-800 text-rose-200 rounded-tl-xs'
+            : isStatus
+            ? 'bg-slate-900 border border-blue-500/40 text-blue-200 rounded-tl-xs'
+            : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-xs';
+
+          const senderName = isOp ? 'Operator' : isSys ? 'Mission Control Guard' : 'Staf';
+          const time = new Date(msg.created_at).toLocaleTimeString('id-ID', { hour12: false });
+
+          return `
+            <div class="flex flex-col ${isOp ? 'items-end' : 'items-start'}">
+              <div class="flex items-center gap-1.5 mb-1 px-1 text-[10px] text-slate-500">
+                <span class="font-bold">${senderName}</span>
+                <span>•</span>
+                <span>${time}</span>
+              </div>
+              <div class="max-w-[85%] sm:max-w-[75%] rounded-2xl p-3.5 shadow-md leading-relaxed whitespace-pre-line ${bubbleClass}">
+                ${msg.content}
+                ${msg.related_command_id ? `
+                  <div class="mt-2 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between gap-2">
+                    <span>Command Ref: <code class="text-blue-300">${msg.related_command_id}</code></span>
+                    <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 text-[9px] font-bold">QUEUED</span>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+        scrollToBottom();
+      }
+
+      // Safe 10s auto-refresh polling
+      let pollInterval = setInterval(async function () {
+        try {
+          const res = await fetch('/api/admin/mission-control/chat/' + encodeURIComponent(targetAgentId));
+          const data = await res.json();
+          if (data && Array.isArray(data.messages) && data.messages.length > 0) {
+            renderMessages(data.messages);
+          }
+        } catch (e) {
+          // ignore polling errors
+        }
+      }, 10000);
+    })();
+  </script>
+</AdminLayout>

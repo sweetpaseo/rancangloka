@@ -543,11 +543,18 @@ const getRoomHealthBadge = (health: string) => {
         </div>
 
         <!-- Modal Footer Actions (Links Only, Zero Command Buttons) -->
-        <div class="border-t border-slate-800 pt-4 flex items-center justify-between gap-3">
+        <div class="border-t border-slate-800 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div class="text-[10px] text-slate-500 font-mono">
             Zero mutation authority.
           </div>
           <div class="flex items-center gap-2">
+            <a
+              id="modal-chat-link"
+              href="/admin/mission-control/staff"
+              class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-outfit font-bold text-xs transition flex items-center gap-1.5 shadow-xs"
+            >
+              💬 Chat dengan Staf
+            </a>
             <a
               id="modal-staff-link"
               href="/admin/mission-control/staff"
@@ -558,7 +565,7 @@ const getRoomHealthBadge = (health: string) => {
             <button
               type="button"
               id="modal-ok-btn"
-              class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-outfit font-bold text-xs transition cursor-pointer"
+              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-outfit font-bold text-xs border border-slate-700 transition cursor-pointer"
             >
               Selesai
             </button>
@@ -613,6 +620,7 @@ const getRoomHealthBadge = (health: string) => {
       const modalCloseBtn = document.getElementById('modal-close-btn');
       const modalOkBtn = document.getElementById('modal-ok-btn');
       const modalStaffLink = document.getElementById('modal-staff-link');
+      const modalChatLink = document.getElementById('modal-chat-link');
 
       function closeModal() {
         if (modal) modal.classList.add('hidden');
@@ -639,6 +647,12 @@ const getRoomHealthBadge = (health: string) => {
           modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold uppercase border border-blue-500/30';
           modalTitle.textContent = sprite.display_name;
           modalSubtitle.textContent = sprite.role + ' • ' + sprite.agent_id;
+
+          if (modalChatLink) {
+            modalChatLink.href = '/admin/mission-control/staff/' + encodeURIComponent(sprite.agent_id) + '/chat';
+            modalChatLink.textContent = '💬 Chat dengan ' + sprite.display_name;
+            modalChatLink.classList.remove('hidden');
+          }
 
           if (modalStaffLink) {
             modalStaffLink.href = '/admin/mission-control/staff?staff=' + encodeURIComponent(sprite.agent_id);
@@ -705,6 +719,10 @@ const getRoomHealthBadge = (health: string) => {
           modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase border border-amber-500/30';
           modalTitle.textContent = room.title;
           modalSubtitle.textContent = room.zone;
+
+          if (modalChatLink) {
+            modalChatLink.classList.add('hidden');
+          }
 
           if (modalStaffLink) {
             if (room.department_id && room.department_id !== 'lounge' && room.department_id !== 'social') {

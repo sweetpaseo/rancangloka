@@ -33,6 +33,7 @@ export * from './summaries.ts';
 export * from './staff-registry.ts';
 export * from './department-registry.ts';
 export * from './pixel-office.ts';
+export * from './chat.ts';
 
 export async function getMissionControlSnapshot(db: any, env?: any): Promise<MissionControlSnapshot> {
   const [

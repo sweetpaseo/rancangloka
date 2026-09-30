@@ -17,6 +17,37 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-5: Direct Staff Interaction & Safe Operator Command Queue 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengimplementasikan interaksi percakapan langsung antara operator dan staf bernama Mission Control (Joko, Irwan, Rina, Budi, Sari, Dimas) melalui antarmuka thread percakapan persisten (`/admin/mission-control/staff/[agent_id]/chat`) dan API terautentikasi (`/api/admin/mission-control/chat/[agent_id]`).
+  - Menetapkan prinsip dasar keselamatan sistem: identitas staf manusia adalah identitas presentasi (*presentation identity*) dan BUKAN daemon eksekusi otonom. Tidak ada eksekusi shell, raw SQL, atau MCP tanpa batas dari teks bebas operator.
+  - Membangun antrean perintah operator berstruktur (*Safe Operator Command Queue*) yang memisahkan tingkat otoritas:
+    - `READ_ONLY`: Kueri operasional langsung dieksekusi terhadap read-model snapshot tanpa mutasi.
+    - `OPERATOR_COMMAND`: Perintah dalam allowlist masuk ke antrean tugas kanonikal berstatus `QUEUED`.
+    - `ADMIN_CONTROL`: Perintah kontrol sistem ditolak dengan `ADMIN_APPROVAL_REQUIRED`.
+    - `DANGEROUS_PRODUCTION_ACTION`: Aksi produksi berbahaya (publish, buka kunci) ditolak secara tegas (`DANGEROUS_ACTION_FORBIDDEN`).
+  - Menerapkan normalisasi intensi deterministik (`normalizeOperatorIntent`) dan resolusi entitas fail-closed (`resolveEntityReference`) yang menolak rujukan ambigu (`tadi`, `terakhir`, `barusan`, tanpa ID/slug jelas) dan menuntut klarifikasi operator di dalam thread.
+  - Menghilangkan theatrical realism (tidak ada fake typing, tidak ada simulated progress, tidak ada fake presence/online indicators).
+  - Mengintegrasikan navigasi chat dari modal Pixel Office (`/admin/mission-control/office`) dan panel Staff Registry (`/admin/mission-control/staff`).
+- **Skema Database & Persistensi (Migration 0024):**
+  - `mission_control_conversations`: Menyimpan thread percakapan per staf machine `agent_id`.
+  - `mission_control_messages`: Menyimpan pesan dengan tipe `TEXT`, `COMMAND_REQUEST`, `COMMAND_STATUS`, `TASK_RESULT`, `SYSTEM_NOTICE`, `ERROR`, serta tautan `related_command_id` dan `related_task_id`.
+  - `mission_control_commands`: Menyimpan antrean perintah dengan status siklus hidup (`QUEUED`, `ACCEPTED`, `RUNNING`, `COMPLETED`, `REJECTED`, `BLOCKED`, `FAILED`, `CANCELLED`).
+  - Redaksi rahasia otomatis pada pesan dan input menggunakan `redactSensitiveString`.
+- **Pengujian & Validasi:**
+  - Rangkaian pengujian terfokus `scripts/test-mission-control-chat.js` lulus 100% (20/20 tes) memverifikasi: persistensi percakapan & pesan, resolusi agent_id stabil, eksekusi kueri read-only, antrean perintah allowlisted, penolakan eskalasi otoritas, resolusi entitas ambigu fail-closed, penolakan staf tidak dikenal, deteksi mismatch kapabilitas, siklus hidup antrean perintah, tautan referensi tugas, redaksi rahasia, keamanan SQL/shell, dan pencegahan kontrol admin/publikasi via chat.
+  - Pengujian Pixel Office `scripts/test-mission-control-pixel-office.js` lulus 100% (20/20 tes).
+  - Pengujian Departemen `scripts/test-mission-control-departments.js` lulus 100% (18/18 tes).
+  - Pengujian Staff Registry `scripts/test-staff-registry.js` lulus 100% (16/16 tes).
+  - Pengujian Mission Control `scripts/test-mission-control.js` lulus 100% (10/10 tes).
+  - Pengujian regresi keselamatan `scripts/test-soak-safety.js` lulus 100% (54/54 tes).
+  - Validasi tipe `npx tsc --noEmit` lulus bersih tanpa kesalahan.
+  - Build produksi `npm run build` sukses (4.91s).
+- **Status Akhir:**
+  - `HERMES-MC-5 = COMPLETE`.
+  - Frontier saat ini: `HERMES-MC-6/READY`.
+
 ### HERMES-MC-4: RancangLoka Pixel Office — Spatial Operations Visualization 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**

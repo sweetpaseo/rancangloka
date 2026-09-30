@@ -390,12 +390,20 @@ const formatTimeAgo = (isoString?: string | null) => {
                 </div>
               </div>
 
-              <!-- Stable Avatar Key Tag (Pixel Office Ready) -->
-              <div class="text-right">
-                <span class="text-[10px] font-mono bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-bold">
-                  {selectedStaff.avatar_key}
-                </span>
-                <div class="text-[9px] font-mono text-slate-400 mt-0.5">Pixel Office Key</div>
+              <!-- Action & Avatar Tags -->
+              <div class="flex items-center gap-2">
+                <a
+                  href={`/admin/mission-control/staff/${encodeURIComponent(selectedStaff.agent_id)}/chat`}
+                  class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-outfit font-bold text-xs transition flex items-center gap-1.5 shadow-xs"
+                >
+                  💬 Chat
+                </a>
+                <div class="text-right">
+                  <span class="text-[10px] font-mono bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-bold">
+                    {selectedStaff.avatar_key}
+                  </span>
+                  <div class="text-[9px] font-mono text-slate-400 mt-0.5">Pixel Key</div>
+                </div>
               </div>
             </div>
 
