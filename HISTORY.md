@@ -17,6 +17,33 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### MEDIA-A5.7-CLOSEOUT: Production Verification of Ephemeral Device Lifecycle & Dual-Gate Dormant Safety 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Menutup secara formal milestone `MEDIA-A5.7` berdasarkan bukti eksekusi langsung di lingkungan produksi Cloudflare Worker (`fa1c8b93-b410-4800-8296-f4c88e5d809e`) melalui sub-milestone `MEDIA-A5.7-P3A`.
+  - Mengonfirmasi kepatuhan penuh terhadap prinsip keselamatan: pekerja media tetap berstatus *dormant* (OFF), nol pekerjaan dieksekusi, nol panggilan provider berbayar, dan nol mutasi data artikel/media/publikasi.
+  - Menegaskan status kanonikal: `MEDIA-A5.7-P3A = COMPLETED`, `MEDIA-A5.7-P3B = NOT CANONICALLY DEFINED`, dan klasifikasi akhir `MEDIA-A5.7 = PROVEN_DORMANT`.
+  - Mendaftarkan roadmap baru operasional sistem: `HERMES-MC` (Hermes Mission Control & 2D Pixel Office) sebagai lapisan kendali dan observabilitas terpadu.
+- **Hasil & Bukti Eksekusi Produksi (MEDIA-A5.7-P3A):**
+  1. **Autentikasi Operator Resmi:** Permintaan pendaftaran dan pencabutan perangkat divalidasi via sesi admin browser operator resmi pada portal CMS Admin (`https://rancangloka.com/admin`).
+  2. **Pendaftaran Perangkat Ephemeral:** `POST /api/internal/v1/media/devices` berhasil mendaftarkan satu perangkat uji `media-a57-p3a-probe-20260930` dengan status HTTP 201 Created. Token hanya dikembalikan sekali dan disimpan dalam bentuk hash SHA-256 (`token_hash = 209f68864d0bc0ab03c0517f73446d953be8942c366a77ea4bab54ebe7de18f1`).
+  3. **Pengujian Gerbang Pekerja Media Terautentikasi:** Memanggil `POST /api/internal/v1/media/jobs/run-next` dengan `Authorization: Bearer <token>`. Autentikasi perangkat diterima, gerbang keselamatan dievaluasi secara kanonikal, dan mengembalikan HTTP 200 OK dengan payload semantik `{ status: "disabled", code: "MEDIA_WORKER_DISABLED", executed: false, job_id: null }`.
+  4. **Pencabutan Perangkat (Revocation):** Memanggil `DELETE /api/internal/v1/media/devices/media-a57-p3a-probe-20260930` dengan sesi admin operator. Perangkat berhasil dicabut (HTTP 200 OK) dan status pada tabel `media_devices` bertransisi menjadi `REVOKED`.
+  5. **Uji Negatif Kredensial Dicabut (Fail-Closed 401):** Memanggil kembali `run-next` menggunakan token yang sama setelah pencabutan. Permintaan ditolak langsung pada lapisan autentikasi dengan status HTTP 401 Unauthorized (`code: "AUTHENTICATION_REQUIRED"`), membuktikan *fail-closed revocation* tanpa celah bypass.
+  6. **Integritas Database Produksi (Zero Mutation):**
+     - `media_jobs`: 0 (+0)
+     - `media_job_events`: 0 (+0)
+     - `media_job_receipts`: 0 (+0)
+     - `media_assets`: 4 (+0)
+     - `articles`: 6 (+0)
+     - `active media devices`: 0
+- **Klasifikasi & Batasan Otoritas:**
+  - Status akhir: `MEDIA-A5.7 = PROVEN_DORMANT`.
+  - Pekerja media TIDAK diaktifkan di produksi (`settings.media_worker_enabled` tetap tidak disetel / false).
+  - Tidak ada pekerjaan media nyata yang dibuat atau dieksekusi.
+  - Nol panggilan ke provider eksternal (Fal.ai / Meta).
+  - Sub-milestone `MEDIA-A5.7-P3B` TIDAK didefinisikan secara kanonikal di dalam repositori dan tidak dieksekusi.
+
 ### ARTICLE-CONTENT-PERSISTENCE-1: Fix content_html Serialization at Source 2026-09-28
 
 - **Tujuan & Ruang Lingkup:** Mengatasi akar penyebab serialisasi `articles.content_html` yang menghasilkan literal `[object Object]` pada tingkat database, menegakkan type guard dan validasi runtime ketat pada seluruh jalur penulisan artikel, menetapkan peran arsitektural `content_md` (sumber kanonikal otoritatif) versus `content_html` (derivatif render deterministik / cache), meregenerasi `content_html` Artikel 5 di Cloudflare D1 secara aman tanpa memutasi `content_md`, hash, approval, receipt, atau tanggal terbit, serta menambahkan rangkaian uji regresi persistensi.
