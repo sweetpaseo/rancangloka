@@ -1,0 +1,507 @@
+---
+/**
+ * RancangLoka Hermes Mission Control — Staff Identity & Capability Registry
+ * Milestone: HERMES-MC-2
+ * Route: /admin/mission-control/staff
+ * 
+ * Strict Invariants:
+ * 1. Read-only supervisory staff registry.
+ * 2. Real derived states — zero fabricated activities or placeholder tasks.
+ * 3. Machine IDs remain authoritative. Human names are presentation layer only.
+ * 4. No execution/command buttons (chat, retry, dispatch, etc.).
+ * 5. Protected by admin_session middleware.
+ */
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb } from '../../../lib/db.ts';
+import { getMissionControlSnapshot } from '../../../lib/mission-control/index.ts';
+import { getStaffRoster } from '../../../lib/mission-control/staff-registry.ts';
+
+const env = (Astro.locals as any)?.runtime?.env || (globalThis as any).process?.env || {};
+const db = (await getDb(Astro.locals)) || env.DB || (Astro.locals as any)?.db;
+
+const snapshot = await getMissionControlSnapshot(db, env);
+const roster = getStaffRoster(snapshot);
+const { summary, staff, departments } = roster;
+
+// Selected staff member for detail view (from query param or default to first)
+const selectedAgentId = Astro.url.searchParams.get('staff') || staff[0]?.agent_id;
+const selectedStaff = staff.find((s) => s.agent_id === selectedAgentId) || staff[0];
+
+// State styling helper
+const getStateBadgeClass = (state: string) => {
+  switch (state) {
+    case 'WORKING':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-300';
+    case 'IDLE':
+      return 'bg-slate-100 text-slate-700 border-slate-300';
+    case 'REVIEWING':
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    case 'BLOCKED':
+      return 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse';
+    case 'OFFLINE':
+      return 'bg-zinc-100 text-zinc-600 border-zinc-300';
+    default:
+      return 'bg-slate-100 text-slate-500 border-slate-200';
+  }
+};
+
+const getStateDotClass = (state: string) => {
+  switch (state) {
+    case 'WORKING':
+      return 'bg-emerald-500 shadow-emerald-500/50';
+    case 'IDLE':
+      return 'bg-slate-400';
+    case 'REVIEWING':
+      return 'bg-indigo-500 shadow-indigo-500/50';
+    case 'BLOCKED':
+      return 'bg-rose-500 shadow-rose-500/50 animate-ping';
+    case 'OFFLINE':
+      return 'bg-zinc-400';
+    default:
+      return 'bg-slate-300';
+  }
+};
+
+const formatTimeAgo = (isoString?: string | null) => {
+  if (!isoString) return 'Tidak tersedia';
+  try {
+    const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+    if (diff < 5) return 'Baru saja';
+    if (diff < 60) return `${diff}d yang lalu`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m yang lalu`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}j yang lalu`;
+    return `${Math.floor(diff / 86400)}h yang lalu`;
+  } catch {
+    return isoString;
+  }
+};
+---
+
+<AdminLayout title="Hermes Mission Control — Staff Registry">
+  <div class="max-w-[1600px] mx-auto space-y-6 pb-12">
+    <!-- 1. Top Cockpit Header & Navigation Tabs -->
+    <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-sm border border-slate-800 space-y-5">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 font-mono text-[11px] font-bold uppercase tracking-wider border border-blue-500/30">
+              HERMES-MC-2
+            </span>
+            <span class="text-slate-600">•</span>
+            <span class="text-xs font-mono text-slate-400">Staff Identity & Capability Registry</span>
+            <span class="text-slate-600">•</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              READ-ONLY
+            </span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-outfit font-black text-white tracking-tight mt-1.5 flex items-center gap-2.5">
+            <span>👥</span>
+            <span>Staff Identity & Capability Registry</span>
+          </h1>
+          <p class="text-xs text-slate-400 mt-1 max-w-3xl font-mono">
+            Registri identitas presentasi berbasis persona manusia dengan identitas mesin kanonikal (<span class="text-blue-300">agent_id</span>). Status operasional dan penugasan diturunkan 100% dari telemetri riil.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-right hidden sm:block">
+            <div class="text-[10px] font-mono uppercase text-slate-500">Waktu Evaluasi</div>
+            <div class="text-xs font-mono text-slate-300">
+              {new Date(roster.generated_at).toLocaleTimeString('id-ID', { hour12: false })} WIB
+            </div>
+          </div>
+          <a
+            href="/admin/mission-control/staff"
+            class="rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 text-xs font-outfit font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+              <path d="M16 21h5v-5"></path>
+            </svg>
+            <span>Segarkan</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Navigation Sub-Tabs -->
+      <div class="flex items-center gap-2 border-t border-slate-800 pt-4 text-xs font-outfit font-bold">
+        <a
+          href="/admin/mission-control"
+          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2"
+        >
+          <span>🛰️</span>
+          <span>Cockpit Operasional</span>
+        </a>
+        <a
+          href="/admin/mission-control/staff"
+          class="px-4 py-2 rounded-xl bg-blue-600 text-white shadow-xs flex items-center gap-2"
+        >
+          <span>👥</span>
+          <span>Staff Registry</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-blue-700 text-[10px] font-mono">{staff.length}</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 2. Staff Summary Counts Strip -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      <!-- Total Staff -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-slate-500">Total Staf</div>
+        <div class="text-2xl font-outfit font-black text-slate-900">{summary.total}</div>
+        <div class="text-[10px] font-mono text-slate-400">Identitas aktif</div>
+      </div>
+
+      <!-- Working -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-emerald-600 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Working</span>
+        </div>
+        <div class="text-2xl font-outfit font-black text-emerald-700">{summary.working}</div>
+        <div class="text-[10px] font-mono text-slate-400">Tugas aktif berjalan</div>
+      </div>
+
+      <!-- Idle -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-slate-600 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <span>Idle</span>
+        </div>
+        <div class="text-2xl font-outfit font-black text-slate-800">{summary.idle}</div>
+        <div class="text-[10px] font-mono text-slate-400">Siaga & sehat</div>
+      </div>
+
+      <!-- Reviewing -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-indigo-600 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+          <span>Reviewing</span>
+        </div>
+        <div class="text-2xl font-outfit font-black text-indigo-700">{summary.reviewing}</div>
+        <div class="text-[10px] font-mono text-slate-400">Pemeriksaan draf</div>
+      </div>
+
+      <!-- Blocked -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-rose-600 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <span>Blocked</span>
+        </div>
+        <div class="text-2xl font-outfit font-black text-rose-700">{summary.blocked}</div>
+        <div class="text-[10px] font-mono text-slate-400">Breaker / kegagalan</div>
+      </div>
+
+      <!-- Offline -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-zinc-600 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-zinc-400"></span>
+          <span>Offline</span>
+        </div>
+        <div class="text-2xl font-outfit font-black text-zinc-700">{summary.offline}</div>
+        <div class="text-[10px] font-mono text-slate-400">Worker nonaktif/stale</div>
+      </div>
+
+      <!-- Unknown -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-slate-400 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+          <span>Unknown</span>
+        </div>
+        <div class="text-2xl font-outfit font-black text-slate-500">{summary.unknown}</div>
+        <div class="text-[10px] font-mono text-slate-400">Kurang telemetri</div>
+      </div>
+    </div>
+
+    <!-- 3. Main Staff Split View: Cards List (Left) + Detailed Inspector (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- LEFT: Staff Cards List (7 cols) -->
+      <div class="lg:col-span-7 space-y-4">
+        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h2 class="text-base font-outfit font-bold text-slate-900 flex items-center gap-2">
+                <span>📇</span>
+                <span>Roster Staf Terdaftar</span>
+              </h2>
+              <p class="text-xs text-slate-500 font-mono">
+                Pilih staf untuk melihat rincian kanonikal, bukti status, dan log aktivitas.
+              </p>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400 font-bold">
+              6 Staf Aktif
+            </span>
+          </div>
+
+          <!-- Staff Cards -->
+          <div class="space-y-3">
+            {staff.map((member) => {
+              const isSelected = member.agent_id === selectedStaff?.agent_id;
+              return (
+                <a
+                  href={`/admin/mission-control/staff?staff=${member.agent_id}`}
+                  class={`block border rounded-2xl p-4 transition text-left cursor-pointer ${
+                    isSelected
+                      ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-xs'
+                      : 'border-slate-200/80 hover:border-slate-300 bg-white hover:bg-slate-50/60'
+                  }`}
+                >
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <!-- Left Identity Info -->
+                    <div class="flex items-start gap-3.5">
+                      <!-- Avatar Preparation Placeholder -->
+                      <div class="w-11 h-11 rounded-xl bg-slate-900 text-white font-outfit font-black flex flex-col items-center justify-center shrink-0 border border-slate-700 shadow-xs">
+                        <span class="text-sm tracking-tight leading-none">{member.display_name.slice(0, 2).toUpperCase()}</span>
+                        <span class="text-[8px] font-mono text-slate-400 mt-0.5 leading-none">#{member.sort_order}</span>
+                      </div>
+
+                      <div class="space-y-0.5 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <h3 class="text-sm font-outfit font-black text-slate-900 truncate">
+                            {member.display_name}
+                          </h3>
+                          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200 truncate">
+                            {member.agent_id}
+                          </span>
+                        </div>
+                        <div class="text-xs font-medium text-slate-600 truncate">
+                          {member.role} • <span class="capitalize text-slate-500">{member.department_id.replace('_', ' ')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Right State Badge -->
+                    <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
+                      <span class={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold uppercase border flex items-center gap-1.5 ${getStateBadgeClass(member.state)}`}>
+                        <span class={`w-2 h-2 rounded-full ${getStateDotClass(member.state)}`}></span>
+                        <span>{member.state}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Current Task Snippet -->
+                  <div class="mt-3 pt-2.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] font-mono">
+                    <div class="flex items-center gap-2 text-slate-600 min-w-0">
+                      <span class="text-slate-400 shrink-0">Tugas:</span>
+                      {member.current_task ? (
+                        <span class="font-bold text-slate-800 truncate">
+                          [{member.current_task.current_task_status}] {member.current_task.current_task_title}
+                        </span>
+                      ) : (
+                        <span class="text-slate-400 italic">Tidak ada tugas aktif</span>
+                      )}
+                    </div>
+                    <div class="text-slate-400 shrink-0 text-right">
+                      {member.last_activity_at ? formatTimeAgo(member.last_activity_at) : 'Belum ada event'}
+                    </div>
+                  </div>
+
+                  <!-- Capability Tags -->
+                  <div class="mt-2.5 flex flex-wrap gap-1.5">
+                    {member.capabilities.map((cap) => (
+                      <span class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-mono font-bold border border-blue-100">
+                        {cap}
+                      </span>
+                    ))}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+
+        <!-- Departments Registry Metadata Card -->
+        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
+          <div class="border-b border-slate-100 pb-2.5">
+            <h3 class="text-sm font-outfit font-bold text-slate-900 flex items-center gap-2">
+              <span>🏢</span>
+              <span>Departemen & Struktur Organisasi</span>
+            </h3>
+            <p class="text-[11px] text-slate-500 font-mono">
+              Registri departemen resmi RancangLoka Mission Control.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {departments.map((dep) => (
+              <div class="p-3 rounded-xl border border-slate-200/70 bg-slate-50/50 space-y-1 font-mono text-xs">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-slate-800 font-outfit">{dep.name}</span>
+                  {dep.is_available ? (
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                      Aktif ({staff.filter((s) => s.department_id === dep.department_id).length})
+                    </span>
+                  ) : (
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600">
+                      Belum Tersedia
+                    </span>
+                  )}
+                </div>
+                <p class="text-[11px] text-slate-500 font-sans">
+                  {dep.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Read-Only Staff Detail View (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        {selectedStaff ? (
+          <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-5">
+            <!-- Inspector Header -->
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-14 h-14 rounded-2xl bg-slate-900 text-white font-outfit font-black text-xl flex items-center justify-center border border-slate-700 shadow-xs">
+                  {selectedStaff.display_name.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h2 class="text-lg font-outfit font-black text-slate-900">
+                      {selectedStaff.display_name}
+                    </h2>
+                    <span class={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${getStateBadgeClass(selectedStaff.state)}`}>
+                      {selectedStaff.state}
+                    </span>
+                  </div>
+                  <p class="text-xs font-medium text-slate-600 mt-0.5">
+                    {selectedStaff.role}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Stable Avatar Key Tag (Pixel Office Ready) -->
+              <div class="text-right">
+                <span class="text-[10px] font-mono bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-bold">
+                  {selectedStaff.avatar_key}
+                </span>
+                <div class="text-[9px] font-mono text-slate-400 mt-0.5">Pixel Office Key</div>
+              </div>
+            </div>
+
+            <!-- Identity Separation Card -->
+            <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2 text-xs font-mono">
+              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Pemisahan Identitas Mesin & Tampilan
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div class="text-slate-400 text-[10px]">Identitas Tampilan (Human):</div>
+                  <div class="font-bold text-slate-800 font-outfit text-sm">{selectedStaff.display_name}</div>
+                </div>
+                <div>
+                  <div class="text-slate-400 text-[10px]">Identitas Mesin (Otoritatif):</div>
+                  <div class="font-bold text-blue-600 truncate">{selectedStaff.agent_id}</div>
+                </div>
+              </div>
+              <div class="pt-2 border-t border-slate-200/60 text-[11px] text-slate-500 font-sans">
+                {selectedStaff.description}
+              </div>
+            </div>
+
+            <!-- State Evidence Box -->
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5 font-mono text-xs">
+              <div class="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase">
+                <span>Bukti Status Operasional</span>
+                <span class="text-slate-400">Deterministic</span>
+              </div>
+              <p class="text-xs text-slate-700 font-sans bg-white p-2.5 rounded-lg border border-slate-200/60">
+                {selectedStaff.state_evidence}
+              </p>
+            </div>
+
+            <!-- Current Task Full Details -->
+            <div class="space-y-2">
+              <div class="text-[11px] font-mono uppercase font-bold text-slate-500 flex items-center justify-between">
+                <span>Tugas Saat Ini (Current Task)</span>
+                <span class="text-[10px] text-slate-400">Strict Priority</span>
+              </div>
+              {selectedStaff.current_task ? (
+                <div class="p-3 rounded-xl border border-blue-200 bg-blue-50/30 space-y-1.5 font-mono text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-blue-900 truncate">
+                      {selectedStaff.current_task.current_task_id}
+                    </span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+                      {selectedStaff.current_task.current_task_status}
+                    </span>
+                  </div>
+                  <div class="font-outfit font-bold text-slate-800 text-sm">
+                    {selectedStaff.current_task.current_task_title}
+                  </div>
+                  <div class="text-[10px] text-slate-500">
+                    Diperbarui: {formatTimeAgo(selectedStaff.current_task.current_task_updated_at)}
+                  </div>
+                </div>
+              ) : (
+                <div class="p-4 rounded-xl border border-dashed border-slate-200 text-center font-mono text-xs text-slate-400">
+                  Tidak ada tugas aktif atau tertunda yang teratribusi ke staf ini.
+                </div>
+              )}
+            </div>
+
+            <!-- Capabilities & Source System -->
+            <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+                <div class="text-[10px] font-bold text-slate-500 uppercase">Sistem Sumber</div>
+                <div class="text-slate-800 font-bold truncate">{selectedStaff.source_system}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+                <div class="text-[10px] font-bold text-slate-500 uppercase">Departemen</div>
+                <div class="text-slate-800 font-bold capitalize truncate">
+                  {selectedStaff.department_id.replace('_', ' ')}
+                </div>
+              </div>
+            </div>
+
+            <!-- Attributed Recent Activities -->
+            <div class="space-y-2">
+              <div class="text-[11px] font-mono uppercase font-bold text-slate-500 flex items-center justify-between">
+                <span>Aktivitas Teratribusi Nyata</span>
+                <span class="text-[10px] text-slate-400">{selectedStaff.recent_activities.length} event</span>
+              </div>
+              {selectedStaff.recent_activities.length === 0 ? (
+                <div class="p-4 rounded-xl border border-dashed border-slate-200 text-center font-mono text-xs text-slate-400">
+                  Belum ada log aktivitas riil yang teratribusi ke staf ini.
+                </div>
+              ) : (
+                <div class="space-y-1.5">
+                  {selectedStaff.recent_activities.map((act) => (
+                    <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/60 font-mono text-xs space-y-0.5">
+                      <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-800 text-[11px] truncate">{act.eventType}</span>
+                        <span class="text-[10px] text-slate-400">{formatTimeAgo(act.timestamp)}</span>
+                      </div>
+                      <p class="text-[11px] text-slate-600 font-sans line-clamp-2">
+                        {act.summary}
+                      </p>
+                      {act.entityReference && (
+                        <div class="text-[10px] text-slate-400">
+                          Ref: <span class="text-slate-600">{act.entityReference}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <!-- Read-Only Notice -->
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-800 font-mono flex items-center gap-2">
+              <span>🛡️</span>
+              <span>Modul supervisory read-only (MC-2). Perintah eksekusi atau manipulasi staf dinonaktifkan.</span>
+            </div>
+          </div>
+        ) : (
+          <div class="bg-white border border-slate-200 rounded-2xl p-8 text-center font-mono text-xs text-slate-400">
+            Pilih staf dari daftar untuk melihat detail inspeksi.
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</AdminLayout>

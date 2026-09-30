@@ -17,6 +17,46 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-2: Staff Identity & Capability Registry Implementation 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Membangun registri staf presentasi human-friendly di Mission Control pada rute `/admin/mission-control/staff` dan API `/api/admin/mission-control/staff`.
+  - Memisahkan identitas tampilan berbasis persona manusia (Joko, Irwan, Rina, Budi, Sari, Dimas) dengan identitas mesin kanonikal (`agent_id`), di mana identitas mesin tetap otoritatif untuk seluruh perutean, atribusi tugas, dan evaluasi status.
+  - Memungkinkan konfigurasi nama tampilan terpusat (`configureStaffDisplayNames`) tanpa mengubah perutean runtime maupun skema database.
+  - Menerapkan penurunan status operasional riil (`WORKING`, `IDLE`, `REVIEWING`, `BLOCKED`, `OFFLINE`, `UNKNOWN`) 100% berbasis telemetri nyata tanpa fabrikasi tugas atau status simulasi.
+  - Menetapkan aturan tugas saat ini (*Current Task*) berdasarkan prioritas kanonikal (1: aktif, 2: terblokir/gagal, 3: review, 4: tugas relevan terakhir), dengan fallback tegas ke `null` bila tidak ada tugas yang valid.
+  - Mengamankan invarian keselamatan:
+    - Pekerja media dalam status `DISABLED` tidak boleh membuat Budi (`lokamedia_worker_primary`) tampil dalam status `WORKING`.
+    - Otomasi publikasi dalam status `OFF` tidak otomatis dianggap sebagai kesalahan/error, melainkan siaga normal (`IDLE`).
+    - TypeSafe Jev beroperasi murni dalam mode bayangan (*shadow*), dan Dimas (`telemetry_observer_jev`) tidak pernah direpresentasikan memiliki otoritas publikasi.
+    - Modul bersifat *supervisory read-only*: tanpa tombol perintah, chat, eksekusi ulang, atau mutasi produksi.
+  - Mempersiapkan kunci avatar stabil (`avatar_key`) untuk integrasi masa depan Pixel Office.
+- **Komponen & Arsitektur Terpasang (`src/lib/mission-control/staff-registry.ts`):**
+  1. **Registri Staf Awal:**
+     - Joko (`content_writer_primary`, Content Writer, Editorial, `ARTICLE_WRITING`, `editorial_writer_01`).
+     - Irwan (`evidence_researcher_lead`, Research & Evidence Specialist, Research & Evidence, `EVIDENCE_RESEARCH`, `research_evidence_01`).
+     - Rina (`editorial_qa_primary`, Editorial QA, Editorial, `EDITORIAL_QA`, `editorial_qa_01`).
+     - Budi (`lokamedia_worker_primary`, Media Operations, Media, `MEDIA_OPERATIONS`, `media_ops_01`).
+     - Sari (`publication_dispatcher_core`, Publication Operator, Publication Operations, `PUBLICATION_OPERATIONS`, `publication_ops_01`).
+     - Dimas (`telemetry_observer_jev`, Decision & Telemetry Analyst, Engineering & Telemetry, `SYSTEM_TELEMETRY`, `telemetry_01`).
+  2. **Registri Departemen:** Penyiapan metadata 6 departemen (`editorial`, `research_evidence`, `media`, `publication_operations`, `engineering_telemetry`, `social`). Departemen `social` ditandai belum tersedia dan tanpa staf.
+  3. **Atribusi Aktivitas Deterministik (`attributeActivityEvent`):** Pemetaan kejadian riil multi-tabel ke staf terkait, dengan fallback ke `System` / `Unassigned` untuk kejadian ambigu atau berkeyakinan rendah.
+  4. **Penurunan Status & Tugas Riil (`deriveStaffState`, `deriveStaffCurrentTask`):** Logika evaluasi murni tanpa efek samping untuk status operasional staf.
+  5. **Kompilasi Snapshot Roster (`getStaffRoster`):** Agregasi ringkasan hitungan staf riil (`total`, `working`, `idle`, `reviewing`, `blocked`, `offline`, `unknown`).
+- **Antarmuka & Rute Web:**
+  - **Halaman Staf (`/admin/mission-control/staff`):** Tampilan split-view modern (kartu staf di sisi kiri, panel inspeksi rincian read-only di sisi kanan) dengan ringkasan status bar dan sub-navigasi terpadu ke Cockpit (`/admin/mission-control`).
+  - **API Roster Staf (`/api/admin/mission-control/staff`):** Rute GET terautentikasi sesi admin untuk pertukaran data JSON.
+  - **Navigasi CMS (`AdminLayout.astro`):** Penambahan rute Staff Registry pada breadcrumbs dan menu navigasi Ringkasan & Kontrol.
+- **Pengujian & Validasi:**
+  - Rangkaian pengujian terfokus `scripts/test-staff-registry.js` lulus 100% (16/16 tes) mencakup pemisahan identitas mesin/tampilan, stabilitas ID mesin, pemetaan kapabilitas, prioritas tugas, atribusi aktivitas, penurunan seluruh varian status operasional, keselamatan pekerja media nonaktif, representasi otoritas nol JEV, dan invarian kueri read-only murni (0 mutasi).
+  - Pengujian Mission Control `scripts/test-mission-control.js` lulus 100% (10/10 tes).
+  - Validasi tipe `npx tsc --noEmit` lulus bersih tanpa kesalahan.
+  - Build produksi `npm run build` berhasil membuat artefak Cloudflare Worker.
+  - Pengujian regresi keselamatan `test-soak-safety.js` (54 tes) lulus sempurna.
+- **Status Akhir:**
+  - `HERMES-MC-2 = COMPLETE`.
+  - Frontier saat ini: `HERMES-MC-3/READY`.
+
 ### HERMES-MC-1: RancangLoka Hermes Mission Control Core Implementation 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**

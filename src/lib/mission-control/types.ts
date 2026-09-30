@@ -206,4 +206,5 @@ export interface MissionControlSnapshot {
   articles: ArticleOperationsSummary;
   media: MediaOperationsSummary;
   jev: JevObservabilitySummary;
+  staff?: any;
 }

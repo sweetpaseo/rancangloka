@@ -19,6 +19,7 @@ import {
   getMediaOperationsSummary,
   getJevObservabilitySummary
 } from './summaries.ts';
+import { getStaffRoster } from './staff-registry.ts';
 
 export * from './types.ts';
 export * from './redact.ts';
@@ -27,6 +28,7 @@ export * from './tasks.ts';
 export * from './activity.ts';
 export * from './scheduler.ts';
 export * from './summaries.ts';
+export * from './staff-registry.ts';
 
 export async function getMissionControlSnapshot(db: any, env?: any): Promise<MissionControlSnapshot> {
   const [
@@ -57,7 +59,7 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
     freshness = 'UNKNOWN';
   }
 
-  return {
+  const snapshot: MissionControlSnapshot = {
     generatedAt: new Date().toISOString(),
     freshness,
     environment: env?.ENVIRONMENT || 'production',
@@ -70,4 +72,9 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
     media,
     jev
   };
+
+  // Derive staff roster deterministically from snapshot
+  snapshot.staff = getStaffRoster(snapshot);
+
+  return snapshot;
 }

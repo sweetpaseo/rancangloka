@@ -148,6 +148,25 @@ const formatTimeAgo = (isoString?: string | null) => {
       </div>
     </div>
 
+    <!-- Sub-Navigation Bar -->
+    <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 p-2 rounded-xl text-xs font-outfit font-bold">
+      <a
+        href="/admin/mission-control"
+        class="px-4 py-2 rounded-lg bg-blue-600 text-white shadow-xs flex items-center gap-2"
+      >
+        <span>🛰️</span>
+        <span>Cockpit Operasional</span>
+      </a>
+      <a
+        href="/admin/mission-control/staff"
+        class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition flex items-center gap-2"
+      >
+        <span>👥</span>
+        <span>Staff Registry</span>
+        <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">6 Staf</span>
+      </a>
+    </div>
+
     <!-- 2. System Health Strip -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       <!-- A. Publication Automation -->

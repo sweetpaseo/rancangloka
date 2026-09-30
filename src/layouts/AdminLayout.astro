@@ -20,6 +20,9 @@ const isActive = (path: string) => {
   if (cleanPath === '/admin') {
     return currentPath === '/admin';
   }
+  if (cleanPath === '/admin/mission-control') {
+    return currentPath === '/admin/mission-control';
+  }
   if (cleanPath === '/admin/posts') {
     return currentPath === '/admin/posts' || (currentPath.startsWith('/admin/posts/') && currentPath !== '/admin/posts/new');
   }
@@ -40,6 +43,7 @@ const getIconClass = (path: string) => {
 const breadcrumbMap: Record<string, string[]> = {
   '/admin': ['Ringkasan'],
   '/admin/mission-control': ['Hermes Mission Control'],
+  '/admin/mission-control/staff': ['Hermes Mission Control', 'Staff Registry'],
   '/admin/posts': ['Artikel & Jurnal'],
   '/admin/posts/new': ['Artikel & Jurnal', 'Artikel Baru'],
   '/admin/import': ['Import Markdown'],
@@ -66,7 +70,8 @@ const groups = [
     label: 'RINGKASAN & KONTROL',
     items: [
       { href: '/admin', label: 'Ringkasan', icon: 'grid' },
-      { href: '/admin/mission-control', label: 'Mission Control', icon: 'command' }
+      { href: '/admin/mission-control', label: 'Mission Control', icon: 'command' },
+      { href: '/admin/mission-control/staff', label: 'Staff Registry', icon: 'people' }
     ]
   },
   {
