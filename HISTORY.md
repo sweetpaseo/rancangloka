@@ -17,6 +17,41 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-3: Mission Control Department Operations & Organizational State 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Mentransformasikan model staf MC-2 menjadi model organisasi kanonikal Mission Control yang deterministik dan read-only di `/admin/mission-control/departments` dan `/admin/mission-control/departments/[department_id]`.
+  - Mendaftarkan 6 departemen kanonikal (`editorial`, `research_evidence`, `media`, `publication_operations`, `engineering_telemetry`, `social`), dengan departemen `social` secara tegas berstatus `NOT_AVAILABLE` dan `UNSTAFFED`.
+  - Menetapkan model kesehatan departemen dengan hierarki presedensi ketat:
+    $$\text{NOT\_AVAILABLE} \succ \text{UNKNOWN} \succ \text{BLOCKED} \succ \text{OFFLINE} \succ \text{DEGRADED} \succ \text{ACTIVE} \succ \text{HEALTHY}$$
+  - Memetakan kepemilikan tugas (*Task Ownership*) secara deterministik dengan tingkat kepercayaan (`EXACT`, `DERIVED`, `UNASSIGNED`).
+  - Membangun model penyerahan lintas-divisi (*Organizational Handoff Model*) berbasis bukti nyata alur artikel (Riset $\rightarrow$ Penulisan Editorial $\rightarrow$ Operasi Media $\rightarrow$ Publikasi) tanpa merekayasa transisi fiktif.
+  - Membangun model hambatan struktural (*Department Blockers*) yang merinci keparahan, kelas kesalahan, sifat retryable, dan kebutuhan tindakan operator.
+  - Menyiapkan metadata visual Pixel Office (`room_key`, `workstation_zone`, `STAFF_ROOM_MAP`) untuk persiapan MC-4 tanpa mengimplementasikan kanvas/sprite prematur.
+- **Komponen & Arsitektur Terpasang (`src/lib/mission-control/department-registry.ts`):**
+  1. **Konfigurasi Departemen Kanonikal:** Definisi 6 divisi, kapabilitas, sistem sumber, dan alokasi ruang logis.
+  2. **Atribusi Kepemilikan Tugas (`attributeTaskOwnership`):** Pemetaan tahapan tugas (`writing`, `researching`, `validating`, `editorial_qa`, `waiting_media`, `scheduled`, `ingesting`) ke departemen dan staf penanggung jawab.
+  3. **Atribusi Kejadian Departemen (`attributeActivityToDepartment`):** Klasifikasi multi-tabel log audit ke departemen dengan penanda keyakinan.
+  4. **Penurunan Hambatan Struktural (`deriveDepartmentBlockers`):** Ekstraksi kendala nyata dari saklar darurat global, pemutus sirkuit terbuka, kegagalan tugas media, dan error provider.
+  5. **Model Transisi Alur Kerja (`deriveDepartmentHandoffs`):** Pemetaan status handoff (`PENDING`, `READY`, `COMPLETE`, `BLOCKED`) antar-divisi berdasarkan status relasional D1.
+  6. **Penurunan Kesehatan Departemen (`deriveDepartmentHealth`):** Evaluasi kesehatan murni tanpa efek samping berbasis presedensi ketat.
+  7. **Assembler Snapshot Organisasi (`getOrganizationSnapshot`, `getDepartmentById`):** Agregasi ringkasan global metrik organisasi dan status spesifik divisi.
+- **Antarmuka & Rute Web:**
+  - **Halaman Ringkasan Departemen (`/admin/mission-control/departments/index.astro`):** Ringkasan 7 status kesehatan organisasi, diagram alur sekuensial kanonikal, kartu divisi responsif dengan indikator dot beranimasi, dan metrik tugas aktif/hambatan.
+  - **Halaman Detail Departemen (`/admin/mission-control/departments/[department_id].astro`):** Dasbor inspeksi mendalam: rincian bukti kesehatan, daftar staf anggota dan statusnya, daftar tugas teratribusi, hambatan aktif, alur handoff, dan kapabilitas.
+  - **API Departemen (`/api/admin/mission-control/departments`, `/api/admin/mission-control/departments/[department_id]`):** Endpoint GET terautentikasi sesi admin untuk pertukaran data JSON.
+  - **Integrasi Navigasi (`AdminLayout.astro`, `index.astro`, `staff.astro`):** Penambahan sub-navigasi tiga tab (Cockpit, Staff Registry, Departemen) dan breadcrumbs admin.
+- **Pengujian & Validasi:**
+  - Rangkaian pengujian terfokus `scripts/test-mission-control-departments.js` lulus 100% (18/18 tes) mencakup seluruh invarian: presedensi kesehatan, keanggotaan staf, penanganan Social unstaffed, atribusi tugas dan aktivitas, penurunan handoff nyata, isolasi blocker, metadata ruang Pixel Office, dan sifat read-only murni (0 mutasi).
+  - Pengujian Staff Registry `scripts/test-staff-registry.js` lulus 100% (16/16 tes).
+  - Pengujian Mission Control `scripts/test-mission-control.js` lulus 100% (10/10 tes).
+  - Validasi tipe `npx tsc --noEmit` lulus bersih tanpa kesalahan.
+  - Build produksi `npm run build` sukses membuat artefak Cloudflare Worker (6.72s).
+  - Pengujian regresi keselamatan `test-soak-safety.js` (54 tes) lulus sempurna.
+- **Status Akhir:**
+  - `HERMES-MC-3 = COMPLETE`.
+  - Frontier saat ini: `HERMES-MC-4/READY`.
+
 ### HERMES-MC-2: Staff Identity & Capability Registry Implementation 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**

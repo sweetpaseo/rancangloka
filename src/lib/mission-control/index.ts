@@ -20,6 +20,7 @@ import {
   getJevObservabilitySummary
 } from './summaries.ts';
 import { getStaffRoster } from './staff-registry.ts';
+import { getOrganizationSnapshot } from './department-registry.ts';
 
 export * from './types.ts';
 export * from './redact.ts';
@@ -29,6 +30,7 @@ export * from './activity.ts';
 export * from './scheduler.ts';
 export * from './summaries.ts';
 export * from './staff-registry.ts';
+export * from './department-registry.ts';
 
 export async function getMissionControlSnapshot(db: any, env?: any): Promise<MissionControlSnapshot> {
   const [
@@ -75,6 +77,9 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
 
   // Derive staff roster deterministically from snapshot
   snapshot.staff = getStaffRoster(snapshot);
+
+  // Derive organization snapshot deterministically from snapshot
+  snapshot.organization = getOrganizationSnapshot(snapshot);
 
   return snapshot;
 }

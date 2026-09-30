@@ -1,0 +1,403 @@
+---
+/**
+ * RancangLoka Hermes Mission Control — Department Detail View
+ * Milestone: HERMES-MC-3
+ * Route: /admin/mission-control/departments/[department_id]
+ * 
+ * Strict Invariants:
+ * 1. Read-only supervisory department detail inspection.
+ * 2. 100% real derived data — zero fake metrics or tasks.
+ * 3. Machine IDs remain authoritative.
+ * 4. Protected by admin_session middleware.
+ */
+
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import { getDb } from '../../../../lib/db.ts';
+import { getMissionControlSnapshot, getDepartmentById } from '../../../../lib/mission-control/index.ts';
+
+const departmentId = Astro.params.department_id || '';
+
+const env = (Astro.locals as any)?.runtime?.env || (globalThis as any).process?.env || {};
+const db = (await getDb(Astro.locals)) || env.DB || (Astro.locals as any)?.db;
+
+const snapshot = await getMissionControlSnapshot(db, env);
+const dept = getDepartmentById(departmentId, snapshot);
+
+if (!dept) {
+  return Astro.redirect('/admin/mission-control/departments');
+}
+
+const getHealthBadgeClass = (health: string) => {
+  switch (health) {
+    case 'ACTIVE':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-300';
+    case 'HEALTHY':
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'DEGRADED':
+      return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'BLOCKED':
+      return 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse';
+    case 'OFFLINE':
+      return 'bg-zinc-100 text-zinc-600 border-zinc-300';
+    case 'NOT_AVAILABLE':
+      return 'bg-slate-100 text-slate-400 border-slate-200';
+    default:
+      return 'bg-slate-100 text-slate-500 border-slate-200';
+  }
+};
+
+const getHealthDotClass = (health: string) => {
+  switch (health) {
+    case 'ACTIVE':
+      return 'bg-emerald-500 shadow-emerald-500/50';
+    case 'HEALTHY':
+      return 'bg-blue-500';
+    case 'DEGRADED':
+      return 'bg-amber-500';
+    case 'BLOCKED':
+      return 'bg-rose-500 shadow-rose-500/50 animate-ping';
+    case 'OFFLINE':
+      return 'bg-zinc-400';
+    case 'NOT_AVAILABLE':
+      return 'bg-slate-300';
+    default:
+      return 'bg-slate-300';
+  }
+};
+
+const formatTimeAgo = (isoString?: string | null) => {
+  if (!isoString) return 'Tidak tersedia';
+  try {
+    const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+    if (diff < 5) return 'Baru saja';
+    if (diff < 60) return `${diff}d yang lalu`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m yang lalu`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}j yang lalu`;
+    return `${Math.floor(diff / 86400)}h yang lalu`;
+  } catch {
+    return isoString;
+  }
+};
+---
+
+<AdminLayout title={`Hermes Mission Control — ${dept.display_name}`}>
+  <div class="max-w-[1600px] mx-auto space-y-6 pb-12">
+    <!-- 1. Top Cockpit Header -->
+    <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-sm border border-slate-800 space-y-5">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <a href="/admin/mission-control/departments" class="text-blue-400 hover:underline font-mono text-xs flex items-center gap-1">
+              <span>←</span>
+              <span>Daftar Divisi</span>
+            </a>
+            <span class="text-slate-600">•</span>
+            <span class="px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 font-mono text-[11px] font-bold uppercase tracking-wider border border-blue-500/30">
+              HERMES-MC-3
+            </span>
+            <span class="text-slate-600">•</span>
+            <span class="text-xs font-mono text-slate-400">ID: {dept.department_id}</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-outfit font-black text-white tracking-tight mt-1.5 flex items-center gap-2.5">
+            <span>🏢</span>
+            <span>{dept.display_name}</span>
+          </h1>
+          <p class="text-xs text-slate-400 mt-1 max-w-3xl font-mono">
+            {dept.description}
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Health Badge Large -->
+          <span class={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold uppercase border flex items-center gap-2 ${getHealthBadgeClass(dept.health)}`}>
+            <span class={`w-2.5 h-2.5 rounded-full ${getHealthDotClass(dept.health)}`}></span>
+            <span>{dept.health}</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Navigation Sub-Tabs -->
+      <div class="flex items-center gap-2 border-t border-slate-800 pt-4 text-xs font-outfit font-bold">
+        <a
+          href="/admin/mission-control"
+          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2"
+        >
+          <span>🛰️</span>
+          <span>Cockpit Operasional</span>
+        </a>
+        <a
+          href="/admin/mission-control/staff"
+          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2"
+        >
+          <span>👥</span>
+          <span>Staff Registry</span>
+        </a>
+        <a
+          href="/admin/mission-control/departments"
+          class="px-4 py-2 rounded-xl bg-blue-600 text-white shadow-xs flex items-center gap-2"
+        >
+          <span>🏢</span>
+          <span>Departemen</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 2. Health & Workload Strip -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-slate-500">Anggota Staf</div>
+        <div class="text-2xl font-outfit font-black text-slate-900">{dept.staff_count}</div>
+        <div class="text-[10px] font-mono text-slate-400">Persona terdaftar</div>
+      </div>
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-blue-600">Tugas Aktif</div>
+        <div class="text-2xl font-outfit font-black text-blue-700">{dept.active_task_count}</div>
+        <div class="text-[10px] font-mono text-slate-400">Dalam proses</div>
+      </div>
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-indigo-600">Review Antrean</div>
+        <div class="text-2xl font-outfit font-black text-indigo-700">{dept.reviewing_task_count}</div>
+        <div class="text-[10px] font-mono text-slate-400">Pemeriksaan draf</div>
+      </div>
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-rose-600">Hambatan</div>
+        <div class={`text-2xl font-outfit font-black ${dept.blocked_task_count > 0 ? 'text-rose-700' : 'text-slate-800'}`}>
+          {dept.blocked_task_count}
+        </div>
+        <div class="text-[10px] font-mono text-slate-400">Blockers aktif</div>
+      </div>
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-purple-600">Pixel Office Room</div>
+        <div class="text-sm font-outfit font-black text-purple-800 truncate mt-1">{dept.room_key}</div>
+        <div class="text-[9px] font-mono text-slate-400 truncate">{dept.workstation_zone}</div>
+      </div>
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-1">
+        <div class="text-[10px] font-mono uppercase font-bold text-slate-500">Aktivitas Terakhir</div>
+        <div class="text-xs font-mono font-bold text-slate-800 mt-2 truncate">
+          {dept.latest_activity_at ? formatTimeAgo(dept.latest_activity_at) : 'Tidak ada'}
+        </div>
+        <div class="text-[10px] font-mono text-slate-400">Waktu audit</div>
+      </div>
+    </div>
+
+    <!-- Health Evidence Banner -->
+    <div class="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-2xs flex items-start gap-3">
+      <span class="text-lg">📋</span>
+      <div class="space-y-0.5">
+        <div class="text-[11px] font-mono font-bold text-slate-400 uppercase">Bukti Kesehatan & Keputusan Status:</div>
+        <p class="text-xs text-slate-800 font-mono font-medium">
+          {dept.health_evidence}
+        </p>
+      </div>
+    </div>
+
+    <!-- 3. Main Split View: Left (Staff & Tasks) / Right (Blockers & Handoffs) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- LEFT: Staff Members & Department Tasks (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        <!-- Staff Members Box -->
+        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 class="text-base font-outfit font-bold text-slate-900 flex items-center gap-2">
+              <span>👥</span>
+              <span>Staf Divisi ({dept.staff.length})</span>
+            </h2>
+            <span class="text-xs font-mono text-slate-400">Identitas MC-2</span>
+          </div>
+
+          {dept.staff.length === 0 ? (
+            <div class="p-8 rounded-xl border border-dashed border-slate-200 text-center font-mono text-xs text-slate-400">
+              Divisi ini belum memiliki staf yang ditugaskan (Unstaffed / Future Capacity).
+            </div>
+          ) : (
+            <div class="space-y-3">
+              {dept.staff.map((s) => (
+                <div class="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-slate-900 text-white font-outfit font-black text-sm flex items-center justify-center shrink-0">
+                      {s.display_name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-outfit font-bold text-slate-900 text-sm">{s.display_name}</span>
+                        <span class="text-[10px] font-mono bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-bold">{s.agent_id}</span>
+                      </div>
+                      <div class="text-xs text-slate-500 font-sans">{s.role}</div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2 self-start sm:self-center">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border bg-white text-slate-700">
+                      Status: {s.state}
+                    </span>
+                    <a
+                      href={`/admin/mission-control/staff?staff=${s.agent_id}`}
+                      class="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-outfit font-bold hover:bg-blue-100 transition"
+                    >
+                      Inspeksi Staf ➔
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- Department Tasks List -->
+        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 class="text-base font-outfit font-bold text-slate-900 flex items-center gap-2">
+              <span>📋</span>
+              <span>Tugas & Beban Kerja Divisi ({dept.tasks.length})</span>
+            </h2>
+            <span class="text-xs font-mono text-slate-400">Atribusi Kanonikal</span>
+          </div>
+
+          {dept.tasks.length === 0 ? (
+            <div class="p-8 rounded-xl border border-dashed border-slate-200 text-center font-mono text-xs text-slate-400">
+              Tidak ada tugas yang sedang aktif atau tertunda di departemen ini.
+            </div>
+          ) : (
+            <div class="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+              {dept.tasks.map((task) => (
+                <div class="p-3 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50/60 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div class="space-y-0.5 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono text-[10px] font-bold text-slate-500 uppercase px-1.5 py-0.5 bg-slate-100 rounded">
+                        {task.taskId}
+                      </span>
+                      <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border bg-slate-100 text-slate-700">
+                        {task.stage}
+                      </span>
+                      {task.retryCount > 0 && (
+                        <span class="text-[10px] font-mono bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">
+                          Retry: {task.retryCount}
+                        </span>
+                      )}
+                    </div>
+                    <div class="text-xs font-outfit font-bold text-slate-900 truncate">
+                      {task.title}
+                    </div>
+                    {task.blockerOrError && (
+                      <div class="text-[10px] font-mono text-rose-600 font-medium">
+                        ⚠️ {task.blockerOrError}
+                      </div>
+                    )}
+                  </div>
+                  <div class="text-right text-[10px] font-mono text-slate-400 shrink-0">
+                    {formatTimeAgo(task.lastUpdate)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- RIGHT: Blockers & Handoffs & Telemetry (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        <!-- Blockers / Warnings Card -->
+        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-outfit font-bold text-slate-900 flex items-center gap-2">
+              <span>⚠️</span>
+              <span>Hambatan & Peringatan ({dept.current_blockers.length})</span>
+            </h3>
+            <span class="text-[10px] font-mono text-slate-400">Structural Blockers</span>
+          </div>
+
+          {dept.current_blockers.length === 0 ? (
+            <div class="p-4 rounded-xl border border-dashed border-slate-200 text-center font-mono text-xs text-emerald-600 bg-emerald-50/20">
+              ✓ Tidak ada hambatan aktif terdeteksi di divisi ini.
+            </div>
+          ) : (
+            <div class="space-y-2">
+              {dept.current_blockers.map((blk) => (
+                <div class="p-3 rounded-xl border border-rose-200 bg-rose-50/40 space-y-1.5 font-mono text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="px-2 py-0.2 rounded font-bold text-[10px] bg-rose-100 text-rose-800">
+                      {blk.error_class}
+                    </span>
+                    <span class="text-[10px] text-slate-500">{formatTimeAgo(blk.detected_at)}</span>
+                  </div>
+                  <p class="font-outfit font-bold text-slate-900 text-xs">{blk.summary}</p>
+                  <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-rose-200/50">
+                    <span>Aksi Operator: {blk.operator_action_required ? 'Wajib' : 'Otomatis'}</span>
+                    <span>Retryable: {blk.retryable ? 'Ya' : 'Tidak'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- Handoffs Card -->
+        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-outfit font-bold text-slate-900 flex items-center gap-2">
+              <span>🔄</span>
+              <span>Transisi Handoff ({dept.handoffs.length})</span>
+            </h3>
+            <span class="text-[10px] font-mono text-slate-400">Cross-Division</span>
+          </div>
+
+          {dept.handoffs.length === 0 ? (
+            <div class="p-4 rounded-xl border border-dashed border-slate-200 text-center font-mono text-xs text-slate-400">
+              Tidak ada transisi handoff aktif untuk divisi ini.
+            </div>
+          ) : (
+            <div class="space-y-2">
+              {dept.handoffs.map((h) => (
+                <div class="p-3 rounded-xl border border-slate-200/80 bg-slate-50/60 font-mono text-xs space-y-1">
+                  <div class="flex items-center justify-between text-[11px]">
+                    <span class="font-bold text-slate-800 truncate">
+                      {h.source_department_id} ➔ {h.destination_department_id}
+                    </span>
+                    <span class={`px-1.5 py-0.2 rounded font-bold text-[9px] ${h.handoff_state === 'BLOCKED' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {h.handoff_state}
+                    </span>
+                  </div>
+                  <div class="text-slate-600 text-[11px] font-sans truncate">{h.task_title}</div>
+                  <p class="text-[10px] text-slate-500 font-sans line-clamp-2">{h.evidence}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- Capabilities & Source Systems -->
+        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
+          <div class="border-b border-slate-100 pb-2">
+            <h4 class="text-xs font-outfit font-bold text-slate-900 uppercase tracking-wider">
+              Kapabilitas & Sistem Sumber
+            </h4>
+          </div>
+
+          <div class="space-y-2 text-xs font-mono">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase font-bold mb-1">Kapabilitas:</div>
+              <div class="flex flex-wrap gap-1">
+                {dept.capabilities.map((cap) => (
+                  <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
+                    {cap}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100">
+              <div class="text-[10px] text-slate-400 uppercase font-bold mb-1">Sistem Sumber:</div>
+              <div class="flex flex-wrap gap-1">
+                {dept.source_systems.map((sys) => (
+                  <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold border border-slate-200">
+                    {sys}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

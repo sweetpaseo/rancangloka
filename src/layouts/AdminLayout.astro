@@ -23,6 +23,9 @@ const isActive = (path: string) => {
   if (cleanPath === '/admin/mission-control') {
     return currentPath === '/admin/mission-control';
   }
+  if (cleanPath === '/admin/mission-control/departments') {
+    return currentPath === '/admin/mission-control/departments' || currentPath.startsWith('/admin/mission-control/departments/');
+  }
   if (cleanPath === '/admin/posts') {
     return currentPath === '/admin/posts' || (currentPath.startsWith('/admin/posts/') && currentPath !== '/admin/posts/new');
   }
@@ -44,6 +47,7 @@ const breadcrumbMap: Record<string, string[]> = {
   '/admin': ['Ringkasan'],
   '/admin/mission-control': ['Hermes Mission Control'],
   '/admin/mission-control/staff': ['Hermes Mission Control', 'Staff Registry'],
+  '/admin/mission-control/departments': ['Hermes Mission Control', 'Departemen'],
   '/admin/posts': ['Artikel & Jurnal'],
   '/admin/posts/new': ['Artikel & Jurnal', 'Artikel Baru'],
   '/admin/import': ['Import Markdown'],
@@ -63,7 +67,9 @@ const breadcrumbs = currentPath.startsWith('/admin/posts/') && currentPath !== '
   ? ['Artikel & Jurnal', 'Edit Artikel']
   : currentPath.startsWith('/admin/pages/') && currentPath !== '/admin/pages/new'
     ? ['Halaman Situs', 'Edit Halaman']
-    : breadcrumbMap[currentPath] || [title];
+    : currentPath.startsWith('/admin/mission-control/departments/')
+      ? ['Hermes Mission Control', 'Departemen', title]
+      : breadcrumbMap[currentPath] || [title];
 
 const groups = [
   {
@@ -71,7 +77,8 @@ const groups = [
     items: [
       { href: '/admin', label: 'Ringkasan', icon: 'grid' },
       { href: '/admin/mission-control', label: 'Mission Control', icon: 'command' },
-      { href: '/admin/mission-control/staff', label: 'Staff Registry', icon: 'people' }
+      { href: '/admin/mission-control/staff', label: 'Staff Registry', icon: 'people' },
+      { href: '/admin/mission-control/departments', label: 'Departemen', icon: 'page' }
     ]
   },
   {
