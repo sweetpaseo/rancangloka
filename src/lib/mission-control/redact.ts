@@ -76,3 +76,5 @@ export function sanitizePayload<T>(value: T): T {
 
   return value;
 }
+
+export const redactSensitiveString = sanitizeString;

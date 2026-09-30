@@ -1,0 +1,413 @@
+---
+/**
+ * RancangLoka Hermes Mission Control — Alert Center & Anomaly Escalation
+ * Milestone: HERMES-MC-6
+ * 
+ * Strict Invariants:
+ * 1. Read-only. GET requests only.
+ * 2. Visualizes real normalized anomalies, deduplicated alerts, and occurrence counts.
+ * 3. Distinguishes expected dormancy (e.g. Media worker disabled) from actionable faults.
+ * 4. Zero dangerous remediation controls (no arbitrary retry, no direct publish, no breaker reset).
+ * 5. Links directly to responsible staff chat threads without bypassing command security.
+ */
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb } from '../../../lib/db.ts';
+import {
+  getMissionControlSnapshot,
+  scanAndSyncAnomalies,
+  getStaffDefinitionByAgentId,
+  type MissionControlAnomaly
+} from '../../../lib/mission-control/index.ts';
+
+const env = (Astro.locals as any)?.runtime?.env || (globalThis as any).process?.env || {};
+const db = (await getDb(Astro.locals)) || env.DB || (Astro.locals as any)?.db;
+
+const snapshot = await getMissionControlSnapshot(db, env);
+const anomaliesSummary = snapshot.anomalies || (await scanAndSyncAnomalies(db, snapshot));
+
+const { active_anomalies, expected_conditions, resolved_anomalies, counts } = anomaliesSummary;
+
+// Helper to format timestamps
+function formatTime(isoStr?: string | null): string {
+  if (!isoStr) return '-';
+  try {
+    const d = new Date(isoStr);
+    return `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} WIB`;
+  } catch {
+    return isoStr;
+  }
+}
+
+// Severity badge classes
+function getSeverityBadge(sev: string) {
+  switch (sev) {
+    case 'CRITICAL':
+      return 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse';
+    case 'ERROR':
+      return 'bg-orange-500/20 text-orange-300 border-orange-500/40';
+    case 'WARNING':
+      return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+    case 'INFO':
+    default:
+      return 'bg-slate-700/40 text-slate-300 border-slate-600/40';
+  }
+}
+---
+
+<AdminLayout title="Alert Center & Eskalasi Anomali">
+  <div class="space-y-6 max-w-7xl mx-auto pb-12">
+    <!-- 1. Header & Live Indicator -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30">
+            HERMES-MC-6
+          </span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            {snapshot.freshness}
+          </span>
+          <span class={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border uppercase ${counts.total_active > 0 ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'}`}>
+            {counts.total_active} Anomali Aktif
+          </span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-outfit font-black text-white tracking-tight mt-1.5 flex items-center gap-2.5">
+          <span>🚨</span>
+          <span>Mission Control Alert Center</span>
+        </h1>
+        <p class="text-xs text-slate-400 mt-1 max-w-2xl font-mono">
+          Pusat deteksi anomali nyata, isolasi kondisi terencana (expected dormancy), dan eskalasi staf tanpa kontrol remediasi sembrono.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <div class="text-[10px] font-mono uppercase text-slate-500">Pembaruan Terakhir</div>
+          <div class="text-xs font-mono text-slate-300">
+            {new Date().toLocaleTimeString('id-ID', { hour12: false })} WIB
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick="window.location.reload()"
+          class="rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 text-xs font-outfit font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
+        >
+          <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+            <path d="M16 21h5v-5"></path>
+          </svg>
+          <span>Pindai Ulang</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. Sub-Navigation Bar -->
+    <div class="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 p-2 rounded-xl text-xs font-outfit font-bold">
+      <a
+        href="/admin/mission-control"
+        class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition flex items-center gap-2"
+      >
+        <span>🛰️</span>
+        <span>Cockpit</span>
+      </a>
+      <a
+        href="/admin/mission-control/staff"
+        class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition flex items-center gap-2"
+      >
+        <span>👥</span>
+        <span>Staff Registry</span>
+      </a>
+      <a
+        href="/admin/mission-control/departments"
+        class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition flex items-center gap-2"
+      >
+        <span>🏢</span>
+        <span>Departemen</span>
+      </a>
+      <a
+        href="/admin/mission-control/office"
+        class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition flex items-center gap-2"
+      >
+        <span>👾</span>
+        <span>Pixel Office</span>
+      </a>
+      <a
+        href="/admin/mission-control/alerts"
+        class="px-4 py-2 rounded-lg bg-rose-600 text-white shadow-xs flex items-center gap-2"
+      >
+        <span>🚨</span>
+        <span>Alert Center</span>
+        <span class="px-1.5 py-0.2 rounded-full bg-rose-800 text-[10px] font-mono font-bold">
+          {counts.total_active}
+        </span>
+      </a>
+    </div>
+
+    <!-- 3. KPI Metric Strip -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+      <div class={`border rounded-2xl p-4 shadow-sm flex flex-col justify-between ${counts.total_active > 0 ? 'bg-rose-950/20 border-rose-800/60' : 'bg-slate-900 border-slate-800'}`}>
+        <div class="text-[11px] font-mono uppercase text-slate-400 tracking-wider">Total Anomali Aktif</div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <div class={`text-3xl font-black font-outfit ${counts.total_active > 0 ? 'text-rose-400' : 'text-slate-200'}`}>
+            {counts.total_active}
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">Actionable</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+        <div class="text-[11px] font-mono uppercase text-rose-400 tracking-wider flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+          <span>Kritis (Critical)</span>
+        </div>
+        <div class="mt-2 text-3xl font-black font-outfit text-white">
+          {counts.critical}
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+        <div class="text-[11px] font-mono uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span>Peringatan (Warning)</span>
+        </div>
+        <div class="mt-2 text-3xl font-black font-outfit text-white">
+          {counts.warning + counts.error}
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+        <div class="text-[11px] font-mono uppercase text-blue-400 tracking-wider flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          <span>Kondisi Terencana (Dormant)</span>
+        </div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <div class="text-3xl font-black font-outfit text-blue-300">
+            {counts.expected}
+          </div>
+          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-900/30 text-blue-400">Non-Alert</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between col-span-2 sm:col-span-1">
+        <div class="text-[11px] font-mono uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Riwayat Selesai (Resolved)</span>
+        </div>
+        <div class="mt-2 text-3xl font-black font-outfit text-emerald-400">
+          {counts.resolved}
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Interactive Filter Tabs -->
+    <div class="flex items-center gap-2 border-b border-slate-800 pb-3 text-xs font-outfit font-bold">
+      <button
+        type="button"
+        id="tab-btn-active"
+        onclick="switchTab('active')"
+        class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-white border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+      >
+        <span>Anomali Terbuka</span>
+        <span class="px-1.5 py-0.2 rounded-full bg-slate-900 text-[10px] font-mono">{active_anomalies.length}</span>
+      </button>
+
+      <button
+        type="button"
+        id="tab-btn-expected"
+        onclick="switchTab('expected')"
+        class="tab-btn px-3.5 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer flex items-center gap-1.5"
+      >
+        <span>Kondisi Terencana (Dormant)</span>
+        <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono">{expected_conditions.length}</span>
+      </button>
+
+      <button
+        type="button"
+        id="tab-btn-resolved"
+        onclick="switchTab('resolved')"
+        class="tab-btn px-3.5 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer flex items-center gap-1.5"
+      >
+        <span>Riwayat Terselesaikan</span>
+        <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono">{resolved_anomalies.length}</span>
+      </button>
+    </div>
+
+    <!-- 5. Active Anomalies Panel -->
+    <div id="panel-active" class="tab-panel space-y-4">
+      {active_anomalies.length === 0 ? (
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
+          <div class="text-4xl mb-3">🛡️</div>
+          <h3 class="text-base font-outfit font-bold text-slate-200">Tidak Ada Anomali Aktif</h3>
+          <p class="text-xs text-slate-400 max-w-md mx-auto mt-1 font-mono">
+            Seluruh subsistem beroperasi normal atau dalam kondisi terencana. Sinyal telemetri stabil tanpa kegagalan yang memerlukan eskalasi operator.
+          </p>
+        </div>
+      ) : (
+        <div class="space-y-3">
+          {active_anomalies.map((anom: MissionControlAnomaly) => {
+            const staff = anom.responsible_agent_id ? getStaffDefinitionByAgentId(anom.responsible_agent_id) : null;
+            return (
+              <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 transition rounded-2xl p-4.5 shadow-sm space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div class="space-y-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase border ${getSeverityBadge(anom.severity)}`}>
+                        {anom.severity}
+                      </span>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-slate-800 text-slate-400 border border-slate-700">
+                        {anom.department_id}
+                      </span>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-mono text-slate-500">
+                        Sumber: {anom.source_system}
+                      </span>
+                      {anom.occurrence_count > 1 && (
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          {anom.occurrence_count}x Terulang
+                        </span>
+                      )}
+                    </div>
+                    <h3 class="text-base font-outfit font-bold text-white tracking-tight">
+                      {anom.title}
+                    </h3>
+                  </div>
+
+                  {staff ? (
+                    <a
+                      href={`/admin/mission-control/staff/${staff.agent_id}/chat`}
+                      class="shrink-0 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-outfit font-bold transition flex items-center gap-2"
+                    >
+                      <span>💬</span>
+                      <span>Chat {staff.display_name}</span>
+                    </a>
+                  ) : (
+                    <span class="shrink-0 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 text-xs font-mono">
+                      Infrastruktur / Sistem
+                    </span>
+                  )}
+                </div>
+
+                <p class="text-xs text-slate-300 font-sans leading-relaxed">
+                  {anom.summary}
+                </p>
+
+                {anom.technical_detail && (
+                  <div class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5 text-[11px] font-mono text-slate-400">
+                    <span class="text-slate-500 select-none">Detail Teknis: </span>
+                    <span>{anom.technical_detail}</span>
+                  </div>
+                )}
+
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/60 text-[10px] font-mono text-slate-500">
+                  <div class="flex items-center gap-3">
+                    <span>Terdeteksi: {formatTime(anom.first_seen_at)}</span>
+                    <span>Terakhir: {formatTime(anom.last_seen_at)}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    {anom.operator_action_required ? (
+                      <span class="text-rose-400 font-bold">⚠️ Perlu Tindakan Operator</span>
+                    ) : (
+                      <span class="text-slate-400">Penanganan Otomatis / Pemantauan</span>
+                    )}
+                    {anom.evidence_reference && (
+                      <span class="text-slate-600">• Ref: {anom.evidence_reference}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+
+    <!-- 6. Expected Dormancy Panel -->
+    <div id="panel-expected" class="tab-panel space-y-4 hidden">
+      <div class="bg-blue-950/20 border border-blue-900/40 rounded-xl p-3 text-xs text-blue-300 font-mono">
+        ℹ️ <strong>Kondisi Terencana:</strong> Kondisi sistem di bawah ini dinonaktifkan secara sengaja sesuai kebijakan keselamatan produksi (misal: pekerja media nonaktif atau publikasi draft-only). Kondisi ini <strong>bukan insiden</strong> dan tidak memicu alarm darurat.
+      </div>
+
+      <div class="space-y-3">
+        {expected_conditions.map((anom: MissionControlAnomaly) => (
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  DORMANCY
+                </span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-slate-800 text-slate-400 border border-slate-700">
+                  {anom.department_id}
+                </span>
+                <span class="text-xs font-outfit font-bold text-white">
+                  {anom.title}
+                </span>
+              </div>
+              <span class="text-[10px] font-mono text-emerald-400">Normal by Design</span>
+            </div>
+            <p class="text-xs text-slate-400 font-sans">
+              {anom.summary}
+            </p>
+            <div class="text-[10px] font-mono text-slate-500">
+              Ref: {anom.evidence_reference || '-'}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- 7. Resolved Anomalies History Panel -->
+    <div id="panel-resolved" class="tab-panel space-y-4 hidden">
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-slate-400 font-mono">
+        Audit trail anomali yang telah terselesaikan secara otomatis setelah kondisi penyebabnya pulih ke status normal.
+      </div>
+
+      {resolved_anomalies.length === 0 ? (
+        <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-8 text-center text-xs font-mono text-slate-500">
+          Belum ada riwayat anomali yang terselesaikan dalam sesi ini.
+        </div>
+      ) : (
+        <div class="space-y-2.5">
+          {resolved_anomalies.map((anom: MissionControlAnomaly) => (
+            <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3.5 flex items-center justify-between gap-4 text-xs font-sans">
+              <div class="space-y-0.5">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.2 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    RESOLVED
+                  </span>
+                  <span class="font-outfit font-bold text-slate-300">{anom.title}</span>
+                </div>
+                <div class="text-[11px] text-slate-400 font-mono">
+                  {anom.summary}
+                </div>
+              </div>
+              <div class="text-right text-[10px] font-mono text-slate-500 shrink-0">
+                <div>Pulih: {formatTime(anom.resolved_at)}</div>
+                <div>Durasi: {anom.occurrence_count} siklus</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+
+  <script is:inline>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('bg-slate-800', 'text-white', 'border-slate-700');
+        b.classList.add('text-slate-400');
+      });
+
+      const activePanel = document.getElementById('panel-' + tabId);
+      const activeBtn = document.getElementById('tab-btn-' + tabId);
+
+      if (activePanel) activePanel.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('bg-slate-800', 'text-white', 'border-slate-700');
+        activeBtn.classList.remove('text-slate-400');
+      }
+    }
+  </script>
+</AdminLayout>

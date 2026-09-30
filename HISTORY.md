@@ -17,6 +17,35 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-6: Mission Control Anomaly Detection & Staff Escalation 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Membangun lapisan normalisasi anomali kanonikal dan eskalasi staf otomatis untuk Hermes Mission Control pada rute `/admin/mission-control/alerts` dan API `/api/admin/mission-control/alerts`.
+  - Mengisolasi kondisi terencana (*Expected Dormancy*, seperti `media_worker = DISABLED` dan `automation_mode = OFF`) sebagai `INFO` / `EXPECTED` sehingga tidak memicu alarm palsu, eskalasi darurat, atau kenaikan badge counter.
+  - Menerapkan model anomali deterministik `MissionControlAnomaly` yang menormalisasi kegagalan retry media, breaker open, kill switch aktif, fallback/error JEV, detak jantung scheduler stale/offline, antrean dead-letter outbox, serta kegagalan validasi/QA naskah.
+  - Memetakan anomali ke staf penanggung jawab secara deterministik (Budi: Media, Sari: Publikasi, Dimas: Telemetri/Jev, Joko: Penulisan, Rina: QA, Irwan: Riset). Masalah infrastruktur yang ambigu dibiarkan unassigned (`responsible_agent_id = null`) tanpa menyalahkan staf persona.
+  - Menerapkan deduplikasi cerdas berbasis fingerprint (`createAnomalyFingerprint`): anomali berulang menaikkan `occurrence_count` dan memperbarui `last_seen_at` tanpa menduplikasi baris database atau membanjiri pesan chat.
+  - Menghubungkan anomali ke Pixel Office: sprite staf dan denah ruang menampilkan indikator peringatan visual proporsional tanpa animasi kepanikan berlebihan.
+  - Menghubungkan eskalasi staf ke chat MC-5: saat anomali actionable pertama kali terdeteksi pada staf, sistem mengirimkan pesan laporan operasional ke thread staf. Pesan ini 100% informasional dan tidak memiliki otoritas eksekusi perintah otomatis.
+  - Deteksi pemulihan otomatis (*Automatic Resolution*): ketika kondisi yang mendasarinya pulih (misal heartbeat kembali sehat atau circuit breaker tertutup), anomali bertransisi menjadi `RESOLVED` dengan timestamp `resolved_at` dan dipertahankan dalam riwayat audit.
+  - Menjaga invarian read-only murni: snapshot generator dan Alert Center memiliki 0 mutasi remediasi sembrono (tanpa tombol coba ulang, tanpa paksa terbit, tanpa bypass breaker).
+- **Skema Database & Persistensi (Migration 0025):**
+  - `mission_control_anomalies`: Menyimpan anomali ternormalisasi, fingerprint, status siklus hidup, dan counter rekurensi.
+  - `mission_control_anomaly_events`: Menyimpan riwayat audit kejadian transisi anomali.
+- **Pengujian & Validasi:**
+  - Rangkaian pengujian terfokus `scripts/test-mission-control-anomalies.js` lulus 100% (20/20 tes) memverifikasi: deteksi retry exhausted, isolasi worker disabled & automation OFF sebagai EXPECTED, penanganan JEV fallback, circuit breaker OPEN, heartbeat stale/offline, dead-letter outbox, stabilitas fingerprint, supresi duplikasi, penugasan staf deterministik, isolasi isu infrastruktur ambigu, overlay Pixel Office, pengaruh ke kesehatan departemen, pesan eskalasi chat tunggal tanpa spam, pembaruan eskalasi keparahan, resolusi otomatis & retensi riwayat, redaksi rahasia, serta ketiadaan kontrol mutasi/remediasi berbahaya.
+  - Pengujian Chat `scripts/test-mission-control-chat.js` lulus 100% (20/20 tes).
+  - Pengujian Pixel Office `scripts/test-mission-control-pixel-office.js` lulus 100% (20/20 tes).
+  - Pengujian Departemen `scripts/test-mission-control-departments.js` lulus 100% (18/18 tes).
+  - Pengujian Staff Registry `scripts/test-staff-registry.js` lulus 100% (16/16 tes).
+  - Pengujian Mission Control `scripts/test-mission-control.js` lulus 100% (10/10 tes).
+  - Pengujian regresi keselamatan `scripts/test-soak-safety.js` lulus 100% (54/54 tes).
+  - Validasi tipe `npx tsc --noEmit` lulus bersih tanpa kesalahan.
+  - Build produksi `npm run build` sukses (4.91s).
+- **Status Akhir:**
+  - `HERMES-MC-6 = COMPLETE`.
+  - Frontier saat ini: `HERMES-MC-7/READY`.
+
 ### HERMES-MC-5: Direct Staff Interaction & Safe Operator Command Queue 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**

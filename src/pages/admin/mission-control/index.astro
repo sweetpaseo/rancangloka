@@ -181,6 +181,16 @@ const formatTimeAgo = (isoString?: string | null) => {
         <span>Pixel Office</span>
         <span class="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono">2D</span>
       </a>
+      <a
+        href="/admin/mission-control/alerts"
+        class="px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition flex items-center gap-2"
+      >
+        <span>🚨</span>
+        <span>Alert Center</span>
+        <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">
+          {snapshot.anomalies?.counts?.total_active ?? 0}
+        </span>
+      </a>
     </div>
 
     <!-- 2. System Health Strip -->

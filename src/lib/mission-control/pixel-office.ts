@@ -67,6 +67,8 @@ export interface OfficeStaffSprite {
   badge_text: string;
   capabilities: string[];
   last_activity_at: string | null;
+  active_anomaly_title?: string | null;
+  active_anomaly_severity?: string | null;
 }
 
 export interface OfficeRoom {
@@ -81,6 +83,7 @@ export interface OfficeRoom {
   health_evidence: string;
   active_tasks_count: number;
   blockers_count: number;
+  active_anomalies_count?: number;
 }
 
 export interface PixelOfficeSummary {
@@ -232,7 +235,8 @@ export function evaluateStateReason(
 export function deriveSpriteSpatialState(
   staff: StaffMemberStatus,
   loungeIndex: number,
-  snapshot: MissionControlSnapshot | null
+  snapshot: MissionControlSnapshot | null,
+  activeAnomalies: any[] = []
 ): OfficeStaffSprite {
   const homeRoom = STAFF_HOME_ROOMS[staff.agent_id] || 'editorial_room';
   const workPositionKey = STAFF_WORKSTATION_POSITIONS[staff.agent_id] || 'editorial_writer_desk';
@@ -243,6 +247,8 @@ export function deriveSpriteSpatialState(
   let visualMode: OfficeStaffSprite['visual_mode'] = 'ACTIVE';
   let warningLevel: OfficeStaffSprite['warning_level'] = 'NONE';
   let badgeText: string = staff.state;
+  let activeAnomTitle: string | null = null;
+  let activeAnomSeverity: string | null = null;
 
   switch (staff.state) {
     case 'IDLE': {
@@ -303,6 +309,24 @@ export function deriveSpriteSpatialState(
     }
   }
 
+  // Active anomaly overlay
+  const staffAnom = activeAnomalies.find(
+    (a: any) => a.responsible_agent_id === staff.agent_id && a.state === 'OPEN' && !a.expected_condition
+  );
+  if (staffAnom) {
+    activeAnomTitle = staffAnom.title;
+    activeAnomSeverity = staffAnom.severity;
+    if (staffAnom.severity === 'CRITICAL') {
+      warningLevel = 'CRITICAL';
+      badgeText = staff.state === 'BLOCKED' ? 'Terblokir' : 'Alarm Kritis';
+    } else if (staffAnom.severity === 'ERROR' || staffAnom.severity === 'WARNING') {
+      if (warningLevel !== 'CRITICAL') {
+        warningLevel = 'WARNING';
+        badgeText = staffAnom.title.length > 25 ? `${staffAnom.title.slice(0, 22)}...` : staffAnom.title;
+      }
+    }
+  }
+
   // Lookup position coordinates
   const pos = OFFICE_POSITIONS.find((p) => p.position_key === targetPositionKey) || {
     x: 50,
@@ -330,7 +354,9 @@ export function deriveSpriteSpatialState(
     warning_level: warningLevel,
     badge_text: badgeText,
     capabilities: staff.capabilities,
-    last_activity_at: staff.last_activity_at
+    last_activity_at: staff.last_activity_at,
+    active_anomaly_title: activeAnomTitle,
+    active_anomaly_severity: activeAnomSeverity
   };
 }
 
@@ -338,7 +364,10 @@ export function deriveSpriteSpatialState(
 // Master Pixel Office Snapshot Assembler
 // ============================================================================
 
-export function getPixelOfficeState(snapshot: MissionControlSnapshot | null): PixelOfficeState {
+export function getPixelOfficeState(
+  snapshot: MissionControlSnapshot | null,
+  activeAnomalies: any[] = []
+): PixelOfficeState {
   const staffRoster = getStaffRoster(snapshot);
   const org = getOrganizationSnapshot(snapshot);
 
@@ -349,7 +378,7 @@ export function getPixelOfficeState(snapshot: MissionControlSnapshot | null): Pi
       indexForLounge = idleCount;
       idleCount++;
     }
-    return deriveSpriteSpatialState(s, indexForLounge, snapshot);
+    return deriveSpriteSpatialState(s, indexForLounge, snapshot, activeAnomalies);
   });
 
   // Canonical rooms configuration
@@ -432,6 +461,14 @@ export function getPixelOfficeState(snapshot: MissionControlSnapshot | null): Pi
       healthEvidence = `${occupants.length} staf siaga di Lounge.`;
     }
 
+    let activeAnomaliesCount = 0;
+    if (cfg.department_id !== 'lounge') {
+      const roomAnoms = activeAnomalies.filter(
+        (a: any) => a.department_id === cfg.department_id && a.state === 'OPEN' && !a.expected_condition
+      );
+      activeAnomaliesCount = roomAnoms.length;
+    }
+
     return {
       room_key: cfg.room_key,
       title: cfg.title,
@@ -443,7 +480,8 @@ export function getPixelOfficeState(snapshot: MissionControlSnapshot | null): Pi
       health,
       health_evidence: healthEvidence,
       active_tasks_count: activeTasksCount,
-      blockers_count: blockersCount
+      blockers_count: blockersCount,
+      active_anomalies_count: activeAnomaliesCount
     };
   });
 

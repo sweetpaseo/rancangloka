@@ -22,6 +22,7 @@ import {
 import { getStaffRoster } from './staff-registry.ts';
 import { getOrganizationSnapshot } from './department-registry.ts';
 import { getPixelOfficeState } from './pixel-office.ts';
+import { getAnomaliesSnapshot } from './anomalies.ts';
 
 export * from './types.ts';
 export * from './redact.ts';
@@ -34,6 +35,7 @@ export * from './staff-registry.ts';
 export * from './department-registry.ts';
 export * from './pixel-office.ts';
 export * from './chat.ts';
+export * from './anomalies.ts';
 
 export async function getMissionControlSnapshot(db: any, env?: any): Promise<MissionControlSnapshot> {
   const [
@@ -78,6 +80,10 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
     jev
   };
 
+  // Derive anomalies deterministically (pure read model with zero DB mutations)
+  const anomalies = getAnomaliesSnapshot(snapshot);
+  snapshot.anomalies = anomalies;
+
   // Derive staff roster deterministically from snapshot
   snapshot.staff = getStaffRoster(snapshot);
 
@@ -85,7 +91,7 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
   snapshot.organization = getOrganizationSnapshot(snapshot);
 
   // Derive pixel office state deterministically from snapshot
-  snapshot.office = getPixelOfficeState(snapshot);
+  snapshot.office = getPixelOfficeState(snapshot, anomalies.active_anomalies);
 
   return snapshot;
 }

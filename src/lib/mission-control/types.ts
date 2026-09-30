@@ -209,4 +209,5 @@ export interface MissionControlSnapshot {
   staff?: any;
   organization?: any;
   office?: any;
+  anomalies?: any;
 }
