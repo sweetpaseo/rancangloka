@@ -17,6 +17,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### HERMES-MC-1: RancangLoka Hermes Mission Control Core Implementation 2026-09-30
+
+- **Tujuan & Ruang Lingkup:**
+  - Membangun antarmuka kokpit operasional terpadu read-only pertama di rute `/admin/mission-control` dan API telemetri `/api/admin/mission-control/state`.
+  - Mengagregasikan status operasional nyata dari Cloudflare D1 (keselamatan otomasi, pemutus sirkuit, pekerja media, pipeline artikel, log audit aktivitas, scheduler cron) dan model keputusan bayangan TypeSafe Jev ke dalam satu dasbor eksekutif.
+  - Mempertahankan invarian keselamatan produksi: nol mutasi database, nol aktivasi pekerja media (`settings.media_worker_enabled = DISABLED`), otomasi publikasi tetap `OFF`, kill switch tetap pada status kanonikal (`NORMAL`), dan Jev berstatus `shadow` dengan otoritas nol.
+  - Menolak data simulasi/palsu: menampilkan status nol sehat (misal 0 perangkat aktif, 0 pekerjaan media) apa adanya, dan menandai telemetri yang tidak tersedia sebagai `UNKNOWN` atau `NOT_AVAILABLE`.
+  - Menerapkan sanitasi token dan redaksi kredensial otomatis pada seluruh lapisan data dan tampilan.
+- **Komponen & Arsitektur Terpasang (`src/lib/mission-control/`):**
+  1. **Tipe & Kontrak Data (`types.ts`):** Definisi TypeScript lengkap untuk seluruh model data snapshot, health strip, pipeline board, audit feed, scheduler, dan ringkasan subsistem.
+  2. **Sanitasi & Redaksi Kredensial (`redact.ts`):** Penyensoran otomatis pola token rahasia (`lkmd_...`, Bearer tokens, token sesi admin, hash, dan kunci kriptografi).
+  3. **Lapisan Kesehatan Sistem (`health.ts`):** Evaluasi status publikasi dari `automation_control.mode`, kill switch, status gerbang pekerja media, mode Jev bayangan, dan pemutus sirkuit subsistem (`circuit_breakers`).
+  4. **Papan Tugas / Pipeline Terpadu (`tasks.ts`):** Pemetaan kanonikal entitas lintas siklus hidup editorial (`draft`, `waiting_media`, `ready_for_review`, `scheduled`, `published`, `failed`) dari gabungan tabel `articles`, `media_jobs`, dan `article_editorial_approvals`.
+  5. **Arus Audit & Aktivitas Kronologis (`activity.ts`):** Agregasi kejadian multi-tabel (`automation_control_audit`, `circuit_breaker_events`, `media_job_events`, `publication_cron_runs`, `decision_observations`) dengan penanda keparahan (`info`, `warning`, `error`, `success`).
+  6. **Evaluator Scheduler & Detak Jantung (`scheduler.ts`):** Evaluasi kesegaran detak jantung Hermes sesuai ambang batas kanonikal (sehat $\le 300$d, basi $301-600$d, luring $>600$d) dan ringkasan eksekusi cron Cloudflare edge-safe.
+  7. **Ringkasan Operasional Subsistem (`summaries.ts`):** Ringkasan receipt outbox, operasi artikel, operasi media, dan metrik latensi/risiko evaluasi Jev bayangan.
+  8. **Assembler Snapshot Utama (`index.ts`):** Pembungkus fungsi read-only `getMissionControlSnapshot` yang mengeksekusi kueri SELECT murni tanpa efek samping.
+- **Antarmuka & Rute Web:**
+  - **Halaman Dasbor (`/admin/mission-control`):** Halaman Astro SSR dengan tata letak padat informasi (*executive cockpit*), palet warna gelap profesional, kartu status interaktif, dan auto-refresh polling 30 detik yang hemat komputasi.
+  - **API Telemetri (`/api/admin/mission-control/state`):** Rute GET terautentikasi sesi admin untuk pembaruan data asinkron.
+  - **Navigasi Admin (`src/layouts/AdminLayout.astro`):** Penambahan tautan menu "Hermes Mission Control" di bilah navigasi CMS Admin.
+- **Pengujian & Validasi:**
+  - Rangkaian pengujian terfokus `scripts/test-mission-control.js` lulus 100% (10/10 tes): redaksi rahasia, invarian kesehatan dan otoritas nol, pemetaan zero-state sehat, transisi kill switch dan circuit breaker OPEN, pemetaan stage task board, agregasi audit multi-tabel, fallback telemetri tidak diketahui, dan invarian kueri read-only murni (0 mutasi).
+  - Typecheck `npx tsc --noEmit` lulus bersih tanpa kesalahan.
+  - Build produksi `npm run build` sukses membuat artefak Cloudflare Worker.
+  - Pengujian regresi keselamatan `test-soak-safety.js` (54 tes), `test-article-persistence.js` (7 tes), dan `test-media-device-lifecycle.js` (28 tes) semuanya lulus sempurna.
+- **Status Akhir:**
+  - `HERMES-MC-1 = COMPLETE`.
+  - Worktree bersih dan siap untuk transisi ke `HERMES-MC-2` (Named Staff Identities & Persistent Agent Mapping).
+
 ### MEDIA-A5.7-CLOSEOUT: Production Verification of Ephemeral Device Lifecycle & Dual-Gate Dormant Safety 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**
