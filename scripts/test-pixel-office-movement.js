@@ -25,6 +25,14 @@ import {
   advanceMovementStep
 } from '../src/lib/mission-control/staff-movement.ts';
 
+import {
+  STAFF_CANONICAL_IDLE_SEATS,
+  deriveSpriteSpatialState
+} from '../src/lib/mission-control/pixel-office.ts';
+
+import fs from 'node:fs';
+import path from 'node:path';
+
 console.log('======================================================');
 console.log('🧪 Starting Pixel Office V2.3 Deterministic Movement Test Suite...');
 console.log('======================================================\n');
@@ -382,6 +390,155 @@ assert(
   'Test 25: Hallway lane model separates Northbound (left lane) and Southbound (right lane)'
 );
 
+// ----------------------------------------------------------------------------
+// GROUP 4: Multi-Idle Allocation, Vacancy, Return & Production Audits
+// ----------------------------------------------------------------------------
+console.log('\n--- Group 4: Multi-Idle Allocation, Vacancy, Return & Production Audits ---');
+
+const canonicalStaffIds = [
+  { id: 'content_writer_primary', name: 'Joko', dept: 'editorial', expectedSeat: 'lounge_seat_1' },
+  { id: 'telemetry_observer_jev', name: 'Dimas', dept: 'operations', expectedSeat: 'lounge_seat_2' },
+  { id: 'editorial_qa_primary', name: 'Rina', dept: 'editorial', expectedSeat: 'lounge_seat_3' },
+  { id: 'evidence_researcher_lead', name: 'Irwan', dept: 'research', expectedSeat: 'lounge_seat_4' },
+  { id: 'publication_dispatcher_core', name: 'Sari', dept: 'publication', expectedSeat: 'lounge_seat_5' }
+];
+
+const mockStaffList = canonicalStaffIds.map((item, idx) => ({
+  agent_id: item.id,
+  name: item.name,
+  role: 'Specialist',
+  department_id: item.dept,
+  state: 'IDLE',
+  state_evidence: 'Siaga operasional di Lounge',
+  capabilities: ['read', 'write'],
+  source_system: 'system',
+  active: true,
+  sort_order: idx + 1,
+  current_task: null,
+  last_activity_at: new Date().toISOString(),
+  recent_activities: []
+}));
+
+// Test 26: Canonical mapping defines dedicated unique idle positions
+const allAssignedSeats = canonicalStaffIds.map((s) => STAFF_CANONICAL_IDLE_SEATS[s.id]);
+const uniqueAssignedSeats = new Set(allAssignedSeats);
+assert(
+  allAssignedSeats.length === uniqueAssignedSeats.size &&
+  allAssignedSeats.every((seat) => typeof seat === 'string' && seat.startsWith('lounge_seat_')),
+  'Test 26: STAFF_CANONICAL_IDLE_SEATS defines 100% unique dedicated lounge seats for all 5 active staff'
+);
+
+// Test 27: Multi-idle placement: all 5 eligible staff simultaneously IDLE occupy distinct seats with zero collision
+const idleSprites = mockStaffList.map((st, idx) => deriveSpriteSpatialState(st, idx, null, []));
+const occupiedIdlePositions = idleSprites.map((spr) => spr.position_key);
+const uniqueIdlePositions = new Set(occupiedIdlePositions);
+assert(
+  uniqueIdlePositions.size === 5 &&
+  idleSprites.find((s) => s.agent_id === 'content_writer_primary')?.position_key === 'lounge_seat_1' &&
+  idleSprites.find((s) => s.agent_id === 'telemetry_observer_jev')?.position_key === 'lounge_seat_2' &&
+  idleSprites.find((s) => s.agent_id === 'editorial_qa_primary')?.position_key === 'lounge_seat_3' &&
+  idleSprites.find((s) => s.agent_id === 'evidence_researcher_lead')?.position_key === 'lounge_seat_4' &&
+  idleSprites.find((s) => s.agent_id === 'publication_dispatcher_core')?.position_key === 'lounge_seat_5',
+  'Test 27: All 5 active staff simultaneously IDLE occupy distinct canonical seats (Zero Lounge Collision)'
+);
+
+// Test 28: Invariant: Dimas & Sari never share the same lounge seat
+const dimasSprite = idleSprites.find((s) => s.agent_id === 'telemetry_observer_jev');
+const sariSprite = idleSprites.find((s) => s.agent_id === 'publication_dispatcher_core');
+assert(
+  dimasSprite.position_key === 'lounge_seat_2' &&
+  sariSprite.position_key === 'lounge_seat_5' &&
+  dimasSprite.position_key !== sariSprite.position_key,
+  'Test 28: Invariant verified: Dimas (lounge_seat_2) and Sari (lounge_seat_5) NEVER collide'
+);
+
+// Test 29: Determinism: 100 iterations of simultaneous idle evaluation yield identical results
+let isConsistent = true;
+for (let i = 0; i < 100; i++) {
+  const runSprites = mockStaffList.map((st, idx) => deriveSpriteSpatialState(st, idx, null, []));
+  for (let j = 0; j < runSprites.length; j++) {
+    if (runSprites[j].position_key !== idleSprites[j].position_key) {
+      isConsistent = false;
+      break;
+    }
+  }
+}
+assert(isConsistent, 'Test 29: Multi-idle placement is 100% deterministic across 100 iterations (zero randomness)');
+
+// Test 30: Staff departure for RUNNING leaves their seat vacant without moving other idle staff
+const mockSariWorking = { ...mockStaffList[4], state: 'WORKING', current_task: { current_task_id: 't-1', current_task_title: 'Dispatch', current_task_status: 'RUNNING', current_task_updated_at: '' } };
+const partialIdleStaffList = [
+  mockStaffList[0], // Joko IDLE
+  mockStaffList[1], // Dimas IDLE
+  mockStaffList[2], // Rina IDLE
+  mockStaffList[3], // Irwan IDLE
+  mockSariWorking   // Sari WORKING
+];
+const partialSprites = partialIdleStaffList.map((st, idx) => deriveSpriteSpatialState(st, idx, null, []));
+const remainingLoungeOccupants = partialSprites.filter((s) => s.room_key === 'lounge');
+const sariWorkingSprite = partialSprites.find((s) => s.agent_id === 'publication_dispatcher_core');
+assert(
+  sariWorkingSprite.position_key === 'publication_console' &&
+  sariWorkingSprite.room_key === 'publication_room' &&
+  !remainingLoungeOccupants.some((s) => s.position_key === 'lounge_seat_5') &&
+  remainingLoungeOccupants.find((s) => s.agent_id === 'content_writer_primary')?.position_key === 'lounge_seat_1' &&
+  remainingLoungeOccupants.find((s) => s.agent_id === 'telemetry_observer_jev')?.position_key === 'lounge_seat_2' &&
+  remainingLoungeOccupants.find((s) => s.agent_id === 'editorial_qa_primary')?.position_key === 'lounge_seat_3' &&
+  remainingLoungeOccupants.find((s) => s.agent_id === 'evidence_researcher_lead')?.position_key === 'lounge_seat_4',
+  'Test 30: Departure of Sari vacates lounge_seat_5 without shifting positions of other idle staff'
+);
+
+// Test 31: Staff return from RUNNING restores exact canonical seat deterministically
+const restoredSariSprite = deriveSpriteSpatialState(mockStaffList[4], 4, null, []);
+assert(
+  restoredSariSprite.position_key === 'lounge_seat_5' &&
+  restoredSariSprite.room_key === 'lounge' &&
+  restoredSariSprite.visual_mode === 'IDLE',
+  'Test 31: Return of Sari from RUNNING restores canonical lounge_seat_5 deterministically'
+);
+
+// Test 32: Maya holding & Budi disabled invariants in spatial derivation
+const mockMayaHolding = {
+  agent_id: 'social_distribution_operator',
+  name: 'Maya',
+  role: 'Social Operator',
+  department_id: 'social',
+  state: 'OFFLINE',
+  state_evidence: 'HOLDING: Operator Account Required',
+  capabilities: ['publish'],
+  source_system: 'system',
+  active: true,
+  sort_order: 7,
+  current_task: null,
+  last_activity_at: null,
+  recent_activities: []
+};
+const mayaSprite = deriveSpriteSpatialState(mockMayaHolding, 0, null, []);
+assert(
+  mayaSprite.position_key === 'social_workstation' &&
+  mayaSprite.room_key === 'social_room',
+  'Test 32: Maya remains assigned to social_workstation in social_room while in HOLDING'
+);
+
+// Test 33: Public asset hygiene: verify zero QA screenshot artifacts in public/
+const publicDir = path.resolve('public');
+const publicFiles = fs.readdirSync(publicDir);
+const qaArtifactsInPublic = publicFiles.filter((f) => f.startsWith('office-v23') || f.endsWith('-1440.png'));
+assert(
+  qaArtifactsInPublic.length === 0,
+  `Test 33: No QA screenshot artifacts found in public/ (found ${qaArtifactsInPublic.length} files: ${qaArtifactsInPublic.join(', ') || 'none'})`
+);
+
+// Test 34: Production Dev Harness Guard: office.astro isolates dev controls behind isDev
+const officeAstroPath = path.resolve('src/pages/admin/mission-control/office.astro');
+const officeAstroContent = fs.readFileSync(officeAstroPath, 'utf8');
+const hasDevGatedHarness = officeAstroContent.includes('{isDev && (') && officeAstroContent.includes('id="dev-scenario-harness"');
+const hasDirectScenarioListenersInMain = officeAstroContent.includes("document.querySelectorAll('[data-dev-scenario]').forEach");
+assert(
+  hasDevGatedHarness && !hasDirectScenarioListenersInMain,
+  'Test 34: Dev scenario harness is strictly gated behind isDev with no raw listeners in main script'
+);
+
 console.log('\n======================================================');
 console.log(`TOTAL TESTS: ${passCount + failCount} | PASSED: ${passCount} | FAILED: ${failCount}`);
 console.log('======================================================\n');
@@ -389,3 +546,4 @@ console.log('======================================================\n');
 if (failCount > 0) {
   process.exit(1);
 }
+

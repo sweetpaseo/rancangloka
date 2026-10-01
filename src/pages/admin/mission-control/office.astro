@@ -258,7 +258,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
 
       <!-- DEV VISUAL SCENARIO TEST HARNESS (Local Development Only — Zero D1 / Production Mutation) -->
       {isDev && (
-        <div class="relative z-10 mb-4 bg-amber-50/95 border border-amber-300 rounded-xl p-3 text-xs font-mono shadow-sm">
+        <div id="dev-scenario-harness" class="relative z-10 mb-4 bg-amber-50/95 border border-amber-300 rounded-xl p-3 text-xs font-mono shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-bold uppercase text-[10px]">DEV HARNESS</span>
@@ -1310,30 +1310,65 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                           </div>
                         </div>
 
-                        <!-- Overflow slots Seat 5 & 6 -->
-                        <div class="flex items-center justify-center gap-2 z-10">
-                          {(() => {
-                            const spr5 = getSpriteAtPos('lounge_seat_5');
-                            if (spr5) {
+                        <!-- Seat 5 & 6 (Stool Kopi Barat & Timur) -->
+                        <div class="flex items-center justify-around w-full px-4 z-10 mt-1">
+                          <!-- Seat 5 (Stool Barat - Sari) -->
+                          <div class="flex flex-col items-center">
+                            {(() => {
+                              const spr5 = getSpriteAtPos('lounge_seat_5');
+                              if (spr5) {
+                                return (
+                                  <button type="button" class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200" data-staff-inspect={spr5.agent_id} data-staff-station={spr5.agent_id} title={`${spr5.display_name} • Duduk di Stool Lounge`}>
+                                    <div class="w-10 h-10 flex items-center justify-center pixel-avatar-box">
+                                      <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                        <rect x="8" y="4" width="16" height="6" fill="#14532d" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#15803d" />
+                                      </svg>
+                                    </div>
+                                    <span class="text-[8px] font-outfit font-black text-slate-800 bg-white/95 px-1 py-0.2 rounded border border-slate-300">
+                                      {spr5.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
                               return (
-                                <button type="button" class="text-[8px] font-mono font-bold bg-white/90 px-1.5 py-0.2 rounded border border-amber-300 cursor-pointer shadow-2xs transition-opacity duration-200" data-staff-inspect={spr5.agent_id} data-staff-station={spr5.agent_id}>
-                                  {spr5.display_name} (Meja Kopi)
-                                </button>
+                                <div class="flex flex-col items-center" title="Stool Barat (Kosong)">
+                                  <div class="w-7 h-4 bg-[#d97706] rounded-xs border border-[#92400e] shadow-2xs"></div>
+                                  <span class="text-[7px] font-mono text-stone-500 font-bold">Stool W</span>
+                                </div>
                               );
-                            }
-                            return null;
-                          })()}
-                          {(() => {
-                            const spr6 = getSpriteAtPos('lounge_seat_6');
-                            if (spr6) {
+                            })()}
+                          </div>
+
+                          <!-- Seat 6 (Stool Timur - Cadangan) -->
+                          <div class="flex flex-col items-center">
+                            {(() => {
+                              const spr6 = getSpriteAtPos('lounge_seat_6');
+                              if (spr6) {
+                                return (
+                                  <button type="button" class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200" data-staff-inspect={spr6.agent_id} data-staff-station={spr6.agent_id} title={`${spr6.display_name} • Duduk di Stool Lounge`}>
+                                    <div class="w-10 h-10 flex items-center justify-center pixel-avatar-box">
+                                      <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                        <rect x="8" y="4" width="16" height="6" fill="#334155" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#475569" />
+                                      </svg>
+                                    </div>
+                                    <span class="text-[8px] font-outfit font-black text-slate-800 bg-white/95 px-1 py-0.2 rounded border border-slate-300">
+                                      {spr6.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
                               return (
-                                <button type="button" class="text-[8px] font-mono font-bold bg-white/90 px-1.5 py-0.2 rounded border border-amber-300 cursor-pointer shadow-2xs transition-opacity duration-200" data-staff-inspect={spr6.agent_id} data-staff-station={spr6.agent_id}>
-                                  {spr6.display_name} (Meja Kopi)
-                                </button>
+                                <div class="flex flex-col items-center" title="Stool Timur (Kosong)">
+                                  <div class="w-7 h-4 bg-[#d97706] rounded-xs border border-[#92400e] shadow-2xs"></div>
+                                  <span class="text-[7px] font-mono text-stone-500 font-bold">Stool E</span>
+                                </div>
                               );
-                            }
-                            return null;
-                          })()}
+                            })()}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2146,44 +2181,13 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         });
       });
 
-      // Handle Dev visual test buttons (Local development only)
-      document.querySelectorAll('[data-dev-scenario]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          const scenario = btn.getAttribute('data-dev-scenario');
-          if (scenario === 'scenario-a') {
-            startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_A_WRITING');
-          } else if (scenario === 'scenario-b') {
-            startStaffJourney('sari', 'lounge_seat_2', 'publication_console', 'DEV_B_DISPATCH');
-            setTimeout(function () {
-              startStaffJourney('sari', 'publication_console', 'lounge_seat_2', 'DEV_B_RETURN');
-            }, 3200);
-          } else if (scenario === 'scenario-c') {
-            startStaffJourney('rina', 'lounge_seat_3', 'editorial_review_desk', 'DEV_C_REVIEW');
-          } else if (scenario === 'scenario-d') {
-            startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_D_MULTI');
-            startStaffJourney('irwan', 'lounge_seat_4', 'research_main_desk', 'DEV_D_MULTI');
-            startStaffJourney('sari', 'lounge_seat_2', 'publication_console', 'DEV_D_MULTI');
-          } else if (scenario === 'scenario-e') {
-            startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_E_START');
-            setTimeout(function () {
-              const moving = activeMovements['joko'];
-              const currNode = moving ? (moving.path[moving.currentIndex] || 'hall_level_2') : 'hall_level_2';
-              startStaffJourney('joko', currNode, 'lounge_seat_1', 'DEV_E_REROUTE');
-            }, 900);
-          } else if (scenario === 'reset') {
-            for (const id in activeMovements) {
-              clearInterval(activeMovements[id].timer);
-              if (activeMovements[id].el && activeMovements[id].el.parentNode) {
-                activeMovements[id].el.parentNode.removeChild(activeMovements[id].el);
-              }
-              delete activeMovements[id];
-            }
-            document.querySelectorAll('[data-staff-station]').forEach(function (el) {
-              el.classList.remove('invisible');
-            });
-          }
-        });
-      });
+      // In local development mode only, expose harness bridge if dev container element exists
+      if (document.getElementById('dev-scenario-harness')) {
+        window.__hermesDevOffice = {
+          startStaffJourney: startStaffJourney,
+          activeMovements: activeMovements
+        };
+      }
 
       // Manual refresh button handler
       const refreshBtn = document.getElementById('btn-refresh-office');
@@ -2226,4 +2230,56 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       }, 30000);
     })();
   </script>
+
+  {isDev && (
+    <script is:inline>
+      (function () {
+        const harness = document.getElementById('dev-scenario-harness');
+        if (!harness) return;
+
+        harness.querySelectorAll('[data-dev-scenario]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const devOffice = window.__hermesDevOffice;
+            if (!devOffice) return;
+            const startStaffJourney = devOffice.startStaffJourney;
+            const activeMovements = devOffice.activeMovements;
+            const scenario = btn.getAttribute('data-dev-scenario');
+
+            if (scenario === 'scenario-a') {
+              startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_A_WRITING');
+            } else if (scenario === 'scenario-b') {
+              startStaffJourney('sari', 'lounge_seat_5', 'publication_console', 'DEV_B_DISPATCH');
+              setTimeout(function () {
+                startStaffJourney('sari', 'publication_console', 'lounge_seat_5', 'DEV_B_RETURN');
+              }, 3200);
+            } else if (scenario === 'scenario-c') {
+              startStaffJourney('rina', 'lounge_seat_3', 'editorial_review_desk', 'DEV_C_REVIEW');
+            } else if (scenario === 'scenario-d') {
+              startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_D_MULTI');
+              startStaffJourney('irwan', 'lounge_seat_4', 'research_main_desk', 'DEV_D_MULTI');
+              startStaffJourney('sari', 'lounge_seat_5', 'publication_console', 'DEV_D_MULTI');
+            } else if (scenario === 'scenario-e') {
+              startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_E_START');
+              setTimeout(function () {
+                const moving = activeMovements['joko'];
+                const currNode = moving ? (moving.path[moving.currentIndex] || 'hall_level_2') : 'hall_level_2';
+                startStaffJourney('joko', currNode, 'lounge_seat_1', 'DEV_E_REROUTE');
+              }, 900);
+            } else if (scenario === 'reset') {
+              for (const id in activeMovements) {
+                clearInterval(activeMovements[id].timer);
+                if (activeMovements[id].el && activeMovements[id].el.parentNode) {
+                  activeMovements[id].el.parentNode.removeChild(activeMovements[id].el);
+                }
+                delete activeMovements[id];
+              }
+              document.querySelectorAll('[data-staff-station]').forEach(function (el) {
+                el.classList.remove('invisible');
+              });
+            }
+          });
+        });
+      })();
+    </script>
+  )}
 </AdminLayout>

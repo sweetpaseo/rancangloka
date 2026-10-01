@@ -175,6 +175,18 @@ export const STAFF_WORKSTATION_POSITIONS: Record<string, string> = {
   social_distribution_operator: 'social_workstation'
 };
 
+// Canonical Dedicated Lounge Idle Seat mapping (Zero Idle Collision)
+// Every simultaneously idle canonical staff member has a distinct deterministic seat
+export const STAFF_CANONICAL_IDLE_SEATS: Record<string, string> = {
+  content_writer_primary: 'lounge_seat_1',      // Joko (Sofa 1)
+  telemetry_observer_jev: 'lounge_seat_2',      // Dimas (Sofa 2)
+  editorial_qa_primary: 'lounge_seat_3',        // Rina (Armchair W)
+  evidence_researcher_lead: 'lounge_seat_4',    // Irwan (Armchair E)
+  publication_dispatcher_core: 'lounge_seat_5', // Sari (Stool Barat / Coffee Table 1)
+  lokamedia_worker_primary: 'lounge_seat_6',    // Budi (Stool Timur / Coffee Table 2 - if active)
+  social_distribution_operator: 'social_workstation' // Maya (Zone S)
+};
+
 
 // ============================================================================
 // State Reason Evaluation (Distinguish Intentional Disabled vs Outage)
@@ -269,10 +281,16 @@ export function deriveSpriteSpatialState(
 
   switch (staff.state) {
     case 'IDLE': {
-      // Move to Lounge
-      targetRoomKey = 'lounge';
-      const seatNumber = (loungeIndex % 6) + 1;
-      targetPositionKey = `lounge_seat_${seatNumber}`;
+      // Move to Lounge: use dedicated canonical non-overlapping idle seat
+      const canonicalSeat = STAFF_CANONICAL_IDLE_SEATS[staff.agent_id];
+      if (canonicalSeat) {
+        targetPositionKey = canonicalSeat;
+        targetRoomKey = canonicalSeat.startsWith('lounge_') ? 'lounge' : homeRoom;
+      } else {
+        targetRoomKey = 'lounge';
+        const seatNumber = (loungeIndex % 6) + 1;
+        targetPositionKey = `lounge_seat_${seatNumber}`;
+      }
       visualMode = 'IDLE';
       badgeText = 'Di Lounge (Siaga)';
       break;
