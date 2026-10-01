@@ -1,19 +1,20 @@
 ---
 /**
  * RancangLoka Hermes Mission Control — Pixel Office (2D Spatial Visualization)
- * Milestone: HERMES-MC-4
+ * Milestone: HERMES-MC-4 & HERMES-MC-9 (Visual Redesign: 2D Workplace Simulator)
  * Route: /admin/mission-control/office
  * 
  * Strict Invariants:
- * 1. Read-only spatial visualization layer.
+ * 1. Read-only spatial visualization layer. Zero execution authority.
  * 2. Visualizes REAL Mission Control state — zero simulated or fabricated activity.
  * 3. Media Worker DISABLED is visually distinct (Worker Disabled, dimmed, NO red emergency beacon).
  * 4. IDLE staff appear in Lounge; WORKING staff appear at department workstation.
- * 5. REVIEWING has deterministic review desk placement.
+ * 5. REVIEWING has deterministic review desk placement (e.g. editorial_review_desk).
  * 6. BLOCKED staff remain in department with critical warning markers.
- * 7. Social room is strictly unstaffed and labeled COMING LATER / NOT AVAILABLE.
- * 8. Zero command/chat execution authority (no chat, no retry, no dispatch).
- * 9. Reduced motion supported; mobile responsive with scrollable floor plan.
+ * 7. Social room (Zone S) is physically present as an unpowered future bay with lock marker.
+ * 8. Zero random movement, zero continuous rAF simulation, lightweight CSS/SVG primitives.
+ * 9. Reduced motion supported; mobile responsive with scrollable floor plan canvas.
+ * 10. NO OS-rendered Unicode emoji used as physical office furniture.
  */
 
 import AdminLayout from '../../../layouts/AdminLayout.astro';
@@ -32,86 +33,114 @@ const snapshot = await getMissionControlSnapshot(db, env);
 const office = getPixelOfficeState(snapshot);
 const { rooms, sprites, summary, recent_activity } = office;
 
+// Room mapping lookup
+const getRoom = (key: string) => rooms.find((r) => r.room_key === key) || null;
+const editorialRoom = getRoom('editorial_room');
+const researchRoom = getRoom('research_lab');
+const mediaRoom = getRoom('media_room');
+const operationsRoom = getRoom('operations_room');
+const publicationRoom = getRoom('publication_room');
+const loungeRoom = getRoom('lounge');
+const socialRoom = getRoom('social_room');
+
+// Staff sprite lookup by position
+const getSpriteAtPos = (posKey: string) => sprites.find((s) => s.position_key === posKey) || null;
+
 // State badge styling helper
 const getStateBadgeStyle = (sprite: OfficeStaffSprite) => {
   switch (sprite.visual_mode) {
     case 'ACTIVE':
-      return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+      return 'bg-emerald-50 text-emerald-700 border-emerald-300';
     case 'REVIEWING':
-      return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40';
+      return 'bg-indigo-50 text-indigo-700 border-indigo-300';
     case 'IDLE':
-      return 'bg-slate-700 text-slate-300 border-slate-600';
+      return 'bg-slate-100 text-slate-700 border-slate-300';
     case 'BLOCKED':
-      return 'bg-rose-500/30 text-rose-300 border-rose-500/50 animate-pulse';
+      return 'bg-rose-100 text-rose-700 border-rose-300 animate-pulse';
     case 'DIMMED':
       if (sprite.state_reason.category === 'INTENTIONAL_DISABLED') {
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+        return 'bg-amber-50 text-amber-700 border-amber-300';
       }
-      return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+      return 'bg-zinc-100 text-zinc-600 border-zinc-300';
     default:
-      return 'bg-slate-800 text-slate-400 border-slate-700';
+      return 'bg-slate-100 text-slate-600 border-slate-200';
   }
 };
 
 const getRoomHealthBadge = (health: string) => {
   switch (health) {
     case 'HEALTHY':
-      return { text: 'HEALTHY', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+      return { text: 'HEALTHY', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     case 'ACTIVE':
-      return { text: 'ACTIVE', bg: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+      return { text: 'ACTIVE', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
     case 'STANDBY':
-      return { text: 'STANDBY', bg: 'bg-slate-700/50 text-slate-300 border-slate-600/50' };
+      return { text: 'STANDBY', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
     case 'DEGRADED':
-      return { text: 'DEGRADED', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+      return { text: 'DEGRADED', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'BLOCKED':
-      return { text: 'BLOCKED', bg: 'bg-rose-500/20 text-rose-400 border-rose-500/40' };
+      return { text: 'BLOCKED', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
     case 'UNSTAFFED':
-      return { text: 'TIDAK TERSEDIA', bg: 'bg-zinc-800 text-zinc-500 border-zinc-700' };
+      return { text: 'TERKUNCI', bg: 'bg-zinc-100 text-zinc-500 border-zinc-300' };
     default:
-      return { text: health, bg: 'bg-slate-800 text-slate-400 border-slate-700' };
+      return { text: health, bg: 'bg-slate-100 text-slate-600 border-slate-200' };
   }
 };
 ---
 
 <AdminLayout title="Hermes Mission Control — Pixel Office">
-  <div class="space-y-5 pb-16 font-sans">
-    <!-- 1. Header Banner -->
-    <div class="bg-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl space-y-4">
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              HERMES MISSION CONTROL
-            </span>
-            <span class="text-slate-600">•</span>
-            <span class="text-xs font-mono text-slate-400">2D Pixel Office • Spatial Operations</span>
-            <span class="text-slate-600">•</span>
-            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              READ-ONLY
-            </span>
+  <div class="space-y-4 pb-16 font-sans">
+    
+    <!-- 1. COMPACT OPERATIONAL HUD (Separated from the Floor Plan) -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+            <!-- Building HUD SVG -->
+            <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+              <path d="M9 22v-4h6v4"></path>
+              <path d="M8 6h.01"></path>
+              <path d="M16 6h.01"></path>
+              <path d="M12 6h.01"></path>
+              <path d="M12 10h.01"></path>
+              <path d="M12 14h.01"></path>
+              <path d="M16 10h.01"></path>
+              <path d="M16 14h.01"></path>
+              <path d="M8 10h.01"></path>
+              <path d="M8 14h.01"></path>
+            </svg>
           </div>
-          <h1 class="text-2xl sm:text-3xl font-outfit font-black text-white tracking-tight mt-1.5 flex items-center gap-2.5">
-            <span>👾</span>
-            <span>RancangLoka Pixel Office</span>
-          </h1>
-          <p class="text-xs text-slate-400 mt-1 max-w-3xl font-mono">
-            Visualisasi spasial operasional 2D retro berbasis telemetri riil Mission Control. Staf ditempatkan secara deterministik berdasarkan status kerja: meja penulisan, meja review, lab riset, konsol dispatch, hingga sofa siaga di Lounge.
-          </p>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                HERMES MISSION CONTROL
+              </span>
+              <span class="text-slate-400">•</span>
+              <span class="text-xs font-mono text-slate-500 font-semibold">2D Office Simulator</span>
+              <span class="text-slate-400">•</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                READ-ONLY
+              </span>
+            </div>
+            <h1 class="text-xl sm:text-2xl font-outfit font-black text-slate-900 tracking-tight mt-0.5">
+              RancangLoka Pixel Office
+            </h1>
+          </div>
         </div>
 
         <div class="flex items-center gap-3">
           <div class="text-right hidden sm:block">
-            <div class="text-[10px] font-mono uppercase text-slate-500">Evaluasi Telemetri</div>
-            <div class="text-xs font-mono text-slate-300" id="live-time-display">
+            <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Evaluasi Telemetri</div>
+            <div class="text-xs font-mono font-bold text-slate-700" id="live-time-display">
               {new Date(office.generated_at).toLocaleTimeString('id-ID', { hour12: false })} WIB
             </div>
           </div>
           <button
             type="button"
             id="btn-refresh-office"
-            class="rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 text-xs font-outfit font-bold transition flex items-center gap-2 shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            class="rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3.5 py-2 text-xs font-outfit font-bold transition flex items-center gap-2 shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           >
-            <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
               <path d="M3 3v5h5"></path>
               <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
@@ -122,380 +151,1376 @@ const getRoomHealthBadge = (health: string) => {
         </div>
       </div>
 
+      <!-- Quick Metrics Strip -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 pt-1 border-t border-slate-100 text-xs font-mono">
+        <!-- Working -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Bekerja</span>
+          </div>
+          <div class="text-lg font-black text-slate-900 font-outfit mt-0.5">{summary.working}</div>
+        </div>
+        <!-- Reviewing -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            <span>Review</span>
+          </div>
+          <div class="text-lg font-black text-slate-900 font-outfit mt-0.5">{summary.reviewing}</div>
+        </div>
+        <!-- Idle (Lounge) -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>Lounge</span>
+          </div>
+          <div class="text-lg font-black text-slate-900 font-outfit mt-0.5">{summary.idle}</div>
+        </div>
+        <!-- Blocked -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>Terblokir</span>
+          </div>
+          <div class="text-lg font-black text-slate-900 font-outfit mt-0.5">{summary.blocked}</div>
+        </div>
+        <!-- Offline -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-zinc-400"></span>
+            <span>Offline</span>
+          </div>
+          <div class="text-lg font-black text-slate-900 font-outfit mt-0.5">{summary.offline}</div>
+        </div>
+        <!-- Automation -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-500 uppercase font-bold">Automation</div>
+          <div class="mt-1">
+            <span class={`px-1.5 py-0.5 rounded text-[10px] font-bold ${summary.automation_mode === 'OFF' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {summary.automation_mode}
+            </span>
+          </div>
+        </div>
+        <!-- Media Worker -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-500 uppercase font-bold">Media Worker</div>
+          <div class="mt-1">
+            <span class={`px-1.5 py-0.5 rounded text-[10px] font-bold ${summary.media_worker === 'DISABLED' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}`}>
+              {summary.media_worker}
+            </span>
+          </div>
+        </div>
+        <!-- Jev Mode -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-500 uppercase font-bold">JEV Mode</div>
+          <div class="mt-1">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
+              {summary.jev_mode}
+            </span>
+          </div>
+        </div>
+      </div>
+
       <!-- Navigation Sub-Tabs -->
-      <div class="flex items-center gap-2 border-t border-slate-800/80 pt-4 text-xs font-outfit font-bold overflow-x-auto pb-1">
+      <div class="flex items-center gap-2 border-t border-slate-100 pt-3 text-xs font-outfit font-bold overflow-x-auto pb-0.5">
         <a
           href="/admin/mission-control"
-          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2 whitespace-nowrap"
+          class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1.5 whitespace-nowrap"
         >
-          <span>🛰️</span>
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="2"></circle>
+            <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+          </svg>
           <span>Cockpit Operasional</span>
         </a>
         <a
           href="/admin/mission-control/staff"
-          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2 whitespace-nowrap"
+          class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1.5 whitespace-nowrap"
         >
-          <span>👥</span>
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
           <span>Staff Registry</span>
-          <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">6 Staf</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-slate-200 text-[10px] font-mono text-slate-600">6 Staf</span>
         </a>
         <a
           href="/admin/mission-control/departments"
-          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2 whitespace-nowrap"
+          class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1.5 whitespace-nowrap"
         >
-          <span>🏢</span>
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+            <path d="M9 22v-4h6v4"></path>
+            <line x1="8" y1="6" x2="8.01" y2="6"></line>
+            <line x1="16" y1="6" x2="16.01" y2="6"></line>
+            <line x1="12" y1="6" x2="12.01" y2="6"></line>
+            <line x1="12" y1="10" x2="12.01" y2="10"></line>
+            <line x1="12" y1="14" x2="12.01" y2="14"></line>
+          </svg>
           <span>Departemen</span>
-          <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">6 Divisi</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-slate-200 text-[10px] font-mono text-slate-600">6 Divisi</span>
         </a>
         <a
           href="/admin/mission-control/office"
-          class="px-4 py-2 rounded-xl bg-blue-600 text-white shadow-xs flex items-center gap-2 whitespace-nowrap"
+          class="px-3.5 py-1.5 rounded-lg bg-blue-600 text-white shadow-2xs flex items-center gap-1.5 whitespace-nowrap"
         >
-          <span>👾</span>
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+            <path d="M6 12h4m-2-2v4m9-3h.01m3 2h.01"></path>
+          </svg>
           <span>Pixel Office</span>
-          <span class="px-1.5 py-0.2 rounded-full bg-blue-700 text-[10px] font-mono">2D</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-blue-700 text-[10px] font-mono">2D Simulator</span>
         </a>
         <a
           href="/admin/mission-control/alerts"
-          class="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-2 whitespace-nowrap"
+          class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1.5 whitespace-nowrap"
         >
-          <span>🚨</span>
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
           <span>Alert Center</span>
         </a>
       </div>
     </div>
 
-    <!-- 2. Office Status Bar & Envelopes -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs font-mono">
-      <!-- Working -->
-      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Bekerja</span>
-        </div>
-        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.working}</div>
-      </div>
-      <!-- Reviewing -->
-      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-          <span>Review</span>
-        </div>
-        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.reviewing}</div>
-      </div>
-      <!-- Idle -->
-      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-          <span>Lounge</span>
-        </div>
-        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.idle}</div>
-      </div>
-      <!-- Blocked -->
-      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-          <span>Terblokir</span>
-        </div>
-        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.blocked}</div>
-      </div>
-      <!-- Offline -->
-      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-        <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-zinc-400"></span>
-          <span>Offline</span>
-        </div>
-        <div class="text-xl font-black text-slate-900 font-outfit mt-0.5">{summary.offline}</div>
-      </div>
-      <!-- Automation -->
-      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-        <div class="text-[10px] text-slate-500 uppercase font-bold">Automation</div>
-        <div class="text-sm font-bold text-slate-800 font-outfit mt-1">
-          <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${summary.automation_mode === 'OFF' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-            {summary.automation_mode}
-          </span>
-        </div>
-      </div>
-      <!-- Media Worker -->
-      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-        <div class="text-[10px] text-slate-500 uppercase font-bold">Media Worker</div>
-        <div class="text-sm font-bold text-slate-800 font-outfit mt-1">
-          <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${summary.media_worker === 'DISABLED' ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-800'}`}>
-            {summary.media_worker}
-          </span>
-        </div>
-      </div>
-      <!-- Jev Mode -->
-      <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-        <div class="text-[10px] text-slate-500 uppercase font-bold">JEV Mode</div>
-        <div class="text-sm font-bold text-slate-800 font-outfit mt-1">
-          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
-            {summary.jev_mode}
-          </span>
-        </div>
-      </div>
-    </div>
+    <!-- 2. MAIN 2D OFFICE SIMULATOR (CONNECTED ARCHITECTURAL FLOOR PLAN) -->
+    <div class="bg-[#f1f5f9] border-2 border-slate-300 rounded-3xl p-3 sm:p-5 shadow-md relative overflow-hidden">
+      <!-- Office Grid Floor Pattern -->
+      <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(#cbd5e1_1.5px,transparent_1.5px)] [background-size:24px_24px] opacity-70"></div>
 
-    <!-- 3. MAIN PIXEL OFFICE 2D FLOOR PLAN -->
-    <div class="bg-[#14161f] border-2 border-slate-800/90 rounded-3xl p-4 sm:p-6 shadow-2xl relative overflow-hidden">
-      <!-- Retro Scanline / Pixel Grid Overlay (Subtle) -->
-      <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(#2d3348_1px,transparent_1px)] [background-size:16px_16px] opacity-25"></div>
-
-      <!-- Floor Header -->
-      <div class="relative z-10 flex items-center justify-between border-b border-slate-800/80 pb-4 mb-6">
-        <div class="flex items-center gap-3">
-          <div class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+      <!-- Floor Plan Blueprint Header Bar -->
+      <div class="relative z-10 flex flex-wrap items-center justify-between gap-3 bg-white/95 backdrop-blur-xs border border-slate-200 px-4 py-3 rounded-2xl mb-4 shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
           <div>
-            <h2 class="text-base font-outfit font-black text-slate-100 tracking-wide uppercase flex items-center gap-2">
-              <span>Denah Kantor Operasional RancangLoka</span>
-              <span class="text-[10px] font-mono px-2 py-0.5 bg-slate-800 text-slate-400 rounded">Floor Plan 2D</span>
+            <h2 class="text-sm font-outfit font-black text-slate-900 tracking-wide uppercase flex items-center gap-2">
+              <span>Denah Arsitektural Kantor RancangLoka</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded font-bold">Top-Down Floor Plan</span>
             </h2>
-            <p class="text-[11px] font-mono text-slate-400">
-              Klik pada karakter staf atau ruangan untuk melihat telemetri mendalam tanpa kontrol mutasi.
+            <p class="text-[11px] font-mono text-slate-500">
+              Karakter staf berada di meja kerja saat bertugas atau berkumpul di Executive Lounge saat siaga/istirahat.
             </p>
           </div>
         </div>
 
-        <div class="hidden sm:flex items-center gap-3 text-[11px] font-mono text-slate-400">
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Kerja</span>
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Review</span>
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-400"></span> Lounge</span>
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Terblokir</span>
+        <div class="flex items-center gap-3 text-[11px] font-mono text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Bekerja</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Review</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Lounge</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Terblokir</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-zinc-400"></span> Standby/Offline</span>
         </div>
       </div>
 
-      <!-- 2D OFFICE GRID ROOMS -->
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 relative z-10">
-        {rooms.map((room) => {
-          const healthBadge = getRoomHealthBadge(room.health);
-          const isUnavailable = !room.is_available;
-          const isLounge = room.room_key === 'lounge';
-
-          return (
-            <div
-              class={`rounded-2xl border transition relative overflow-hidden flex flex-col justify-between ${
-                isUnavailable
-                  ? 'bg-slate-900/40 border-slate-800/60 border-dashed min-h-[220px]'
-                  : isLounge
-                    ? 'bg-amber-950/20 border-amber-900/40 hover:border-amber-800/60 min-h-[260px]'
-                    : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 min-h-[260px]'
-              }`}
-              id={`room-card-${room.room_key}`}
-            >
-              <!-- Room Header Bar -->
-              <button
-                type="button"
-                class="w-full text-left p-3.5 bg-slate-950/60 border-b border-slate-800/80 flex items-center justify-between gap-2 hover:bg-slate-900/80 transition cursor-pointer"
-                data-room-inspect={room.room_key}
-                title="Klik untuk inspeksi ruangan"
+      <!-- FLOOR PLAN CONTAINER WITH SCROLL/CANVAS STABILITY -->
+      <div class="relative z-10 overflow-x-auto pb-4">
+        <!-- Building Outer Perimeter Wall (Architectural Shell) -->
+        <div class="min-w-[1020px] max-w-[1280px] mx-auto bg-slate-300 rounded-2xl border-4 border-slate-600 shadow-xl overflow-hidden">
+          
+          <!-- TOP WING: EDITORIAL (LEFT) & RESEARCH (RIGHT) -->
+          <div class="grid grid-cols-12 border-b-4 border-slate-500">
+            
+            <!-- ROOM 1: EDITORIAL ROOM (Col 1-7) -->
+            {editorialRoom && (
+              <div
+                class="col-span-7 bg-[#fffdf5] border-r-4 border-slate-500 p-4 relative flex flex-col justify-between min-h-[300px]"
+                id="room-card-editorial_room"
               >
-                <div>
+                <!-- Room Label Strip -->
+                <div class="flex items-center justify-between border-b border-amber-200/80 pb-2.5 mb-3">
+                  <button
+                    type="button"
+                    class="text-left flex items-center gap-2 group cursor-pointer"
+                    data-room-inspect="editorial_room"
+                  >
+                    <div class="w-7 h-7 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800">
+                      <!-- Quill/Pen SVG -->
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                        <path d="M2 2l7.586 7.586"></path>
+                        <circle cx="11" cy="11" r="2"></circle>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="text-sm font-outfit font-black text-amber-950 group-hover:text-blue-700 transition">
+                        {editorialRoom.title}
+                      </div>
+                      <div class="text-[10px] font-mono text-amber-800/80">Zone E • Editorial & QA Suite</div>
+                    </div>
+                  </button>
                   <div class="flex items-center gap-2">
-                    <span class="text-sm font-outfit font-bold text-slate-100">{room.title}</span>
-                    <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${healthBadge.bg}`}>
-                      {healthBadge.text}
+                    <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${getRoomHealthBadge(editorialRoom.health).bg}`}>
+                      {getRoomHealthBadge(editorialRoom.health).text}
+                    </span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold">
+                      {editorialRoom.occupants.length} Staf di Ruangan
                     </span>
                   </div>
-                  <div class="text-[10px] font-mono text-slate-400 mt-0.5">{room.subtitle}</div>
                 </div>
 
-                <div class="text-right">
-                  <span class="text-[10px] font-mono px-2 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                    {room.occupants.length} Staf
-                  </span>
-                </div>
-              </button>
-
-              <!-- Room Interior (Floor & Furniture) -->
-              <div class="p-4 flex-1 flex flex-col justify-center relative">
-                {isUnavailable ? (
-                  <!-- Unstaffed / Unavailable Future Bay -->
-                  <div class="flex flex-col items-center justify-center py-6 text-center space-y-2">
-                    <div class="w-12 h-12 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-xl text-slate-500">
-                      🔒
-                    </div>
-                    <div class="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
-                      {room.title}
-                    </div>
-                    <div class="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono font-bold">
-                      COMING LATER • NOT AVAILABLE
-                    </div>
-                    <p class="text-[10px] font-mono text-slate-500 max-w-[200px]">
-                      Ruang kapasitas masa depan. Dilarang diisi staf persona fiktif.
-                    </p>
-                  </div>
-                ) : (
-                  <!-- Active Room Floor with Workstations & Sprites -->
-                  <div class="space-y-3">
-                    {room.occupants.length === 0 ? (
-                      <div class="py-6 text-center text-[11px] font-mono text-slate-500 italic">
-                        Tidak ada staf di ruangan ini (semua staf sedang di Lounge atau pos lain).
+                <!-- Room Floor & Furniture Layout -->
+                <div class="flex-1 grid grid-cols-12 gap-3 items-center py-2 relative">
+                  
+                  <!-- Left Furniture: Bookshelf & Archive -->
+                  <div class="col-span-2 flex flex-col items-center justify-center space-y-2">
+                    <div class="w-14 h-24 bg-[#b45309] rounded border-2 border-[#78350f] p-1 flex flex-col justify-between shadow-xs" title="Rak Arsip & Buku Redaksi">
+                      <div class="border-b border-[#78350f] h-6 flex items-center justify-center gap-0.5">
+                        <span class="w-2 h-4 bg-red-400 rounded-2xs inline-block"></span>
+                        <span class="w-2 h-4 bg-blue-400 rounded-2xs inline-block"></span>
+                        <span class="w-2 h-4 bg-emerald-400 rounded-2xs inline-block"></span>
                       </div>
-                    ) : (
-                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {room.occupants.map((spr) => {
-                          const badgeStyle = getStateBadgeStyle(spr);
-                          const isDimmed = spr.visual_mode === 'DIMMED';
-                          const isBlocked = spr.visual_mode === 'BLOCKED';
+                      <div class="border-b border-[#78350f] h-6 flex items-center justify-center gap-0.5">
+                        <span class="w-2.5 h-4 bg-amber-200 rounded-2xs inline-block"></span>
+                        <span class="w-2 h-4 bg-purple-400 rounded-2xs inline-block"></span>
+                      </div>
+                      <div class="h-6 flex items-center justify-center gap-0.5">
+                        <span class="w-2 h-4 bg-slate-200 rounded-2xs inline-block"></span>
+                        <span class="w-3 h-4 bg-orange-400 rounded-2xs inline-block"></span>
+                      </div>
+                    </div>
+                    <span class="text-[9px] font-mono font-bold text-amber-900">Arsip Naskah</span>
+                  </div>
 
+                  <!-- Middle Workstation: Joko (Writer Desk) -->
+                  <div class="col-span-5 flex flex-col items-center">
+                    <div class="text-[10px] font-mono font-bold text-amber-900 mb-1 flex items-center gap-1">
+                      <span>Meja Tulis</span>
+                      <span class="text-slate-400">• Joko</span>
+                    </div>
+
+                    <!-- Workstation Box -->
+                    <div class="w-44 bg-[#fef3c7] border-2 border-amber-300 rounded-xl p-2.5 flex flex-col items-center shadow-xs relative">
+                      <!-- Monitor & Setup -->
+                      <div class="flex items-center justify-center gap-2 mb-1.5">
+                        <div class="w-12 h-8 bg-slate-800 rounded border border-slate-600 flex items-center justify-center text-[8px] text-cyan-300 font-mono shadow-inner" title="Monitor Penulisan">
+                          TXT
+                        </div>
+                        <div class="w-4 h-5 bg-[#d97706] rounded-2xs border border-[#b45309]" title="Lampu Meja Redaksi"></div>
+                      </div>
+                      <div class="w-16 h-2 bg-slate-300 rounded-xs mb-2 border border-slate-400" title="Keyboard & Notebook"></div>
+
+                      <!-- Staff Sprite Slot -->
+                      {(() => {
+                        const joko = getSpriteAtPos('editorial_writer_desk');
+                        if (joko) {
+                          const badge = getStateBadgeStyle(joko);
                           return (
                             <button
                               type="button"
-                              class={`group relative p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
-                                isBlocked
-                                  ? 'bg-rose-950/30 border-rose-800/80 hover:border-rose-600'
-                                  : isDimmed
-                                    ? 'bg-slate-950/40 border-slate-800/60 opacity-60 hover:opacity-100 hover:border-slate-700'
-                                    : 'bg-slate-950/70 border-slate-800/90 hover:border-blue-500/50 hover:bg-slate-900'
-                              }`}
-                              data-staff-inspect={spr.agent_id}
-                              title={`Klik untuk melihat detail ${spr.display_name}`}
+                              class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                              data-staff-inspect={joko.agent_id}
+                              title={`Klik inspeksi ${joko.display_name}`}
                             >
-                              <!-- Pixel Avatar Character -->
-                              <div class="relative flex-shrink-0">
-                                <div class={`w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden pixel-avatar-box ${spr.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[spr.animation_key]?.css_animation_class || '') : ''}`}>
-                                  {(spr.avatar_key === 'editorial_writer_01' || spr.avatar_key === 'avatar_joko') && (
-                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
-                                      {/* Joko: Editorial Lead - Brown vest, glasses, pen */}
-                                      <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
-                                      <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
-                                      <rect x="10" y="12" width="4" height="2" fill="#1e293b" />
-                                      <rect x="18" y="12" width="4" height="2" fill="#1e293b" />
-                                      <rect x="14" y="13" width="4" height="1" fill="#94a3b8" />
-                                      <rect x="13" y="16" width="6" height="1" fill="#d97706" />
-                                      <rect x="8" y="18" width="16" height="10" fill="#78350f" />
-                                      <rect x="12" y="20" width="8" height="8" fill="#f8fafc" />
-                                      <rect x="14" y="22" width="4" height="6" fill="#0284c7" />
-                                    </svg>
-                                  )}
-                                  {(spr.avatar_key === 'editorial_qa_01' || spr.avatar_key === 'avatar_irina') && (
-                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
-                                      {/* Rina: Editorial QA - Burgundy cardigan, sharp glasses */}
-                                      <rect x="8" y="4" width="16" height="7" fill="#4c0519" />
-                                      <rect x="10" y="10" width="12" height="8" fill="#ffedd5" />
-                                      <rect x="11" y="12" width="4" height="2" fill="#be123c" />
-                                      <rect x="17" y="12" width="4" height="2" fill="#be123c" />
-                                      <rect x="15" y="13" width="2" height="1" fill="#be123c" />
-                                      <rect x="13" y="16" width="6" height="1" fill="#e11d48" />
-                                      <rect x="8" y="18" width="16" height="10" fill="#881337" />
-                                      <rect x="12" y="19" width="8" height="9" fill="#fdf2f8" />
-                                    </svg>
-                                  )}
-                                  {(spr.avatar_key === 'research_evidence_01' || spr.avatar_key === 'avatar_irwan') && (
-                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
-                                      {/* Irwan: Research Specialist - Teal/Blue shirt, notebook */}
-                                      <rect x="9" y="4" width="14" height="6" fill="#1e293b" />
-                                      <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                      <rect x="11" y="13" width="3" height="2" fill="#0f172a" />
-                                      <rect x="18" y="13" width="3" height="2" fill="#0f172a" />
-                                      <rect x="13" y="16" width="6" height="1" fill="#b45309" />
-                                      <rect x="8" y="18" width="16" height="10" fill="#0f766e" />
-                                      <rect x="13" y="19" width="6" height="9" fill="#ccfbf1" />
-                                    </svg>
-                                  )}
-                                  {(spr.avatar_key === 'media_ops_01' || spr.avatar_key === 'avatar_budi') && (
-                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
-                                      {/* Budi: Media Technician - Orange gear, headphones */}
-                                      <rect x="6" y="9" width="3" height="6" fill="#ea580c" />
-                                      <rect x="23" y="9" width="3" height="6" fill="#ea580c" />
-                                      <rect x="8" y="7" width="16" height="2" fill="#ea580c" />
-                                      <rect x="9" y="5" width="14" height="5" fill="#334155" />
-                                      <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
-                                      <rect x="11" y="13" width="3" height="2" fill="#1e293b" />
-                                      <rect x="18" y="13" width="3" height="2" fill="#1e293b" />
-                                      <rect x="8" y="18" width="16" height="10" fill="#c2410c" />
-                                    </svg>
-                                  )}
-                                  {(spr.avatar_key === 'publication_ops_01' || spr.avatar_key === 'avatar_sari') && (
-                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
-                                      {/* Sari: Publication Dispatcher - Emerald green jacket, clock */}
-                                      <rect x="8" y="4" width="16" height="6" fill="#14532d" />
-                                      <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
-                                      <rect x="11" y="13" width="3" height="2" fill="#052e16" />
-                                      <rect x="18" y="13" width="3" height="2" fill="#052e16" />
-                                      <rect x="13" y="16" width="6" height="1" fill="#ca8a04" />
-                                      <rect x="8" y="18" width="16" height="10" fill="#15803d" />
-                                      <rect x="12" y="19" width="8" height="9" fill="#dcfce7" />
-                                    </svg>
-                                  )}
-                                  {(spr.avatar_key === 'telemetry_01' || spr.avatar_key === 'avatar_dimas') && (
-                                    <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
-                                      {/* Dimas: Engineering & Telemetry - Dark purple hoodie, terminal badge */}
-                                      <rect x="8" y="4" width="16" height="7" fill="#312e81" />
-                                      <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                      <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
-                                      <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
-                                      <rect x="13" y="16" width="6" height="1" fill="#4338ca" />
-                                      <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
-                                      <rect x="12" y="20" width="8" height="8" fill="#1e1b4b" />
-                                    </svg>
-                                  )}
+                              <div class="relative">
+                                <div class={`w-12 h-12 rounded-xl bg-white border-2 border-amber-400 flex items-center justify-center shadow-sm pixel-avatar-box ${joko.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[joko.animation_key]?.css_animation_class || '') : ''}`}>
+                                  <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated" shape-rendering="crispEdges">
+                                    <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
+                                    <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
+                                    <rect x="10" y="12" width="4" height="2" fill="#1e293b" />
+                                    <rect x="18" y="12" width="4" height="2" fill="#1e293b" />
+                                    <rect x="14" y="13" width="4" height="1" fill="#94a3b8" />
+                                    <rect x="13" y="16" width="6" height="1" fill="#d97706" />
+                                    <rect x="8" y="18" width="16" height="10" fill="#78350f" />
+                                    <rect x="12" y="20" width="8" height="8" fill="#f8fafc" />
+                                    <rect x="14" y="22" width="4" height="6" fill="#0284c7" />
+                                  </svg>
                                 </div>
-
-                                <!-- Subtle Status Marker on Sprite -->
-                                {isBlocked && (
-                                  <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 border-2 border-slate-900 flex items-center justify-center text-[8px] text-white font-bold animate-ping">
-                                    !
-                                  </span>
+                                {joko.visual_mode === 'BLOCKED' && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
                                 )}
-                                {spr.work_visual_state?.is_actively_working && (
-                                  <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 border border-slate-900 flex items-center justify-center text-[8px] text-white font-bold shadow-xs" title={spr.work_visual_state.visual_detail}>
-                                    {JOB_ANIMATION_REGISTRY[spr.animation_key]?.prop_icon || '⚡'}
+                                {joko.work_visual_state?.is_actively_working && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-white text-white text-[9px] font-bold flex items-center justify-center shadow-2xs">
+                                    {JOB_ANIMATION_REGISTRY[joko.animation_key]?.prop_icon || '⚡'}
                                   </span>
                                 )}
                               </div>
-
-                              <!-- Info & State Text -->
-                              <div class="min-w-0 flex-1">
-                                <div class="flex items-center justify-between gap-1">
-                                  <div class="text-xs font-outfit font-bold text-slate-100 group-hover:text-blue-400 transition truncate">
-                                    {spr.display_name}
-                                  </div>
-                                </div>
-                                <div class="text-[10px] font-mono text-slate-400 truncate">
-                                  {spr.role}
-                                </div>
-                                <div class="mt-1 flex items-center gap-1.5 flex-wrap">
-                                  <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${badgeStyle}`}>
-                                    {spr.badge_text}
-                                  </span>
-                                  {spr.task_label && (
-                                    <span class="text-[9px] font-mono text-emerald-400 font-semibold truncate max-w-[140px]" title={spr.task_label}>
-                                      {spr.task_label}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
+                              <span class="text-xs font-outfit font-black text-slate-900 mt-1">{joko.display_name}</span>
+                              <span class={`text-[8px] font-mono px-1.5 py-0.2 rounded-full border mt-0.5 font-bold ${badge}`}>
+                                {joko.badge_text}
+                              </span>
                             </button>
                           );
-                        })}
-                      </div>
-                    )}
+                        }
+                        return (
+                          <div class="h-16 flex flex-col items-center justify-center text-[10px] font-mono text-amber-700/60 italic">
+                            <!-- Pixel Chair SVG Primitive -->
+                            <svg viewBox="0 0 20 20" class="w-6 h-6 mb-1 text-amber-600" fill="none">
+                              <rect x="5" y="3" width="10" height="7" rx="1.5" fill="#fde68a" stroke="#d97706" stroke-width="1.2"/>
+                              <rect x="4" y="9" width="12" height="5" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+                              <path d="M10 14v3M7 17h6" stroke="#b45309" stroke-width="1.4" stroke-linecap="round"/>
+                            </svg>
+                            <span>Meja Kosong</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
-                )}
+
+                  <!-- Right Workstation: Rina (Review Desk) -->
+                  <div class="col-span-5 flex flex-col items-center">
+                    <div class="text-[10px] font-mono font-bold text-amber-900 mb-1 flex items-center gap-1">
+                      <span>Meja Review</span>
+                      <span class="text-slate-400">• Rina</span>
+                    </div>
+
+                    <!-- Workstation Box -->
+                    <div class="w-44 bg-[#fef3c7] border-2 border-amber-300 rounded-xl p-2.5 flex flex-col items-center shadow-xs relative">
+                      <!-- Monitor & Checklist Setup -->
+                      <div class="flex items-center justify-center gap-2 mb-1.5">
+                        <div class="w-12 h-8 bg-slate-800 rounded border border-slate-600 flex items-center justify-center text-[8px] text-emerald-300 font-mono shadow-inner" title="Monitor QA Review">
+                          QA ✓
+                        </div>
+                        <!-- Pixel Checklist SVG Primitive -->
+                        <div class="w-5 h-6 bg-white rounded border border-rose-300 flex items-center justify-center" title="First Article Gate Checklist">
+                          <svg viewBox="0 0 16 16" class="w-4 h-4" fill="none">
+                            <rect x="3" y="2" width="10" height="12" rx="1" fill="#fff" stroke="#f43f5e" stroke-width="1"/>
+                            <rect x="5" y="1" width="6" height="2" rx="0.5" fill="#e11d48"/>
+                            <path d="M5 6l1 1 2-2M9 6h2M5 9l1 1 2-2M9 9h2" stroke="#059669" stroke-width="0.9" stroke-linecap="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="w-16 h-2 bg-slate-300 rounded-xs mb-2 border border-slate-400" title="Keyboard & Pen"></div>
+
+                      <!-- Staff Sprite Slot -->
+                      {(() => {
+                        const rina = getSpriteAtPos('editorial_review_desk');
+                        if (rina) {
+                          const badge = getStateBadgeStyle(rina);
+                          return (
+                            <button
+                              type="button"
+                              class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                              data-staff-inspect={rina.agent_id}
+                              title={`Klik inspeksi ${rina.display_name}`}
+                            >
+                              <div class="relative">
+                                <div class={`w-12 h-12 rounded-xl bg-white border-2 border-amber-400 flex items-center justify-center shadow-sm pixel-avatar-box ${rina.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[rina.animation_key]?.css_animation_class || '') : ''}`}>
+                                  <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated" shape-rendering="crispEdges">
+                                    <rect x="8" y="4" width="16" height="7" fill="#4c0519" />
+                                    <rect x="10" y="10" width="12" height="8" fill="#ffedd5" />
+                                    <rect x="11" y="12" width="4" height="2" fill="#be123c" />
+                                    <rect x="17" y="12" width="4" height="2" fill="#be123c" />
+                                    <rect x="15" y="13" width="2" height="1" fill="#be123c" />
+                                    <rect x="13" y="16" width="6" height="1" fill="#e11d48" />
+                                    <rect x="8" y="18" width="16" height="10" fill="#881337" />
+                                    <rect x="12" y="19" width="8" height="9" fill="#fdf2f8" />
+                                  </svg>
+                                </div>
+                                {rina.visual_mode === 'BLOCKED' && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
+                                )}
+                                {rina.work_visual_state?.is_actively_working && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-500 border border-white text-white text-[9px] font-bold flex items-center justify-center shadow-2xs">
+                                    {JOB_ANIMATION_REGISTRY[rina.animation_key]?.prop_icon || '✓'}
+                                  </span>
+                                )}
+                              </div>
+                              <span class="text-xs font-outfit font-black text-slate-900 mt-1">{rina.display_name}</span>
+                              <span class={`text-[8px] font-mono px-1.5 py-0.2 rounded-full border mt-0.5 font-bold ${badge}`}>
+                                {rina.badge_text}
+                              </span>
+                            </button>
+                          );
+                        }
+                        return (
+                          <div class="h-16 flex flex-col items-center justify-center text-[10px] font-mono text-amber-700/60 italic">
+                            <!-- Pixel Chair SVG Primitive -->
+                            <svg viewBox="0 0 20 20" class="w-6 h-6 mb-1 text-amber-600" fill="none">
+                              <rect x="5" y="3" width="10" height="7" rx="1.5" fill="#fde68a" stroke="#d97706" stroke-width="1.2"/>
+                              <rect x="4" y="9" width="12" height="5" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+                              <path d="M10 14v3M7 17h6" stroke="#b45309" stroke-width="1.4" stroke-linecap="round"/>
+                            </svg>
+                            <span>Meja Kosong</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Bottom Doorway to Corridor (Architectural Opening) -->
+                <div class="flex items-center justify-center pt-2 border-t-2 border-amber-300">
+                  <div class="px-3 py-1 bg-amber-100 border border-amber-400 rounded-t-md text-[9px] font-mono font-bold text-amber-900 flex items-center gap-1.5 shadow-2xs">
+                    <svg viewBox="0 0 16 16" class="w-3.5 h-3.5 text-amber-700" fill="none">
+                      <path d="M3 2v12M3 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <path d="M3 2c6.627 0 10 5.373 10 12" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
+                    </svg>
+                    <span>Pintu Akses Redaksi</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- ROOM 2: RESEARCH & EVIDENCE LAB (Col 8-12) -->
+            {researchRoom && (
+              <div
+                class="col-span-5 bg-[#f2fbf5] p-4 relative flex flex-col justify-between min-h-[300px]"
+                id="room-card-research_lab"
+              >
+                <!-- Room Label Strip -->
+                <div class="flex items-center justify-between border-b border-emerald-200/80 pb-2.5 mb-3">
+                  <button
+                    type="button"
+                    class="text-left flex items-center gap-2 group cursor-pointer"
+                    data-room-inspect="research_lab"
+                  >
+                    <div class="w-7 h-7 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-800">
+                      <!-- Microscope SVG -->
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 18h8"></path>
+                        <path d="M3 22h18"></path>
+                        <path d="M14 22a7 7 0 1 0 0-14h-1"></path>
+                        <path d="M9 14h2"></path>
+                        <path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z"></path>
+                        <path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="text-sm font-outfit font-black text-emerald-950 group-hover:text-blue-700 transition">
+                        {researchRoom.title}
+                      </div>
+                      <div class="text-[10px] font-mono text-emerald-800/80">Zone R • Evidence & Fact Checking</div>
+                    </div>
+                  </button>
+                  <div class="flex items-center gap-2">
+                    <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${getRoomHealthBadge(researchRoom.health).bg}`}>
+                      {getRoomHealthBadge(researchRoom.health).text}
+                    </span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">
+                      {researchRoom.occupants.length} Staf
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Room Floor & Furniture Layout -->
+                <div class="flex-1 flex items-center justify-around py-2 relative">
+                  
+                  <!-- Evidence Pinboard & SNI Standards Shelf -->
+                  <div class="flex flex-col items-center space-y-1.5">
+                    <div class="w-16 h-20 bg-[#fef08a] border-2 border-[#ca8a04] rounded p-1.5 flex flex-col justify-between shadow-2xs" title="Papan Bukti & SNI Material">
+                      <div class="text-[8px] font-mono font-bold text-amber-900 text-center border-b border-amber-300 pb-0.5">SNI ARCHIVE</div>
+                      <div class="flex flex-wrap gap-1 justify-center">
+                        <span class="w-3 h-3 bg-red-400 rounded-2xs inline-block"></span>
+                        <span class="w-3 h-3 bg-blue-400 rounded-2xs inline-block"></span>
+                        <span class="w-3 h-3 bg-emerald-400 rounded-2xs inline-block"></span>
+                        <span class="w-3 h-3 bg-amber-400 rounded-2xs inline-block"></span>
+                      </div>
+                      <div class="text-[7px] font-mono text-slate-600 text-center">EVIDENCE</div>
+                    </div>
+                    <span class="text-[9px] font-mono font-bold text-emerald-900">Papan Bukti</span>
+                  </div>
+
+                  <!-- Irwan Workstation Desk -->
+                  <div class="flex flex-col items-center">
+                    <div class="text-[10px] font-mono font-bold text-emerald-900 mb-1 flex items-center gap-1">
+                      <span>Konsol Riset</span>
+                      <span class="text-slate-400">• Irwan</span>
+                    </div>
+
+                    <!-- Workstation Box -->
+                    <div class="w-44 bg-[#dcfce7] border-2 border-emerald-300 rounded-xl p-2.5 flex flex-col items-center shadow-xs relative">
+                      <!-- Dual Monitors Setup -->
+                      <div class="flex items-center justify-center gap-1.5 mb-1.5">
+                        <div class="w-10 h-7 bg-slate-800 rounded border border-slate-600 flex items-center justify-center text-[7px] text-emerald-300 font-mono shadow-inner" title="Monitor SNI / Web Riset">
+                          SNI
+                        </div>
+                        <div class="w-10 h-7 bg-slate-800 rounded border border-slate-600 flex items-center justify-center text-[7px] text-teal-300 font-mono shadow-inner" title="Evidence Pack Compiler">
+                          PACK
+                        </div>
+                      </div>
+                      <div class="w-16 h-2 bg-slate-300 rounded-xs mb-2 border border-slate-400" title="Keyboard Terminal"></div>
+
+                      <!-- Staff Sprite Slot -->
+                      {(() => {
+                        const irwan = getSpriteAtPos('research_main_desk');
+                        if (irwan) {
+                          const badge = getStateBadgeStyle(irwan);
+                          return (
+                            <button
+                              type="button"
+                              class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                              data-staff-inspect={irwan.agent_id}
+                              title={`Klik inspeksi ${irwan.display_name}`}
+                            >
+                              <div class="relative">
+                                <div class={`w-12 h-12 rounded-xl bg-white border-2 border-emerald-400 flex items-center justify-center shadow-sm pixel-avatar-box ${irwan.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[irwan.animation_key]?.css_animation_class || '') : ''}`}>
+                                  <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated" shape-rendering="crispEdges">
+                                    <rect x="9" y="4" width="14" height="6" fill="#1e293b" />
+                                    <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                    <rect x="11" y="13" width="3" height="2" fill="#0f172a" />
+                                    <rect x="18" y="13" width="3" height="2" fill="#0f172a" />
+                                    <rect x="13" y="16" width="6" height="1" fill="#b45309" />
+                                    <rect x="8" y="18" width="16" height="10" fill="#0f766e" />
+                                    <rect x="13" y="19" width="6" height="9" fill="#ccfbf1" />
+                                  </svg>
+                                </div>
+                                {irwan.visual_mode === 'BLOCKED' && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
+                                )}
+                                {irwan.work_visual_state?.is_actively_working && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-white text-white text-[9px] font-bold flex items-center justify-center shadow-2xs">
+                                    {JOB_ANIMATION_REGISTRY[irwan.animation_key]?.prop_icon || '🔍'}
+                                  </span>
+                                )}
+                              </div>
+                              <span class="text-xs font-outfit font-black text-slate-900 mt-1">{irwan.display_name}</span>
+                              <span class={`text-[8px] font-mono px-1.5 py-0.2 rounded-full border mt-0.5 font-bold ${badge}`}>
+                                {irwan.badge_text}
+                              </span>
+                            </button>
+                          );
+                        }
+                        return (
+                          <div class="h-16 flex flex-col items-center justify-center text-[10px] font-mono text-emerald-700/60 italic">
+                            <!-- Pixel Chair SVG Primitive -->
+                            <svg viewBox="0 0 20 20" class="w-6 h-6 mb-1 text-emerald-600" fill="none">
+                              <rect x="5" y="3" width="10" height="7" rx="1.5" fill="#a7f3d0" stroke="#059669" stroke-width="1.2"/>
+                              <rect x="4" y="9" width="12" height="5" rx="1" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                              <path d="M10 14v3M7 17h6" stroke="#047857" stroke-width="1.4" stroke-linecap="round"/>
+                            </svg>
+                            <span>Meja Kosong</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <!-- Plant Pot Primitive (SVG Pixel Plant) -->
+                  <div class="flex flex-col items-center">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none">
+                      <path d="M7 14h10l-1.5 7h-7L7 14z" fill="#d97706" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/>
+                      <rect x="6" y="12" width="12" height="2.5" rx="0.5" fill="#f59e0b" stroke="#b45309" stroke-width="1"/>
+                      <circle cx="12" cy="7" r="4" fill="#15803d" stroke="#166534" stroke-width="1"/>
+                      <circle cx="8" cy="9" r="3.5" fill="#22c55e" stroke="#166534" stroke-width="1"/>
+                      <circle cx="16" cy="9" r="3.5" fill="#16a34a" stroke="#166534" stroke-width="1"/>
+                      <circle cx="12" cy="10" r="2.5" fill="#4ade80"/>
+                    </svg>
+                    <span class="text-[8px] font-mono text-emerald-800 font-bold">Ficus</span>
+                  </div>
+                </div>
+
+                <!-- Bottom Doorway to Corridor (Architectural Opening) -->
+                <div class="flex items-center justify-center pt-2 border-t-2 border-emerald-300">
+                  <div class="px-3 py-1 bg-emerald-100 border border-emerald-400 rounded-t-md text-[9px] font-mono font-bold text-emerald-900 flex items-center gap-1.5 shadow-2xs">
+                    <svg viewBox="0 0 16 16" class="w-3.5 h-3.5 text-emerald-700" fill="none">
+                      <path d="M3 2v12M3 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <path d="M3 2c6.627 0 10 5.373 10 12" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
+                    </svg>
+                    <span>Pintu Lab Riset</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <!-- CENTRAL CONNECTING CORRIDOR / SHARED TRANSIT HALLWAY -->
+          <div class="bg-[#cbd5e1] border-b-4 border-slate-500 px-5 py-2.5 flex items-center justify-between text-xs font-mono font-bold text-slate-800 shadow-inner">
+            <div class="flex items-center gap-2">
+              <svg viewBox="0 0 24 24" class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="7 13 12 18 17 13"></polyline>
+                <polyline points="7 6 12 11 17 6"></polyline>
+              </svg>
+              <span>KORIDOR UTAMA LANTAI REDAKSI & RISET</span>
+              <span class="text-[10px] text-slate-600 font-normal hidden sm:inline">(Akses Bebas Antar-Ruangan Redaksi, Media, Telemetri, & Executive Lounge)</span>
+            </div>
+            <div class="flex items-center gap-3 text-[10px] text-slate-600">
+              <span class="px-2 py-0.5 bg-slate-200/80 rounded border border-slate-400">◄ SAYAP BARAT (MEDIA & PUBLIKASI)</span>
+              <span>•</span>
+              <span class="px-2 py-0.5 bg-slate-200/80 rounded border border-slate-400">SAYAP TIMUR (TELEMETRI & LOUNGE) ►</span>
+            </div>
+          </div>
+
+          <!-- MIDDLE WING: MEDIA LAB (LEFT) & ENGINEERING/TELEMETRY (RIGHT) -->
+          <div class="grid grid-cols-12 border-b-4 border-slate-500">
+            
+            <!-- ROOM 3: MEDIA OPERATIONS LAB (Col 1-6) -->
+            {mediaRoom && (
+              <div
+                class="col-span-6 bg-[#fff8f0] border-r-4 border-slate-500 p-4 relative flex flex-col justify-between min-h-[300px]"
+                id="room-card-media_room"
+              >
+                <!-- Room Doorway from Corridor (Top Access) -->
+                <div class="flex items-center justify-center pb-2 mb-2 border-b-2 border-orange-300">
+                  <div class="px-3 py-1 bg-orange-100 border border-orange-400 rounded-b-md text-[9px] font-mono font-bold text-orange-900 flex items-center gap-1.5 shadow-2xs">
+                    <svg viewBox="0 0 16 16" class="w-3.5 h-3.5 text-orange-700" fill="none">
+                      <path d="M3 2v12M3 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <path d="M3 2c6.627 0 10 5.373 10 12" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
+                    </svg>
+                    <span>Pintu Studio Media</span>
+                  </div>
+                </div>
+
+                <!-- Room Label Strip -->
+                <div class="flex items-center justify-between border-b border-orange-200/80 pb-2.5 mb-3">
+                  <button
+                    type="button"
+                    class="text-left flex items-center gap-2 group cursor-pointer"
+                    data-room-inspect="media_room"
+                  >
+                    <div class="w-7 h-7 rounded-lg bg-orange-100 border border-orange-300 flex items-center justify-center text-orange-800">
+                      <!-- Palette SVG -->
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="text-sm font-outfit font-black text-orange-950 group-hover:text-blue-700 transition">
+                        {mediaRoom.title}
+                      </div>
+                      <div class="text-[10px] font-mono text-orange-800/80">Zone M • LokaMedia Studio & R2 Storage</div>
+                    </div>
+                  </button>
+                  <div class="flex items-center gap-2">
+                    <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${getRoomHealthBadge(mediaRoom.health).bg}`}>
+                      {getRoomHealthBadge(mediaRoom.health).text}
+                    </span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-100 text-orange-900 border border-orange-300 font-bold">
+                      {mediaRoom.occupants.length} Staf
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Room Floor & Furniture Layout -->
+                <div class="flex-1 flex items-center justify-around py-2 relative">
+                  
+                  <!-- R2 Media Storage Rack -->
+                  <div class="flex flex-col items-center space-y-1.5">
+                    <div class="w-14 h-24 bg-slate-800 rounded border-2 border-slate-700 p-1 flex flex-col justify-between shadow-sm" title="Storage Rack Cloudflare R2 Media">
+                      <div class="h-5 bg-slate-900 rounded border border-slate-700 flex items-center justify-between px-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        <span class="text-[7px] font-mono text-slate-400">R2-01</span>
+                      </div>
+                      <div class="h-5 bg-slate-900 rounded border border-slate-700 flex items-center justify-between px-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                        <span class="text-[7px] font-mono text-slate-400">IMG</span>
+                      </div>
+                      <div class="h-5 bg-slate-900 rounded border border-slate-700 flex items-center justify-between px-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                        <span class="text-[7px] font-mono text-slate-400">ASSET</span>
+                      </div>
+                    </div>
+                    <span class="text-[9px] font-mono font-bold text-orange-900">R2 Media Rack</span>
+                  </div>
+
+                  <!-- Budi Workstation Desk -->
+                  <div class="flex flex-col items-center">
+                    <div class="text-[10px] font-mono font-bold text-orange-900 mb-1 flex items-center gap-1">
+                      <span>Konsol Media</span>
+                      <span class="text-slate-400">• Budi</span>
+                    </div>
+
+                    <!-- Workstation Box -->
+                    <div class="w-44 bg-[#ffedd5] border-2 border-orange-300 rounded-xl p-2.5 flex flex-col items-center shadow-xs relative">
+                      <!-- Ultrawide Media Screen Setup -->
+                      <div class="flex items-center justify-center gap-1.5 mb-1.5">
+                        <div class="w-16 h-8 bg-slate-800 rounded border border-slate-600 flex items-center justify-center text-[8px] text-orange-300 font-mono shadow-inner" title="Ultrawide Canvas LokaMedia">
+                          CANVAS
+                        </div>
+                        <div class="w-4 h-6 bg-slate-700 rounded-2xs border border-slate-500" title="Audio / Asset Monitor"></div>
+                      </div>
+                      <div class="w-16 h-2 bg-slate-300 rounded-xs mb-2 border border-slate-400" title="Keyboard & Stylus"></div>
+
+                      <!-- Staff Sprite Slot -->
+                      {(() => {
+                        const budi = getSpriteAtPos('media_console');
+                        if (budi) {
+                          const badge = getStateBadgeStyle(budi);
+                          return (
+                            <button
+                              type="button"
+                              class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                              data-staff-inspect={budi.agent_id}
+                              title={`Klik inspeksi ${budi.display_name}`}
+                            >
+                              <div class="relative">
+                                <div class={`w-12 h-12 rounded-xl bg-white border-2 border-orange-400 flex items-center justify-center shadow-sm pixel-avatar-box ${budi.visual_mode === 'DIMMED' ? 'opacity-60' : ''} ${budi.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[budi.animation_key]?.css_animation_class || '') : ''}`}>
+                                  <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated" shape-rendering="crispEdges">
+                                    <rect x="6" y="9" width="3" height="6" fill="#ea580c" />
+                                    <rect x="23" y="9" width="3" height="6" fill="#ea580c" />
+                                    <rect x="8" y="7" width="16" height="2" fill="#ea580c" />
+                                    <rect x="9" y="5" width="14" height="5" fill="#334155" />
+                                    <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
+                                    <rect x="11" y="13" width="3" height="2" fill="#1e293b" />
+                                    <rect x="18" y="13" width="3" height="2" fill="#1e293b" />
+                                    <rect x="8" y="18" width="16" height="10" fill="#c2410c" />
+                                  </svg>
+                                </div>
+                                {budi.visual_mode === 'BLOCKED' && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
+                                )}
+                                {budi.work_visual_state?.is_actively_working && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 border border-white text-white text-[9px] font-bold flex items-center justify-center shadow-2xs">
+                                    {JOB_ANIMATION_REGISTRY[budi.animation_key]?.prop_icon || '🎨'}
+                                  </span>
+                                )}
+                              </div>
+                              <span class="text-xs font-outfit font-black text-slate-900 mt-1">{budi.display_name}</span>
+                              <span class={`text-[8px] font-mono px-1.5 py-0.2 rounded-full border mt-0.5 font-bold ${badge}`}>
+                                {budi.badge_text}
+                              </span>
+                            </button>
+                          );
+                        }
+                        return (
+                          <div class="h-16 flex flex-col items-center justify-center text-[10px] font-mono text-orange-700/60 italic">
+                            <!-- Pixel Chair SVG Primitive -->
+                            <svg viewBox="0 0 20 20" class="w-6 h-6 mb-1 text-orange-600" fill="none">
+                              <rect x="5" y="3" width="10" height="7" rx="1.5" fill="#fed7aa" stroke="#ea580c" stroke-width="1.2"/>
+                              <rect x="4" y="9" width="12" height="5" rx="1" fill="#ffedd5" stroke="#ea580c" stroke-width="1.2"/>
+                              <path d="M10 14v3M7 17h6" stroke="#c2410c" stroke-width="1.4" stroke-linecap="round"/>
+                            </svg>
+                            <span>Meja Kosong</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <!-- Visual Art Stand Primitive (SVG Easel) -->
+                  <div class="flex flex-col items-center">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none">
+                      <line x1="12" y1="2" x2="6" y2="22" stroke="#b45309" stroke-width="1.4" stroke-linecap="round"/>
+                      <line x1="12" y1="2" x2="18" y2="22" stroke="#b45309" stroke-width="1.4" stroke-linecap="round"/>
+                      <line x1="12" y1="2" x2="12" y2="21" stroke="#92400e" stroke-width="1.2" stroke-linecap="round"/>
+                      <rect x="4" y="6" width="16" height="11" rx="0.5" fill="#fff" stroke="#ea580c" stroke-width="1.2"/>
+                      <circle cx="8" cy="10" r="1.5" fill="#f97316"/>
+                      <circle cx="12" cy="12" r="2" fill="#3b82f6"/>
+                      <path d="M6 14l4-3 3 2 4-4" stroke="#10b981" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                    <span class="text-[8px] font-mono text-orange-800 font-bold">Portfolio</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- ROOM 4: ENGINEERING & TELEMETRY LAB (Col 7-12) -->
+            {operationsRoom && (
+              <div
+                class="col-span-6 bg-[#f4f7fa] p-4 relative flex flex-col justify-between min-h-[300px]"
+                id="room-card-operations_room"
+              >
+                <!-- Room Doorway from Corridor (Top Access) -->
+                <div class="flex items-center justify-center pb-2 mb-2 border-b-2 border-blue-300">
+                  <div class="px-3 py-1 bg-blue-100 border border-blue-400 rounded-b-md text-[9px] font-mono font-bold text-blue-900 flex items-center gap-1.5 shadow-2xs">
+                    <svg viewBox="0 0 16 16" class="w-3.5 h-3.5 text-blue-700" fill="none">
+                      <path d="M3 2v12M3 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <path d="M3 2c6.627 0 10 5.373 10 12" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
+                    </svg>
+                    <span>Pintu Telemetri</span>
+                  </div>
+                </div>
+
+                <!-- Room Label Strip -->
+                <div class="flex items-center justify-between border-b border-blue-200/80 pb-2.5 mb-3">
+                  <button
+                    type="button"
+                    class="text-left flex items-center gap-2 group cursor-pointer"
+                    data-room-inspect="operations_room"
+                  >
+                    <div class="w-7 h-7 rounded-lg bg-blue-100 border border-blue-300 flex items-center justify-center text-blue-800">
+                      <!-- Terminal SVG -->
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="4 17 10 11 4 5"></polyline>
+                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="text-sm font-outfit font-black text-slate-900 group-hover:text-blue-700 transition">
+                        {operationsRoom.title}
+                      </div>
+                      <div class="text-[10px] font-mono text-blue-800/80">Zone O • Engineering & JEV Telemetry</div>
+                    </div>
+                  </button>
+                  <div class="flex items-center gap-2">
+                    <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${getRoomHealthBadge(operationsRoom.health).bg}`}>
+                      {getRoomHealthBadge(operationsRoom.health).text}
+                    </span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300 font-bold">
+                      {operationsRoom.occupants.length} Staf
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Room Floor & Furniture Layout -->
+                <div class="flex-1 flex items-center justify-around py-2 relative">
+                  
+                  <!-- Main Server Rack -->
+                  <div class="flex flex-col items-center space-y-1.5">
+                    <div class="w-14 h-24 bg-[#0f172a] rounded border-2 border-blue-900 p-1 flex flex-col justify-between shadow-sm" title="Server Rack Telemetri & JEV Gateway">
+                      <div class="h-5 bg-slate-900 rounded border border-blue-900/60 flex items-center justify-between px-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span class="text-[7px] font-mono text-blue-300">D1</span>
+                      </div>
+                      <div class="h-5 bg-slate-900 rounded border border-blue-900/60 flex items-center justify-between px-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                        <span class="text-[7px] font-mono text-purple-300">JEV</span>
+                      </div>
+                      <div class="h-5 bg-slate-900 rounded border border-blue-900/60 flex items-center justify-between px-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                        <span class="text-[7px] font-mono text-cyan-300">EDGE</span>
+                      </div>
+                    </div>
+                    <span class="text-[9px] font-mono font-bold text-slate-800">Server Rack</span>
+                  </div>
+
+                  <!-- Dimas Workstation Desk -->
+                  <div class="flex flex-col items-center">
+                    <div class="text-[10px] font-mono font-bold text-blue-950 mb-1 flex items-center gap-1">
+                      <span>Konsol Telemetri</span>
+                      <span class="text-slate-400">• Dimas</span>
+                    </div>
+
+                    <!-- Workstation Box -->
+                    <div class="w-44 bg-blue-50 border-2 border-blue-300 rounded-xl p-2.5 flex flex-col items-center shadow-xs relative">
+                      <!-- Telemetry Triple Screens Setup -->
+                      <div class="flex items-center justify-center gap-1.5 mb-1.5">
+                        <div class="w-10 h-7 bg-slate-900 rounded border border-slate-700 flex items-center justify-center text-[7px] text-emerald-400 font-mono shadow-inner" title="Health Metrics">
+                          HEALTH
+                        </div>
+                        <div class="w-10 h-7 bg-slate-900 rounded border border-slate-700 flex items-center justify-center text-[7px] text-purple-400 font-mono shadow-inner" title="TypeSafe JEV (Shadow)">
+                          JEV
+                        </div>
+                      </div>
+                      <div class="w-16 h-2 bg-slate-300 rounded-xs mb-2 border border-slate-400" title="Terminal Keyboard"></div>
+
+                      <!-- Staff Sprite Slot -->
+                      {(() => {
+                        const dimas = getSpriteAtPos('operations_console');
+                        if (dimas) {
+                          const badge = getStateBadgeStyle(dimas);
+                          return (
+                            <button
+                              type="button"
+                              class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                              data-staff-inspect={dimas.agent_id}
+                              title={`Klik inspeksi ${dimas.display_name}`}
+                            >
+                              <div class="relative">
+                                <div class={`w-12 h-12 rounded-xl bg-white border-2 border-blue-400 flex items-center justify-center shadow-sm pixel-avatar-box ${dimas.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[dimas.animation_key]?.css_animation_class || '') : ''}`}>
+                                  <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated" shape-rendering="crispEdges">
+                                    <rect x="8" y="4" width="16" height="7" fill="#312e81" />
+                                    <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                    <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
+                                    <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
+                                    <rect x="13" y="16" width="6" height="1" fill="#4338ca" />
+                                    <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
+                                    <rect x="12" y="20" width="8" height="8" fill="#1e1b4b" />
+                                  </svg>
+                                </div>
+                                {dimas.visual_mode === 'BLOCKED' && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
+                                )}
+                                {dimas.work_visual_state?.is_actively_working && (
+                                  <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500 border border-white text-white text-[9px] font-bold flex items-center justify-center shadow-2xs">
+                                    {JOB_ANIMATION_REGISTRY[dimas.animation_key]?.prop_icon || '⚡'}
+                                  </span>
+                                )}
+                              </div>
+                              <span class="text-xs font-outfit font-black text-slate-900 mt-1">{dimas.display_name}</span>
+                              <span class={`text-[8px] font-mono px-1.5 py-0.2 rounded-full border mt-0.5 font-bold ${badge}`}>
+                                {dimas.badge_text}
+                              </span>
+                            </button>
+                          );
+                        }
+                        return (
+                          <div class="h-16 flex flex-col items-center justify-center text-[10px] font-mono text-blue-700/60 italic">
+                            <!-- Pixel Chair SVG Primitive -->
+                            <svg viewBox="0 0 20 20" class="w-6 h-6 mb-1 text-blue-600" fill="none">
+                              <rect x="5" y="3" width="10" height="7" rx="1.5" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.2"/>
+                              <rect x="4" y="9" width="12" height="5" rx="1" fill="#dbeafe" stroke="#2563eb" stroke-width="1.2"/>
+                              <path d="M10 14v3M7 17h6" stroke="#1d4ed8" stroke-width="1.4" stroke-linecap="round"/>
+                            </svg>
+                            <span>Meja Kosong</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <!-- Backup Diagnostic Terminal Primitive (SVG Console) -->
+                  <div class="flex flex-col items-center">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none">
+                      <rect x="3" y="4" width="18" height="16" rx="2" fill="#1e293b" stroke="#3b82f6" stroke-width="1.2"/>
+                      <rect x="5" y="6" width="14" height="9" rx="1" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+                      <path d="M7 10h2l1-2 2 4 1-2h4" stroke="#38bdf8" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="7" cy="17" r="1" fill="#10b981"/>
+                      <circle cx="10" cy="17" r="1" fill="#f59e0b"/>
+                      <circle cx="13" cy="17" r="1" fill="#ef4444"/>
+                      <rect x="15" y="16" width="4" height="2" fill="#64748b"/>
+                    </svg>
+                    <span class="text-[8px] font-mono text-blue-900 font-bold">Console</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <!-- BOTTOM WING: PUBLICATION (COL 1-4) & EXECUTIVE LOUNGE (COL 5-12) -->
+          <div class="grid grid-cols-12 border-b-4 border-slate-500">
+            
+            <!-- ROOM 5: PUBLICATION OPERATIONS (Col 1-4) -->
+            {publicationRoom && (
+              <div
+                class="col-span-4 bg-[#f2faf8] border-r-4 border-slate-500 p-4 relative flex flex-col justify-between min-h-[310px]"
+                id="room-card-publication_room"
+              >
+                <!-- Room Label Strip -->
+                <div class="flex items-center justify-between border-b border-teal-200/80 pb-2.5 mb-3">
+                  <button
+                    type="button"
+                    class="text-left flex items-center gap-2 group cursor-pointer"
+                    data-room-inspect="publication_room"
+                  >
+                    <div class="w-7 h-7 rounded-lg bg-teal-100 border border-teal-300 flex items-center justify-center text-teal-800">
+                      <!-- Radio / Antenna SVG -->
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path>
+                        <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path>
+                        <circle cx="12" cy="12" r="2"></circle>
+                        <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path>
+                        <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="text-sm font-outfit font-black text-teal-950 group-hover:text-blue-700 transition">
+                        {publicationRoom.title}
+                      </div>
+                      <div class="text-[10px] font-mono text-teal-800/80">Zone P • Dispatch Console</div>
+                    </div>
+                  </button>
+                  <div class="flex items-center gap-2">
+                    <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${getRoomHealthBadge(publicationRoom.health).bg}`}>
+                      {getRoomHealthBadge(publicationRoom.health).text}
+                    </span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-100 text-teal-900 border border-teal-300 font-bold">
+                      {publicationRoom.occupants.length} Staf
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Room Floor & Furniture Layout -->
+                <div class="flex-1 flex flex-col items-center justify-center py-2 relative">
+                  <div class="text-[10px] font-mono font-bold text-teal-950 mb-1 flex items-center gap-1">
+                    <span>Konsol Dispatch</span>
+                    <span class="text-slate-400">• Sari</span>
+                  </div>
+
+                  <!-- Workstation Box -->
+                  <div class="w-48 bg-teal-50 border-2 border-teal-300 rounded-xl p-2.5 flex flex-col items-center shadow-xs relative">
+                    <!-- Dispatch & Rate Limiter Screen Setup -->
+                    <div class="flex items-center justify-center gap-1.5 mb-1.5">
+                      <div class="w-12 h-7 bg-slate-900 rounded border border-slate-700 flex items-center justify-center text-[7px] text-teal-300 font-mono shadow-inner" title="Live Schedule Board">
+                        QUEUE
+                      </div>
+                      <div class="w-12 h-7 bg-slate-900 rounded border border-slate-700 flex items-center justify-center text-[7px] text-emerald-400 font-mono shadow-inner" title="Gate 13 Criteria">
+                        GATE 13
+                      </div>
+                    </div>
+                    <div class="w-20 h-2 bg-slate-300 rounded-xs mb-2 border border-slate-400" title="Dispatch Console Controls"></div>
+
+                    <!-- Staff Sprite Slot -->
+                    {(() => {
+                      const sari = getSpriteAtPos('publication_console');
+                      if (sari) {
+                        const badge = getStateBadgeStyle(sari);
+                        return (
+                          <button
+                            type="button"
+                            class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                            data-staff-inspect={sari.agent_id}
+                            title={`Klik inspeksi ${sari.display_name}`}
+                          >
+                            <div class="relative">
+                              <div class={`w-12 h-12 rounded-xl bg-white border-2 border-teal-400 flex items-center justify-center shadow-sm pixel-avatar-box ${sari.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[sari.animation_key]?.css_animation_class || '') : ''}`}>
+                                <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated" shape-rendering="crispEdges">
+                                  <rect x="8" y="4" width="16" height="6" fill="#14532d" />
+                                  <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
+                                  <rect x="11" y="13" width="3" height="2" fill="#052e16" />
+                                  <rect x="18" y="13" width="3" height="2" fill="#052e16" />
+                                  <rect x="13" y="16" width="6" height="1" fill="#ca8a04" />
+                                  <rect x="8" y="18" width="16" height="10" fill="#15803d" />
+                                  <rect x="12" y="19" width="8" height="9" fill="#dcfce7" />
+                                </svg>
+                              </div>
+                              {sari.visual_mode === 'BLOCKED' && (
+                                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
+                              )}
+                              {sari.work_visual_state?.is_actively_working && (
+                                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-teal-500 border border-white text-white text-[9px] font-bold flex items-center justify-center shadow-2xs">
+                                  {JOB_ANIMATION_REGISTRY[sari.animation_key]?.prop_icon || '📡'}
+                                </span>
+                              )}
+                            </div>
+                            <span class="text-xs font-outfit font-black text-slate-900 mt-1">{sari.display_name}</span>
+                            <span class={`text-[8px] font-mono px-1.5 py-0.2 rounded-full border mt-0.5 font-bold ${badge}`}>
+                              {sari.badge_text}
+                            </span>
+                          </button>
+                        );
+                      }
+                      return (
+                        <div class="h-16 flex flex-col items-center justify-center text-[10px] font-mono text-teal-700/60 italic">
+                          <!-- Pixel Chair SVG Primitive -->
+                          <svg viewBox="0 0 20 20" class="w-6 h-6 mb-1 text-teal-600" fill="none">
+                            <rect x="5" y="3" width="10" height="7" rx="1.5" fill="#99f6e4" stroke="#0d9488" stroke-width="1.2"/>
+                            <rect x="4" y="9" width="12" height="5" rx="1" fill="#ccfbf1" stroke="#0d9488" stroke-width="1.2"/>
+                            <path d="M10 14v3M7 17h6" stroke="#0f766e" stroke-width="1.4" stroke-linecap="round"/>
+                          </svg>
+                          <span>Konsol Kosong</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <!-- Doorway (Architectural Access) -->
+                <div class="flex items-center justify-center pt-2 border-t-2 border-teal-300">
+                  <div class="px-3 py-1 bg-teal-100 border border-teal-400 rounded-md text-[9px] font-mono font-bold text-teal-900 flex items-center gap-1.5 shadow-2xs">
+                    <svg viewBox="0 0 16 16" class="w-3.5 h-3.5 text-teal-700" fill="none">
+                      <path d="M3 2v12M3 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <path d="M3 2c6.627 0 10 5.373 10 12" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
+                    </svg>
+                    <span>Pintu Publikasi</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- ROOM 6: EXECUTIVE LOUNGE (Col 5-12) — REAL PHYSICAL LOUNGE -->
+            {loungeRoom && (
+              <div
+                class="col-span-8 bg-[#faf8f5] p-4 relative flex flex-col justify-between min-h-[310px]"
+                id="room-card-lounge"
+              >
+                <!-- Room Label Strip -->
+                <div class="flex items-center justify-between border-b border-stone-200 pb-2.5 mb-3">
+                  <button
+                    type="button"
+                    class="text-left flex items-center gap-2 group cursor-pointer"
+                    data-room-inspect="lounge"
+                  >
+                    <div class="w-7 h-7 rounded-lg bg-stone-100 border border-stone-300 flex items-center justify-center text-stone-800">
+                      <!-- Coffee Cup SVG -->
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 8h1a4 4 0 1 1 0 8h-1"></path>
+                        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path>
+                        <line x1="6" y1="2" x2="6" y2="4"></line>
+                        <line x1="10" y1="2" x2="10" y2="4"></line>
+                        <line x1="14" y1="2" x2="14" y2="4"></line>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="text-sm font-outfit font-black text-stone-900 group-hover:text-blue-700 transition">
+                        {loungeRoom.title}
+                      </div>
+                      <div class="text-[10px] font-mono text-stone-500">Zone L • Rehat, Diskusi, & Siaga Operasional</div>
+                    </div>
+                  </button>
+                  <div class="flex items-center gap-2">
+                    <span class={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase border ${getRoomHealthBadge(loungeRoom.health).bg}`}>
+                      {getRoomHealthBadge(loungeRoom.health).text}
+                    </span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold">
+                      {loungeRoom.occupants.length} Staf Sedang Siaga
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Lounge Floor Interior with Sofas, Coffee Tables, and Seated Idle Staff -->
+                <div class="flex-1 flex flex-col justify-center py-2 px-3 bg-[#f5ebe0]/40 rounded-xl border border-stone-300 relative">
+                  <!-- Decorative Floor Rug Pattern (Herringbone / Sandstone) -->
+                  <div class="absolute inset-x-6 inset-y-3 rounded-lg bg-[#ebd9c8]/50 border border-amber-300/60 pointer-events-none"></div>
+
+                  <!-- Row of 4 Main Lounge Armchairs/Seats -->
+                  <div class="grid grid-cols-4 gap-3 relative z-10 mb-3">
+                    {[1, 2, 3, 4].map((seatNum) => {
+                      const posKey = `lounge_seat_${seatNum}`;
+                      const spr = getSpriteAtPos(posKey);
+
+                      return (
+                        <div class="flex flex-col items-center">
+                          <div class="w-full bg-[#fde68a]/30 border border-amber-300/80 rounded-xl p-2 flex flex-col items-center min-h-[90px] justify-center shadow-2xs">
+                            {spr ? (
+                              <button
+                                type="button"
+                                class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                data-staff-inspect={spr.agent_id}
+                                title={`Klik inspeksi ${spr.display_name} (Siaga di Lounge)`}
+                              >
+                                <div class="relative">
+                                  <div class="w-10 h-10 rounded-lg bg-white border border-amber-300 flex items-center justify-center shadow-xs pixel-avatar-box">
+                                    {(spr.avatar_key === 'editorial_writer_01' || spr.avatar_key === 'avatar_joko') && (
+                                      <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                        <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
+                                        <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
+                                        <rect x="10" y="12" width="4" height="2" fill="#1e293b" />
+                                        <rect x="18" y="12" width="4" height="2" fill="#1e293b" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#78350f" />
+                                      </svg>
+                                    )}
+                                    {(spr.avatar_key === 'editorial_qa_01' || spr.avatar_key === 'avatar_rina') && (
+                                      <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                        <rect x="8" y="4" width="16" height="7" fill="#4c0519" />
+                                        <rect x="10" y="10" width="12" height="8" fill="#ffedd5" />
+                                        <rect x="11" y="12" width="4" height="2" fill="#be123c" />
+                                        <rect x="17" y="12" width="4" height="2" fill="#be123c" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#881337" />
+                                      </svg>
+                                    )}
+                                    {(spr.avatar_key === 'research_evidence_01' || spr.avatar_key === 'avatar_irwan') && (
+                                      <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                        <rect x="9" y="4" width="14" height="6" fill="#1e293b" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                        <rect x="11" y="13" width="3" height="2" fill="#0f172a" />
+                                        <rect x="18" y="13" width="3" height="2" fill="#0f172a" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#0f766e" />
+                                      </svg>
+                                    )}
+                                    {(spr.avatar_key === 'media_ops_01' || spr.avatar_key === 'avatar_budi') && (
+                                      <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                        <rect x="6" y="9" width="3" height="6" fill="#ea580c" />
+                                        <rect x="23" y="9" width="3" height="6" fill="#ea580c" />
+                                        <rect x="9" y="5" width="14" height="5" fill="#334155" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#c2410c" />
+                                      </svg>
+                                    )}
+                                    {(spr.avatar_key === 'publication_ops_01' || spr.avatar_key === 'avatar_sari') && (
+                                      <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                        <rect x="8" y="4" width="16" height="6" fill="#14532d" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
+                                        <rect x="11" y="13" width="3" height="2" fill="#052e16" />
+                                        <rect x="18" y="13" width="3" height="2" fill="#052e16" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#15803d" />
+                                      </svg>
+                                    )}
+                                    {(spr.avatar_key === 'telemetry_01' || spr.avatar_key === 'avatar_dimas') && (
+                                      <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                        <rect x="8" y="4" width="16" height="7" fill="#312e81" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                        <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
+                                        <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
+                                      </svg>
+                                    )}
+                                    {(spr.avatar_key === 'social_specialist_01' || spr.avatar_key === 'avatar_maya') && (
+                                      <svg viewBox="0 0 32 32" class="w-8 h-8 pixelated" shape-rendering="crispEdges">
+                                        <rect x="8" y="4" width="16" height="7" fill="#6b21a8" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#fbcfe8" />
+                                        <rect x="11" y="13" width="3" height="2" fill="#831843" />
+                                        <rect x="18" y="13" width="3" height="2" fill="#831843" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#9333ea" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                  <!-- Mini Mug Badge Primitive -->
+                                  <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center">
+                                    <svg viewBox="0 0 16 16" class="w-2.5 h-2.5 text-amber-800" fill="none">
+                                      <rect x="3" y="4" width="7" height="8" rx="1" fill="#fff" stroke="currentColor" stroke-width="1"/>
+                                      <path d="M10 6h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2" stroke="currentColor" stroke-width="1"/>
+                                    </svg>
+                                  </span>
+                                </div>
+                                <span class="text-xs font-outfit font-black text-slate-900 mt-1">{spr.display_name}</span>
+                                <span class="text-[8px] font-mono text-amber-800 font-bold">Siaga Lounge</span>
+                              </button>
+                            ) : (
+                              <div class="flex flex-col items-center text-stone-400">
+                                <!-- Pixel Armchair SVG Primitive -->
+                                <svg viewBox="0 0 28 24" class="w-8 h-7 text-amber-700" fill="none">
+                                  <rect x="4" y="2" width="20" height="12" rx="2" fill="#d97706" stroke="#92400e" stroke-width="1.2"/>
+                                  <rect x="6" y="9" width="16" height="9" rx="1.5" fill="#fbbf24" stroke="#b45309" stroke-width="1.2"/>
+                                  <rect x="2" y="7" width="5" height="12" rx="1.5" fill="#b45309" stroke="#78350f" stroke-width="1.2"/>
+                                  <rect x="21" y="7" width="5" height="12" rx="1.5" fill="#b45309" stroke="#78350f" stroke-width="1.2"/>
+                                  <line x1="5" y1="19" x2="4" y2="22" stroke="#78350f" stroke-width="1.5" stroke-linecap="round"/>
+                                  <line x1="23" y1="19" x2="24" y2="22" stroke="#78350f" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span class="text-[8px] font-mono mt-0.5">Sofa {seatNum}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <!-- Central Coffee Tables & Secondary Seating -->
+                  <div class="grid grid-cols-2 gap-4 relative z-10">
+                    <!-- Coffee Table East -->
+                    <div class="bg-amber-100/70 border border-amber-300 rounded-xl p-2 flex items-center justify-between shadow-2xs">
+                      <div class="flex items-center gap-2">
+                        <!-- Pixel Coffee Mug SVG -->
+                        <svg viewBox="0 0 20 20" class="w-5 h-5 text-amber-800" fill="none">
+                          <rect x="4" y="6" width="9" height="10" rx="1" fill="#f8fafc" stroke="#b45309" stroke-width="1.2"/>
+                          <path d="M13 8h2a1.5 1.5 0 0 1 1.5 1.5v3A1.5 1.5 0 0 1 15 14h-2" stroke="#b45309" stroke-width="1.2"/>
+                          <path d="M6 3c0 1 1 1 1 2M9 2c0 1 1 1 1 2" stroke="#d97706" stroke-width="1" stroke-linecap="round"/>
+                        </svg>
+                        <div>
+                          <div class="text-[10px] font-outfit font-bold text-amber-950">Meja Kopi Timur</div>
+                          <div class="text-[8px] font-mono text-amber-800">Espresso & Majalah Arsitektur</div>
+                        </div>
+                      </div>
+                      {(() => {
+                        const spr = getSpriteAtPos('lounge_seat_5');
+                        if (spr) {
+                          return (
+                            <button
+                              type="button"
+                              class="px-2 py-1 rounded bg-white border border-amber-300 text-[10px] font-outfit font-bold text-slate-900 cursor-pointer"
+                              data-staff-inspect={spr.agent_id}
+                            >
+                              {spr.display_name} (Siaga)
+                            </button>
+                          );
+                        }
+                        return <span class="text-[8px] font-mono text-stone-400">Tersedia</span>;
+                      })()}
+                    </div>
+
+                    <!-- Coffee Table West -->
+                    <div class="bg-amber-100/70 border border-amber-300 rounded-xl p-2 flex items-center justify-between shadow-2xs">
+                      <div class="flex items-center gap-2">
+                        <!-- Pixel Plant SVG -->
+                        <svg viewBox="0 0 20 20" class="w-5 h-5" fill="none">
+                          <path d="M6 12h8l-1 6h-6L6 12z" fill="#d97706" stroke="#b45309" stroke-width="1"/>
+                          <circle cx="10" cy="7" r="3" fill="#15803d"/>
+                          <circle cx="7" cy="9" r="2.5" fill="#22c55e"/>
+                          <circle cx="13" cy="9" r="2.5" fill="#16a34a"/>
+                        </svg>
+                        <div>
+                          <div class="text-[10px] font-outfit font-bold text-amber-950">Meja Kopi Barat</div>
+                          <div class="text-[8px] font-mono text-amber-800">Monstera & Area Santai</div>
+                        </div>
+                      </div>
+                      {(() => {
+                        const spr = getSpriteAtPos('lounge_seat_6');
+                        if (spr) {
+                          return (
+                            <button
+                              type="button"
+                              class="px-2 py-1 rounded bg-white border border-amber-300 text-[10px] font-outfit font-bold text-slate-900 cursor-pointer"
+                              data-staff-inspect={spr.agent_id}
+                            >
+                              {spr.display_name} (Siaga)
+                            </button>
+                          );
+                        }
+                        return <span class="text-[8px] font-mono text-stone-400">Tersedia</span>;
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Doorway (Architectural Access) -->
+                <div class="flex items-center justify-center pt-2 border-t-2 border-stone-200">
+                  <div class="px-3 py-1 bg-stone-200 border border-stone-300 rounded-b-md text-[9px] font-mono font-bold text-stone-700 flex items-center gap-1.5 shadow-2xs">
+                    <svg viewBox="0 0 16 16" class="w-3.5 h-3.5 text-stone-500" fill="none">
+                      <path d="M3 2v12M3 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <path d="M3 2c6.627 0 10 5.373 10 12" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
+                    </svg>
+                    <span>Pintu Masuk Lounge</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <!-- BOTTOM EXTENSION: ZONE S / SOCIAL DISTRIBUTION ROOM (PHYSICAL BAY WITH WORKSTATION OFF & LOCK) -->
+          {socialRoom && (
+            <div
+              class="bg-[#fbf7ff] p-4 relative flex flex-col justify-between"
+              id="room-card-social_room"
+            >
+              <!-- Room Header Bar -->
+              <div class="flex items-center justify-between border-b border-purple-200/80 pb-2.5 mb-3">
+                <button
+                  type="button"
+                  class="text-left flex items-center gap-2 group cursor-pointer"
+                  data-room-inspect="social_room"
+                >
+                  <div class="w-7 h-7 rounded-lg bg-purple-100 border border-purple-300 flex items-center justify-center text-purple-800">
+                    <!-- Padlock SVG -->
+                    <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="text-sm font-outfit font-black text-purple-950 group-hover:text-blue-700 transition flex items-center gap-2">
+                      <span>{socialRoom.title}</span>
+                      <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300 font-bold uppercase">
+                        ZONE S • KESIAPAN DISTRIBUSI (TERKUNCI)
+                      </span>
+                    </div>
+                    <div class="text-[10px] font-mono text-purple-800/80">Kapasitas fisik masa depan; meja kerja & komputer dalam status OFF</div>
+                  </div>
+                </button>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-zinc-100 border border-zinc-300 text-zinc-600 text-[10px] font-mono font-bold">
+                    UNSTAFFED • ACCOUNT REQUIRED
+                  </span>
+                </div>
               </div>
 
-              <!-- Room Footer Info Bar -->
-              <div class="p-3 bg-slate-950/80 border-t border-slate-800/60 flex items-center justify-between text-[10px] font-mono text-slate-400">
-                <span class="truncate max-w-[180px]">{room.zone}</span>
-                <span class="text-slate-500 flex items-center gap-1">
-                  <span>Tugas:</span>
-                  <strong class="text-slate-300 font-bold">{room.active_tasks_count}</strong>
-                </span>
+              <!-- Interior: Unpowered Physical Workstation & Security Stanchion -->
+              <div class="py-3 px-4 bg-purple-100/40 rounded-xl border border-purple-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                  <!-- Unpowered Workstation Graphic -->
+                  <div class="w-36 bg-white border-2 border-purple-200 rounded-xl p-2 flex flex-col items-center shadow-2xs">
+                    <div class="w-12 h-7 bg-slate-900 rounded border border-slate-700 flex items-center justify-center text-[7px] text-slate-500 font-mono shadow-inner mb-1" title="Monitor Power OFF">
+                      PWR OFF
+                    </div>
+                    <div class="w-14 h-1.5 bg-slate-200 rounded-xs mb-1.5 border border-slate-300"></div>
+                    <div class="text-[9px] font-mono text-slate-400 italic">Workstation Maya</div>
+                  </div>
+
+                  <!-- Lock & Security Description -->
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-1.5 text-xs font-outfit font-bold text-purple-950">
+                      <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <span>Ruangan Fisik Siap, Menunggu Konfigurasi Akun Meta Eksternal</span>
+                    </div>
+                    <p class="text-[10px] font-mono text-purple-900/80 max-w-xl">
+                      Ruang distribusi media sosial terisolasi secara deterministik. Transport produksi diblokir (ProductionSocialProviderTransport = BLOCKED, ProductionMetaOAuthTransport = BLOCKED). Tidak ada staf bertugas sebelum akun resmi dikonfigurasi oleh operator.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="shrink-0 flex items-center gap-2">
+                  <div class="px-3 py-1.5 rounded-xl bg-white border border-purple-300 text-[10px] font-mono text-purple-900 font-bold shadow-2xs flex items-center gap-1.5">
+                    <svg viewBox="0 0 16 16" class="w-3.5 h-3.5 text-purple-700" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <rect x="2" y="7" width="12" height="8" rx="1.5"></rect>
+                      <path d="M5 7V4a3 3 0 0 1 6 0v3"></path>
+                    </svg>
+                    <span>Keamanan Aktif</span>
+                  </div>
+                </div>
               </div>
             </div>
-          );
-        })}
+          )}
+
+        </div>
       </div>
     </div>
 
-    <!-- 4. LIVE ACTIVITY STRIP -->
-    <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-2xs space-y-3">
+    <!-- 3. REAL-TIME RECENT ACTIVITY LOG (READ-ONLY TELEMETRY) -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
           <h3 class="text-sm font-outfit font-bold text-slate-900">Aktivitas Operasional Terkini</h3>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-500">Real D1 Telemetry</span>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">Real D1 Telemetry</span>
         </div>
         <span class="text-[10px] font-mono text-slate-400">Zero Synthetic Chatter</span>
       </div>
@@ -507,7 +1532,7 @@ const getRoomHealthBadge = (health: string) => {
           </div>
         ) : (
           recent_activity.slice(0, 5).map((act) => (
-            <div class="py-2.5 flex items-center justify-between gap-3 text-xs">
+            <div class="py-2 flex items-center justify-between gap-3 text-xs">
               <div class="flex items-center gap-2.5 min-w-0">
                 <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold shrink-0">
                   {act.type}
@@ -523,35 +1548,35 @@ const getRoomHealthBadge = (health: string) => {
       </div>
     </div>
 
-    <!-- 5. INSPECTION MODAL (Purely Read-Only, No Action Authority) -->
+    <!-- 4. CONTEXTUAL INSPECTION MODAL (Read-Only Telemetry, Zero Execution Authority) -->
     <div
       id="inspect-modal"
-      class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 hidden"
+      class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 hidden"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div class="bg-[#14161f] border-2 border-slate-700/80 rounded-3xl max-w-lg w-full p-6 text-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+      <div class="bg-white border-2 border-slate-300 rounded-3xl max-w-lg w-full p-6 text-slate-800 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
         <!-- Modal Header -->
-        <div class="flex items-start justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-start justify-between border-b border-slate-200 pb-4">
           <div>
             <div class="flex items-center gap-2">
-              <span id="modal-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold uppercase border border-blue-500/30">
+              <span id="modal-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold uppercase border border-blue-200">
                 STAFF INSPECTOR
               </span>
-              <span class="text-[10px] font-mono text-slate-500">READ-ONLY</span>
+              <span class="text-[10px] font-mono text-slate-400 font-bold">READ-ONLY</span>
             </div>
-            <h3 id="modal-title" class="text-xl font-outfit font-black text-white mt-1">
+            <h3 id="modal-title" class="text-xl font-outfit font-black text-slate-900 mt-1">
               Detail Inspeksi
             </h3>
-            <p id="modal-subtitle" class="text-xs font-mono text-slate-400 mt-0.5">
+            <p id="modal-subtitle" class="text-xs font-mono text-slate-500 mt-0.5">
               Identitas mesin & telemetri operasional
             </p>
           </div>
           <button
             type="button"
             id="modal-close-btn"
-            class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xl leading-none"
+            class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer text-xl leading-none"
             aria-label="Tutup dialog inspeksi"
           >
             ✕
@@ -563,30 +1588,33 @@ const getRoomHealthBadge = (health: string) => {
           <!-- Populated dynamically via client script -->
         </div>
 
-        <!-- Modal Footer Actions (Links Only, Zero Command Buttons) -->
-        <div class="border-t border-slate-800 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div class="text-[10px] text-slate-500 font-mono">
+        <!-- Modal Footer Actions (Links Only, Zero Command Execution) -->
+        <div class="border-t border-slate-200 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="text-[10px] text-slate-400 font-mono">
             Zero mutation authority.
           </div>
           <div class="flex items-center gap-2">
             <a
               id="modal-chat-link"
               href="/admin/mission-control/staff"
-              class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-outfit font-bold text-xs transition flex items-center gap-1.5 shadow-xs"
+              class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-outfit font-bold text-xs transition flex items-center gap-1.5 shadow-2xs"
             >
-              💬 Chat dengan Staf
+              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Chat dengan Staf</span>
             </a>
             <a
               id="modal-staff-link"
               href="/admin/mission-control/staff"
-              class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-outfit font-bold text-xs border border-slate-700 transition"
+              class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-outfit font-bold text-xs border border-slate-300 transition"
             >
               Buka Staff Registry →
             </a>
             <button
               type="button"
               id="modal-ok-btn"
-              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-outfit font-bold text-xs border border-slate-700 transition cursor-pointer"
+              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-outfit font-bold text-xs transition cursor-pointer"
             >
               Selesai
             </button>
@@ -594,6 +1622,7 @@ const getRoomHealthBadge = (health: string) => {
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- Raw State Payload for Client Hydration & Safe Inspection -->
@@ -626,7 +1655,7 @@ const getRoomHealthBadge = (health: string) => {
 
     @keyframes researchScan {
       0%, 100% { filter: brightness(1); }
-      50% { filter: brightness(1.25); }
+      50% { filter: brightness(1.2); }
     }
     .animate-research-scan {
       animation: researchScan 1.6s infinite ease-in-out;
@@ -683,7 +1712,7 @@ const getRoomHealthBadge = (health: string) => {
 
     @keyframes dispatchPulse {
       0%, 100% { transform: scale(1); filter: brightness(1); }
-      50% { transform: scale(1.04); filter: brightness(1.3); }
+      50% { transform: scale(1.04); filter: brightness(1.2); }
     }
     .animate-dispatch-pulse {
       animation: dispatchPulse 1s infinite ease-in-out;
@@ -773,13 +1802,18 @@ const getRoomHealthBadge = (health: string) => {
           if (!sprite || !modal) return;
 
           modalTag.textContent = 'STAFF INSPECTOR';
-          modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold uppercase border border-blue-500/30';
+          modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold uppercase border border-blue-200';
           modalTitle.textContent = sprite.display_name;
           modalSubtitle.textContent = sprite.role + ' • ' + sprite.agent_id;
 
           if (modalChatLink) {
             modalChatLink.href = '/admin/mission-control/staff/' + encodeURIComponent(sprite.agent_id) + '/chat';
-            modalChatLink.textContent = '💬 Chat dengan ' + sprite.display_name;
+            modalChatLink.innerHTML = `
+              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Chat dengan ${sprite.display_name}</span>
+            `;
             modalChatLink.classList.remove('hidden');
           }
 
@@ -790,57 +1824,57 @@ const getRoomHealthBadge = (health: string) => {
           }
 
           modalBody.innerHTML = `
-            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-2">
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Status Operasional:</span>
+                <span class="text-slate-500 font-medium">Status Operasional:</span>
                 <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
                   sprite.visual_mode === 'ACTIVE'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                     : sprite.visual_mode === 'BLOCKED'
-                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                    : 'bg-slate-800 text-slate-300 border border-slate-700'
+                    ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                    : 'bg-slate-200 text-slate-800 border border-slate-300'
                 }">${sprite.badge_text}</span>
               </div>
               <div class="flex items-start justify-between gap-2">
-                <span class="text-slate-400">Animasi Kerja:</span>
-                <span class="text-emerald-400 font-mono font-bold text-[11px]">${sprite.animation_key || 'IDLE_STANDBY'}</span>
+                <span class="text-slate-500 font-medium">Animasi Kerja:</span>
+                <span class="text-emerald-700 font-mono font-bold text-[11px]">${sprite.animation_key || 'IDLE_STANDBY'}</span>
               </div>
               <div class="flex items-start justify-between gap-2">
-                <span class="text-slate-400">Detail Visual:</span>
-                <span class="text-slate-200 text-right font-medium max-w-[280px]">${(sprite.work_visual_state && sprite.work_visual_state.visual_detail) || sprite.state_reason.summary}</span>
+                <span class="text-slate-500 font-medium">Detail Visual:</span>
+                <span class="text-slate-900 text-right font-medium max-w-[280px]">${(sprite.work_visual_state && sprite.work_visual_state.visual_detail) || sprite.state_reason.summary}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Ruangan Spasial:</span>
-                <span class="text-slate-200 font-bold">${sprite.room_key}</span>
+                <span class="text-slate-500 font-medium">Ruangan Spasial:</span>
+                <span class="text-slate-900 font-bold">${sprite.room_key}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Posisi Kerja:</span>
-                <span class="text-slate-300">${sprite.position_key}</span>
+                <span class="text-slate-500 font-medium">Posisi Kerja:</span>
+                <span class="text-slate-700">${sprite.position_key}</span>
               </div>
             </div>
 
-            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-2">
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-bold">Tugas Berjalan:</span>
-                <span class="text-[10px] text-slate-500 font-mono">Task ID: ${(sprite.work_visual_state && sprite.work_visual_state.task_id) || '-'}</span>
+                <span class="text-slate-500 font-bold">Tugas Berjalan:</span>
+                <span class="text-[10px] text-slate-400 font-mono">Task ID: ${(sprite.work_visual_state && sprite.work_visual_state.task_id) || '-'}</span>
               </div>
-              <div class="text-slate-200 font-medium">${sprite.task_label || sprite.current_task_title || 'Tidak ada tugas aktif (Siaga di Lounge)'}</div>
-              <div class="text-[10px] text-slate-400 font-mono flex items-center justify-between border-t border-slate-800/60 pt-1.5">
-                <span>Tahap: <strong class="text-blue-400">${sprite.current_task_status || '-'}</strong></span>
-                <span>Kesegaran: <strong class="text-slate-300">${(sprite.work_visual_state && sprite.work_visual_state.freshness) || 'RECENT'}</strong></span>
+              <div class="text-slate-900 font-medium">${sprite.task_label || sprite.current_task_title || 'Tidak ada tugas aktif (Siaga di Lounge)'}</div>
+              <div class="text-[10px] text-slate-500 font-mono flex items-center justify-between border-t border-slate-200 pt-1.5">
+                <span>Tahap: <strong class="text-blue-700">${sprite.current_task_status || '-'}</strong></span>
+                <span>Kesegaran: <strong class="text-slate-700">${(sprite.work_visual_state && sprite.work_visual_state.freshness) || 'RECENT'}</strong></span>
               </div>
             </div>
 
-            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
-              <div class="text-slate-400 font-bold">Kapabilitas Mesin:</div>
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5">
+              <div class="text-slate-500 font-bold">Kapabilitas Mesin:</div>
               <div class="flex flex-wrap gap-1 mt-1">
                 ${(sprite.capabilities || []).map(function (c) {
-                  return `<span class="px-1.5 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 rounded text-[9px]">${c}</span>`;
+                  return `<span class="px-1.5 py-0.5 bg-slate-200 text-slate-700 border border-slate-300 rounded text-[9px] font-bold">${c}</span>`;
                 }).join('')}
               </div>
             </div>
 
-            <div class="text-[10px] font-mono text-slate-500 text-center pt-1 border-t border-slate-800/60">
+            <div class="text-[10px] font-mono text-slate-500 text-center pt-1 border-t border-slate-200">
               ⚡ Visualisasi berdasarkan telemetry nyata • Zero synthetic animation
             </div>
           `;
@@ -859,7 +1893,7 @@ const getRoomHealthBadge = (health: string) => {
           if (!room || !modal) return;
 
           modalTag.textContent = 'ROOM INSPECTOR';
-          modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase border border-amber-500/30';
+          modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold uppercase border border-amber-300';
           modalTitle.textContent = room.title;
           modalSubtitle.textContent = room.zone;
 
@@ -878,38 +1912,38 @@ const getRoomHealthBadge = (health: string) => {
           }
 
           modalBody.innerHTML = `
-            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Kesehatan Ruangan:</span>
-                <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-slate-800 text-slate-200 border border-slate-700">${room.health}</span>
+                <span class="text-slate-500 font-medium">Kesehatan Ruangan:</span>
+                <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-slate-200 text-slate-800 border border-slate-300">${room.health}</span>
               </div>
               <div class="flex items-start justify-between gap-2">
-                <span class="text-slate-400">Bukti Evaluasi:</span>
-                <span class="text-slate-200 text-right font-medium max-w-[280px]">${room.health_evidence}</span>
+                <span class="text-slate-500 font-medium">Bukti Evaluasi:</span>
+                <span class="text-slate-900 text-right font-medium max-w-[280px]">${room.health_evidence}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Jumlah Penghuni:</span>
-                <span class="text-slate-200 font-bold">${room.occupants.length} Staf</span>
+                <span class="text-slate-500 font-medium">Jumlah Penghuni:</span>
+                <span class="text-slate-900 font-bold">${room.occupants.length} Staf</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Tugas Aktif:</span>
-                <span class="text-slate-300">${room.active_tasks_count}</span>
+                <span class="text-slate-500 font-medium">Tugas Aktif:</span>
+                <span class="text-slate-800">${room.active_tasks_count}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Penghambat (Blockers):</span>
-                <span class="text-slate-300 font-bold ${room.blockers_count > 0 ? 'text-rose-400' : 'text-slate-300'}">${room.blockers_count}</span>
+                <span class="text-slate-500 font-medium">Penghambat (Blockers):</span>
+                <span class="text-slate-900 font-bold ${room.blockers_count > 0 ? 'text-rose-600' : 'text-slate-800'}">${room.blockers_count}</span>
               </div>
             </div>
 
-            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
-              <div class="text-slate-400 font-bold">Staf di Ruangan:</div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
+              <div class="text-slate-500 font-bold">Staf di Ruangan:</div>
               <div class="space-y-1 mt-1">
                 ${room.occupants.length === 0
-                  ? '<div class="text-slate-500 italic">Ruangan kosong</div>'
+                  ? '<div class="text-slate-400 italic">Ruangan kosong (staf sedang di Lounge atau pos lain)</div>'
                   : room.occupants.map(function (o) {
-                      return `<div class="flex items-center justify-between py-0.5">
-                        <span class="text-slate-200">${o.display_name} (${o.role})</span>
-                        <span class="text-[10px] text-slate-400">${o.badge_text}</span>
+                      return `<div class="flex items-center justify-between py-0.5 border-b border-slate-100 last:border-0">
+                        <span class="text-slate-800 font-medium">${o.display_name} (${o.role})</span>
+                        <span class="text-[10px] font-mono text-slate-500 font-bold">${o.badge_text}</span>
                       </div>`;
                     }).join('')}
               </div>
@@ -934,7 +1968,6 @@ const getRoomHealthBadge = (health: string) => {
           .then(function (res) { return res.json(); })
           .then(function (data) {
             if (data && data.generated_at) {
-              // Update live time display
               const timeDisplay = document.getElementById('live-time-display');
               if (timeDisplay) {
                 timeDisplay.textContent = new Date(data.generated_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
