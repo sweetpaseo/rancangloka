@@ -17,6 +17,44 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### SOCIAL-S1: Social Domain Model, Staging Outbox & D1 Schema 2026-10-01
+
+- **Tujuan & Ruang Lingkup:**
+  - Membangun fondasi model domain internal, skema persistensi D1, gerbang persetujuan kriptografis, dan antrean keluar (*Staging Outbox*) untuk pipeline distribusi media sosial RancangLoka.
+  - Strict Safety Invariants: `SOCIAL_AUTOMATION = OFF`, `media_worker = DISABLED`, `JEV = shadow`, `department_availability = 'NOT_AVAILABLE'`.
+  - Zero External Provider Calls: Tidak ada pemanggilan API ke Meta, Facebook, Instagram, TikTok, YouTube, LinkedIn, atau X.
+  - Zero Fake Activity: Tidak ada pendaftaran agen baru di Pixel Office (`Maya` belum aktif), tidak ada animasi kerja fiktif.
+- **Komponen Utama yang Dibangun:**
+  1. **Migrasi Basis Data Cloudflare D1 (`0026_social_domain_and_outbox.sql`):**
+     - `social_campaigns`: Mengikat provenans ke `publication_execution_receipts` via batasan unik `source_receipt_id`.
+     - `social_post_variants`: Varian platform (`facebook_page`, `instagram_business`, dsb.) dengan indeks parsial unik `uq_active_variant_per_campaign_platform`.
+     - `social_variant_approvals`: Log persetujuan operator yang mengikat `approved_payload_hash`.
+     - `social_staging_outbox`: Antrean outbox terjadwal dengan kesiapan leasing compare-and-set dan audit retry.
+     - `social_execution_receipts`: Kuitansi eksternal imutabel untuk audit hasil publikasi pihak ketiga.
+  2. **Model Domain & Mesin Status Deterministik (`src/lib/social/`):**
+     - `state-machine.ts`: Validasi transisi status eksplisit untuk kampanye, varian, dan outbox; transisi ilegal ditolak fail-closed; status UNKNOWN dipertahankan tanpa inferensi kesuksesan palsu.
+     - `approval.ts`: Penghitungan hash deterministik (`computeVariantPayloadHash`). Setiap perubahan teks caption atau aset media otomatis membatalkan persetujuan terdahulu (`PAYLOAD_MUTATED_SINCE_APPROVAL`).
+     - `service.ts`: Fungsi domain kanonik (`createCampaignFromPublishedReceipt`, `createPostVariant`, `updateVariantDraft`, `approveVariant`, `scheduleVariantToOutbox`, `cancelVariant`, `markVariantBlocked`, `recordExecutionReceipt`, `getSocialOutboxSnapshot`, `getSocialDomainTelemetry`).
+  3. **Penegakan Keselamatan Penjadwalan Outbox:**
+     - Penjadwalan varian ke outbox mewajibkan status `APPROVED` dengan payload hash yang cocok secara kriptografis.
+     - Mode keselamatan `SOCIAL_AUTOMATION = OFF` menjamin jumlah item yang memenuhi syarat eksekusi selalu nol (`eligible_count = 0`).
+- **Pengujian & Verifikasi:**
+  - Membuat test suite `scripts/test-social-domain.js` (22/22 skenario uji lulus 100%).
+  - Memverifikasi regresi Mission Control (MC-1 s.d. MC-9, soak safety 54 uji) tetap lulus 100%.
+  - TypeScript typecheck (`npx tsc --noEmit`) lulus 0 kesalahan.
+  - Astro production build (`npm run build`) berhasil 100%.
+- **Status Akhir:**
+  - `SOCIAL-S1 = COMPLETE`.
+  - Frontier saat ini: `SOCIAL-S1/COMPLETE`.
+
+### SOCIAL-S0: Social Media Automation Architecture & Discovery 2026-10-01
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan audit inventaris kapabilitas media sosial di repositori, menetapkan batas langganan provenans artikel web terbit (`publication_execution_receipts`), mendesain batas adaptor platform agnostik vendor, dan merumuskan roadmap bertahap dari S0 hingga S5.
+  - Menghasilkan dokumen arsitektur resmi: `docs/SOCIAL_S0_ARCHITECTURE_DISCOVERY.md`.
+- **Status Akhir:**
+  - `SOCIAL-S0 = COMPLETE`.
+
 ### HERMES-MC-9: Mission Control Role & Job Animation Layer 2026-09-30
 
 - **Tujuan & Ruang Lingkup:**

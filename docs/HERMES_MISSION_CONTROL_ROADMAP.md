@@ -152,6 +152,7 @@ The **HERMES-MC** (Hermes Mission Control) track establishes the operational vis
 9. HERMES-MC-7           [COMPLETED — Department Expansion Architecture]
 10. HERMES-MC-8          [COMPLETED — Production Hardening & Go-Live]
 11. HERMES-MC-9          [COMPLETED — Role & Job Animation Layer]
-── Parallel Track ──
-12. SOCIAL-S0+           [READY — Social Pipeline Core & MC Department Integration]
+12. SOCIAL-S0            [COMPLETED — Architecture & Discovery (docs/SOCIAL_S0_ARCHITECTURE_DISCOVERY.md)]
+13. SOCIAL-S1            [COMPLETED — Core Domain, Staging Outbox & D1 Schema (docs/SOCIAL_S1_CORE_DOMAIN.md)]
+14. SOCIAL-S2            [READY — Mission Control Social Department & Staff Integration (Read-Only/Shadow)]
 ```
