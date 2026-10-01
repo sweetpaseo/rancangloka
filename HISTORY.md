@@ -17,6 +17,41 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### SOCIAL-S3.5A: Secure OAuth Credential Vault & Token Persistence Hardening 2026-10-01
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengatasi kesenjangan arsitektur penyimpanan token dinamis dari alur OAuth sebelum implementasi SOCIAL-S3.6.
+  - Memverifikasi batasan kemampuan Cloudflare Workers Secrets / Secrets Store: runtime Worker isolate bersifat *read-only* sehingga mutasi rahasia dinamis tanpa Cloudflare Management API tidak didukung.
+  - Menghindari risiko eskalasi hak akses (*privilege escalation*): RancangLoka tidak boleh menyimpan atau menggunakan Cloudflare Account Management API token di aplikasi web/admin hanya untuk menyimpan token OAuth Meta.
+  - Mengimplementasikan Dedicated Encrypted Credential Vault: Token OAuth dienkripsi di server menggunakan AES-256-GCM dengan *Authenticated Additional Data* (AAD) sebelum disimpan di tabel D1 terdedikasi `social_provider_credentials`.
+  - Master Key (KEK): Key Encryption Key 256-bit (`META_CREDENTIAL_KEK_V1`) disimpan secara terisolasi di Cloudflare Secrets, tidak pernah masuk ke D1 atau git.
+  - Strict Safety Invariants: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `JEV_MODE = shadow`, `media_worker = DISABLED`, `publishingAuthority = 0`.
+- **Komponen Utama yang Diimplementasikan:**
+  1. **D1 Migration Terdedikasi (`db/migrations/0027_social_credential_vault.sql`):**
+     - Tabel `social_provider_credentials` menyimpan ciphertext terautentikasi (`encrypted_access_token`, `encrypted_refresh_token`), nonce 12-byte (`encryption_nonce`), dan versi kunci (`encryption_key_version`).
+     - Invarian Absolut: Tidak ada kolom plaintext token sama sekali.
+  2. **Mesin Kriptografi Web Crypto AES-256-GCM (`src/lib/social/vault/crypto.ts`):**
+     - Menggunakan Web Crypto standar (`globalThis.crypto.subtle`) yang kompatibel di Cloudflare Workers dan Node.js.
+     - AAD kontekstual deterministik: `credential_id:connection_id:provider:auth_mode:key_version`. Substitusi atau pemalsuan ciphertext lintas akun akan gagal otentikasi tag MAC seketika.
+  3. **Layanan Credential Vault (`src/lib/social/vault/vault-service.ts`):**
+     - `storeCredential`: Mengenkripsi token sebelum disimpan, melakukan rotasi token atomik terhadap kredensial lama.
+     - `readCredentialForProviderExecution`: Dekripsi *just-in-time* khusus di batas eksekusi provider dan segera dibuang dari memori.
+     - `rotateEncryptionKey`: Migrasi versi KEK (V1 -> V2) dengan dekripsi dan re-enkripsi atomik di tempat tanpa kehilangan data.
+     - `getCredentialMetadata`: Mengembalikan metadata non-rahasia (`VALID`, `EXPIRED`, `REVOKED`) tanpa pernah membocorkan token/ciphertext.
+     - `sanitizeVaultError`: Menyensor pola token (`EAAB...`, `Bearer ...`) dari diagnostik error.
+  4. **Integrasi Mission Control, Maya & Admin:**
+     - Maya menjawab status kesiapan vault pada `SOCIAL_CONNECTION_QUERY` tanpa membocorkan token.
+     - Permintaan token mentah via chat Maya ditolak secara tegas dengan `DANGEROUS_ACTION_FORBIDDEN`.
+     - Panel Admin Settings menampilkan status vault terenkripsi AES-256-GCM.
+- **Pengujian & Validasi:**
+  - `scripts/test-social-credential-vault.js` lulus 100% (12/12 tes) mencakup uji ancaman pembobolan D1 (*threat test: D1 dump alone cannot decrypt*), uji substitusi konteks AAD, rotasi kunci KEK V1->V2, dan deteksi token kedaluwarsa.
+  - Seluruh rangkaian pengujian regresi (`test-social-meta-binding.js`, `test-social-meta-adapter.js`, `test-social-mission-control.js`, `test-social-domain.js`, SOAK-0 54 tes) lulus 100%.
+  - `npx tsc --noEmit` lulus bersih 0 kesalahan.
+  - `npm run build` sukses 100% (5.37s).
+- **Status Akhir:**
+  - `SOCIAL-S3.5A = COMPLETE`.
+  - Siap untuk langkah selanjutnya: `SOCIAL-S3.6` (Operator-Gated Meta Connection & Read-Only Health Verification).
+
 ### SOCIAL-S3.5: Meta Credential & Account Binding Readiness (Operator-Gated Connection / Zero Live Publishing) 2026-10-01
 
 - **Tujuan & Ruang Lingkup:**

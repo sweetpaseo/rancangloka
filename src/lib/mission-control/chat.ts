@@ -1185,7 +1185,9 @@ export function executeReadOnlyQuery(
       const page = conn?.selectedPageName || 'Belum dipilih';
       const ig = conn?.selectedInstagramUsername ? `@${conn.selectedInstagramUsername}` : 'Belum dipilih';
       const perm = conn?.permissionsStatus === 'OK' ? 'Lengkap (OK)' : (conn?.missingPermissions?.length ? `Kurang: ${conn.missingPermissions.join(', ')}` : 'Belum diverifikasi');
-      return `Status Koneksi Meta & Akun:\n• Status Keseluruhan: **${status}**\n• Facebook Page: **${page}**\n• Instagram Business: **${ig}**\n• Izin / Permission: **${perm}**\n• Otoritas Penerbitan: **0 (TIDAK AKTIF)**\n• Otomasi Sosial: **OFF** (Hanya persiapan / read-only).`;
+      const vaultStatus = conn?.vaultCredential ? (conn.vaultCredential.status === 'VALID' ? 'TERSIMPAN (Terkunci AES-256-GCM)' : conn.vaultCredential.status) : 'BELUM_TERSEDIA';
+      const tokenExpires = conn?.vaultCredential?.expiresAt ? new Date(conn.vaultCredential.expiresAt).toLocaleDateString('id-ID') : 'N/A';
+      return `Status Koneksi Meta & Akun:\n• Status Keseluruhan: **${status}**\n• Facebook Page: **${page}**\n• Instagram Business: **${ig}**\n• Izin / Permission: **${perm}**\n• Vault Kredensial: **${vaultStatus}**\n• Masa Berlaku Token: **${tokenExpires}**\n• Otoritas Penerbitan: **0 (TIDAK AKTIF)**\n• Otomasi Sosial: **OFF** (Hanya persiapan / read-only).`;
     }
 
     default:

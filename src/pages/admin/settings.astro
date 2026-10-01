@@ -613,10 +613,11 @@ const isKillSwitchEngaged = autoControl.kill_switch_engaged === 1;
         </p>
       </div>
 
-      <!-- Connection Controls (Operator Action Gated) -->
+      <!-- Connection Controls (Operator Action Gated) & Vault Security -->
       <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div class="text-xs text-slate-500 font-mono">
-          Kredensial: <span class="font-bold text-slate-700">{metaHealth.credentialBindingStatus}</span> • Auth Mode: <span class="font-bold text-slate-700">{metaHealth.authMode || 'None'}</span>
+        <div class="text-xs text-slate-500 font-mono space-y-0.5">
+          <div>Kredensial: <span class="font-bold text-slate-700">{metaHealth.credentialBindingStatus}</span> • Auth Mode: <span class="font-bold text-slate-700">{metaHealth.authMode || 'None'}</span></div>
+          <div class="text-[10px] text-slate-400">Vault: <span class="font-semibold text-emerald-600">AES-256-GCM</span> • KEK: <span class="font-semibold text-slate-600">Cloudflare Secrets</span> • Plaintext Token: <span class="font-semibold text-slate-600">Nihil (Zero Stored)</span></div>
         </div>
 
         <div class="flex items-center gap-2">

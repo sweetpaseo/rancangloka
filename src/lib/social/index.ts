@@ -7,4 +7,5 @@ export * from './types.ts';
 export * from './state-machine.ts';
 export * from './approval.ts';
 export * from './service.ts';
+export * from './vault/index.ts';
 export * from './providers/index.ts';
