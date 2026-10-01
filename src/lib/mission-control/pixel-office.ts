@@ -148,8 +148,9 @@ export const OFFICE_POSITIONS: OfficePosition[] = [
   { position_key: 'lounge_seat_5', room_key: 'lounge', label: 'Meja Kopi Timur', x: 30, y: 75 },
   { position_key: 'lounge_seat_6', room_key: 'lounge', label: 'Meja Kopi Barat', x: 70, y: 75 },
 
-  // Social Bay (Unstaffed / Inactive)
-  { position_key: 'social_bay_empty', room_key: 'social_room', label: 'Area Distribusi Kosong', x: 50, y: 50 }
+  // Social Bay
+  { position_key: 'social_bay_empty', room_key: 'social_room', label: 'Area Distribusi Kosong', x: 50, y: 50 },
+  { position_key: 'social_workstation', room_key: 'social_room', label: 'Workstation Distribusi Maya', x: 50, y: 55 }
 ];
 
 // Department Home Room mapping
@@ -159,7 +160,8 @@ export const STAFF_HOME_ROOMS: Record<string, string> = {
   evidence_researcher_lead: 'research_lab',
   lokamedia_worker_primary: 'media_room',
   publication_dispatcher_core: 'publication_room',
-  telemetry_observer_jev: 'operations_room'
+  telemetry_observer_jev: 'operations_room',
+  social_distribution_operator: 'social_room'
 };
 
 // Department Workstation Position mapping
@@ -169,8 +171,10 @@ export const STAFF_WORKSTATION_POSITIONS: Record<string, string> = {
   evidence_researcher_lead: 'research_main_desk',
   lokamedia_worker_primary: 'media_console',
   publication_dispatcher_core: 'publication_console',
-  telemetry_observer_jev: 'operations_console'
+  telemetry_observer_jev: 'operations_console',
+  social_distribution_operator: 'social_workstation'
 };
+
 
 // ============================================================================
 // State Reason Evaluation (Distinguish Intentional Disabled vs Outage)
@@ -424,7 +428,9 @@ export function getPixelOfficeState(
     roomConfigs.push({
       room_key: dept.room_key,
       title: dept.display_name,
-      subtitle: dept.department_id === 'social' ? 'Kapasitas Masa Depan (Unstaffed)' : dept.workstation_zone.split(' - ')[1] || dept.description.slice(0, 30),
+      subtitle: dept.department_id === 'social' && !dept.is_staffed
+        ? 'Kapasitas Masa Depan (Unstaffed)'
+        : dept.workstation_zone.split(' - ')[1] || dept.description.slice(0, 30),
       zone: dept.workstation_zone,
       department_id: dept.department_id,
       is_available: dept.availability !== 'NOT_AVAILABLE' && dept.is_staffed

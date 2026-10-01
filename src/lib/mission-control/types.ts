@@ -17,7 +17,9 @@ export type SubsystemName =
   | 'media'
   | 'publication'
   | 'engineering'
+  | 'social'
   | 'system';
+
 
 export type OverallSystemHealth = 'HEALTHY' | 'DEGRADED' | 'BLOCKED' | 'PAUSED' | 'UNKNOWN';
 
@@ -194,6 +196,48 @@ export interface JevObservabilitySummary {
   }>;
 }
 
+export interface SocialOperationsSummary {
+  departmentAvailability: 'AVAILABLE_READ_ONLY' | 'NOT_AVAILABLE';
+  mode: 'SHADOW' | 'OFF';
+  staffCount: number;
+  totalCampaigns: number;
+  activeCampaigns: number;
+  draftCampaigns: number;
+  approvedCampaigns: number;
+  scheduledCampaigns: number;
+  completedCampaigns: number;
+  blockedCampaigns: number;
+  totalVariants: number;
+  variantsAwaitingQa: number;
+  variantsAwaitingApproval: number;
+  variantsApproved: number;
+  variantsScheduledHeld: number;
+  publishedExternallyCount: number;
+  outboxStagedCount: number;
+  outboxEligibleCount: number;
+  providerExecutionAvailable: boolean;
+  latestCampaign: {
+    campaignId: string;
+    title: string;
+    status: string;
+    createdAt: string;
+  } | null;
+  latestReceipt: {
+    receiptId: string;
+    variantId: string;
+    platformId: string;
+    outcome: string;
+    publishedAt: string | null;
+  } | null;
+  activeWorkload: {
+    writingCount: number;
+    reviewingCount: number;
+    blockedCount: number;
+    waitingApprovalCount: number;
+    heldCount: number;
+  };
+}
+
 export interface MissionControlSnapshot {
   generatedAt: string;
   freshness: FreshnessState;
@@ -206,8 +250,10 @@ export interface MissionControlSnapshot {
   articles: ArticleOperationsSummary;
   media: MediaOperationsSummary;
   jev: JevObservabilitySummary;
+  social?: SocialOperationsSummary;
   staff?: any;
   organization?: any;
   office?: any;
   anomalies?: any;
 }
+

@@ -9,7 +9,8 @@ import type {
   OutboxSummaryData,
   ArticleOperationsSummary,
   MediaOperationsSummary,
-  JevObservabilitySummary
+  JevObservabilitySummary,
+  SocialOperationsSummary
 } from './types.ts';
 import { sanitizeString } from './redact.ts';
 
@@ -268,3 +269,148 @@ export async function getJevObservabilitySummary(db: any): Promise<JevObservabil
     recentObservations
   };
 }
+
+export async function getSocialOperationsSummary(db: any, env?: any): Promise<SocialOperationsSummary> {
+  const isAutomationOff = (env?.SOCIAL_AUTOMATION || 'OFF') === 'OFF';
+  
+  let totalCampaigns = 0;
+  let draftCampaigns = 0;
+  let approvedCampaigns = 0;
+  let scheduledCampaigns = 0;
+  let completedCampaigns = 0;
+  let blockedCampaigns = 0;
+
+  let totalVariants = 0;
+  let variantsAwaitingQa = 0;
+  let variantsAwaitingApproval = 0;
+  let variantsApproved = 0;
+  let variantsScheduledHeld = 0;
+
+  let outboxStagedCount = 0;
+  let publishedExternallyCount = 0;
+
+  let latestCampaign: SocialOperationsSummary['latestCampaign'] = null;
+  let latestReceipt: SocialOperationsSummary['latestReceipt'] = null;
+
+  let writingCount = 0;
+  let reviewingCount = 0;
+  let blockedCount = 0;
+  let waitingApprovalCount = 0;
+  let heldCount = 0;
+
+  if (db && typeof db.prepare === 'function') {
+    try {
+      // 1. Campaign counts by status
+      const campRows = await db
+        .prepare('SELECT campaign_status, COUNT(*) as count FROM social_campaigns GROUP BY campaign_status')
+        .all();
+      
+      if (Array.isArray(campRows?.results)) {
+        for (const r of campRows.results) {
+          const st = String(r.campaign_status || '').toUpperCase();
+          const c = Number(r.count || 0);
+          totalCampaigns += c;
+          if (st === 'DRAFT') { draftCampaigns = c; writingCount += c; }
+          else if (st === 'APPROVED') { approvedCampaigns = c; }
+          else if (st === 'SCHEDULED') { scheduledCampaigns = c; heldCount += c; }
+          else if (st === 'COMPLETED') { completedCampaigns = c; }
+          else if (st === 'BLOCKED') { blockedCampaigns = c; blockedCount += c; }
+        }
+      }
+
+      // 2. Variant counts by status
+      const varRows = await db
+        .prepare('SELECT variant_status, COUNT(*) as count FROM social_post_variants GROUP BY variant_status')
+        .all();
+      
+      if (Array.isArray(varRows?.results)) {
+        for (const r of varRows.results) {
+          const st = String(r.variant_status || '').toUpperCase();
+          const c = Number(r.count || 0);
+          totalVariants += c;
+          if (st === 'DRAFT') { /* already counted via campaign writing */ }
+          else if (st === 'READY_FOR_QA') { variantsAwaitingQa += c; reviewingCount += c; }
+          else if (st === 'PENDING_APPROVAL') { variantsAwaitingApproval += c; waitingApprovalCount += c; }
+          else if (st === 'APPROVED') { variantsApproved += c; }
+          else if (st === 'SCHEDULED') { variantsScheduledHeld += c; }
+          else if (st === 'BLOCKED') { blockedCount += c; }
+        }
+      }
+
+      // 3. Staged Outbox counts
+      const outboxCountRow = await db
+        .prepare("SELECT COUNT(*) as count FROM social_staging_outbox WHERE outbox_status IN ('STAGED', 'RETRY_WAIT')")
+        .first();
+      outboxStagedCount = Number(outboxCountRow?.count || 0);
+
+      // 4. Latest Campaign
+      const latestCampRow = await db
+        .prepare('SELECT campaign_id, publication_title, campaign_status, created_at FROM social_campaigns ORDER BY created_at DESC LIMIT 1')
+        .first();
+      if (latestCampRow) {
+        latestCampaign = {
+          campaignId: sanitizeString(latestCampRow.campaign_id),
+          title: sanitizeString(latestCampRow.publication_title || latestCampRow.campaign_id),
+          status: sanitizeString(latestCampRow.campaign_status),
+          createdAt: latestCampRow.created_at
+        };
+      }
+
+      // 5. Latest Execution Receipt (if any)
+      const receiptRow = await db
+        .prepare('SELECT receipt_id, variant_id, platform_id, outcome, actual_published_at, created_at FROM social_execution_receipts ORDER BY created_at DESC LIMIT 1')
+        .first();
+      if (receiptRow) {
+        latestReceipt = {
+          receiptId: sanitizeString(receiptRow.receipt_id),
+          variantId: sanitizeString(receiptRow.variant_id),
+          platformId: sanitizeString(receiptRow.platform_id),
+          outcome: sanitizeString(receiptRow.outcome),
+          publishedAt: receiptRow.actual_published_at || receiptRow.created_at || null
+        };
+      }
+
+      // 6. External published count (strictly 0 if no success external execution receipts)
+      const pubCountRow = await db
+        .prepare("SELECT COUNT(*) as count FROM social_execution_receipts WHERE outcome = 'SUCCESS'")
+        .first();
+      publishedExternallyCount = Number(pubCountRow?.count || 0);
+    } catch {
+      // Table may be empty or unmigrated; gracefully maintain zeroes
+    }
+  }
+
+  const activeCampaigns = draftCampaigns + approvedCampaigns + scheduledCampaigns + blockedCampaigns;
+
+  return {
+    departmentAvailability: 'AVAILABLE_READ_ONLY',
+    mode: 'SHADOW',
+    staffCount: 1,
+    totalCampaigns,
+    activeCampaigns,
+    draftCampaigns,
+    approvedCampaigns,
+    scheduledCampaigns,
+    completedCampaigns,
+    blockedCampaigns,
+    totalVariants,
+    variantsAwaitingQa,
+    variantsAwaitingApproval,
+    variantsApproved,
+    variantsScheduledHeld,
+    publishedExternallyCount,
+    outboxStagedCount,
+    outboxEligibleCount: isAutomationOff ? 0 : outboxStagedCount,
+    providerExecutionAvailable: false,
+    latestCampaign,
+    latestReceipt,
+    activeWorkload: {
+      writingCount,
+      reviewingCount,
+      blockedCount,
+      waitingApprovalCount,
+      heldCount
+    }
+  };
+}
+

@@ -253,6 +253,30 @@ const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
   }
 ];
 
+/**
+ * Canonical Social Department Staff Member (Milestone: SOCIAL-S2)
+ * Maya — Social Content & Distribution Specialist (Shadow / Read-only)
+ */
+export const CANONICAL_SOCIAL_STAFF_DEFINITION: MissionControlStaffDefinition = {
+  agent_id: 'social_distribution_operator',
+  display_name: 'Maya',
+  role: 'Social Content & Distribution Specialist',
+  department_id: 'social',
+  description: 'Spesialis kurasi konten visual dan distribusi media sosial RancangLoka (mode shadow / read-only, zero authority).',
+  avatar_key: 'social_specialist_01',
+  capabilities: [
+    'SOCIAL_DISTRIBUTION',
+    'SOCIAL_COPY_WRITING',
+    'CAROUSEL_CURATION',
+    'SOCIAL_QA_SUPPORT',
+    'SOCIAL_SCHEDULING_OBSERVATION'
+  ],
+  source_system: 'social_staging_outbox',
+  active: true,
+  sort_order: 7
+};
+
+
 // In-memory dynamic staff registry store initialized with defaults
 let dynamicStaffStore: Map<string, MissionControlStaffDefinition> = new Map(
   DEFAULT_STAFF_DEFINITIONS.map((s) => [s.agent_id, { ...s }])
@@ -417,6 +441,15 @@ export function attributeActivityEvent(event: ActivityEvent): ActivityAttributio
     return {
       attributedAgentId: 'editorial_qa_primary',
       attributedStaffName: getStaffName('editorial_qa_primary'),
+      confidence: 'HIGH'
+    };
+  }
+
+  // 7. Social & Distribution Events -> Maya (social_distribution_operator)
+  if (sub === 'social' || evType.includes('SOCIAL_') || evType.includes('OUTBOX_')) {
+    return {
+      attributedAgentId: 'social_distribution_operator',
+      attributedStaffName: getStaffName('social_distribution_operator'),
       confidence: 'HIGH'
     };
   }
@@ -659,6 +692,77 @@ export function deriveStaffCurrentTask(
           current_task_updated_at: latestObs.createdAt
         };
       }
+      return null;
+    }
+
+    case 'social_distribution_operator': {
+      // 1. Blocked / Failed social task
+      const blockedTask = tasks.find(
+        (t) => (t.subsystem === 'social' || (t as any).capability_id?.startsWith('SOCIAL_')) &&
+               (t.stage === 'failed' || t.status === 'BLOCKED' || t.status === 'FAILED')
+      );
+      if (blockedTask) {
+        return {
+          current_task_id: blockedTask.taskId,
+          current_task_title: blockedTask.title,
+          current_task_status: 'BLOCKED',
+          current_task_updated_at: blockedTask.lastUpdate
+        };
+      }
+      if (snapshot.social && snapshot.social.blockedCampaigns > 0) {
+        return {
+          current_task_id: snapshot.social.latestCampaign?.campaignId || 'social_blocked',
+          current_task_title: `Kampanye Sosial Terblokir [${snapshot.social.latestCampaign?.title || 'Review Required'}]`,
+          current_task_status: 'BLOCKED',
+          current_task_updated_at: snapshot.social.latestCampaign?.createdAt || new Date().toISOString()
+        };
+      }
+
+      // 2. Active writing task (draft variant / campaign preparing)
+      const writingTask = tasks.find(
+        (t) => (t.subsystem === 'social' || (t as any).capability_id === 'SOCIAL_COPY_WRITING' || (t as any).capability_id === 'CAROUSEL_CURATION') &&
+               (t.stage === 'writing' || t.stage === 'draft' || t.status === 'DRAFT' || t.status === 'PREPARING')
+      );
+      if (writingTask) {
+        return {
+          current_task_id: writingTask.taskId,
+          current_task_title: writingTask.title,
+          current_task_status: 'DRAFT',
+          current_task_updated_at: writingTask.lastUpdate
+        };
+      }
+      if (snapshot.social && (snapshot.social.draftCampaigns > 0 || snapshot.social.activeWorkload?.writingCount > 0)) {
+        return {
+          current_task_id: snapshot.social.latestCampaign?.campaignId || 'social_draft',
+          current_task_title: `Kurasi Konten: ${snapshot.social.latestCampaign?.title || 'Draf Posting Medsos'}`,
+          current_task_status: 'DRAFT',
+          current_task_updated_at: snapshot.social.latestCampaign?.createdAt || new Date().toISOString()
+        };
+      }
+
+      // 3. Reviewing / QA task (ready_for_qa / qa_review)
+      const reviewingTask = tasks.find(
+        (t) => (t.subsystem === 'social' || (t as any).capability_id === 'SOCIAL_QA_SUPPORT') &&
+               (t.stage === 'editorial_qa' || t.stage === 'ready_for_review' || t.status === 'READY_FOR_QA' || t.status === 'QA_REVIEW')
+      );
+      if (reviewingTask) {
+        return {
+          current_task_id: reviewingTask.taskId,
+          current_task_title: reviewingTask.title,
+          current_task_status: 'REVIEWING',
+          current_task_updated_at: reviewingTask.lastUpdate
+        };
+      }
+      if (snapshot.social && (snapshot.social.variantsAwaitingQa > 0 || snapshot.social.activeWorkload?.reviewingCount > 0)) {
+        return {
+          current_task_id: 'social_qa_queue',
+          current_task_title: `QA Peninjauan Format (${snapshot.social.variantsAwaitingQa} varian)`,
+          current_task_status: 'REVIEWING',
+          current_task_updated_at: new Date().toISOString()
+        };
+      }
+
+      // Strict Invariant: Pending approval, scheduled (with automation OFF), or completed do NOT generate active tasks.
       return null;
     }
 
@@ -973,6 +1077,85 @@ export function deriveStaffState(
       return {
         state: 'IDLE',
         evidence: `Pengamat telemetri siaga (Mode: shadow; Provider: ${providerStatus}; Otoritas: none / non-blocking).`
+      };
+    }
+
+    case 'social_distribution_operator': {
+      if (!snapshot || !snapshot.health) {
+        return {
+          state: 'UNKNOWN',
+          evidence: 'Telemetri operasional departemen sosial belum diinisialisasi atau data hilang.'
+        };
+      }
+
+      const tasks = snapshot.pipeline?.tasks || [];
+
+      // 1. Blocked check
+      const blockedTask = tasks.find(
+        (t) => (t.subsystem === 'social' || (t as any).capability_id?.startsWith('SOCIAL_')) &&
+               (t.stage === 'failed' || t.status === 'BLOCKED' || t.status === 'FAILED')
+      );
+      if (blockedTask) {
+        return {
+          state: 'BLOCKED',
+          evidence: `Varian atau kampanye sosial terblokir: ${blockedTask.blockerOrError || 'Kegagalan pemrosesan'}.`
+        };
+      }
+      if (snapshot.social && snapshot.social.blockedCampaigns > 0) {
+        return {
+          state: 'BLOCKED',
+          evidence: `Terdapat ${snapshot.social.blockedCampaigns} kampanye sosial yang terblokir.`
+        };
+      }
+
+      // 2. Working check (writing/drafting copy or curating media)
+      const writingTask = tasks.find(
+        (t) => (t.subsystem === 'social' || (t as any).capability_id === 'SOCIAL_COPY_WRITING' || (t as any).capability_id === 'CAROUSEL_CURATION') &&
+               (t.stage === 'writing' || t.stage === 'draft' || t.status === 'DRAFT' || t.status === 'PREPARING')
+      );
+      if (writingTask) {
+        return {
+          state: 'WORKING',
+          evidence: `Sedang menyiapkan materi posting sosial untuk [${writingTask.title}].`
+        };
+      }
+      if (snapshot.social && (snapshot.social.draftCampaigns > 0 || snapshot.social.activeWorkload?.writingCount > 0)) {
+        return {
+          state: 'WORKING',
+          evidence: `Sedang menyusun materi konten sosial (${snapshot.social.draftCampaigns} kampanye draf).`
+        };
+      }
+
+      // 3. Reviewing check (ready_for_qa / reviewing)
+      const reviewingTask = tasks.find(
+        (t) => (t.subsystem === 'social' || (t as any).capability_id === 'SOCIAL_QA_SUPPORT') &&
+               (t.stage === 'editorial_qa' || t.stage === 'ready_for_review' || t.status === 'READY_FOR_QA' || t.status === 'QA_REVIEW')
+      );
+      if (reviewingTask) {
+        return {
+          state: 'REVIEWING',
+          evidence: `Sedang meninjau kesiapan format dan checklist QA untuk [${reviewingTask.title}].`
+        };
+      }
+      if (snapshot.social && (snapshot.social.variantsAwaitingQa > 0 || snapshot.social.activeWorkload?.reviewingCount > 0)) {
+        return {
+          state: 'REVIEWING',
+          evidence: `Sedang melakukan QA format pada ${snapshot.social.variantsAwaitingQa} varian posting sosial.`
+        };
+      }
+
+      // 4. Pending Approval & Scheduled check (Strict Invariant: NOT working, maps to IDLE in Lounge)
+      if (snapshot.social && (snapshot.social.variantsAwaitingApproval > 0 || snapshot.social.variantsScheduledHeld > 0)) {
+        return {
+          state: 'IDLE',
+          evidence: `Varian posting menunggu persetujuan (${snapshot.social.variantsAwaitingApproval}) atau tertahan di outbox (${snapshot.social.variantsScheduledHeld}) saat SOCIAL_AUTOMATION=OFF; staf siaga di Lounge.`
+        };
+      }
+
+      // 5. Idle check
+      return {
+        state: 'IDLE',
+        evidence: 'Pipeline sosial siaga operasional dalam mode shadow; tidak ada materi posting yang sedang dipersiapkan.'
       };
     }
 

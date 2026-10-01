@@ -246,6 +246,52 @@ export function registerDepartment(definition: MissionControlDepartmentDefinitio
 }
 
 /**
+ * Update an existing department definition dynamically.
+ * Throws if department is not found.
+ */
+export function updateDepartment(
+  departmentId: string,
+  updates: Partial<MissionControlDepartmentDefinition>
+): MissionControlDepartmentDefinition {
+  const existing = dynamicDepartmentStore.get(departmentId);
+  if (!existing) {
+    throw new Error(`[DepartmentRegistry] Department with ID '${departmentId}' not found.`);
+  }
+
+  const updated: MissionControlDepartmentDefinition = {
+    ...existing,
+    ...updates,
+    department_id: existing.department_id // Immutable key
+  };
+
+  dynamicDepartmentStore.set(departmentId, updated);
+  return updated;
+}
+
+/**
+ * Canonical Social Department Definition (Milestone: SOCIAL-S2)
+ * Strictly read-only / shadow mode, zero execution authority.
+ */
+export const CANONICAL_SOCIAL_DEPARTMENT_DEFINITION: MissionControlDepartmentDefinition = {
+  department_id: 'social',
+  display_name: 'Social & Distribution',
+  description: 'Distribusi multi-kanal dan sindikasi konten media sosial (mode shadow / read-only, zero execution authority).',
+  availability: 'AVAILABLE_READ_ONLY',
+  is_staffed: true,
+  capabilities: [
+    'SOCIAL_DISTRIBUTION',
+    'SOCIAL_COPY_WRITING',
+    'CAROUSEL_CURATION',
+    'SOCIAL_QA_SUPPORT',
+    'SOCIAL_SCHEDULING_OBSERVATION'
+  ],
+  source_systems: ['social_campaigns', 'social_post_variants', 'social_staging_outbox', 'social_execution_receipts'],
+  room_key: 'social_room',
+  workstation_zone: 'Zone S - Social Operations & Distribution Hub',
+  display_order: 6
+};
+
+/**
  * Unregister a department (primarily used in tests).
  */
 export function unregisterDepartment(departmentId: string): boolean {
@@ -279,8 +325,10 @@ export const STAFF_ROOM_MAP: Record<string, string> = {
   evidence_researcher_lead: 'research_lab',
   lokamedia_worker_primary: 'media_room',
   publication_dispatcher_core: 'publication_room',
-  telemetry_observer_jev: 'operations_room'
+  telemetry_observer_jev: 'operations_room',
+  social_distribution_operator: 'social_room'
 };
+
 
 // ============================================================================
 // Task Ownership & Attribution
@@ -373,7 +421,16 @@ export function attributeTaskOwnership(task: TaskCard): TaskOwnershipInfo {
     }
   }
 
-  // 9. Dynamic registered department subsystem match
+  // 9. Social Subsystem match -> social / Maya
+  if (sub === 'social' || (task as any).subsystem === 'social') {
+    return {
+      department_id: 'social',
+      responsible_agent_id: 'social_distribution_operator',
+      responsibility_confidence: 'EXACT'
+    };
+  }
+
+  // 10. Dynamic registered department subsystem match
   if (sub) {
     const matchedDept = getDepartmentDefinition(sub);
     if (matchedDept) {
@@ -386,7 +443,7 @@ export function attributeTaskOwnership(task: TaskCard): TaskOwnershipInfo {
     }
   }
 
-  // 10. Unassigned fallback
+  // 11. Unassigned fallback
   return {
     department_id: null,
     responsible_agent_id: null,
@@ -465,6 +522,16 @@ export function attributeActivityToDepartment(event: ActivityEvent): DepartmentA
       confidence: 'DERIVED'
     };
   }
+
+  // Social & Distribution -> social / Maya
+  if (sub === 'social' || evType.includes('SOCIAL_') || evType.includes('OUTBOX_')) {
+    return {
+      attributedDepartmentId: 'social',
+      attributedAgentId: 'social_distribution_operator',
+      confidence: 'EXACT'
+    };
+  }
+
 
   // Ambiguous system fallback
   return {
@@ -633,6 +700,44 @@ export function deriveDepartmentBlockers(
           retryable: true,
           operator_action_required: false,
           evidence_reference: 'typesafe_jev'
+        });
+      }
+      break;
+    }
+
+    case 'social': {
+      // 1. Blocked social campaigns
+      if (snapshot.social && snapshot.social.blockedCampaigns > 0) {
+        blockers.push({
+          blocker_id: 'blocker_social_campaigns',
+          department_id: 'social',
+          task_id: snapshot.social.latestCampaign?.campaignId || null,
+          severity: 'WARNING',
+          error_class: 'SOCIAL_CAMPAIGN_BLOCKED',
+          summary: `Terdapat ${snapshot.social.blockedCampaigns} kampanye sosial yang terblokir.`,
+          detected_at: snapshot.social.latestCampaign?.createdAt || new Date().toISOString(),
+          retryable: true,
+          operator_action_required: true,
+          evidence_reference: 'social_campaigns'
+        });
+      }
+      // 2. Failed social tasks in pipeline
+      const failedSocial = pipeline?.tasks?.filter(
+        (t) => (t.subsystem === 'social' || (t as any).capability_id?.startsWith('SOCIAL_')) &&
+               (t.stage === 'failed' || t.status === 'BLOCKED' || t.status === 'FAILED')
+      ) || [];
+      for (const t of failedSocial) {
+        blockers.push({
+          blocker_id: `blocker_social_task_${t.taskId}`,
+          department_id: 'social',
+          task_id: t.taskId,
+          severity: 'WARNING',
+          error_class: 'SOCIAL_TASK_FAILED',
+          summary: `Tugas sosial [${t.title}] terhambat: ${t.blockerOrError || 'Kegagalan proses'}`,
+          detected_at: t.lastUpdate,
+          retryable: true,
+          operator_action_required: true,
+          evidence_reference: t.taskId
         });
       }
       break;
@@ -880,6 +985,14 @@ export function deriveDepartmentHealth(
       evidence: `Sistem operasi publikasi sehat dan siaga (Mode: ${mode}; Gerbang keselamatan normal).`
     };
   }
+
+  if (deptConfig.department_id === 'social') {
+    return {
+      health: 'HEALTHY',
+      evidence: 'Departemen Sosial siaga operasional dalam mode bayangan (shadow / read-only; 0 otoritas eksekusi).'
+    };
+  }
+
 
   return {
     health: 'HEALTHY',

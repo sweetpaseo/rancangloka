@@ -322,6 +322,35 @@ export const COMMAND_ALLOWLIST: Record<string, CommandDefinition> = {
     required_parameters: []
   },
 
+  // --- MAYA (Social & Distribution) ---
+  SOCIAL_STATUS_QUERY: {
+    command_type: 'SOCIAL_STATUS_QUERY',
+    label: 'Status Operasi Distribusi Medsos',
+    description: 'Menanyakan status kampanye draf, varian medsos, dan antrean staging outbox.',
+    target_agent_ids: ['social_distribution_operator'],
+    department_id: 'social',
+    authority_level: 'READ_ONLY',
+    required_parameters: []
+  },
+  SOCIAL_CAMPAIGN_REVIEW: {
+    command_type: 'SOCIAL_CAMPAIGN_REVIEW',
+    label: 'Peninjauan Kampanye Medsos',
+    description: 'Meninjau daftar kampanye sosial dan status varian platform per artikel.',
+    target_agent_ids: ['social_distribution_operator'],
+    department_id: 'social',
+    authority_level: 'READ_ONLY',
+    required_parameters: []
+  },
+  SOCIAL_OUTBOX_REVIEW: {
+    command_type: 'SOCIAL_OUTBOX_REVIEW',
+    label: 'Peninjauan Antrean Outbox Medsos',
+    description: 'Memeriksa varian terjadwal di staging outbox (holding state saat SOCIAL_AUTOMATION=OFF).',
+    target_agent_ids: ['social_distribution_operator'],
+    department_id: 'social',
+    authority_level: 'READ_ONLY',
+    required_parameters: []
+  },
+
   // --- SHARED READ-ONLY QUERIES ---
   CURRENT_TASK_QUERY: {
     command_type: 'CURRENT_TASK_QUERY',
@@ -333,7 +362,8 @@ export const COMMAND_ALLOWLIST: Record<string, CommandDefinition> = {
       'editorial_qa_primary',
       'lokamedia_worker_primary',
       'publication_dispatcher_core',
-      'telemetry_observer_jev'
+      'telemetry_observer_jev',
+      'social_distribution_operator'
     ],
     department_id: 'shared',
     authority_level: 'READ_ONLY',
@@ -349,7 +379,8 @@ export const COMMAND_ALLOWLIST: Record<string, CommandDefinition> = {
       'editorial_qa_primary',
       'lokamedia_worker_primary',
       'publication_dispatcher_core',
-      'telemetry_observer_jev'
+      'telemetry_observer_jev',
+      'social_distribution_operator'
     ],
     department_id: 'shared',
     authority_level: 'READ_ONLY',
@@ -910,6 +941,47 @@ export async function normalizeOperatorIntent(
 
       break;
     }
+
+    // --- MAYA (Social & Distribution) ---
+    case 'social_distribution_operator': {
+      if (lower.includes('status') || lower.includes('medsos') || lower.includes('sosial') || lower.includes('kampanye')) {
+        return {
+          is_valid: true,
+          command_type: 'SOCIAL_STATUS_QUERY',
+          normalized_intent: 'Operator menanyakan status operasi distribusi sosial',
+          authority_level: 'READ_ONLY',
+          target_agent_id: targetAgentId,
+          target_department_id: staff.department_id,
+          parameters: {}
+        };
+      }
+
+      if (lower.includes('review') || lower.includes('varian') || lower.includes('format')) {
+        return {
+          is_valid: true,
+          command_type: 'SOCIAL_CAMPAIGN_REVIEW',
+          normalized_intent: 'Operator meminta peninjauan kampanye dan varian medsos',
+          authority_level: 'READ_ONLY',
+          target_agent_id: targetAgentId,
+          target_department_id: staff.department_id,
+          parameters: {}
+        };
+      }
+
+      if (lower.includes('outbox') || lower.includes('jadwal') || lower.includes('antrean')) {
+        return {
+          is_valid: true,
+          command_type: 'SOCIAL_OUTBOX_REVIEW',
+          normalized_intent: 'Operator menanyakan antrean outbox posting medsos',
+          authority_level: 'READ_ONLY',
+          target_agent_id: targetAgentId,
+          target_department_id: staff.department_id,
+          parameters: {}
+        };
+      }
+
+      break;
+    }
   }
 
   // Check for Capability Mismatch
@@ -1032,6 +1104,26 @@ export function executeReadOnlyQuery(
     case 'CIRCUIT_BREAKER_STATUS_QUERY': {
       const mainBreaker = snapshot?.health?.circuitBreakers?.[0];
       return `Status Pemutus Sirkuit:\n• ID: **${mainBreaker?.id || 'global_publisher'}**\n• Status: **${mainBreaker?.state || 'CLOSED'}**\n• Kegagalan Berturut-turut: **${mainBreaker?.failureCount || 0}**\n• Ambang Batas: **${mainBreaker?.failureThreshold || 3}**`;
+    }
+
+    case 'SOCIAL_STATUS_QUERY': {
+      const social = snapshot?.social;
+      const auto = social?.mode || 'SHADOW';
+      return `Status Operasi Media Sosial saat ini:\n• Mode: **${auto} / READ-ONLY** (Zero External Execution)\n• Total Kampanye: **${social?.totalCampaigns || 0}**\n• Draf Kampanye: **${social?.draftCampaigns || 0}**\n• Menunggu QA: **${social?.variantsAwaitingQa || 0}** varian\n• Menunggu Persetujuan: **${social?.variantsAwaitingApproval || 0}** varian\n• Tertahan di Outbox: **${social?.outboxStagedCount || 0}** varian (Hold state saat SOCIAL_AUTOMATION=OFF)\n• Terbit Eksternal: **0** (Provider execution unavailable)`;
+    }
+
+    case 'SOCIAL_CAMPAIGN_REVIEW': {
+      const social = snapshot?.social;
+      if (social && social.latestCampaign) {
+        return `Kampanye sosial terbaru: **${social.latestCampaign.title}** (Status: **${social.latestCampaign.status}**, ID: \`${social.latestCampaign.campaignId}\`).`;
+      }
+      return 'Belum ada kampanye sosial aktif yang terdaftar dalam pipeline.';
+    }
+
+    case 'SOCIAL_OUTBOX_REVIEW': {
+      const social = snapshot?.social;
+      const count = social?.outboxStagedCount || 0;
+      return `Antrean Outbox Medsos:\n• Item Tertahan (Staged): **${count}**\n• Item Layak Kirim (Eligible): **0** (Ditahan oleh gerbang keselamatan SOCIAL_AUTOMATION=OFF).`;
     }
 
     default:

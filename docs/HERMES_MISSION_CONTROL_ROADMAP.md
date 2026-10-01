@@ -154,5 +154,6 @@ The **HERMES-MC** (Hermes Mission Control) track establishes the operational vis
 11. HERMES-MC-9          [COMPLETED — Role & Job Animation Layer]
 12. SOCIAL-S0            [COMPLETED — Architecture & Discovery (docs/SOCIAL_S0_ARCHITECTURE_DISCOVERY.md)]
 13. SOCIAL-S1            [COMPLETED — Core Domain, Staging Outbox & D1 Schema (docs/SOCIAL_S1_CORE_DOMAIN.md)]
-14. SOCIAL-S2            [READY — Mission Control Social Department & Staff Integration (Read-Only/Shadow)]
+14. SOCIAL-S2            [COMPLETED — Mission Control Social Department & Staff Integration (Read-Only/Shadow)]
+15. SOCIAL-S3            [READY — First Platform Adapter (Meta Graph API: Facebook Page + Instagram Business), sandbox/disabled execution first]
 ```

@@ -17,13 +17,29 @@ import {
   getOutboxSummary,
   getArticleOperationsSummary,
   getMediaOperationsSummary,
-  getJevObservabilitySummary
+  getJevObservabilitySummary,
+  getSocialOperationsSummary
 } from './summaries.ts';
-import { getStaffRoster } from './staff-registry.ts';
-import { getOrganizationSnapshot } from './department-registry.ts';
+import {
+  getStaffRoster,
+  registerStaffMember,
+  unregisterStaffMember,
+  CANONICAL_SOCIAL_STAFF_DEFINITION
+} from './staff-registry.ts';
+import {
+  getOrganizationSnapshot,
+  updateDepartment,
+  CANONICAL_SOCIAL_DEPARTMENT_DEFINITION
+} from './department-registry.ts';
 import { getPixelOfficeState } from './pixel-office.ts';
 import { getAnomaliesSnapshot } from './anomalies.ts';
-import { getRegisteredCapabilities } from './capability-registry.ts';
+import {
+  getRegisteredCapabilities,
+  registerCapability,
+  unregisterCapability,
+  updateCapability,
+  CANONICAL_SOCIAL_CAPABILITIES
+} from './capability-registry.ts';
 
 export * from './types.ts';
 export * from './redact.ts';
@@ -98,6 +114,79 @@ export function getMissionControlOrganization(
   };
 }
 
+/**
+ * Activates the Social & Distribution department into SHADOW / READ-ONLY mode.
+ * Transitions department availability to AVAILABLE_READ_ONLY, registers Maya (social_distribution_operator),
+ * and maps all canonical social capabilities with ZERO execution authority.
+ */
+export function activateSocialDepartmentShadow(): void {
+  // 1. Register Capabilities
+  for (const cap of CANONICAL_SOCIAL_CAPABILITIES) {
+    try {
+      registerCapability(cap);
+    } catch {
+      updateCapability(cap.capability_id, cap);
+    }
+  }
+
+  // 2. Register Staff Member Maya
+  try {
+    registerStaffMember(CANONICAL_SOCIAL_STAFF_DEFINITION);
+  } catch {
+    // Already registered
+  }
+
+  // 3. Update Department state to AVAILABLE_READ_ONLY and staffed
+  updateDepartment('social', {
+    availability: 'AVAILABLE_READ_ONLY',
+    is_staffed: true,
+    capabilities: [
+      'SOCIAL_DISTRIBUTION',
+      'SOCIAL_COPY_WRITING',
+      'CAROUSEL_CURATION',
+      'SOCIAL_QA_SUPPORT',
+      'SOCIAL_SCHEDULING_OBSERVATION'
+    ],
+    workstation_zone: 'Zone S - Social Operations & Distribution Hub',
+    description: 'Departemen distribusi konten sosial, kurasi visual, dan pemantauan terjadwal dalam mode bayangan (SHADOW / Read-Only).'
+  });
+}
+
+/**
+ * Deactivates Social & Distribution shadow mode back to baseline unstaffed state.
+ */
+export function deactivateSocialDepartmentShadow(): void {
+  // 1. Remove Staff Member Maya
+  unregisterStaffMember('social_distribution_operator');
+
+  // 2. Remove auxiliary Capabilities and reset base capability
+  for (const cap of CANONICAL_SOCIAL_CAPABILITIES) {
+    if (cap.capability_id === 'SOCIAL_DISTRIBUTION') {
+      try {
+        updateCapability('SOCIAL_DISTRIBUTION', {
+          operational_availability: 'NOT_AVAILABLE',
+          default_agent_id: null,
+          command_families: [],
+          anomaly_classes: []
+        });
+      } catch {
+        // ignore if not found
+      }
+    } else {
+      unregisterCapability(cap.capability_id);
+    }
+  }
+
+  // 3. Reset Department to NOT_AVAILABLE and unstaffed
+  updateDepartment('social', {
+    availability: 'NOT_AVAILABLE',
+    is_staffed: false,
+    capabilities: ['SOCIAL_DISTRIBUTION'],
+    workstation_zone: 'Zone S - Unstaffed Distribution Bay',
+    description: 'Departemen distribusi media sosial dan sindikasi multi-kanal (direncanakan).'
+  });
+}
+
 export async function getMissionControlSnapshot(db: any, env?: any): Promise<MissionControlSnapshot> {
   const [
     health,
@@ -107,7 +196,8 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
     outbox,
     articles,
     media,
-    jev
+    jev,
+    social
   ] = await Promise.all([
     getSystemHealth(db, env),
     getPipelineBoard(db),
@@ -116,7 +206,8 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
     getOutboxSummary(db, env),
     getArticleOperationsSummary(db),
     getMediaOperationsSummary(db),
-    getJevObservabilitySummary(db)
+    getJevObservabilitySummary(db),
+    getSocialOperationsSummary(db, env)
   ]);
 
   // Determine Overall Freshness
@@ -138,7 +229,8 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
     outbox,
     articles,
     media,
-    jev
+    jev,
+    social
   };
 
   // Derive anomalies deterministically (pure read model with zero DB mutations)

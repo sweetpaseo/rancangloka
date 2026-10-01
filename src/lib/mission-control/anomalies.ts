@@ -588,6 +588,99 @@ export function scanRawAnomaliesFromSnapshot(
     });
   }
 
+  // --------------------------------------------------------------------------
+  // 6. SOCIAL & DISTRIBUTION SUBSYSTEM
+  // --------------------------------------------------------------------------
+  if (snapshot.social) {
+    const socialSummary = snapshot.social;
+
+    // A. Social Automation Mode OFF by Design (EXPECTED CONDITION - NOT AN ALERT)
+    if (socialSummary.mode === 'OFF' || socialSummary.mode === 'SHADOW' || !socialSummary.providerExecutionAvailable) {
+      const fp = createAnomalyFingerprint('social', 'social', 'SOCIAL_AUTOMATION_OFF', 'social_gate');
+      candidates.push({
+        anomaly_id: `anom_${fp}`,
+        detected_at: now,
+        updated_at: now,
+        source_system: 'social',
+        department_id: 'social',
+        responsible_agent_id: 'social_distribution_operator',
+        severity: 'INFO',
+        anomaly_type: 'SOCIAL_AUTOMATION_OFF',
+        error_class: 'INTENTIONAL_DORMANCY',
+        title: 'Otomasi Distribusi Sosial Nonaktif Sesuai Desain',
+        summary: 'Mode otomatisasi sosial berstatus OFF (Shadow / Read-Only) sesuai invarian keselamatan produksi.',
+        technical_detail: 'Invarian produksi mewajibkan persetujuan manual operator dan provider execution masih belum aktif (disabled).',
+        state: 'EXPECTED',
+        retryable: false,
+        operator_action_required: false,
+        expected_condition: true,
+        evidence_reference: 'social_control:mode',
+        fingerprint: fp,
+        occurrence_count: 1,
+        first_seen_at: now,
+        last_seen_at: now
+      });
+    }
+
+    // B. Blocked Social Campaigns (WARNING)
+    if (socialSummary.blockedCampaigns > 0) {
+      const fp = createAnomalyFingerprint('social', 'social', 'SOCIAL_CAMPAIGN_BLOCKED', 'campaign_queue', 'CAMPAIGN_BLOCKED');
+      candidates.push({
+        anomaly_id: `anom_${fp}`,
+        detected_at: now,
+        updated_at: now,
+        source_system: 'social',
+        department_id: 'social',
+        responsible_agent_id: 'social_distribution_operator',
+        severity: 'WARNING',
+        anomaly_type: 'SOCIAL_CAMPAIGN_BLOCKED',
+        error_class: 'SOCIAL_CAMPAIGN_BLOCKED',
+        title: `Kampanye Sosial Terhambat (${socialSummary.blockedCampaigns} kampanye)`,
+        summary: `Terdapat ${socialSummary.blockedCampaigns} kampanye sosial berstatus BLOCKED atau FAILED pada tahap pembuatan varian.`,
+        technical_detail: 'Penyusunan naskah atau kurasi media varian sosial mengalami hambatan validasi atau dependensi aset.',
+        state: 'OPEN',
+        retryable: true,
+        operator_action_required: true,
+        expected_condition: false,
+        evidence_reference: 'social_campaigns:status_blocked',
+        fingerprint: fp,
+        occurrence_count: 1,
+        first_seen_at: now,
+        last_seen_at: now
+      });
+    }
+  }
+
+  // C. Social Tasks Failed
+  const socialTasks = snapshot.pipeline?.tasks?.filter((t) => t.subsystem === 'social' && t.stage === 'failed') || [];
+  for (const t of socialTasks) {
+    const fp = createAnomalyFingerprint('social', 'social', 'SOCIAL_TASK_FAILED', t.taskId, 'TASK_FAILED');
+    candidates.push({
+      anomaly_id: `anom_${fp}`,
+      detected_at: t.lastUpdate || now,
+      updated_at: now,
+      source_system: 'social',
+      department_id: 'social',
+      responsible_agent_id: 'social_distribution_operator',
+      task_id: t.taskId,
+      severity: 'WARNING',
+      anomaly_type: 'SOCIAL_TASK_FAILED',
+      error_class: 'SOCIAL_TASK_FAILED',
+      title: `Tugas Distribusi Sosial Terhambat (${t.title})`,
+      summary: `Tugas sosial [${t.title}] mengalami kendala: ${t.blockerOrError || 'Validasi varian gagal'}`,
+      technical_detail: `Task ID: ${t.taskId}, Blocker: ${t.blockerOrError || 'Unknown'}`,
+      state: 'OPEN',
+      retryable: true,
+      operator_action_required: true,
+      expected_condition: false,
+      evidence_reference: `tasks:${t.taskId}`,
+      fingerprint: fp,
+      occurrence_count: 1,
+      first_seen_at: t.lastUpdate || now,
+      last_seen_at: now
+    });
+  }
+
   return candidates;
 }
 

@@ -17,6 +17,45 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### SOCIAL-S2: Mission Control Social Department & Staff Integration (Read-Only / Shadow) 2026-10-01
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengintegrasikan domain media sosial internal (SOCIAL-S1) ke dalam Hermes Mission Control dan visualisasi spasial Pixel Office sebagai departemen operasional READ-ONLY / SHADOW tanpa otoritas eksekusi.
+  - Strict Safety Invariants: `SOCIAL_AUTOMATION = OFF`, `media_worker = DISABLED`, `JEV = shadow`, `automation_mode = OFF`.
+  - Zero External Calls & Zero Credential Leaks: Tidak ada pemanggilan API ke penyedia media sosial eksternal dan tidak ada token/kredensial yang didaftarkan.
+  - No Fake Work / No Theatrical Activity: Mematuhi invarian ketat MC-9 `NO REAL SOCIAL JOB = NO SOCIAL WORK ANIMATION`.
+- **Komponen Utama yang Diintegrasikan:**
+  1. **Aktivasi Departemen Sosial Kanonikal (`AVAILABLE_READ_ONLY`):**
+     - Departemen `social` ditransisikan dari `NOT_AVAILABLE` (unstaffed) ke mode bayangan `AVAILABLE_READ_ONLY` dengan staf terdaftar (`is_staffed: true`).
+     - Menyediakan fungsi aktivasi/deaktivasi dinamis kanonikal `activateSocialDepartmentShadow()` dan `deactivateSocialDepartmentShadow()` untuk observabilitas tanpa merusak invarian unstaffed awal pada tes legacy.
+  2. **Pendaftaran Identitas Staf Spesialis Pertama (Maya):**
+     - Mendaftarkan `agent_id = 'social_distribution_operator'`, `display_name = 'Maya'`, `role = 'Social Content & Distribution Specialist'`, avatar `social_specialist_01`.
+     - Memetakan 5 kapabilitas kanonikal (`SOCIAL_DISTRIBUTION`, `SOCIAL_COPY_WRITING`, `CAROUSEL_CURATION`, `SOCIAL_QA_SUPPORT`, `SOCIAL_SCHEDULING_OBSERVATION`) yang seluruhnya bertipe `AVAILABLE_READ_ONLY` dengan 0 otoritas eksekusi.
+  3. **Penurunan Status Operasional & Spasial Deterministik:**
+     - Ketika tidak ada tugas sosial riil: Maya berada di status `IDLE` dan duduk santai di Lounge (`lounge`) dengan animasi `IDLE_STANDBY` (zero fake work).
+     - Ketika ada tugas riil pembuatan draf/teks: Maya berada di status `WORKING` di `social_workstation` dengan animasi `ARTICLE_TYPING`.
+     - Ketika ada tugas kurasi media/carousel: animasi `MEDIA_REVIEW`.
+     - Ketika ada tugas review QA sosial: status `REVIEWING` dengan animasi `QA_REVIEW`.
+     - **Invarian Keselamatan Kritis:** Varian berstatus `PENDING_APPROVAL` (menunggu persetujuan Chief Editor) atau `SCHEDULED` saat `SOCIAL_AUTOMATION = OFF` (tertahan di outbox) secara ketat TIDAK memalsukan animasi penerbitan; Maya tetap berada di Lounge dalam status `IDLE`.
+     - Tugas gagal/terblokir: status `BLOCKED` dengan suar peringatan `BLOCKED_WARNING` di `social_workstation`.
+     - Tugas selesai (`COMPLETED`): Maya kembali rehat di Lounge (`IDLE_STANDBY`).
+  4. **Adaptor Telemetri & Ringkasan Departemen (`getSocialOperationsSummary`):**
+     - Mengagregasi metrik riil dari tabel D1 (`social_campaigns`, `social_post_variants`, `social_staging_outbox`, `social_execution_receipts`) ke dalam `MissionControlSnapshot.social` tanpa mengekspos konsep mentah platform.
+  5. **Integrasi Chat Langsung MC-5:**
+     - Memperbolehkan kueri read-only aman (`SOCIAL_STATUS_QUERY`, `SOCIAL_CAMPAIGN_REVIEW`, `SOCIAL_OUTBOX_REVIEW`, `CURRENT_TASK_QUERY`, `ACTIVITY_SUMMARY_QUERY`).
+     - Menolak seluruh perintah destruktif, perintah publikasi langsung, maupun eskalasi hak istimewa secara fail-closed.
+  6. **Integrasi Anomali MC-6:**
+     - Mengisolasi `SOCIAL_AUTOMATION_OFF` sebagai kondisi yang diharapkan (`EXPECTED` / `INFO`) tanpa memicu alarm palsu.
+     - Mendeteksi kampanye sosial terhenti (`SOCIAL_CAMPAIGN_BLOCKED`) sebagai `WARNING` dan mengeskalasikannya ke Maya secara deterministik.
+- **Pengujian & Validasi:**
+  - Rangkaian pengujian terfokus `scripts/test-social-mission-control.js` lulus 100% (15/15 tes).
+  - Seluruh 10 rangkaian tes regresi Mission Control, Social Domain, dan SOAK safety lulus 100% (total 218 tes).
+  - TypeScript typecheck (`npx tsc --noEmit`) lulus bersih 0 kesalahan.
+  - Astro build SSR (`npm run build`) sukses 100%.
+- **Status Akhir:**
+  - `SOCIAL-S2 = COMPLETE`.
+  - Frontier saat ini: `SOCIAL-S3/READY` (First Platform Adapter: Meta Graph API Facebook Page + Instagram Business).
+
 ### SOCIAL-S1: Social Domain Model, Staging Outbox & D1 Schema 2026-10-01
 
 - **Tujuan & Ruang Lingkup:**

@@ -140,6 +140,29 @@ export function registerCapability(definition: MissionControlCapabilityDefinitio
 }
 
 /**
+ * Update an existing capability definition dynamically.
+ * Throws if capability is not found.
+ */
+export function updateCapability(
+  capabilityId: string,
+  updates: Partial<MissionControlCapabilityDefinition>
+): MissionControlCapabilityDefinition {
+  const existing = capabilityRegistry.get(capabilityId);
+  if (!existing) {
+    throw new Error(`[CapabilityRegistry] Capability with ID '${capabilityId}' not found.`);
+  }
+
+  const updated: MissionControlCapabilityDefinition = {
+    ...existing,
+    ...updates,
+    capability_id: existing.capability_id // Immutable key
+  };
+
+  capabilityRegistry.set(capabilityId, updated);
+  return updated;
+}
+
+/**
  * Unregister a capability (primarily used in tests).
  */
 export function unregisterCapability(capabilityId: string): boolean {
@@ -213,3 +236,71 @@ export function resolveCapabilityOwnership(capabilityId: string): {
     operational_availability: def.operational_availability
   };
 }
+
+/**
+ * Canonical Social Department Capabilities (Milestone: SOCIAL-S2)
+ * Strictly read-only / shadow mode, zero execution or external publishing authority.
+ */
+export const CANONICAL_SOCIAL_CAPABILITIES: MissionControlCapabilityDefinition[] = [
+  {
+    capability_id: 'SOCIAL_DISTRIBUTION',
+    display_name: 'Distribusi Media Sosial (Shadow)',
+    description: 'Pemantauan sindikasi konten multi-kanal ke media sosial (strictly read-only / shadow, zero publishing authority).',
+    owning_department_id: 'social',
+    default_agent_id: 'social_distribution_operator',
+    operational_availability: 'AVAILABLE_READ_ONLY',
+    source_systems: ['social_campaigns', 'social_staging_outbox'],
+    command_families: ['SOCIAL_STATUS_QUERY', 'SOCIAL_CAMPAIGN_REVIEW', 'SOCIAL_OUTBOX_REVIEW'],
+    read_models: ['social', 'social.counts'],
+    anomaly_classes: ['SOCIAL_CAMPAIGN_BLOCKED', 'SOCIAL_DUPLICATE_POST_RISK', 'SOCIAL_APPROVAL_MISMATCH', 'SOCIAL_VARIANT_BLOCKED', 'SOCIAL_AUTOMATION_OFF']
+  },
+  {
+    capability_id: 'SOCIAL_COPY_WRITING',
+    display_name: 'Penulisan Copy Medsos',
+    description: 'Penyusunan caption, hook, dan teks pendukung posting media sosial berbasis human voice layer.',
+    owning_department_id: 'social',
+    default_agent_id: 'social_distribution_operator',
+    operational_availability: 'AVAILABLE_READ_ONLY',
+    source_systems: ['social_post_variants'],
+    command_families: ['SOCIAL_COPY_REVIEW'],
+    read_models: ['social.variants'],
+    anomaly_classes: ['SOCIAL_VARIANT_BLOCKED']
+  },
+  {
+    capability_id: 'CAROUSEL_CURATION',
+    display_name: 'Kurasi Media & Carousel',
+    description: 'Kurasi tata letak visual slide carousel, foto arsitektur autentik, dan urutan slide gambar.',
+    owning_department_id: 'social',
+    default_agent_id: 'social_distribution_operator',
+    operational_availability: 'AVAILABLE_READ_ONLY',
+    source_systems: ['social_post_variants', 'cloudflare_r2'],
+    command_families: ['CAROUSEL_LAYOUT_REVIEW'],
+    read_models: ['social.variants'],
+    anomaly_classes: ['SOCIAL_MEDIA_MISMATCH']
+  },
+  {
+    capability_id: 'SOCIAL_QA_SUPPORT',
+    display_name: 'Dukungan QA Konten Sosial',
+    description: 'Verifikasi kesesuaian hashtag, link attribution, dan kepatuhan redaksional konten sosial.',
+    owning_department_id: 'social',
+    default_agent_id: 'social_distribution_operator',
+    operational_availability: 'AVAILABLE_READ_ONLY',
+    source_systems: ['social_post_variants', 'social_variant_approvals'],
+    command_families: ['SOCIAL_QA_STATUS_QUERY'],
+    read_models: ['social.approvals'],
+    anomaly_classes: ['SOCIAL_APPROVAL_MISMATCH']
+  },
+  {
+    capability_id: 'SOCIAL_SCHEDULING_OBSERVATION',
+    display_name: 'Observasi Jadwal Outbox Sosial',
+    description: 'Pemantauan antrean outbox posting terjadwal (zero dispatch authority saat SOCIAL_AUTOMATION=OFF).',
+    owning_department_id: 'social',
+    default_agent_id: 'social_distribution_operator',
+    operational_availability: 'AVAILABLE_READ_ONLY',
+    source_systems: ['social_staging_outbox'],
+    command_families: ['SOCIAL_OUTBOX_REVIEW'],
+    read_models: ['social.outbox'],
+    anomaly_classes: ['SOCIAL_OUTBOX_INCONSISTENCY']
+  }
+];
+

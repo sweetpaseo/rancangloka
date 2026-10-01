@@ -367,6 +367,8 @@ export function getWorkstationKeyForAgent(agentId: string): string {
       return 'publication_console';
     case 'telemetry_observer_jev':
       return 'operations_console';
+    case 'social_distribution_operator':
+      return 'social_workstation';
     default:
       return `${agentId}_workstation`;
   }
@@ -664,6 +666,23 @@ function resolveRunningCommandToVisualState(
       }
       break;
     }
+
+    case 'social_distribution_operator': {
+      if (cmdType.includes('REVIEW') || cmdType.includes('CAROUSEL')) {
+        animKey = 'MEDIA_REVIEW';
+        taskLabel = `Review visual: ${cmdTitle}`;
+      } else if (cmdType.includes('QA')) {
+        animKey = 'QA_REVIEW';
+        taskLabel = `QA format: ${cmdTitle}`;
+      } else if (cmdType.includes('SCHEDULE') || cmdType.includes('OUTBOX')) {
+        animKey = 'PUBLICATION_MONITORING';
+        taskLabel = `Pantau outbox: ${cmdTitle}`;
+      } else {
+        animKey = 'ARTICLE_TYPING';
+        taskLabel = `Draf medsos: ${cmdTitle}`;
+      }
+      break;
+    }
   }
 
   const animDef = getAnimationDefinition(animKey);
@@ -780,6 +799,28 @@ function resolveTaskToVisualState(
       } else {
         animKey = 'TELEMETRY_MONITORING';
         taskLabel = `Monitoring: ${taskTitle}`;
+      }
+      break;
+    }
+
+    case 'social_distribution_operator': {
+      const lowerTitle = taskTitle.toLowerCase();
+      if (taskStatus === 'BLOCKED' || lowerTitle.includes('terblokir') || lowerTitle.includes('failed')) {
+        animKey = 'BLOCKED_WARNING';
+        taskLabel = `Terblokir: ${taskTitle}`;
+        isWorking = false;
+      } else if (taskStatus === 'REVIEWING' || lowerTitle.includes('qa') || lowerTitle.includes('peninjauan')) {
+        animKey = 'QA_REVIEW';
+        taskLabel = `QA Medsos: ${taskTitle}`;
+      } else if (lowerTitle.includes('carousel') || lowerTitle.includes('visual') || lowerTitle.includes('foto')) {
+        animKey = 'MEDIA_REVIEW';
+        taskLabel = `Kurasi Carousel: ${taskTitle}`;
+      } else if (lowerTitle.includes('jadwal') || lowerTitle.includes('outbox') || lowerTitle.includes('schedule')) {
+        animKey = 'PUBLICATION_MONITORING';
+        taskLabel = `Pantau Jadwal: ${taskTitle}`;
+      } else {
+        animKey = 'ARTICLE_TYPING';
+        taskLabel = `Penulisan Copy: ${taskTitle}`;
       }
       break;
     }
