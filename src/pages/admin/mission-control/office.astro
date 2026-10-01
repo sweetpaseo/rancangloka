@@ -1496,7 +1496,12 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
           </div>
         ) : (
           recent_handoffs.slice(0, 5).map((h) => (
-            <div class="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs" data-handoff-item={h.handoff_id}>
+            <div
+              class="py-2.5 px-2.5 -mx-2.5 rounded-xl hover:bg-slate-50 transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs group"
+              data-handoff-item={h.handoff_id}
+              data-open-job-trace={h.task_id}
+              title="Klik untuk melihat Canonical Job Trace"
+            >
               <div class="flex items-center gap-2.5 min-w-0">
                 <span class={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase shrink-0 border ${
                   h.handoff_state === 'RUNNING' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
@@ -1506,7 +1511,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                   {h.handoff_state}
                 </span>
                 <div class="min-w-0 truncate">
-                  <span class="font-bold text-slate-800 font-outfit">{h.task_title}</span>
+                  <span class="font-bold text-slate-800 font-outfit group-hover:text-blue-600 transition">{h.task_title}</span>
                   <span class="text-slate-400 mx-1.5">•</span>
                   <span class="text-slate-600 font-mono text-[11px]">
                     {h.from_agent_id || h.from_department_id} ({h.from_stage}) → {h.to_agent_id || h.to_department_id} ({h.to_stage})
@@ -1516,6 +1521,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
               <div class="flex items-center gap-2 text-[10px] font-mono text-slate-400 shrink-0">
                 <span>{new Date(h.transition_timestamp).toLocaleTimeString('id-ID', { hour12: false })} WIB</span>
                 <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{h.confidence}</span>
+                <span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white transition">
+                  Lihat Trace →
+                </span>
               </div>
             </div>
           ))
@@ -1603,6 +1611,24 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
           <button type="button" data-handoff-scenario="reset" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-mono font-bold transition text-slate-300">
             Reset State
           </button>
+          <div class="w-full pt-2 border-t border-slate-700/60 flex flex-wrap gap-2 items-center">
+            <span class="text-[11px] font-mono text-indigo-300 font-bold">V2.5 Canonical Job Trace Scenarios:</span>
+            <button type="button" data-trace-scenario="trace-a" class="px-2.5 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-xs font-mono font-bold text-white transition">
+              Trace A: Complete Multi-Stage (Art #24)
+            </button>
+            <button type="button" data-trace-scenario="trace-b" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-amber-300 border border-amber-500/40 transition">
+              Trace B: Evidence Gap (Art #50)
+            </button>
+            <button type="button" data-trace-scenario="trace-c" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-rose-300 border border-rose-500/40 transition">
+              Trace C: QA Rollback (Art #80)
+            </button>
+            <button type="button" data-trace-scenario="trace-d" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-cyan-300 border border-cyan-500/40 transition">
+              Trace D: Queued State (Art #70)
+            </button>
+            <button type="button" data-trace-scenario="trace-e" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-red-300 border border-red-500/40 transition">
+              Trace E: Blocked State (Art #71)
+            </button>
+          </div>
         </div>
       </div>
     )}
@@ -1678,6 +1704,75 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
               Selesai
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. CANONICAL JOB TRACE MODAL (V2.5 ACTIVITY TIMELINE, OUTSIDE MAP) -->
+    <div
+      id="job-trace-modal"
+      class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="job-trace-title"
+    >
+      <div class="bg-white border-2 border-slate-300 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col text-slate-800 shadow-2xl animate-in fade-in zoom-in duration-150 overflow-hidden">
+        <!-- Trace Header -->
+        <div class="p-5 sm:p-6 border-b border-slate-200 bg-slate-50/90 flex items-start justify-between gap-3 shrink-0">
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold uppercase border border-indigo-200">
+                CANONICAL JOB TRACE
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold" id="trace-workflow-id">
+                art_24
+              </span>
+              <span id="trace-operational-badge" class="text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase border bg-emerald-100 text-emerald-800 border-emerald-300">
+                RUNNING
+              </span>
+            </div>
+            <h3 id="job-trace-title" class="text-lg sm:text-xl font-outfit font-black text-slate-900 mt-1 line-clamp-1">
+              Panduan Rangka Atap Baja Ringan
+            </h3>
+            <p id="job-trace-subtitle" class="text-xs font-mono text-slate-500 mt-0.5">
+              Kronologi bukti kanonikal & durasi transisi tugas
+            </p>
+          </div>
+          <button
+            type="button"
+            id="job-trace-close-btn"
+            class="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-200 transition cursor-pointer text-xl leading-none shrink-0"
+            aria-label="Tutup dialog job trace"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Quick Summary Strip -->
+        <div class="p-4 sm:p-5 bg-white border-b border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs shrink-0" id="trace-summary-strip">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <!-- Timeline Scroll Container -->
+        <div class="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6 text-xs font-mono" id="trace-timeline-container">
+          <!-- Timeline items dynamically rendered -->
+        </div>
+
+        <!-- Trace Footer -->
+        <div class="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-[11px] font-mono text-slate-500 shrink-0">
+          <div class="flex items-center gap-2 text-slate-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>Zero Synthetic History</span>
+            <span>•</span>
+            <span>Fail-Closed Gaps</span>
+          </div>
+          <button
+            type="button"
+            id="job-trace-done-btn"
+            class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-outfit font-bold text-xs transition cursor-pointer"
+          >
+            Tutup Timeline
+          </button>
         </div>
       </div>
     </div>
@@ -2318,6 +2413,15 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                 <span>Tahap: <strong class="text-blue-700">${sprite.current_task_status || '-'}</strong></span>
                 <span>Kesegaran: <strong class="text-slate-700">${(sprite.work_visual_state && sprite.work_visual_state.freshness) || 'RECENT'}</strong></span>
               </div>
+              ${((sprite.work_visual_state && sprite.work_visual_state.task_id) || sprite.current_task_id) ? `
+                <button
+                  type="button"
+                  data-open-job-trace="${(sprite.work_visual_state && sprite.work_visual_state.task_id) || sprite.current_task_id}"
+                  class="w-full mt-2 py-1.5 px-3 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                >
+                  <span>Lihat Timeline / Job Trace →</span>
+                </button>
+              ` : ''}
             </div>
 
             <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5">
@@ -2353,8 +2457,15 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                     <span>Tahap: <strong>${handoff.from_stage} → ${handoff.to_stage}</strong></span>
                     <span>${new Date(handoff.transition_timestamp).toLocaleTimeString('id-ID', { hour12: false })} WIB</span>
                   </div>
-                  <div class="text-[10px] font-mono text-indigo-700 border-t border-indigo-100 pt-1">
-                    Bukti: ${handoff.evidence_source} (${handoff.evidence_id}) • ${handoff.confidence}
+                  <div class="text-[10px] font-mono text-indigo-700 border-t border-indigo-100 pt-1 flex items-center justify-between">
+                    <span>Bukti: ${handoff.evidence_source} (${handoff.evidence_id})</span>
+                    <button
+                      type="button"
+                      data-open-job-trace="${handoff.task_id}"
+                      class="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition text-[10px] cursor-pointer"
+                    >
+                      Buka Trace →
+                    </button>
                   </div>
                 </div>
               `;
@@ -2453,9 +2564,287 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         window.__hermesDevOffice = {
           startStaffJourney: startStaffJourney,
           activeMovements: activeMovements,
-          executeCanonicalHandoff: executeCanonicalHandoff
+          executeCanonicalHandoff: executeCanonicalHandoff,
+          openJobTrace: function (taskId, fixtureTrace) {
+            openJobTrace(taskId, fixtureTrace);
+          }
         };
       }
+
+      // ======================================================================
+      // V2.5 Canonical Job Trace & Activity Timeline Client Controller
+      // ======================================================================
+      const jobTraceModal = document.getElementById('job-trace-modal');
+      const traceWorkflowIdEl = document.getElementById('trace-workflow-id');
+      const traceOpBadgeEl = document.getElementById('trace-operational-badge');
+      const traceTitleEl = document.getElementById('job-trace-title');
+      const traceSubtitleEl = document.getElementById('job-trace-subtitle');
+      const traceSummaryStripEl = document.getElementById('trace-summary-strip');
+      const traceTimelineContainer = document.getElementById('trace-timeline-container');
+      const jobTraceCloseBtn = document.getElementById('job-trace-close-btn');
+      const jobTraceDoneBtn = document.getElementById('job-trace-done-btn');
+
+      function closeJobTrace() {
+        if (jobTraceModal) {
+          jobTraceModal.classList.add('hidden');
+        }
+      }
+
+      if (jobTraceCloseBtn) jobTraceCloseBtn.addEventListener('click', closeJobTrace);
+      if (jobTraceDoneBtn) jobTraceDoneBtn.addEventListener('click', closeJobTrace);
+
+      window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          closeJobTrace();
+        }
+      });
+
+      function renderJobTraceData(trace) {
+        if (!jobTraceModal || !trace) return;
+
+        if (traceWorkflowIdEl) traceWorkflowIdEl.textContent = trace.workflow_id || trace.task_id;
+        if (traceTitleEl) traceTitleEl.textContent = trace.summary?.artifact_title || trace.task_id;
+        if (traceSubtitleEl) {
+          traceSubtitleEl.textContent = `Kronologi bukti kanonikal (${trace.summary?.canonical_event_count || trace.events?.length || 0} peristiwa, ${trace.summary?.handoff_count || 0} handoff)`;
+        }
+
+        const opState = trace.summary?.current_operational_state || 'STANDBY';
+        if (traceOpBadgeEl) {
+          traceOpBadgeEl.textContent = opState;
+          traceOpBadgeEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase border ' + (
+            opState === 'RUNNING' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+            opState === 'QUEUED' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+            opState === 'BLOCKED' || opState === 'FAILED' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+            opState === 'PUBLISHED' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+            'bg-slate-200 text-slate-800 border-slate-300'
+          );
+        }
+
+        // Summary Strip
+        if (traceSummaryStripEl) {
+          const startedTime = trace.summary?.started_at ? new Date(trace.summary.started_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB' : '-';
+          const lastTime = trace.summary?.last_transition_at ? new Date(trace.summary.last_transition_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB' : '-';
+
+          traceSummaryStripEl.innerHTML = `
+            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-0.5">
+              <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Tahap Saat Ini</div>
+              <div class="text-xs font-outfit font-black text-slate-900 capitalize truncate">${trace.summary?.current_stage || '-'}</div>
+            </div>
+            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-0.5">
+              <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Pelaksana Aktif</div>
+              <div class="text-xs font-outfit font-black text-slate-900 truncate">${trace.summary?.current_agent_name || 'Unassigned'}</div>
+            </div>
+            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-0.5">
+              <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Waktu Mulai</div>
+              <div class="text-xs font-mono font-bold text-slate-800">${startedTime}</div>
+            </div>
+            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-0.5">
+              <div class="text-[10px] font-mono uppercase text-slate-400 font-bold">Transisi Terakhir</div>
+              <div class="text-xs font-mono font-bold text-slate-800">${lastTime}</div>
+            </div>
+          `;
+        }
+
+        // Timeline Items
+        if (traceTimelineContainer) {
+          let html = '';
+
+          if (trace.summary?.blocking_condition) {
+            html += `
+              <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono font-bold flex items-center gap-2">
+                <span class="text-rose-600 text-base">⚠️</span>
+                <span>Kondisi Penghambat: ${trace.summary.blocking_condition}</span>
+              </div>
+            `;
+          }
+
+          html += '<div class="space-y-0 relative">';
+
+          const events = trace.events || [];
+          if (events.length === 0) {
+            html += `
+              <div class="py-8 text-center text-slate-400 text-xs font-mono italic">
+                Belum ada bukti peristiwa kanonikal tercatat untuk tugas ini.
+              </div>
+            `;
+          } else {
+            events.forEach(function (ev) {
+              if (ev.event_type === 'EVIDENCE_GAP') {
+                html += `
+                  <div class="relative pl-6 pb-6 border-l-2 border-dashed border-amber-300">
+                    <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-amber-100 border-2 border-amber-500 flex items-center justify-center text-[10px] text-amber-700 font-bold">!</div>
+                    <div class="bg-amber-50/70 p-3 rounded-xl border border-amber-200/90 space-y-1">
+                      <div class="text-[10px] font-mono uppercase text-amber-700 font-bold tracking-wide">EVIDENCE GAP DETECTED</div>
+                      <div class="text-xs font-medium text-amber-900">${ev.note || 'Ketiadaan bukti transisi'}</div>
+                      <div class="text-[10px] font-mono text-slate-500">Tidak ada bukti rekaman transisi antara tahap ini. Menghindari rekonstruksi riwayat fiktif.</div>
+                    </div>
+                  </div>
+                `;
+                return;
+              }
+
+              let badgeColor = 'bg-slate-200 text-slate-800 border-slate-300';
+              let nodeBorder = 'border-slate-400';
+              let nodeBg = 'bg-slate-500';
+
+              if (ev.event_type === 'TASK_CREATED') {
+                badgeColor = 'bg-blue-100 text-blue-800 border-blue-300';
+                nodeBorder = 'border-blue-500';
+                nodeBg = 'bg-blue-500';
+              } else if (ev.event_type === 'STAGE_ENTERED' || ev.event_type === 'RUNNING') {
+                badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                nodeBorder = 'border-emerald-500';
+                nodeBg = 'bg-emerald-500';
+              } else if (ev.event_type === 'HANDOFF') {
+                badgeColor = 'bg-indigo-100 text-indigo-800 border-indigo-300';
+                nodeBorder = 'border-indigo-500';
+                nodeBg = 'bg-indigo-500';
+              } else if (ev.event_type === 'APPROVED') {
+                badgeColor = 'bg-teal-100 text-teal-800 border-teal-300';
+                nodeBorder = 'border-teal-500';
+                nodeBg = 'bg-teal-500';
+              } else if (ev.event_type === 'QUEUED') {
+                badgeColor = 'bg-amber-100 text-amber-800 border-amber-300';
+                nodeBorder = 'border-amber-500';
+                nodeBg = 'bg-amber-500';
+              } else if (ev.event_type === 'PUBLISHED') {
+                badgeColor = 'bg-blue-100 text-blue-800 border-blue-300';
+                nodeBorder = 'border-blue-600';
+                nodeBg = 'bg-blue-600';
+              } else if (ev.event_type === 'BLOCKED' || ev.event_type === 'FAILED') {
+                badgeColor = 'bg-rose-100 text-rose-800 border-rose-300';
+                nodeBorder = 'border-rose-500';
+                nodeBg = 'bg-rose-500';
+              } else if (ev.event_type === 'ANOMALY') {
+                badgeColor = 'bg-orange-100 text-orange-800 border-orange-300';
+                nodeBorder = 'border-orange-500';
+                nodeBg = 'bg-orange-500';
+              } else if (ev.event_type === 'RECOVERED') {
+                badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                nodeBorder = 'border-emerald-500';
+                nodeBg = 'bg-emerald-500';
+              }
+
+              const timeStr = new Date(ev.canonical_timestamp).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
+
+              html += `
+                <div class="relative pl-6 pb-6 border-l-2 border-slate-200">
+                  <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 ${nodeBorder} flex items-center justify-center">
+                    <div class="w-1.5 h-1.5 rounded-full ${nodeBg}"></div>
+                  </div>
+                  <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/90 space-y-1.5">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                      <div class="flex items-center gap-1.5">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase border ${badgeColor}">${ev.event_type}</span>
+                        ${ev.stage ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-200 text-slate-700">${ev.stage}</span>` : ''}
+                      </div>
+                      <div class="text-[10px] font-mono text-slate-500 font-bold">${timeStr}</div>
+                    </div>
+                    <div class="text-slate-900 text-xs font-bold font-outfit">${ev.note || ev.event_type}</div>
+                    <div class="text-[11px] font-mono text-slate-500 flex items-center justify-between gap-2 flex-wrap">
+                      <span>Pelaksana: <strong class="text-slate-700">${ev.agent_id || 'System'}</strong> (${ev.department_id})</span>
+                      ${ev.duration_label ? `<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">⏱ ${ev.duration_label}</span>` : ''}
+                    </div>
+                    <details class="text-[10px] font-mono text-slate-500 pt-1.5 border-t border-slate-200">
+                      <summary class="hover:text-slate-700 select-none cursor-pointer">Bukti Kanonikal (${ev.confidence}) ▾</summary>
+                      <div class="mt-1.5 p-2 rounded-lg bg-white border border-slate-200 space-y-0.5 text-[10px]">
+                        <div>Sumber: <strong>${ev.evidence_source}</strong></div>
+                        <div>ID Bukti: <span class="font-mono text-slate-700">${ev.evidence_id}</span></div>
+                        <div>Waktu UTC: <span class="font-mono text-slate-500">${ev.canonical_timestamp}</span></div>
+                        ${ev.handoff_id ? `<div>Handoff ID: <span class="font-mono text-indigo-600">${ev.handoff_id}</span></div>` : ''}
+                        ${ev.anomaly_id ? `<div>Anomaly ID: <span class="font-mono text-rose-600">${ev.anomaly_id}</span></div>` : ''}
+                      </div>
+                    </details>
+                  </div>
+                </div>
+              `;
+            });
+          }
+
+          // Active Current State Card at Bottom
+          const curTime = trace.summary?.last_transition_at ? new Date(trace.summary.last_transition_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB' : '-';
+          html += `
+            <div class="relative pl-6 pt-1">
+              <div class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-400 flex items-center justify-center animate-pulse"></div>
+              <div class="bg-indigo-50/80 p-4 rounded-2xl border-2 border-indigo-200 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-mono font-bold uppercase text-indigo-900 tracking-wider flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    STATUS WORKFLOW SAAT INI (PIXEL OFFICE)
+                  </span>
+                  <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
+                    opState === 'RUNNING' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                    opState === 'QUEUED' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                    'bg-slate-200 text-slate-800 border-slate-300'
+                  }">
+                    ${opState}
+                  </span>
+                </div>
+                <div class="text-sm font-outfit font-black text-slate-900">
+                  Tahap: ${(trace.summary?.current_stage || '').toUpperCase()} — ${trace.summary?.current_agent_name || 'Unassigned'}
+                </div>
+                <div class="text-[11px] font-mono text-slate-600 flex items-center justify-between flex-wrap gap-2">
+                  <span>Posisi: <strong>${trace.summary?.current_position_key || 'Standby di Lounge'}</strong></span>
+                  <span class="text-indigo-700 font-bold">Sejak ${curTime}</span>
+                </div>
+              </div>
+            </div>
+          `;
+
+          html += '</div>';
+          traceTimelineContainer.innerHTML = html;
+        }
+
+        jobTraceModal.classList.remove('hidden');
+      }
+
+      function openJobTrace(taskId, fixtureTrace) {
+        if (!jobTraceModal) return;
+        if (fixtureTrace) {
+          renderJobTraceData(fixtureTrace);
+          return;
+        }
+
+        if (traceTimelineContainer) {
+          traceTimelineContainer.innerHTML = `
+            <div class="py-12 text-center text-slate-400 flex flex-col items-center gap-2">
+              <div class="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              <span>Mengambil bukti trace kanonikal untuk ${taskId}...</span>
+            </div>
+          `;
+        }
+        jobTraceModal.classList.remove('hidden');
+
+        fetch('/api/admin/mission-control/job-trace?task_id=' + encodeURIComponent(taskId))
+          .then(function (res) {
+            if (!res.ok) throw new Error('Status ' + res.status);
+            return res.json();
+          })
+          .then(function (trace) {
+            renderJobTraceData(trace);
+          })
+          .catch(function (err) {
+            if (traceTimelineContainer) {
+              traceTimelineContainer.innerHTML = `
+                <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono space-y-1">
+                  <div class="font-bold">Gagal memuat job trace</div>
+                  <div class="text-[11px]">${err.message || 'Koneksi API gagal'}</div>
+                </div>
+              `;
+            }
+          });
+      }
+
+      // Delegate click for all [data-open-job-trace] elements
+      document.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-open-job-trace]');
+        if (btn) {
+          const tid = btn.getAttribute('data-open-job-trace');
+          if (tid) {
+            openJobTrace(tid);
+          }
+        }
+      });
 
       // Manual refresh button handler
       const refreshBtn = document.getElementById('btn-refresh-office');
@@ -2770,6 +3159,442 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             });
           });
         }
+        // 2. V2.5 Canonical Job Trace Scenarios (Dev QA Verification)
+        const traceDevFixtures = {
+          'trace-a': {
+            trace_id: 'trace_art_24',
+            workflow_id: 'art_24',
+            task_id: 'art_24',
+            artifact_id: '24',
+            summary: {
+              workflow_id: 'art_24',
+              task_id: 'art_24',
+              artifact_id: '24',
+              artifact_title: 'Panduan Rangka Atap Baja Ringan',
+              current_stage: 'scheduled',
+              current_agent_id: 'publication_dispatcher_core',
+              current_agent_name: 'Sari',
+              current_department_id: 'publication_operations',
+              current_operational_state: 'QUEUED',
+              current_position_key: 'lounge_seat_5',
+              started_at: '2026-10-01T20:01:00.000Z',
+              last_transition_at: '2026-10-01T20:51:00.000Z',
+              total_elapsed_ms: null,
+              total_elapsed_label: null,
+              canonical_event_count: 5,
+              handoff_count: 3,
+              anomaly_count: 0,
+              blocking_condition: null,
+              latest_evidence_source: 'd1_article_publication_plans',
+              latest_evidence_id: 'plan_art_24',
+              has_evidence_gaps: false
+            },
+            events: [
+              {
+                event_id: 'trc_art_24_created_1',
+                workflow_id: 'art_24',
+                task_id: 'art_24',
+                artifact_id: '24',
+                event_type: 'TASK_CREATED',
+                stage: 'researching',
+                agent_id: 'evidence_researcher_lead',
+                department_id: 'research_evidence',
+                canonical_timestamp: '2026-10-01T20:01:00.000Z',
+                duration_label: '17m',
+                note: 'Riset SNI & kompilasi evidence pack oleh Irwan',
+                evidence_source: 'd1_articles:created_at',
+                evidence_id: 'article_24',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_24_hnd_1',
+                workflow_id: 'art_24',
+                task_id: 'art_24',
+                artifact_id: '24',
+                event_type: 'HANDOFF',
+                stage: 'writing',
+                previous_stage: 'researching',
+                agent_id: 'content_writer_primary',
+                department_id: 'editorial',
+                canonical_timestamp: '2026-10-01T20:18:00.000Z',
+                handoff_id: 'hnd_art_24_researching_to_writing_01',
+                note: 'Handoff dari Irwan (Research) ke Joko (Writing)',
+                evidence_source: 'v2_4_task_handoff',
+                evidence_id: 'hnd_art_24_01',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_24_writing_1',
+                workflow_id: 'art_24',
+                task_id: 'art_24',
+                artifact_id: '24',
+                event_type: 'STAGE_ENTERED',
+                stage: 'writing',
+                agent_id: 'content_writer_primary',
+                department_id: 'editorial',
+                canonical_timestamp: '2026-10-01T20:18:00.000Z',
+                duration_label: '24m',
+                note: 'Penulisan naskah artikel berbasis human voice layer oleh Joko',
+                evidence_source: 'd1_article_state_transitions',
+                evidence_id: 'trans_24_writing',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_24_hnd_2',
+                workflow_id: 'art_24',
+                task_id: 'art_24',
+                artifact_id: '24',
+                event_type: 'HANDOFF',
+                stage: 'editorial_qa',
+                previous_stage: 'writing',
+                agent_id: 'editorial_qa_primary',
+                department_id: 'editorial',
+                canonical_timestamp: '2026-10-01T20:42:00.000Z',
+                handoff_id: 'hnd_art_24_writing_to_editorial_qa_02',
+                note: 'Handoff dari Joko (Writing) ke Rina (Editorial QA)',
+                evidence_source: 'v2_4_task_handoff',
+                evidence_id: 'hnd_art_24_02',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_24_qa_1',
+                workflow_id: 'art_24',
+                task_id: 'art_24',
+                artifact_id: '24',
+                event_type: 'APPROVED',
+                stage: 'editorial_qa',
+                agent_id: 'editorial_qa_primary',
+                department_id: 'editorial',
+                canonical_timestamp: '2026-10-01T20:51:00.000Z',
+                duration_label: '9m',
+                note: 'Editorial QA sign-off diberikan oleh Rina',
+                evidence_source: 'd1_article_editorial_approvals',
+                evidence_id: 'approval_101',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_24_hnd_3',
+                workflow_id: 'art_24',
+                task_id: 'art_24',
+                artifact_id: '24',
+                event_type: 'HANDOFF',
+                stage: 'scheduled',
+                previous_stage: 'editorial_qa',
+                agent_id: 'publication_dispatcher_core',
+                department_id: 'publication_operations',
+                canonical_timestamp: '2026-10-01T20:51:00.000Z',
+                handoff_id: 'hnd_art_24_qa_to_scheduled_03',
+                note: 'Handoff dari Rina (Editorial QA) ke Sari (Publication Operations)',
+                evidence_source: 'v2_4_task_handoff',
+                evidence_id: 'hnd_art_24_03',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_24_queued_1',
+                workflow_id: 'art_24',
+                task_id: 'art_24',
+                artifact_id: '24',
+                event_type: 'QUEUED',
+                stage: 'scheduled',
+                agent_id: 'publication_dispatcher_core',
+                department_id: 'publication_operations',
+                canonical_timestamp: '2026-10-01T20:51:00.000Z',
+                note: 'Masuk antrean publikasi terjadwal (Sari siaga di Lounge)',
+                evidence_source: 'd1_article_publication_plans',
+                evidence_id: 'plan_art_24',
+                confidence: 'EXACT'
+              }
+            ]
+          },
+          'trace-b': {
+            trace_id: 'trace_art_50',
+            workflow_id: 'art_50',
+            task_id: 'art_50',
+            artifact_id: '50',
+            summary: {
+              workflow_id: 'art_50',
+              task_id: 'art_50',
+              artifact_id: '50',
+              artifact_title: 'Skenario Gap Bukti Transisi',
+              current_stage: 'scheduled',
+              current_agent_id: 'publication_dispatcher_core',
+              current_agent_name: 'Sari',
+              current_department_id: 'publication_operations',
+              current_operational_state: 'QUEUED',
+              current_position_key: 'lounge_seat_5',
+              started_at: '2026-10-01T20:00:00.000Z',
+              last_transition_at: '2026-10-01T21:00:00.000Z',
+              canonical_event_count: 2,
+              handoff_count: 0,
+              anomaly_count: 0,
+              blocking_condition: null,
+              latest_evidence_source: 'd1_article_publication_plans',
+              latest_evidence_id: 'plan_art_50',
+              has_evidence_gaps: true
+            },
+            events: [
+              {
+                event_id: 'trc_art_50_created',
+                workflow_id: 'art_50',
+                task_id: 'art_50',
+                artifact_id: '50',
+                event_type: 'TASK_CREATED',
+                stage: 'draft',
+                agent_id: 'content_writer_primary',
+                department_id: 'editorial',
+                canonical_timestamp: '2026-10-01T20:00:00.000Z',
+                note: 'Draf dibuat tanpa log transisi tengah',
+                evidence_source: 'd1_articles',
+                evidence_id: 'article_50',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_50_gap',
+                workflow_id: 'art_50',
+                task_id: 'art_50',
+                artifact_id: '50',
+                event_type: 'EVIDENCE_GAP',
+                stage: null,
+                previous_stage: 'draft',
+                agent_id: null,
+                department_id: 'unknown',
+                canonical_timestamp: '2026-10-01T20:00:00.000Z',
+                note: '[No canonical transition evidence recorded for: researching, writing, waiting_media, editorial_qa]',
+                evidence_source: 'audit_gap',
+                evidence_id: 'gap_draft_to_scheduled',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_50_queued',
+                workflow_id: 'art_50',
+                task_id: 'art_50',
+                artifact_id: '50',
+                event_type: 'QUEUED',
+                stage: 'scheduled',
+                agent_id: 'publication_dispatcher_core',
+                department_id: 'publication_operations',
+                canonical_timestamp: '2026-10-01T21:00:00.000Z',
+                note: 'Langsung muncul di antrean publikasi terjadwal',
+                evidence_source: 'd1_article_publication_plans',
+                evidence_id: 'plan_art_50',
+                confidence: 'EXACT'
+              }
+            ]
+          },
+          'trace-c': {
+            trace_id: 'trace_art_80',
+            workflow_id: 'art_80',
+            task_id: 'art_80',
+            artifact_id: '80',
+            summary: {
+              workflow_id: 'art_80',
+              task_id: 'art_80',
+              artifact_id: '80',
+              artifact_title: 'Skenario QA Rollback & Rewrite',
+              current_stage: 'writing',
+              current_agent_id: 'content_writer_primary',
+              current_agent_name: 'Joko',
+              current_department_id: 'editorial',
+              current_operational_state: 'RUNNING',
+              current_position_key: 'editorial_writer_desk',
+              started_at: '2026-10-01T20:00:00.000Z',
+              last_transition_at: '2026-10-01T20:40:00.000Z',
+              canonical_event_count: 4,
+              handoff_count: 1,
+              anomaly_count: 0,
+              blocking_condition: null,
+              latest_evidence_source: 'd1_article_editorial_approvals:rejected',
+              latest_evidence_id: 'rejection_180',
+              has_evidence_gaps: false
+            },
+            events: [
+              {
+                event_id: 'trc_art_80_created',
+                workflow_id: 'art_80',
+                task_id: 'art_80',
+                artifact_id: '80',
+                event_type: 'TASK_CREATED',
+                stage: 'writing',
+                agent_id: 'content_writer_primary',
+                department_id: 'editorial',
+                canonical_timestamp: '2026-10-01T20:00:00.000Z',
+                duration_label: '25m',
+                note: 'Penulisan naskah pertama oleh Joko',
+                evidence_source: 'd1_articles',
+                evidence_id: 'article_80',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_80_hnd_1',
+                workflow_id: 'art_80',
+                task_id: 'art_80',
+                artifact_id: '80',
+                event_type: 'HANDOFF',
+                stage: 'editorial_qa',
+                previous_stage: 'writing',
+                agent_id: 'editorial_qa_primary',
+                department_id: 'editorial',
+                canonical_timestamp: '2026-10-01T20:25:00.000Z',
+                handoff_id: 'hnd_art_80_writing_to_qa',
+                note: 'Handoff naskah dari Joko ke Rina untuk QA Review',
+                evidence_source: 'v2_4_task_handoff',
+                evidence_id: 'hnd_art_80_01',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_80_qa_rej',
+                workflow_id: 'art_80',
+                task_id: 'art_80',
+                artifact_id: '80',
+                event_type: 'STAGE_COMPLETED',
+                stage: 'editorial_qa',
+                agent_id: 'editorial_qa_primary',
+                department_id: 'editorial',
+                status: 'REJECTED',
+                canonical_timestamp: '2026-10-01T20:40:00.000Z',
+                duration_label: '15m',
+                note: 'Editorial QA rejected draft; returned to writing. Reason: Tone of voice violation in section 3',
+                evidence_source: 'd1_article_editorial_approvals:rejected',
+                evidence_id: 'rejection_180',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_80_rewrite',
+                workflow_id: 'art_80',
+                task_id: 'art_80',
+                artifact_id: '80',
+                event_type: 'STAGE_ENTERED',
+                stage: 'writing',
+                agent_id: 'content_writer_primary',
+                department_id: 'editorial',
+                canonical_timestamp: '2026-10-01T20:40:00.000Z',
+                note: 'Joko memulai revisi #2 perbaikan tone of voice',
+                evidence_source: 'd1_article_state_transitions',
+                evidence_id: 'trans_80_rewrite',
+                confidence: 'EXACT'
+              }
+            ]
+          },
+          'trace-d': {
+            trace_id: 'trace_art_70',
+            workflow_id: 'art_70',
+            task_id: 'art_70',
+            artifact_id: '70',
+            summary: {
+              workflow_id: 'art_70',
+              task_id: 'art_70',
+              artifact_id: '70',
+              artifact_title: 'Skenario Queued State Standby',
+              current_stage: 'scheduled',
+              current_agent_id: 'publication_dispatcher_core',
+              current_agent_name: 'Sari',
+              current_department_id: 'publication_operations',
+              current_operational_state: 'QUEUED',
+              current_position_key: 'lounge_seat_5',
+              started_at: '2026-10-01T20:51:00.000Z',
+              last_transition_at: '2026-10-01T20:51:00.000Z',
+              canonical_event_count: 1,
+              handoff_count: 0,
+              anomaly_count: 0,
+              blocking_condition: null,
+              latest_evidence_source: 'd1_article_publication_plans',
+              latest_evidence_id: 'plan_70',
+              has_evidence_gaps: false
+            },
+            events: [
+              {
+                event_id: 'trc_art_70_queued',
+                workflow_id: 'art_70',
+                task_id: 'art_70',
+                artifact_id: '70',
+                event_type: 'QUEUED',
+                stage: 'scheduled',
+                agent_id: 'publication_dispatcher_core',
+                department_id: 'publication_operations',
+                canonical_timestamp: '2026-10-01T20:51:00.000Z',
+                note: 'Article entered Publication Queue for target window (Menunggu envelope tayang)',
+                evidence_source: 'd1_article_publication_plans',
+                evidence_id: 'plan_70',
+                confidence: 'EXACT'
+              }
+            ]
+          },
+          'trace-e': {
+            trace_id: 'trace_art_71',
+            workflow_id: 'art_71',
+            task_id: 'art_71',
+            artifact_id: '71',
+            summary: {
+              workflow_id: 'art_71',
+              task_id: 'art_71',
+              artifact_id: '71',
+              artifact_title: 'Skenario Blocked Anomaly State',
+              current_stage: 'waiting_media',
+              current_agent_id: 'lokamedia_worker_primary',
+              current_agent_name: 'Budi',
+              current_department_id: 'media',
+              current_operational_state: 'BLOCKED',
+              current_position_key: 'media_workstation',
+              started_at: '2026-10-01T20:15:00.000Z',
+              last_transition_at: '2026-10-01T20:30:00.000Z',
+              canonical_event_count: 2,
+              handoff_count: 0,
+              anomaly_count: 1,
+              blocking_condition: 'GPU Quota Exhausted',
+              latest_evidence_source: 'd1_mission_control_anomalies',
+              latest_evidence_id: 'anom_art_71',
+              has_evidence_gaps: false
+            },
+            events: [
+              {
+                event_id: 'trc_art_71_entered',
+                workflow_id: 'art_71',
+                task_id: 'art_71',
+                artifact_id: '71',
+                event_type: 'STAGE_ENTERED',
+                stage: 'waiting_media',
+                agent_id: 'lokamedia_worker_primary',
+                department_id: 'media',
+                canonical_timestamp: '2026-10-01T20:15:00.000Z',
+                duration_label: '15m',
+                note: 'Antrean visual LokaMedia masuk untuk artikel #71',
+                evidence_source: 'd1_media_jobs',
+                evidence_id: 'mjob_71',
+                confidence: 'EXACT'
+              },
+              {
+                event_id: 'trc_art_71_anom',
+                workflow_id: 'art_71',
+                task_id: 'art_71',
+                artifact_id: '71',
+                event_type: 'ANOMALY',
+                stage: 'waiting_media',
+                agent_id: null,
+                department_id: 'media',
+                status: 'OPEN',
+                canonical_timestamp: '2026-10-01T20:30:00.000Z',
+                anomaly_id: 'anom_art_71',
+                note: '[Anomaly CRITICAL] GPU Quota Exhausted: Provider API menolak generasi visual',
+                evidence_source: 'd1_mission_control_anomalies',
+                evidence_id: 'anom_art_71',
+                confidence: 'EXACT',
+                details: { severity: 'CRITICAL', fingerprint: 'gpu_quota_exhausted', title: 'GPU Quota Exhausted', summary: 'Provider API menolak generasi visual' }
+              }
+            ]
+          }
+        };
+
+        document.querySelectorAll('[data-trace-scenario]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const scenario = btn.getAttribute('data-trace-scenario');
+            const devOffice = window.__hermesDevOffice;
+            if (!devOffice || !devOffice.openJobTrace) return;
+            const fix = traceDevFixtures[scenario];
+            if (fix) {
+              devOffice.openJobTrace(fix.workflow_id, fix);
+            }
+          });
+        });
       })();
     </script>
   )}

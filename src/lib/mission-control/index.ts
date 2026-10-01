@@ -58,6 +58,7 @@ export * from './anomalies.ts';
 export * from './office-route-graph.ts';
 export * from './staff-movement.ts';
 export * from './task-handoff.ts';
+export * from './job-trace.ts';
 
 export interface MissionControlOrganization {
   generated_at: string;
