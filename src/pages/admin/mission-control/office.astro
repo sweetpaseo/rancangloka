@@ -257,1310 +257,1059 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       <div class="relative z-10 overflow-x-auto pb-4">
         
         <!-- THE PHYSICAL BUILDING SHELL (THICK ARCHITECTURAL WALLS) -->
-        <div class="min-w-[1020px] max-w-[1240px] mx-auto bg-slate-800 p-2.5 rounded-xl shadow-2xl">
-          
-          <!-- BUILDING INTERIOR WITH SHARED PARTITION WALLS -->
+        <div class="min-w-[1020px] max-w-[1240px] mx-auto bg-slate-800 p-2.5 rounded-xl shadow-2xl">          <!-- BUILDING INTERIOR WITH SHARED PARTITION WALLS & CENTRAL CIRCULATION SPINE -->
           <div class="bg-slate-700 p-1.5 rounded-lg space-y-1.5">
             
-            <!-- TOP WING: EDITORIAL (LEFT) & RESEARCH (RIGHT) -->
-            <div class="grid grid-cols-12 gap-1.5">
+            <!-- MAIN 3-COLUMN FLOOR PLAN: LEFT WING | CENTRAL VERTICAL HALL | RIGHT WING -->
+            <div class="grid grid-cols-[minmax(0,5fr)_minmax(210px,2.4fr)_minmax(0,5fr)] gap-1.5 items-stretch">
               
-              <!-- ROOM 1: EDITORIAL ROOM (Col 1-7) -->
-              {editorialRoom && (
-                <div
-                  class="col-span-7 bg-[#fefce8] p-4 relative flex flex-col justify-between min-h-[310px] rounded-xs select-none shadow-inner"
-                  id="room-card-editorial_room"
-                >
-                  <!-- Floor Plank Grain Subtle Pattern -->
-                  <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#fef08a18_1px,transparent_1px)] [background-size:28px_100%] opacity-60"></div>
+              <!-- LEFT WING: 3 DEPARTMENTS (EDITORIAL, MEDIA, PUBLICATION) -->
+              <div class="flex flex-col gap-1.5 justify-between">
+                
+                <!-- 1. EDITORIAL ROOM (Level 1, Left) -->
+                {editorialRoom && (
+                  <div
+                    class="bg-[#fefce8] p-3.5 relative flex flex-col justify-between min-h-[300px] flex-1 rounded-xs select-none shadow-inner"
+                    id="room-card-editorial_room"
+                  >
+                    <!-- Floor Plank Grain Subtle Pattern -->
+                    <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#fef08a18_1px,transparent_1px)] [background-size:28px_100%] opacity-60"></div>
 
-                  <!-- Small Physical Wall Sign & Wall Decor -->
-                  <div class="relative z-10 flex items-center justify-between">
-                    <button
-                      type="button"
-                      class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-100/90 border border-amber-300 text-[10px] font-mono font-black text-amber-950 tracking-wider hover:bg-amber-200 transition cursor-pointer shadow-2xs"
-                      data-room-inspect="editorial_room"
-                      title="Klik untuk inspeksi ruangan Editorial"
-                    >
-                      <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-amber-800" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-                      </svg>
-                      <span>EDITORIAL • ZONE E</span>
-                    </button>
-
-                    <!-- Wall Decor: Editorial Corkboard + Wall Clock -->
-                    <div class="flex items-center gap-3">
-                      <!-- Corkboard with Draft Sticky Notes -->
-                      <div class="w-18 h-7 bg-[#fde68a] border border-[#d97706] rounded-2xs px-1 flex items-center justify-around shadow-2xs" title="Papan Catatan Redaksi">
-                        <span class="w-2.5 h-3.5 bg-rose-400 rounded-2xs inline-block rotate-3"></span>
-                        <span class="w-2.5 h-3.5 bg-sky-400 rounded-2xs inline-block -rotate-2"></span>
-                        <span class="w-2.5 h-3.5 bg-emerald-400 rounded-2xs inline-block rotate-6"></span>
-                        <span class="w-2.5 h-3.5 bg-amber-300 rounded-2xs inline-block -rotate-4"></span>
-                      </div>
-                      <!-- Tiny wall clock -->
-                      <div class="w-5 h-5 rounded-full border border-amber-400 bg-white flex items-center justify-center shadow-2xs" title="Jam Dinding Redaksi">
-                        <div class="w-2 h-2 border-r border-b border-amber-800"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Physical Room Objects & Desks (Directly on Floor, Zero Cards) -->
-                  <div class="relative z-10 flex-1 grid grid-cols-12 gap-3 items-center py-2">
-                    
-                    <!-- Left Wall: Bookshelf & Manuscript Archive -->
-                    <div class="col-span-2 flex flex-col items-center justify-center space-y-1">
-                      <div class="w-16 h-28 bg-[#92400e] rounded-xs border-2 border-[#78350f] p-1.5 flex flex-col justify-between shadow-md" title="Rak Arsip Naskah & Ensiklopedia">
-                        <div class="border-b border-[#78350f] h-7 flex items-center justify-center gap-1">
-                          <span class="w-2.5 h-5 bg-red-600 rounded-2xs inline-block shadow-2xs"></span>
-                          <span class="w-2.5 h-5 bg-blue-600 rounded-2xs inline-block shadow-2xs"></span>
-                          <span class="w-2 h-5 bg-emerald-600 rounded-2xs inline-block shadow-2xs"></span>
-                        </div>
-                        <div class="border-b border-[#78350f] h-7 flex items-center justify-center gap-1">
-                          <span class="w-3 h-5 bg-amber-300 rounded-2xs inline-block shadow-2xs"></span>
-                          <span class="w-2.5 h-5 bg-purple-500 rounded-2xs inline-block shadow-2xs"></span>
-                          <span class="w-2 h-5 bg-teal-400 rounded-2xs inline-block shadow-2xs"></span>
-                        </div>
-                        <div class="h-7 flex items-center justify-center gap-1">
-                          <span class="w-2.5 h-5 bg-slate-300 rounded-2xs inline-block shadow-2xs"></span>
-                          <span class="w-3 h-5 bg-orange-500 rounded-2xs inline-block shadow-2xs"></span>
-                        </div>
-                      </div>
-                      <span class="text-[8px] font-mono text-amber-950 font-bold">Arsip Redaksi</span>
+                    <!-- Architectural Doorway on Right Wall Opening to Central Hall -->
+                    <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1.5 z-20 flex items-center" title="Ambang Pintu Redaksi (Menuju Koridor)">
+                      <div class="w-2.5 h-16 bg-[#cbd5e1] border-y-2 border-slate-600 shadow-inner"></div>
                     </div>
 
-                    <!-- Workstation 1: Joko (Writing Desk) -->
-                    <div class="col-span-5 flex flex-col items-center justify-center">
-                      <div class="relative flex flex-col items-center">
-                        <!-- Monitor, Desk Lamp & Coffee Mug on Top Surface -->
-                        <div class="relative z-10 flex items-center justify-center gap-2 mb-[-8px]">
-                          <div class="w-16 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[8px] text-cyan-300 font-mono font-bold tracking-wider" title="Monitor Penulisan Naskah Joko">
-                            TXT
-                          </div>
-                          <!-- Desk Lamp -->
-                          <div class="w-4 h-5 bg-[#d97706] rounded-2xs border border-[#b45309] shadow-2xs flex items-center justify-center" title="Lampu Meja Redaksi">
-                            <span class="w-1.5 h-1.5 bg-amber-200 rounded-full"></span>
-                          </div>
-                          <!-- Coffee Mug -->
-                          <div class="w-3 h-3.5 bg-white border border-slate-400 rounded-2xs shadow-2xs" title="Mug Kopi Joko"></div>
-                        </div>
+                    <!-- Small Physical Wall Sign & Wall Decor -->
+                    <div class="relative z-10 flex items-center justify-between">
+                      <button
+                        type="button"
+                        class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-100/90 border border-amber-300 text-[10px] font-mono font-black text-amber-950 tracking-wider hover:bg-amber-200 transition cursor-pointer shadow-2xs"
+                        data-room-inspect="editorial_room"
+                        title="Klik untuk inspeksi ruangan Editorial"
+                      >
+                        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-amber-800" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                          <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                        </svg>
+                        <span>EDITORIAL • ZONE E</span>
+                      </button>
 
-                        <!-- Wooden Desk Block with Deep Surface & Contact Shadow -->
-                        <div class="w-44 h-13 bg-[#fde68a] border-2 border-[#d97706] rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-3 relative z-0">
-                          <!-- Desk Mat / Keyboard Pad -->
-                          <div class="w-18 h-3.5 bg-slate-300 rounded-2xs border border-slate-400"></div>
-                          <!-- Paper manuscript stack -->
-                          <div class="w-6 h-7 bg-white rounded-2xs border border-amber-300 shadow-2xs flex flex-col justify-around p-0.5">
-                            <span class="w-4 h-0.5 bg-slate-300 rounded-full"></span>
-                            <span class="w-3 h-0.5 bg-slate-300 rounded-full"></span>
-                            <span class="w-4 h-0.5 bg-slate-300 rounded-full"></span>
-                          </div>
-                          <!-- Wood grain accent -->
-                          <div class="w-2.5 h-2.5 bg-amber-300/80 rounded-full border border-amber-400"></div>
-                        </div>
+                      <!-- Corkboard -->
+                      <div class="w-16 h-6 bg-[#fde68a] border border-[#d97706] rounded-2xs px-1 flex items-center justify-around shadow-2xs" title="Papan Catatan Redaksi">
+                        <span class="w-2 h-3 bg-rose-400 rounded-2xs inline-block rotate-3"></span>
+                        <span class="w-2 h-3 bg-sky-400 rounded-2xs inline-block -rotate-2"></span>
+                        <span class="w-2 h-3 bg-emerald-400 rounded-2xs inline-block rotate-6"></span>
+                      </div>
+                    </div>
 
-                        <!-- Character Sitting in Desk Chair (Direct Placement) -->
-                        <div class="relative z-10 mt-[-14px] flex flex-col items-center">
-                          {(() => {
-                            const joko = getSpriteAtPos('editorial_writer_desk');
-                            if (joko) {
-                              return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={joko.agent_id}
-                                  title={`${joko.display_name} • ${joko.role} (${joko.badge_text})`}
-                                >
-                                  <div class="relative">
-                                    <!-- Chair backrest framing character -->
-                                    <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
-                                    <div class={`w-13 h-13 flex items-center justify-center pixel-avatar-box ${joko.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[joko.animation_key]?.css_animation_class || '') : ''}`}>
-                                      <svg viewBox="0 0 32 32" class="w-12 h-12 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                        <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
-                                        <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
-                                        <rect x="10" y="12" width="4" height="2" fill="#1e293b" />
-                                        <rect x="18" y="12" width="4" height="2" fill="#1e293b" />
-                                        <rect x="14" y="13" width="4" height="1" fill="#94a3b8" />
-                                        <rect x="13" y="16" width="6" height="1" fill="#d97706" />
-                                        <rect x="8" y="18" width="16" height="10" fill="#78350f" />
-                                        <rect x="12" y="20" width="8" height="8" fill="#f8fafc" />
-                                        <rect x="14" y="22" width="4" height="6" fill="#0284c7" />
-                                      </svg>
+                    <!-- Physical Furniture: Bookshelf + Desks -->
+                    <div class="relative z-10 flex-1 grid grid-cols-12 gap-2 items-center py-2">
+                      <!-- Bookshelf on Left -->
+                      <div class="col-span-3 flex flex-col items-center justify-center space-y-1">
+                        <div class="w-14 h-26 bg-[#92400e] rounded-xs border-2 border-[#78350f] p-1 flex flex-col justify-between shadow-md" title="Rak Arsip Naskah & Ensiklopedia">
+                          <div class="border-b border-[#78350f] h-7 flex items-center justify-center gap-0.5">
+                            <span class="w-2 h-5 bg-red-600 rounded-2xs inline-block shadow-2xs"></span>
+                            <span class="w-2 h-5 bg-blue-600 rounded-2xs inline-block shadow-2xs"></span>
+                            <span class="w-2 h-5 bg-emerald-600 rounded-2xs inline-block shadow-2xs"></span>
+                          </div>
+                          <div class="border-b border-[#78350f] h-7 flex items-center justify-center gap-0.5">
+                            <span class="w-2.5 h-5 bg-amber-300 rounded-2xs inline-block shadow-2xs"></span>
+                            <span class="w-2 h-5 bg-purple-500 rounded-2xs inline-block shadow-2xs"></span>
+                          </div>
+                          <div class="h-6 flex items-center justify-center gap-0.5">
+                            <span class="w-2 h-4 bg-slate-300 rounded-2xs inline-block shadow-2xs"></span>
+                            <span class="w-2.5 h-4 bg-orange-500 rounded-2xs inline-block shadow-2xs"></span>
+                          </div>
+                        </div>
+                        <span class="text-[8px] font-mono text-amber-950 font-bold">Arsip</span>
+                      </div>
+
+                      <!-- Joko Desk (Writing) -->
+                      <div class="col-span-4 flex flex-col items-center justify-center">
+                        <div class="relative flex flex-col items-center">
+                          <div class="relative z-10 flex items-center justify-center gap-1 mb-[-6px]">
+                            <div class="w-13 h-7 bg-slate-900 rounded-xs border border-slate-700 shadow-sm flex items-center justify-center text-[7px] text-cyan-300 font-mono font-bold" title="Monitor Penulisan Naskah Joko">
+                              TXT
+                            </div>
+                            <div class="w-3 h-4 bg-[#d97706] rounded-2xs border border-[#b45309] shadow-2xs" title="Lampu Meja"></div>
+                          </div>
+                          <div class="w-32 h-12 bg-[#fde68a] border-2 border-[#d97706] rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-2 relative z-0">
+                            <div class="w-12 h-3 bg-slate-300 rounded-2xs border border-slate-400"></div>
+                            <div class="w-4 h-5 bg-white rounded-2xs border border-amber-300 shadow-2xs"></div>
+                          </div>
+                          <div class="relative z-10 mt-[-12px] flex flex-col items-center">
+                            {(() => {
+                              const joko = getSpriteAtPos('editorial_writer_desk');
+                              if (joko) {
+                                return (
+                                  <button
+                                    type="button"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    data-staff-inspect={joko.agent_id}
+                                    title={`${joko.display_name} • ${joko.role} (${joko.badge_text})`}
+                                  >
+                                    <div class="relative">
+                                      <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
+                                      <div class={`w-12 h-12 flex items-center justify-center pixel-avatar-box ${joko.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[joko.animation_key]?.css_animation_class || '') : ''}`}>
+                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                          <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
+                                          <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
+                                          <rect x="10" y="12" width="4" height="2" fill="#1e293b" />
+                                          <rect x="18" y="12" width="4" height="2" fill="#1e293b" />
+                                          <rect x="14" y="13" width="4" height="1" fill="#94a3b8" />
+                                          <rect x="13" y="16" width="6" height="1" fill="#d97706" />
+                                          <rect x="8" y="18" width="16" height="10" fill="#78350f" />
+                                          <rect x="12" y="20" width="8" height="8" fill="#f8fafc" />
+                                          <rect x="14" y="22" width="4" height="6" fill="#0284c7" />
+                                        </svg>
+                                      </div>
+                                      {joko.visual_mode === 'BLOCKED' && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center animate-ping">!</span>
+                                      )}
+                                      {joko.work_visual_state?.is_actively_working && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
+                                          {JOB_ANIMATION_REGISTRY[joko.animation_key]?.prop_icon || '⚡'}
+                                        </span>
+                                      )}
                                     </div>
-                                    {joko.visual_mode === 'BLOCKED' && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
-                                    )}
-                                    {joko.work_visual_state?.is_actively_working && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                                        {JOB_ANIMATION_REGISTRY[joko.animation_key]?.prop_icon || '⚡'}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span class="text-[10px] font-outfit font-black text-slate-800 bg-white/95 px-2 py-0.5 rounded shadow-xs border border-slate-300 mt-1">
-                                    {joko.display_name}
-                                  </span>
-                                </button>
-                              );
-                            }
-                            return (
-                              <div class="flex flex-col items-center" title="Meja Joko (Sedang di Lounge)">
-                                <svg viewBox="0 0 24 24" class="w-8 h-8 text-amber-700" fill="none">
-                                  <rect x="6" y="3" width="12" height="9" rx="2" fill="#fde68a" stroke="#d97706" stroke-width="1.4"/>
-                                  <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#fef3c7" stroke="#d97706" stroke-width="1.4"/>
-                                  <path d="M12 17v4M8 21h8" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
-                                </svg>
-                                <span class="text-[9px] font-mono text-amber-900/60 italic font-semibold mt-0.5">Kosong</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Workstation 2: Rina (Review Desk) -->
-                    <div class="col-span-5 flex flex-col items-center justify-center">
-                      <div class="relative flex flex-col items-center">
-                        <!-- Monitor, Clipboard Checklist Setup -->
-                        <div class="relative z-10 flex items-center justify-center gap-2 mb-[-8px]">
-                          <div class="w-16 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[8px] text-emerald-300 font-mono font-bold tracking-wider" title="Monitor QA Review Rina">
-                            QA ✓
-                          </div>
-                          <!-- Clipboard checklist -->
-                          <div class="w-5 h-6 bg-white rounded-2xs border border-rose-400 flex flex-col justify-around p-0.5 shadow-2xs" title="First Article Gate Checklist">
-                            <span class="w-3.5 h-0.5 bg-rose-500 rounded-full"></span>
-                            <span class="w-3 h-0.5 bg-emerald-500 rounded-full"></span>
-                            <span class="w-3.5 h-0.5 bg-blue-500 rounded-full"></span>
-                          </div>
-                        </div>
-
-                        <!-- Wooden Desk Block with Deep Surface -->
-                        <div class="w-44 h-13 bg-[#fde68a] border-2 border-[#d97706] rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-3 relative z-0">
-                          <div class="w-18 h-3.5 bg-slate-300 rounded-2xs border border-slate-400"></div>
-                          <!-- Pen cup -->
-                          <div class="w-3 h-4 bg-slate-500 rounded-2xs flex items-center justify-center gap-0.5">
-                            <span class="w-0.5 h-3 bg-red-400"></span>
-                            <span class="w-0.5 h-3 bg-blue-400"></span>
-                          </div>
-                          <div class="w-2.5 h-2.5 bg-amber-300/80 rounded-full border border-amber-400"></div>
-                        </div>
-
-                        <!-- Character Sitting in Desk Chair (Direct Placement) -->
-                        <div class="relative z-10 mt-[-14px] flex flex-col items-center">
-                          {(() => {
-                            const rina = getSpriteAtPos('editorial_review_desk');
-                            if (rina) {
+                                    <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                      {joko.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
                               return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={rina.agent_id}
-                                  title={`${rina.display_name} • ${rina.role} (${rina.badge_text})`}
-                                >
-                                  <div class="relative">
-                                    <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
-                                    <div class={`w-13 h-13 flex items-center justify-center pixel-avatar-box ${rina.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[rina.animation_key]?.css_animation_class || '') : ''}`}>
-                                      <svg viewBox="0 0 32 32" class="w-12 h-12 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                        <rect x="8" y="4" width="16" height="7" fill="#4c0519" />
-                                        <rect x="10" y="10" width="12" height="8" fill="#ffedd5" />
-                                        <rect x="11" y="12" width="4" height="2" fill="#be123c" />
-                                        <rect x="17" y="12" width="4" height="2" fill="#be123c" />
-                                        <rect x="15" y="13" width="2" height="1" fill="#be123c" />
-                                        <rect x="13" y="16" width="6" height="1" fill="#e11d48" />
-                                        <rect x="8" y="18" width="16" height="10" fill="#881337" />
-                                        <rect x="12" y="19" width="8" height="9" fill="#fdf2f8" />
-                                      </svg>
-                                    </div>
-                                    {rina.visual_mode === 'BLOCKED' && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
-                                    )}
-                                    {rina.work_visual_state?.is_actively_working && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                                        {JOB_ANIMATION_REGISTRY[rina.animation_key]?.prop_icon || '✓'}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span class="text-[10px] font-outfit font-black text-slate-800 bg-white/95 px-2 py-0.5 rounded shadow-xs border border-slate-300 mt-1">
-                                    {rina.display_name}
-                                  </span>
-                                </button>
+                                <div class="flex flex-col items-center" title="Meja Joko (Sedang di Lounge)">
+                                  <svg viewBox="0 0 24 24" class="w-7 h-7 text-amber-700" fill="none">
+                                    <rect x="6" y="3" width="12" height="9" rx="2" fill="#fde68a" stroke="#d97706" stroke-width="1.4"/>
+                                    <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#fef3c7" stroke="#d97706" stroke-width="1.4"/>
+                                    <path d="M12 17v4M8 21h8" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
+                                  </svg>
+                                  <span class="text-[8px] font-mono text-amber-900/60 italic font-semibold">Kosong</span>
+                                </div>
                               );
-                            }
-                            return (
-                              <div class="flex flex-col items-center" title="Meja Rina (Sedang di Lounge)">
-                                <svg viewBox="0 0 24 24" class="w-8 h-8 text-amber-700" fill="none">
-                                  <rect x="6" y="3" width="12" height="9" rx="2" fill="#fde68a" stroke="#d97706" stroke-width="1.4"/>
-                                  <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#fef3c7" stroke="#d97706" stroke-width="1.4"/>
-                                  <path d="M12 17v4M8 21h8" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
-                                </svg>
-                                <span class="text-[9px] font-mono text-amber-900/60 italic font-semibold mt-0.5">Kosong</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Architectural Door Opening at Bottom (Direct Connection to Corridor) -->
-                  <div class="relative z-10 flex justify-center -mb-4">
-                    <div class="w-16 h-3 bg-[#cbd5e1] border-x-2 border-slate-600 border-t border-slate-400 shadow-inner" title="Ambang Pintu Redaksi"></div>
-                  </div>
-                </div>
-              )}
-
-              <!-- ROOM 2: RESEARCH & EVIDENCE LAB (Col 8-12) -->
-              {researchRoom && (
-                <div
-                  class="col-span-5 bg-[#f0fdf4] p-4 relative flex flex-col justify-between min-h-[310px] rounded-xs select-none shadow-inner"
-                  id="room-card-research_lab"
-                >
-                  <!-- Pale Sage Grid Pattern -->
-                  <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#bbf7d020_1px,transparent_1px),linear-gradient(to_bottom,#bbf7d020_1px,transparent_1px)] [background-size:20px_20px] opacity-70"></div>
-
-                  <!-- Small Physical Wall Sign -->
-                  <div class="relative z-10 flex items-center justify-between">
-                    <button
-                      type="button"
-                      class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-100/90 border border-emerald-300 text-[10px] font-mono font-black text-emerald-950 tracking-wider hover:bg-emerald-200 transition cursor-pointer shadow-2xs"
-                      data-room-inspect="research_lab"
-                      title="Klik untuk inspeksi Lab Riset"
-                    >
-                      <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-emerald-800" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M6 18h8"></path>
-                        <path d="M3 22h18"></path>
-                        <path d="M14 22a7 7 0 1 0 0-14h-1"></path>
-                        <path d="M9 14h2"></path>
-                        <path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z"></path>
-                        <path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"></path>
-                      </svg>
-                      <span>RESEARCH LAB • ZONE R</span>
-                    </button>
-                    <!-- Small potted ficus plant in corner -->
-                    <div class="flex items-center" title="Tanaman Sudut Ficus">
-                      <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none">
-                        <path d="M7 14h10l-1.5 7h-7L7 14z" fill="#d97706" stroke="#b45309" stroke-width="1.2"/>
-                        <circle cx="12" cy="7" r="4" fill="#15803d"/>
-                        <circle cx="8" cy="9" r="3.5" fill="#22c55e"/>
-                        <circle cx="16" cy="9" r="3.5" fill="#16a34a"/>
-                      </svg>
-                    </div>
-                  </div>
-
-                  <!-- Physical Room Objects: Irwan Desk + Evidence Pinboard + File Cabinet -->
-                  <div class="relative z-10 flex-1 flex items-center justify-around py-2">
-                    
-                    <!-- Evidence Corkboard & Document Cabinet on Wall -->
-                    <div class="flex flex-col items-center space-y-2">
-                      <div class="w-20 h-26 bg-[#fef08a] border-2 border-[#ca8a04] rounded-xs p-1.5 flex flex-col justify-between shadow-md" title="Papan Bukti Riset & Standar SNI">
-                        <div class="text-[8px] font-mono font-black text-amber-950 text-center border-b border-amber-300 pb-0.5">SNI ARCHIVE</div>
-                        <div class="grid grid-cols-2 gap-1 justify-items-center py-1">
-                          <span class="w-3.5 h-3 bg-red-400 rounded-2xs inline-block shadow-2xs"></span>
-                          <span class="w-3.5 h-3 bg-blue-400 rounded-2xs inline-block shadow-2xs"></span>
-                          <span class="w-3.5 h-3 bg-emerald-400 rounded-2xs inline-block shadow-2xs"></span>
-                          <span class="w-3.5 h-3 bg-amber-400 rounded-2xs inline-block shadow-2xs"></span>
-                        </div>
-                        <div class="text-[7px] font-mono text-slate-700 font-bold text-center">EVIDENCE PACK</div>
-                      </div>
-                      <!-- Supporting File Cabinet -->
-                      <div class="w-14 h-9 bg-emerald-100 border border-emerald-400 rounded-2xs flex flex-col justify-around p-1 shadow-2xs">
-                        <div class="w-full h-2 bg-emerald-200 border border-emerald-300 rounded-2xs flex items-center justify-center">
-                          <span class="w-2 h-0.5 bg-emerald-700"></span>
-                        </div>
-                        <div class="w-full h-2 bg-emerald-200 border border-emerald-300 rounded-2xs flex items-center justify-center">
-                          <span class="w-2 h-0.5 bg-emerald-700"></span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Workstation: Irwan (Dual Monitor Research Console) -->
-                    <div class="flex flex-col items-center justify-center">
-                      <div class="relative flex flex-col items-center">
-                        <!-- Dual Monitors Setup -->
-                        <div class="relative z-10 flex items-center justify-center gap-1.5 mb-[-8px]">
-                          <div class="w-13 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-emerald-300 font-mono font-bold" title="Monitor SNI / Web Riset">
-                            SNI
-                          </div>
-                          <div class="w-13 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-teal-300 font-mono font-bold" title="Evidence Pack Compiler">
-                            PACK
+                            })()}
                           </div>
                         </div>
+                      </div>
 
-                        <!-- Heavy Technical Desk Block with Contact Shadow -->
-                        <div class="w-46 h-13 bg-[#dcfce7] border-2 border-[#16a34a] rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-3 relative z-0">
-                          <div class="w-18 h-3.5 bg-slate-300 rounded-2xs border border-slate-400"></div>
-                          <!-- Magnifying glass / notebook prop -->
-                          <div class="w-5 h-6 bg-white border border-emerald-400 rounded-2xs flex items-center justify-center">
-                            <span class="w-2 h-2 rounded-full border border-emerald-600"></span>
+                      <!-- Rina Desk (Review) -->
+                      <div class="col-span-5 flex flex-col items-center justify-center">
+                        <div class="relative flex flex-col items-center">
+                          <div class="relative z-10 flex items-center justify-center gap-1 mb-[-6px]">
+                            <div class="w-13 h-7 bg-slate-900 rounded-xs border border-slate-700 shadow-sm flex items-center justify-center text-[7px] text-emerald-300 font-mono font-bold" title="Monitor QA Review Rina">
+                              QA ✓
+                            </div>
+                            <div class="w-4 h-5 bg-white rounded-2xs border border-rose-400 shadow-2xs flex flex-col justify-around p-0.5">
+                              <span class="w-3 h-0.5 bg-rose-500 rounded-full"></span>
+                              <span class="w-2.5 h-0.5 bg-emerald-500 rounded-full"></span>
+                            </div>
                           </div>
-                          <div class="w-2.5 h-2.5 bg-emerald-300 rounded-full border border-emerald-500"></div>
-                        </div>
-
-                        <!-- Character Sitting at Desk -->
-                        <div class="relative z-10 mt-[-14px] flex flex-col items-center">
-                          {(() => {
-                            const irwan = getSpriteAtPos('research_main_desk');
-                            if (irwan) {
+                          <div class="w-34 h-12 bg-[#fde68a] border-2 border-[#d97706] rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-2 relative z-0">
+                            <div class="w-12 h-3 bg-slate-300 rounded-2xs border border-slate-400"></div>
+                            <div class="w-2.5 h-3.5 bg-slate-500 rounded-2xs"></div>
+                          </div>
+                          <div class="relative z-10 mt-[-12px] flex flex-col items-center">
+                            {(() => {
+                              const rina = getSpriteAtPos('editorial_review_desk');
+                              if (rina) {
+                                return (
+                                  <button
+                                    type="button"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    data-staff-inspect={rina.agent_id}
+                                    title={`${rina.display_name} • ${rina.role} (${rina.badge_text})`}
+                                  >
+                                    <div class="relative">
+                                      <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
+                                      <div class={`w-12 h-12 flex items-center justify-center pixel-avatar-box ${rina.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[rina.animation_key]?.css_animation_class || '') : ''}`}>
+                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                          <rect x="8" y="4" width="16" height="7" fill="#4c0519" />
+                                          <rect x="10" y="10" width="12" height="8" fill="#ffedd5" />
+                                          <rect x="11" y="12" width="4" height="2" fill="#be123c" />
+                                          <rect x="17" y="12" width="4" height="2" fill="#be123c" />
+                                          <rect x="15" y="13" width="2" height="1" fill="#be123c" />
+                                          <rect x="13" y="16" width="6" height="1" fill="#e11d48" />
+                                          <rect x="8" y="18" width="16" height="10" fill="#881337" />
+                                          <rect x="12" y="19" width="8" height="9" fill="#fdf2f8" />
+                                        </svg>
+                                      </div>
+                                      {rina.visual_mode === 'BLOCKED' && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center animate-ping">!</span>
+                                      )}
+                                      {rina.work_visual_state?.is_actively_working && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-indigo-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
+                                          {JOB_ANIMATION_REGISTRY[rina.animation_key]?.prop_icon || '✓'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                      {rina.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
                               return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={irwan.agent_id}
-                                  title={`${irwan.display_name} • ${irwan.role} (${irwan.badge_text})`}
-                                >
-                                  <div class="relative">
-                                    <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
-                                    <div class={`w-13 h-13 flex items-center justify-center pixel-avatar-box ${irwan.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[irwan.animation_key]?.css_animation_class || '') : ''}`}>
-                                      <svg viewBox="0 0 32 32" class="w-12 h-12 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                        <rect x="9" y="4" width="14" height="6" fill="#1e293b" />
-                                        <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                        <rect x="11" y="13" width="3" height="2" fill="#0f172a" />
-                                        <rect x="18" y="13" width="3" height="2" fill="#0f172a" />
-                                        <rect x="13" y="16" width="6" height="1" fill="#b45309" />
-                                        <rect x="8" y="18" width="16" height="10" fill="#0f766e" />
-                                        <rect x="13" y="19" width="6" height="9" fill="#ccfbf1" />
-                                      </svg>
-                                    </div>
-                                    {irwan.visual_mode === 'BLOCKED' && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
-                                    )}
-                                    {irwan.work_visual_state?.is_actively_working && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                                        {JOB_ANIMATION_REGISTRY[irwan.animation_key]?.prop_icon || '🔍'}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span class="text-[10px] font-outfit font-black text-slate-800 bg-white/95 px-2 py-0.5 rounded shadow-xs border border-slate-300 mt-1">
-                                    {irwan.display_name}
-                                  </span>
-                                </button>
+                                <div class="flex flex-col items-center" title="Meja Rina (Sedang di Lounge)">
+                                  <svg viewBox="0 0 24 24" class="w-7 h-7 text-amber-700" fill="none">
+                                    <rect x="6" y="3" width="12" height="9" rx="2" fill="#fde68a" stroke="#d97706" stroke-width="1.4"/>
+                                    <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#fef3c7" stroke="#d97706" stroke-width="1.4"/>
+                                    <path d="M12 17v4M8 21h8" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
+                                  </svg>
+                                  <span class="text-[8px] font-mono text-amber-900/60 italic font-semibold">Kosong</span>
+                                </div>
                               );
-                            }
-                            return (
-                              <div class="flex flex-col items-center" title="Konsol Irwan (Sedang di Lounge)">
-                                <svg viewBox="0 0 24 24" class="w-8 h-8 text-emerald-700" fill="none">
-                                  <rect x="6" y="3" width="12" height="9" rx="2" fill="#a7f3d0" stroke="#059669" stroke-width="1.4"/>
-                                  <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                                  <path d="M12 17v4M8 21h8" stroke="#047857" stroke-width="1.6" stroke-linecap="round"/>
-                                </svg>
-                                <span class="text-[9px] font-mono text-emerald-900/60 italic font-semibold mt-0.5">Kosong</span>
-                              </div>
-                            );
-                          })()}
+                            })()}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                )}
 
-                  <!-- Architectural Door Opening at Bottom -->
-                  <div class="relative z-10 flex justify-center -mb-4">
-                    <div class="w-16 h-3 bg-[#cbd5e1] border-x-2 border-slate-600 border-t border-slate-400 shadow-inner" title="Ambang Pintu Lab Riset"></div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <!-- CENTRAL CORRIDOR (ONE CONTINUOUS TRANSIT FLOOR SPACE) -->
-            <div class="bg-[#cbd5e1] py-3.5 px-6 relative flex items-center justify-between border-y-2 border-slate-500 shadow-inner select-none">
-              <!-- Tile Linoleum Texture -->
-              <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#94a3b830_1px,transparent_1px),linear-gradient(to_bottom,#94a3b830_1px,transparent_1px)] [background-size:24px_24px]"></div>
-
-              <!-- Corridor Left Decor: Water Dispenser & Fire Extinguisher -->
-              <div class="relative z-10 flex items-center gap-4">
-                <!-- Water Dispenser Primitive -->
-                <div class="flex items-center gap-2" title="Water Dispenser Lantai 1">
-                  <div class="w-5 h-11 bg-white border border-slate-400 rounded-2xs flex flex-col items-center justify-between p-1 shadow-xs">
-                    <div class="w-3.5 h-4 bg-cyan-400 rounded-full border border-cyan-600"></div>
-                    <div class="w-3 h-2 bg-slate-200 rounded-2xs flex items-center justify-around">
-                      <span class="w-0.5 h-1.5 bg-blue-500 inline-block"></span>
-                      <span class="w-0.5 h-1.5 bg-red-500 inline-block"></span>
+                <!-- 2. MEDIA OPERATIONS STUDIO (Level 2, Left) -->
+                {mediaRoom && (
+                  <div
+                    class="bg-[#fff7ed] p-3.5 relative flex flex-col justify-between min-h-[300px] flex-1 rounded-xs select-none shadow-inner"
+                    id="room-card-media_room"
+                  >
+                    <!-- Doorway on Right Wall Opening to Central Hall -->
+                    <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1.5 z-20 flex items-center" title="Ambang Pintu Studio Media (Menuju Koridor)">
+                      <div class="w-2.5 h-16 bg-[#cbd5e1] border-y-2 border-slate-600 shadow-inner"></div>
                     </div>
-                  </div>
-                  <!-- Wall Fire Extinguisher -->
-                  <div class="w-3 h-8 bg-rose-600 rounded-2xs border border-rose-800 flex items-center justify-center shadow-2xs" title="APAR Pemadam">
-                    <span class="w-1 h-1 bg-white rounded-full"></span>
-                  </div>
-                </div>
-                <div class="text-[10px] font-mono text-slate-600 font-bold">
-                  ◄ MEDIA & PUBLIKASI
-                </div>
-              </div>
 
-              <!-- Center Floor Floor Expansion Joint -->
-              <div class="relative z-10 flex items-center gap-2 opacity-60">
-                <span class="w-8 h-0.5 bg-slate-400"></span>
-                <span class="w-2 h-2 rounded-full border border-slate-400"></span>
-                <span class="w-8 h-0.5 bg-slate-400"></span>
-              </div>
-
-              <!-- Corridor Right Decor: Directional Sign & Corridor Plant -->
-              <div class="relative z-10 flex items-center gap-4">
-                <div class="text-[10px] font-mono text-slate-600 font-bold">
-                  TELEMETRI & LOUNGE ►
-                </div>
-                <!-- Large potted palm -->
-                <div class="flex items-center" title="Tanaman Koridor">
-                  <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none">
-                    <path d="M7 14h10l-1 8h-8L7 14z" fill="#d97706" stroke="#b45309" stroke-width="1.2"/>
-                    <circle cx="12" cy="7" r="4" fill="#15803d"/>
-                    <circle cx="8" cy="9" r="3.5" fill="#22c55e"/>
-                    <circle cx="16" cy="9" r="3.5" fill="#16a34a"/>
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <!-- MIDDLE WING: MEDIA LAB (LEFT) & ENGINEERING/TELEMETRY (RIGHT) -->
-            <div class="grid grid-cols-12 gap-1.5">
-              
-              <!-- ROOM 3: MEDIA OPERATIONS LAB (Col 1-6) -->
-              {mediaRoom && (
-                <div
-                  class="col-span-6 bg-[#fff7ed] p-4 relative flex flex-col justify-between min-h-[310px] rounded-xs select-none shadow-inner"
-                  id="room-card-media_room"
-                >
-                  <!-- Peach Floor Pattern -->
-                  <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#ea580c10_1px,transparent_1px),linear-gradient(to_bottom,#ea580c10_1px,transparent_1px)] [background-size:24px_24px] opacity-60"></div>
-
-                  <!-- Architectural Door Opening at Top -->
-                  <div class="relative z-10 flex justify-center -mt-4 mb-2">
-                    <div class="w-16 h-3 bg-[#cbd5e1] border-x-2 border-slate-600 border-b border-slate-400 shadow-inner" title="Ambang Pintu Studio Media"></div>
-                  </div>
-
-                  <!-- Small Physical Wall Sign -->
-                  <div class="relative z-10 flex items-center justify-between mb-2">
-                    <button
-                      type="button"
-                      class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-orange-100/90 border border-orange-300 text-[10px] font-mono font-black text-orange-950 tracking-wider hover:bg-orange-200 transition cursor-pointer shadow-2xs"
-                      data-room-inspect="media_room"
-                      title="Klik untuk inspeksi Studio Media"
-                    >
-                      <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-orange-800" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="9"></circle>
-                        <path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>
-                      </svg>
-                      <span>LOKAMEDIA STUDIO • ZONE M</span>
-                    </button>
-                    <!-- Audio/Headphones Rack & REC indicator -->
-                    <div class="flex items-center gap-2">
-                      <div class="w-6 h-5 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-[7px] text-orange-400 font-mono font-bold shadow-2xs" title="Studio Monitor">
+                    <!-- Plaque -->
+                    <div class="relative z-10 flex items-center justify-between">
+                      <button
+                        type="button"
+                        class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-orange-100/90 border border-orange-300 text-[10px] font-mono font-black text-orange-950 tracking-wider hover:bg-orange-200 transition cursor-pointer shadow-2xs"
+                        data-room-inspect="media_room"
+                        title="Klik untuk inspeksi Studio Media"
+                      >
+                        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-orange-800" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="9"></circle>
+                          <path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>
+                        </svg>
+                        <span>LOKAMEDIA STUDIO • ZONE M</span>
+                      </button>
+                      <div class="w-6 h-5 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-[7px] text-orange-400 font-mono font-bold shadow-2xs">
                         REC
                       </div>
                     </div>
-                  </div>
 
-                  <!-- Physical Room Objects: Media Console Desk + R2 Rack + Art Easel -->
-                  <div class="relative z-10 flex-1 flex items-center justify-around py-2">
-                    
-                    <!-- Cloudflare R2 Media Server Rack -->
-                    <div class="flex flex-col items-center space-y-1">
-                      <div class="w-16 h-28 bg-slate-800 rounded-xs border-2 border-slate-700 p-1.5 flex flex-col justify-between shadow-md" title="Cloudflare R2 Media Rack">
-                        <div class="h-5 bg-slate-900 rounded-2xs border border-slate-700 flex items-center justify-between px-1.5">
-                          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                          <span class="text-[7px] font-mono font-bold text-slate-300">R2-STORE</span>
-                        </div>
-                        <div class="h-5 bg-slate-900 rounded-2xs border border-slate-700 flex items-center justify-between px-1.5">
-                          <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-                          <span class="text-[7px] font-mono font-bold text-slate-300">WEBP-CONV</span>
-                        </div>
-                        <div class="h-5 bg-slate-900 rounded-2xs border border-slate-700 flex items-center justify-between px-1.5">
-                          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                          <span class="text-[7px] font-mono font-bold text-slate-300">DEV-ASSET</span>
-                        </div>
-                      </div>
-                      <span class="text-[8px] font-mono text-orange-950 font-bold">R2 Storage</span>
-                    </div>
-
-                    <!-- Workstation: Budi (Ultrawide Media Desk) -->
-                    <div class="flex flex-col items-center justify-center">
-                      <div class="relative flex flex-col items-center">
-                        <!-- Ultrawide Canvas Display -->
-                        <div class="relative z-10 flex items-center justify-center gap-2 mb-[-8px]">
-                          <div class="w-20 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[8px] text-orange-300 font-mono font-bold tracking-wider" title="Ultrawide Art Canvas Budi">
-                            CANVAS PRO
+                    <!-- Furniture: R2 Rack + Budi Desk + Easel -->
+                    <div class="relative z-10 flex-1 grid grid-cols-12 gap-2 items-center py-2">
+                      <!-- R2 Rack -->
+                      <div class="col-span-3 flex flex-col items-center space-y-1">
+                        <div class="w-14 h-26 bg-slate-800 rounded-xs border-2 border-slate-700 p-1 flex flex-col justify-between shadow-md">
+                          <div class="h-5 bg-slate-900 rounded-2xs border border-slate-700 flex items-center justify-between px-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-[6px] font-mono text-slate-300">R2</span>
                           </div>
-                          <!-- Stylus Stand / Palette -->
-                          <div class="w-4 h-6 bg-slate-800 rounded-2xs border border-slate-600 shadow-2xs flex flex-col items-center justify-around py-0.5" title="Stylus Tablet">
-                            <span class="w-1 h-3 bg-cyan-400 rounded-full"></span>
+                          <div class="h-5 bg-slate-900 rounded-2xs border border-slate-700 flex items-center justify-between px-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                            <span class="text-[6px] font-mono text-slate-300">IMG</span>
+                          </div>
+                          <div class="h-5 bg-slate-900 rounded-2xs border border-slate-700 flex items-center justify-between px-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                            <span class="text-[6px] font-mono text-slate-300">DEV</span>
                           </div>
                         </div>
-
-                        <!-- Studio Wooden Desk with Deep Surface -->
-                        <div class="w-48 h-13 bg-[#fed7aa] border-2 border-[#ea580c] rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-3 relative z-0">
-                          <div class="w-20 h-3.5 bg-slate-300 rounded-2xs border border-slate-400"></div>
-                          <!-- Color swatch cards -->
-                          <div class="flex gap-0.5">
-                            <span class="w-2 h-4 bg-orange-500 rounded-2xs"></span>
-                            <span class="w-2 h-4 bg-teal-500 rounded-2xs"></span>
-                          </div>
-                          <div class="w-2.5 h-2.5 bg-orange-300 rounded-full border border-orange-500"></div>
-                        </div>
-
-                        <!-- Character Sitting at Desk -->
-                        <div class="relative z-10 mt-[-14px] flex flex-col items-center">
-                          {(() => {
-                            const budi = getSpriteAtPos('media_console');
-                            if (budi) {
-                              return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={budi.agent_id}
-                                  title={`${budi.display_name} • ${budi.role} (${budi.badge_text})`}
-                                >
-                                  <div class="relative">
-                                    <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
-                                    <div class={`w-13 h-13 flex items-center justify-center pixel-avatar-box ${budi.visual_mode === 'DIMMED' ? 'opacity-60' : ''} ${budi.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[budi.animation_key]?.css_animation_class || '') : ''}`}>
-                                      <svg viewBox="0 0 32 32" class="w-12 h-12 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                        <rect x="6" y="9" width="3" height="6" fill="#ea580c" />
-                                        <rect x="23" y="9" width="3" height="6" fill="#ea580c" />
-                                        <rect x="8" y="7" width="16" height="2" fill="#ea580c" />
-                                        <rect x="9" y="5" width="14" height="5" fill="#334155" />
-                                        <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
-                                        <rect x="11" y="13" width="3" height="2" fill="#1e293b" />
-                                        <rect x="18" y="13" width="3" height="2" fill="#1e293b" />
-                                        <rect x="8" y="18" width="16" height="10" fill="#c2410c" />
-                                      </svg>
-                                    </div>
-                                    {budi.visual_mode === 'BLOCKED' && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
-                                    )}
-                                    {budi.work_visual_state?.is_actively_working && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                                        {JOB_ANIMATION_REGISTRY[budi.animation_key]?.prop_icon || '🎨'}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span class="text-[10px] font-outfit font-black text-slate-800 bg-white/95 px-2 py-0.5 rounded shadow-xs border border-slate-300 mt-1">
-                                    {budi.display_name}
-                                  </span>
-                                  {budi.visual_mode === 'DIMMED' && (
-                                    <span class="text-[7px] font-mono text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300 font-bold mt-0.5 shadow-2xs">
-                                      Worker Disabled
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            }
-                            return (
-                              <div class="flex flex-col items-center" title="Konsol Budi (Sedang di Lounge)">
-                                <svg viewBox="0 0 24 24" class="w-8 h-8 text-orange-700" fill="none">
-                                  <rect x="6" y="3" width="12" height="9" rx="2" fill="#fed7aa" stroke="#ea580c" stroke-width="1.4"/>
-                                  <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#ffedd5" stroke="#ea580c" stroke-width="1.4"/>
-                                  <path d="M12 17v4M8 21h8" stroke="#c2410c" stroke-width="1.6" stroke-linecap="round"/>
-                                </svg>
-                                <span class="text-[9px] font-mono text-orange-900/60 italic font-semibold mt-0.5">Kosong</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Art Studio Easel Stand -->
-                    <div class="flex flex-col items-center" title="Easel Sketsa & Moodboard Media">
-                      <svg viewBox="0 0 28 28" class="w-10 h-10" fill="none">
-                        <line x1="14" y1="2" x2="6" y2="26" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
-                        <line x1="14" y1="2" x2="22" y2="26" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
-                        <line x1="14" y1="2" x2="14" y2="25" stroke="#92400e" stroke-width="1.4" stroke-linecap="round"/>
-                        <rect x="4" y="6" width="20" height="13" rx="0.5" fill="#fff" stroke="#ea580c" stroke-width="1.4"/>
-                        <circle cx="9" cy="11" r="2" fill="#f97316"/>
-                        <circle cx="15" cy="13" r="2.5" fill="#3b82f6"/>
-                        <path d="M7 16l4-4 4 3 5-5" stroke="#10b981" stroke-width="1.4" stroke-linecap="round"/>
-                      </svg>
-                      <span class="text-[8px] font-mono text-orange-950 font-bold">Easel Sketsa</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <!-- ROOM 4: ENGINEERING & TELEMETRY LAB (Col 7-12) -->
-              {operationsRoom && (
-                <div
-                  class="col-span-6 bg-[#f1f5f9] p-4 relative flex flex-col justify-between min-h-[310px] rounded-xs select-none shadow-inner"
-                  id="room-card-operations_room"
-                >
-                  <!-- Technical Grid Pattern -->
-                  <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#3b82f610_1px,transparent_1px),linear-gradient(to_bottom,#3b82f610_1px,transparent_1px)] [background-size:24px_24px] opacity-60"></div>
-
-                  <!-- Architectural Door Opening at Top -->
-                  <div class="relative z-10 flex justify-center -mt-4 mb-2">
-                    <div class="w-16 h-3 bg-[#cbd5e1] border-x-2 border-slate-600 border-b border-slate-400 shadow-inner" title="Ambang Pintu Telemetri"></div>
-                  </div>
-
-                  <!-- Small Physical Wall Sign -->
-                  <div class="relative z-10 flex items-center justify-between mb-2">
-                    <button
-                      type="button"
-                      class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-blue-100/90 border border-blue-300 text-[10px] font-mono font-black text-blue-950 tracking-wider hover:bg-blue-200 transition cursor-pointer shadow-2xs"
-                      data-room-inspect="operations_room"
-                      title="Klik untuk inspeksi Ruang Telemetri & Engineering"
-                    >
-                      <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-blue-800" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="4 17 10 11 4 5"></polyline>
-                        <line x1="12" y1="19" x2="20" y2="19"></line>
-                      </svg>
-                      <span>OPERATIONS & JEV • ZONE O</span>
-                    </button>
-                    <!-- Small blinking diagnostic light -->
-                    <div class="flex items-center gap-1.5">
-                      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                      <span class="text-[9px] font-mono text-slate-600 font-bold">ONLINE</span>
-                    </div>
-                  </div>
-
-                  <!-- Physical Room Objects: Mainframe Server Rack + Dimas Console + CRT Monitor -->
-                  <div class="relative z-10 flex-1 flex items-center justify-around py-2">
-                    
-                    <!-- Server Mainframe Rack -->
-                    <div class="flex flex-col items-center space-y-1">
-                      <div class="w-18 h-28 bg-[#0f172a] rounded-xs border-2 border-blue-900 p-1.5 flex flex-col justify-between shadow-md" title="Server Rack Telemetri Cloudflare D1 & TypeSafe JEV">
-                        <div class="h-5 bg-slate-900 rounded-2xs border border-blue-900/60 flex items-center justify-between px-1.5">
-                          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                          <span class="text-[7px] font-mono font-bold text-blue-300">D1-PROD</span>
-                        </div>
-                        <div class="h-5 bg-slate-900 rounded-2xs border border-blue-900/60 flex items-center justify-between px-1.5">
-                          <span class="w-2 h-2 rounded-full bg-purple-400"></span>
-                          <span class="text-[7px] font-mono font-bold text-purple-300">JEV-SHADOW</span>
-                        </div>
-                        <div class="h-5 bg-slate-900 rounded-2xs border border-blue-900/60 flex items-center justify-between px-1.5">
-                          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-                          <span class="text-[7px] font-mono font-bold text-cyan-300">EDGE-RT</span>
-                        </div>
-                      </div>
-                      <span class="text-[8px] font-mono text-slate-800 font-bold">Mainframe Rack</span>
-                    </div>
-
-                    <!-- Workstation: Dimas (Triple Display Console) -->
-                    <div class="flex flex-col items-center justify-center">
-                      <div class="relative flex flex-col items-center">
-                        <!-- Dual Telemetry Displays -->
-                        <div class="relative z-10 flex items-center justify-center gap-1.5 mb-[-8px]">
-                          <div class="w-13 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-emerald-400 font-mono font-bold" title="Health Metrics">
-                            HEALTH
-                          </div>
-                          <div class="w-13 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-purple-400 font-mono font-bold" title="TypeSafe JEV (Shadow)">
-                            JEV
-                          </div>
-                        </div>
-
-                        <!-- Steel Blue Technical Desk with Contact Shadow -->
-                        <div class="w-46 h-13 bg-blue-100 border-2 border-blue-400 rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-3 relative z-0">
-                          <div class="w-18 h-3.5 bg-slate-300 rounded-2xs border border-slate-400"></div>
-                          <!-- Tech diagnostic port -->
-                          <div class="w-4 h-3 bg-slate-800 rounded-2xs flex items-center justify-center">
-                            <span class="w-1.5 h-1 bg-cyan-400"></span>
-                          </div>
-                          <div class="w-2.5 h-2.5 bg-blue-300 rounded-full border border-blue-500"></div>
-                        </div>
-
-                        <!-- Character Sitting at Desk -->
-                        <div class="relative z-10 mt-[-14px] flex flex-col items-center">
-                          {(() => {
-                            const dimas = getSpriteAtPos('operations_console');
-                            if (dimas) {
-                              return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={dimas.agent_id}
-                                  title={`${dimas.display_name} • ${dimas.role} (${dimas.badge_text})`}
-                                >
-                                  <div class="relative">
-                                    <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
-                                    <div class={`w-13 h-13 flex items-center justify-center pixel-avatar-box ${dimas.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[dimas.animation_key]?.css_animation_class || '') : ''}`}>
-                                      <svg viewBox="0 0 32 32" class="w-12 h-12 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                        <rect x="8" y="4" width="16" height="7" fill="#312e81" />
-                                        <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                        <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
-                                        <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
-                                        <rect x="13" y="16" width="6" height="1" fill="#4338ca" />
-                                        <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
-                                        <rect x="12" y="20" width="8" height="8" fill="#1e1b4b" />
-                                      </svg>
-                                    </div>
-                                    {dimas.visual_mode === 'BLOCKED' && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
-                                    )}
-                                    {dimas.work_visual_state?.is_actively_working && (
-                                      <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                                        {JOB_ANIMATION_REGISTRY[dimas.animation_key]?.prop_icon || '⚡'}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span class="text-[10px] font-outfit font-black text-slate-800 bg-white/95 px-2 py-0.5 rounded shadow-xs border border-slate-300 mt-1">
-                                    {dimas.display_name}
-                                  </span>
-                                </button>
-                              );
-                            }
-                            return (
-                              <div class="flex flex-col items-center" title="Konsol Dimas (Sedang di Lounge)">
-                                <svg viewBox="0 0 24 24" class="w-8 h-8 text-blue-700" fill="none">
-                                  <rect x="6" y="3" width="12" height="9" rx="2" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.4"/>
-                                  <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#dbeafe" stroke="#2563eb" stroke-width="1.4"/>
-                                  <path d="M12 17v4M8 21h8" stroke="#1d4ed8" stroke-width="1.6" stroke-linecap="round"/>
-                                </svg>
-                                <span class="text-[9px] font-mono text-blue-900/60 italic font-semibold mt-0.5">Kosong</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Diagnostic CRT Waveform Terminal -->
-                    <div class="flex flex-col items-center" title="Konsol Osiloskop & Diagnostik">
-                      <svg viewBox="0 0 28 28" class="w-10 h-10" fill="none">
-                        <rect x="3" y="4" width="22" height="18" rx="2" fill="#1e293b" stroke="#3b82f6" stroke-width="1.4"/>
-                        <rect x="5" y="6" width="18" height="11" rx="1" fill="#0f172a" stroke="#475569" stroke-width="1"/>
-                        <path d="M7 11h2l1.5-3 2.5 5 1.5-2.5h5" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                        <circle cx="8" cy="19" r="1" fill="#10b981"/>
-                        <circle cx="12" cy="19" r="1" fill="#f59e0b"/>
-                        <circle cx="16" cy="19" r="1" fill="#ef4444"/>
-                        <rect x="19" y="18" width="4" height="2" fill="#64748b"/>
-                      </svg>
-                      <span class="text-[8px] font-mono text-blue-950 font-bold">Osiloskop</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <!-- BOTTOM WING: PUBLICATION (LEFT) & EXECUTIVE LOUNGE (RIGHT) -->
-            <div class="grid grid-cols-12 gap-1.5">
-              
-              <!-- ROOM 5: PUBLICATION OPERATIONS (Col 1-4) -->
-              {publicationRoom && (
-                <div
-                  class="col-span-4 bg-[#f0fdfa] p-4 relative flex flex-col justify-between min-h-[320px] rounded-xs select-none shadow-inner"
-                  id="room-card-publication_room"
-                >
-                  <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#0d948810_1px,transparent_1px),linear-gradient(to_bottom,#0d948810_1px,transparent_1px)] [background-size:20px_20px] opacity-60"></div>
-
-                  <!-- Small Physical Wall Sign -->
-                  <div class="relative z-10 flex items-center justify-between mb-2">
-                    <button
-                      type="button"
-                      class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-teal-100/90 border border-teal-300 text-[10px] font-mono font-black text-teal-950 tracking-wider hover:bg-teal-200 transition cursor-pointer shadow-2xs"
-                      data-room-inspect="publication_room"
-                      title="Klik untuk inspeksi Konsol Publikasi"
-                    >
-                      <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-teal-800" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path>
-                        <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path>
-                        <circle cx="12" cy="12" r="2"></circle>
-                        <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path>
-                        <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"></path>
-                      </svg>
-                      <span>PUBLICATION • ZONE P</span>
-                    </button>
-                    <!-- Queue indicator -->
-                    <span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-                  </div>
-
-                  <!-- Physical Room Objects: Sari Dispatch Desk + Network Printer + Outbox Slot -->
-                  <div class="relative z-10 flex-1 flex flex-col items-center justify-around py-1">
-                    
-                    <!-- Dispatch Workstation -->
-                    <div class="relative flex flex-col items-center">
-                      <!-- Live Schedule & Gate Status Displays -->
-                      <div class="relative z-10 flex items-center justify-center gap-1.5 mb-[-8px]">
-                        <div class="w-14 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-teal-300 font-mono font-bold" title="Live Schedule Board">
-                          QUEUE
-                        </div>
-                        <div class="w-14 h-8 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-emerald-400 font-mono font-bold" title="Gate 13 Criteria">
-                          GATE 13
-                        </div>
+                        <span class="text-[8px] font-mono text-orange-950 font-bold">R2 Storage</span>
                       </div>
 
-                      <!-- Dispatch Console Desk Surface with Shadow -->
-                      <div class="w-46 h-13 bg-teal-100 border-2 border-teal-400 rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-3 relative z-0">
-                        <div class="w-18 h-3.5 bg-slate-300 rounded-2xs border border-slate-400"></div>
-                        <div class="w-4 h-5 bg-white border border-teal-400 rounded-2xs shadow-2xs"></div>
-                        <div class="w-2.5 h-2.5 bg-teal-300 rounded-full border border-teal-500"></div>
-                      </div>
-
-                      <!-- Character Sitting at Desk -->
-                      <div class="relative z-10 mt-[-14px] flex flex-col items-center">
-                        {(() => {
-                          const sari = getSpriteAtPos('publication_console');
-                          if (sari) {
-                            return (
-                              <button
-                                type="button"
-                                class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                data-staff-inspect={sari.agent_id}
-                                title={`${sari.display_name} • ${sari.role} (${sari.badge_text})`}
-                              >
-                                <div class="relative">
-                                  <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
-                                  <div class={`w-13 h-13 flex items-center justify-center pixel-avatar-box ${sari.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[sari.animation_key]?.css_animation_class || '') : ''}`}>
-                                    <svg viewBox="0 0 32 32" class="w-12 h-12 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                      <rect x="8" y="4" width="16" height="6" fill="#14532d" />
-                                      <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
-                                      <rect x="11" y="13" width="3" height="2" fill="#052e16" />
-                                      <rect x="18" y="13" width="3" height="2" fill="#052e16" />
-                                      <rect x="13" y="16" width="6" height="1" fill="#ca8a04" />
-                                      <rect x="8" y="18" width="16" height="10" fill="#15803d" />
-                                      <rect x="12" y="19" width="8" height="9" fill="#dcfce7" />
-                                    </svg>
-                                  </div>
-                                  {sari.visual_mode === 'BLOCKED' && (
-                                    <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center animate-ping">!</span>
-                                  )}
-                                  {sari.work_visual_state?.is_actively_working && (
-                                    <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-teal-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                                      {JOB_ANIMATION_REGISTRY[sari.animation_key]?.prop_icon || '📡'}
-                                    </span>
-                                  )}
-                                </div>
-                                <span class="text-[10px] font-outfit font-black text-slate-800 bg-white/95 px-2 py-0.5 rounded shadow-xs border border-slate-300 mt-1">
-                                  {sari.display_name}
-                                </span>
-                              </button>
-                            );
-                          }
-                          return (
-                            <div class="flex flex-col items-center" title="Konsol Sari (Sedang di Lounge)">
-                              <svg viewBox="0 0 24 24" class="w-8 h-8 text-teal-700" fill="none">
-                                <rect x="6" y="3" width="12" height="9" rx="2" fill="#99f6e4" stroke="#0d9488" stroke-width="1.4"/>
-                                <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#ccfbf1" stroke="#0d9488" stroke-width="1.4"/>
-                                <path d="M12 17v4M8 21h8" stroke="#0f766e" stroke-width="1.6" stroke-linecap="round"/>
-                              </svg>
-                              <span class="text-[9px] font-mono text-teal-900/60 italic font-semibold mt-0.5">Kosong</span>
+                      <!-- Budi Desk -->
+                      <div class="col-span-6 flex flex-col items-center justify-center">
+                        <div class="relative flex flex-col items-center">
+                          <div class="relative z-10 flex items-center justify-center gap-1.5 mb-[-7px]">
+                            <div class="w-18 h-7 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-orange-300 font-mono font-bold tracking-wider">
+                              CANVAS PRO
                             </div>
-                          );
-                        })()}
+                            <div class="w-3.5 h-5 bg-slate-800 rounded-2xs border border-slate-600 shadow-2xs"></div>
+                          </div>
+                          <div class="w-38 h-12 bg-[#fed7aa] border-2 border-[#ea580c] rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-2 relative z-0">
+                            <div class="w-16 h-3 bg-slate-300 rounded-2xs border border-slate-400"></div>
+                            <div class="flex gap-0.5">
+                              <span class="w-2 h-3.5 bg-orange-500 rounded-2xs"></span>
+                              <span class="w-2 h-3.5 bg-teal-500 rounded-2xs"></span>
+                            </div>
+                          </div>
+                          <div class="relative z-10 mt-[-12px] flex flex-col items-center">
+                            {(() => {
+                              const budi = getSpriteAtPos('media_console');
+                              if (budi) {
+                                return (
+                                  <button
+                                    type="button"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    data-staff-inspect={budi.agent_id}
+                                    title={`${budi.display_name} • ${budi.role} (${budi.badge_text})`}
+                                  >
+                                    <div class="relative">
+                                      <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
+                                      <div class={`w-12 h-12 flex items-center justify-center pixel-avatar-box ${budi.visual_mode === 'DIMMED' ? 'opacity-60' : ''} ${budi.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[budi.animation_key]?.css_animation_class || '') : ''}`}>
+                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                          <rect x="6" y="9" width="3" height="6" fill="#ea580c" />
+                                          <rect x="23" y="9" width="3" height="6" fill="#ea580c" />
+                                          <rect x="8" y="7" width="16" height="2" fill="#ea580c" />
+                                          <rect x="9" y="5" width="14" height="5" fill="#334155" />
+                                          <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
+                                          <rect x="11" y="13" width="3" height="2" fill="#1e293b" />
+                                          <rect x="18" y="13" width="3" height="2" fill="#1e293b" />
+                                          <rect x="8" y="18" width="16" height="10" fill="#c2410c" />
+                                        </svg>
+                                      </div>
+                                      {budi.visual_mode === 'BLOCKED' && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center animate-ping">!</span>
+                                      )}
+                                      {budi.work_visual_state?.is_actively_working && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-orange-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
+                                          {JOB_ANIMATION_REGISTRY[budi.animation_key]?.prop_icon || '🎨'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                      {budi.display_name}
+                                    </span>
+                                    {budi.visual_mode === 'DIMMED' && (
+                                      <span class="text-[7px] font-mono text-amber-800 bg-amber-100 px-1 py-0.2 rounded border border-amber-300 font-bold mt-0.5">
+                                        Worker Disabled
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div class="flex flex-col items-center" title="Konsol Budi (Sedang di Lounge)">
+                                  <svg viewBox="0 0 24 24" class="w-7 h-7 text-orange-700" fill="none">
+                                    <rect x="6" y="3" width="12" height="9" rx="2" fill="#fed7aa" stroke="#ea580c" stroke-width="1.4"/>
+                                    <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#ffedd5" stroke="#ea580c" stroke-width="1.4"/>
+                                    <path d="M12 17v4M8 21h8" stroke="#c2410c" stroke-width="1.6" stroke-linecap="round"/>
+                                  </svg>
+                                  <span class="text-[8px] font-mono text-orange-900/60 italic font-semibold">Kosong</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Easel on Right -->
+                      <div class="col-span-3 flex flex-col items-center justify-center" title="Easel Sketsa">
+                        <svg viewBox="0 0 28 28" class="w-9 h-9" fill="none">
+                          <line x1="14" y1="2" x2="6" y2="26" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
+                          <line x1="14" y1="2" x2="22" y2="26" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
+                          <line x1="14" y1="2" x2="14" y2="25" stroke="#92400e" stroke-width="1.4" stroke-linecap="round"/>
+                          <rect x="4" y="6" width="20" height="13" rx="0.5" fill="#fff" stroke="#ea580c" stroke-width="1.4"/>
+                          <circle cx="9" cy="11" r="2" fill="#f97316"/>
+                          <circle cx="15" cy="13" r="2.5" fill="#3b82f6"/>
+                        </svg>
+                        <span class="text-[8px] font-mono text-orange-950 font-bold">Easel</span>
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    <!-- Supporting Environmental Objects: Network Printer & Outbox Rack -->
-                    <div class="flex items-center justify-center gap-4 mt-2">
-                      <!-- Network Printer with Tray -->
-                      <div class="flex items-center gap-1.5" title="Printer Manuskrip & Rilis Berita">
-                        <div class="w-12 h-8 bg-white border border-teal-500 rounded-2xs flex flex-col justify-between p-1 shadow-xs">
+                <!-- 3. PUBLICATION OPERATIONS (Level 3, Left) -->
+                {publicationRoom && (
+                  <div
+                    class="bg-[#f0fdfa] p-3.5 relative flex flex-col justify-between min-h-[300px] flex-1 rounded-xs select-none shadow-inner"
+                    id="room-card-publication_room"
+                  >
+                    <!-- Doorway on Right Wall Opening to Central Hall -->
+                    <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1.5 z-20 flex items-center" title="Ambang Pintu Publikasi (Menuju Koridor)">
+                      <div class="w-2.5 h-16 bg-[#cbd5e1] border-y-2 border-slate-600 shadow-inner"></div>
+                    </div>
+
+                    <!-- Plaque -->
+                    <div class="relative z-10 flex items-center justify-between">
+                      <button
+                        type="button"
+                        class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-teal-100/90 border border-teal-300 text-[10px] font-mono font-black text-teal-950 tracking-wider hover:bg-teal-200 transition cursor-pointer shadow-2xs"
+                        data-room-inspect="publication_room"
+                        title="Klik untuk inspeksi Konsol Publikasi"
+                      >
+                        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-teal-800" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path>
+                          <circle cx="12" cy="12" r="2"></circle>
+                          <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"></path>
+                        </svg>
+                        <span>PUBLICATION • ZONE P</span>
+                      </button>
+                      <span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+                    </div>
+
+                    <!-- Furniture: Printer + Sari Dispatch Desk -->
+                    <div class="relative z-10 flex-1 grid grid-cols-12 gap-2 items-center py-2">
+                      <!-- Printer on Left -->
+                      <div class="col-span-4 flex flex-col items-center space-y-1" title="Printer Manuskrip">
+                        <div class="w-13 h-9 bg-white border-2 border-teal-500 rounded-2xs flex flex-col justify-between p-1 shadow-sm">
                           <div class="w-full h-1 bg-slate-200 border-b border-slate-300"></div>
                           <div class="flex items-center justify-between">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             <span class="text-[6px] font-mono text-teal-800 font-bold">PRINT</span>
                           </div>
                         </div>
-                        <span class="text-[8px] font-mono text-teal-900 font-bold">Printer</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Doorway gap -->
-                  <div class="relative z-10 flex justify-center -mb-4">
-                    <div class="w-14 h-3 bg-[#cbd5e1] border-x-2 border-slate-600 border-t border-slate-400 shadow-inner"></div>
-                  </div>
-                </div>
-              )}
-
-              <!-- ROOM 6: EXECUTIVE LOUNGE (Col 5-12) — REAL PHYSICAL LIVING ROOM WITH UPHOLSTERED SEATING -->
-              {loungeRoom && (
-                <div
-                  class="col-span-8 bg-[#faf8f5] p-4 relative flex flex-col justify-between min-h-[320px] rounded-xs select-none shadow-inner"
-                  id="room-card-lounge"
-                >
-                  <!-- Sandstone Floor Herringbone Pattern -->
-                  <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(#d6d3d1_1px,transparent_1px)] [background-size:20px_20px] opacity-50"></div>
-
-                  <!-- Small Physical Wall Sign & Decor -->
-                  <div class="relative z-10 flex items-center justify-between mb-2">
-                    <button
-                      type="button"
-                      class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-100/90 border border-amber-300 text-[10px] font-mono font-black text-amber-950 tracking-wider hover:bg-amber-200 transition cursor-pointer shadow-2xs"
-                      data-room-inspect="lounge"
-                      title="Klik untuk inspeksi Executive Lounge"
-                    >
-                      <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-stone-800" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 8h1a4 4 0 1 1 0 8h-1"></path>
-                        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path>
-                        <line x1="6" y1="2" x2="6" y2="4"></line>
-                        <line x1="10" y1="2" x2="10" y2="4"></line>
-                        <line x1="14" y1="2" x2="14" y2="4"></line>
-                      </svg>
-                      <span>EXECUTIVE LOUNGE • ZONE L</span>
-                    </button>
-
-                    <!-- Corner Plants -->
-                    <div class="flex items-center gap-3">
-                      <!-- Snake plant in ceramic pot -->
-                      <div class="flex items-center" title="Snake Plant">
-                        <svg viewBox="0 0 20 20" class="w-6 h-6" fill="none">
-                          <path d="M6 13h8l-1 6h-6L6 13z" fill="#78716c" stroke="#57534e" stroke-width="1"/>
-                          <path d="M8 13V5l2-2 2 2v8" stroke="#15803d" stroke-width="1.8" stroke-linecap="round"/>
-                          <path d="M10 13V3l1.5-1 1.5 1v10" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                      </div>
-                      <!-- Monstera plant in corner -->
-                      <div class="flex items-center" title="Monstera Deliciosa">
-                        <svg viewBox="0 0 24 24" class="w-8 h-8" fill="none">
-                          <path d="M7 14h10l-1.5 7h-7L7 14z" fill="#d97706" stroke="#b45309" stroke-width="1.2"/>
-                          <circle cx="12" cy="7" r="4" fill="#15803d" stroke="#166534" stroke-width="1"/>
-                          <circle cx="8" cy="9" r="3.5" fill="#22c55e" stroke="#166534" stroke-width="1"/>
-                          <circle cx="16" cy="9" r="3.5" fill="#16a34a" stroke="#166534" stroke-width="1"/>
-                          <circle cx="12" cy="10" r="2.5" fill="#4ade80"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Lounge Interior: Deep Woven Area Rug + Upholstered Sofas around Central Table -->
-                  <div class="relative z-10 flex-1 flex flex-col justify-center py-2 px-2">
-                    
-                    <!-- Warm Woven Area Rug Surface (Enlarged with fringe) -->
-                    <div class="relative bg-[#fef3c7]/65 border-2 border-amber-300/80 rounded-2xl p-4 shadow-sm flex flex-col items-center justify-between min-h-[220px]">
-                      
-                      <!-- TOP ROW: 2-SEATER PLUSH SOFA (Accommodating Seat 1 and Seat 2) -->
-                      <div class="relative flex items-center justify-center gap-6 z-10 mb-2">
-                        
-                        <!-- Back Cushion Framing for 2-Seater Couch -->
-                        <div class="absolute -top-2 inset-x-[-12px] h-14 bg-[#b45309] rounded-t-xl -z-10 shadow-md border-2 border-[#78350f]"></div>
-
-                        <!-- Seat 1 -->
-                        <div class="flex flex-col items-center">
-                          {(() => {
-                            const spr1 = getSpriteAtPos('lounge_seat_1');
-                            if (spr1) {
-                              return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={spr1.agent_id}
-                                  title={`${spr1.display_name} • Bersantai di Sofa Lounge`}
-                                >
-                                  <div class="relative">
-                                    <div class="w-13 h-13 flex items-center justify-center pixel-avatar-box">
-                                      {(spr1.avatar_key === 'editorial_writer_01' || spr1.avatar_key === 'avatar_joko') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
-                                          <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
-                                          <rect x="10" y="12" width="4" height="2" fill="#1e293b" />
-                                          <rect x="18" y="12" width="4" height="2" fill="#1e293b" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#78350f" />
-                                        </svg>
-                                      )}
-                                      {(spr1.avatar_key === 'editorial_qa_01' || spr1.avatar_key === 'avatar_rina') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="8" y="4" width="16" height="7" fill="#4c0519" />
-                                          <rect x="10" y="10" width="12" height="8" fill="#ffedd5" />
-                                          <rect x="11" y="12" width="4" height="2" fill="#be123c" />
-                                          <rect x="17" y="12" width="4" height="2" fill="#be123c" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#881337" />
-                                        </svg>
-                                      )}
-                                      {(spr1.avatar_key === 'research_evidence_01' || spr1.avatar_key === 'avatar_irwan') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="9" y="4" width="14" height="6" fill="#1e293b" />
-                                          <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                          <rect x="11" y="13" width="3" height="2" fill="#0f172a" />
-                                          <rect x="18" y="13" width="3" height="2" fill="#0f172a" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#0f766e" />
-                                        </svg>
-                                      )}
-                                      {(spr1.avatar_key === 'media_ops_01' || spr1.avatar_key === 'avatar_budi') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="6" y="9" width="3" height="6" fill="#ea580c" />
-                                          <rect x="23" y="9" width="3" height="6" fill="#ea580c" />
-                                          <rect x="9" y="5" width="14" height="5" fill="#334155" />
-                                          <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#c2410c" />
-                                        </svg>
-                                      )}
-                                      {(spr1.avatar_key === 'publication_ops_01' || spr1.avatar_key === 'avatar_sari') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="8" y="4" width="16" height="6" fill="#14532d" />
-                                          <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
-                                          <rect x="11" y="13" width="3" height="2" fill="#052e16" />
-                                          <rect x="18" y="13" width="3" height="2" fill="#052e16" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#15803d" />
-                                        </svg>
-                                      )}
-                                      {(spr1.avatar_key === 'telemetry_01' || spr1.avatar_key === 'avatar_dimas') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="8" y="4" width="16" height="7" fill="#312e81" />
-                                          <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                          <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
-                                          <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
-                                        </svg>
-                                      )}
-                                    </div>
-                                    <!-- Mini Coffee Cup Prop -->
-                                    <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center shadow-2xs">
-                                      <svg viewBox="0 0 16 16" class="w-2.5 h-2.5 text-amber-800" fill="none">
-                                        <rect x="3" y="4" width="7" height="8" rx="1" fill="#fff" stroke="currentColor" stroke-width="1"/>
-                                        <path d="M10 6h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2" stroke="currentColor" stroke-width="1"/>
-                                      </svg>
-                                    </span>
-                                  </div>
-                                  <span class="text-[10px] font-outfit font-black text-slate-800 bg-white/95 px-2 py-0.5 rounded shadow-xs border border-slate-300 mt-1">
-                                    {spr1.display_name}
-                                  </span>
-                                </button>
-                              );
-                            }
-                            return (
-                              <div class="flex flex-col items-center" title="Sofa Kiri Tersedia">
-                                <div class="w-14 h-10 bg-[#d97706] rounded-md border border-[#92400e] flex items-center justify-center shadow-inner">
-                                  <span class="text-[8px] font-mono text-amber-100 font-bold">Sofa 1</span>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-
-                        <!-- Seat 2 -->
-                        <div class="flex flex-col items-center">
-                          {(() => {
-                            const spr2 = getSpriteAtPos('lounge_seat_2');
-                            if (spr2) {
-                              return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={spr2.agent_id}
-                                  title={`${spr2.display_name} • Bersantai di Sofa Lounge`}
-                                >
-                                  <div class="relative">
-                                    <div class="w-13 h-13 flex items-center justify-center pixel-avatar-box">
-                                      {(spr2.avatar_key === 'editorial_writer_01' || spr2.avatar_key === 'avatar_joko') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
-                                          <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
-                                          <rect x="10" y="12" width="4" height="2" fill="#1e293b" />
-                                          <rect x="18" y="12" width="4" height="2" fill="#1e293b" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#78350f" />
-                                        </svg>
-                                      )}
-                                      {(spr2.avatar_key === 'editorial_qa_01' || spr2.avatar_key === 'avatar_rina') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="8" y="4" width="16" height="7" fill="#4c0519" />
-                                          <rect x="10" y="10" width="12" height="8" fill="#ffedd5" />
-                                          <rect x="11" y="12" width="4" height="2" fill="#be123c" />
-                                          <rect x="17" y="12" width="4" height="2" fill="#be123c" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#881337" />
-                                        </svg>
-                                      )}
-                                      {(spr2.avatar_key === 'research_evidence_01' || spr2.avatar_key === 'avatar_irwan') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="9" y="4" width="14" height="6" fill="#1e293b" />
-                                          <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                          <rect x="11" y="13" width="3" height="2" fill="#0f172a" />
-                                          <rect x="18" y="13" width="3" height="2" fill="#0f172a" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#0f766e" />
-                                        </svg>
-                                      )}
-                                      {(spr2.avatar_key === 'media_ops_01' || spr2.avatar_key === 'avatar_budi') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="6" y="9" width="3" height="6" fill="#ea580c" />
-                                          <rect x="23" y="9" width="3" height="6" fill="#ea580c" />
-                                          <rect x="9" y="5" width="14" height="5" fill="#334155" />
-                                          <rect x="9" y="10" width="14" height="8" fill="#fcd34d" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#c2410c" />
-                                        </svg>
-                                      )}
-                                      {(spr2.avatar_key === 'publication_ops_01' || spr2.avatar_key === 'avatar_sari') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="8" y="4" width="16" height="6" fill="#14532d" />
-                                          <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
-                                          <rect x="11" y="13" width="3" height="2" fill="#052e16" />
-                                          <rect x="18" y="13" width="3" height="2" fill="#052e16" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#15803d" />
-                                        </svg>
-                                      )}
-                                      {(spr2.avatar_key === 'telemetry_01' || spr2.avatar_key === 'avatar_dimas') && (
-                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                          <rect x="8" y="4" width="16" height="7" fill="#312e81" />
-                                          <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                          <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
-                                          <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
-                                          <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
-                                        </svg>
-                                      )}
-                                    </div>
-                                    <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center shadow-2xs">
-                                      <svg viewBox="0 0 16 16" class="w-2.5 h-2.5 text-amber-800" fill="none">
-                                        <rect x="3" y="4" width="7" height="8" rx="1" fill="#fff" stroke="currentColor" stroke-width="1"/>
-                                        <path d="M10 6h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2" stroke="currentColor" stroke-width="1"/>
-                                      </svg>
-                                    </span>
-                                  </div>
-                                  <span class="text-[10px] font-outfit font-black text-slate-800 bg-white/95 px-2 py-0.5 rounded shadow-xs border border-slate-300 mt-1">
-                                    {spr2.display_name}
-                                  </span>
-                                </button>
-                              );
-                            }
-                            return (
-                              <div class="flex flex-col items-center" title="Sofa Kanan Tersedia">
-                                <div class="w-14 h-10 bg-[#d97706] rounded-md border border-[#92400e] flex items-center justify-center shadow-inner">
-                                  <span class="text-[8px] font-mono text-amber-100 font-bold">Sofa 2</span>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
+                        <span class="text-[8px] font-mono text-teal-950 font-bold">Printer Rilis</span>
                       </div>
 
-                      <!-- MIDDLE: CENTRAL LOW COFFEE TABLE FLANKED BY ARMCHAIRS (Seat 3 & Seat 4) -->
-                      <div class="w-full flex items-center justify-between gap-3 z-10 my-2">
-                        
-                        <!-- Left Upholstered Armchair (Seat 3) -->
-                        <div class="flex flex-col items-center">
-                          {(() => {
-                            const spr3 = getSpriteAtPos('lounge_seat_3');
-                            if (spr3) {
-                              return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={spr3.agent_id}
-                                  title={`${spr3.display_name} • Di Kursi Lounge Barat`}
-                                >
-                                  <div class="relative">
-                                    <div class="absolute -top-1 -inset-x-2 h-11 bg-[#b45309] rounded-t-lg -z-10 shadow-sm border border-[#78350f]"></div>
-                                    <div class="w-12 h-12 flex items-center justify-center pixel-avatar-box">
-                                      <svg viewBox="0 0 32 32" class="w-10 h-10 pixelated drop-shadow-sm" shape-rendering="crispEdges">
-                                        <rect x="8" y="4" width="16" height="7" fill="#312e81" />
-                                        <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
-                                        <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                  <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-2xs border border-slate-300 mt-0.5">
-                                    {spr3.display_name}
-                                  </span>
-                                </button>
-                              );
-                            }
-                            return (
-                              <div class="flex flex-col items-center" title="Armchair Barat">
-                                <svg viewBox="0 0 30 26" class="w-9 h-8 text-amber-700" fill="none">
-                                  <rect x="4" y="2" width="22" height="13" rx="2.5" fill="#d97706" stroke="#92400e" stroke-width="1.3"/>
-                                  <rect x="6" y="9" width="18" height="11" rx="1.5" fill="#fbbf24" stroke="#b45309" stroke-width="1.3"/>
-                                  <rect x="2" y="7" width="5.5" height="13" rx="1.5" fill="#b45309" stroke="#78350f" stroke-width="1.3"/>
-                                  <rect x="22.5" y="7" width="5.5" height="13" rx="1.5" fill="#b45309" stroke="#78350f" stroke-width="1.3"/>
-                                  <line x1="5" y1="21" x2="4" y2="24" stroke="#78350f" stroke-width="1.5" stroke-linecap="round"/>
-                                  <line x1="25" y1="21" x2="26" y2="24" stroke="#78350f" stroke-width="1.5" stroke-linecap="round"/>
-                                </svg>
-                                <span class="text-[8px] font-mono text-stone-500 font-bold mt-0.5">Armchair W</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-
-                        <!-- Center Low Wooden Coffee Table with Magazines & Espresso Carafe -->
-                        <div class="flex-1 max-w-[280px] bg-[#fde68a] border-2 border-amber-500 rounded-sm py-2 px-3 flex items-center justify-between shadow-md">
-                          <div class="flex items-center gap-2">
-                            <!-- Coffee Carafe -->
-                            <svg viewBox="0 0 20 20" class="w-5 h-5 text-amber-900" fill="none">
-                              <rect x="4" y="6" width="9" height="10" rx="1" fill="#fff" stroke="#b45309" stroke-width="1.4"/>
-                              <path d="M13 8h2a1.5 1.5 0 0 1 1.5 1.5v3A1.5 1.5 0 0 1 15 14h-2" stroke="#b45309" stroke-width="1.4"/>
-                            </svg>
-                            <!-- Architectural Journals / Open Spread -->
-                            <div class="flex flex-col">
-                              <span class="text-[9px] font-outfit font-black text-amber-950">Meja Espresso & Riset Arsitektur</span>
-                              <span class="text-[7px] font-mono text-amber-800">Majalah RancangLoka • Edisi 2026</span>
+                      <!-- Sari Desk -->
+                      <div class="col-span-8 flex flex-col items-center justify-center">
+                        <div class="relative flex flex-col items-center">
+                          <div class="relative z-10 flex items-center justify-center gap-1.5 mb-[-7px]">
+                            <div class="w-13 h-7 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-teal-300 font-mono font-bold">
+                              QUEUE
+                            </div>
+                            <div class="w-13 h-7 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-emerald-400 font-mono font-bold">
+                              GATE 13
                             </div>
                           </div>
-                          <!-- Dual Espresso Cups -->
-                          <div class="flex gap-1">
-                            <span class="w-2.5 h-3 bg-white border border-amber-700 rounded-2xs shadow-2xs"></span>
-                            <span class="w-2.5 h-3 bg-white border border-amber-700 rounded-2xs shadow-2xs"></span>
+                          <div class="w-40 h-12 bg-teal-100 border-2 border-teal-400 rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-2 relative z-0">
+                            <div class="w-16 h-3 bg-slate-300 rounded-2xs border border-slate-400"></div>
+                            <div class="w-3.5 h-4.5 bg-white border border-teal-400 rounded-2xs"></div>
+                          </div>
+                          <div class="relative z-10 mt-[-12px] flex flex-col items-center">
+                            {(() => {
+                              const sari = getSpriteAtPos('publication_console');
+                              if (sari) {
+                                return (
+                                  <button
+                                    type="button"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    data-staff-inspect={sari.agent_id}
+                                    title={`${sari.display_name} • ${sari.role} (${sari.badge_text})`}
+                                  >
+                                    <div class="relative">
+                                      <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
+                                      <div class={`w-12 h-12 flex items-center justify-center pixel-avatar-box ${sari.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[sari.animation_key]?.css_animation_class || '') : ''}`}>
+                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                          <rect x="8" y="4" width="16" height="6" fill="#14532d" />
+                                          <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
+                                          <rect x="11" y="13" width="3" height="2" fill="#052e16" />
+                                          <rect x="18" y="13" width="3" height="2" fill="#052e16" />
+                                          <rect x="13" y="16" width="6" height="1" fill="#ca8a04" />
+                                          <rect x="8" y="18" width="16" height="10" fill="#15803d" />
+                                          <rect x="12" y="19" width="8" height="9" fill="#dcfce7" />
+                                        </svg>
+                                      </div>
+                                      {sari.visual_mode === 'BLOCKED' && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center animate-ping">!</span>
+                                      )}
+                                      {sari.work_visual_state?.is_actively_working && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-teal-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
+                                          {JOB_ANIMATION_REGISTRY[sari.animation_key]?.prop_icon || '📡'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                      {sari.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div class="flex flex-col items-center" title="Konsol Sari (Sedang di Lounge)">
+                                  <svg viewBox="0 0 24 24" class="w-7 h-7 text-teal-700" fill="none">
+                                    <rect x="6" y="3" width="12" height="9" rx="2" fill="#99f6e4" stroke="#0d9488" stroke-width="1.4"/>
+                                    <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#ccfbf1" stroke="#0d9488" stroke-width="1.4"/>
+                                    <path d="M12 17v4M8 21h8" stroke="#0f766e" stroke-width="1.6" stroke-linecap="round"/>
+                                  </svg>
+                                  <span class="text-[8px] font-mono text-teal-900/60 italic font-semibold">Kosong</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              <!-- CENTRAL VERTICAL HALLWAY (PRIMARY CIRCULATION SPINE) -->
+              <div class="bg-[#cbd5e1] rounded-xs border-x-2 border-slate-500 shadow-inner relative flex flex-col justify-between py-4 px-2 select-none h-full min-h-[920px]">
+                <!-- Tile Linoleum Texture -->
+                <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#94a3b830_1px,transparent_1px),linear-gradient(to_bottom,#94a3b830_1px,transparent_1px)] [background-size:24px_24px]"></div>
+
+                <!-- TOP SEGMENT (Level 1: Between Editorial & Research) -->
+                <div class="relative z-10 flex flex-col items-center space-y-3 pt-2">
+                  <!-- Hallway Wall Clock -->
+                  <div class="w-6 h-6 rounded-full border-2 border-slate-500 bg-white flex items-center justify-center shadow-xs" title="Jam Dinding Koridor Utama">
+                    <div class="w-2.5 h-2.5 border-r-2 border-b-2 border-slate-800"></div>
+                  </div>
+                  <!-- Bulletin / Notice Board -->
+                  <div class="w-28 h-9 bg-[#fef08a] border-2 border-[#ca8a04] rounded-2xs p-1 flex items-center justify-around shadow-xs" title="Papan Pengumuman Redaksi">
+                    <span class="w-2.5 h-3.5 bg-rose-400 rounded-2xs inline-block rotate-3"></span>
+                    <span class="w-3 h-3 bg-sky-400 rounded-2xs inline-block -rotate-6"></span>
+                    <span class="w-3 h-3.5 bg-emerald-400 rounded-2xs inline-block rotate-2"></span>
+                  </div>
+                  <!-- Direction indicator for Level 1 -->
+                  <div class="text-[8px] font-mono uppercase font-black text-slate-600 tracking-wider">
+                    ◄ EDITORIAL | RISET ►
+                  </div>
+                </div>
+
+                <!-- MIDDLE SEGMENT (Level 2: Between Media & Operations) -->
+                <div class="relative z-10 flex flex-col items-center space-y-3 py-6">
+                  <!-- Water Dispenser & APAR fire extinguisher -->
+                  <div class="flex items-center gap-3">
+                    <!-- Water Dispenser -->
+                    <div class="w-5 h-11 bg-white border-2 border-slate-400 rounded-2xs flex flex-col items-center justify-between p-1 shadow-sm" title="Water Dispenser Koridor">
+                      <div class="w-3.5 h-4 bg-cyan-400 rounded-full border border-cyan-600"></div>
+                      <div class="w-3 h-2 bg-slate-200 rounded-2xs flex items-center justify-around">
+                        <span class="w-0.5 h-1.5 bg-blue-500 inline-block"></span>
+                        <span class="w-0.5 h-1.5 bg-red-500 inline-block"></span>
+                      </div>
+                    </div>
+                    <!-- Fire Extinguisher -->
+                    <div class="w-3 h-8 bg-rose-600 rounded-2xs border border-rose-800 flex items-center justify-center shadow-xs" title="APAR Pemadam Koridor">
+                      <span class="w-1 h-1 bg-white rounded-full"></span>
+                    </div>
+                  </div>
+                  <!-- Direction indicator for Level 2 -->
+                  <div class="text-[8px] font-mono uppercase font-black text-slate-600 tracking-wider">
+                    ◄ MEDIA | TELEMETRI ►
+                  </div>
+                </div>
+
+                <!-- BOTTOM SEGMENT (Level 3: Between Publication & Executive Lounge) -->
+                <div class="relative z-10 flex flex-col items-center space-y-3 pb-2">
+                  <!-- Floor Palm Plant -->
+                  <div class="flex items-center" title="Palem Koridor">
+                    <svg viewBox="0 0 24 24" class="w-8 h-8" fill="none">
+                      <path d="M7 14h10l-1 8h-8L7 14z" fill="#d97706" stroke="#b45309" stroke-width="1.2"/>
+                      <circle cx="12" cy="7" r="4" fill="#15803d"/>
+                      <circle cx="8" cy="9" r="3.5" fill="#22c55e"/>
+                      <circle cx="16" cy="9" r="3.5" fill="#16a34a"/>
+                    </svg>
+                  </div>
+                  <!-- Direction indicator for Level 3 -->
+                  <div class="text-[8px] font-mono uppercase font-black text-slate-600 tracking-wider">
+                    ◄ PUBLIKASI | LOUNGE ►
+                  </div>
+                  <!-- Down Arrow to Zone S -->
+                  <div class="flex items-center gap-1 text-[8px] font-mono text-purple-900 font-bold bg-purple-100/90 border border-purple-300 px-2 py-0.5 rounded shadow-2xs">
+                    <span>▼ AKSES ZONE S</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT WING: 3 DEPARTMENTS (RESEARCH, OPERATIONS, LOUNGE) -->
+              <div class="flex flex-col gap-1.5 justify-between">
+                
+                <!-- 1. RESEARCH & EVIDENCE LAB (Level 1, Right) -->
+                {researchRoom && (
+                  <div
+                    class="bg-[#f0fdf4] p-3.5 relative flex flex-col justify-between min-h-[300px] flex-1 rounded-xs select-none shadow-inner"
+                    id="room-card-research_lab"
+                  >
+                    <!-- Doorway on Left Wall Opening to Central Hall -->
+                    <div class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 z-20 flex items-center" title="Ambang Pintu Lab Riset (Menuju Koridor)">
+                      <div class="w-2.5 h-16 bg-[#cbd5e1] border-y-2 border-slate-600 shadow-inner"></div>
+                    </div>
+
+                    <!-- Plaque & Plant -->
+                    <div class="relative z-10 flex items-center justify-between">
+                      <button
+                        type="button"
+                        class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-100/90 border border-emerald-300 text-[10px] font-mono font-black text-emerald-950 tracking-wider hover:bg-emerald-200 transition cursor-pointer shadow-2xs"
+                        data-room-inspect="research_lab"
+                        title="Klik untuk inspeksi Lab Riset"
+                      >
+                        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-emerald-800" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M6 18h8"></path>
+                          <path d="M3 22h18"></path>
+                          <path d="M14 22a7 7 0 1 0 0-14h-1"></path>
+                          <path d="M9 14h2"></path>
+                          <path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z"></path>
+                        </svg>
+                        <span>RESEARCH LAB • ZONE R</span>
+                      </button>
+                      <div class="flex items-center" title="Ficus">
+                        <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none">
+                          <path d="M7 14h10l-1.5 7h-7L7 14z" fill="#d97706" stroke="#b45309" stroke-width="1.2"/>
+                          <circle cx="12" cy="7" r="4" fill="#15803d"/>
+                        </svg>
+                      </div>
+                    </div>
+
+                    <!-- Furniture: Irwan Desk + Evidence Archive -->
+                    <div class="relative z-10 flex-1 grid grid-cols-12 gap-2 items-center py-2">
+                      <!-- Irwan Desk -->
+                      <div class="col-span-7 flex flex-col items-center justify-center">
+                        <div class="relative flex flex-col items-center">
+                          <div class="relative z-10 flex items-center justify-center gap-1.5 mb-[-7px]">
+                            <div class="w-12 h-7 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-emerald-300 font-mono font-bold">
+                              SNI
+                            </div>
+                            <div class="w-12 h-7 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-teal-300 font-mono font-bold">
+                              PACK
+                            </div>
+                          </div>
+                          <div class="w-38 h-12 bg-[#dcfce7] border-2 border-[#16a34a] rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-2 relative z-0">
+                            <div class="w-16 h-3 bg-slate-300 rounded-2xs border border-slate-400"></div>
+                            <div class="w-4 h-5 bg-white border border-emerald-400 rounded-2xs"></div>
+                          </div>
+                          <div class="relative z-10 mt-[-12px] flex flex-col items-center">
+                            {(() => {
+                              const irwan = getSpriteAtPos('research_main_desk');
+                              if (irwan) {
+                                return (
+                                  <button
+                                    type="button"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    data-staff-inspect={irwan.agent_id}
+                                    title={`${irwan.display_name} • ${irwan.role} (${irwan.badge_text})`}
+                                  >
+                                    <div class="relative">
+                                      <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
+                                      <div class={`w-12 h-12 flex items-center justify-center pixel-avatar-box ${irwan.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[irwan.animation_key]?.css_animation_class || '') : ''}`}>
+                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                          <rect x="9" y="4" width="14" height="6" fill="#1e293b" />
+                                          <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                          <rect x="11" y="13" width="3" height="2" fill="#0f172a" />
+                                          <rect x="18" y="13" width="3" height="2" fill="#0f172a" />
+                                          <rect x="13" y="16" width="6" height="1" fill="#b45309" />
+                                          <rect x="8" y="18" width="16" height="10" fill="#0f766e" />
+                                          <rect x="13" y="19" width="6" height="9" fill="#ccfbf1" />
+                                        </svg>
+                                      </div>
+                                      {irwan.visual_mode === 'BLOCKED' && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center animate-ping">!</span>
+                                      )}
+                                      {irwan.work_visual_state?.is_actively_working && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
+                                          {JOB_ANIMATION_REGISTRY[irwan.animation_key]?.prop_icon || '🔍'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                      {irwan.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div class="flex flex-col items-center" title="Konsol Irwan (Sedang di Lounge)">
+                                  <svg viewBox="0 0 24 24" class="w-7 h-7 text-emerald-700" fill="none">
+                                    <rect x="6" y="3" width="12" height="9" rx="2" fill="#a7f3d0" stroke="#059669" stroke-width="1.4"/>
+                                    <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                                    <path d="M12 17v4M8 21h8" stroke="#047857" stroke-width="1.6" stroke-linecap="round"/>
+                                  </svg>
+                                  <span class="text-[8px] font-mono text-emerald-900/60 italic font-semibold">Kosong</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Evidence Archive Cabinet -->
+                      <div class="col-span-5 flex flex-col items-center space-y-1">
+                        <div class="w-16 h-24 bg-[#fef08a] border-2 border-[#ca8a04] rounded-xs p-1 flex flex-col justify-between shadow-md">
+                          <div class="text-[7px] font-mono font-black text-amber-950 text-center border-b border-amber-300 pb-0.5">SNI ARCHIVE</div>
+                          <div class="grid grid-cols-2 gap-0.5 justify-items-center py-0.5">
+                            <span class="w-3 h-2.5 bg-red-400 rounded-2xs inline-block shadow-2xs"></span>
+                            <span class="w-3 h-2.5 bg-blue-400 rounded-2xs inline-block shadow-2xs"></span>
+                            <span class="w-3 h-2.5 bg-emerald-400 rounded-2xs inline-block shadow-2xs"></span>
+                            <span class="w-3 h-2.5 bg-amber-400 rounded-2xs inline-block shadow-2xs"></span>
+                          </div>
+                          <div class="text-[6px] font-mono text-slate-700 font-bold text-center">EVIDENCE</div>
+                        </div>
+                        <span class="text-[8px] font-mono text-emerald-950 font-bold">Arsip Riset</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <!-- 2. OPERATIONS & JEV LAB (Level 2, Right) -->
+                {operationsRoom && (
+                  <div
+                    class="bg-[#f1f5f9] p-3.5 relative flex flex-col justify-between min-h-[300px] flex-1 rounded-xs select-none shadow-inner"
+                    id="room-card-operations_room"
+                  >
+                    <!-- Doorway on Left Wall Opening to Central Hall -->
+                    <div class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 z-20 flex items-center" title="Ambang Pintu Telemetri (Menuju Koridor)">
+                      <div class="w-2.5 h-16 bg-[#cbd5e1] border-y-2 border-slate-600 shadow-inner"></div>
+                    </div>
+
+                    <!-- Plaque & Diode -->
+                    <div class="relative z-10 flex items-center justify-between">
+                      <button
+                        type="button"
+                        class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-100/90 border border-blue-300 text-[10px] font-mono font-black text-blue-950 tracking-wider hover:bg-blue-200 transition cursor-pointer shadow-2xs"
+                        data-room-inspect="operations_room"
+                        title="Klik untuk inspeksi Ruang Telemetri & Engineering"
+                      >
+                        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-blue-800" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="4 17 10 11 4 5"></polyline>
+                          <line x1="12" y1="19" x2="20" y2="19"></line>
+                        </svg>
+                        <span>OPERATIONS & JEV • ZONE O</span>
+                      </button>
+                      <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span class="text-[8px] font-mono text-slate-600 font-bold">ONLINE</span>
+                      </div>
+                    </div>
+
+                    <!-- Furniture: Dimas Console + Mainframe Rack -->
+                    <div class="relative z-10 flex-1 grid grid-cols-12 gap-2 items-center py-2">
+                      <!-- Dimas Console -->
+                      <div class="col-span-7 flex flex-col items-center justify-center">
+                        <div class="relative flex flex-col items-center">
+                          <div class="relative z-10 flex items-center justify-center gap-1.5 mb-[-7px]">
+                            <div class="w-12 h-7 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-emerald-400 font-mono font-bold">
+                              HEALTH
+                            </div>
+                            <div class="w-12 h-7 bg-slate-900 rounded-xs border-2 border-slate-700 shadow-md flex items-center justify-center text-[7px] text-purple-400 font-mono font-bold">
+                              JEV
+                            </div>
+                          </div>
+                          <div class="w-38 h-12 bg-blue-100 border-2 border-blue-400 rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-2 relative z-0">
+                            <div class="w-16 h-3 bg-slate-300 rounded-2xs border border-slate-400"></div>
+                            <div class="w-3 h-2.5 bg-slate-800 rounded-2xs"></div>
+                          </div>
+                          <div class="relative z-10 mt-[-12px] flex flex-col items-center">
+                            {(() => {
+                              const dimas = getSpriteAtPos('operations_console');
+                              if (dimas) {
+                                return (
+                                  <button
+                                    type="button"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    data-staff-inspect={dimas.agent_id}
+                                    title={`${dimas.display_name} • ${dimas.role} (${dimas.badge_text})`}
+                                  >
+                                    <div class="relative">
+                                      <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
+                                      <div class={`w-12 h-12 flex items-center justify-center pixel-avatar-box ${dimas.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[dimas.animation_key]?.css_animation_class || '') : ''}`}>
+                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                          <rect x="8" y="4" width="16" height="7" fill="#312e81" />
+                                          <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                          <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
+                                          <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
+                                          <rect x="13" y="16" width="6" height="1" fill="#4338ca" />
+                                          <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
+                                          <rect x="12" y="20" width="8" height="8" fill="#1e1b4b" />
+                                        </svg>
+                                      </div>
+                                      {dimas.visual_mode === 'BLOCKED' && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center animate-ping">!</span>
+                                      )}
+                                      {dimas.work_visual_state?.is_actively_working && (
+                                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
+                                          {JOB_ANIMATION_REGISTRY[dimas.animation_key]?.prop_icon || '⚡'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                      {dimas.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div class="flex flex-col items-center" title="Konsol Dimas (Sedang di Lounge)">
+                                  <svg viewBox="0 0 24 24" class="w-7 h-7 text-blue-700" fill="none">
+                                    <rect x="6" y="3" width="12" height="9" rx="2" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.4"/>
+                                    <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#dbeafe" stroke="#2563eb" stroke-width="1.4"/>
+                                    <path d="M12 17v4M8 21h8" stroke="#1d4ed8" stroke-width="1.6" stroke-linecap="round"/>
+                                  </svg>
+                                  <span class="text-[8px] font-mono text-blue-900/60 italic font-semibold">Kosong</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Mainframe Rack -->
+                      <div class="col-span-5 flex flex-col items-center space-y-1">
+                        <div class="w-15 h-26 bg-[#0f172a] rounded-xs border-2 border-blue-900 p-1 flex flex-col justify-between shadow-md">
+                          <div class="h-5 bg-slate-900 rounded-2xs border border-blue-900/60 flex items-center justify-between px-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span class="text-[6px] font-mono text-blue-300 font-bold">D1</span>
+                          </div>
+                          <div class="h-5 bg-slate-900 rounded-2xs border border-blue-900/60 flex items-center justify-between px-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                            <span class="text-[6px] font-mono text-purple-300 font-bold">JEV</span>
+                          </div>
+                          <div class="h-5 bg-slate-900 rounded-2xs border border-blue-900/60 flex items-center justify-between px-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                            <span class="text-[6px] font-mono text-cyan-300 font-bold">EDGE</span>
+                          </div>
+                        </div>
+                        <span class="text-[8px] font-mono text-slate-800 font-bold">Mainframe</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <!-- 3. EXECUTIVE LOUNGE (Level 3, Right) -->
+                {loungeRoom && (
+                  <div
+                    class="bg-[#faf8f5] p-3.5 relative flex flex-col justify-between min-h-[300px] flex-1 rounded-xs select-none shadow-inner"
+                    id="room-card-lounge"
+                  >
+                    <!-- Doorway on Left Wall Opening to Central Hall -->
+                    <div class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 z-20 flex items-center" title="Ambang Pintu Lounge (Menuju Koridor)">
+                      <div class="w-2.5 h-16 bg-[#cbd5e1] border-y-2 border-slate-600 shadow-inner"></div>
+                    </div>
+
+                    <!-- Plaque & Plants -->
+                    <div class="relative z-10 flex items-center justify-between">
+                      <button
+                        type="button"
+                        class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-100/90 border border-amber-300 text-[10px] font-mono font-black text-amber-950 tracking-wider hover:bg-amber-200 transition cursor-pointer shadow-2xs"
+                        data-room-inspect="lounge"
+                        title="Klik untuk inspeksi Executive Lounge"
+                      >
+                        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-stone-800" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M17 8h1a4 4 0 1 1 0 8h-1"></path>
+                          <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path>
+                        </svg>
+                        <span>EXECUTIVE LOUNGE • ZONE L</span>
+                      </button>
+                      <div class="flex items-center gap-1.5">
+                        <div class="flex items-center" title="Snake Plant">
+                          <svg viewBox="0 0 20 20" class="w-5 h-5" fill="none">
+                            <path d="M6 13h8l-1 6h-6L6 13z" fill="#78716c" stroke="#57534e" stroke-width="1"/>
+                            <path d="M8 13V5l2-2 2 2v8" stroke="#15803d" stroke-width="1.8" stroke-linecap="round"/>
+                          </svg>
+                        </div>
+                        <div class="flex items-center" title="Monstera">
+                          <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none">
+                            <path d="M7 14h10l-1.5 7h-7L7 14z" fill="#d97706" stroke="#b45309" stroke-width="1.2"/>
+                            <circle cx="12" cy="7" r="4" fill="#15803d"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Lounge Rug & Seating (Around Center Table) -->
+                    <div class="relative z-10 flex-1 flex flex-col justify-center py-1">
+                      <div class="relative bg-[#fef3c7]/65 border-2 border-amber-300/80 rounded-xl p-2.5 shadow-sm flex flex-col items-center justify-between min-h-[190px]">
+                        
+                        <!-- 2-Seater Sofa at Top (Seat 1 & Seat 2) -->
+                        <div class="relative flex items-center justify-center gap-4 z-10">
+                          <div class="absolute -top-1.5 inset-x-[-8px] h-13 bg-[#b45309] rounded-t-lg -z-10 shadow-sm border border-[#78350f]"></div>
+                          
+                          <!-- Seat 1 -->
+                          <div class="flex flex-col items-center">
+                            {(() => {
+                              const spr1 = getSpriteAtPos('lounge_seat_1');
+                              if (spr1) {
+                                return (
+                                  <button
+                                    type="button"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    data-staff-inspect={spr1.agent_id}
+                                    title={`${spr1.display_name} • Bersantai di Sofa Lounge`}
+                                  >
+                                    <div class="relative">
+                                      <div class="w-12 h-12 flex items-center justify-center pixel-avatar-box">
+                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                          <rect x="8" y="4" width="16" height="6" fill="#14532d" />
+                                          <rect x="9" y="10" width="14" height="8" fill="#fde68a" />
+                                          <rect x="11" y="13" width="3" height="2" fill="#052e16" />
+                                          <rect x="18" y="13" width="3" height="2" fill="#052e16" />
+                                          <rect x="8" y="18" width="16" height="10" fill="#15803d" />
+                                        </svg>
+                                      </div>
+                                      <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center shadow-2xs">
+                                        <svg viewBox="0 0 16 16" class="w-2.5 h-2.5 text-amber-800" fill="none">
+                                          <rect x="3" y="4" width="7" height="8" rx="1" fill="#fff" stroke="currentColor" stroke-width="1"/>
+                                        </svg>
+                                      </span>
+                                    </div>
+                                    <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                      {spr1.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div class="w-12 h-9 bg-[#d97706] rounded-md border border-[#92400e] flex items-center justify-center shadow-inner">
+                                  <span class="text-[7px] font-mono text-amber-100 font-bold">Sofa 1</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          <!-- Seat 2 -->
+                          <div class="flex flex-col items-center">
+                            {(() => {
+                              const spr2 = getSpriteAtPos('lounge_seat_2');
+                              if (spr2) {
+                                return (
+                                  <button
+                                    type="button"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    data-staff-inspect={spr2.agent_id}
+                                    title={`${spr2.display_name} • Bersantai di Sofa Lounge`}
+                                  >
+                                    <div class="relative">
+                                      <div class="w-12 h-12 flex items-center justify-center pixel-avatar-box">
+                                        <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                          <rect x="8" y="4" width="16" height="7" fill="#312e81" />
+                                          <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                          <rect x="11" y="13" width="3" height="2" fill="#38bdf8" />
+                                          <rect x="18" y="13" width="3" height="2" fill="#38bdf8" />
+                                          <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
+                                        </svg>
+                                      </div>
+                                      <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center shadow-2xs">
+                                        <svg viewBox="0 0 16 16" class="w-2.5 h-2.5 text-amber-800" fill="none">
+                                          <rect x="3" y="4" width="7" height="8" rx="1" fill="#fff" stroke="currentColor" stroke-width="1"/>
+                                        </svg>
+                                      </span>
+                                    </div>
+                                    <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                      {spr2.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div class="w-12 h-9 bg-[#d97706] rounded-md border border-[#92400e] flex items-center justify-center shadow-inner">
+                                  <span class="text-[7px] font-mono text-amber-100 font-bold">Sofa 2</span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
 
-                        <!-- Right Upholstered Armchair (Seat 4) -->
-                        <div class="flex flex-col items-center">
-                          {(() => {
-                            const spr4 = getSpriteAtPos('lounge_seat_4');
-                            if (spr4) {
-                              return (
-                                <button
-                                  type="button"
-                                  class="flex flex-col items-center group cursor-pointer focus:outline-none"
-                                  data-staff-inspect={spr4.agent_id}
-                                  title={`${spr4.display_name} • Di Kursi Lounge Timur`}
-                                >
-                                  <div class="relative">
-                                    <div class="absolute -top-1 -inset-x-2 h-11 bg-[#b45309] rounded-t-lg -z-10 shadow-sm border border-[#78350f]"></div>
-                                    <div class="w-12 h-12 flex items-center justify-center pixel-avatar-box">
-                                      <svg viewBox="0 0 32 32" class="w-10 h-10 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                        <!-- Center Espresso Table + Armchairs -->
+                        <div class="w-full flex items-center justify-between gap-1.5 z-10 my-1">
+                          <!-- Seat 3 (Armchair W) -->
+                          <div class="flex flex-col items-center">
+                            {(() => {
+                              const spr3 = getSpriteAtPos('lounge_seat_3');
+                              if (spr3) {
+                                return (
+                                  <button type="button" class="flex flex-col items-center group cursor-pointer focus:outline-none" data-staff-inspect={spr3.agent_id}>
+                                    <div class="w-10 h-10 flex items-center justify-center pixel-avatar-box">
+                                      <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated drop-shadow-sm" shape-rendering="crispEdges">
                                         <rect x="8" y="4" width="16" height="7" fill="#312e81" />
                                         <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
                                         <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
                                       </svg>
                                     </div>
-                                  </div>
-                                  <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-2xs border border-slate-300 mt-0.5">
-                                    {spr4.display_name}
-                                  </span>
+                                    <span class="text-[8px] font-outfit font-black text-slate-800 bg-white/95 px-1 py-0.2 rounded border border-slate-300">
+                                      {spr3.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div class="flex flex-col items-center" title="Armchair W">
+                                  <svg viewBox="0 0 28 24" class="w-8 h-7 text-amber-700" fill="none">
+                                    <rect x="4" y="2" width="20" height="12" rx="2" fill="#d97706" stroke="#92400e" stroke-width="1.2"/>
+                                    <rect x="6" y="9" width="16" height="9" rx="1.5" fill="#fbbf24" stroke="#b45309" stroke-width="1.2"/>
+                                  </svg>
+                                  <span class="text-[7px] font-mono text-stone-500 font-bold">Armchair W</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          <!-- Center Table -->
+                          <div class="flex-1 bg-[#fde68a] border-2 border-amber-500 rounded-sm py-1 px-2 flex items-center justify-between shadow-xs">
+                            <div class="flex items-center gap-1.5">
+                              <svg viewBox="0 0 20 20" class="w-3.5 h-3.5 text-amber-900" fill="none">
+                                <rect x="4" y="6" width="9" height="10" rx="1" fill="#fff" stroke="#b45309" stroke-width="1.2"/>
+                                <path d="M13 8h2a1.5 1.5 0 0 1 1.5 1.5v3A1.5 1.5 0 0 1 15 14h-2" stroke="#b45309" stroke-width="1.2"/>
+                              </svg>
+                              <span class="text-[8px] font-outfit font-black text-amber-950">Espresso & Majalah</span>
+                            </div>
+                            <div class="flex gap-0.5">
+                              <span class="w-2 h-2.5 bg-white border border-amber-700 rounded-2xs"></span>
+                              <span class="w-2 h-2.5 bg-white border border-amber-700 rounded-2xs"></span>
+                            </div>
+                          </div>
+
+                          <!-- Seat 4 (Armchair E) -->
+                          <div class="flex flex-col items-center">
+                            {(() => {
+                              const spr4 = getSpriteAtPos('lounge_seat_4');
+                              if (spr4) {
+                                return (
+                                  <button type="button" class="flex flex-col items-center group cursor-pointer focus:outline-none" data-staff-inspect={spr4.agent_id}>
+                                    <div class="w-10 h-10 flex items-center justify-center pixel-avatar-box">
+                                      <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                        <rect x="8" y="4" width="16" height="7" fill="#312e81" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#fed7aa" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#4338ca" />
+                                      </svg>
+                                    </div>
+                                    <span class="text-[8px] font-outfit font-black text-slate-800 bg-white/95 px-1 py-0.2 rounded border border-slate-300">
+                                      {spr4.display_name}
+                                    </span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div class="flex flex-col items-center" title="Armchair E">
+                                  <svg viewBox="0 0 28 24" class="w-8 h-7 text-amber-700" fill="none">
+                                    <rect x="4" y="2" width="20" height="12" rx="2" fill="#d97706" stroke="#92400e" stroke-width="1.2"/>
+                                    <rect x="6" y="9" width="16" height="9" rx="1.5" fill="#fbbf24" stroke="#b45309" stroke-width="1.2"/>
+                                  </svg>
+                                  <span class="text-[7px] font-mono text-stone-500 font-bold">Armchair E</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+
+                        <!-- Overflow slots Seat 5 & 6 -->
+                        <div class="flex items-center justify-center gap-2 z-10">
+                          {(() => {
+                            const spr5 = getSpriteAtPos('lounge_seat_5');
+                            if (spr5) {
+                              return (
+                                <button type="button" class="text-[8px] font-mono font-bold bg-white/90 px-1.5 py-0.2 rounded border border-amber-300 cursor-pointer shadow-2xs" data-staff-inspect={spr5.agent_id}>
+                                  {spr5.display_name} (Meja Kopi)
                                 </button>
                               );
                             }
-                            return (
-                              <div class="flex flex-col items-center" title="Armchair Timur">
-                                <svg viewBox="0 0 30 26" class="w-9 h-8 text-amber-700" fill="none">
-                                  <rect x="4" y="2" width="22" height="13" rx="2.5" fill="#d97706" stroke="#92400e" stroke-width="1.3"/>
-                                  <rect x="6" y="9" width="18" height="11" rx="1.5" fill="#fbbf24" stroke="#b45309" stroke-width="1.3"/>
-                                  <rect x="2" y="7" width="5.5" height="13" rx="1.5" fill="#b45309" stroke="#78350f" stroke-width="1.3"/>
-                                  <rect x="22.5" y="7" width="5.5" height="13" rx="1.5" fill="#b45309" stroke="#78350f" stroke-width="1.3"/>
-                                  <line x1="5" y1="21" x2="4" y2="24" stroke="#78350f" stroke-width="1.5" stroke-linecap="round"/>
-                                  <line x1="25" y1="21" x2="26" y2="24" stroke="#78350f" stroke-width="1.5" stroke-linecap="round"/>
-                                </svg>
-                                <span class="text-[8px] font-mono text-stone-500 font-bold mt-0.5">Armchair E</span>
-                              </div>
-                            );
+                            return null;
+                          })()}
+                          {(() => {
+                            const spr6 = getSpriteAtPos('lounge_seat_6');
+                            if (spr6) {
+                              return (
+                                <button type="button" class="text-[8px] font-mono font-bold bg-white/90 px-1.5 py-0.2 rounded border border-amber-300 cursor-pointer shadow-2xs" data-staff-inspect={spr6.agent_id}>
+                                  {spr6.display_name} (Meja Kopi)
+                                </button>
+                              );
+                            }
+                            return null;
                           })()}
                         </div>
                       </div>
-
-                      <!-- BOTTOM: OVERFLOW LOUNGE SLOTS (Seat 5 & Seat 6) -->
-                      <div class="flex items-center justify-center gap-3 z-10 mt-1">
-                        {(() => {
-                          const spr5 = getSpriteAtPos('lounge_seat_5');
-                          if (spr5) {
-                            return (
-                              <button type="button" class="text-[9px] font-mono font-bold bg-white/90 px-2 py-0.5 rounded border border-amber-300 cursor-pointer shadow-2xs" data-staff-inspect={spr5.agent_id}>
-                                {spr5.display_name} (Meja Kopi)
-                              </button>
-                            );
-                          }
-                          return null;
-                        })()}
-                        {(() => {
-                          const spr6 = getSpriteAtPos('lounge_seat_6');
-                          if (spr6) {
-                            return (
-                              <button type="button" class="text-[9px] font-mono font-bold bg-white/90 px-2 py-0.5 rounded border border-amber-300 cursor-pointer shadow-2xs" data-staff-inspect={spr6.agent_id}>
-                                {spr6.display_name} (Meja Kopi)
-                              </button>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
                     </div>
                   </div>
+                )}
 
-                  <!-- Doorway gap -->
-                  <div class="relative z-10 flex justify-center -mb-4">
-                    <div class="w-16 h-3 bg-[#cbd5e1] border-x-2 border-slate-600 border-t border-slate-400 shadow-inner"></div>
-                  </div>
-                </div>
-              )}
+              </div>
+
             </div>
 
-            <!-- BOTTOM EXTENSION: ZONE S / SOCIAL DISTRIBUTION ROOM (PHYSICAL DORMANT BAY) -->
+            <!-- SOUTHERN ANNEX: ZONE S (CONNECTED DIRECTLY TO CENTRAL HALL TERMINUS) -->
             {socialRoom && (
               <div
-                class="bg-[#fbf7ff] p-4 relative flex flex-col justify-between rounded-xs select-none border-t-2 border-slate-600 shadow-inner"
+                class="bg-[#fbf7ff] p-3.5 relative flex flex-col justify-between rounded-xs select-none border-t-2 border-slate-600 shadow-inner"
                 id="room-card-social_room"
               >
-                <!-- Small Wall Plaque with Security Padlock -->
+                <!-- Central Entrance Threshold connecting from Central Hallway -->
+                <div class="flex justify-center -mt-3.5 mb-2">
+                  <div class="w-24 h-2.5 bg-[#cbd5e1] border-x-2 border-slate-600 border-b border-slate-400 shadow-inner" title="Pintu Masuk Utama Zone S (Dari Koridor Sentral)"></div>
+                </div>
+
+                <!-- Plaque & Badge -->
                 <div class="relative z-10 flex items-center justify-between">
                   <button
                     type="button"
@@ -1579,22 +1328,19 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                   </span>
                 </div>
 
-                <!-- Interior: Unpowered Physical Workstation & Keycard Stanchion Directly on Floor -->
-                <div class="relative z-10 py-3 flex items-center justify-around">
+                <!-- Interior: Unpowered Desk + Keycard Stanchion -->
+                <div class="relative z-10 py-2.5 flex items-center justify-around">
                   <div class="flex items-center gap-6">
-                    <!-- Physical Workstation (Power OFF) -->
                     <div class="flex flex-col items-center">
-                      <div class="w-14 h-7 bg-slate-900 rounded-xs border-2 border-slate-700 flex items-center justify-center text-[7px] text-slate-500 font-mono font-bold mb-[-6px] shadow-sm">
+                      <div class="w-13 h-6 bg-slate-900 rounded-xs border-2 border-slate-700 flex items-center justify-center text-[7px] text-slate-500 font-mono font-bold mb-[-5px] shadow-sm">
                         OFF
                       </div>
-                      <div class="w-38 h-11 bg-slate-200 border-2 border-slate-300 rounded-xs flex items-center justify-center shadow-xs">
-                        <span class="text-[9px] font-mono text-slate-400 italic">Workstation Maya</span>
+                      <div class="w-36 h-10 bg-slate-200 border-2 border-slate-300 rounded-xs flex items-center justify-center shadow-xs">
+                        <span class="text-[8px] font-mono text-slate-400 italic">Workstation Maya</span>
                       </div>
                     </div>
-
-                    <!-- Keycard Scanner Stanchion & Floor Stencil -->
                     <div class="flex items-center gap-3">
-                      <div class="w-4 h-12 bg-slate-800 rounded-xs flex flex-col items-center justify-around py-1.5 border border-slate-900 shadow-xs" title="Keycard Access Sensor">
+                      <div class="w-3.5 h-11 bg-slate-800 rounded-xs flex flex-col items-center justify-around py-1 border border-slate-900 shadow-xs" title="Keycard Access Sensor">
                         <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                         <span class="w-2 h-1 bg-slate-600 rounded-2xs"></span>
                       </div>
