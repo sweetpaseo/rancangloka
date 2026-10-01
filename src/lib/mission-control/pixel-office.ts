@@ -32,6 +32,10 @@ import {
   deriveStaffWorkVisualState,
   getAnimationDefinition
 } from './job-animation-registry.ts';
+import {
+  type TaskHandoffObservation,
+  deriveCanonicalHandoffsFromPipeline
+} from './task-handoff.ts';
 
 export type OfficeStateReasonCategory =
   | 'ACTIVE_WORK'
@@ -117,6 +121,7 @@ export interface PixelOfficeState {
   summary: PixelOfficeSummary;
   positions: OfficePosition[];
   recent_activity: ActivityEvent[];
+  recent_handoffs: TaskHandoffObservation[];
 }
 
 // ============================================================================
@@ -528,6 +533,7 @@ export function getPixelOfficeState(
       kill_switch_engaged: Boolean(snapshot?.health?.automation?.killSwitchEngaged)
     },
     positions: OFFICE_POSITIONS,
-    recent_activity: snapshot?.activity?.slice(0, 8) || []
+    recent_activity: snapshot?.activity?.slice(0, 8) || [],
+    recent_handoffs: deriveCanonicalHandoffsFromPipeline(snapshot)
   };
 }

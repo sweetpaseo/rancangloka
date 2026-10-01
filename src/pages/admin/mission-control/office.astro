@@ -35,7 +35,7 @@ const db = (await getDb(Astro.locals)) || env.DB || (Astro.locals as any)?.db;
 
 const snapshot = await getMissionControlSnapshot(db, env);
 const office = getPixelOfficeState(snapshot);
-const { rooms, sprites, summary, recent_activity } = office;
+const { rooms, sprites, summary, recent_activity, recent_handoffs = [] } = office;
 
 // Room mapping lookup
 const getRoom = (key: string) => rooms.find((r) => r.room_key === key) || null;
@@ -1478,6 +1478,135 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       </div>
     </div>
 
+    <!-- 3B. CANONICAL TASK HANDOFFS (V2.4 REAL WORKFLOW STAGE TRANSITIONS) -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+          <h3 class="text-sm font-outfit font-bold text-slate-900">Transisi Tahap & Kepemilikan Tugas (Recent Handoffs)</h3>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold border border-indigo-200">MC-V2.4</span>
+        </div>
+        <span class="text-[10px] font-mono text-slate-400">Strict Canonical Workflow Provenance</span>
+      </div>
+
+      <div class="divide-y divide-slate-100" id="recent-handoffs-list">
+        {recent_handoffs.length === 0 ? (
+          <div class="py-4 text-center text-xs font-mono text-slate-400 italic">
+            Belum ada serah-terima tugas (handoff) aktif terdeteksi dalam jendela waktu ini.
+          </div>
+        ) : (
+          recent_handoffs.slice(0, 5).map((h) => (
+            <div class="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs" data-handoff-item={h.handoff_id}>
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase shrink-0 border ${
+                  h.handoff_state === 'RUNNING' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                  h.handoff_state === 'QUEUED' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                  'bg-rose-100 text-rose-800 border-rose-300'
+                }`}>
+                  {h.handoff_state}
+                </span>
+                <div class="min-w-0 truncate">
+                  <span class="font-bold text-slate-800 font-outfit">{h.task_title}</span>
+                  <span class="text-slate-400 mx-1.5">•</span>
+                  <span class="text-slate-600 font-mono text-[11px]">
+                    {h.from_agent_id || h.from_department_id} ({h.from_stage}) → {h.to_agent_id || h.to_department_id} ({h.to_stage})
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] font-mono text-slate-400 shrink-0">
+                <span>{new Date(h.transition_timestamp).toLocaleTimeString('id-ID', { hour12: false })} WIB</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{h.confidence}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+
+    <!-- Subtle Floating Task Token / Handoff Indicator (Toast) -->
+    <div
+      id="handoff-token-indicator"
+      class="fixed bottom-6 right-6 z-50 transition-all duration-300 transform translate-y-16 opacity-0 pointer-events-none bg-slate-900/95 text-white border border-slate-700/80 rounded-2xl p-4 shadow-2xl max-w-sm flex items-start gap-3 backdrop-blur-md"
+      role="status"
+      aria-live="polite"
+    >
+      <div id="handoff-token-icon" class="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0 mt-0.5">
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 3 21 3 21 8"></polyline>
+          <line x1="4" y1="20" x2="21" y2="3"></line>
+          <polyline points="21 16 21 21 16 21"></polyline>
+          <line x1="15" y1="15" x2="21" y2="21"></line>
+          <line x1="4" y1="4" x2="9" y2="9"></line>
+        </svg>
+      </div>
+      <div class="space-y-1 min-w-0 flex-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[10px] font-mono uppercase font-bold text-indigo-400 tracking-wider flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping"></span>
+            <span>HANDOFF OBSERVED</span>
+          </span>
+          <span id="handoff-token-status" class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+            RUNNING
+          </span>
+        </div>
+        <div id="handoff-token-title" class="text-xs font-outfit font-bold text-slate-100 truncate">
+          Judul Artikel
+        </div>
+        <div id="handoff-token-route" class="text-[11px] font-mono text-slate-300 flex items-center gap-1">
+          <span>Joko (Draft)</span>
+          <span class="text-slate-500">→</span>
+          <span class="text-indigo-300 font-bold">Rina (QA)</span>
+        </div>
+        <div id="handoff-token-note" class="text-[10px] font-mono text-slate-400 italic">
+          Rina berpindah menuju meja review...
+        </div>
+      </div>
+    </div>
+
+    <!-- Dev Scenario Harness for Local Verification (V2.4 Handoffs) -->
+    {isDev && (
+      <div id="dev-scenario-handoff-harness" class="bg-slate-900 border-2 border-indigo-500/50 rounded-2xl p-4 text-white shadow-xl space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
+            <span class="font-outfit font-bold text-sm text-indigo-200">Dev Harness: V2.4 Real Task Handoff & Movement Verification</span>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
+            LOCAL DEV ONLY
+          </span>
+        </div>
+        <p class="text-xs text-slate-300">
+          Uji deterministik skenario handoff kanonikal (Scenarios A-G). Tidak ada mutasi ke D1 atau produksi.
+        </p>
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button type="button" data-handoff-scenario="scenario-a" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-mono font-bold transition">
+            A: Joko Draft → Rina QA (RUNNING)
+          </button>
+          <button type="button" data-handoff-scenario="scenario-b" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold border border-slate-700 transition">
+            B: Rina QA → Sari Pub (QUEUED, No Move)
+          </button>
+          <button type="button" data-handoff-scenario="scenario-c" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-xs font-mono font-bold transition">
+            C: Sari QUEUED → RUNNING (Move)
+          </button>
+          <button type="button" data-handoff-scenario="scenario-d" class="px-3 py-1.5 rounded-lg bg-purple-700 hover:bg-purple-600 text-xs font-mono font-bold transition">
+            D: Irwan Research → Joko Writing
+          </button>
+          <button type="button" data-handoff-scenario="scenario-e" class="px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-600 text-xs font-mono font-bold transition">
+            E: Rapid Double Handoff (Reroute)
+          </button>
+          <button type="button" data-handoff-scenario="scenario-f" class="px-3 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-xs font-mono font-bold transition">
+            F: Simultaneous Independent Workflows
+          </button>
+          <button type="button" data-handoff-scenario="scenario-g" class="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-xs font-mono font-bold transition">
+            G: Destination BLOCKED (No Work)
+          </button>
+          <button type="button" data-handoff-scenario="reset" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-mono font-bold transition text-slate-300">
+            Reset State
+          </button>
+        </div>
+      </div>
+    )}
+
     <!-- 4. CONTEXTUAL INSPECTION MODAL (Read-Only Telemetry, Zero Execution Authority) -->
     <div
       id="inspect-modal"
@@ -1794,6 +1923,93 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       const activeMovements = {};
       const STAFF_ORDER = ['joko', 'rina', 'irwan', 'budi', 'dimas', 'sari', 'maya'];
 
+      function normalizeAgentKey(agentId) {
+        if (!agentId) return null;
+        const lower = String(agentId).toLowerCase();
+        if (lower.includes('joko') || lower === 'content_writer_primary') return 'joko';
+        if (lower.includes('rina') || lower === 'editorial_qa_primary') return 'rina';
+        if (lower.includes('irwan') || lower === 'evidence_researcher_lead') return 'irwan';
+        if (lower.includes('sari') || lower === 'publication_dispatcher_core') return 'sari';
+        if (lower.includes('dimas') || lower === 'telemetry_observer_jev') return 'dimas';
+        if (lower.includes('budi') || lower === 'lokamedia_worker_primary') return 'budi';
+        if (lower.includes('maya') || lower === 'social_distribution_operator') return 'maya';
+        return lower;
+      }
+
+      const STAFF_STATIONS = {
+        joko: { workstation: 'editorial_writer_desk', idle: 'lounge_seat_1' },
+        rina: { workstation: 'editorial_review_desk', idle: 'lounge_seat_3' },
+        irwan: { workstation: 'research_main_desk', idle: 'lounge_seat_4' },
+        dimas: { workstation: 'operations_console', idle: 'lounge_seat_2' },
+        sari: { workstation: 'publication_console', idle: 'lounge_seat_5' },
+        budi: { workstation: 'media_console', idle: 'media_console' },
+        maya: { workstation: 'social_workstation', idle: 'social_bay_empty' }
+      };
+
+      // Invariant: Initial load & refresh are idempotent (zero replay of historical handoffs)
+      const consumedHandoffIds = new Set();
+      (officeData.recent_handoffs || []).forEach(function (h) {
+        if (h && h.handoff_id) consumedHandoffIds.add(h.handoff_id);
+      });
+
+      function showHandoffToast(h) {
+        const toast = document.getElementById('handoff-token-indicator');
+        if (!toast) return;
+        const titleEl = document.getElementById('handoff-token-title');
+        const routeEl = document.getElementById('handoff-token-route');
+        const statusEl = document.getElementById('handoff-token-status');
+        const noteEl = document.getElementById('handoff-token-note');
+        
+        if (titleEl) titleEl.textContent = h.task_title || h.task_id;
+        if (routeEl) {
+          const fromLabel = h.from_agent_id || h.from_department_id || 'Initial';
+          const toLabel = h.to_agent_id || h.to_department_id || 'Pending';
+          routeEl.innerHTML = '<span>' + fromLabel + ' (' + h.from_stage + ')</span> <span class="text-slate-500">→</span> <span class="text-indigo-300 font-bold">' + toLabel + ' (' + h.to_stage + ')</span>';
+        }
+        if (statusEl) {
+          statusEl.textContent = h.handoff_state;
+          statusEl.className = 'text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ' + (
+            h.handoff_state === 'RUNNING' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
+            h.handoff_state === 'QUEUED' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+            'bg-rose-500/20 text-rose-300 border-rose-500/40'
+          );
+        }
+        if (noteEl) {
+          if (h.handoff_state === 'QUEUED') {
+            noteEl.textContent = 'Tahap berikutnya dialihkan ke Antrean (Staf siaga di Lounge).';
+          } else if (h.handoff_state === 'BLOCKED') {
+            noteEl.textContent = 'Tahap berikutnya TERBLOKIR. Zero aktivitas kerja semu.';
+          } else {
+            noteEl.textContent = 'Staf penerima bergerak menuju meja kerja melalui Koridor Utama...';
+          }
+        }
+
+        toast.classList.remove('translate-y-16', 'opacity-0', 'pointer-events-none');
+        setTimeout(function () {
+          toast.classList.add('translate-y-16', 'opacity-0', 'pointer-events-none');
+        }, 4500);
+      }
+
+      function executeCanonicalHandoff(h) {
+        if (!h) return;
+        showHandoffToast(h);
+
+        const fromKey = normalizeAgentKey(h.from_agent_id);
+        const toKey = normalizeAgentKey(h.to_agent_id);
+
+        // 1. Staff A: Stops work / returns to Lounge if their canonical state becomes idle
+        if (fromKey && fromKey !== toKey && STAFF_STATIONS[fromKey]) {
+          const station = STAFF_STATIONS[fromKey];
+          startStaffJourney(fromKey, station.workstation, station.idle, 'HANDOFF_COMPLETED_RETURN');
+        }
+
+        // 2. Staff B: If RUNNING, moves from Lounge to workstation!
+        if (h.requires_movement && toKey && STAFF_STATIONS[toKey]) {
+          const station = STAFF_STATIONS[toKey];
+          startStaffJourney(toKey, station.idle, station.workstation, 'HANDOFF_ASSIGNMENT_RUNNING');
+        }
+      }
+
       function getNodeVisualCoordinate(nodeId, staffIndex, isSouthbound) {
         const node = routeNodes[nodeId];
         if (!node) return { x: 50, y: 50 };
@@ -2093,6 +2309,37 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
               </div>
             </div>
 
+            ${(function () {
+              const normId = normalizeAgentKey(agentId);
+              const handoff = (officeData.recent_handoffs || []).find(function (h) {
+                return normalizeAgentKey(h.to_agent_id) === normId || normalizeAgentKey(h.from_agent_id) === normId;
+              });
+              if (!handoff) return '';
+              return `
+                <div class="bg-indigo-50/80 p-3 rounded-xl border border-indigo-200 space-y-1.5 text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-mono font-bold uppercase text-indigo-900 flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                      Observed Workflow Transition
+                    </span>
+                    <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                      handoff.handoff_state === 'RUNNING' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                      handoff.handoff_state === 'QUEUED' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                      'bg-rose-100 text-rose-800 border-rose-300'
+                    }">${handoff.handoff_state}</span>
+                  </div>
+                  <div class="font-bold text-slate-800">${handoff.task_title || handoff.task_id}</div>
+                  <div class="text-[11px] font-mono text-slate-600 flex items-center justify-between">
+                    <span>Tahap: <strong>${handoff.from_stage} → ${handoff.to_stage}</strong></span>
+                    <span>${new Date(handoff.transition_timestamp).toLocaleTimeString('id-ID', { hour12: false })} WIB</span>
+                  </div>
+                  <div class="text-[10px] font-mono text-indigo-700 border-t border-indigo-100 pt-1">
+                    Bukti: ${handoff.evidence_source} (${handoff.evidence_id}) • ${handoff.confidence}
+                  </div>
+                </div>
+              `;
+            })()}
+
             <div class="text-[10px] font-mono text-slate-500 text-center pt-1 border-t border-slate-200">
               ⚡ Visualisasi berdasarkan telemetry nyata • Zero synthetic animation
             </div>
@@ -2185,7 +2432,8 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       if (document.getElementById('dev-scenario-harness')) {
         window.__hermesDevOffice = {
           startStaffJourney: startStaffJourney,
-          activeMovements: activeMovements
+          activeMovements: activeMovements,
+          executeCanonicalHandoff: executeCanonicalHandoff
         };
       }
 
@@ -2218,8 +2466,16 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                   startStaffJourney(newSpr.agent_id, oldSpr.position_key, newSpr.position_key, 'TELEMETRY_REFRESH');
                 }
               });
-              officeData = data;
             }
+            // Check for new canonical handoffs
+            if (data && Array.isArray(data.recent_handoffs)) {
+              data.recent_handoffs.forEach(function (h) {
+                if (consumedHandoffIds.has(h.handoff_id)) return;
+                consumedHandoffIds.add(h.handoff_id);
+                executeCanonicalHandoff(h);
+              });
+            }
+            officeData = data;
           })
           .catch(function (err) {
             console.warn('Auto-refresh poll skipped', err);
@@ -2234,51 +2490,266 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
   {isDev && (
     <script is:inline>
       (function () {
-        const harness = document.getElementById('dev-scenario-harness');
-        if (!harness) return;
+        // 1. Movement Scenarios (V2.3)
+        const moveHarness = document.getElementById('dev-scenario-harness');
+        if (moveHarness) {
+          moveHarness.querySelectorAll('[data-dev-scenario]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const devOffice = window.__hermesDevOffice;
+              if (!devOffice) return;
+              const startStaffJourney = devOffice.startStaffJourney;
+              const activeMovements = devOffice.activeMovements;
+              const scenario = btn.getAttribute('data-dev-scenario');
 
-        harness.querySelectorAll('[data-dev-scenario]').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            const devOffice = window.__hermesDevOffice;
-            if (!devOffice) return;
-            const startStaffJourney = devOffice.startStaffJourney;
-            const activeMovements = devOffice.activeMovements;
-            const scenario = btn.getAttribute('data-dev-scenario');
-
-            if (scenario === 'scenario-a') {
-              startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_A_WRITING');
-            } else if (scenario === 'scenario-b') {
-              startStaffJourney('sari', 'lounge_seat_5', 'publication_console', 'DEV_B_DISPATCH');
-              setTimeout(function () {
-                startStaffJourney('sari', 'publication_console', 'lounge_seat_5', 'DEV_B_RETURN');
-              }, 3200);
-            } else if (scenario === 'scenario-c') {
-              startStaffJourney('rina', 'lounge_seat_3', 'editorial_review_desk', 'DEV_C_REVIEW');
-            } else if (scenario === 'scenario-d') {
-              startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_D_MULTI');
-              startStaffJourney('irwan', 'lounge_seat_4', 'research_main_desk', 'DEV_D_MULTI');
-              startStaffJourney('sari', 'lounge_seat_5', 'publication_console', 'DEV_D_MULTI');
-            } else if (scenario === 'scenario-e') {
-              startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_E_START');
-              setTimeout(function () {
-                const moving = activeMovements['joko'];
-                const currNode = moving ? (moving.path[moving.currentIndex] || 'hall_level_2') : 'hall_level_2';
-                startStaffJourney('joko', currNode, 'lounge_seat_1', 'DEV_E_REROUTE');
-              }, 900);
-            } else if (scenario === 'reset') {
-              for (const id in activeMovements) {
-                clearInterval(activeMovements[id].timer);
-                if (activeMovements[id].el && activeMovements[id].el.parentNode) {
-                  activeMovements[id].el.parentNode.removeChild(activeMovements[id].el);
+              if (scenario === 'scenario-a') {
+                startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_A_WRITING');
+              } else if (scenario === 'scenario-b') {
+                startStaffJourney('sari', 'lounge_seat_5', 'publication_console', 'DEV_B_DISPATCH');
+                setTimeout(function () {
+                  startStaffJourney('sari', 'publication_console', 'lounge_seat_5', 'DEV_B_RETURN');
+                }, 3200);
+              } else if (scenario === 'scenario-c') {
+                startStaffJourney('rina', 'lounge_seat_3', 'editorial_review_desk', 'DEV_C_REVIEW');
+              } else if (scenario === 'scenario-d') {
+                startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_D_MULTI');
+                startStaffJourney('irwan', 'lounge_seat_4', 'research_main_desk', 'DEV_D_MULTI');
+                startStaffJourney('sari', 'lounge_seat_5', 'publication_console', 'DEV_D_MULTI');
+              } else if (scenario === 'scenario-e') {
+                startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_E_START');
+                setTimeout(function () {
+                  const moving = activeMovements['joko'];
+                  const currNode = moving ? (moving.path[moving.currentIndex] || 'hall_level_2') : 'hall_level_2';
+                  startStaffJourney('joko', currNode, 'lounge_seat_1', 'DEV_E_REROUTE');
+                }, 900);
+              } else if (scenario === 'reset') {
+                for (const id in activeMovements) {
+                  clearInterval(activeMovements[id].timer);
+                  if (activeMovements[id].el && activeMovements[id].el.parentNode) {
+                    activeMovements[id].el.parentNode.removeChild(activeMovements[id].el);
+                  }
+                  delete activeMovements[id];
                 }
-                delete activeMovements[id];
+                document.querySelectorAll('[data-staff-station]').forEach(function (el) {
+                  el.classList.remove('invisible');
+                });
               }
-              document.querySelectorAll('[data-staff-station]').forEach(function (el) {
-                el.classList.remove('invisible');
-              });
-            }
+            });
           });
-        });
+        }
+
+        // 2. Canonical Task Handoff Scenarios (V2.4)
+        const handoffHarness = document.getElementById('dev-scenario-handoff-harness');
+        if (handoffHarness) {
+          handoffHarness.querySelectorAll('[data-handoff-scenario]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const devOffice = window.__hermesDevOffice;
+              if (!devOffice) return;
+              const executeCanonicalHandoff = devOffice.executeCanonicalHandoff;
+              const activeMovements = devOffice.activeMovements;
+              const scenario = btn.getAttribute('data-handoff-scenario');
+
+              if (scenario === 'scenario-a') {
+                // Scenario A: Joko Draft -> Rina QA (RUNNING)
+                executeCanonicalHandoff({
+                  handoff_id: 'dev_handoff_a_' + Date.now(),
+                  workflow_id: 'art-2026-09-draft',
+                  task_id: 'task-draft-joko-rina',
+                  artifact_id: 'art-2026-09',
+                  task_title: 'Desain Kanopi Baja Ringan Tahan Angin',
+                  from_agent_id: 'joko',
+                  to_agent_id: 'rina',
+                  from_department_id: 'editorial',
+                  to_department_id: 'editorial',
+                  from_stage: 'writing',
+                  to_stage: 'editorial_qa',
+                  handoff_state: 'RUNNING',
+                  transition_timestamp: new Date().toISOString(),
+                  evidence_source: 'pipeline_task:stage_transition',
+                  evidence_id: 'dev_scen_a',
+                  confidence: 'EXACT',
+                  requires_movement: true
+                });
+              } else if (scenario === 'scenario-b') {
+                // Scenario B: Rina QA -> Sari Pub (QUEUED, No movement!)
+                executeCanonicalHandoff({
+                  handoff_id: 'dev_handoff_b_' + Date.now(),
+                  workflow_id: 'art-2026-10-qa',
+                  task_id: 'task-qa-sari-queue',
+                  artifact_id: 'art-2026-10',
+                  task_title: 'Panduan Pasang Pintu Geser Aluminium',
+                  from_agent_id: 'rina',
+                  to_agent_id: 'sari',
+                  from_department_id: 'editorial',
+                  to_department_id: 'publication_operations',
+                  from_stage: 'editorial_qa',
+                  to_stage: 'scheduled',
+                  handoff_state: 'QUEUED',
+                  transition_timestamp: new Date().toISOString(),
+                  evidence_source: 'articles:status=scheduled',
+                  evidence_id: 'dev_scen_b',
+                  confidence: 'EXACT',
+                  requires_movement: false
+                });
+              } else if (scenario === 'scenario-c') {
+                // Scenario C: Sari QUEUED -> RUNNING (Movement to publication_console starts)
+                executeCanonicalHandoff({
+                  handoff_id: 'dev_handoff_c_' + Date.now(),
+                  workflow_id: 'art-2026-10-qa',
+                  task_id: 'task-qa-sari-queue',
+                  artifact_id: 'art-2026-10',
+                  task_title: 'Panduan Pasang Pintu Geser Aluminium',
+                  from_agent_id: 'sari',
+                  to_agent_id: 'sari',
+                  from_department_id: 'publication_operations',
+                  to_department_id: 'publication_operations',
+                  from_stage: 'scheduled',
+                  to_stage: 'ingesting',
+                  handoff_state: 'RUNNING',
+                  transition_timestamp: new Date().toISOString(),
+                  evidence_source: 'articles:status=ingesting',
+                  evidence_id: 'dev_scen_c',
+                  confidence: 'EXACT',
+                  requires_movement: true
+                });
+              } else if (scenario === 'scenario-d') {
+                // Scenario D: Cross-department handoff: Irwan Research -> Joko Writing
+                executeCanonicalHandoff({
+                  handoff_id: 'dev_handoff_d_' + Date.now(),
+                  workflow_id: 'art-2026-11-research',
+                  task_id: 'task-research-irwan-joko',
+                  artifact_id: 'art-2026-11',
+                  task_title: 'Riset Komparasi Biaya Dak Keraton vs Cor Konvensional',
+                  from_agent_id: 'irwan',
+                  to_agent_id: 'joko',
+                  from_department_id: 'research_evidence',
+                  to_department_id: 'editorial',
+                  from_stage: 'researching',
+                  to_stage: 'writing',
+                  handoff_state: 'RUNNING',
+                  transition_timestamp: new Date().toISOString(),
+                  evidence_source: 'evidence_pack:compiled',
+                  evidence_id: 'dev_scen_d',
+                  confidence: 'EXACT',
+                  requires_movement: true
+                });
+              } else if (scenario === 'scenario-e') {
+                // Scenario E: Rapid double handoff
+                executeCanonicalHandoff({
+                  handoff_id: 'dev_handoff_e1_' + Date.now(),
+                  workflow_id: 'art-2026-12-rapid',
+                  task_id: 'task-rapid-joko-rina',
+                  artifact_id: 'art-2026-12',
+                  task_title: 'Perbaikan Retak Dinding Struktural',
+                  from_agent_id: 'joko',
+                  to_agent_id: 'rina',
+                  from_department_id: 'editorial',
+                  to_department_id: 'editorial',
+                  from_stage: 'writing',
+                  to_stage: 'editorial_qa',
+                  handoff_state: 'RUNNING',
+                  transition_timestamp: new Date().toISOString(),
+                  evidence_source: 'pipeline_task:rapid_1',
+                  evidence_id: 'dev_scen_e1',
+                  confidence: 'EXACT',
+                  requires_movement: true
+                });
+                setTimeout(function () {
+                  executeCanonicalHandoff({
+                    handoff_id: 'dev_handoff_e2_' + Date.now(),
+                    workflow_id: 'art-2026-12-rapid',
+                    task_id: 'task-rapid-rina-sari',
+                    artifact_id: 'art-2026-12',
+                    task_title: 'Perbaikan Retak Dinding Struktural',
+                    from_agent_id: 'rina',
+                    to_agent_id: 'sari',
+                    from_department_id: 'editorial',
+                    to_department_id: 'publication_operations',
+                    from_stage: 'editorial_qa',
+                    to_stage: 'ingesting',
+                    handoff_state: 'RUNNING',
+                    transition_timestamp: new Date().toISOString(),
+                    evidence_source: 'pipeline_task:rapid_2',
+                    evidence_id: 'dev_scen_e2',
+                    confidence: 'EXACT',
+                    requires_movement: true
+                  });
+                }, 1200);
+              } else if (scenario === 'scenario-f') {
+                // Scenario F: Simultaneous independent workflows
+                executeCanonicalHandoff({
+                  handoff_id: 'dev_handoff_f1_' + Date.now(),
+                  workflow_id: 'art-2026-13-a',
+                  task_id: 'task-flow-a',
+                  artifact_id: 'art-2026-13',
+                  task_title: 'Artikel A: Desain Dapur Semi Terbuka',
+                  from_agent_id: 'joko',
+                  to_agent_id: 'rina',
+                  from_department_id: 'editorial',
+                  to_department_id: 'editorial',
+                  from_stage: 'writing',
+                  to_stage: 'editorial_qa',
+                  handoff_state: 'RUNNING',
+                  transition_timestamp: new Date().toISOString(),
+                  evidence_source: 'pipeline_task:flow_a',
+                  evidence_id: 'dev_scen_f1',
+                  confidence: 'EXACT',
+                  requires_movement: true
+                });
+                executeCanonicalHandoff({
+                  handoff_id: 'dev_handoff_f2_' + Date.now(),
+                  workflow_id: 'art-2026-14-b',
+                  task_id: 'task-flow-b',
+                  artifact_id: 'art-2026-14',
+                  task_title: 'Artikel B: Karpet Vinyl vs SPC Flooring',
+                  from_agent_id: 'irwan',
+                  to_agent_id: 'joko',
+                  from_department_id: 'research_evidence',
+                  to_department_id: 'editorial',
+                  from_stage: 'researching',
+                  to_stage: 'writing',
+                  handoff_state: 'RUNNING',
+                  transition_timestamp: new Date().toISOString(),
+                  evidence_source: 'pipeline_task:flow_b',
+                  evidence_id: 'dev_scen_f2',
+                  confidence: 'EXACT',
+                  requires_movement: true
+                });
+              } else if (scenario === 'scenario-g') {
+                // Scenario G: Destination BLOCKED (No active movement)
+                executeCanonicalHandoff({
+                  handoff_id: 'dev_handoff_g_' + Date.now(),
+                  workflow_id: 'art-2026-15-blocked',
+                  task_id: 'task-blocked-destination',
+                  artifact_id: 'art-2026-15',
+                  task_title: 'Uji Kuat Tekan Batako Limbah Abu Terbang',
+                  from_agent_id: 'rina',
+                  to_agent_id: 'sari',
+                  from_department_id: 'editorial',
+                  to_department_id: 'publication_operations',
+                  from_stage: 'editorial_qa',
+                  to_stage: 'failed',
+                  handoff_state: 'BLOCKED',
+                  transition_timestamp: new Date().toISOString(),
+                  evidence_source: 'circuit_breaker:global_publisher=OPEN',
+                  evidence_id: 'dev_scen_g',
+                  confidence: 'EXACT',
+                  requires_movement: false
+                });
+              } else if (scenario === 'reset') {
+                for (const id in activeMovements) {
+                  clearInterval(activeMovements[id].timer);
+                  if (activeMovements[id].el && activeMovements[id].el.parentNode) {
+                    activeMovements[id].el.parentNode.removeChild(activeMovements[id].el);
+                  }
+                  delete activeMovements[id];
+                }
+                document.querySelectorAll('[data-staff-station]').forEach(function (el) {
+                  el.classList.remove('invisible');
+                });
+              }
+            });
+          });
+        }
       })();
     </script>
   )}
