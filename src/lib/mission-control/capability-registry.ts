@@ -250,9 +250,9 @@ export const CANONICAL_SOCIAL_CAPABILITIES: MissionControlCapabilityDefinition[]
     default_agent_id: 'social_distribution_operator',
     operational_availability: 'AVAILABLE_READ_ONLY',
     source_systems: ['social_campaigns', 'social_staging_outbox'],
-    command_families: ['SOCIAL_STATUS_QUERY', 'SOCIAL_CAMPAIGN_REVIEW', 'SOCIAL_OUTBOX_REVIEW'],
+    command_families: ['SOCIAL_STATUS_QUERY', 'SOCIAL_CAMPAIGN_REVIEW', 'SOCIAL_OUTBOX_REVIEW', 'SOCIAL_ADAPTER_QUERY'],
     read_models: ['social', 'social.counts'],
-    anomaly_classes: ['SOCIAL_CAMPAIGN_BLOCKED', 'SOCIAL_DUPLICATE_POST_RISK', 'SOCIAL_APPROVAL_MISMATCH', 'SOCIAL_VARIANT_BLOCKED', 'SOCIAL_AUTOMATION_OFF']
+    anomaly_classes: ['SOCIAL_CAMPAIGN_BLOCKED', 'SOCIAL_DUPLICATE_POST_RISK', 'SOCIAL_APPROVAL_MISMATCH', 'SOCIAL_VARIANT_BLOCKED', 'SOCIAL_AUTOMATION_OFF', 'SOCIAL_AUTH_ERROR', 'SOCIAL_RATE_LIMIT', 'SOCIAL_MEDIA_REJECTED']
   },
   {
     capability_id: 'SOCIAL_COPY_WRITING',

@@ -553,7 +553,24 @@ export async function normalizeOperatorIntent(
   const lower = cleanText.toLowerCase();
 
   // 1. DANGEROUS_PRODUCTION_ACTION Detection (Strictly Prohibited)
-  const dangerKeywords = ['publish', 'terbitkan', 'tayang sekarang', 'unattended', 'force publish', 'deploy', 'credential', 'hapus database', 'drop table'];
+  const dangerKeywords = [
+    'publish',
+    'terbitkan',
+    'tayang sekarang',
+    'posting sekarang',
+    'kirimkan postingan',
+    'kirim ke instagram',
+    'kirim ke facebook',
+    'unattended',
+    'force publish',
+    'deploy',
+    'credential',
+    'token facebook',
+    'token instagram',
+    'access token',
+    'hapus database',
+    'drop table'
+  ];
   for (const kw of dangerKeywords) {
     if (lower.includes(kw)) {
       return {
@@ -968,6 +985,18 @@ export async function normalizeOperatorIntent(
         };
       }
 
+      if (lower.includes('adapter') || lower.includes('meta') || lower.includes('facebook') || lower.includes('instagram')) {
+        return {
+          is_valid: true,
+          command_type: 'SOCIAL_ADAPTER_QUERY',
+          normalized_intent: 'Operator menanyakan status ketersediaan dan kapabilitas adapter Meta (Facebook/Instagram)',
+          authority_level: 'READ_ONLY',
+          target_agent_id: targetAgentId,
+          target_department_id: staff.department_id,
+          parameters: {}
+        };
+      }
+
       if (lower.includes('outbox') || lower.includes('jadwal') || lower.includes('antrean')) {
         return {
           is_valid: true,
@@ -1124,6 +1153,10 @@ export function executeReadOnlyQuery(
       const social = snapshot?.social;
       const count = social?.outboxStagedCount || 0;
       return `Antrean Outbox Medsos:\n• Item Tertahan (Staged): **${count}**\n• Item Layak Kirim (Eligible): **0** (Ditahan oleh gerbang keselamatan SOCIAL_AUTOMATION=OFF).`;
+    }
+
+    case 'SOCIAL_ADAPTER_QUERY': {
+      return `Status Platform Adapter Medsos:\n• Provider Meta: **TERSEDIA (Disabled Execution / Mock Transport)**\n• Platform Didukung: **Facebook Page** (FEED_POST), **Instagram Business** (FEED_POST, CAROUSEL)\n• Eksekusi Provider: **DISABLED** (Otoritas Eksekusi = 0)\n• Kredensial Produksi: **TIDAK ADA** (Zero raw secrets / Token vault nihil)\n• Jaringan Eksternal: **TIDAK DIHUBUNGKAN** (Semua panggilan riil diblokir secara mutlak).`;
     }
 
     default:

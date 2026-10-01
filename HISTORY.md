@@ -17,6 +17,46 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### SOCIAL-S3: First Platform Adapter (Meta Graph API: Facebook Page + Instagram Business) 2026-10-01
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengimplementasikan batas adapter platform sosial pertama untuk Meta Graph API (Facebook Page & Instagram Business) dengan prinsip **Disabled Execution & Mock Transport First**.
+  - Strict Safety Invariants: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `JEV_MODE = shadow`, `Meta execution authority = 0`.
+  - Zero Production Credentials: Tidak ada access token, App Secret, maupun token mentah yang disimpan di D1 atau di-commit.
+  - Zero Real Publishing: Tidak ada panggilan jaringan ke endpoint publik Meta Graph API; tidak ada postingan Facebook/Instagram riil; tidak ada receipt eksternal fiktif yang dimasukkan ke D1.
+- **Komponen Utama yang Diimplementasikan:**
+  1. **Kontrak Neutral Platform Provider (`src/lib/social/providers/types.ts` & `registry.ts`):**
+     - Antarmuka netral `SocialPlatformAdapter` dengan pemisahan tegas antara Domain, Adapter, Transport, dan Mission Control.
+     - Registri sentral `getPlatformAdapter()` yang memetakan platform target ke instans adapter tanpa kopling langsung.
+  2. **Abstraksi Transport & Mock Deterministik (`src/lib/social/providers/transport.ts`):**
+     - `MockSocialProviderTransport` untuk pengujian unit/integrasi lokal deterministik dengan pencatatan seluruh permintaan outbound (`recordedRequests`).
+     - `ProductionSocialProviderTransport` yang bersifat inert dan fail-closed dengan galat `PRODUCTION_TRANSPORT_BLOCKED`.
+  3. **Model Konfigurasi Nir-Rahasia (`src/lib/social/providers/meta/types.ts`):**
+     - `MetaProviderConfig` hanya memuat referensi non-rahasia (`facebookPageId`, `instagramAccountId`, `graphApiVersion`, `credentialBindingName`).
+     - Validasi konfigurasi menolak secara fail-closed jika terdapat kunci rahasia (`accessToken`, `appSecret`).
+  4. **Matriks Kapabilitas Deterministik (`capabilities.ts`):**
+     - Facebook Page: `FEED_POST` = `SUPPORTED`, `CAROUSEL` = `UNVERIFIED`, `REEL_SHORT` = `UNVERIFIED`, `THREAD` = `UNSUPPORTED`.
+     - Instagram Business: `FEED_POST` = `SUPPORTED`, `CAROUSEL` = `SUPPORTED` (2-10 items), `REEL_SHORT` = `UNVERIFIED`, `THREAD` = `UNSUPPORTED`.
+     - Format unverified atau unsupported secara tegas ditolak sebelum pembuatan request.
+  5. **Builder Permintaan & Alur Multi-Stage (`request-builder.ts`):**
+     - Facebook Page: endpoint photo (`/{page-id}/photos`) atau feed (`/{page-id}/feed`).
+     - Instagram Business: alur multi-stage kontainer asli Meta (`/{ig-user-id}/media` -> `/{ig-user-id}/media_publish`), dan dukungan kontainer carousel untuk multi-gambar.
+  6. **Gerbang Eksekusi & Normalisasi Hasil (`response-normalizer.ts` & `error-classifier.ts`):**
+     - Eksekusi publish saat `executionMode === 'DISABLED'` secara ketat menolak dengan `PROVIDER_EXECUTION_DISABLED`.
+     - Sanitasi rahasia otomatis (`sanitizeMetaPayload`) menyensor token/auth dari luaran diagnostik mentah.
+     - Pengklasifikasi galat Meta deterministik memetakan kode Meta (190, 200, 4/17/32/613, 36003, 506, dll) ke kelas normalisasi tanpa fabrikasi.
+  7. **Integrasi Mission Control & Maya:**
+     - Kueri read-only aman `SOCIAL_ADAPTER_QUERY` melaporkan status adapter riil (Meta: TERSEDIA via Disabled Execution / Mock Transport; Otoritas: 0).
+     - Seluruh perintah publikasi atau injeksi token via chat ditolak dengan `DANGEROUS_ACTION_FORBIDDEN`.
+- **Pengujian & Validasi:**
+  - `scripts/test-social-meta-adapter.js` lulus 100% (23/23 tes).
+  - Seluruh 11 rangkaian tes regresi lulus 100% (total 241 tes).
+  - `npx tsc --noEmit` lulus bersih 0 kesalahan.
+  - `npm run build` sukses 100%.
+- **Status Akhir:**
+  - `SOCIAL-S3 = COMPLETE`.
+  - Frontier berikutnya: `SOCIAL-S3.5/READY` (Meta Credential & Account Binding Readiness / Operator-Gated Connection).
+
 ### SOCIAL-S2: Mission Control Social Department & Staff Integration (Read-Only / Shadow) 2026-10-01
 
 - **Tujuan & Ruang Lingkup:**
