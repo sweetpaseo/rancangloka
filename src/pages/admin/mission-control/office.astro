@@ -23,11 +23,14 @@ import { getDb } from '../../../lib/db.ts';
 import {
   getMissionControlSnapshot,
   getPixelOfficeState,
-  JOB_ANIMATION_REGISTRY
+  JOB_ANIMATION_REGISTRY,
+  OFFICE_ROUTE_NODES,
+  OFFICE_ROUTE_EDGES
 } from '../../../lib/mission-control/index.ts';
 import type { OfficeStaffSprite, OfficeRoom } from '../../../lib/mission-control/pixel-office.ts';
 
 const env = (Astro.locals as any)?.runtime?.env || (globalThis as any).process?.env || {};
+const isDev = Boolean((import.meta as any).env?.DEV || env.ENVIRONMENT === 'development');
 const db = (await getDb(Astro.locals)) || env.DB || (Astro.locals as any)?.db;
 
 const snapshot = await getMissionControlSnapshot(db, env);
@@ -253,12 +256,47 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         </div>
       </div>
 
+      <!-- DEV VISUAL SCENARIO TEST HARNESS (Local Development Only — Zero D1 / Production Mutation) -->
+      {isDev && (
+        <div class="relative z-10 mb-4 bg-amber-50/95 border border-amber-300 rounded-xl p-3 text-xs font-mono shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-bold uppercase text-[10px]">DEV HARNESS</span>
+              <span class="text-amber-900 font-bold">Uji Visual Perpindahan Staf (Zero D1 Mutation)</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded text-[11px] font-bold text-amber-950 transition cursor-pointer shadow-2xs" data-dev-scenario="scenario-a">
+                A: Joko (Lounge → Editorial)
+              </button>
+              <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded text-[11px] font-bold text-amber-950 transition cursor-pointer shadow-2xs" data-dev-scenario="scenario-b">
+                B: Sari (Lounge → Pub → Lounge)
+              </button>
+              <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded text-[11px] font-bold text-amber-950 transition cursor-pointer shadow-2xs" data-dev-scenario="scenario-c">
+                C: Rina Review Handoff
+              </button>
+              <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded text-[11px] font-bold text-amber-950 transition cursor-pointer shadow-2xs" data-dev-scenario="scenario-d">
+                D: Multi-Staff Serentak
+              </button>
+              <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded text-[11px] font-bold text-amber-950 transition cursor-pointer shadow-2xs" data-dev-scenario="scenario-e">
+                E: Reroute Mid-Transit
+              </button>
+              <button type="button" class="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 border border-amber-400 rounded text-[11px] font-bold text-amber-950 transition cursor-pointer shadow-2xs" data-dev-scenario="reset">
+                Reset Posisi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <!-- FLOOR PLAN BLUEPRINT CONTAINER -->
       <div class="relative z-10 overflow-x-auto pb-4">
         
         <!-- THE PHYSICAL BUILDING SHELL (THICK ARCHITECTURAL WALLS) -->
-        <div class="min-w-[1020px] max-w-[1240px] mx-auto bg-slate-800 p-2.5 rounded-xl shadow-2xl">          <!-- BUILDING INTERIOR WITH SHARED PARTITION WALLS & CENTRAL CIRCULATION SPINE -->
-          <div class="bg-slate-700 p-1.5 rounded-lg space-y-1.5">
+        <div class="min-w-[1020px] max-w-[1240px] mx-auto bg-slate-800 p-2.5 rounded-xl shadow-2xl">
+          <!-- BUILDING INTERIOR WITH SHARED PARTITION WALLS & CENTRAL CIRCULATION SPINE -->
+          <div id="building-floor-plan" class="relative bg-slate-700 p-1.5 rounded-lg space-y-1.5">
+            <!-- REAL-TIME DETERMINISTIC STAFF TRANSIT LAYER -->
+            <div id="staff-transit-layer" class="absolute inset-0 pointer-events-none z-30 overflow-hidden" aria-hidden="true"></div>
             
             <!-- MAIN 3-COLUMN FLOOR PLAN: LEFT WING | CENTRAL VERTICAL HALL | RIGHT WING -->
             <div class="grid grid-cols-[minmax(0,5fr)_minmax(210px,2.4fr)_minmax(0,5fr)] gap-1.5 items-stretch">
@@ -345,8 +383,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                                 return (
                                   <button
                                     type="button"
-                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
                                     data-staff-inspect={joko.agent_id}
+                                    data-staff-station={joko.agent_id}
                                     title={`${joko.display_name} • ${joko.role} (${joko.badge_text})`}
                                   >
                                     <div class="relative">
@@ -417,8 +456,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                                 return (
                                   <button
                                     type="button"
-                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
                                     data-staff-inspect={rina.agent_id}
+                                    data-staff-station={rina.agent_id}
                                     title={`${rina.display_name} • ${rina.role} (${rina.badge_text})`}
                                   >
                                     <div class="relative">
@@ -542,8 +582,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                                 return (
                                   <button
                                     type="button"
-                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
                                     data-staff-inspect={budi.agent_id}
+                                    data-staff-station={budi.agent_id}
                                     title={`${budi.display_name} • ${budi.role} (${budi.badge_text})`}
                                   >
                                     <div class="relative">
@@ -676,8 +717,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                                 return (
                                   <button
                                     type="button"
-                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
                                     data-staff-inspect={sari.agent_id}
+                                    data-staff-station={sari.agent_id}
                                     title={`${sari.display_name} • ${sari.role} (${sari.badge_text})`}
                                   >
                                     <div class="relative">
@@ -859,8 +901,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                                 return (
                                   <button
                                     type="button"
-                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
                                     data-staff-inspect={irwan.agent_id}
+                                    data-staff-station={irwan.agent_id}
                                     title={`${irwan.display_name} • ${irwan.role} (${irwan.badge_text})`}
                                   >
                                     <div class="relative">
@@ -979,8 +1022,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                                 return (
                                   <button
                                     type="button"
-                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
                                     data-staff-inspect={dimas.agent_id}
+                                    data-staff-station={dimas.agent_id}
                                     title={`${dimas.display_name} • ${dimas.role} (${dimas.badge_text})`}
                                   >
                                     <div class="relative">
@@ -1105,8 +1149,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                                 return (
                                   <button
                                     type="button"
-                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
                                     data-staff-inspect={spr1.agent_id}
+                                    data-staff-station={spr1.agent_id}
                                     title={`${spr1.display_name} • Bersantai di Sofa Lounge`}
                                   >
                                     <div class="relative">
@@ -1147,8 +1192,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                                 return (
                                   <button
                                     type="button"
-                                    class="flex flex-col items-center group cursor-pointer focus:outline-none"
+                                    class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
                                     data-staff-inspect={spr2.agent_id}
+                                    data-staff-station={spr2.agent_id}
                                     title={`${spr2.display_name} • Bersantai di Sofa Lounge`}
                                   >
                                     <div class="relative">
@@ -1190,7 +1236,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                               const spr3 = getSpriteAtPos('lounge_seat_3');
                               if (spr3) {
                                 return (
-                                  <button type="button" class="flex flex-col items-center group cursor-pointer focus:outline-none" data-staff-inspect={spr3.agent_id}>
+                                  <button type="button" class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200" data-staff-inspect={spr3.agent_id} data-staff-station={spr3.agent_id}>
                                     <div class="w-10 h-10 flex items-center justify-center pixel-avatar-box">
                                       <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated drop-shadow-sm" shape-rendering="crispEdges">
                                         <rect x="8" y="4" width="16" height="7" fill="#312e81" />
@@ -1237,7 +1283,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                               const spr4 = getSpriteAtPos('lounge_seat_4');
                               if (spr4) {
                                 return (
-                                  <button type="button" class="flex flex-col items-center group cursor-pointer focus:outline-none" data-staff-inspect={spr4.agent_id}>
+                                  <button type="button" class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200" data-staff-inspect={spr4.agent_id} data-staff-station={spr4.agent_id}>
                                     <div class="w-10 h-10 flex items-center justify-center pixel-avatar-box">
                                       <svg viewBox="0 0 32 32" class="w-9 h-9 pixelated drop-shadow-sm" shape-rendering="crispEdges">
                                         <rect x="8" y="4" width="16" height="7" fill="#312e81" />
@@ -1270,7 +1316,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                             const spr5 = getSpriteAtPos('lounge_seat_5');
                             if (spr5) {
                               return (
-                                <button type="button" class="text-[8px] font-mono font-bold bg-white/90 px-1.5 py-0.2 rounded border border-amber-300 cursor-pointer shadow-2xs" data-staff-inspect={spr5.agent_id}>
+                                <button type="button" class="text-[8px] font-mono font-bold bg-white/90 px-1.5 py-0.2 rounded border border-amber-300 cursor-pointer shadow-2xs transition-opacity duration-200" data-staff-inspect={spr5.agent_id} data-staff-station={spr5.agent_id}>
                                   {spr5.display_name} (Meja Kopi)
                                 </button>
                               );
@@ -1281,7 +1327,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
                             const spr6 = getSpriteAtPos('lounge_seat_6');
                             if (spr6) {
                               return (
-                                <button type="button" class="text-[8px] font-mono font-bold bg-white/90 px-1.5 py-0.2 rounded border border-amber-300 cursor-pointer shadow-2xs" data-staff-inspect={spr6.agent_id}>
+                                <button type="button" class="text-[8px] font-mono font-bold bg-white/90 px-1.5 py-0.2 rounded border border-amber-300 cursor-pointer shadow-2xs transition-opacity duration-200" data-staff-inspect={spr6.agent_id} data-staff-station={spr6.agent_id}>
                                   {spr6.display_name} (Meja Kopi)
                                 </button>
                               );
@@ -1476,6 +1522,8 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
 
   <!-- Raw State Payload for Client Hydration & Safe Inspection -->
   <script id="office-data-payload" type="application/json" set:html={JSON.stringify(office)}></script>
+  <!-- Route Graph & Navigation Nodes for Deterministic Staff Movement (V2.3) -->
+  <script id="office-route-payload" type="application/json" set:html={JSON.stringify({ nodes: OFFICE_ROUTE_NODES, edges: OFFICE_ROUTE_EDGES })}></script>
 
   <style>
     /* Crisp retro pixel rendering */
@@ -1591,6 +1639,33 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       animation: idleBreathing 3s infinite ease-in-out;
     }
 
+    /* Staff In-Transit Walking Animations & Transit Layer (V2.3) */
+    .staff-transit-sprite {
+      position: absolute;
+      width: 44px;
+      height: 48px;
+      margin-left: -22px;
+      margin-top: -24px;
+      transition: left 450ms linear, top 450ms linear;
+      pointer-events: auto;
+      cursor: pointer;
+      z-index: 35;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .staff-walking-bob {
+      animation: staffBob 0.35s infinite ease-in-out alternate;
+    }
+    @keyframes staffBob {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-3px); }
+    }
+    .flip-horizontal {
+      transform: scaleX(-1);
+    }
+
     /* Accessibility: Respect Reduced Motion */
     @media (prefers-reduced-motion: reduce) {
       *,
@@ -1603,6 +1678,12 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         transform: none !important;
         filter: none !important;
       }
+      .staff-transit-sprite {
+        transition: none !important;
+      }
+      .staff-walking-bob {
+        animation: none !important;
+      }
     }
   </style>
 
@@ -1611,12 +1692,223 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       const payloadEl = document.getElementById('office-data-payload');
       if (!payloadEl) return;
 
-      let officeData;
+      let officeData = {};
       try {
         officeData = JSON.parse(payloadEl.textContent || '{}');
       } catch (e) {
         console.error('Failed to parse office telemetry payload', e);
         return;
+      }
+
+      const routePayloadEl = document.getElementById('office-route-payload');
+      let routeData = { nodes: {}, edges: [] };
+      try {
+        if (routePayloadEl) routeData = JSON.parse(routePayloadEl.textContent || '{}');
+      } catch (e) {
+        console.error('Failed to parse route graph payload', e);
+      }
+      const routeNodes = routeData.nodes || {};
+      const routeEdges = routeData.edges || [];
+
+      // Pre-calculated adjacency for fast deterministic BFS
+      const adj = {};
+      (routeEdges || []).forEach(function (e) {
+        if (!adj[e.from]) adj[e.from] = [];
+        if (!adj[e.to]) adj[e.to] = [];
+        adj[e.from].push(e.to);
+        adj[e.to].push(e.from);
+      });
+      for (const k in adj) {
+        adj[k].sort(); // Lexicographical deterministic tie-breaking
+      }
+
+      function findDeterministicPath(startNodeId, targetNodeId) {
+        if (startNodeId === targetNodeId) return [startNodeId];
+        if (!routeNodes[startNodeId] || !routeNodes[targetNodeId]) return [];
+
+        const queue = [startNodeId];
+        const visited = new Set([startNodeId]);
+        const parent = {};
+
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          if (curr === targetNodeId) break;
+
+          const neighbors = adj[curr] || [];
+          for (let i = 0; i < neighbors.length; i++) {
+            const next = neighbors[i];
+            if (!visited.has(next)) {
+              visited.add(next);
+              parent[next] = curr;
+              queue.push(next);
+            }
+          }
+        }
+
+        if (!parent[targetNodeId] && startNodeId !== targetNodeId) return [];
+
+        const path = [];
+        let curr = targetNodeId;
+        while (curr) {
+          path.unshift(curr);
+          curr = parent[curr];
+        }
+        return path;
+      }
+
+      const activeMovements = {};
+      const STAFF_ORDER = ['joko', 'rina', 'irwan', 'budi', 'dimas', 'sari', 'maya'];
+
+      function getNodeVisualCoordinate(nodeId, staffIndex, isSouthbound) {
+        const node = routeNodes[nodeId];
+        if (!node) return { x: 50, y: 50 };
+        let x = node.x;
+        let y = node.y;
+        if (node.room_key === 'central_hall') {
+          const laneOffset = isSouthbound ? 2.5 : -2.5;
+          const staggerOffset = ((staffIndex % 3) - 1) * 0.8;
+          x = Math.max(42, Math.min(58, x + laneOffset + staggerOffset));
+        }
+        return { x: x, y: y };
+      }
+
+      function startStaffJourney(agentId, fromNodeId, targetNodeId, movementReason) {
+        if (!fromNodeId || !targetNodeId || fromNodeId === targetNodeId) return;
+
+        // Invariant: Maya / Zone S remains holding
+        if (agentId === 'maya' || targetNodeId === 'social_workstation') return;
+
+        // Invariant: Budi / Media Worker disabled
+        if (agentId === 'budi' && (!officeData.sprites || officeData.sprites.find(function (s) { return s.agent_id === 'budi'; })?.visual_mode === 'DIMMED')) {
+          return;
+        }
+
+        const staffIndex = Math.max(0, STAFF_ORDER.indexOf(agentId));
+        const path = findDeterministicPath(fromNodeId, targetNodeId);
+        if (!path || path.length < 2) return;
+
+        const transitLayer = document.getElementById('staff-transit-layer');
+        if (!transitLayer) return;
+
+        // Cancel previous active movement if already moving (rapid rerouting)
+        if (activeMovements[agentId]) {
+          clearInterval(activeMovements[agentId].timer);
+          if (activeMovements[agentId].el && activeMovements[agentId].el.parentNode) {
+            activeMovements[agentId].el.parentNode.removeChild(activeMovements[agentId].el);
+          }
+          delete activeMovements[agentId];
+        }
+
+        // Hide docked station sprite
+        document.querySelectorAll('[data-staff-station="' + agentId + '"]').forEach(function (el) {
+          el.classList.add('invisible');
+        });
+
+        const sprite = (officeData.sprites || []).find(function (s) { return s.agent_id === agentId; }) || {
+          agent_id: agentId,
+          display_name: agentId.toUpperCase(),
+          badge_text: 'ACTIVE'
+        };
+
+        const fromNode = routeNodes[fromNodeId];
+        const targetNode = routeNodes[targetNodeId];
+        const isSouthbound = Boolean(targetNode && fromNode && targetNode.y > fromNode.y);
+
+        // Build transit sprite element
+        const spriteEl = document.createElement('div');
+        spriteEl.className = 'staff-transit-sprite';
+        spriteEl.setAttribute('data-staff-inspect', agentId);
+        spriteEl.setAttribute('title', sprite.display_name + ' • Sedang Berjalan ke ' + (targetNode?.label || targetNodeId));
+
+        // Initial position
+        const startCoord = getNodeVisualCoordinate(path[0], staffIndex, isSouthbound);
+        spriteEl.style.left = startCoord.x + '%';
+        spriteEl.style.top = startCoord.y + '%';
+
+        // Get inner SVG avatar
+        let avatarSvgHtml = '';
+        const existingStationBtn = document.querySelector('[data-staff-station="' + agentId + '"]');
+        if (existingStationBtn) {
+          const svgEl = existingStationBtn.querySelector('svg.pixelated');
+          if (svgEl) avatarSvgHtml = svgEl.outerHTML;
+        }
+        if (!avatarSvgHtml) {
+          avatarSvgHtml = `<svg viewBox="0 0 32 32" class="w-10 h-10 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+            <rect x="10" y="4" width="12" height="6" fill="#3e2723" />
+            <rect x="8" y="10" width="16" height="8" fill="#ffd1a4" />
+            <rect x="8" y="18" width="16" height="10" fill="#0284c7" />
+          </svg>`;
+        }
+
+        spriteEl.innerHTML = `
+          <div class="relative flex flex-col items-center">
+            <div class="w-10 h-10 flex items-center justify-center pixel-avatar-box staff-walking-bob">
+              ${avatarSvgHtml}
+            </div>
+            <span class="text-[8px] font-outfit font-black text-slate-800 bg-white/95 px-1 py-0.2 rounded shadow-xs border border-slate-300 mt-[-2px]">
+              ${sprite.display_name} 🚶
+            </span>
+          </div>
+        `;
+
+        // Click handler on transit sprite for inspector
+        spriteEl.addEventListener('click', function (e) {
+          e.stopPropagation();
+          openStaffInspector(agentId);
+        });
+
+        transitLayer.appendChild(spriteEl);
+
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const stepTime = prefersReducedMotion ? 20 : 450;
+
+        let currentIndex = 0;
+        let prevCoord = startCoord;
+
+        const movementRecord = {
+          agentId: agentId,
+          sprite: sprite,
+          fromNodeId: fromNodeId,
+          targetNodeId: targetNodeId,
+          path: path,
+          currentIndex: 0,
+          isSouthbound: isSouthbound,
+          el: spriteEl,
+          movementReason: movementReason || 'TRANSITION'
+        };
+        activeMovements[agentId] = movementRecord;
+
+        const timer = setInterval(function () {
+          currentIndex++;
+          movementRecord.currentIndex = currentIndex;
+
+          if (currentIndex < path.length) {
+            const nextNodeId = path[currentIndex];
+            const coord = getNodeVisualCoordinate(nextNodeId, staffIndex, isSouthbound);
+            spriteEl.style.left = coord.x + '%';
+            spriteEl.style.top = coord.y + '%';
+
+            // Flip facing
+            if (coord.x < prevCoord.x - 0.5) {
+              spriteEl.classList.add('flip-horizontal');
+            } else if (coord.x > prevCoord.x + 0.5) {
+              spriteEl.classList.remove('flip-horizontal');
+            }
+            prevCoord = coord;
+          } else {
+            // ARRIVAL!
+            clearInterval(timer);
+            if (spriteEl.parentNode) spriteEl.parentNode.removeChild(spriteEl);
+            delete activeMovements[agentId];
+
+            // Re-show docked station
+            document.querySelectorAll('[data-staff-station="' + agentId + '"]').forEach(function (el) {
+              el.classList.remove('invisible');
+            });
+          }
+        }, stepTime);
+
+        movementRecord.timer = timer;
       }
 
       const modal = document.getElementById('inspect-modal');
@@ -1641,37 +1933,80 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         });
       }
 
-      // Handle staff inspection
-      document.querySelectorAll('[data-staff-inspect]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          const agentId = btn.getAttribute('data-staff-inspect');
-          const sprite = (officeData.sprites || []).find(function (s) {
-            return s.agent_id === agentId;
-          });
-          if (!sprite || !modal) return;
+      function openStaffInspector(agentId) {
+        const sprite = (officeData.sprites || []).find(function (s) {
+          return s.agent_id === agentId;
+        }) || { agent_id: agentId, display_name: agentId, role: 'Personnel' };
+        if (!modal) return;
 
-          modalTag.textContent = 'STAFF INSPECTOR';
-          modalTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold uppercase border border-blue-200';
-          modalTitle.textContent = sprite.display_name;
-          modalSubtitle.textContent = sprite.role + ' • ' + sprite.agent_id;
+        const movement = activeMovements[agentId];
 
-          if (modalChatLink) {
-            modalChatLink.href = '/admin/mission-control/staff/' + encodeURIComponent(sprite.agent_id) + '/chat';
-            modalChatLink.innerHTML = `
-              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
-              <span>Chat dengan ${sprite.display_name}</span>
-            `;
-            modalChatLink.classList.remove('hidden');
-          }
+        modalTag.textContent = movement ? 'STAFF IN-TRANSIT' : 'STAFF INSPECTOR';
+        modalTag.className = movement
+          ? 'text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold uppercase border border-amber-300'
+          : 'text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold uppercase border border-blue-200';
+        modalTitle.textContent = sprite.display_name;
+        modalSubtitle.textContent = sprite.role + ' • ' + sprite.agent_id;
 
-          if (modalStaffLink) {
-            modalStaffLink.href = '/admin/mission-control/staff?staff=' + encodeURIComponent(sprite.agent_id);
-            modalStaffLink.textContent = 'Lihat di Staff Registry →';
-            modalStaffLink.classList.remove('hidden');
-          }
+        if (modalChatLink) {
+          modalChatLink.href = '/admin/mission-control/staff/' + encodeURIComponent(sprite.agent_id) + '/chat';
+          modalChatLink.innerHTML = `
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Chat dengan ${sprite.display_name}</span>
+          `;
+          modalChatLink.classList.remove('hidden');
+        }
 
+        if (modalStaffLink) {
+          modalStaffLink.href = '/admin/mission-control/staff?staff=' + encodeURIComponent(sprite.agent_id);
+          modalStaffLink.textContent = 'Lihat di Staff Registry →';
+          modalStaffLink.classList.remove('hidden');
+        }
+
+        if (movement) {
+          const currNodeId = movement.path[movement.currentIndex] || movement.fromNodeId;
+          const currNode = routeNodes[currNodeId];
+          const destNode = routeNodes[movement.targetNodeId];
+          modalBody.innerHTML = `
+            <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-amber-800 font-medium">Status Visual:</span>
+                <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-amber-200 text-amber-900 border border-amber-300 animate-pulse">
+                  SEDANG BERJALAN (${movement.isSouthbound ? 'Selatan' : 'Utara / Ruangan'})
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-amber-800 font-medium">Lokasi Koridor Saat Ini:</span>
+                <span class="text-slate-900 font-bold">${currNode ? currNode.label : currNodeId}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-amber-800 font-medium">Destinasi Akhir:</span>
+                <span class="text-blue-900 font-bold">${destNode ? destNode.label : movement.targetNodeId}</span>
+              </div>
+              <div class="flex items-center justify-between border-t border-amber-200 pt-1.5">
+                <span class="text-amber-800 font-medium">Langkah Rute:</span>
+                <span class="text-slate-700 font-mono text-[11px]">${movement.currentIndex + 1} / ${movement.path.length} node</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 font-bold">Status Operasional Nyata:</span>
+                <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
+                  sprite.visual_mode === 'ACTIVE'
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : 'bg-slate-200 text-slate-800 border border-slate-300'
+                }">${sprite.badge_text || 'ACTIVE'}</span>
+              </div>
+              <div class="text-slate-900 font-medium">${sprite.task_label || sprite.current_task_title || 'Transisi operasional aktif'}</div>
+              <div class="text-[10px] text-slate-500 font-mono">
+                Catatan: Gerakan visual ini mencerminkan perubahan status riil Mission Control. Koridor bukan status bisnis.
+              </div>
+            </div>
+          `;
+        } else {
           modalBody.innerHTML = `
             <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
               <div class="flex items-center justify-between">
@@ -1727,8 +2062,16 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
               ⚡ Visualisasi berdasarkan telemetry nyata • Zero synthetic animation
             </div>
           `;
+        }
 
-          modal.classList.remove('hidden');
+        modal.classList.remove('hidden');
+      }
+
+      // Handle staff inspection on stationary buttons
+      document.querySelectorAll('[data-staff-inspect]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const agentId = btn.getAttribute('data-staff-inspect');
+          openStaffInspector(agentId);
         });
       });
 
@@ -1803,6 +2146,45 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         });
       });
 
+      // Handle Dev visual test buttons (Local development only)
+      document.querySelectorAll('[data-dev-scenario]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const scenario = btn.getAttribute('data-dev-scenario');
+          if (scenario === 'scenario-a') {
+            startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_A_WRITING');
+          } else if (scenario === 'scenario-b') {
+            startStaffJourney('sari', 'lounge_seat_2', 'publication_console', 'DEV_B_DISPATCH');
+            setTimeout(function () {
+              startStaffJourney('sari', 'publication_console', 'lounge_seat_2', 'DEV_B_RETURN');
+            }, 3200);
+          } else if (scenario === 'scenario-c') {
+            startStaffJourney('rina', 'lounge_seat_3', 'editorial_review_desk', 'DEV_C_REVIEW');
+          } else if (scenario === 'scenario-d') {
+            startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_D_MULTI');
+            startStaffJourney('irwan', 'lounge_seat_4', 'research_main_desk', 'DEV_D_MULTI');
+            startStaffJourney('sari', 'lounge_seat_2', 'publication_console', 'DEV_D_MULTI');
+          } else if (scenario === 'scenario-e') {
+            startStaffJourney('joko', 'lounge_seat_1', 'editorial_writer_desk', 'DEV_E_START');
+            setTimeout(function () {
+              const moving = activeMovements['joko'];
+              const currNode = moving ? (moving.path[moving.currentIndex] || 'hall_level_2') : 'hall_level_2';
+              startStaffJourney('joko', currNode, 'lounge_seat_1', 'DEV_E_REROUTE');
+            }, 900);
+          } else if (scenario === 'reset') {
+            for (const id in activeMovements) {
+              clearInterval(activeMovements[id].timer);
+              if (activeMovements[id].el && activeMovements[id].el.parentNode) {
+                activeMovements[id].el.parentNode.removeChild(activeMovements[id].el);
+              }
+              delete activeMovements[id];
+            }
+            document.querySelectorAll('[data-staff-station]').forEach(function (el) {
+              el.classList.remove('invisible');
+            });
+          }
+        });
+      });
+
       // Manual refresh button handler
       const refreshBtn = document.getElementById('btn-refresh-office');
       if (refreshBtn) {
@@ -1821,6 +2203,18 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
               if (timeDisplay) {
                 timeDisplay.textContent = new Date(data.generated_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
               }
+            }
+            if (data && Array.isArray(data.sprites)) {
+              data.sprites.forEach(function (newSpr) {
+                const oldSpr = (officeData.sprites || []).find(function (s) {
+                  return s.agent_id === newSpr.agent_id;
+                });
+                if (oldSpr && newSpr.position_key && oldSpr.position_key !== newSpr.position_key) {
+                  // Real canonical state transition observed!
+                  startStaffJourney(newSpr.agent_id, oldSpr.position_key, newSpr.position_key, 'TELEMETRY_REFRESH');
+                }
+              });
+              officeData = data;
             }
           })
           .catch(function (err) {
