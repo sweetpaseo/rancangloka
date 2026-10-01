@@ -62,31 +62,42 @@ export async function storeCredential(
     throw new Error(`VAULT_KEK_UNAVAILABLE: Encryption key version ${keyVersion} could not be resolved`);
   }
 
-  // Build Authenticated Context (AAD)
-  const aad = buildAuthenticatedContext(
+  // Build Authenticated Context (AAD) with token purpose
+  const accessAad = buildAuthenticatedContext(
     credentialId,
     params.connectionId,
     params.provider,
     params.authMode,
-    keyVersion
+    keyVersion,
+    'access_token'
   );
 
-  // Encrypt access token
-  const { ciphertext: encAccessToken, nonce: encNonce } = await encryptToken(
+  // Encrypt access token with independent nonce
+  const { ciphertext: encAccessToken, nonce: accessNonce } = await encryptToken(
     params.accessToken,
     rawKey,
-    aad
+    accessAad
   );
 
-  // Encrypt refresh token if present
+  // Encrypt refresh token if present with distinct independent nonce and distinct AAD
   let encRefreshToken: string | null = null;
+  let refreshNonce: string | null = null;
   if (params.refreshToken) {
-    const { ciphertext: refCipher } = await encryptToken(
+    const refreshAad = buildAuthenticatedContext(
+      credentialId,
+      params.connectionId,
+      params.provider,
+      params.authMode,
+      keyVersion,
+      'refresh_token'
+    );
+    const { ciphertext: refCipher, nonce: refNonce } = await encryptToken(
       params.refreshToken,
       rawKey,
-      aad
+      refreshAad
     );
     encRefreshToken = refCipher;
+    refreshNonce = refNonce;
   }
 
   // Calculate expiration
@@ -98,25 +109,23 @@ export async function storeCredential(
   const scopeSnapshot = JSON.stringify(params.scopes || []);
   const tokenType = params.tokenType || 'BEARER';
 
-  // Atomic superseding: Mark existing active credentials for this connection as revoked
+  // Atomic superseding: Mark existing active credentials for this connection as revoked, then insert new
   try {
-    await db
+    const revokeStmt = db
       .prepare(
         'UPDATE social_provider_credentials SET revoked_at = ?, updated_at = ? WHERE connection_id = ? AND provider = ? AND revoked_at IS NULL'
       )
-      .bind(now, now, params.connectionId, params.provider)
-      .run();
+      .bind(now, now, params.connectionId, params.provider);
 
-    // Insert new encrypted credential record
-    await db
+    const insertStmt = db
       .prepare(
         `INSERT INTO social_provider_credentials (
           credential_id, connection_id, provider, auth_mode,
           encrypted_access_token, encrypted_refresh_token,
-          encryption_nonce, encryption_key_version, token_type,
-          expires_at, scope_snapshot, provider_user_id,
-          created_at, updated_at, revoked_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`
+          encryption_nonce, access_token_nonce, refresh_token_nonce,
+          encryption_key_version, token_type, expires_at,
+          scope_snapshot, provider_user_id, created_at, updated_at, revoked_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`
       )
       .bind(
         credentialId,
@@ -125,7 +134,9 @@ export async function storeCredential(
         params.authMode,
         encAccessToken,
         encRefreshToken,
-        encNonce,
+        accessNonce,
+        accessNonce,
+        refreshNonce,
         keyVersion,
         tokenType,
         expiresAt,
@@ -133,8 +144,14 @@ export async function storeCredential(
         params.providerUserId || null,
         now,
         now
-      )
-      .run();
+      );
+
+    if (typeof db.batch === 'function') {
+      await db.batch([revokeStmt, insertStmt]);
+    } else {
+      await revokeStmt.run();
+      await insertStmt.run();
+    }
   } catch (err: any) {
     throw sanitizeVaultError(err);
   }
@@ -203,14 +220,17 @@ export async function readCredentialForProviderExecution(
     throw new Error(`VAULT_KEK_UNAVAILABLE: Key version ${row.encryption_key_version} is not available in environment`);
   }
 
-  // Authenticate and decrypt with AAD
-  const aad = buildAuthenticatedContext(
+  // Authenticate and decrypt with AAD incorporating tokenPurpose
+  const accessAad = buildAuthenticatedContext(
     row.credential_id,
     row.connection_id,
     row.provider,
     row.auth_mode,
-    row.encryption_key_version
+    row.encryption_key_version,
+    'access_token'
   );
+
+  const accessNonce = row.access_token_nonce || row.encryption_nonce;
 
   let accessToken: string;
   let refreshToken: string | null = null;
@@ -218,17 +238,26 @@ export async function readCredentialForProviderExecution(
   try {
     accessToken = await decryptToken(
       row.encrypted_access_token,
-      row.encryption_nonce,
+      accessNonce,
       rawKey,
-      aad
+      accessAad
     );
 
     if (row.encrypted_refresh_token) {
+      const refreshAad = buildAuthenticatedContext(
+        row.credential_id,
+        row.connection_id,
+        row.provider,
+        row.auth_mode,
+        row.encryption_key_version,
+        'refresh_token'
+      );
+      const refreshNonce = row.refresh_token_nonce || row.encryption_nonce;
       refreshToken = await decryptToken(
         row.encrypted_refresh_token,
-        row.encryption_nonce,
+        refreshNonce,
         rawKey,
-        aad
+        refreshAad
       );
     }
   } catch (err: any) {
@@ -404,69 +433,94 @@ export async function rotateEncryptionKey(
     throw new Error(`VAULT_KEK_UNAVAILABLE: Target key version ${targetKeyVersion} is missing`);
   }
 
-  // Decrypt with old key + old AAD
-  const oldAad = buildAuthenticatedContext(
+  // Decrypt with old key + old AAD (incorporating tokenPurpose)
+  const oldAccessAad = buildAuthenticatedContext(
     row.credential_id,
     row.connection_id,
     row.provider,
     row.auth_mode,
-    row.encryption_key_version
+    row.encryption_key_version,
+    'access_token'
   );
+  const oldAccessNonce = row.access_token_nonce || row.encryption_nonce;
   const plainAccessToken = await decryptToken(
     row.encrypted_access_token,
-    row.encryption_nonce,
+    oldAccessNonce,
     oldKey,
-    oldAad
+    oldAccessAad
   );
 
   let plainRefreshToken: string | null = null;
   if (row.encrypted_refresh_token) {
+    const oldRefreshAad = buildAuthenticatedContext(
+      row.credential_id,
+      row.connection_id,
+      row.provider,
+      row.auth_mode,
+      row.encryption_key_version,
+      'refresh_token'
+    );
+    const oldRefreshNonce = row.refresh_token_nonce || row.encryption_nonce;
     plainRefreshToken = await decryptToken(
       row.encrypted_refresh_token,
-      row.encryption_nonce,
+      oldRefreshNonce,
       oldKey,
-      oldAad
+      oldRefreshAad
     );
   }
 
-  // Re-encrypt with new key + new AAD
-  const newAad = buildAuthenticatedContext(
+  // Re-encrypt with new key + new AAD + fresh independent nonces
+  const newAccessAad = buildAuthenticatedContext(
     row.credential_id,
     row.connection_id,
     row.provider,
     row.auth_mode,
-    targetKeyVersion
+    targetKeyVersion,
+    'access_token'
   );
-  const { ciphertext: newEncToken, nonce: newNonce } = await encryptToken(
+  const { ciphertext: newEncToken, nonce: newAccessNonce } = await encryptToken(
     plainAccessToken,
     newKey,
-    newAad
+    newAccessAad
   );
 
   let newEncRefresh: string | null = null;
+  let newRefreshNonce: string | null = null;
   if (plainRefreshToken) {
-    const { ciphertext: refCipher } = await encryptToken(
+    const newRefreshAad = buildAuthenticatedContext(
+      row.credential_id,
+      row.connection_id,
+      row.provider,
+      row.auth_mode,
+      targetKeyVersion,
+      'refresh_token'
+    );
+    const { ciphertext: refCipher, nonce: refNonce } = await encryptToken(
       plainRefreshToken,
       newKey,
-      newAad
+      newRefreshAad
     );
     newEncRefresh = refCipher;
+    newRefreshNonce = refNonce;
   }
 
   const now = new Date().toISOString();
 
-  // Atomically update ciphertext and key version
+  // Atomically update ciphertext, nonces, and key version
   await db
     .prepare(
       `UPDATE social_provider_credentials 
        SET encrypted_access_token = ?, encrypted_refresh_token = ?,
-           encryption_nonce = ?, encryption_key_version = ?, updated_at = ?
+           encryption_nonce = ?, access_token_nonce = ?, refresh_token_nonce = ?,
+           encryption_key_version = ?, updated_at = ?
        WHERE credential_id = ?`
     )
     .bind(
       newEncToken,
       newEncRefresh,
-      newNonce,
+      newAccessNonce,
+      newAccessNonce,
+      newRefreshNonce,
       targetKeyVersion,
       now,
       row.credential_id

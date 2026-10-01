@@ -108,9 +108,10 @@ export function buildAuthenticatedContext(
   connectionId: string,
   provider: string,
   authMode: string,
-  keyVersion: string
+  keyVersion: string,
+  tokenPurpose: 'access_token' | 'refresh_token' = 'access_token'
 ): Uint8Array {
-  const contextString = `${credentialId}:${connectionId}:${provider}:${authMode}:${keyVersion}`;
+  const contextString = `${credentialId}:${connectionId}:${provider}:${authMode}:${keyVersion}:${tokenPurpose}`;
   return new TextEncoder().encode(contextString);
 }
 
@@ -189,7 +190,7 @@ export async function decryptToken(
     );
 
     return new TextDecoder().decode(decryptedBuffer);
-  } catch (err: any) {
-    throw new Error(`VAULT_DECRYPTION_FAILED: Authentication tag verification failed or key mismatch (${err?.message || 'MAC failed'})`);
+  } catch {
+    throw new Error('VAULT_DECRYPTION_FAILED: Authentication tag verification failed or key/context mismatch');
   }
 }

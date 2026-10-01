@@ -17,6 +17,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### SOCIAL-S3.5B: Credential Vault Cryptographic & Concurrency Hardening 2026-10-01
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan audit kriptografi dan konkurensi mendalam terhadap vault kredensial sosial sebelum menghubungkan kredensial Meta riil.
+  - Memverifikasi pencegahan mutlak penggunaan ulang nonce AES-GCM (*zero nonce reuse*): access token dan refresh token wajib memiliki nonce acak independen masing-masing.
+  - Memperkuat otentikasi konteks AAD dengan mengikat tujuan token (*token purpose binding*): `:access_token` vs `:refresh_token`.
+  - Mengamankan konkurensi database: memastikan invarian kredensial aktif tunggal (*single active credential*) ditegakkan di level database engine D1/SQLite melalui partial unique index.
+  - Menjamin atomisitas rotasi token via `db.batch()`: jika insert gagal, status kredensial aktif lama tidak akan terhapus.
+  - Keputusan Teknis Kelayakan (*Go/No-Go Decision*): Memastikan seluruh tes lolos 100% sebelum membuka milestone OAuth interaktif.
+- **Komponen Utama yang Diimplementasikan:**
+  1. **D1 Migration Aditif (`db/migrations/0028_social_credential_vault_hardening.sql`):**
+     - Menambahkan kolom `access_token_nonce` dan `refresh_token_nonce`.
+     - Membuat partial unique index `uq_social_active_credential ON social_provider_credentials(connection_id, provider) WHERE revoked_at IS NULL`.
+  2. **Penguatan Kriptografi & AAD (`src/lib/social/vault/crypto.ts`):**
+     - Memperbarui `buildAuthenticatedContext` dengan parameter `tokenPurpose`: `${credentialId}:${connectionId}:${provider}:${authMode}:${keyVersion}:${tokenPurpose}`.
+     - Pertukaran ciphertext antar kolom access dan refresh token akan gagal verifikasi tag MAC seketika (`VAULT_DECRYPTION_FAILED`).
+     - Normalisasi pesan galat dekripsi agar tidak membocorkan detail internal Web Crypto.
+  3. **Layanan Vault Berorientasi Konkurensi & Atomisitas (`src/lib/social/vault/vault-service.ts`):**
+     - `storeCredential`: Menghasilkan nonce 96-bit independen untuk access token dan refresh token. Menggunakan `db.batch([revokeStmt, insertStmt])` untuk transaksi atomik all-or-nothing.
+     - `readCredentialForProviderExecution`: Mendekripsi access token dengan `access_token_nonce` dan refresh token dengan `refresh_token_nonce` secara terpisah.
+     - `rotateEncryptionKey`: Mendekripsi kedua token dengan nonce lama, lalu mengenkripsi ulang keduanya menggunakan nonce acak baru yang independen di bawah KEK target (V1 -> V2).
+  4. **Matriks Pengujian Konkurensi & Substitusi (`scripts/test-social-credential-vault.js`):**
+     - Uji balapan callback OAuth konkuren (*concurrent race test*): tepat 1 kredensial aktif yang bertahan dan valid.
+     - Uji kegagalan batch: rollback transaksi menjaga kredensial awal tetap aktif.
+     - Uji matriks substitusi ciphertext (cross-token, cross-connection, cross-provider) gagal tertutup.
+- **Pengujian & Validasi:**
+  - `scripts/test-social-credential-vault.js` lulus 100% (12/12 tes).
+  - Seluruh rangkaian regresi kanonikal (14 suite: meta-binding, meta-adapter, mission-control, domain, staff, departments, chat, anomalies, pixel-office, expansion, job-animation, SOAK-0 54 tes) lulus 100%.
+  - `npx tsc --noEmit` lulus bersih 0 kesalahan.
+  - `npm run build` sukses 100% (6.43s).
+- **Status Akhir & Keputusan:**
+  - `SOCIAL-S3.5B = COMPLETE`.
+  - **GO APPROVED** untuk `SOCIAL-S3.6` (Operator-Gated Meta Connection & Read-Only Health Verification).
+
 ### SOCIAL-S3.5A: Secure OAuth Credential Vault & Token Persistence Hardening 2026-10-01
 
 - **Tujuan & Ruang Lingkup:**

@@ -13,7 +13,9 @@ export interface EncryptedCredentialRecord {
   auth_mode: string; // e.g. 'FACEBOOK_LOGIN' | 'INSTAGRAM_LOGIN'
   encrypted_access_token: string; // Base64 AES-GCM ciphertext + tag
   encrypted_refresh_token: string | null;
-  encryption_nonce: string; // Base64 12-byte IV
+  encryption_nonce: string; // Base64 12-byte IV (legacy / primary access nonce)
+  access_token_nonce?: string | null; // Dedicated independent 12-byte IV for access token
+  refresh_token_nonce?: string | null; // Dedicated independent 12-byte IV for refresh token
   encryption_key_version: string; // e.g. 'META_CREDENTIAL_KEK_V1'
   token_type: string; // e.g. 'BEARER'
   expires_at: string | null; // ISO 8601 string
