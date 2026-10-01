@@ -17,6 +17,45 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### SOCIAL-S3.5: Meta Credential & Account Binding Readiness (Operator-Gated Connection / Zero Live Publishing) 2026-10-01
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengimplementasikan arsitektur pengikatan kredensial dan akun (Meta Facebook Page & Instagram Professional) yang aman dan berorientasi operator (*operator-gated connection*) tanpa memberikan otoritas penerbitan (*zero publishing authority*).
+  - Verifikasi empiris dua model autentikasi Meta: `FACEBOOK_LOGIN` (Facebook user -> Pages -> linked IG) vs `INSTAGRAM_LOGIN` (direct Instagram Professional).
+  - Strict Safety Invariants: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `JEV_MODE = shadow`, `media_worker = DISABLED`, `publishingAuthority: 0`.
+  - Secret Boundary: Kredensial rahasia (token, App Secret, dll) berada di luar tabel D1, snapshot Mission Control, Pixel Office, chat, dan log aplikasi. Hanya referensi non-rahasia (`credential_binding_name`) yang disimpan di tabel `settings`.
+- **Komponen Utama yang Diimplementasikan:**
+  1. **Dual Auth Modes & Model Binding (`src/lib/social/providers/meta/binding-types.ts`):**
+     - Memodelkan `FACEBOOK_LOGIN` dan `INSTAGRAM_LOGIN` dengan keluarga perizinan terpisah (`FACEBOOK_LOGIN_REQUIRED_PERMISSIONS` vs `INSTAGRAM_LOGIN_REQUIRED_PERMISSIONS`).
+     - Tipe data non-rahasia: `DiscoveredFacebookPage`, `DiscoveredInstagramAccount`, `MetaAccountDiscoveryResult`, `MetaConnectionRecord`, `MetaConnectionHealth`.
+  2. **Keamanan OAuth & Anti-CSRF (`oauth-security.ts`):**
+     - Pembuatan state kriptografis HMAC SHA-256 dengan payload sekali pakai (single-use nonce, timestamp, TTL 10 menit).
+     - Validasi ketat tanda tangan state, kedaluwarsa, dan allowlist redirect URI (`VALID_REDIRECT_URIS`).
+  3. **Penemuan Akun Nir-Rahasia (`account-discovery.ts`):**
+     - `normalizeFacebookPagesDiscovery`: Memetakan Page yang dikelola, izin tugas, dan deteksi jujur akun Instagram terhubung (`connected_instagram_account`).
+     - `normalizeInstagramLoginDiscovery`: Memetakan profil Instagram Business langsung tanpa mewajibkan tautan Facebook Page.
+  4. **Pemeriksaan Kesehatan & Putus Sambungan (`connection-health.ts`):**
+     - Evaluasi kesehatan koneksi deterministik (`CONNECTED`, `PERMISSION_INCOMPLETE`, `LINK_MISSING`, `REAUTH_REQUIRED`, `NOT_CONNECTED`).
+     - `disconnectMetaConnection`: Memutuskan ikatan akun secara bersih tanpa menghapus campaign atau outbox.
+  5. **Layanan Penyimpanan Nir-Rahasia (`connection-service.ts`):**
+     - Membaca dan menyimpan record koneksi ke tabel D1 `settings` via kunci `social_meta_connection_json`.
+     - Assertion ketat: Melempar `CRITICAL_SECURITY_VIOLATION` seketika jika terdapat token atau rahasia mentah pada payload.
+  6. **Integrasi Mission Control & Maya (`chat.ts`, `capability-registry.ts`, `anomalies.ts`):**
+     - Maya menjawab kueri status koneksi (`SOCIAL_CONNECTION_QUERY`) secara faktual dari read model.
+     - Maya menolak segala bentuk perintah penerbitan atau penyetoran token.
+     - Deteksi anomali koneksi `SOCIAL_AUTH_REAUTH_REQUIRED` dan `SOCIAL_PERMISSION_INCOMPLETE`.
+  7. **Permukaan Admin (/admin/settings):**
+     - Bagian 6 "Distribusi Sosial & Koneksi Meta" dengan visualisasi status, target Page/IG, izin, dan tombol aksi operator-gated yang aman.
+- **Pengujian & Validasi:**
+  - `scripts/test-social-meta-binding.js` lulus 100% (11/11 tes).
+  - Seluruh rangkaian pengujian regresi lulus 100% (`test-social-meta-adapter.js`, `test-social-mission-control.js`, `test-social-domain.js`, SOAK-0 54 tes, MC-1 s.d. MC-9).
+  - `npx tsc --noEmit` lulus bersih 0 kesalahan.
+  - `npm run build` sukses 100%.
+- **Status Akhir:**
+  - `SOCIAL-S3.5 = COMPLETE`.
+  - Berhenti di batas aman: `OPERATOR ACTION REQUIRED — CONNECT META ACCOUNT`.
+  - Langkah selanjutnya: `SOCIAL-S3.6` (Operator-Gated Meta Connection & Read-Only Health Verification).
+
 ### SOCIAL-S3: First Platform Adapter (Meta Graph API: Facebook Page + Instagram Business) 2026-10-01
 
 - **Tujuan & Ruang Lingkup:**

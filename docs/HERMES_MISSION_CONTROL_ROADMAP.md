@@ -156,5 +156,6 @@ The **HERMES-MC** (Hermes Mission Control) track establishes the operational vis
 13. SOCIAL-S1            [COMPLETED — Core Domain, Staging Outbox & D1 Schema (docs/SOCIAL_S1_CORE_DOMAIN.md)]
 14. SOCIAL-S2            [COMPLETED — Mission Control Social Department & Staff Integration (Read-Only/Shadow)]
 15. SOCIAL-S3            [COMPLETED — First Platform Adapter (Meta Graph API: Facebook Page + Instagram Business), disabled execution/mock transport (docs/SOCIAL_S3_META_ADAPTER.md)]
-16. SOCIAL-S3.5          [READY — Meta Credential & Account Binding Readiness / Operator-Gated Connection]
+16. SOCIAL-S3.5          [COMPLETED — Meta Credential & Account Binding Readiness / Operator-Gated Connection (docs/SOCIAL_S3_5_META_ACCOUNT_BINDING.md)]
+17. SOCIAL-S3.6          [NEXT — Operator-Gated Meta Connection & Read-Only Health Verification]
 ```

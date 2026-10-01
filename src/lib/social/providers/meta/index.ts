@@ -10,3 +10,8 @@ export * from './request-builder.ts';
 export * from './response-normalizer.ts';
 export * from './facebook-page.ts';
 export * from './instagram-business.ts';
+export * from './binding-types.ts';
+export * from './oauth-security.ts';
+export * from './account-discovery.ts';
+export * from './connection-health.ts';
+export * from './connection-service.ts';

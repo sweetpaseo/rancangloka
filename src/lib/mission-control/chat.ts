@@ -985,6 +985,26 @@ export async function normalizeOperatorIntent(
         };
       }
 
+      if (
+        lower.includes('terhubung') ||
+        lower.includes('koneksi') ||
+        lower.includes('connection') ||
+        lower.includes('akun') ||
+        lower.includes('page mana') ||
+        lower.includes('permission') ||
+        lower.includes('izin')
+      ) {
+        return {
+          is_valid: true,
+          command_type: 'SOCIAL_CONNECTION_QUERY',
+          normalized_intent: 'Operator menanyakan status koneksi, target akun, dan izin Meta/Instagram',
+          authority_level: 'READ_ONLY',
+          target_agent_id: targetAgentId,
+          target_department_id: staff.department_id,
+          parameters: {}
+        };
+      }
+
       if (lower.includes('adapter') || lower.includes('meta') || lower.includes('facebook') || lower.includes('instagram')) {
         return {
           is_valid: true,
@@ -1157,6 +1177,15 @@ export function executeReadOnlyQuery(
 
     case 'SOCIAL_ADAPTER_QUERY': {
       return `Status Platform Adapter Medsos:\n• Provider Meta: **TERSEDIA (Disabled Execution / Mock Transport)**\n• Platform Didukung: **Facebook Page** (FEED_POST), **Instagram Business** (FEED_POST, CAROUSEL)\n• Eksekusi Provider: **DISABLED** (Otoritas Eksekusi = 0)\n• Kredensial Produksi: **TIDAK ADA** (Zero raw secrets / Token vault nihil)\n• Jaringan Eksternal: **TIDAK DIHUBUNGKAN** (Semua panggilan riil diblokir secara mutlak).`;
+    }
+
+    case 'SOCIAL_CONNECTION_QUERY': {
+      const conn = (snapshot?.social as any)?.metaConnection;
+      const status = conn?.overallStatus || 'NOT_CONNECTED';
+      const page = conn?.selectedPageName || 'Belum dipilih';
+      const ig = conn?.selectedInstagramUsername ? `@${conn.selectedInstagramUsername}` : 'Belum dipilih';
+      const perm = conn?.permissionsStatus === 'OK' ? 'Lengkap (OK)' : (conn?.missingPermissions?.length ? `Kurang: ${conn.missingPermissions.join(', ')}` : 'Belum diverifikasi');
+      return `Status Koneksi Meta & Akun:\n• Status Keseluruhan: **${status}**\n• Facebook Page: **${page}**\n• Instagram Business: **${ig}**\n• Izin / Permission: **${perm}**\n• Otoritas Penerbitan: **0 (TIDAK AKTIF)**\n• Otomasi Sosial: **OFF** (Hanya persiapan / read-only).`;
     }
 
     default:

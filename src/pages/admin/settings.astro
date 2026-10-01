@@ -1,9 +1,11 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getDb, getSiteSettings } from '../../lib/db';
+import { getMetaConnectionHealth } from '../../lib/social/providers/meta/connection-service.ts';
 
 const db = await getDb(Astro.locals);
 const settings = await getSiteSettings(db);
+const metaHealth = await getMetaConnectionHealth(db);
 
 let autoControl = { mode: 'OFF', kill_switch_engaged: 0, kill_reason: null as string | null };
 try {
@@ -550,6 +552,91 @@ const isKillSwitchEngaged = autoControl.kill_switch_engaged === 1;
         </div>
       </div>
       <div id="auto-schedule-feedback" class="text-[11px] font-medium hidden"></div>
+    </div>
+
+    <!-- 6. Social Distribution & Meta Connection (SOCIAL-S3.5) -->
+    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-5 shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <span>🌐</span> Distribusi Media Sosial & Akun Meta (Facebook & Instagram)
+        </h2>
+        <span class={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+          metaHealth.overallStatus === 'CONNECTED'
+            ? 'bg-emerald-100 text-emerald-800'
+            : metaHealth.overallStatus === 'PERMISSION_INCOMPLETE'
+            ? 'bg-amber-100 text-amber-800'
+            : 'bg-slate-100 text-slate-600'
+        }`}>
+          {metaHealth.overallStatus}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Target 1: Facebook Page -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <span>📘</span> Facebook Page
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+              {metaHealth.facebookPageStatus}
+            </span>
+          </div>
+          <div class="text-xs text-slate-600">
+            Halaman Terpilih: <strong class="text-slate-900">{metaHealth.selectedPageName || 'Belum dipilih'}</strong>
+          </div>
+        </div>
+
+        <!-- Target 2: Instagram Business -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <span>📸</span> Instagram Business
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+              {metaHealth.instagramStatus}
+            </span>
+          </div>
+          <div class="text-xs text-slate-600">
+            Akun Terpilih: <strong class="text-slate-900">{metaHealth.selectedInstagramUsername ? `@${metaHealth.selectedInstagramUsername}` : 'Belum dipilih'}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Safety & Publishing Invariant Banner -->
+      <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 space-y-1">
+        <div class="font-bold flex items-center gap-1.5">
+          <span>🛡️</span> Gerbang Keselamatan Eksekusi: Otoritas Penerbitan = 0
+        </div>
+        <p class="leading-relaxed text-amber-800">
+          Koneksi akun hanya membaca metadata dan menyiapkan draf. Seluruh eksekusi posting ke Meta Graph API berstatus <strong>DISABLED</strong> secara mutlak. Menghubungkan akun tidak akan pernah mempublikasikan konten otomatis.
+        </p>
+      </div>
+
+      <!-- Connection Controls (Operator Action Gated) -->
+      <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div class="text-xs text-slate-500 font-mono">
+          Kredensial: <span class="font-bold text-slate-700">{metaHealth.credentialBindingStatus}</span> • Auth Mode: <span class="font-bold text-slate-700">{metaHealth.authMode || 'None'}</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            disabled
+            title="Operator Action Required: Menghubungkan akun Meta memerlukan dialog OAuth interaktif oleh operator."
+            class="px-3.5 py-1.5 rounded-xl bg-blue-600/50 cursor-not-allowed text-white text-xs font-bold shadow-2xs"
+          >
+            Hubungkan Akun Meta
+          </button>
+          <button
+            type="button"
+            disabled
+            class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed text-xs font-bold border border-slate-200"
+          >
+            Putuskan
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

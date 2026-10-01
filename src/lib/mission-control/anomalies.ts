@@ -649,9 +649,63 @@ export function scanRawAnomaliesFromSnapshot(
         last_seen_at: now
       });
     }
+
+    // C. Meta Connection Anomalies (Reauth required / Permission incomplete)
+    const metaConn = (socialSummary as any).metaConnection;
+    if (metaConn && metaConn.overallStatus === 'REAUTH_REQUIRED') {
+      const fp = createAnomalyFingerprint('social', 'social', 'SOCIAL_AUTH_REAUTH_REQUIRED', 'meta_connection', 'REAUTH_REQUIRED');
+      candidates.push({
+        anomaly_id: `anom_${fp}`,
+        detected_at: now,
+        updated_at: now,
+        source_system: 'social',
+        department_id: 'social',
+        responsible_agent_id: 'social_distribution_operator',
+        severity: 'WARNING',
+        anomaly_type: 'SOCIAL_AUTH_REAUTH_REQUIRED',
+        error_class: 'SOCIAL_AUTH_REAUTH_REQUIRED',
+        title: 'Otorisasi Akun Meta Perlu Diperbarui (Re-auth Required)',
+        summary: 'Akses token Meta telah kedaluwarsa atau dicabut. Diperlukan autentikasi ulang oleh operator.',
+        technical_detail: metaConn.operatorActionMessage || 'Meta OAuth session expired.',
+        state: 'OPEN',
+        retryable: false,
+        operator_action_required: true,
+        expected_condition: false,
+        evidence_reference: 'social_settings:meta_connection',
+        fingerprint: fp,
+        occurrence_count: 1,
+        first_seen_at: now,
+        last_seen_at: now
+      });
+    } else if (metaConn && metaConn.overallStatus === 'PERMISSION_INCOMPLETE') {
+      const fp = createAnomalyFingerprint('social', 'social', 'SOCIAL_PERMISSION_INCOMPLETE', 'meta_connection', 'PERMISSION_INCOMPLETE');
+      candidates.push({
+        anomaly_id: `anom_${fp}`,
+        detected_at: now,
+        updated_at: now,
+        source_system: 'social',
+        department_id: 'social',
+        responsible_agent_id: 'social_distribution_operator',
+        severity: 'WARNING',
+        anomaly_type: 'SOCIAL_PERMISSION_INCOMPLETE',
+        error_class: 'SOCIAL_PERMISSION_INCOMPLETE',
+        title: 'Izin Akun Meta Belum Lengkap (Missing Permissions)',
+        summary: `Izin akun belum lengkap: ${(metaConn.missingPermissions || []).join(', ')}.`,
+        technical_detail: 'Operator perlu memberikan izin yang diperlukan pada dialog Meta OAuth.',
+        state: 'OPEN',
+        retryable: false,
+        operator_action_required: true,
+        expected_condition: false,
+        evidence_reference: 'social_settings:meta_connection',
+        fingerprint: fp,
+        occurrence_count: 1,
+        first_seen_at: now,
+        last_seen_at: now
+      });
+    }
   }
 
-  // C. Social Tasks Failed
+  // D. Social Tasks Failed
   const socialTasks = snapshot.pipeline?.tasks?.filter((t) => t.subsystem === 'social' && t.stage === 'failed') || [];
   for (const t of socialTasks) {
     const fp = createAnomalyFingerprint('social', 'social', 'SOCIAL_TASK_FAILED', t.taskId, 'TASK_FAILED');

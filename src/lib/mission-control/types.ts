@@ -236,6 +236,7 @@ export interface SocialOperationsSummary {
     waitingApprovalCount: number;
     heldCount: number;
   };
+  metaConnection?: any;
 }
 
 export interface MissionControlSnapshot {

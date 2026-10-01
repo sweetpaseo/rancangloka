@@ -13,6 +13,7 @@ import type {
   SocialOperationsSummary
 } from './types.ts';
 import { sanitizeString } from './redact.ts';
+import { getMetaConnectionHealth } from '../social/providers/meta/connection-service.ts';
 
 export async function getOutboxSummary(db: any, _env?: any): Promise<OutboxSummaryData> {
   let acknowledged = 0;
@@ -382,6 +383,13 @@ export async function getSocialOperationsSummary(db: any, env?: any): Promise<So
 
   const activeCampaigns = draftCampaigns + approvedCampaigns + scheduledCampaigns + blockedCampaigns;
 
+  let metaConnection: any = null;
+  try {
+    metaConnection = await getMetaConnectionHealth(db);
+  } catch {
+    // Graceful fallback
+  }
+
   return {
     departmentAvailability: 'AVAILABLE_READ_ONLY',
     mode: 'SHADOW',
@@ -410,7 +418,8 @@ export async function getSocialOperationsSummary(db: any, env?: any): Promise<So
       blockedCount,
       waitingApprovalCount,
       heldCount
-    }
+    },
+    metaConnection
   };
 }
 
