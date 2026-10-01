@@ -26,7 +26,7 @@ export default defineConfig({
   ],
   vite: {
     ssr: {
-      external: ['node:zlib']
+      external: ['node:zlib', 'node:crypto']
     }
   }
 });

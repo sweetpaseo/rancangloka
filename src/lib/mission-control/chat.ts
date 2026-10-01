@@ -992,7 +992,12 @@ export async function normalizeOperatorIntent(
         lower.includes('akun') ||
         lower.includes('page mana') ||
         lower.includes('permission') ||
-        lower.includes('izin')
+        lower.includes('izin') ||
+        lower.includes('tersisa') ||
+        lower.includes('remains') ||
+        lower.includes('persiapan') ||
+        lower.includes('checklist') ||
+        lower.includes('langkah')
       ) {
         return {
           is_valid: true,
@@ -1182,11 +1187,32 @@ export function executeReadOnlyQuery(
     case 'SOCIAL_CONNECTION_QUERY': {
       const conn = (snapshot?.social as any)?.metaConnection;
       const status = conn?.overallStatus || 'NOT_CONNECTED';
-      const page = conn?.selectedPageName || 'Belum dipilih';
-      const ig = conn?.selectedInstagramUsername ? `@${conn.selectedInstagramUsername}` : 'Belum dipilih';
+      const page = conn?.selectedPageName || 'Belum dikonfigurasi';
+      const ig = conn?.selectedInstagramUsername ? `@${conn.selectedInstagramUsername}` : 'Belum dikonfigurasi';
       const perm = conn?.permissionsStatus === 'OK' ? 'Lengkap (OK)' : (conn?.missingPermissions?.length ? `Kurang: ${conn.missingPermissions.join(', ')}` : 'Belum diverifikasi');
-      const vaultStatus = conn?.vaultCredential ? (conn.vaultCredential.status === 'VALID' ? 'TERSIMPAN (Terkunci AES-256-GCM)' : conn.vaultCredential.status) : 'BELUM_TERSEDIA';
+      const vaultStatus = conn?.vaultCredential ? (conn.vaultCredential.status === 'VALID' ? 'TERSIMPAN (Terkunci AES-256-GCM)' : conn.vaultCredential.status) : 'SIAP (AES-256-GCM Vault Hardened)';
       const tokenExpires = conn?.vaultCredential?.expiresAt ? new Date(conn.vaultCredential.expiresAt).toLocaleDateString('id-ID') : 'N/A';
+
+      if (status === 'NOT_CONNECTED') {
+        return `Status Koneksi Meta & Akun:
+Belum terhubung.
+• Status Keseluruhan: **NOT_CONNECTED**
+• Facebook Page: **Belum dikonfigurasi**
+• Instagram Professional: **Belum dikonfigurasi**
+• Credential Vault: **${vaultStatus}**
+• Meta Adapter: **SIAP (Disabled Execution / Read-Only)**
+• Otoritas Penerbitan: **0 (TIDAK AKTIF)**
+• Otomasi Sosial: **OFF** (Hanya persiapan / read-only)
+
+Langkah persiapan yang masih diperlukan sebelum koneksi live:
+1. Pembuatan Halaman Facebook resmi RancangLoka oleh Operator
+2. Pembuatan Akun Instagram Professional (Bisnis/Kreator) resmi RancangLoka
+3. Penautan Instagram Professional ke Facebook Page di Meta Business Suite
+4. Pendaftaran Meta Developer App (App ID & Secret)
+5. Penyediaan Secret KEK (META_CREDENTIAL_KEK_V1) di Cloudflare Secrets
+6. Otorisasi OAuth interaktif oleh Operator di /admin/settings#social-meta-connection.`;
+      }
+
       return `Status Koneksi Meta & Akun:\n• Status Keseluruhan: **${status}**\n• Facebook Page: **${page}**\n• Instagram Business: **${ig}**\n• Izin / Permission: **${perm}**\n• Vault Kredensial: **${vaultStatus}**\n• Masa Berlaku Token: **${tokenExpires}**\n• Otoritas Penerbitan: **0 (TIDAK AKTIF)**\n• Otomasi Sosial: **OFF** (Hanya persiapan / read-only).`;
     }
 

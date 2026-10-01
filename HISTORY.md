@@ -17,6 +17,39 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### SOCIAL-S3.6: Meta Live Connection Readiness & Operator Boundary 2026-10-01
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengimplementasikan seluruh kesiapan teknis rute OAuth, abstraksi transport pertukaran token, model probe read-only, dan integrasi UI admin untuk integrasi ekosistem Meta (Facebook Page & Instagram Professional).
+  - Menetapkan batas tegas (*Strict Operator Boundary*): Berhubung operator belum membuat akun resmi Facebook Page dan Instagram Professional RancangLoka, seluruh implementasi difokuskan pada *Connection Readiness Only*.
+  - Menegakkan Invarian Keselamatan Mutlak:
+    - Nol panggilan API riil ke Meta (`MockMetaOAuthTransport` digunakan untuk pengujian).
+    - `ProductionMetaOAuthTransport` dan `ProductionSocialProviderTransport` tetap diblokir secara ketat (`BLOCKED`).
+    - Nol token atau kredensial riil yang diminta atau disimpan; database remote D1 produksi 100% tidak tersentuh.
+    - Otoritas penerbitan konten tetap berstatus 0 (`publishingAuthority: 0`) dan `SOCIAL_AUTOMATION = OFF`.
+    - Maya & Mission Control melaporkan status belum terhubung secara jujur dan memberikan panduan 6-langkah deterministik.
+    - Maya tetap berstatus `IDLE` di Lounge tanpa animasi kerja fiktif.
+- **Komponen Utama yang Diimplementasikan:**
+  1. **Rute Server OAuth Kanonikal (`src/pages/admin/social/meta/`):**
+     - `connect.ts`: Mengamankan autentikasi admin sesi, mengevaluasi kesiapan sistem (Meta App & KEK), menghasilkan state OAuth bertanda tangan HMAC SHA-256 single-use, dan membentuk URL otorisasi resmi.
+     - `callback.ts`: Mengamankan autentikasi admin sesi, memvalidasi state anti-CSRF, mencegah serangan replay state (`consumeOAuthState`), mengabstraksikan pertukaran token via transport, mengenkripsi token ke dalam Vault AES-256-GCM, dan menyimpan metadata non-rahasia ke pengaturan D1.
+  2. **Model Kesiapan Koneksi & Allowlist Probe Read-Only (`src/lib/social/providers/meta/live-readiness.ts`):**
+     - Evaluator deterministik `evaluateMetaLiveReadiness` yang menilai konfigurasi non-rahasia (`META_APP_ID = CONFIGURED / MISSING`, `META_APP_SECRET = PRESENT / MISSING`, `META_CREDENTIAL_KEK_V1 = PRESENT / MISSING`).
+     - Allowlist ketat probe read-only (`GET /me`, `GET /me/accounts`, dsb.) dan penolakan otomatis fail-closed terhadap endpoint publikasi/mutasi (`POST /feed`, `POST /photos`, `POST /media`, `POST /media_publish`).
+  3. **Abstraksi Transport Klien OAuth (`src/lib/social/providers/meta/oauth-client.ts`):**
+     - Memisahkan transport fisik dari logika bisnis OAuth. Menyediakan `MockMetaOAuthTransport` untuk pengujian deterministik dan `ProductionMetaOAuthTransport` yang memblokir panggilan live.
+  4. **Mesin Pemilihan Akun Eksplisit (`src/lib/social/providers/meta/account-selection.ts`):**
+     - Secara tegas menolak auto-seleksi hasil pertama jika Meta mengembalikan lebih dari satu Facebook Page; mewajibkan operator memilih `page_id` secara sadar dan mengonfirmasi penautan target.
+  5. **Pengayaan Dasbor Admin Settings (`src/pages/admin/settings.astro#social-meta-connection`):**
+     - Menambahkan anchor `#social-meta-connection`, badge status kesiapan, matriks konfigurasi/vault, kartu penemuan akun, panduan checklist 6-langkah operator, serta tombol "Hubungkan Akun Meta" yang ter-gated rapi saat konfigurasi belum lengkap.
+  6. **Pembaruan Respon Chat Maya (`src/lib/mission-control/chat.ts`):**
+     - Maya menjawab kueri status koneksi dengan jujur ("Belum terhubung") dan menyajikan checklist langkah berikutnya tanpa merekayasa status publikasi.
+  7. **Rangkaian Pengujian Terfokus (`scripts/test-social-meta-live-readiness.js`):**
+     - 17 pengujian terfokus lulus 100% tanpa akses jaringan eksternal.
+- **Status Akhir:**
+  - `SOCIAL-S3.6 = COMPLETE (READINESS PREPARED & MOCK VERIFIED)`.
+  - **BATAS KERJA TERCAPAI:** Menunggu tindakan operator manusia di luar sistem (*Operator Action Required: Create RancangLoka Facebook Page + Instagram Professional Account*).
+
 ### SOCIAL-S3.5B: Credential Vault Cryptographic & Concurrency Hardening 2026-10-01
 
 - **Tujuan & Ruang Lingkup:**

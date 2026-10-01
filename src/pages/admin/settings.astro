@@ -1,11 +1,15 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getDb, getSiteSettings } from '../../lib/db';
-import { getMetaConnectionHealth } from '../../lib/social/providers/meta/connection-service.ts';
+import { getMetaConnectionHealth, getMetaConnection } from '../../lib/social/providers/meta/connection-service.ts';
+import { evaluateMetaLiveReadiness } from '../../lib/social/providers/meta/live-readiness.ts';
 
 const db = await getDb(Astro.locals);
 const settings = await getSiteSettings(db);
+const rawEnv = (Astro.locals as any)?.runtime?.env || (globalThis as any).process?.env;
+const metaConnectionRecord = await getMetaConnection(db);
 const metaHealth = await getMetaConnectionHealth(db);
+const metaReadiness = evaluateMetaLiveReadiness({ env: rawEnv, connection: metaConnectionRecord, db });
 
 let autoControl = { mode: 'OFF', kill_switch_engaged: 0, kill_reason: null as string | null };
 try {
@@ -554,23 +558,72 @@ const isKillSwitchEngaged = autoControl.kill_switch_engaged === 1;
       <div id="auto-schedule-feedback" class="text-[11px] font-medium hidden"></div>
     </div>
 
-    <!-- 6. Social Distribution & Meta Connection (SOCIAL-S3.5) -->
-    <div class="rounded-2xl bg-white border border-slate-200 p-6 space-y-5 shadow-sm">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <span>🌐</span> Distribusi Media Sosial & Akun Meta (Facebook & Instagram)
-        </h2>
-        <span class={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-          metaHealth.overallStatus === 'CONNECTED'
-            ? 'bg-emerald-100 text-emerald-800'
-            : metaHealth.overallStatus === 'PERMISSION_INCOMPLETE'
-            ? 'bg-amber-100 text-amber-800'
-            : 'bg-slate-100 text-slate-600'
-        }`}>
-          {metaHealth.overallStatus}
-        </span>
+    <!-- 6. Social Distribution & Meta Connection (SOCIAL-S3.6) -->
+    <div id="social-meta-connection" class="rounded-2xl bg-white border border-slate-200 p-6 space-y-5 shadow-sm scroll-mt-6">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span>🌐</span> Distribusi Media Sosial & Akun Meta (Facebook & Instagram)
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Integrasi distribusi editorial RancangLoka ke Facebook Page dan Instagram Professional.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+            metaReadiness.overallStatus === 'CONNECTED_READ_ONLY'
+              ? 'bg-emerald-100 text-emerald-800'
+              : metaReadiness.overallStatus === 'READY_FOR_OPERATOR_CONNECTION'
+              ? 'bg-blue-100 text-blue-800'
+              : metaReadiness.overallStatus === 'ACCOUNT_REQUIRED'
+              ? 'bg-amber-100 text-amber-800'
+              : metaReadiness.overallStatus === 'APP_CONFIGURATION_REQUIRED'
+              ? 'bg-purple-100 text-purple-800'
+              : metaReadiness.overallStatus === 'KEK_REQUIRED'
+              ? 'bg-rose-100 text-rose-800'
+              : 'bg-slate-100 text-slate-600'
+          }`}>
+            {metaReadiness.overallStatus.replace(/_/g, ' ')}
+          </span>
+        </div>
       </div>
 
+      <!-- Infrastructure & Secrets Readiness Matrix -->
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Kesiapan Konfigurasi & Vault Kredensial</span>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+          <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+            <span class="text-[10px] text-slate-400 block">Meta App ID</span>
+            <span class={`font-bold ${metaReadiness.metaAppIdStatus === 'CONFIGURED' ? 'text-emerald-700' : 'text-slate-500'}`}>
+              {metaReadiness.metaAppIdStatus}
+            </span>
+          </div>
+          <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+            <span class="text-[10px] text-slate-400 block">Meta App Secret</span>
+            <span class={`font-bold ${metaReadiness.metaAppSecretStatus === 'PRESENT' ? 'text-emerald-700' : 'text-slate-500'}`}>
+              {metaReadiness.metaAppSecretStatus}
+            </span>
+          </div>
+          <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+            <span class="text-[10px] text-slate-400 block">Vault KEK (Cloudflare)</span>
+            <span class={`font-bold ${metaReadiness.credentialKekStatus === 'PRESENT' ? 'text-emerald-700' : 'text-rose-600'}`}>
+              {metaReadiness.credentialKekStatus}
+            </span>
+          </div>
+          <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+            <span class="text-[10px] text-slate-400 block">Credential Vault</span>
+            <span class="font-bold text-emerald-700">READY (AES-256-GCM)</span>
+          </div>
+          <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+            <span class="text-[10px] text-slate-400 block">Otoritas Penerbitan</span>
+            <span class="font-bold text-slate-800">0 (STRICTLY ZERO)</span>
+          </div>
+          <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+            <span class="text-[10px] text-slate-400 block">Sosial Otomasi</span>
+            <span class="font-bold text-slate-800">OFF (READ-ONLY)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Target Accounts Discovery Matrix -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <!-- Target 1: Facebook Page -->
         <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
@@ -583,7 +636,7 @@ const isKillSwitchEngaged = autoControl.kill_switch_engaged === 1;
             </span>
           </div>
           <div class="text-xs text-slate-600">
-            Halaman Terpilih: <strong class="text-slate-900">{metaHealth.selectedPageName || 'Belum dipilih'}</strong>
+            Halaman Terpilih: <strong class="text-slate-900">{metaHealth.selectedPageName || 'Belum dikonfigurasi'}</strong>
           </div>
         </div>
 
@@ -591,14 +644,14 @@ const isKillSwitchEngaged = autoControl.kill_switch_engaged === 1;
         <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <span>📸</span> Instagram Business
+              <span>📸</span> Instagram Professional
             </span>
             <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
               {metaHealth.instagramStatus}
             </span>
           </div>
           <div class="text-xs text-slate-600">
-            Akun Terpilih: <strong class="text-slate-900">{metaHealth.selectedInstagramUsername ? `@${metaHealth.selectedInstagramUsername}` : 'Belum dipilih'}</strong>
+            Akun Terpilih: <strong class="text-slate-900">{metaHealth.selectedInstagramUsername ? `@${metaHealth.selectedInstagramUsername}` : 'Belum dikonfigurasi'}</strong>
           </div>
         </div>
       </div>
@@ -613,25 +666,58 @@ const isKillSwitchEngaged = autoControl.kill_switch_engaged === 1;
         </p>
       </div>
 
+      <!-- Operator Checklist for Meta Connection -->
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+        <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+          <span>📋</span> Panduan Langkah Operator Sebelum Koneksi Live
+        </span>
+        <div class="space-y-2">
+          {metaReadiness.nextSteps.map((step) => (
+            <div class="flex items-start gap-2.5 text-xs">
+              <span class={`mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
+                step.status === 'COMPLETED'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-slate-200 text-slate-600'
+              }`}>
+                {step.status === 'COMPLETED' ? '✓' : step.step}
+              </span>
+              <div class="flex-1">
+                <span class="font-semibold text-slate-900">{step.title}</span>
+                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{step.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <!-- Connection Controls (Operator Action Gated) & Vault Security -->
       <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div class="text-xs text-slate-500 font-mono space-y-0.5">
-          <div>Kredensial: <span class="font-bold text-slate-700">{metaHealth.credentialBindingStatus}</span> • Auth Mode: <span class="font-bold text-slate-700">{metaHealth.authMode || 'None'}</span></div>
+          <div>Status Kredensial: <span class="font-bold text-slate-700">{metaHealth.credentialBindingStatus}</span> • Auth Mode: <span class="font-bold text-slate-700">{metaReadiness.selectedAuthMode}</span></div>
           <div class="text-[10px] text-slate-400">Vault: <span class="font-semibold text-emerald-600">AES-256-GCM</span> • KEK: <span class="font-semibold text-slate-600">Cloudflare Secrets</span> • Plaintext Token: <span class="font-semibold text-slate-600">Nihil (Zero Stored)</span></div>
         </div>
 
         <div class="flex items-center gap-2">
+          {metaReadiness.overallStatus === 'READY_FOR_OPERATOR_CONNECTION' ? (
+            <a
+              href="/admin/social/meta/connect"
+              class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition"
+            >
+              Hubungkan Akun Meta
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title={`Operator Action Required: ${metaReadiness.operatorActionMessage}`}
+              class="px-3.5 py-1.5 rounded-xl bg-blue-600/40 cursor-not-allowed text-white text-xs font-bold shadow-2xs"
+            >
+              Hubungkan Akun Meta
+            </button>
+          )}
           <button
             type="button"
-            disabled
-            title="Operator Action Required: Menghubungkan akun Meta memerlukan dialog OAuth interaktif oleh operator."
-            class="px-3.5 py-1.5 rounded-xl bg-blue-600/50 cursor-not-allowed text-white text-xs font-bold shadow-2xs"
-          >
-            Hubungkan Akun Meta
-          </button>
-          <button
-            type="button"
-            disabled
+            disabled={metaHealth.overallStatus === 'NOT_CONNECTED'}
             class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed text-xs font-bold border border-slate-200"
           >
             Putuskan

@@ -132,6 +132,20 @@ export interface MetaConnectionRecord {
   publishingAuthority: 0;
 }
 
+export interface SelectedFacebookPageBinding {
+  pageId: string;
+  name: string;
+  category?: string;
+  tasks?: string[];
+}
+
+export interface SelectedInstagramAccountBinding {
+  instagramId: string;
+  username: string;
+  name?: string;
+  accountType?: 'BUSINESS' | 'MEDIA_CREATOR' | 'PERSONAL';
+}
+
 /**
  * Normalized Read-Only Connection Health Model for UI & Telemetry
  */

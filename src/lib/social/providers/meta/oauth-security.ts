@@ -107,3 +107,42 @@ export function validateOAuthState(
 
   return { valid: true, state };
 }
+
+// In-memory store for consumed state IDs to enforce single-use replay protection
+const consumedStateIds = new Map<string, number>();
+
+/**
+ * Reset consumed state IDs (primarily for testing)
+ */
+export function resetConsumedOAuthStates(): void {
+  consumedStateIds.clear();
+}
+
+/**
+ * Validate and atomically consume an incoming OAuth state string.
+ * Strictly rejects replayed states.
+ */
+export function consumeOAuthState(
+  stateString: string,
+  options?: { expectedRedirectUri?: string }
+): { valid: boolean; state?: MetaOAuthState; error?: string } {
+  const result = validateOAuthState(stateString, options);
+  if (!result.valid || !result.state) {
+    return result;
+  }
+
+  // Cleanup expired entries
+  const now = Date.now();
+  for (const [id, expiresAt] of consumedStateIds.entries()) {
+    if (now > expiresAt) {
+      consumedStateIds.delete(id);
+    }
+  }
+
+  if (consumedStateIds.has(result.state.stateId)) {
+    return { valid: false, error: 'STATE_REPLAYED: OAuth state has already been consumed (replay attack prevented).' };
+  }
+
+  consumedStateIds.set(result.state.stateId, result.state.expiresAt);
+  return result;
+}
