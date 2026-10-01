@@ -65,7 +65,15 @@ export async function getPipelineBoard(db: any): Promise<PipelineBoardData> {
       .prepare("SELECT article_id, approved_by, created_at FROM article_editorial_approvals WHERE approval_status = 'APPROVED'")
       .all();
 
-    const approvalMap = new Set((approvalRows || []).map((a: any) => Number(a.article_id)));
+    const approvalMap = new Map<number, { approved_by: string; created_at: string }>();
+    if (Array.isArray(approvalRows)) {
+      for (const a of approvalRows) {
+        approvalMap.set(Number(a.article_id), {
+          approved_by: sanitizeString(a.approved_by || 'editorial_qa_primary'),
+          created_at: a.created_at || '1970-01-01T00:00:00.000Z'
+        });
+      }
+    }
 
     // Index media jobs by article_id
     const mediaJobByArticle = new Map<number, any>();
@@ -80,7 +88,8 @@ export async function getPipelineBoard(db: any): Promise<PipelineBoardData> {
       for (const art of articleRows) {
         const artId = Number(art.id);
         const mjob = mediaJobByArticle.get(artId);
-        const hasApproval = approvalMap.has(artId);
+        const approval = approvalMap.get(artId) || null;
+        const hasApproval = Boolean(approval);
 
         let stage: TaskStage = 'draft';
         let blockerOrError: string | null = null;
@@ -118,11 +127,15 @@ export async function getPipelineBoard(db: any): Promise<PipelineBoardData> {
           status: sanitizeString(art.status),
           stage,
           retryCount,
-          lastUpdate: art.updated_at || art.published_at || new Date().toISOString(),
+          lastUpdate: sanitizeString(art.updated_at || art.published_at || art.created_at || '1970-01-01T00:00:00.000Z'),
           blockerOrError,
           relatedArticleId: artId,
           relatedMediaJobId: mjob?.job_id ? sanitizeString(mjob.job_id) : null,
-          slug: sanitizeString(art.slug)
+          slug: sanitizeString(art.slug),
+          approvalEvidence: approval ? {
+            approvedBy: approval.approved_by,
+            approvedAt: approval.created_at
+          } : null
         });
       }
     }
@@ -144,11 +157,12 @@ export async function getPipelineBoard(db: any): Promise<PipelineBoardData> {
             status: sanitizeString(mjob.status),
             stage,
             retryCount: Number(mjob.attempt || 0),
-            lastUpdate: mjob.updated_at || mjob.created_at || new Date().toISOString(),
+            lastUpdate: sanitizeString(mjob.updated_at || mjob.created_at || '1970-01-01T00:00:00.000Z'),
             blockerOrError: isFailed ? sanitizeString(mjob.last_error_code || 'Media generation error') : null,
             relatedArticleId: artId,
             relatedMediaJobId: sanitizeString(mjob.job_id),
-            slug: sanitizeString(mjob.article_slug)
+            slug: sanitizeString(mjob.article_slug),
+            approvalEvidence: null
           });
         }
       }

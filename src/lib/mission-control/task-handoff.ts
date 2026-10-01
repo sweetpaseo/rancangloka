@@ -138,7 +138,8 @@ export function validateHandoffSafety(
 
 /**
  * Derives canonical in-flight handoffs from the snapshot pipeline tasks.
- * Strictly checks genuine workflow state connections (no timing-only inference).
+ * Strictly requires verifiable canonical evidence (e.g. linked D1 media jobs or approval rows).
+ * No guessing or synthetic stage chain reconstruction from current stage alone!
  */
 export function deriveCanonicalHandoffsFromPipeline(
   snapshot: MissionControlSnapshot | null
@@ -153,17 +154,31 @@ export function deriveCanonicalHandoffsFromPipeline(
   for (const task of tasks) {
     if (!task.taskId || !task.stage) continue;
 
+    // Fail closed: Task must have an authoritative canonical timestamp.
+    // Zero fallback to Date.now() or new Date().toISOString()!
+    if (!task.lastUpdate || typeof task.lastUpdate !== 'string' || !task.lastUpdate.trim()) {
+      continue;
+    }
+
     const taskTitle = task.title || task.slug || task.taskId;
     const artifactId = String(task.relatedArticleId || task.taskId);
-    const timestamp = task.lastUpdate || new Date().toISOString();
+    const timestamp = task.lastUpdate;
 
     // 1. Article awaiting media: Editorial -> Media
+    // Verifiable canonical evidence: D1 media job foreign key in media_jobs table
     if (task.stage === 'waiting_media' && task.relatedMediaJobId) {
       const isFailed = task.status === 'FAILED' || task.status === 'FAILED_TERMINAL';
       const isWorkerEnabled = snapshot.health?.mediaWorker?.effectiveState === 'ENABLED';
 
       const observation: TaskHandoffObservation = {
-        handoff_id: deriveDeterministicHandoffId(task.taskId, 'writing', 'waiting_media', 'content_writer_primary', isWorkerEnabled ? 'lokamedia_worker_primary' : null, timestamp),
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'writing',
+          'waiting_media',
+          'content_writer_primary',
+          isWorkerEnabled ? 'lokamedia_worker_primary' : null,
+          timestamp
+        ),
         workflow_id: task.taskId,
         task_id: task.taskId,
         artifact_id: artifactId,
@@ -189,27 +204,31 @@ export function deriveCanonicalHandoffsFromPipeline(
     }
 
     // 2. Media attached awaiting QA: Media -> Editorial QA
-    else if (task.stage === 'editorial_qa') {
-      const hasMediaJob = Boolean(task.relatedMediaJobId);
-      const fromAgent = hasMediaJob ? 'lokamedia_worker_primary' : 'content_writer_primary';
-      const fromDept: DepartmentId = hasMediaJob ? 'media' : 'editorial';
-
+    // Verifiable canonical evidence: Completed media job attached to article
+    else if (task.stage === 'editorial_qa' && task.relatedMediaJobId) {
       const observation: TaskHandoffObservation = {
-        handoff_id: deriveDeterministicHandoffId(task.taskId, hasMediaJob ? 'waiting_media' : 'writing', 'editorial_qa', fromAgent, 'editorial_qa_primary', timestamp),
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'waiting_media',
+          'editorial_qa',
+          'lokamedia_worker_primary',
+          'editorial_qa_primary',
+          timestamp
+        ),
         workflow_id: task.taskId,
         task_id: task.taskId,
         artifact_id: artifactId,
         task_title: taskTitle,
-        from_agent_id: fromAgent,
+        from_agent_id: 'lokamedia_worker_primary',
         to_agent_id: 'editorial_qa_primary',
-        from_department_id: fromDept,
+        from_department_id: 'media',
         to_department_id: 'editorial',
-        from_stage: hasMediaJob ? 'waiting_media' : 'writing',
+        from_stage: 'waiting_media',
         to_stage: 'editorial_qa',
         handoff_state: 'RUNNING',
         transition_timestamp: timestamp,
-        evidence_source: 'articles:stage=editorial_qa',
-        evidence_id: `stage_${task.taskId}_editorial_qa`,
+        evidence_source: 'd1_media_jobs:attached',
+        evidence_id: task.relatedMediaJobId,
         confidence: 'EXACT',
         requires_movement: true
       };
@@ -220,28 +239,37 @@ export function deriveCanonicalHandoffsFromPipeline(
       }
     }
 
-    // 3. Article approved and scheduled: Editorial -> Publication Operations
-    else if (task.stage === 'scheduled') {
+    // 3. Article approved and scheduled: Editorial QA -> Publication Operations
+    // Verifiable canonical evidence: Explicit row in article_editorial_approvals in D1
+    else if (task.stage === 'scheduled' && task.approvalEvidence) {
       const pubBreaker = snapshot.health?.circuitBreakers?.find((cb) => cb.id === 'global_publisher');
       const isBlocked = snapshot.health?.automation?.killSwitchEngaged || pubBreaker?.state === 'OPEN';
       const isAutomationOff = snapshot.health?.automation?.mode === 'OFF';
+      const approvalTime = task.approvalEvidence.approvedAt || timestamp;
 
       const observation: TaskHandoffObservation = {
-        handoff_id: deriveDeterministicHandoffId(task.taskId, 'editorial_qa', 'scheduled', 'editorial_qa_primary', 'publication_dispatcher_core', timestamp),
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'editorial_qa',
+          'scheduled',
+          task.approvalEvidence.approvedBy || 'editorial_qa_primary',
+          'publication_dispatcher_core',
+          approvalTime
+        ),
         workflow_id: task.taskId,
         task_id: task.taskId,
         artifact_id: artifactId,
         task_title: taskTitle,
-        from_agent_id: 'editorial_qa_primary',
+        from_agent_id: task.approvalEvidence.approvedBy || 'editorial_qa_primary',
         to_agent_id: 'publication_dispatcher_core',
         from_department_id: 'editorial',
         to_department_id: 'publication_operations',
         from_stage: 'editorial_qa',
         to_stage: 'scheduled',
         handoff_state: isBlocked ? 'BLOCKED' : (isAutomationOff ? 'QUEUED' : 'RUNNING'),
-        transition_timestamp: timestamp,
-        evidence_source: 'articles:status=scheduled',
-        evidence_id: `article_${task.taskId}_scheduled`,
+        transition_timestamp: approvalTime,
+        evidence_source: 'd1_article_editorial_approvals',
+        evidence_id: `approval_${task.relatedArticleId || task.taskId}`,
         confidence: 'EXACT',
         // Invariant: QUEUED next stage does NOT cause staff movement!
         requires_movement: !isBlocked && !isAutomationOff
@@ -253,61 +281,8 @@ export function deriveCanonicalHandoffsFromPipeline(
       }
     }
 
-    // 4. Ingesting in-flight: Editorial -> Publication
-    else if (task.stage === 'ingesting') {
-      const observation: TaskHandoffObservation = {
-        handoff_id: deriveDeterministicHandoffId(task.taskId, 'ready_for_ingest', 'ingesting', 'editorial_qa_primary', 'publication_dispatcher_core', timestamp),
-        workflow_id: task.taskId,
-        task_id: task.taskId,
-        artifact_id: artifactId,
-        task_title: taskTitle,
-        from_agent_id: 'editorial_qa_primary',
-        to_agent_id: 'publication_dispatcher_core',
-        from_department_id: 'editorial',
-        to_department_id: 'publication_operations',
-        from_stage: 'ready_for_ingest',
-        to_stage: 'ingesting',
-        handoff_state: 'RUNNING',
-        transition_timestamp: timestamp,
-        evidence_source: 'articles:status=ingesting',
-        evidence_id: `ingest_${task.taskId}`,
-        confidence: 'EXACT',
-        requires_movement: true
-      };
-
-      const safety = validateHandoffSafety(observation, snapshot);
-      if (safety.allowed) {
-        handoffs.push(observation);
-      }
-    }
-
-    // 5. Research Stage: Research & Evidence -> Editorial Writing
-    else if (task.stage === 'researching') {
-      const observation: TaskHandoffObservation = {
-        handoff_id: deriveDeterministicHandoffId(task.taskId, 'initial', 'researching', null, 'evidence_researcher_lead', timestamp),
-        workflow_id: task.taskId,
-        task_id: task.taskId,
-        artifact_id: artifactId,
-        task_title: taskTitle,
-        from_agent_id: null,
-        to_agent_id: 'evidence_researcher_lead',
-        from_department_id: 'unknown',
-        to_department_id: 'research_evidence',
-        from_stage: 'initial',
-        to_stage: 'researching',
-        handoff_state: 'RUNNING',
-        transition_timestamp: timestamp,
-        evidence_source: 'pipeline_task:researching',
-        evidence_id: `research_${task.taskId}`,
-        confidence: 'EXACT',
-        requires_movement: true
-      };
-
-      const safety = validateHandoffSafety(observation, snapshot);
-      if (safety.allowed) {
-        handoffs.push(observation);
-      }
-    }
+    // Strict invariant: Tasks without verifiable canonical transition evidence
+    // (e.g. stage alone without approval or media job) CANNOT fabricate history. Fail closed!
   }
 
   // Sort descending by timestamp
@@ -319,8 +294,10 @@ export function deriveCanonicalHandoffsFromPipeline(
  * 
  * Strict Truthfulness Rules:
  * 1. Must share the EXACT SAME taskId / workflow identity.
- * 2. Timing coincidence across different task IDs is strictly REJECTED.
- * 3. Completion without a proven next owner/stage is NOT a handoff.
+ * 2. Monotonicity & Stale Snapshot Rejection: currTask.lastUpdate must be strictly newer than prevTask.lastUpdate.
+ * 3. Timing coincidence across different task IDs is strictly REJECTED.
+ * 4. Completion without a proven next owner/stage is NOT a handoff.
+ * 5. Out-of-order snapshots (currTime <= prevTime) fail closed; zero reverse handoffs.
  */
 export function detectSnapshotDeltaHandoffs(
   prevSnapshot: MissionControlSnapshot | null,
@@ -337,12 +314,23 @@ export function detectSnapshotDeltaHandoffs(
   for (const currTask of currTasks) {
     if (!currTask.taskId) continue;
 
-    // RULE 2: Find task with identical task_id (Different task IDs = NOT a handoff)
+    // RULE 1: Find task with identical task_id (Different task IDs = NOT a handoff)
     const prevTask = prevTasks.find((t) => t.taskId === currTask.taskId);
     if (!prevTask) continue;
 
-    // RULE: Stage or status must have canonically transitioned
+    // RULE 2: Stage or status must have canonically transitioned
     if (prevTask.stage === currTask.stage && prevTask.status === currTask.status) {
+      continue;
+    }
+
+    // RULE 3: Strict Monotonicity & Out-of-Order / Stale Snapshot Rejection
+    // The current task timestamp must be strictly newer than the previous task timestamp.
+    // If currTime <= prevTime, the snapshot is stale, cached, out-of-order, or identical.
+    // Fail closed immediately to prevent reverse or fake handoffs!
+    const prevTime = prevTask.lastUpdate ? new Date(prevTask.lastUpdate).getTime() : NaN;
+    const currTime = currTask.lastUpdate ? new Date(currTask.lastUpdate).getTime() : NaN;
+
+    if (isNaN(currTime) || isNaN(prevTime) || currTime <= prevTime) {
       continue;
     }
 
@@ -357,7 +345,7 @@ export function detectSnapshotDeltaHandoffs(
       continue;
     }
 
-    const timestamp = currTask.lastUpdate || new Date().toISOString();
+    const timestamp = currTask.lastUpdate;
     const isNextBlocked = currTask.stage === 'failed' || currTask.status === 'BLOCKED' || currTask.status === 'FAILED';
     const isNextQueued = currTask.stage === 'scheduled' || currTask.status === 'QUEUED';
 
@@ -367,6 +355,11 @@ export function detectSnapshotDeltaHandoffs(
     } else if (isNextQueued) {
       handoffState = 'QUEUED';
     }
+
+    // Check for genuine workflow rollback (e.g. editorial_qa -> writing)
+    const isRollback =
+      (prevTask.stage === 'editorial_qa' && currTask.stage === 'writing') ||
+      (prevTask.stage === 'scheduled' && (currTask.stage === 'editorial_qa' || currTask.stage === 'writing'));
 
     const observation: TaskHandoffObservation = {
       handoff_id: deriveDeterministicHandoffId(
@@ -389,8 +382,8 @@ export function detectSnapshotDeltaHandoffs(
       to_stage: currTask.stage,
       handoff_state: handoffState,
       transition_timestamp: timestamp,
-      evidence_source: 'snapshot_delta:pipeline_tasks',
-      evidence_id: `${currTask.taskId}:${prevTask.stage}->${currTask.stage}`,
+      evidence_source: isRollback ? 'snapshot_delta:workflow_rollback' : 'snapshot_delta:pipeline_tasks',
+      evidence_id: `${currTask.taskId}:${prevTask.stage}->${currTask.stage}@${timestamp}`,
       confidence: currAttribution.responsibility_confidence === 'EXACT' ? 'EXACT' : 'DERIVED',
       requires_movement: handoffState === 'RUNNING' && Boolean(currAttribution.responsible_agent_id)
     };

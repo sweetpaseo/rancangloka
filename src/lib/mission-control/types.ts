@@ -83,6 +83,10 @@ export interface TaskCard {
   relatedArticleId?: number | null;
   relatedMediaJobId?: string | null;
   slug?: string;
+  approvalEvidence?: {
+    approvedBy: string;
+    approvedAt: string;
+  } | null;
 }
 
 export interface PipelineBoardData {

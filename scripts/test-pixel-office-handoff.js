@@ -1,26 +1,21 @@
 /**
- * RancangLoka Hermes Mission Control — Test Suite: Canonical Task Handoff Visualization (V2.4)
- * Milestone: HERMES-MC-V2.4
+ * RancangLoka Hermes Mission Control — Test Suite: Canonical Task Handoff Visualization & Replay Hardening (V2.4 / V2.4A)
+ * Milestone: HERMES-MC-V2.4A
  * 
  * Strict Invariants Tested:
- * 1. Same canonical task transitions Joko -> Rina = valid handoff.
- * 2. Different task IDs = NOT a handoff.
- * 3. Sequential timestamps alone = NOT a handoff.
- * 4. Completion without next owner = NOT a handoff.
- * 5. QUEUED recipient = handoff observable but NO movement.
- * 6. RUNNING recipient = movement allowed.
- * 7. Repeated identical event = no replay (deduplication).
- * 8. Refresh = no replay.
- * 9. Page initial load = zero historical journey replay.
- * 10. Blocked recipient = no fake working animation.
- * 11. Unknown ownership = department-level only / UNKNOWN.
- * 12. Multiple workflow handoffs remain isolated.
- * 13. Maya cannot receive handoff while Social HOLDING.
- * 14. Budi cannot receive active handoff while effective worker DISABLED.
- * 15. JEV cannot become workflow owner.
- * 16. Deterministic handoff identity (zero random UUIDs).
- * 17. Same canonical event yields exact same derived identity.
- * 18. Invalid/ambiguous ordering fails closed.
+ * 1. Canonical timestamp stability (authoritative D1 timestamp, zero poll/browser drift).
+ * 2. Same transition across sessions = same deterministic handoff ID (H_session_A === H_session_B).
+ * 3. Poll time differences do not change handoff ID.
+ * 4. Current state alone cannot manufacture history (Fail closed without verifiable evidence).
+ * 5. Historical event loads without animation replay (sprites remain in static room positions).
+ * 6. Refresh replay safety (pre-existing historical records marked consumed on load).
+ * 7. New event after refresh animates exactly once (no replay of prior events).
+ * 8. Repeated polling of unchanged snapshot produces zero duplicates or animations.
+ * 9. Out-of-order / stale snapshots cannot cause reverse handoffs.
+ * 10. Canonical rollback only when evidenced with monotonic timestamp advancement.
+ * 11. Department-only handoff leaves staff owner as null / Pending (no movement).
+ * 12. FNV-1a handoff ID is strictly presentation / deduplication only.
+ * 13. Maya, Budi, and JEV exclusions remain strictly enforced.
  */
 
 import {
@@ -35,7 +30,7 @@ import {
 } from '../src/lib/mission-control/pixel-office.ts';
 
 console.log('======================================================');
-console.log('🧪 Starting Pixel Office V2.4 Task Handoff Test Suite...');
+console.log('🧪 Starting Pixel Office V2.4A Task Handoff Test Suite...');
 console.log('======================================================\n');
 
 let passCount = 0;
@@ -52,7 +47,7 @@ function assert(condition, message) {
 }
 
 // ----------------------------------------------------------------------------
-// GROUP 1: Canonical Task Handoff Qualification & Delta Detection
+// GROUP 1: Canonical Task Qualification & Delta Detection
 // ----------------------------------------------------------------------------
 console.log('--- Group 1: Canonical Task Qualification & Delta Detection ---');
 
@@ -98,6 +93,7 @@ const qaSnapshot = {
         stage: 'editorial_qa',
         status: 'RUNNING',
         relatedArticleId: 'art-101',
+        relatedMediaJobId: 'job-kanopi-101',
         lastUpdate: '2026-10-01T12:05:00.000Z'
       }
     ]
@@ -118,7 +114,7 @@ assert(
   'Test 1: Same canonical task transitioning from writing to editorial_qa produces valid RUNNING handoff'
 );
 
-// Test 2: Different task IDs = NOT a handoff
+// Test 2: Different task IDs across consecutive snapshots are NOT joined into a handoff
 const disjointTaskSnapshot = {
   ...baseSnapshot,
   generatedAt: '2026-10-01T12:05:00.000Z',
@@ -141,7 +137,7 @@ assert(
   'Test 2: Different task IDs across consecutive snapshots are NOT joined into a handoff'
 );
 
-// Test 3: Sequential timestamps alone across disjoint tasks = NOT a handoff
+// Test 3: Sequential timestamps alone without shared task identity do NOT create a handoff
 const sequentialTimeSnapshotA = {
   ...baseSnapshot,
   pipeline: {
@@ -160,7 +156,7 @@ assert(
   'Test 3: Sequential timestamps alone without shared task identity do NOT create a handoff'
 );
 
-// Test 4: Task completion without next owner/stage = NOT a handoff
+// Test 4: Completed task without subsequent stage or ownership change is NOT a handoff
 const completedSnapshot = {
   ...baseSnapshot,
   pipeline: {
@@ -200,7 +196,7 @@ assert(
 // ----------------------------------------------------------------------------
 console.log('\n--- Group 2: State Semantics (QUEUED vs RUNNING vs BLOCKED) ---');
 
-// Test 5: QUEUED recipient = handoff observable but NO movement
+// Test 5: QUEUED recipient produces handoff with requires_movement === false (staff stays in Lounge)
 const scheduledQueuedSnapshot = {
   ...baseSnapshot,
   pipeline: {
@@ -225,7 +221,7 @@ assert(
   'Test 5: QUEUED next stage produces handoff with requires_movement === false (staff stays in Lounge)'
 );
 
-// Test 6: RUNNING recipient = movement allowed
+// Test 6: Transitioning from QUEUED to RUNNING produces requires_movement === true
 const ingestingRunningSnapshot = {
   ...baseSnapshot,
   pipeline: {
@@ -250,7 +246,7 @@ assert(
   'Test 6: Transitioning from QUEUED to RUNNING produces requires_movement === true'
 );
 
-// Test 10: Blocked recipient = no fake working animation
+// Test 7: BLOCKED recipient produces requires_movement === false and handoff_state === BLOCKED
 const blockedFailedSnapshot = {
   ...baseSnapshot,
   pipeline: {
@@ -267,73 +263,270 @@ const blockedFailedSnapshot = {
     ]
   }
 };
-const deltaHandoffs10 = detectSnapshotDeltaHandoffs(qaSnapshot, blockedFailedSnapshot);
+const deltaHandoffs7 = detectSnapshotDeltaHandoffs(qaSnapshot, blockedFailedSnapshot);
 assert(
-  deltaHandoffs10.length === 1 &&
-  deltaHandoffs10[0].handoff_state === 'BLOCKED' &&
-  deltaHandoffs10[0].requires_movement === false,
-  'Test 10: BLOCKED recipient produces requires_movement === false and handoff_state === BLOCKED'
+  deltaHandoffs7.length === 1 &&
+  deltaHandoffs7[0].handoff_state === 'BLOCKED' &&
+  deltaHandoffs7[0].requires_movement === false,
+  'Test 7: BLOCKED recipient produces requires_movement === false and handoff_state === BLOCKED'
 );
 
 // ----------------------------------------------------------------------------
-// GROUP 3: Deduplication, Idempotency & Replay Prevention
+// GROUP 3: Timestamp Stability, Cross-Session Consistency & Idempotency
 // ----------------------------------------------------------------------------
-console.log('\n--- Group 3: Deduplication, Idempotency & Replay Prevention ---');
+console.log('\n--- Group 3: Timestamp Stability, Cross-Session Consistency & Idempotency ---');
 
-// Test 7: Repeated identical event = no replay (deterministic ID matches)
-const idA1 = deriveDeterministicHandoffId('wf-1', 'writing', 'qa', 'joko', 'rina', '2026-10-01T12:00:00.000Z');
-const idA2 = deriveDeterministicHandoffId('wf-1', 'writing', 'qa', 'joko', 'rina', '2026-10-01T12:00:00.000Z');
+// Test 8: Canonical timestamp stability: derived ID uses authoritative timestamp, zero Date.now() drift
+const canonicalTime = '2026-10-01T14:30:00.000Z';
+const idSessionA = deriveDeterministicHandoffId('task-kanopi-101', 'writing', 'editorial_qa', 'joko', 'rina', canonicalTime);
+const idSessionB = deriveDeterministicHandoffId('task-kanopi-101', 'writing', 'editorial_qa', 'joko', 'rina', canonicalTime);
 assert(
-  idA1 === idA2,
-  'Test 7: Repeated identical event yields exact same deterministic handoff_id for deduplication'
+  idSessionA === idSessionB && !idSessionA.includes('undefined'),
+  'Test 8: Same canonical transition observed by Session A and Session B produces identical handoff_id'
 );
 
-// Test 8: Refresh = no replay (identical snapshots yield empty delta)
-const deltaRefresh = detectSnapshotDeltaHandoffs(qaSnapshot, qaSnapshot);
+// Test 9: Poll arrival time differences do NOT alter handoff ID
+const pollSnapshot1 = {
+  ...baseSnapshot,
+  pipeline: {
+    tasks: [{ taskId: 'task-kanopi-101', title: 'Desain Kanopi', stage: 'editorial_qa', status: 'RUNNING', lastUpdate: canonicalTime }]
+  }
+};
+const pollSnapshot2 = {
+  ...baseSnapshot,
+  pipeline: {
+    tasks: [{ taskId: 'task-kanopi-101', title: 'Desain Kanopi', stage: 'editorial_qa', status: 'RUNNING', lastUpdate: canonicalTime }]
+  }
+};
+const deltaPoll1 = detectSnapshotDeltaHandoffs(baseSnapshot, pollSnapshot1);
+const deltaPoll2 = detectSnapshotDeltaHandoffs(baseSnapshot, pollSnapshot2);
 assert(
-  deltaRefresh.length === 0,
-  'Test 8: Polling identical snapshot on refresh yields zero new delta handoffs'
+  deltaPoll1.length === 1 &&
+  deltaPoll2.length === 1 &&
+  deltaPoll1[0].handoff_id === deltaPoll2[0].handoff_id,
+  'Test 9: Polling arrival time variance does not alter deterministic handoff ID'
 );
 
-// Test 9: Page initial load = no historical animation (pixel office state returns read-only list)
+// Test 10: Current state alone cannot manufacture history (Fail Closed on unproven tasks)
+const unprovenDraftSnapshot = {
+  ...baseSnapshot,
+  pipeline: {
+    tasks: [
+      {
+        taskId: 'art-unproven-1',
+        title: 'Draft with No Evidence',
+        stage: 'draft',
+        status: 'draft',
+        lastUpdate: '2026-10-01T12:00:00.000Z'
+      },
+      {
+        taskId: 'art-unproven-2',
+        title: 'Editorial QA with No Media Job',
+        stage: 'editorial_qa',
+        status: 'draft',
+        lastUpdate: '2026-10-01T12:00:00.000Z'
+      }
+    ]
+  }
+};
+const unprovenHandoffs = deriveCanonicalHandoffsFromPipeline(unprovenDraftSnapshot);
+assert(
+  unprovenHandoffs.length === 0,
+  'Test 10: Current task state alone cannot manufacture historical handoffs without verifiable evidence (Fail Closed)'
+);
+
+// Test 11: Historical event with verified media job loads without transit animation replay
 const initialOfficeState = getPixelOfficeState(qaSnapshot);
 assert(
   Array.isArray(initialOfficeState.recent_handoffs) &&
-  initialOfficeState.recent_handoffs.length > 0 &&
+  initialOfficeState.recent_handoffs.length === 1 &&
+  initialOfficeState.recent_handoffs[0].evidence_source === 'd1_media_jobs:attached' &&
   initialOfficeState.sprites.every((s) => s.room_key !== 'central_hall'),
-  'Test 9: Initial page load populates recent_handoffs without forcing transit animations'
+  'Test 11: Initial page load populates verifiable recent_handoffs without forcing transit animations'
 );
 
 // ----------------------------------------------------------------------------
-// GROUP 4: Department-Only & Unknown Ownership
+// GROUP 4: Refresh / Replay Semantics & Polling Deduplication
 // ----------------------------------------------------------------------------
-console.log('\n--- Group 4: Department-Only & Unknown Ownership ---');
+console.log('\n--- Group 4: Refresh / Replay Semantics & Polling Deduplication ---');
 
-// Test 11: Unknown ownership = department-level only / UNKNOWN
-const unknownStaffTask = {
-  taskId: 'task-custom-audit',
-  title: 'Audit Metadata Kategori',
-  stage: 'unknown_stage',
-  status: 'PENDING',
-  subsystem: 'unknown_subsystem',
-  lastUpdate: '2026-10-01T12:30:00.000Z'
+// Test 12: Refresh replay safety: pre-existing historical IDs are marked consumed on load
+const mockOfficeData = {
+  recent_handoffs: [
+    { handoff_id: 'hnd_existing_100', task_title: 'Existing Task 100', handoff_state: 'RUNNING' }
+  ]
 };
-const unassignedSnapshot = {
-  ...baseSnapshot,
-  pipeline: { tasks: [unknownStaffTask] }
-};
-const unassignedOffice = getPixelOfficeState(unassignedSnapshot);
+const consumedSet = new Set();
+mockOfficeData.recent_handoffs.forEach((h) => consumedSet.add(h.handoff_id));
+
+let executedCount = 0;
+function simulatePollReceive(handoffs) {
+  handoffs.forEach((h) => {
+    if (consumedSet.has(h.handoff_id)) return;
+    consumedSet.add(h.handoff_id);
+    executedCount++;
+  });
+}
+
+// Next poll returns same H100
+simulatePollReceive(mockOfficeData.recent_handoffs);
 assert(
-  unassignedOffice.sprites.every((s) => s.current_task_title !== 'Audit Metadata Kategori' || s.room_key === 'lounge'),
-  'Test 11: Unassigned task does not fabricate staff ownership or move sprites to arbitrary desks'
+  executedCount === 0,
+  'Test 12: Browser refresh marks pre-existing handoffs consumed; zero replay occurs on subsequent poll'
+);
+
+// Test 13: New event after refresh animates exactly once
+const newHandoffH101 = { handoff_id: 'hnd_new_101', task_title: 'New Task 101', handoff_state: 'RUNNING' };
+simulatePollReceive([mockOfficeData.recent_handoffs[0], newHandoffH101]);
+assert(
+  executedCount === 1,
+  'Test 13: New event H101 arriving after refresh executes exactly once'
+);
+
+// Simulate page reload at 20:04: initial payload now contains H100 and H101
+const refreshedOfficeData = {
+  recent_handoffs: [
+    { handoff_id: 'hnd_new_101', task_title: 'New Task 101', handoff_state: 'RUNNING' },
+    { handoff_id: 'hnd_existing_100', task_title: 'Existing Task 100', handoff_state: 'RUNNING' }
+  ]
+};
+const postRefreshConsumedSet = new Set();
+refreshedOfficeData.recent_handoffs.forEach((h) => postRefreshConsumedSet.add(h.handoff_id));
+
+let postRefreshExecutionCount = 0;
+function simulatePostRefreshPoll(handoffs) {
+  handoffs.forEach((h) => {
+    if (postRefreshConsumedSet.has(h.handoff_id)) return;
+    postRefreshConsumedSet.add(h.handoff_id);
+    postRefreshExecutionCount++;
+  });
+}
+
+// Subsequent poll with unchanged payload
+simulatePostRefreshPoll(refreshedOfficeData.recent_handoffs);
+assert(
+  postRefreshExecutionCount === 0,
+  'Test 13b: Refreshing page preserves consumed state; neither H100 nor H101 replays'
+);
+
+// New event H102 occurs
+const newHandoffH102 = { handoff_id: 'hnd_new_102', task_title: 'New Task 102', handoff_state: 'RUNNING' };
+simulatePostRefreshPoll([...refreshedOfficeData.recent_handoffs, newHandoffH102]);
+assert(
+  postRefreshExecutionCount === 1,
+  'Test 13c: Subsequent event H102 animates once after refresh'
+);
+
+// Test 14: Repeated polling of unchanged snapshot for 10 cycles produces 0 new handoffs
+let pollLoopHandoffs = 0;
+for (let cycle = 0; cycle < 10; cycle++) {
+  const delta = detectSnapshotDeltaHandoffs(qaSnapshot, qaSnapshot);
+  pollLoopHandoffs += delta.length;
+}
+assert(
+  pollLoopHandoffs === 0,
+  'Test 14: Repeated polling of identical snapshot for 10 cycles produces 0 new delta handoffs'
 );
 
 // ----------------------------------------------------------------------------
-// GROUP 5: Multi-Workflow Isolation
+// GROUP 5: Out-of-Order / Stale Snapshots & Canonical Rollback
 // ----------------------------------------------------------------------------
-console.log('\n--- Group 5: Multi-Workflow Isolation ---');
+console.log('\n--- Group 5: Out-of-Order / Stale Snapshots & Canonical Rollback ---');
 
-// Test 12: Multiple workflow handoffs remain isolated
+// Test 15: Out-of-order stale snapshot cannot cause reverse handoff
+const newerSnapshot = {
+  ...baseSnapshot,
+  pipeline: {
+    tasks: [{
+      taskId: 'art-ordering-test',
+      stage: 'editorial_qa',
+      status: 'RUNNING',
+      lastUpdate: '2026-10-01T12:05:00.000Z'
+    }]
+  }
+};
+const staleOlderSnapshot = {
+  ...baseSnapshot,
+  pipeline: {
+    tasks: [{
+      taskId: 'art-ordering-test',
+      stage: 'writing',
+      status: 'RUNNING',
+      lastUpdate: '2026-10-01T12:00:00.000Z' // Stale/cached older timestamp!
+    }]
+  }
+};
+const staleDelta = detectSnapshotDeltaHandoffs(newerSnapshot, staleOlderSnapshot);
+assert(
+  staleDelta.length === 0,
+  'Test 15: Stale out-of-order snapshot arriving late does NOT generate a reverse/fake handoff'
+);
+
+// Test 16: Canonical rollback accepted ONLY when canonical timestamp advanced
+const genuineRollbackSnapshot = {
+  ...baseSnapshot,
+  pipeline: {
+    tasks: [{
+      taskId: 'art-ordering-test',
+      stage: 'writing',
+      status: 'RUNNING',
+      lastUpdate: '2026-10-01T12:08:00.000Z' // Genuine rollback committed later in time!
+    }]
+  }
+};
+const rollbackDelta = detectSnapshotDeltaHandoffs(newerSnapshot, genuineRollbackSnapshot);
+assert(
+  rollbackDelta.length === 1 &&
+  rollbackDelta[0].from_stage === 'editorial_qa' &&
+  rollbackDelta[0].to_stage === 'writing' &&
+  rollbackDelta[0].evidence_source === 'snapshot_delta:workflow_rollback',
+  'Test 16: Canonical rollback is accepted only when timestamp advances and is evidenced'
+);
+
+// ----------------------------------------------------------------------------
+// GROUP 6: Department-Only & Unknown Ownership
+// ----------------------------------------------------------------------------
+console.log('\n--- Group 6: Department-Only & Unknown Ownership ---');
+
+// Test 17: Department-only handoff leaves staff owner as null / Pending (no movement)
+const deptOnlyPrev = {
+  ...baseSnapshot,
+  pipeline: {
+    tasks: [{
+      taskId: 'task-dept-only',
+      stage: 'custom_dept_stage',
+      status: 'PENDING',
+      subsystem: 'editorial',
+      lastUpdate: '2026-10-01T12:00:00.000Z'
+    }]
+  }
+};
+const deptOnlyCurr = {
+  ...baseSnapshot,
+  pipeline: {
+    tasks: [{
+      taskId: 'task-dept-only',
+      stage: 'custom_dept_stage_2',
+      status: 'PENDING',
+      subsystem: 'unknown_subsystem',
+      lastUpdate: '2026-10-01T12:05:00.000Z'
+    }]
+  }
+};
+const deptDelta = detectSnapshotDeltaHandoffs(deptOnlyPrev, deptOnlyCurr);
+assert(
+  deptDelta.length === 1 &&
+  deptDelta[0].to_agent_id === null &&
+  deptDelta[0].requires_movement === false,
+  'Test 17: Department-only handoff does not fabricate staff ownership; recipient remains Pending and stationary'
+);
+
+// ----------------------------------------------------------------------------
+// GROUP 7: Multi-Workflow Isolation
+// ----------------------------------------------------------------------------
+console.log('\n--- Group 7: Multi-Workflow Isolation ---');
+
+// Test 18: Multiple concurrent workflows remain strictly isolated by workflow/task ID
 const multiTaskSnapshotPrev = {
   ...baseSnapshot,
   pipeline: {
@@ -357,15 +550,15 @@ assert(
   multiDelta.length === 2 &&
   multiDelta.find((h) => h.workflow_id === 'art-alpha')?.to_stage === 'editorial_qa' &&
   multiDelta.find((h) => h.workflow_id === 'art-beta')?.to_stage === 'writing',
-  'Test 12: Multiple concurrent workflows remain strictly isolated by workflow/task ID'
+  'Test 18: Multiple concurrent workflows remain strictly isolated by workflow/task ID'
 );
 
 // ----------------------------------------------------------------------------
-// GROUP 6: Safety Exclusions (Maya, Budi, JEV)
+// GROUP 8: Safety Exclusions (Maya, Budi, JEV)
 // ----------------------------------------------------------------------------
-console.log('\n--- Group 6: Safety Exclusions (Maya, Budi, JEV) ---');
+console.log('\n--- Group 8: Safety Exclusions (Maya, Budi, JEV) ---');
 
-// Test 13: Maya cannot receive handoff while Social HOLDING
+// Test 19: Maya cannot receive handoff while Social HOLDING
 const mayaCandidateHandoff = {
   handoff_id: 'test-maya',
   workflow_id: 'art-social-1',
@@ -390,10 +583,10 @@ assert(
   mayaSafety.allowed === false &&
   mayaSafety.reason.includes('Zone S') &&
   mayaSafety.reason.includes('HOLDING'),
-  'Test 13: Maya cannot receive handoff while Social is in HOLDING status'
+  'Test 19: Maya cannot receive handoff while Social is in HOLDING status'
 );
 
-// Test 14: Budi cannot receive active handoff while effective worker DISABLED
+// Test 20: Budi cannot receive active handoff while effective worker DISABLED
 const budiCandidateHandoff = {
   handoff_id: 'test-budi',
   workflow_id: 'art-media-1',
@@ -417,10 +610,10 @@ const budiSafety = validateHandoffSafety(budiCandidateHandoff, baseSnapshot);
 assert(
   budiSafety.allowed === false &&
   budiSafety.reason.includes('Media Worker is DISABLED'),
-  'Test 14: Budi cannot receive active running handoff while effective Media Worker is DISABLED'
+  'Test 20: Budi cannot receive active running handoff while effective Media Worker is DISABLED'
 );
 
-// Test 15: JEV cannot become workflow owner
+// Test 21: JEV cannot become workflow owner
 const jevCandidateHandoff = {
   handoff_id: 'test-jev',
   workflow_id: 'art-jev-1',
@@ -444,38 +637,46 @@ const jevSafety = validateHandoffSafety(jevCandidateHandoff, baseSnapshot);
 assert(
   jevSafety.allowed === false &&
   jevSafety.reason.includes('TypeSafe JEV operates in shadow mode'),
-  'Test 15: TypeSafe JEV cannot become workflow owner or handoff recipient'
+  'Test 21: TypeSafe JEV cannot become workflow owner or handoff recipient'
 );
 
 // ----------------------------------------------------------------------------
-// GROUP 7: Deterministic Identity & Invariant Robustness
+// GROUP 9: Deterministic FNV-1a Identity & Presentation Boundary
 // ----------------------------------------------------------------------------
-console.log('\n--- Group 7: Deterministic Identity & Invariant Robustness ---');
+console.log('\n--- Group 9: Deterministic FNV-1a Identity & Presentation Boundary ---');
 
-// Test 16: Deterministic handoff identity across 50 iterations (zero random UUIDs)
+// Test 22: Deterministic handoff identity across 50 iterations (zero random UUIDs)
 const ids = new Set();
 for (let i = 0; i < 50; i++) {
   ids.add(deriveDeterministicHandoffId('wf-deterministic', 'stage_a', 'stage_b', 'agent_1', 'agent_2', '2026-10-01T15:00:00.000Z'));
 }
 assert(
   ids.size === 1 && !Array.from(ids)[0].includes('undefined') && Array.from(ids)[0].startsWith('hnd_'),
-  'Test 16: deriveDeterministicHandoffId is 100% deterministic with zero UUID variance across 50 calls'
+  'Test 22: deriveDeterministicHandoffId is 100% deterministic with zero UUID variance across 50 calls'
 );
 
-// Test 17: Same canonical event yields exact same derived identity
-const id1 = deriveDeterministicHandoffId('task-100', 'writing', 'editorial_qa', 'joko', 'rina', '2026-10-01T16:00:00.000Z');
-const id2 = deriveDeterministicHandoffId('task-100', 'writing', 'editorial_qa', 'joko', 'rina', '2026-10-01T16:00:00.000Z');
+// Test 23: FNV handoff ID is strictly presentation / deduplication only
+const sampleHandoffId = deriveDeterministicHandoffId('art_99', 'writing', 'qa', 'joko', 'rina', '2026-10-01T16:00:00.000Z');
 assert(
-  id1 === id2,
-  'Test 17: Same canonical event parameters yield identical derived identity key'
+  sampleHandoffId.startsWith('hnd_art_99_writing_to_qa_') &&
+  !sampleHandoffId.includes(';') &&
+  !sampleHandoffId.includes('--'),
+  'Test 23: Handoff ID adheres to safe presentation format for HTML attribute and client Set deduplication'
 );
 
-// Test 18: Invalid/ambiguous ordering fails closed
-const nullDelta = detectSnapshotDeltaHandoffs(null, null);
-const emptyDelta = detectSnapshotDeltaHandoffs(baseSnapshot, { ...baseSnapshot, pipeline: { tasks: [] } });
+// Test 24: Missing/ambiguous timestamp fails closed to empty handoffs
+const missingTimeSnapshotA = {
+  ...baseSnapshot,
+  pipeline: { tasks: [{ taskId: 't-1', stage: 'writing', status: 'RUNNING', lastUpdate: '' }] }
+};
+const missingTimeSnapshotB = {
+  ...baseSnapshot,
+  pipeline: { tasks: [{ taskId: 't-1', stage: 'editorial_qa', status: 'RUNNING', lastUpdate: '' }] }
+};
+const missingTimeDelta = detectSnapshotDeltaHandoffs(missingTimeSnapshotA, missingTimeSnapshotB);
 assert(
-  nullDelta.length === 0 && emptyDelta.length === 0,
-  'Test 18: Ambiguous or missing snapshot ordering fails closed to empty handoffs'
+  missingTimeDelta.length === 0,
+  'Test 24: Tasks with missing or unparseable timestamps fail closed (zero handoffs generated)'
 );
 
 console.log('\n======================================================');

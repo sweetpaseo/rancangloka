@@ -1951,6 +1951,26 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       (officeData.recent_handoffs || []).forEach(function (h) {
         if (h && h.handoff_id) consumedHandoffIds.add(h.handoff_id);
       });
+      try {
+        const stored = sessionStorage.getItem('hermes_consumed_handoff_ids');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(function (id) {
+              if (id) consumedHandoffIds.add(id);
+            });
+          }
+        }
+      } catch (e) {}
+
+      function markHandoffConsumed(id) {
+        if (!id) return;
+        consumedHandoffIds.add(id);
+        try {
+          const arr = Array.from(consumedHandoffIds).slice(-100);
+          sessionStorage.setItem('hermes_consumed_handoff_ids', JSON.stringify(arr));
+        } catch (e) {}
+      }
 
       function showHandoffToast(h) {
         const toast = document.getElementById('handoff-token-indicator');
@@ -2471,7 +2491,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             if (data && Array.isArray(data.recent_handoffs)) {
               data.recent_handoffs.forEach(function (h) {
                 if (consumedHandoffIds.has(h.handoff_id)) return;
-                consumedHandoffIds.add(h.handoff_id);
+                markHandoffConsumed(h.handoff_id);
                 executeCanonicalHandoff(h);
               });
             }
