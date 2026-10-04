@@ -122,6 +122,7 @@ export interface PixelOfficeState {
   positions: OfficePosition[];
   recent_activity: ActivityEvent[];
   recent_handoffs: TaskHandoffObservation[];
+  live_operations?: import('./live-operations.ts').LiveOperationsSnapshot;
 }
 
 // ============================================================================
@@ -155,7 +156,10 @@ export const OFFICE_POSITIONS: OfficePosition[] = [
 
   // Social Bay
   { position_key: 'social_bay_empty', room_key: 'social_room', label: 'Area Distribusi Kosong', x: 50, y: 50 },
-  { position_key: 'social_workstation', room_key: 'social_room', label: 'Workstation Distribusi Maya', x: 50, y: 55 }
+  { position_key: 'social_workstation', room_key: 'social_room', label: 'Workstation Distribusi Maya', x: 50, y: 55 },
+
+  // Management Room (North Terminus)
+  { position_key: 'management_decision_console', room_key: 'management_room', label: 'Konsol Keputusan Jefry', x: 50, y: 55 }
 ];
 
 // Department Home Room mapping
@@ -166,7 +170,8 @@ export const STAFF_HOME_ROOMS: Record<string, string> = {
   lokamedia_worker_primary: 'media_room',
   publication_dispatcher_core: 'publication_room',
   telemetry_observer_jev: 'operations_room',
-  social_distribution_operator: 'social_room'
+  social_distribution_operator: 'social_room',
+  management_advisor_jefry: 'management_room'
 };
 
 // Department Workstation Position mapping
@@ -177,7 +182,8 @@ export const STAFF_WORKSTATION_POSITIONS: Record<string, string> = {
   lokamedia_worker_primary: 'media_console',
   publication_dispatcher_core: 'publication_console',
   telemetry_observer_jev: 'operations_console',
-  social_distribution_operator: 'social_workstation'
+  social_distribution_operator: 'social_workstation',
+  management_advisor_jefry: 'management_decision_console'
 };
 
 // Canonical Dedicated Lounge Idle Seat mapping (Zero Idle Collision)
@@ -189,7 +195,8 @@ export const STAFF_CANONICAL_IDLE_SEATS: Record<string, string> = {
   evidence_researcher_lead: 'lounge_seat_4',    // Irwan (Armchair E)
   publication_dispatcher_core: 'lounge_seat_5', // Sari (Stool Barat / Coffee Table 1)
   lokamedia_worker_primary: 'lounge_seat_6',    // Budi (Stool Timur / Coffee Table 2 - if active)
-  social_distribution_operator: 'social_workstation' // Maya (Zone S)
+  social_distribution_operator: 'social_workstation', // Maya (Zone S)
+  management_advisor_jefry: 'management_decision_console' // Jefry (Management Room — never uses Lounge)
 };
 
 
@@ -221,7 +228,9 @@ export function evaluateStateReason(
     case 'IDLE':
       return {
         category: 'IDLE_STANDBY',
-        summary: 'Siaga operasional di Lounge; tidak ada tugas aktif berjalan.',
+        summary: agent_id === 'management_advisor_jefry'
+          ? 'Konsol advisori manajemen siaga di North Terminus (Advisory Only; Otoritas Eksekusi: 0).'
+          : 'Siaga operasional di Lounge; tidak ada tugas aktif berjalan.',
         is_intentional: true
       };
 
@@ -297,7 +306,7 @@ export function deriveSpriteSpatialState(
         targetPositionKey = `lounge_seat_${seatNumber}`;
       }
       visualMode = 'IDLE';
-      badgeText = 'Di Lounge (Siaga)';
+      badgeText = staff.agent_id === 'management_advisor_jefry' ? 'Siaga di Konsol' : 'Di Lounge (Siaga)';
       break;
     }
 
@@ -534,6 +543,7 @@ export function getPixelOfficeState(
     },
     positions: OFFICE_POSITIONS,
     recent_activity: snapshot?.activity?.slice(0, 8) || [],
-    recent_handoffs: deriveCanonicalHandoffsFromPipeline(snapshot)
+    recent_handoffs: deriveCanonicalHandoffsFromPipeline(snapshot),
+    live_operations: snapshot?.live_operations || undefined
   };
 }

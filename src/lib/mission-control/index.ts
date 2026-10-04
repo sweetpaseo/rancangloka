@@ -33,13 +33,13 @@ import {
 } from './department-registry.ts';
 import { getPixelOfficeState } from './pixel-office.ts';
 import { getAnomaliesSnapshot } from './anomalies.ts';
-import {
-  getRegisteredCapabilities,
+import { getRegisteredCapabilities,
   registerCapability,
   unregisterCapability,
   updateCapability,
   CANONICAL_SOCIAL_CAPABILITIES
 } from './capability-registry.ts';
+import { getLiveOperationsSnapshot } from './live-operations.ts';
 
 export * from './types.ts';
 export * from './redact.ts';
@@ -59,6 +59,7 @@ export * from './office-route-graph.ts';
 export * from './staff-movement.ts';
 export * from './task-handoff.ts';
 export * from './job-trace.ts';
+export * from './live-operations.ts';
 
 export interface MissionControlOrganization {
   generated_at: string;
@@ -249,6 +250,9 @@ export async function getMissionControlSnapshot(db: any, env?: any): Promise<Mis
 
   // Derive pixel office state deterministically from snapshot
   snapshot.office = getPixelOfficeState(snapshot, anomalies.active_anomalies);
+
+  // Derive live operations deterministically from snapshot
+  snapshot.live_operations = getLiveOperationsSnapshot(snapshot);
 
   return snapshot;
 }

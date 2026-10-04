@@ -120,6 +120,15 @@ export interface StaffRosterSnapshot {
 
 export const DEPARTMENTS_METADATA: DepartmentDefinition[] = [
   {
+    department_id: 'management',
+    name: 'Management & Decision Chamber',
+    description: 'Lapisan kepemimpinan supervisi dan penasihat keputusan redaksional (strictly advisory, non-execution, zero publication authority).',
+    is_available: true,
+    is_staffed: true,
+    lead_role: 'Management Decision Advisor',
+    sort_order: 0
+  },
+  {
     department_id: 'editorial',
     name: 'Editorial',
     description: 'Perencanaan konten, penulisan naskah arsitektur & hunian berbasis panduan human voice, serta QA editorial.',
@@ -178,7 +187,21 @@ export const DEPARTMENTS_METADATA: DepartmentDefinition[] = [
 // Canonical Staff Definitions (Initial Baseline)
 // ============================================================================
 
+export const CANONICAL_JEFRY_STAFF_DEFINITION: StaffDefinition = {
+  agent_id: 'management_advisor_jefry',
+  display_name: 'Jefry',
+  role: 'Management Decision Advisor',
+  department_id: 'management',
+  description: 'Penasihat keputusan strategis manajemen berbasis evaluasi TypeSafe JEV (strictly advisory, zero execution authority).',
+  avatar_key: 'management_advisor_01',
+  capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+  source_system: 'typesafe_jev',
+  active: true,
+  sort_order: 0
+};
+
 const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
+  CANONICAL_JEFRY_STAFF_DEFINITION,
   {
     agent_id: 'content_writer_primary',
     display_name: 'Joko',
@@ -242,9 +265,9 @@ const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
   {
     agent_id: 'telemetry_observer_jev',
     display_name: 'Dimas',
-    role: 'Decision & Telemetry Analyst',
+    role: 'Telemetry & JEV Systems Operator',
     department_id: 'engineering_telemetry',
-    description: 'Analis telemetri dan observasi keputusan TypeSafe Jev (strictly shadow mode, zero execution authority).',
+    description: 'Operator sistem telemetri edge dan observasi keputusan TypeSafe JEV (strictly shadow mode, zero execution authority; provider health, latency, heartbeat, dan circuit breakers).',
     avatar_key: 'telemetry_01',
     capabilities: ['SYSTEM_TELEMETRY'],
     source_system: 'typesafe_jev',
@@ -385,7 +408,16 @@ export function attributeActivityEvent(event: ActivityEvent): ActivityAttributio
     };
   }
 
-  // 2. Decision / Telemetry -> Dimas (telemetry_observer_jev)
+  // 2A. Management Advisory Observation -> Jefry (management_advisor_jefry)
+  if (evType === 'JEV_ADVISORY_OBSERVATION' || (sub === 'management' && evType.includes('ADVISORY'))) {
+    return {
+      attributedAgentId: 'management_advisor_jefry',
+      attributedStaffName: getStaffName('management_advisor_jefry'),
+      confidence: 'HIGH'
+    };
+  }
+
+  // 2B. Decision / Telemetry -> Dimas (telemetry_observer_jev)
   if (evType === 'JEV_SHADOW_OBSERVATION' || evType.includes('JEV_') || (sub === 'engineering' && evType.includes('DECISION'))) {
     return {
       attributedAgentId: 'telemetry_observer_jev',
@@ -689,6 +721,21 @@ export function deriveStaffCurrentTask(
           current_task_id: latestObs.observationId,
           current_task_title: `Shadow Evaluation: ${latestObs.decisionPoint}`,
           current_task_status: latestObs.providerStatus,
+          current_task_updated_at: latestObs.createdAt
+        };
+      }
+      return null;
+    }
+
+    case 'management_advisor_jefry': {
+      // Invariant: Jefry does NOT own pipeline execution tasks.
+      // Shows latest active JEV advisory evaluation observation context if available.
+      const latestObs = snapshot.jev?.latestObservation;
+      if (latestObs) {
+        return {
+          current_task_id: latestObs.observationId,
+          current_task_title: `Advisory Evaluation: ${latestObs.decisionPoint}`,
+          current_task_status: 'ADVISORY_EVALUATION',
           current_task_updated_at: latestObs.createdAt
         };
       }
@@ -1077,6 +1124,36 @@ export function deriveStaffState(
       return {
         state: 'IDLE',
         evidence: `Pengamat telemetri siaga (Mode: shadow; Provider: ${providerStatus}; Otoritas: none / non-blocking).`
+      };
+    }
+
+    case 'management_advisor_jefry': {
+      // Invariant: Jefry is Management Decision Advisor (ADVISORY_ONLY; zero execution authority)
+      const providerStatus = health?.jev?.providerStatus || 'UNKNOWN';
+      const isBreakerOpen = health?.circuitBreakers?.some((cb) => cb.state === 'OPEN');
+
+      if (providerStatus === 'ERROR' || isBreakerOpen) {
+        return {
+          state: 'BLOCKED',
+          evidence: `Sistem advisori manajemen terdegradasi (${health?.jev?.errorClass || 'Koneksi provider JEV terganggu atau circuit breaker terbuka'}). Status: DEGRADED.`
+        };
+      }
+
+      const latestObs = jev?.latestObservation;
+      if (latestObs) {
+        const obsTime = new Date(latestObs.createdAt).getTime();
+        const diffSeconds = (Date.now() - obsTime) / 1000;
+        if (diffSeconds >= 0 && diffSeconds <= 300) {
+          return {
+            state: 'REVIEWING',
+            evidence: `Menilai advisori keputusan untuk '${latestObs.decisionPoint}' (Rekomendasi Terderivasi; 0 Otoritas Eksekusi).`
+          };
+        }
+      }
+
+      return {
+        state: 'IDLE',
+        evidence: 'Decision advisor siaga di Konsol Manajemen (Advisory Only; Otoritas Eksekusi: 0).'
       };
     }
 

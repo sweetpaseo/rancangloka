@@ -260,5 +260,6 @@ export interface MissionControlSnapshot {
   organization?: any;
   office?: any;
   anomalies?: any;
+  live_operations?: import('./live-operations.ts').LiveOperationsSnapshot;
 }
 

@@ -151,6 +151,19 @@ export interface OrganizationSnapshot {
 
 export const CANONICAL_DEPARTMENTS: DepartmentCanonicalConfig[] = [
   {
+    department_id: 'management',
+    display_name: 'Management & Decision Chamber',
+    short_name: 'Management',
+    description: 'Lapisan kepemimpinan supervisi dan penasihat keputusan redaksional (strictly advisory, non-execution, zero publication authority).',
+    availability: 'AVAILABLE',
+    is_staffed: true,
+    capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+    source_systems: ['typesafe_jev'],
+    room_key: 'management_room',
+    workstation_zone: 'Zone MGT - Executive Decision Console',
+    display_order: 0
+  },
+  {
     department_id: 'editorial',
     display_name: 'Editorial',
     description: 'Perencanaan topik, penulisan naskah arsitektur & hunian (anti-slop, human voice), serta kontrol mutu editorial.',
@@ -320,6 +333,7 @@ export function getDepartmentDefinition(departmentId: string): MissionControlDep
 }
 
 export const STAFF_ROOM_MAP: Record<string, string> = {
+  management_advisor_jefry: 'management_room',
   content_writer_primary: 'editorial_room',
   editorial_qa_primary: 'editorial_room',
   evidence_researcher_lead: 'research_lab',
@@ -413,6 +427,14 @@ export function attributeTaskOwnership(task: TaskCard): TaskOwnershipInfo {
   if (taskCapability) {
     const ownership = resolveCapabilityOwnership(taskCapability);
     if (ownership.department_id) {
+      // Invariant: Management is strictly supervisory and cannot become an operational execution task owner
+      if (ownership.department_id === 'management' || ownership.responsible_agent_id === 'management_advisor_jefry') {
+        return {
+          department_id: null,
+          responsible_agent_id: null,
+          responsibility_confidence: 'UNASSIGNED'
+        };
+      }
       return {
         department_id: ownership.department_id,
         responsible_agent_id: ownership.responsible_agent_id,
@@ -431,9 +453,9 @@ export function attributeTaskOwnership(task: TaskCard): TaskOwnershipInfo {
   }
 
   // 10. Dynamic registered department subsystem match
-  if (sub) {
+  if (sub && sub !== 'management') {
     const matchedDept = getDepartmentDefinition(sub);
-    if (matchedDept) {
+    if (matchedDept && matchedDept.department_id !== 'management') {
       const staffList = getStaffDefinitions().filter((s) => s.department_id === matchedDept.department_id);
       return {
         department_id: matchedDept.department_id,
@@ -477,6 +499,15 @@ export function attributeActivityToDepartment(event: ActivityEvent): DepartmentA
     return {
       attributedDepartmentId: 'media',
       attributedAgentId: 'lokamedia_worker_primary',
+      confidence: 'EXACT'
+    };
+  }
+
+  // Management Advisory -> management / Jefry
+  if (evType === 'JEV_ADVISORY_OBSERVATION' || sub === 'management' || evType.includes('MANAGEMENT_ADVISORY')) {
+    return {
+      attributedDepartmentId: 'management',
+      attributedAgentId: 'management_advisor_jefry',
       confidence: 'EXACT'
     };
   }

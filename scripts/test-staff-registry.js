@@ -166,7 +166,7 @@ async function runStaffTests() {
     resetStaffDisplayNames();
 
     const staff = getStaffDefinitions();
-    assert.equal(staff.length, 6, 'Must define 6 staff members');
+    assert.equal(staff.length, 7, 'Must define 7 staff members');
     const joko = staff.find((s) => s.agent_id === 'content_writer_primary');
     assert.ok(joko, 'content_writer_primary must exist');
     assert.equal(joko.display_name, 'Joko', 'Default display name must be Joko');
@@ -190,12 +190,13 @@ async function runStaffTests() {
   {
     console.log('Test 2: Canonical Initial Staff Roster & Machine IDs');
     const expectedRoster = [
+      { id: 'management_advisor_jefry', name: 'Jefry', role: 'Management Decision Advisor', dep: 'management', avatar: 'management_advisor_01' },
       { id: 'content_writer_primary', name: 'Joko', role: 'Content Writer', dep: 'editorial', avatar: 'editorial_writer_01' },
       { id: 'evidence_researcher_lead', name: 'Irwan', role: 'Research & Evidence Specialist', dep: 'research_evidence', avatar: 'research_evidence_01' },
       { id: 'editorial_qa_primary', name: 'Rina', role: 'Editorial QA', dep: 'editorial', avatar: 'editorial_qa_01' },
       { id: 'lokamedia_worker_primary', name: 'Budi', role: 'Media Operations', dep: 'media', avatar: 'media_ops_01' },
       { id: 'publication_dispatcher_core', name: 'Sari', role: 'Publication Operator', dep: 'publication_operations', avatar: 'publication_ops_01' },
-      { id: 'telemetry_observer_jev', name: 'Dimas', role: 'Decision & Telemetry Analyst', dep: 'engineering_telemetry', avatar: 'telemetry_01' }
+      { id: 'telemetry_observer_jev', name: 'Dimas', role: 'Telemetry & JEV Systems Operator', dep: 'engineering_telemetry', avatar: 'telemetry_01' }
     ];
 
     for (const exp of expectedRoster) {
@@ -207,7 +208,7 @@ async function runStaffTests() {
       assert.equal(def.avatar_key, exp.avatar, `Avatar key mismatch for ${exp.id}`);
       assert.equal(def.active, true, `Staff ${exp.id} must be active`);
     }
-    console.log('  ✅ PASS: All 6 initial staff members have accurate canonical machine definitions.\n');
+    console.log('  ✅ PASS: All 7 initial staff members have accurate canonical machine definitions.\n');
     passed++;
   }
 
@@ -557,7 +558,7 @@ async function runStaffTests() {
   // TEST 14: Department Registry Metadata & Social Unstaffed Invariant
   {
     console.log('Test 14: Department Registry Metadata & Social Unstaffed Invariant');
-    assert.equal(DEPARTMENTS_METADATA.length, 6, 'Must define 6 departments');
+    assert.equal(DEPARTMENTS_METADATA.length, 7, 'Must define 7 departments');
 
     const social = DEPARTMENTS_METADATA.find((d) => d.department_id === 'social');
     assert.ok(social, 'Social department metadata must be prepared');
@@ -587,11 +588,11 @@ async function runStaffTests() {
     });
 
     const roster = getStaffRoster(snap);
-    assert.equal(roster.staff.length, 6, 'Roster must contain 6 staff members');
-    assert.equal(roster.summary.total, 6, 'Summary total must be 6');
+    assert.equal(roster.staff.length, 7, 'Roster must contain 7 staff members');
+    assert.equal(roster.summary.total, 7, 'Summary total must be 7');
     assert.equal(roster.summary.working, 1, 'Summary working must count Joko (1)');
     assert.equal(roster.summary.offline, 1, 'Summary offline must count Budi (1)');
-    assert.equal(roster.summary.idle, 4, 'Summary idle must count Irwan, Rina, Sari, Dimas (4)');
+    assert.equal(roster.summary.idle, 5, 'Summary idle must count Irwan, Rina, Sari, Dimas, Jefry (5)');
 
     const jokoStatus = roster.staff.find((s) => s.agent_id === 'content_writer_primary');
     assert.equal(jokoStatus.state, 'WORKING');

@@ -42,7 +42,14 @@ export type JobAnimationKey =
   | 'BLOCKED_WARNING'
   | 'OFFLINE_DISABLED'
   | 'UNKNOWN_NEUTRAL'
-  | 'WORKING_GENERIC';
+  | 'WORKING_GENERIC'
+  | 'ADVISOR_IDLE'
+  | 'ADVISOR_ANALYZING'
+  | 'ADVISOR_RECOMMEND_YES'
+  | 'ADVISOR_RECOMMEND_NO'
+  | 'ADVISOR_HUMAN_REVIEW'
+  | 'ADVISOR_DEGRADED'
+  | 'ADVISOR_UNKNOWN';
 
 export type AnimationFreshness = 'REALTIME' | 'RECENT' | 'STALE' | 'UNKNOWN';
 
@@ -326,6 +333,104 @@ export const JOB_ANIMATION_REGISTRY: Record<JobAnimationKey, JobAnimationDefinit
     prop_icon: '❓'
   },
 
+  ADVISOR_IDLE: {
+    animation_key: 'ADVISOR_IDLE',
+    label: 'Advisor Siaga di Konsol',
+    description: 'Jefry berada dalam posisi siaga di konsol keputusan manajemen.',
+    target_agent_ids: ['management_advisor_jefry'],
+    capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+    workstation_key: 'management_decision_console',
+    visual_detail: 'Jefry memeriksa ikhtisar matriks kebijakan dan status operasional.',
+    is_work_animation: false,
+    css_animation_class: 'animate-advisor-idle',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '🏛️'
+  },
+
+  ADVISOR_ANALYZING: {
+    animation_key: 'ADVISOR_ANALYZING',
+    label: 'Analisis Evaluasi Keputusan',
+    description: 'Jefry menganalisis sinyal kanonikal TypeSafe JEV dan memetakan matriks risiko.',
+    target_agent_ids: ['management_advisor_jefry'],
+    capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+    workstation_key: 'management_decision_console',
+    visual_detail: 'Layar konsol manajemen memproses evaluasi pohon keputusan JEV.',
+    is_work_animation: true,
+    css_animation_class: 'animate-advisor-analyzing',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '⚖️'
+  },
+
+  ADVISOR_RECOMMEND_YES: {
+    animation_key: 'ADVISOR_RECOMMEND_YES',
+    label: 'Rekomendasi Terderivasi: YES',
+    description: 'Jefry menampilkan advisori YES berdasarkan validasi lengkap dan risiko sangat rendah (0 otoritas eksekusi).',
+    target_agent_ids: ['management_advisor_jefry'],
+    capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+    workstation_key: 'management_decision_console',
+    visual_detail: 'Indikator konsol menyala hijau: Rekomendasi Lanjut (Advisory Only).',
+    is_work_animation: true,
+    css_animation_class: 'animate-advisor-yes',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '✅'
+  },
+
+  ADVISOR_RECOMMEND_NO: {
+    animation_key: 'ADVISOR_RECOMMEND_NO',
+    label: 'Rekomendasi Terderivasi: NO',
+    description: 'Jefry menampilkan advisori NO akibat risiko tinggi atau penghentian pipeline (0 otoritas eksekusi).',
+    target_agent_ids: ['management_advisor_jefry'],
+    capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+    workstation_key: 'management_decision_console',
+    visual_detail: 'Indikator konsol menyala merah: Rekomendasi Tahan/Hentikan (Advisory Only).',
+    is_work_animation: true,
+    css_animation_class: 'animate-advisor-no',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '⛔'
+  },
+
+  ADVISOR_HUMAN_REVIEW: {
+    animation_key: 'ADVISOR_HUMAN_REVIEW',
+    label: 'Rekomendasi Terderivasi: HUMAN REVIEW',
+    description: 'Jefry menyarankan verifikasi manual oleh Chief Editor sebelum tindakan berikutnya.',
+    target_agent_ids: ['management_advisor_jefry'],
+    capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+    workstation_key: 'management_decision_console',
+    visual_detail: 'Indikator konsol menyala kuning: Memerlukan Review Manusia.',
+    is_work_animation: true,
+    css_animation_class: 'animate-advisor-review',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '👤'
+  },
+
+  ADVISOR_DEGRADED: {
+    animation_key: 'ADVISOR_DEGRADED',
+    label: 'Advisor Terdegradasi (Provider Failure)',
+    description: 'Sistem advisori JEV mengalami kendala konektivitas provider atau circuit breaker terbuka.',
+    target_agent_ids: ['management_advisor_jefry'],
+    capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+    workstation_key: 'management_decision_console',
+    visual_detail: 'Peringatan konektivitas JEV di layar konsol manajemen.',
+    is_work_animation: false,
+    css_animation_class: 'animate-advisor-degraded',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '⚠️'
+  },
+
+  ADVISOR_UNKNOWN: {
+    animation_key: 'ADVISOR_UNKNOWN',
+    label: 'Advisor Status Netral',
+    description: 'Belum ada data evaluasi keputusan JEV yang tersedia.',
+    target_agent_ids: ['management_advisor_jefry'],
+    capabilities: ['MANAGEMENT_DECISION_ADVISORY'],
+    workstation_key: 'management_decision_console',
+    visual_detail: 'Konsol manajemen dalam status siaga netral.',
+    is_work_animation: false,
+    css_animation_class: '',
+    reduced_motion_class: '',
+    prop_icon: '🏛️'
+  },
+
   WORKING_GENERIC: {
     animation_key: 'WORKING_GENERIC',
     label: 'Bekerja',
@@ -344,6 +449,64 @@ export const JOB_ANIMATION_REGISTRY: Record<JobAnimationKey, JobAnimationDefinit
 // ============================================================================
 // Helper & Lookup Functions
 // ============================================================================
+
+export type DerivedAdvisoryRecommendation = 'YES' | 'NO' | 'HUMAN_REVIEW' | 'REVISE' | 'UNKNOWN';
+
+/**
+ * Derives presentation-layer YES / NO / HUMAN_REVIEW / REVISE recommendation
+ * strictly from canonical JEV fields: nextAction, needsHumanReview, publicationRisk.
+ * INVARIANT: Derived presentation only — zero authority, zero execution.
+ */
+export function deriveAdvisoryRecommendation(obs: any): DerivedAdvisoryRecommendation {
+  if (!obs) return 'UNKNOWN';
+
+  const nextAction = String(
+    obs.recommendations?.nextAction ||
+    obs.nextAction ||
+    obs.jev_decision ||
+    obs.jevDecision ||
+    ''
+  ).toLowerCase();
+
+  const needsHumanReview = Boolean(
+    obs.recommendations?.needsHumanReview ??
+    obs.needsHumanReview ??
+    (obs.probabilities?.needsHumanReview?.noul === 1)
+  );
+
+  const publicationRisk = String(
+    obs.recommendations?.publicationRisk ||
+    obs.publicationRisk ||
+    ''
+  ).toLowerCase();
+
+  // Canonical derivation rules:
+  // 1. NO: nextAction === 'stop' OR publicationRisk in ['high', 'critical']
+  if (nextAction === 'stop' || publicationRisk === 'high' || publicationRisk === 'critical') {
+    return 'NO';
+  }
+
+  // 2. HUMAN_REVIEW: needsHumanReview === true OR nextAction === 'human_review'
+  if (needsHumanReview === true || nextAction === 'human_review') {
+    return 'HUMAN_REVIEW';
+  }
+
+  // 3. REVISE: nextAction === 'revise'
+  if (nextAction === 'revise') {
+    return 'REVISE';
+  }
+
+  // 4. YES: nextAction === 'continue' AND publicationRisk in ['very_low', 'low', ''] AND needsHumanReview === false
+  if (
+    nextAction === 'continue' &&
+    (publicationRisk === 'very_low' || publicationRisk === 'low' || publicationRisk === '') &&
+    !needsHumanReview
+  ) {
+    return 'YES';
+  }
+
+  return 'UNKNOWN';
+}
 
 export function getAnimationDefinition(key: JobAnimationKey): JobAnimationDefinition {
   return JOB_ANIMATION_REGISTRY[key] || JOB_ANIMATION_REGISTRY.UNKNOWN_NEUTRAL;
@@ -821,6 +984,77 @@ function resolveTaskToVisualState(
       } else {
         animKey = 'ARTICLE_TYPING';
         taskLabel = `Penulisan Copy: ${taskTitle}`;
+      }
+      break;
+    }
+
+    case 'management_advisor_jefry': {
+      // Invariant: Jefry is Management Decision Advisor (ADVISORY_ONLY; zero execution authority)
+      const providerStatus = snapshot?.health?.jev?.providerStatus || 'UNKNOWN';
+      const isBreakerOpen = snapshot?.health?.circuitBreakers?.some((cb) => cb.state === 'OPEN');
+
+      if (providerStatus === 'ERROR' || isBreakerOpen) {
+        animKey = 'ADVISOR_DEGRADED';
+        taskLabel = 'Advisori Terkendala (Provider/Circuit Breaker)';
+        isWorking = false;
+        break;
+      }
+
+      const latestObs = snapshot?.jev?.latestObservation;
+      if (!latestObs) {
+        animKey = 'ADVISOR_IDLE';
+        taskLabel = 'Siaga di Konsol Manajemen';
+        isWorking = false;
+        break;
+      }
+
+      // Check observation freshness (5 minutes = 300s)
+      const obsTime = new Date(latestObs.createdAt).getTime();
+      const diffSeconds = (Date.now() - obsTime) / 1000;
+      const isFresh = diffSeconds >= 0 && diffSeconds <= 300;
+
+      if (!isFresh) {
+        animKey = 'ADVISOR_IDLE';
+        taskLabel = 'Siaga di Konsol Manajemen';
+        isWorking = false;
+        break;
+      }
+
+      if (latestObs.providerStatus === 'ERROR') {
+        animKey = 'ADVISOR_DEGRADED';
+        taskLabel = 'Evaluasi Terganggu: Provider Error';
+        isWorking = false;
+        break;
+      }
+
+      // Derive recommendation from canonical fields
+      const rec = deriveAdvisoryRecommendation(latestObs);
+      switch (rec) {
+        case 'YES':
+          animKey = 'ADVISOR_RECOMMEND_YES';
+          taskLabel = `Advisori: Lanjut (YES) [${latestObs.decisionPoint}]`;
+          isWorking = true;
+          break;
+        case 'NO':
+          animKey = 'ADVISOR_RECOMMEND_NO';
+          taskLabel = `Advisori: Tahan (NO) [${latestObs.decisionPoint}]`;
+          isWorking = true;
+          break;
+        case 'HUMAN_REVIEW':
+          animKey = 'ADVISOR_HUMAN_REVIEW';
+          taskLabel = `Advisori: Review Manusia [${latestObs.decisionPoint}]`;
+          isWorking = true;
+          break;
+        case 'REVISE':
+          animKey = 'ADVISOR_HUMAN_REVIEW';
+          taskLabel = `Advisori: Revisi [${latestObs.decisionPoint}]`;
+          isWorking = true;
+          break;
+        default:
+          animKey = 'ADVISOR_ANALYZING';
+          taskLabel = `Evaluasi: ${latestObs.decisionPoint}`;
+          isWorking = true;
+          break;
       }
       break;
     }

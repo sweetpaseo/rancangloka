@@ -114,6 +114,18 @@ const CANONICAL_CAPABILITIES: MissionControlCapabilityDefinition[] = [
     command_families: [],
     read_models: [],
     anomaly_classes: []
+  },
+  {
+    capability_id: 'MANAGEMENT_DECISION_ADVISORY',
+    display_name: 'Advisori Keputusan Manajemen & Mitigasi Risiko',
+    description: 'Advisori pertimbangan keputusan strategis berbasis evaluasi TypeSafe JEV (strictly advisory, zero execution authority).',
+    owning_department_id: 'management',
+    default_agent_id: 'management_advisor_jefry',
+    operational_availability: 'AVAILABLE_READ_ONLY',
+    source_systems: ['typesafe_jev', 'd1_observations'],
+    command_families: [],
+    read_models: ['jev', 'health'],
+    anomaly_classes: []
   }
 ];
 

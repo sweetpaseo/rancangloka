@@ -129,16 +129,17 @@ try {
   // Test 1: Canonical Baseline Verification
   console.log('🧪 Test 1: Canonical Baseline & Machine ID Invariants');
   const baseDepts = getRegisteredDepartments();
-  assert.strictEqual(baseDepts.length, 6, 'Baseline should have exactly 6 registered departments');
+  assert.strictEqual(baseDepts.length, 7, 'Baseline should have exactly 7 registered departments');
   
   const baseStaff = getStaffDefinitions();
-  assert.strictEqual(baseStaff.length, 6, 'Baseline should have exactly 6 registered staff');
+  assert.strictEqual(baseStaff.length, 7, 'Baseline should have exactly 7 registered staff');
 
   const baseCaps = getRegisteredCapabilities();
   assert(baseCaps.length >= 6, 'Baseline capabilities should be registered');
 
   // Verify canonical agent IDs
   const agentIds = baseStaff.map((s) => s.agent_id);
+  assert(agentIds.includes('management_advisor_jefry'), 'management_advisor_jefry must exist');
   assert(agentIds.includes('content_writer_primary'), 'content_writer_primary must exist');
   assert(agentIds.includes('evidence_researcher_lead'), 'evidence_researcher_lead must exist');
   assert(agentIds.includes('editorial_qa_primary'), 'editorial_qa_primary must exist');
@@ -164,7 +165,7 @@ try {
   });
 
   const updatedDepts = getRegisteredDepartments();
-  assert.strictEqual(updatedDepts.length, 7, 'Should have 7 departments after dynamic registration');
+  assert.strictEqual(updatedDepts.length, 8, 'Should have 8 departments after dynamic registration');
   const seoDept = getDepartmentDefinition('seo_intelligence');
   assert(seoDept !== null, 'seo_intelligence must be retrievable');
   assert.strictEqual(seoDept.display_name, 'SEO & Search Intelligence');
@@ -207,7 +208,7 @@ try {
   });
 
   const updatedStaff = getStaffDefinitions();
-  assert.strictEqual(updatedStaff.length, 7, 'Should have 7 staff members after dynamic registration');
+  assert.strictEqual(updatedStaff.length, 8, 'Should have 8 staff members after dynamic registration');
   const faisal = getStaffDefinitionByAgentId('seo_analyst_lead');
   assert(faisal !== null, 'seo_analyst_lead must be retrievable');
   assert.strictEqual(faisal.display_name, 'Faisal');
@@ -454,8 +455,8 @@ try {
   resetStaffRegistry();
   resetDepartmentRegistry();
 
-  assert.strictEqual(getRegisteredDepartments().length, 6, 'Reset must restore exactly 6 canonical departments');
-  assert.strictEqual(getStaffDefinitions().length, 6, 'Reset must restore exactly 6 canonical staff');
+  assert.strictEqual(getRegisteredDepartments().length, 7, 'Reset must restore exactly 7 canonical departments');
+  assert.strictEqual(getStaffDefinitions().length, 7, 'Reset must restore exactly 7 canonical staff');
 
   console.log('✓ [PASS] 12. dynamic unregistration & reset integrity');
 

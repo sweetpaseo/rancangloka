@@ -46,6 +46,7 @@ const operationsRoom = getRoom('operations_room');
 const publicationRoom = getRoom('publication_room');
 const loungeRoom = getRoom('lounge');
 const socialRoom = getRoom('social_room');
+const managementRoom = getRoom('management_room');
 
 // Staff sprite lookup by position
 const getSpriteAtPos = (posKey: string) => sprites.find((s) => s.position_key === posKey) || null;
@@ -197,7 +198,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
           <span>Staff Registry</span>
-          <span class="px-1.5 py-0.2 rounded-full bg-slate-200 text-[10px] font-mono text-slate-600">6 Staf</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-slate-200 text-[10px] font-mono text-slate-600">7 Staf</span>
         </a>
         <a href="/admin/mission-control/departments" class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1.5 whitespace-nowrap">
           <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2">
@@ -210,7 +211,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             <line x1="12" y1="14" x2="12.01" y2="14"></line>
           </svg>
           <span>Departemen</span>
-          <span class="px-1.5 py-0.2 rounded-full bg-slate-200 text-[10px] font-mono text-slate-600">6 Divisi</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-slate-200 text-[10px] font-mono text-slate-600">7 Divisi</span>
         </a>
         <a href="/admin/mission-control/office" class="px-3.5 py-1.5 rounded-lg bg-blue-600 text-white shadow-2xs flex items-center gap-1.5 whitespace-nowrap">
           <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2">
@@ -298,6 +299,142 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             <!-- REAL-TIME DETERMINISTIC STAFF TRANSIT LAYER -->
             <div id="staff-transit-layer" class="absolute inset-0 pointer-events-none z-30 overflow-hidden" aria-hidden="true"></div>
             
+            <!-- NORTHERN ANNEX: EXECUTIVE MANAGEMENT CHAMBER (CONNECTED TO CENTRAL HALL NORTH TERMINUS) -->
+            {managementRoom && (
+              <div
+                class="bg-[#f5f3ff] p-3.5 relative flex flex-col justify-between rounded-xs select-none border-b-2 border-slate-600 shadow-inner"
+                id="room-card-management_room"
+              >
+                <!-- Plaque & Badges -->
+                <div class="relative z-10 flex items-center justify-between">
+                  <button
+                    type="button"
+                    class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-purple-100 border border-purple-300 text-[10px] font-mono font-black text-purple-950 tracking-wider hover:bg-purple-200 transition cursor-pointer shadow-2xs"
+                    data-room-inspect="management_room"
+                    title="Klik untuk inspeksi Executive Management Chamber"
+                  >
+                    <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-purple-800" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    <span>EXECUTIVE MANAGEMENT • ZONE X</span>
+                  </button>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-purple-200 text-purple-900 font-bold border border-purple-300 shadow-2xs">
+                      SHADOW MODE
+                    </span>
+                    <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 shadow-2xs">
+                      0 EXEC AUTHORITY
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Interior: Jefry Decision Console + Advisory Screen -->
+                <div class="relative z-10 py-2 flex items-center justify-around">
+                  <div class="flex items-center gap-6">
+                    <!-- Advisory Display Board -->
+                    <div class="w-32 h-14 bg-slate-900 rounded-xs border-2 border-purple-900/70 p-1.5 flex flex-col justify-between shadow-md" title="Panel Advisory JEV">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[7px] font-mono text-purple-300 font-bold">TYPESAFE JEV</span>
+                        <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                      </div>
+                      <div class="text-[8px] font-mono text-cyan-300 font-bold">SHADOW ADVISORY</div>
+                      <div class="text-[6px] font-mono text-slate-400">Zero Execution Invariant</div>
+                    </div>
+
+                    <!-- Jefry Decision Console & Sprite -->
+                    <div class="flex flex-col items-center justify-center">
+                      <div class="relative flex flex-col items-center">
+                        <div class="relative z-10 flex items-center justify-center gap-1.5 mb-[-7px]">
+                          <div class="w-16 h-7 bg-slate-900 rounded-xs border-2 border-purple-900 shadow-md flex items-center justify-center text-[7px] text-purple-300 font-mono font-bold tracking-wider">
+                            CONSOLE
+                          </div>
+                          <div class="w-3.5 h-5 bg-slate-800 rounded-2xs border border-purple-700 shadow-2xs"></div>
+                        </div>
+                        <div class="w-38 h-12 bg-purple-100 border-2 border-purple-400 rounded-xs shadow-[0_4px_6px_rgba(0,0,0,0.12)] flex items-center justify-between px-2 relative z-0">
+                          <div class="w-16 h-3 bg-slate-300 rounded-2xs border border-slate-400"></div>
+                          <div class="flex gap-0.5">
+                            <span class="w-2 h-3.5 bg-purple-500 rounded-2xs"></span>
+                            <span class="w-2 h-3.5 bg-indigo-500 rounded-2xs"></span>
+                          </div>
+                        </div>
+                        <div class="relative z-10 mt-[-12px] flex flex-col items-center">
+                          {(() => {
+                            const jefry = getSpriteAtPos('management_decision_console');
+                            if (jefry) {
+                              return (
+                                <button
+                                  type="button"
+                                  class="flex flex-col items-center group cursor-pointer focus:outline-none transition-opacity duration-200"
+                                  data-staff-inspect={jefry.agent_id}
+                                  data-staff-station={jefry.agent_id}
+                                  title={`${jefry.display_name} • ${jefry.role} (${jefry.badge_text})`}
+                                >
+                                  <div class="relative">
+                                    <div class="absolute -top-1.5 -inset-x-2 h-11 bg-slate-800 rounded-t-lg -z-10 shadow-sm border border-slate-900"></div>
+                                    <div class={`w-12 h-12 flex items-center justify-center pixel-avatar-box ${jefry.work_visual_state?.is_actively_working ? (JOB_ANIMATION_REGISTRY[jefry.animation_key]?.css_animation_class || '') : ''}`}>
+                                      <svg viewBox="0 0 32 32" class="w-11 h-11 pixelated drop-shadow-sm" shape-rendering="crispEdges">
+                                        <rect x="8" y="4" width="16" height="6" fill="#4c1d95" />
+                                        <rect x="9" y="10" width="14" height="8" fill="#e2e8f0" />
+                                        <rect x="11" y="12" width="3" height="2" fill="#7c3aed" />
+                                        <rect x="18" y="12" width="3" height="2" fill="#7c3aed" />
+                                        <rect x="13" y="15" width="6" height="1" fill="#6d28d9" />
+                                        <rect x="8" y="18" width="16" height="10" fill="#5b21b6" />
+                                        <rect x="13" y="19" width="6" height="9" fill="#c4b5fd" />
+                                      </svg>
+                                    </div>
+                                    <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-purple-600 border-2 border-white text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
+                                      {JOB_ANIMATION_REGISTRY[jefry.animation_key]?.prop_icon || '🧠'}
+                                    </span>
+                                  </div>
+                                  <span class="text-[9px] font-outfit font-black text-slate-800 bg-white/95 px-1.5 py-0.2 rounded shadow-xs border border-slate-300 mt-0.5">
+                                    {jefry.display_name}
+                                  </span>
+                                  <span class="text-[7px] font-mono text-purple-800 bg-purple-100 px-1 py-0.2 rounded border border-purple-300 font-bold mt-0.5">
+                                    Advisory Only
+                                  </span>
+                                </button>
+                              );
+                            }
+                            return (
+                              <div class="flex flex-col items-center" title="Konsol Jefry (Kosong)">
+                                <svg viewBox="0 0 24 24" class="w-7 h-7 text-purple-700" fill="none">
+                                  <rect x="6" y="3" width="12" height="9" rx="2" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.4"/>
+                                  <rect x="5" y="11" width="14" height="6" rx="1.5" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4"/>
+                                  <path d="M12 17v4M8 21h8" stroke="#6d28d9" stroke-width="1.6" stroke-linecap="round"/>
+                                </svg>
+                                <span class="text-[8px] font-mono text-purple-900/60 italic font-semibold">Kosong</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Guidance & Invariant Plaque -->
+                    <div class="flex items-center gap-3">
+                      <div class="w-3.5 h-11 bg-slate-800 rounded-xs flex flex-col items-center justify-around py-1 border border-slate-900 shadow-xs" title="Decision Engine Hub">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="w-2 h-1 bg-purple-400 rounded-2xs"></span>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-[9px] font-mono font-black text-purple-950 uppercase tracking-wider">
+                          ZONE X // EXECUTIVE ADVISORY CONSOLE
+                        </span>
+                        <span class="text-[8px] font-mono text-slate-500 max-w-[260px]">
+                          Jefry mengevaluasi kualitas dan risiko kandidat artikel dalam mode bayangan (shadow). Zero otoritas mutasi.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Central Entrance Threshold connecting down to Central Hallway North Terminus -->
+                <div class="flex justify-center -mb-3.5 mt-2">
+                  <div class="w-24 h-2.5 bg-[#cbd5e1] border-x-2 border-slate-600 border-t border-slate-400 shadow-inner" title="Pintu Masuk Utama Zone X (Menuju Koridor Sentral Utara)"></div>
+                </div>
+              </div>
+            )}
+
             <!-- MAIN 3-COLUMN FLOOR PLAN: LEFT WING | CENTRAL VERTICAL HALL | RIGHT WING -->
             <div class="grid grid-cols-[minmax(0,5fr)_minmax(210px,2.4fr)_minmax(0,5fr)] gap-1.5 items-stretch">
               
@@ -2016,7 +2153,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       }
 
       const activeMovements = {};
-      const STAFF_ORDER = ['joko', 'rina', 'irwan', 'budi', 'dimas', 'sari', 'maya'];
+      const STAFF_ORDER = ['joko', 'rina', 'irwan', 'budi', 'dimas', 'sari', 'jefry', 'maya'];
 
       function normalizeAgentKey(agentId) {
         if (!agentId) return null;
@@ -2027,6 +2164,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         if (lower.includes('sari') || lower === 'publication_dispatcher_core') return 'sari';
         if (lower.includes('dimas') || lower === 'telemetry_observer_jev') return 'dimas';
         if (lower.includes('budi') || lower === 'lokamedia_worker_primary') return 'budi';
+        if (lower.includes('jefry') || lower === 'management_advisor_jefry') return 'jefry';
         if (lower.includes('maya') || lower === 'social_distribution_operator') return 'maya';
         return lower;
       }
@@ -2038,6 +2176,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         dimas: { workstation: 'operations_console', idle: 'lounge_seat_2' },
         sari: { workstation: 'publication_console', idle: 'lounge_seat_5' },
         budi: { workstation: 'media_console', idle: 'media_console' },
+        jefry: { workstation: 'management_decision_console', idle: 'management_decision_console' },
         maya: { workstation: 'social_workstation', idle: 'social_bay_empty' }
       };
 
@@ -2141,8 +2280,8 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       function startStaffJourney(agentId, fromNodeId, targetNodeId, movementReason) {
         if (!fromNodeId || !targetNodeId || fromNodeId === targetNodeId) return;
 
-        // Invariant: Maya / Zone S remains holding
-        if (agentId === 'maya' || targetNodeId === 'social_workstation') return;
+        // Invariant: Maya / Zone S remains holding & Jefry remains at advisory console
+        if (agentId === 'maya' || agentId === 'jefry' || targetNodeId === 'social_workstation') return;
 
         // Invariant: Budi / Media Worker disabled
         if (agentId === 'budi' && (!officeData.sprites || officeData.sprites.find(function (s) { return s.agent_id === 'budi'; })?.visual_mode === 'DIMMED')) {

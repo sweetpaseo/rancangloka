@@ -197,10 +197,10 @@ async function main() {
   // 2. Stable agent target invariance
   runTest('2. stable agent target invariance across all registered staff', () => {
     const staff = getStaffDefinitions();
-    assert.equal(staff.length, 6);
+    assert.equal(staff.length, 7);
     for (const member of staff) {
       assert.ok(member.agent_id);
-      assert.ok(['content_writer_primary', 'evidence_researcher_lead', 'editorial_qa_primary', 'lokamedia_worker_primary', 'publication_dispatcher_core', 'telemetry_observer_jev'].includes(member.agent_id));
+      assert.ok(['management_advisor_jefry', 'content_writer_primary', 'evidence_researcher_lead', 'editorial_qa_primary', 'lokamedia_worker_primary', 'publication_dispatcher_core', 'telemetry_observer_jev'].includes(member.agent_id));
     }
   });
 

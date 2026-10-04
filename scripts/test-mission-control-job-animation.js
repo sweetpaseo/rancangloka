@@ -589,7 +589,8 @@ console.log('--- Starting Mission Control Role & Job Animation Test Suite (HERME
     'evidence_researcher_lead',
     'lokamedia_worker_primary',
     'publication_dispatcher_core',
-    'telemetry_observer_jev'
+    'telemetry_observer_jev',
+    'management_advisor_jefry'
   ];
 
   for (const def of allDefs) {

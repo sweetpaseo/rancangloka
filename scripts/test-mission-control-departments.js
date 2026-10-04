@@ -166,16 +166,16 @@ async function runDepartmentTests() {
   // TEST 1: Department Registry Validity & Unique IDs
   {
     console.log('Test 1: Department Registry Validity & Unique IDs');
-    assert.equal(CANONICAL_DEPARTMENTS.length, 6, 'Must define exactly 6 departments');
+    assert.equal(CANONICAL_DEPARTMENTS.length, 7, 'Must define exactly 7 departments');
     const ids = CANONICAL_DEPARTMENTS.map((d) => d.department_id);
     const uniqueIds = new Set(ids);
-    assert.equal(uniqueIds.size, 6, 'All department IDs must be strictly unique');
+    assert.equal(uniqueIds.size, 7, 'All department IDs must be strictly unique');
 
-    const expectedDepts = ['editorial', 'research_evidence', 'media', 'publication_operations', 'engineering_telemetry', 'social'];
+    const expectedDepts = ['management', 'editorial', 'research_evidence', 'media', 'publication_operations', 'engineering_telemetry', 'social'];
     for (const id of expectedDepts) {
       assert.ok(uniqueIds.has(id), `Department ${id} must exist in registry`);
     }
-    console.log('  ✅ PASS: Department registry is valid with 6 unique canonical identifiers.\n');
+    console.log('  ✅ PASS: Department registry is valid with 7 unique canonical identifiers.\n');
     passed++;
   }
 
@@ -184,6 +184,11 @@ async function runDepartmentTests() {
     console.log('Test 2: Deterministic Staff Membership');
     const snap = createMockSnapshot();
     const org = getOrganizationSnapshot(snap);
+
+    const management = org.departments.find((d) => d.department_id === 'management');
+    assert.ok(management);
+    assert.equal(management.staff.length, 1);
+    assert.equal(management.staff[0].agent_id, 'management_advisor_jefry');
 
     const editorial = org.departments.find((d) => d.department_id === 'editorial');
     assert.ok(editorial);
@@ -211,7 +216,7 @@ async function runDepartmentTests() {
     assert.equal(engineering.staff.length, 1);
     assert.equal(engineering.staff[0].agent_id, 'telemetry_observer_jev');
 
-    console.log('  ✅ PASS: All 6 staff members map deterministically to their respective departments.\n');
+    console.log('  ✅ PASS: All 7 staff members map deterministically to their respective departments.\n');
     passed++;
   }
 
@@ -512,7 +517,8 @@ async function runDepartmentTests() {
       media: 'media_room',
       publication_operations: 'publication_room',
       engineering_telemetry: 'operations_room',
-      social: 'social_room'
+      social: 'social_room',
+      management: 'management_room'
     };
 
     for (const [deptId, room] of Object.entries(expectedRooms)) {
@@ -520,7 +526,7 @@ async function runDepartmentTests() {
       assert.ok(dept, `Dept ${deptId} must exist`);
       assert.equal(dept.room_key, room, `Room key mismatch for ${deptId}`);
       assert.ok(dept.workstation_zone, `Workstation zone must be defined for ${deptId}`);
-      assert.ok(dept.display_order >= 1 && dept.display_order <= 6, `Display order must be valid`);
+      assert.ok(dept.display_order >= 0 && dept.display_order <= 7, `Display order must be valid`);
     }
 
     console.log('  ✅ PASS: Pixel office room keys and workstation zones prepared for future rendering.\n');
@@ -531,6 +537,7 @@ async function runDepartmentTests() {
   {
     console.log('Test 16: Staff Logical Room Mapping Preparation');
     const staffRoomChecks = {
+      management_advisor_jefry: 'management_room',
       content_writer_primary: 'editorial_room',
       editorial_qa_primary: 'editorial_room',
       evidence_researcher_lead: 'research_lab',
@@ -543,7 +550,7 @@ async function runDepartmentTests() {
       assert.equal(STAFF_ROOM_MAP[agentId], room, `Staff logical room mismatch for ${agentId}`);
     }
 
-    console.log('  ✅ PASS: Logical room mappings prepared for all 6 active staff members.\n');
+    console.log('  ✅ PASS: Logical room mappings prepared for all 7 active staff members.\n');
     passed++;
   }
 
@@ -553,9 +560,9 @@ async function runDepartmentTests() {
     const snap = createMockSnapshot();
     const org = getOrganizationSnapshot(snap);
 
-    assert.equal(org.departments.length, 6, 'Organization must have 6 departments');
-    assert.equal(org.summary.total_departments, 6);
-    assert.equal(org.summary.total_staff, 6);
+    assert.equal(org.departments.length, 7, 'Organization must have 7 departments');
+    assert.equal(org.summary.total_departments, 7);
+    assert.equal(org.summary.total_staff, 7);
     assert.equal(org.summary.unavailable_departments, 1, 'Social must be counted as unavailable');
     assert.equal(org.summary.offline_departments, 1, 'Media must be counted as offline (disabled worker)');
 

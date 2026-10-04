@@ -101,6 +101,19 @@ export function evaluateStaffMovementTransition(
     };
   }
 
+  // Invariant 2B: Jefry is Management Decision Advisor (Stationary at management_decision_console)
+  if (agentId === 'management_advisor_jefry') {
+    return {
+      agent_id: agentId,
+      action: 'NONE',
+      from_node_id: 'management_decision_console',
+      to_node_id: 'management_decision_console',
+      path: ['management_decision_console'],
+      movement_mode: 'STATIONARY',
+      reason: 'Jefry selalu siaga di konsol keputusan manajemen — Tanpa pergerakan koridor.'
+    };
+  }
+
   // Invariant 3: Media Worker DISABLED (Budi stays intentionally offline)
   if (agentId === 'lokamedia_worker_primary' && nextSprite.visual_mode === 'DIMMED') {
     return {

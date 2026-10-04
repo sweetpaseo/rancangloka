@@ -152,9 +152,10 @@ function runTest(name, fn) {
 runTest('1. all active staff have valid avatar keys', () => {
   const snapshot = createMockSnapshot();
   const office = getPixelOfficeState(snapshot);
-  assert.equal(office.sprites.length, 6, 'Must contain all 6 named staff sprites');
+  assert.equal(office.sprites.length, 7, 'Must contain all 7 named staff sprites');
 
   const validAvatars = [
+    'management_advisor_01',
     'editorial_writer_01',
     'editorial_qa_01',
     'research_evidence_01',
@@ -175,6 +176,7 @@ runTest('1. all active staff have valid avatar keys', () => {
 // 2. All staff have valid home room
 runTest('2. all staff have valid home room', () => {
   const staffIds = [
+    'management_advisor_jefry',
     'content_writer_primary',
     'editorial_qa_primary',
     'evidence_researcher_lead',
@@ -193,6 +195,7 @@ runTest('2. all staff have valid home room', () => {
 // 3. All room keys resolve to valid office positions
 runTest('3. all room keys resolve to valid office positions', () => {
   const validRoomKeys = [
+    'management_room',
     'editorial_room',
     'research_lab',
     'media_room',

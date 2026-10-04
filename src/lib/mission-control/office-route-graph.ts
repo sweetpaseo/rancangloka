@@ -35,6 +35,44 @@ export interface OfficeRouteEdge {
 // ============================================================================
 
 export const OFFICE_ROUTE_NODES: Record<string, OfficeRouteNode> = {
+  // --- NORTH TERMINUS & MANAGEMENT ROOM ---
+  hall_north: {
+    id: 'hall_north',
+    label: 'Ujung Utara Koridor (North Terminus)',
+    room_key: 'central_hall',
+    level: 1,
+    wing: 'CENTER',
+    x: 50,
+    y: 8,
+    is_doorway: false,
+    is_workstation: false,
+    is_lounge_seat: false
+  },
+  management_door: {
+    id: 'management_door',
+    label: 'Ambang Pintu Ruang Manajemen',
+    room_key: 'management_room',
+    level: 1,
+    wing: 'CENTER',
+    x: 50,
+    y: 6,
+    is_doorway: true,
+    is_workstation: false,
+    is_lounge_seat: false
+  },
+  management_decision_console: {
+    id: 'management_decision_console',
+    label: 'Konsol Keputusan Jefry',
+    room_key: 'management_room',
+    level: 1,
+    wing: 'CENTER',
+    x: 50,
+    y: 4,
+    is_doorway: false,
+    is_workstation: true,
+    is_lounge_seat: false
+  },
+
   // --- CENTRAL HALLWAY SPINE (Primary Circulation Backbone) ---
   hall_level_1: {
     id: 'hall_level_1',
@@ -358,10 +396,15 @@ export const OFFICE_ROUTE_NODES: Record<string, OfficeRouteNode> = {
 
 export const OFFICE_ROUTE_EDGES: OfficeRouteEdge[] = [
   // 1. Central Hallway Spine (strictly vertical circulation)
+  { from: 'hall_north', to: 'hall_level_1', weight: 1 },
   { from: 'hall_level_1', to: 'hall_level_2', weight: 1 },
   { from: 'hall_level_2', to: 'hall_level_3', weight: 1 },
   { from: 'hall_level_3', to: 'hall_south', weight: 1 },
   { from: 'hall_south', to: 'zone_s_threshold', weight: 1 },
+
+  // 1B. Management Room Access (North Terminus)
+  { from: 'hall_north', to: 'management_door', weight: 1 },
+  { from: 'management_door', to: 'management_decision_console', weight: 1 },
 
   // 2. Doorways opening to Central Hallway
   // Left Wing:

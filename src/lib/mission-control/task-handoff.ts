@@ -89,15 +89,19 @@ export function validateHandoffSafety(
   handoff: TaskHandoffObservation,
   snapshot: MissionControlSnapshot | null
 ): { allowed: boolean; reason?: string } {
-  // 1. JEV cannot be workflow owner or recipient
+  // 1. JEV / Jefry / Management cannot be workflow owner or handoff sender/recipient
   if (
     handoff.to_agent_id === 'telemetry_observer_jev' ||
     handoff.from_agent_id === 'telemetry_observer_jev' ||
+    handoff.to_agent_id === 'management_advisor_jefry' ||
+    handoff.from_agent_id === 'management_advisor_jefry' ||
+    handoff.to_department_id === 'management' ||
+    handoff.from_department_id === 'management' ||
     (handoff as any).to_agent_id === 'jev'
   ) {
     return {
       allowed: false,
-      reason: 'TypeSafe JEV operates in shadow mode with zero workflow ownership authority.'
+      reason: 'TypeSafe JEV operates in shadow mode with zero workflow ownership authority (Jefry / Management operates as a supervisory advisory layer with zero operational handoff authority).'
     };
   }
 
