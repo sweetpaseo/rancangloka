@@ -358,6 +358,204 @@ export const INDONESIAN_LOCAL_REALITY_MARKERS = [
 // Evaluation Engine
 // ============================================================================
 
+// ============================================================================
+// Evidence Pack & Retrieval Verification Types (EDITORIAL-EVIDENCE-SOURCE-VERIFICATION-1)
+// ============================================================================
+
+export type SourceRetrievalStatus =
+  | 'SOURCE_RETRIEVED_AND_VERIFIED'
+  | 'SOURCE_METADATA_ONLY'
+  | 'SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED'
+  | 'SOURCE_REFERENCE_KNOWN_BUT_NOT_RETRIEVED' // legacy alias
+  | 'SOURCE_UNAVAILABLE'
+  | 'SOURCE_PROVENANCE_UNKNOWN';
+
+export type ClaimSupportLevel =
+  | 'VERIFIED'
+  | 'SUPPORTED'
+  | 'PARTIALLY_SUPPORTED'
+  | 'UNVERIFIED'
+  | 'CONFLICTING';
+
+export type SourceApplicability =
+  | 'REGULATORY_LOCAL_TROPICAL'
+  | 'TECHNICAL_GUIDANCE_LOCAL'
+  | 'TECHNICAL_REFERENCE_FOREIGN'
+  | 'FOREIGN_BUILDING_CODE'
+  | 'RESEARCH_STUDY'
+  | 'MANUFACTURER_DOCUMENTATION';
+
+export interface EvidenceSource {
+  source_id: string;
+  source_type?: string;
+  publisher_or_author?: string;
+  document_title: string;
+  publication_or_revision_date?: string;
+  edition_or_revision?: string;
+  page_or_section?: string;
+  applicability: SourceApplicability | string;
+  support_type?: string;
+  retrieval_status?: SourceRetrievalStatus;
+  retrieval_method?: string;
+  retrieved_at?: string;
+  content_location?: string;
+  content_hash?: string;
+  limitations?: string;
+}
+
+export interface EvidenceClaim {
+  claim_id: string;
+  statement: string;
+  claim_class?: string;
+  evidence_status: ClaimSupportLevel | string;
+  provenance_retrieval_status?: SourceRetrievalStatus | string;
+  source_reference?: string;
+  sources?: EvidenceSource[];
+  confidence?: string;
+  action?: 'KEEP' | 'QUALIFY' | 'REMOVE_NUMBER' | 'REMOVE_CLAIM' | 'RESEARCH_REQUIRED' | string;
+  relevance?: string;
+  numeric_claim?: boolean;
+}
+
+export interface AuthorSafeClaim {
+  claim_id: string;
+  statement: string;
+  support_level: ClaimSupportLevel;
+  applicability: string;
+  allowed_for_authoring: boolean;
+  prohibited_elements?: string[];
+  qualification_required?: string;
+}
+
+export interface EvidencePackInput {
+  evidence_pack_id?: string;
+  topic?: string;
+  compiled_by?: string;
+  claim_inventory?: EvidenceClaim[];
+  author_safe_claims?: AuthorSafeClaim[];
+  [key: string]: any;
+}
+
+export interface ProvenanceAuditSummary {
+  total_claims: number;
+  retrieved_and_verified_sources_count: number;
+  metadata_only_sources_count: number;
+  unretrieved_sources_count: number;
+  unverified_claims: string[];
+  unsupported_numeric_claims: string[];
+  missing_provenance_claims: string[];
+  claim_support_map: Record<string, ClaimSupportLevel>;
+  requires_provenance_failure: boolean;
+  audit_reasons: string[];
+}
+
+/**
+ * Deterministically derives an audit of claim-to-source retrieval verification.
+ * Distinguishes SOURCE_RETRIEVED_AND_VERIFIED from SOURCE_METADATA_ONLY / UNRETRIEVED.
+ * Fail-closed default: if provenance is missing/unverified for exact numeric assertions,
+ * it is flagged automatically without requiring manual caller booleans.
+ */
+export function auditEvidencePackProvenance(
+  evidencePack: EvidencePackInput | null | undefined,
+  contentMd: string = ''
+): ProvenanceAuditSummary {
+  const summary: ProvenanceAuditSummary = {
+    total_claims: 0,
+    retrieved_and_verified_sources_count: 0,
+    metadata_only_sources_count: 0,
+    unretrieved_sources_count: 0,
+    unverified_claims: [],
+    unsupported_numeric_claims: [],
+    missing_provenance_claims: [],
+    claim_support_map: {},
+    requires_provenance_failure: false,
+    audit_reasons: []
+  };
+
+  if (!evidencePack || !Array.isArray(evidencePack.claim_inventory)) {
+    return summary;
+  }
+
+  const claims = evidencePack.claim_inventory;
+  summary.total_claims = claims.length;
+
+  for (const claim of claims) {
+    const claimSources = Array.isArray(claim.sources) ? claim.sources : [];
+    let hasRetrievedSource = false;
+    let hasMetadataOnlySource = false;
+    let hasKnownUnretrievedSource = false;
+
+    for (const src of claimSources) {
+      const status: SourceRetrievalStatus =
+        src.retrieval_status ||
+        (claim.provenance_retrieval_status as SourceRetrievalStatus) ||
+        'SOURCE_PROVENANCE_UNKNOWN';
+
+      if (status === 'SOURCE_RETRIEVED_AND_VERIFIED') {
+        summary.retrieved_and_verified_sources_count++;
+        hasRetrievedSource = true;
+      } else if (status === 'SOURCE_METADATA_ONLY') {
+        summary.metadata_only_sources_count++;
+        hasMetadataOnlySource = true;
+      } else if (
+        status === 'SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED' ||
+        status === 'SOURCE_REFERENCE_KNOWN_BUT_NOT_RETRIEVED' ||
+        status === 'SOURCE_UNAVAILABLE'
+      ) {
+        summary.unretrieved_sources_count++;
+        hasKnownUnretrievedSource = true;
+      }
+    }
+
+    // Phase 4 & Phase 7: Calculate support level from real source state.
+    // A claim cannot be VERIFIED if all linked sources are metadata-only or unretrieved.
+    let derivedSupportLevel: ClaimSupportLevel = 'UNVERIFIED';
+
+    if (claimSources.length === 0) {
+      derivedSupportLevel = 'UNVERIFIED';
+    } else if (hasRetrievedSource) {
+      derivedSupportLevel = (claim.evidence_status === 'VERIFIED') ? 'VERIFIED' : 'SUPPORTED';
+    } else if (hasMetadataOnlySource || hasKnownUnretrievedSource) {
+      // If metadata exists or reference known but not retrieved, maximum support is PARTIALLY_SUPPORTED
+      derivedSupportLevel = 'PARTIALLY_SUPPORTED';
+    } else {
+      derivedSupportLevel = 'UNVERIFIED';
+    }
+
+    summary.claim_support_map[claim.claim_id] = derivedSupportLevel;
+
+    // Phase 5: Numeric Claim Safety
+    // Detect whether claim asserts exact numbers
+    const statementHasNumbers = /\b\d+(?:[.,]\d+)?\s*(?:%|mm|cm|m|w\/m|°c|c\b)/i.test(claim.statement);
+    const isExplicitNumeric = claim.numeric_claim || statementHasNumbers;
+
+    // Fail-Closed Check: If claim has numbers but sources were not retrieved and verified,
+    // it MUST NOT be claimed as VERIFIED fact in the evidence pack or final text without qualification.
+    if (claim.evidence_status === 'VERIFIED' && !hasRetrievedSource) {
+      summary.missing_provenance_claims.push(
+        `${claim.claim_id}: Status dinyatakan VERIFIED namun sumber belum berstatus SOURCE_RETRIEVED_AND_VERIFIED`
+      );
+      summary.requires_provenance_failure = true;
+      summary.audit_reasons.push(
+        `Klaim ${claim.claim_id} ditandai VERIFIED tetapi sumber dokumen fisik/primer tidak terverifikasi (hanya metadata/ingatan model).`
+      );
+    }
+
+    // If an unsupported numeric claim is present in the inventory with action KEEP instead of QUALIFY/REMOVE_NUMBER
+    if (isExplicitNumeric && !hasRetrievedSource && claim.action === 'KEEP') {
+      summary.unsupported_numeric_claims.push(
+        `${claim.claim_id}: Klaim numerik tanpa dokumen primer terverifikasi harus dikualifikasikan (QUALIFY atau REMOVE_NUMBER)`
+      );
+      summary.requires_provenance_failure = true;
+      summary.audit_reasons.push(
+        `Klaim numerik ${claim.claim_id} tidak boleh beraksi KEEP tanpa sumber berstatus SOURCE_RETRIEVED_AND_VERIFIED.`
+      );
+    }
+  }
+
+  return summary;
+}
+
 export interface EvaluationOptions {
   attemptCount?: number;
   maxAttempts?: number;
@@ -376,8 +574,10 @@ export interface EvaluationOptions {
   isProductReview?: boolean;
   affiliateCTAPosition?: 'BEFORE_RECOMMENDATION' | 'AFTER_RECOMMENDATION' | 'NONE';
   declaredVariant?: string;
+  // Evidence provenance & source verification options (EDITORIAL-EVIDENCE-SOURCE-VERIFICATION-1)
   hasMissingClaimProvenance?: boolean;
   missingProvenanceClaims?: string[];
+  evidencePack?: EvidencePackInput | null;
 }
 
 /**
@@ -1022,9 +1222,24 @@ export function evaluateHumanWritingQuality(
     dimEvidence = Math.max(0, dimEvidence - 10);
   }
 
+  // Automatic Provenance Derivation & Source Verification Check (EDITORIAL-EVIDENCE-SOURCE-VERIFICATION-1)
+  const auditProvenance = options.evidencePack
+    ? auditEvidencePackProvenance(options.evidencePack, cleanMd)
+    : null;
+
+  const isMissingClaimProvenance = Boolean(
+    options.hasMissingClaimProvenance ||
+    (auditProvenance && auditProvenance.requires_provenance_failure)
+  );
+
+  const missingProvenanceClaims = options.missingProvenanceClaims ||
+    (auditProvenance && auditProvenance.missing_provenance_claims.length > 0
+      ? auditProvenance.missing_provenance_claims
+      : auditProvenance?.unsupported_numeric_claims);
+
   // Claim Source Provenance Missing: Unsupported numerical or technical claims lacking exact document provenance
-  if (options.hasMissingClaimProvenance) {
-    const missingClaimsList = options.missingProvenanceClaims?.join(', ') || 'Klaim teknis numerik';
+  if (isMissingClaimProvenance) {
+    const missingClaimsList = missingProvenanceClaims?.join(', ') || 'Klaim teknis numerik';
     issues.push({
       code: 'CLAIM_SOURCE_PROVENANCE_MISSING',
       category: 'INSUFFICIENT_CLAIM_SUPPORT',

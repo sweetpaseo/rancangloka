@@ -5,7 +5,7 @@
   "compiled_by_name": "Irwan",
   "target_agent": "content_writer_primary",
   "target_agent_name": "Joko",
-  "compiled_at": "2026-10-04T15:15:00.000Z",
+  "compiled_at": "2026-10-04T15:30:00.000Z",
   "confidence_overall": "HIGH",
   "claim_inventory": [
     {
@@ -13,7 +13,7 @@
       "statement": "Atap metal (zincalume/galvalum/spandek) memiliki massa termal sangat rendah dan konduktivitas tinggi (k ≈ 50-60 W/m·K), sehingga di bawah radiasi matahari tropis 800-1000 W/m², suhu permukaan lembaran metal dapat mencapai 60°C hingga 75°C.",
       "claim_class": "technical_consensus",
       "evidence_status": "PARTIALLY_SUPPORTED",
-      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_BUT_NOT_RETRIEVED",
+      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
       "source_reference": "SNI 03-6572-2001 & ASHRAE Handbook of Fundamentals (Fenestration & Building Envelope)",
       "sources": [
         {
@@ -25,6 +25,8 @@
           "page_or_section": "Bagian 5: Beban Kalor dan Radiasi Termal Selubung Bangunan",
           "applicability": "REGULATORY_LOCAL_TROPICAL",
           "support_type": "QUALITATIVE_PRINCIPLE",
+          "retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
+          "retrieval_method": "INDUSTRY_REFERENCE_CATALOG",
           "limitations": "SNI menetapkan parameter radiasi matahari rata-rata Indonesia (800-1000 W/m²); suhu puncak 60-75°C lembaran metal adalah estimasi konsensus termal tropis, bukan tabel batas regulasi mutlak."
         },
         {
@@ -36,7 +38,9 @@
           "page_or_section": "Chapter 26: Heat, Air, and Moisture Control in Building Assemblies - Fundamentals",
           "applicability": "TECHNICAL_REFERENCE_FOREIGN",
           "support_type": "TECHNICAL_CONSENSUS",
-          "limitations": "Menyajikan konduktivitas termal baja berlapis (k ≈ 50-60 W/m·K) dan respons temperatur permukaan tipis."
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+          "limitations": "Menyajikan konduktivitas termal baja berlapis (k ≈ 50-60 W/m·K) dan respons temperatur permukaan tipis; dokumen lengkap berbayar tidak disimpan di lingkungan lokal."
         }
       ],
       "confidence": "HIGH",
@@ -48,7 +52,7 @@
       "statement": "Perpindahan kalor dari sisi bawah lembaran atap metal ke rongga loteng dan plafon didominasi oleh radiasi inframerah gelombang panjang (sekitar 75% hingga 90% dari total perpindahan kalor), bukan konveksi udara.",
       "claim_class": "technical_consensus",
       "evidence_status": "PARTIALLY_SUPPORTED",
-      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_BUT_NOT_RETRIEVED",
+      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
       "source_reference": "Building Research Establishment (BRE) & BRANZ Thermal Performance of Roof Cavities Study",
       "sources": [
         {
@@ -60,7 +64,9 @@
           "page_or_section": "Section 4: Heat Transfer Modes in Enclosed Roof Cavities",
           "applicability": "TECHNICAL_REFERENCE_FOREIGN",
           "support_type": "QUALITATIVE_PRINCIPLE",
-          "limitations": "Mengkonfirmasi bahwa radiasi gelombang panjang mendominasi (75-90% pada siang hari terik); proporsi persis bergantung pada kemiringan atap, temperatur loteng, dan laju ventilasi."
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+          "limitations": "Mengkonfirmasi bahwa radiasi gelombang panjang mendominasi (75-90% pada siang hari terik); proporsi persis bergantung pada kemiringan atap, temperatur loteng, dan laju ventilasi. Teks naskah Joko wajib mengkualifikasikan angka menjadi prinsip kualitatif."
         }
       ],
       "confidence": "HIGH",
@@ -70,9 +76,9 @@
     {
       "claim_id": "CLM-003",
       "statement": "Aluminium foil reflektif bekerja sebagai radiant barrier dengan emisivitas permukaan sangat rendah (ε ≤ 0.05) dan reflektansi radiasi tinggi (≥ 95%), tetapi HANYA BERFUNGSI EFEKTIF jika berhadapan langsung dengan rongga udara (air gap) minimal 20-25 mm.",
-      "claim_class": "verified_fact",
-      "evidence_status": "VERIFIED",
-      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "claim_class": "technical_consensus",
+      "evidence_status": "PARTIALLY_SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
       "source_reference": "ASTM C1371 (Standard Test Method for Emittance) & ASTM C1321 (Installation and Use of Interior Radiation Control Coatings)",
       "sources": [
         {
@@ -84,7 +90,9 @@
           "page_or_section": "Section 1.1 & Section 11 (Precision and Bias)",
           "applicability": "TECHNICAL_REFERENCE_FOREIGN",
           "support_type": "MEASUREMENT_STANDARD",
-          "limitations": "Standar uji laboratorium untuk menentukan emisivitas permukaan material lembaran reflektif (ε ≤ 0.05)."
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+          "limitations": "Standar uji laboratorium untuk menentukan emisivitas permukaan material lembaran reflektif (ε ≤ 0.05); dokumen standar berbayar belum tersimpan dalam repositori bukti lokal."
         },
         {
           "source_id": "SRC-ASTM-C1321",
@@ -95,19 +103,21 @@
           "page_or_section": "Section 6: Air Space Requirements (Minimum 19 mm / 0.75 in to 25 mm)",
           "applicability": "TECHNICAL_REFERENCE_FOREIGN",
           "support_type": "INSTALLATION_STANDARD",
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "BIBLIOGRAPHIC_METADATA_RECORD",
           "limitations": "Menetapkan persyaratan rongga udara bersih (air space) minimal 19 mm (praktik lapangan 20-25 mm) agar radiant barrier tidak beralih menjadi penghantar konduktif."
         }
       ],
       "confidence": "HIGH",
-      "action": "KEEP",
+      "action": "QUALIFY",
       "relevance": "Menjawab pertanyaan apakah foil cukup: jika foil dijepit langsung tanpa rongga udara, fungsinya berubah menjadi konduksi kontak langsung dan efektivitas radiasinya hilang."
     },
     {
       "claim_id": "CLM-004",
       "statement": "Aluminium foil bukan insulasi massa (bulk insulation); nilai hambatan termal konduktifnya (R-value) hampir nol tanpa adanya rongga udara.",
-      "claim_class": "verified_fact",
-      "evidence_status": "VERIFIED",
-      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "claim_class": "technical_consensus",
+      "evidence_status": "PARTIALLY_SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
       "source_reference": "ASHRAE Standard 90.1 & ASTM C727",
       "sources": [
         {
@@ -119,11 +129,13 @@
           "page_or_section": "Section 4: General Principles & Thermal Resistance of Air Cavities",
           "applicability": "TECHNICAL_REFERENCE_FOREIGN",
           "support_type": "TECHNICAL_CONSENSUS",
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "BIBLIOGRAPHIC_METADATA_RECORD",
           "limitations": "Menegaskan lembaran foil murni tidak memiliki R-value konduktif intrinsik yang bermakna tanpa mempertimbangkan rongga udara bersebelahan."
         }
       ],
       "confidence": "HIGH",
-      "action": "KEEP",
+      "action": "QUALIFY",
       "relevance": "Mencegah salah kaprah pembaca yang mengira selembar foil tipis sama fungsinya dengan selimut insulasi tebal 5 cm."
     },
     {
@@ -131,7 +143,7 @@
       "statement": "Di dalam rongga atap yang tertutup rapat tanpa ventilasi, udara tetap akan mengalami kenaikan temperatur bertahap akibat akumulasi konveksi dan konduksi, lalu memanaskan material plafon yang kemudian memancarkan panas sekunder ke ruang tidur/keluarga hingga malam hari.",
       "claim_class": "inference",
       "evidence_status": "SUPPORTED",
-      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "provenance_retrieval_status": "SOURCE_METADATA_ONLY",
       "source_reference": "Studi Mikroklimat Loteng Tropis Lembap (Puslitbang Permukiman PU & ITB Arsitektur)",
       "sources": [
         {
@@ -143,11 +155,13 @@
           "page_or_section": "Bab IV: Perilaku Akumulasi Kalor Nok dan Plafon",
           "applicability": "REGULATORY_LOCAL_TROPICAL",
           "support_type": "EMPIRICAL_STUDY",
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "PUBLIC_REPOSITORY_INDEX",
           "limitations": "Pengukuran empiris pada tipologi rumah deret 1 lantai dengan atap asbes/seng di wilayah dataran rendah tropis lembap."
         }
       ],
       "confidence": "HIGH",
-      "action": "KEEP",
+      "action": "QUALIFY",
       "relevance": "Menjelaskan mengapa rumah berplafon yang dipasangi foil tetap terasa gerah di malam hari bila tidak memiliki ventilasi atap."
     },
     {
@@ -155,7 +169,7 @@
       "statement": "Ventilasi rongga atap efektif membuang akumulasi udara panas melalui efek cerobong termal (stack effect) dan tekanan angin, dengan syarat bukaan masuk (soffit/teritisan) dan bukaan keluar (bubungan/gevel) seimbang dengan rasio bukaan bersih minimal 1:300 hingga 1:150 terhadap luas loteng.",
       "claim_class": "technical_consensus",
       "evidence_status": "PARTIALLY_SUPPORTED",
-      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_BUT_NOT_RETRIEVED",
+      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
       "source_reference": "SNI 03-6572-2001 Tata Cara Perancangan Sistem Ventilasi Alami & International Residential Code (IRC) Section R806",
       "sources": [
         {
@@ -167,6 +181,8 @@
           "page_or_section": "Section R806: Roof Ventilation (R806.2 Minimum Vent Area 1:150 with 1:300 exception)",
           "applicability": "TECHNICAL_REFERENCE_FOREIGN",
           "support_type": "CODE_REQUIREMENT",
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "BIBLIOGRAPHIC_METADATA_RECORD",
           "limitations": "Rasio 1:150 hingga 1:300 adalah standar bangunan residensial Amerika Utara/Internasional (IRC). Di Indonesia, SNI 03-6572-2001 mengatur luas bukaan ventilasi alami untuk ruang hunian (5-10% luas lantai), namun tidak memiliki klausul numerik spesifik rasio rongga atap tak berpenghuni. Oleh karena itu rasio 1:300-1:150 merupakan referensi teknis internasional, bukan regulasi wajib Indonesia."
         }
       ],
@@ -179,7 +195,7 @@
       "statement": "Ventilasi atap di iklim tropis lembap memiliki kompromi fisik: wajib dilengkapi kisi penahan tampias hujan lebat dan kawat anti-serangga/tikus, serta debu yang menumpuk di atas foil seiring waktu dapat meningkatkan emisivitas permukaan (mengurangi daya pantul radiasi).",
       "claim_class": "recommendation",
       "evidence_status": "SUPPORTED",
-      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "provenance_retrieval_status": "SOURCE_METADATA_ONLY",
       "source_reference": "Pedoman Teknis Bangunan Tahan Iklim Tropis & BRANZ Bulletin 519",
       "sources": [
         {
@@ -191,6 +207,8 @@
           "page_or_section": "Section: Vermin, Dust Ingress, and Insect Screening",
           "applicability": "TECHNICAL_REFERENCE_FOREIGN",
           "support_type": "FIELD_PRACTICE",
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "BIBLIOGRAPHIC_METADATA_RECORD",
           "limitations": "Catatan akumulasi debu pada permukaan foil horizontal meningkatkan emisivitas dari 0.05 menjadi 0.20-0.30 dalam 3-5 tahun."
         }
       ],
@@ -203,7 +221,7 @@
       "statement": "Pada atap metal ekspos tanpa plafon, radiasi inframerah langsung mengenai kepala penghuni; pemasangan foil dengan kawat penopang memberikan dampak kenyamanan instan terbesar (radiant cut-off), meskipun ruang tetap memerlukan ventilasi silang udara bawah.",
       "claim_class": "recommendation",
       "evidence_status": "SUPPORTED",
-      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "provenance_retrieval_status": "SOURCE_METADATA_ONLY",
       "source_reference": "Buku Panduan Desain Pasif Tropis & Evaluasi Kenyamanan Termal Lapangan",
       "sources": [
         {
@@ -215,12 +233,81 @@
           "page_or_section": "Bab 3: Pengendalian Radiasi Matahari Langsung pada Ruang Semi-Terbuka dan Non-Plafon",
           "applicability": "REGULATORY_LOCAL_TROPICAL",
           "support_type": "DESIGN_GUIDANCE",
+          "retrieval_status": "SOURCE_METADATA_ONLY",
+          "retrieval_method": "PUBLIC_REPOSITORY_INDEX",
           "limitations": "Rekomendasi aplikatif arsitektural untuk ruang fungsional tanpa plafon (bengkel, dapur terpisah, teras tertutup, garasi)."
         }
       ],
       "confidence": "HIGH",
       "action": "KEEP",
       "relevance": "Skenario pembeda untuk atap metal tanpa plafon (dapur belakang, mezzanine, garasi)."
+    }
+  ],
+  "author_safe_claims": [
+    {
+      "claim_id": "CLM-001",
+      "statement": "Atap metal tipis memiliki konduktivitas tinggi dan menyerap radiasi terik matahari tropis dengan cepat sehingga permukaannya melonjak panas di siang hari.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "REGULATORY_LOCAL_TROPICAL",
+      "allowed_for_authoring": true,
+      "qualification_required": "Sajikan sebagai prinsip fisika termal atap tipis, bukan batas regulasi numerik mutlak."
+    },
+    {
+      "claim_id": "CLM-002",
+      "statement": "Perpindahan kalor dari seng ke loteng didominasi oleh radiasi inframerah gelombang panjang, bukan konveksi udara.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "TECHNICAL_REFERENCE_FOREIGN",
+      "allowed_for_authoring": true,
+      "prohibited_elements": ["75% hingga 90%"],
+      "qualification_required": "Sajikan sebagai prinsip kualitatif 'jalur paling dominan', hilangkan klaim persentase 75-90%."
+    },
+    {
+      "claim_id": "CLM-003",
+      "statement": "Aluminium foil reflektif bekerja efektif sebagai penghalang radiasi jika dipasang dengan rongga udara (air gap) bersih, bukan dijepit padat.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "TECHNICAL_REFERENCE_FOREIGN",
+      "allowed_for_authoring": true,
+      "qualification_required": "Jelaskan kebutuhan rongga udara (celah 20-25 mm) sebagai kaidah instalasi praktis agar tidak beralih menjadi konduksi."
+    },
+    {
+      "claim_id": "CLM-004",
+      "statement": "Aluminium foil bukan insulasi massa (bulk insulation); nilai hambatan termalnya bergantung pada keberadaan rongga udara.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "TECHNICAL_REFERENCE_FOREIGN",
+      "allowed_for_authoring": true,
+      "qualification_required": "Ingatkan pembaca bahwa lembaran tipis foil tidak setara dengan insulasi selimut tebal."
+    },
+    {
+      "claim_id": "CLM-005",
+      "statement": "Loteng tertutup tanpa ventilasi menjadi kantong udara panas yang terus memanaskan plafon hingga malam hari.",
+      "support_level": "SUPPORTED",
+      "applicability": "REGULATORY_LOCAL_TROPICAL",
+      "allowed_for_authoring": true,
+      "qualification_required": "Bahas sebagai fenomena perangkap panas (heat trap) di iklim tropis lembap."
+    },
+    {
+      "claim_id": "CLM-006",
+      "statement": "Ventilasi loteng mengandalkan bukaan masuk (teritisan) dan bukaan keluar (bubungan/gevel) seimbang untuk mengalirkan udara panas keluar melalui efek cerobong.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "TECHNICAL_REFERENCE_FOREIGN",
+      "allowed_for_authoring": true,
+      "qualification_required": "Sebutkan rasio bukaan (1:300 hingga 1:150) sebagai acuan pedoman teknis perancangan internasional/konsensus ventilasi, bukan kewajiban undang-undang Indonesia."
+    },
+    {
+      "claim_id": "CLM-007",
+      "statement": "Ventilasi loteng di Indonesia wajib memperhitungkan risiko tampias hujan, saringan kawat hama, dan penurunan daya pantul foil akibat debu.",
+      "support_level": "SUPPORTED",
+      "applicability": "TECHNICAL_REFERENCE_FOREIGN",
+      "allowed_for_authoring": true,
+      "qualification_required": "Trade-off lapangan wajib diungkapkan secara transparan."
+    },
+    {
+      "claim_id": "CLM-008",
+      "statement": "Pada atap ekspos tanpa plafon, pemasangan foil adalah intervensi paling mendesak untuk menahan sengatan radiasi langsung ke penghuni.",
+      "support_level": "SUPPORTED",
+      "applicability": "REGULATORY_LOCAL_TROPICAL",
+      "allowed_for_authoring": true,
+      "qualification_required": "Skenario pembeda untuk ruang non-plafon (dapur terbuka, garasi, mezzanine)."
     }
   ],
   "scenario_matrix": [
