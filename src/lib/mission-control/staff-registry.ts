@@ -24,8 +24,11 @@ import { sanitizeString } from './redact.ts';
 
 export type StaffCapability =
   | 'ARTICLE_WRITING'
+  | 'HUMAN_WRITING_AUTHORING'
   | 'EVIDENCE_RESEARCH'
   | 'EDITORIAL_QA'
+  | 'HUMAN_WRITING_QA'
+  | 'EDITORIAL_NATURALNESS_REVIEW'
   | 'MEDIA_OPERATIONS'
   | 'PUBLICATION_OPERATIONS'
   | 'SYSTEM_TELEMETRY';
@@ -209,7 +212,7 @@ const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
     department_id: 'editorial',
     description: 'Penulis naskah artikel utama berbasis bukti dan panduan teknis RancangLoka (anti-slop, human voice layer).',
     avatar_key: 'editorial_writer_01',
-    capabilities: ['ARTICLE_WRITING'],
+    capabilities: ['ARTICLE_WRITING', 'HUMAN_WRITING_AUTHORING'],
     source_system: 'hermes_pipeline',
     active: true,
     sort_order: 1
@@ -233,7 +236,7 @@ const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
     department_id: 'editorial',
     description: 'Pemeriksaan kepatuhan redaksional, tone of voice, kelayakan naskah, dan verifikasi checklist First Article Gate.',
     avatar_key: 'editorial_qa_01',
-    capabilities: ['EDITORIAL_QA'],
+    capabilities: ['EDITORIAL_QA', 'HUMAN_WRITING_QA', 'EDITORIAL_NATURALNESS_REVIEW'],
     source_system: 'hermes_qa',
     active: true,
     sort_order: 3

@@ -63,6 +63,7 @@ export * from './job-trace.ts';
 export * from './live-operations.ts';
 export * from './actions.ts';
 export * from './events.ts';
+export * from '../article/human-quality.ts';
 
 export interface MissionControlOrganization {
   generated_at: string;

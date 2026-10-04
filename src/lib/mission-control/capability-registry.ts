@@ -44,6 +44,18 @@ const CANONICAL_CAPABILITIES: MissionControlCapabilityDefinition[] = [
     anomaly_classes: ['EDITORIAL_TASK_FAILED']
   },
   {
+    capability_id: 'HUMAN_WRITING_AUTHORING',
+    display_name: 'Penulisan Prosa Alami Human-First',
+    description: 'Penyusunan prosa editorial yang alami, lugas, mengalir, dan bebas pola klise AI generik untuk pembaca rumah Indonesia.',
+    owning_department_id: 'editorial',
+    default_agent_id: 'content_writer_primary',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_pipeline', 'human_quality_gate'],
+    command_families: ['HUMAN_PROSE_DRAFT_REQUEST', 'HUMAN_PROSE_REWRITE_REQUEST'],
+    read_models: ['pipeline.tasks', 'articles.human_quality'],
+    anomaly_classes: ['EDITORIAL_TASK_FAILED']
+  },
+  {
     capability_id: 'EVIDENCE_RESEARCH',
     display_name: 'Riset Bukti Teknis & SNI',
     description: 'Penelusuran standar konstruksi, pengumpulan rujukan primer, dan verifikasi kepatuhan monetary silence.',
@@ -66,6 +78,30 @@ const CANONICAL_CAPABILITIES: MissionControlCapabilityDefinition[] = [
     command_families: ['EDITORIAL_QA_REQUEST', 'REVIEW_READINESS_CHECK', 'ARTICLE_VALIDATION_REQUEST'],
     read_models: ['pipeline.tasks', 'articles.awaitingReviewCount'],
     anomaly_classes: ['EDITORIAL_GATE_FAILURE', 'EDITORIAL_TASK_FAILED']
+  },
+  {
+    capability_id: 'HUMAN_WRITING_QA',
+    display_name: 'Gerbang Mutu Penulisan Alami Redaksi',
+    description: 'Evaluasi deterministik kelancaran prosa, deteksi pola tulisan mekanis/template, dan umpan balik revisi terstruktur.',
+    owning_department_id: 'editorial',
+    default_agent_id: 'editorial_qa_primary',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_qa', 'human_quality_gate'],
+    command_families: ['HUMAN_QUALITY_EVALUATION_REQUEST', 'EDITORIAL_NATURALNESS_REVIEW'],
+    read_models: ['pipeline.tasks', 'articles.human_quality'],
+    anomaly_classes: ['EDITORIAL_GATE_FAILURE']
+  },
+  {
+    capability_id: 'EDITORIAL_NATURALNESS_REVIEW',
+    display_name: 'Peninjauan Kewajaran Editorial',
+    description: 'Inspeksi keharmonisan ritme kalimat, relevansi iklim lokal, dan keaslian orientasi keputusan pembaca.',
+    owning_department_id: 'editorial',
+    default_agent_id: 'editorial_qa_primary',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_qa', 'human_quality_gate'],
+    command_families: ['EDITORIAL_NATURALNESS_REVIEW'],
+    read_models: ['pipeline.tasks', 'articles.human_quality'],
+    anomaly_classes: ['EDITORIAL_GATE_FAILURE']
   },
   {
     capability_id: 'MEDIA_OPERATIONS',

@@ -17,6 +17,52 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### EDITORIAL-HUMAN-QUALITY-1: Human Writing Quality Gate & Anti-Slop Editorial Rubric 2026-10-04
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengimplementasikan gerbang mutu penulisan redaksional alami (*Human Writing Quality Gate*) pada pipeline editorial RancangLoka dan Hermes Mission Control.
+  - Menjamin seluruh naskah artikel yang disetujui atau diterbitkan memiliki kualitas prosa yang terasa ditulis secara wajar, mengalir, dan bernas oleh editor/penulis manusia Indonesia kompeten, serta bebas dari pola klise mekanis AI generik (*anti-slop*).
+  - Menolak mutlak integrasi alat detektor AI eksternal yang tidak dapat diandalkan (*zero GPTZero-style scoring, zero fake AI probabilities*).
+- **Komponen Utama yang Diimplementasikan:**
+  1. **Model Rubrik Kualitas Penulisan Alami 100-Poin (`src/lib/article/human-quality.ts`):**
+     - Natural sentence rhythm (20)
+     - Specificity / concrete detail (15)
+     - Contextual relevance (iklim tropis, panas sore, tampias, material lokal) (15)
+     - Editorial voice (15)
+     - Non-template structure (10)
+     - Evidence integration (SNI/ASTM, angka terukur) (10)
+     - Useful reader perspective (10)
+     - Conclusion originality (5)
+     - Ambang batas deterministik: 85-100 = `HUMAN_WRITING_PASS`, 75-84 = `HUMAN_WRITING_REVISE`, 0-74 = `HUMAN_WRITING_REWRITE`.
+  2. **Deteksi Pola Mesin / AI-Slop Deterministik:**
+     - Mendeteksi generic opening ("Di era modern saat ini...", "Dalam dunia konstruksi...").
+     - Mendeteksi simetri struktur kaku (jumlah butir/paragraf identik antar-subjudul).
+     - Mendeteksi perulangan monoton frasa transisi ("Selain itu", "Di sisi lain", "Dengan demikian").
+     - Mendeteksi generalisasi kosong ("setiap pilihan memiliki kelebihan dan kekurangan").
+     - Mendeteksi hedging berlebihan ("dapat menjadi pilihan", "cenderung").
+     - Mendeteksi kesimpulan artifisial yang hanya merangkum ulang tanpa panduan aksi/keputusan.
+     - Mendeteksi pemaksaan kata kunci SEO (*keyword stuffing*).
+  3. **Kepemilikan Personel Kanonikal & Pembagian Peran:**
+     - Joko (`content_writer_primary`): Memegang `ARTICLE_WRITING` dan `HUMAN_WRITING_AUTHORING` untuk penulisan dan penulisan ulang prosa (*human-first authoring*). Dilarang keras mengarang testimoni atau pengujian fisik palsu.
+     - Rina (`editorial_qa_primary`): Memegang `EDITORIAL_QA`, `HUMAN_WRITING_QA`, dan `EDITORIAL_NATURALNESS_REVIEW`. Mengevaluasi draf dan mengeluarkan *structured rewrite brief*.
+     - Irwan (`evidence_researcher_lead`): Memegang `EVIDENCE_RESEARCH`. Fakta dan standar SNI/ASTM wajib dipertahankan selama penulisan ulang Joko.
+     - Jefry (`management_advisor_jefry`): Tetap berstatus shadow observer dengan nol (0) otoritas eksekusi editorial atau penerbitan.
+  4. **Pencegahan Perulangan Tak Terbatas (Retry Cap & Safety Safeguard):**
+     - Batas penulisan ulang dibatasi maksimal 2 kali percobaan (`maxAttempts = 2`).
+     - Kegagalan berulang setelah batas percobaan secara deterministik dieskalasi ke status `HUMAN_REVIEW_REQUIRED`.
+     - Sistem dilarang menurunkan ambang batas secara otomatis.
+  5. **Integrasi Mission Control, Job Trace & Pixel Office:**
+     - Tipe event Job Trace: `HUMAN_WRITING_QA_STARTED`, `HUMAN_WRITING_REVISE_REQUESTED`, `ARTICLE_REWRITE_STARTED`, `HUMAN_WRITING_QA_PASSED`, `HUMAN_REVIEW_REQUIRED`.
+     - Animasi Pixel Office: Joko otomatis beralih ke animasi `ARTICLE_REWRITE` (`✍️`) pada saat merevisi naskah (`retryCount > 0`).
+     - Endpoint inspeksi read-only terlindungi: `GET /api/admin/mission-control/quality?article_id=:id` dengan proteksi autentikasi admin sesi dan Media Device Firewall.
+  6. **Suite Pengujian Terfokus & Validasi (`scripts/test-editorial-human-quality.js`):**
+     - 20 pengujian terfokus lulus 100% (20/20 PASS).
+     - Seluruh tes regresi SOAK safety, liveops, content persistence, dan quarantine lulus 100%.
+     - `npx tsc --noEmit` lulus bersih 0 kesalahan.
+     - `npm run build` sukses 100%.
+- **Status Akhir:**
+  - `EDITORIAL-HUMAN-QUALITY-1 = COMPLETE`.
+
 ### SOCIAL-S3.6: Meta Live Connection Readiness & Operator Boundary 2026-10-01
 
 - **Tujuan & Ruang Lingkup:**
