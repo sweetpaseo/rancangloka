@@ -47,6 +47,18 @@ export interface HumanWritingDimensions {
   conclusion_originality: number;  // Max 5
 }
 
+export const DEFAULT_HUMAN_QUALITY_RUBRIC: Record<keyof HumanWritingDimensions, number> = {
+  sentence_rhythm: 20,
+  specificity_detail: 15,
+  contextual_relevance: 15,
+  editorial_voice: 15,
+  non_template_structure: 10,
+  evidence_integration: 10,
+  reader_perspective: 10,
+  conclusion_originality: 5
+};
+
+
 export interface EditorialPatternIssue {
   code: string;
   category:
@@ -65,7 +77,10 @@ export interface EditorialPatternIssue {
   occurrences?: string[];
 }
 
+import { RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION } from './editorial-knowledge.ts';
+
 export interface HumanWritingQualityResult {
+  knowledge_version: string;
   total_score: number;
   decision: HumanWritingDecision;
   passed: boolean;
@@ -148,6 +163,18 @@ export const EXCESSIVE_HEDGING_PATTERNS = [
 ];
 
 /**
+ * Prohibited fabricated personal experience phrases (Layer 5: Trust & Integrity).
+ * Strictly bans invented first-person claims ("kami menguji", "berdasarkan pengalaman kami", "kami mengunjungi").
+ */
+export const FABRICATED_EXPERIENCE_PATTERNS = [
+  /kami (?:sudah )?(?:menguji|mencoba|meneliti|mengunjungi|mengamati langsung)/i,
+  /berdasarkan pengalaman kami/i,
+  /klien kami di (?:jakarta|surabaya|bandung)/i,
+  /kami telah membuktikan sendiri/i
+];
+
+
+/**
  * Indonesian tropical climate & local reality vocabulary.
  * Rewards contextual grounding in local weather, moisture, heat, or installation reality.
  */
@@ -203,6 +230,7 @@ export function evaluateHumanWritingQuality(
 
   if (!contentMd || typeof contentMd !== 'string' || !contentMd.trim()) {
     return {
+      knowledge_version: RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
       total_score: 0,
       decision: 'HUMAN_WRITING_REWRITE',
       passed: false,
@@ -434,6 +462,31 @@ export function evaluateHumanWritingQuality(
   }
 
   // --------------------------------------------------------------------------
+  // Fabricated Experience & Unverified Anecdotes (Layer 5 Integrity Violation)
+  // --------------------------------------------------------------------------
+  const fabricatedMatches: string[] = [];
+  for (const pattern of FABRICATED_EXPERIENCE_PATTERNS) {
+    const match = cleanMd.match(pattern);
+    if (match) {
+      fabricatedMatches.push(match[0]);
+    }
+  }
+
+  if (fabricatedMatches.length > 0) {
+    issues.push({
+      code: 'FABRICATED_EXPERIENCE_OR_SLOP',
+      category: 'EMPTY_GENERALIZATION',
+      severity: 'CRITICAL',
+      description: `Ditemukan klaim pengalaman atau pengujian personal fiktif ("${fabricatedMatches.join('", "')}") yang melanggar Layer 5 Trust & Editorial Integrity.`,
+      penalty: 35,
+      occurrences: fabricatedMatches
+    });
+    dimVoice = Math.max(0, dimVoice - 10);
+    dimEvidence = Math.max(0, dimEvidence - 10);
+    dimReader = Math.max(0, dimReader - 10);
+  }
+
+  // --------------------------------------------------------------------------
   // 7. Local Indonesian Context & Climate Reality (Impacts: Contextual Relevance)
   // --------------------------------------------------------------------------
   let localContextMatches = 0;
@@ -626,6 +679,7 @@ export function evaluateHumanWritingQuality(
   }
 
   return {
+    knowledge_version: RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
     total_score: totalScore,
     decision,
     passed,

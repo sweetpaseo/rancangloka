@@ -17,6 +17,54 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1: Master Canonical Editorial Knowledge Foundation 2026-10-04
+
+- **Tujuan & Ruang Lingkup:**
+  - Mendirikan SATU fondasi pengetahuan redaksional kanonikal bersama (*single source of truth*) bagi seluruh agen editorial RancangLoka (Irwan, Joko, Rina, Sari, Jefry).
+  - Menghilangkan friksi dan definisi yang tumpang tindih mengenai standar artikel berkualitas, hierarki bukti, gaya penulisan manusia (*human voice*), alur bimbingan pembaca, formulasi rekomendasi berbasis skenario, dan kalibrasi ketidakpastian.
+  - Memperluas fondasi konseptual dari `EDITORIAL-HUMAN-QUALITY-1` tanpa merusak atau mengubah bobot rubrik 100-poin yang sudah berjalan.
+- **Lima Lapisan Pengetahuan Redaksional (The Five Major Layers):**
+  1. **Layer 1: Human Writing**
+     - Voice DNA: Ahli arsitektur/hunian Indonesia yang berpengalaman, hangat, jujur, tenang, dan berpihak pada kenyamanan dan keselamatan pembaca.
+     - Resonansi Emosional: Berakar dari frustrasi nyata pemilik rumah (panas sore dinding barat, rembesan dak beton, talang meluap, ketidakpresisian tukang). Bebas dari melodrama, urgensi palsu, dan fearmongering.
+     - Soul / Narrative Arc: Alur 4 tahap transformasi psikologis pembaca (RECOGNITION -> UNDERSTANDING -> CLARITY -> CALM CONFIDENCE).
+     - Natural Cadence: Variasi dinamis kalimat pendek dan majemuk beranak, pencegahan struktur simetris kaku, tanpa typo yang disengaja.
+  2. **Layer 2: Language & Cohesion**
+     - Presisi Leksikal: Memilih kata yang paling akurat merepresentasikan konsep fisik.
+     - Konsistensi Istilah Kanonikal: Peta istilah `CANONICAL_TERMINOLOGY_MAP` (`kusen aluminium`, `dak beton`, `rangka baja ringan`, `ventilasi silang`) yang bersifat tetap (*immutable*).
+     - Kohesi Leksikal: Anafora konseptual pengikat paragraf berurutan.
+     - Semantic Bridging: Jembatan semantik kausal, komparatif, kondisional, dan kontekstual. Larangan transisi mekanis klise.
+     - Formula Terjemahan 3-Langkah: Fakta Teknis / Standar -> Penjelasan Analogi Fisik -> Konsekuensi Praktis bagi Penghuni.
+  3. **Layer 3: Expert Consultation**
+     - Perspektif Ahli-ke-Klien: Model dialogis konsultasi arsitektur (Problem -> Context -> Diagnosis -> Options -> Trade-off -> Solution Fit -> Recommendation -> Next Action).
+     - Kualifikasi Konteks Pembaca: Evaluasi tipe proyek, orientasi matahari, paparan angin/tampias, kelembapan iklim, dan ketersediaan tukang lokal.
+     - Pertanyaan Uji Diagnosa: Membimbing pembaca menguji gejala rumahnya sendiri sebelum membeli solusi.
+     - Diagnosa Masalah: Pemisahan tegas antara gejala luar vs akar penyebab fisik (*root cause*).
+     - Penanganan Mitos & Keberatan: Penjelasan tenang berbasis bukti fisik terhadap mitos material (uPVC vs aluminium, waterproofing tebal).
+     - Solution Fit & Trade-Off: Pembongkaran kompromi nyata di setiap rekomendasi tanpa pemenang mutlak universal.
+  4. **Layer 4: Decision Support**
+     - Rekomendasi Berbasis Skenario: Pola percabangan konkret JIKA [Kondisi A] MAKA [Opsi 1], TETAPI JIKA [Kondisi B] MAKA [Opsi 2].
+     - Biaya Keputusan yang Salah: Analisis rasional konsekuensi salah pilih material (biaya pengerjaan ulang, kerusakan sekunder, beban tagihan listrik AC).
+     - Kelayakan Dunia Nyata (*Real-World Feasibility*): Ketersediaan tukang terampil, suku cadang lokal, dan toleransi bidang dinding eksisting.
+     - Five Golden Questions of Decision Confidence: 5 pertanyaan penentu keyakinan pembaca sebelum bertransaksi.
+     - Resolusi Akhir Menuntaskan: Larangan kesimpulan normatif kosong; wajib menyertakan rekomendasi skenario tegas, hal yang harus dicek, dan tindakan berikutnya.
+  5. **Layer 5: Trust & Editorial Integrity**
+     - Hierarki Klaim 5 Kelas: `VERIFIED_FACT`, `TECHNICAL_CONSENSUS`, `USER_EXPERIENCE_SIGNAL`, `EDITORIAL_INFERENCE`, `EDITORIAL_RECOMMENDATION`.
+     - Kalibrasi Ketidakpastian 4 Tingkat: `HIGH_CONFIDENCE`, `MODERATE_INFERENCE`, `CONTEXT_DEPENDENT`, `UNKNOWN_FIELD_VERIFICATION_REQUIRED`.
+     - Larangan Mutlak Klaim Pengujian Palsu (*Zero Fabricated Experience*): Larangan keras frasa "kami sudah menguji", "berdasarkan pengalaman kami", atau wawancara fiktif tanpa bukti primer. Label "Tested by RancangLoka" dilindungi hak verifikasi fisik.
+     - Integritas Komersial & Monetary Silence: Isolasi pengaruh afiliasi/sponsor dan pelarangan tebak-tebakan harga material tanpa riset empiris.
+     - Konsistensi Lintas-Artikel: Penyelarasan logika teknis antar-artikel dengan rujukan tertinggi pada bukti SNI Irwan.
+- **Komponen Rekayasa & Integrasi:**
+  1. `src/lib/article/editorial-knowledge.ts`: Modul pengetahuan redaksional tunggal, master object `CANONICAL_EDITORIAL_KNOWLEDGE_V1`, peta istilah, konstanta hierarki klaim, dan adapter terisolasi per peran (`getIrwanEvidenceKnowledge()`, `getJokoAuthoringKnowledge()`, `getRinaQAKnowledge()`, `getSariPublicationKnowledge()`, `getJefryAdvisoryKnowledge()`).
+  2. `src/lib/article/human-quality.ts`: Penyematan `knowledge_version: "RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1"` pada `HumanWritingQualityResult`, penambahan deteksi pelanggaran Layer 5 `FABRICATED_EXPERIENCE_OR_SLOP` dengan penalti kritis (-35 poin), dan ekspor `DEFAULT_HUMAN_QUALITY_RUBRIC`.
+  3. `docs/RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1.md`: Konstitusi editorial kanonikal lengkap.
+  4. `scripts/test-editorial-knowledge.js`: Suite pengujian kanonikal 16 tes (16/16 PASS).
+  5. `scripts/test-editorial-human-quality.js`: Suite pengujian mutu tulisan 20 tes (20/20 PASS).
+- **Validasi:**
+  - `npx tsc --noEmit` lulus bersih (0 error).
+  - `npm run build` sukses (7.71s).
+  - Seluruh rangkaian tes keselamatan SOAK, live operations, persistensi artikel, dan karantina konten lulus 100%.
+
 ### EDITORIAL-HUMAN-QUALITY-1: Human Writing Quality Gate & Anti-Slop Editorial Rubric 2026-10-04
 
 - **Tujuan & Ruang Lingkup:**
