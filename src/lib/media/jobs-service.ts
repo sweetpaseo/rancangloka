@@ -809,8 +809,8 @@ export async function chooseNextMediaJob(db: any, now: Date = new Date()): Promi
   const candidates = await listSchedulerCandidates(db, now);
   const eligible: MediaJobRecord[] = [];
   for (const job of candidates) {
-    const verdict = await evaluateMediaJobEligibility(db, job, now);
-    if (verdict.eligible) eligible.push(job);
+    const eligibility = await evaluateMediaJobEligibility(db, job, now);
+    if (eligibility.eligible) eligible.push(job);
   }
   if (eligible.length === 0) return null;
 

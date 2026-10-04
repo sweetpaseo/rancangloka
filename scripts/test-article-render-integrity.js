@@ -43,7 +43,7 @@ async function main() {
     'Karakteristik Pemuaian dan Risiko Lapangan',
     'Matriks Komparasi Teknis: Aluminium vs uPVC di Iklim Tropis',
     'Pertimbangan Pemilihan Sistem Berdasarkan Kondisi Ruang',
-    'Verdict RancangLoka',
+    'Rekomendasi RancangLoka',
     'Catatan Telaah Teknis dan Rujukan Standar'
   ];
 

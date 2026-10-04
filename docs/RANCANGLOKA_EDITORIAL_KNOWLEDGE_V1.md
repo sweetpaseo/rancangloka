@@ -81,6 +81,10 @@ Istilah teknis kanonikal bersifat **tetap (*immutable*)** di seluruh artikel. Va
 * `dak beton` — Dilarang diganti menjadi *atap semen datar* atau *dek coran semen*.
 * `rangka baja ringan` — Dilarang diganti menjadi *besi ringan* atau *baja tipis*.
 * `ventilasi silang` — Dilarang diganti menjadi *angin silang* atau *sirkulasi bolak-balik*.
+* `rekomendasi / penilaian` — **LARANGAN MUTLAK KATA 'VERDICT'**: Dilarang keras menggunakan istilah asing elitis *verdict*, *final verdict*, *review verdict*, atau *verdict produk* pada naskah publik RancangLoka. Gunakan padanan bahasa Indonesia wajar sesuai konteks:
+  - Penilaian akhir ulasan produk: **"Penilaian RancangLoka"** atau **"Rekomendasi Akhir"**.
+  - Penutup artikel komparasi / edukasi: **"Kesimpulan & Rekomendasi"**.
+  - Rekomendasi keputusan terarah: **"Rekomendasi"**, **"Pilihan yang Lebih Cocok"**, atau **"Rekomendasi untuk Kondisi Anda"**.
 
 #### 7. Lexical Cohesion (Kohesi Leksikal)
 Antar-kalimat dan antar-paragraf harus saling mengikat melalui referensi anafora yang bermakna. Jika paragraf 1 membahas kelemahan konduktivitas termal logam, paragraf 2 dibuka dengan *"Kelemahan termal tersebut..."*, bukan mengulang subjek dari nol secara terputus.
@@ -161,6 +165,10 @@ Di akhir naskah, pembaca harus mampu menjawab 5 pertanyaan kunci:
 
 #### 20. Conclusive Ending Resolution
 Dilarang menutup artikel dengan kalimat normatif kosong seperti *"Semua pilihan memiliki kelebihan dan kekurangan, pilihlah sesuai selera dan anggaran"*. Kesimpulan harus menuntaskan keputusan dengan rekomendasi tegas, cek verifikasi akhir, dan langkah aksi nyata.
+* **Standar Penamaan Subjudul Penutup:** Dilarang memberi label subjudul asing seperti `Verdict`, `Final Verdict`, atau `Review Verdict`. Gunakan istilah standar:
+  - Ulasan Produk: `Penilaian RancangLoka` atau `Rekomendasi Akhir`.
+  - Komparasi/Panduan Edukasi: `Kesimpulan & Rekomendasi`.
+  - Panduan Konteks: `Rekomendasi untuk Kondisi Anda` atau `Pilihan yang Lebih Cocok`.
 
 ---
 

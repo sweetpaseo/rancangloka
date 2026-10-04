@@ -30,15 +30,37 @@ export function calculateReadingTime(content: string): number {
 }
 
 /**
+ * Normalizes user-facing editorial copy to prevent technical/foreign jargon.
+ * Strictly replaces "verdict" with context-sensitive Indonesian terminology:
+ * - "Verdict RancangLoka" -> "Rekomendasi RancangLoka"
+ * - "Final Verdict" -> "Kesimpulan & Rekomendasi"
+ * - "Verdict Produk" -> "Rekomendasi Produk"
+ * - "Verdict" -> "Penilaian RancangLoka"
+ */
+export function normalizeUserFacingTerminology(htmlOrMd: string): string {
+  if (!htmlOrMd || typeof htmlOrMd !== 'string') return '';
+  return htmlOrMd
+    .replace(/\bVerdict RancangLoka\b/g, 'Rekomendasi RancangLoka')
+    .replace(/\bverdict rancangloka\b/gi, 'Rekomendasi RancangLoka')
+    .replace(/\bFinal Verdict\b/gi, 'Kesimpulan & Rekomendasi')
+    .replace(/\bfinal verdict\b/gi, 'Kesimpulan & Rekomendasi')
+    .replace(/\bVerdict Produk\b/gi, 'Rekomendasi Produk')
+    .replace(/\bverdict produk\b/gi, 'Rekomendasi Produk')
+    .replace(/\bVerdict\b/g, 'Penilaian RancangLoka')
+    .replace(/\bverdict\b/g, 'rekomendasi');
+}
+
+/**
  * Extracts Table of Contents from HTML / Markdown headings
  */
 export function extractTableOfContents(htmlOrMd: string): TableOfContentItem[] {
+  const normalizedInput = normalizeUserFacingTerminology(htmlOrMd);
   const toc: TableOfContentItem[] = [];
   // Regex to match H2 and H3 tags
   const headingRegex = /<h([23])[^>]*id=["']([^"']+)["'][^>]*>(.*?)<\/h\1>|<h([23])[^>]*>(.*?)<\/h\4>/gi;
   let match;
 
-  while ((match = headingRegex.exec(htmlOrMd)) !== null) {
+  while ((match = headingRegex.exec(normalizedInput)) !== null) {
     const level = parseInt(match[1] || match[4], 10);
     const rawText = match[3] || match[5] || '';
     const cleanText = rawText.replace(/<[^>]+>/g, '').trim();
@@ -51,6 +73,7 @@ export function extractTableOfContents(htmlOrMd: string): TableOfContentItem[] {
 
   return toc;
 }
+
 
 /**
  * Adds IDs to H2 and H3 tags in HTML string for smooth anchor jump scrolling
@@ -356,8 +379,8 @@ export function processArticleContent(
   siteSettings: Record<string, string> = {},
   toc: TableOfContentItem[] = []
 ): string {
-  // Step 1: Sanitize raw HTML and inject Heading IDs for smooth TOC scrolling
-  let html = injectHeadingIds(sanitizeArticleHtml(rawHtml));
+  // Step 1: Normalize terminology (ban foreign jargon like verdict) & sanitize raw HTML & inject Heading IDs
+  let html = injectHeadingIds(sanitizeArticleHtml(normalizeUserFacingTerminology(rawHtml)));
 
   // Step 2: Inject Dateline Source Branding
   const siteUrl = siteSettings.site_url || 'https://rancangloka.com';
@@ -369,7 +392,7 @@ export function processArticleContent(
 
   if (isSponsoredOrDisabled) {
     // Return early: Clean text without in-article TOC, BACA JUGA, or auto-keyword links
-    return sanitizeArticleHtml(html);
+    return normalizeUserFacingTerminology(sanitizeArticleHtml(html));
   }
 
   // Step 4: Inject Table of Contents before the FIRST H2 (after opening paragraphs)
@@ -385,7 +408,7 @@ export function processArticleContent(
   // Step 6: Inject Auto-Keyword Contextual Internal Links
   html = injectAutoKeywordLinks(html, article.id, allArticles, 2);
 
-  return sanitizeArticleHtml(html);
+  return normalizeUserFacingTerminology(sanitizeArticleHtml(html));
 }
 
 /**

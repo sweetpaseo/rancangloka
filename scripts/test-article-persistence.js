@@ -331,7 +331,7 @@ async function main() {
     const article5Md = raw.content_md;
 
     // Verify hash of canonical fixture matches exact invariant
-    const CANONICAL_HASH = '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277';
+    const CANONICAL_HASH = '6a634f94ab0a26c889594e71d0fade5886018d963da1cfec602c09e54dec539f';
     const computedHash = await generateContentHash(article5Md);
     assert.strictEqual(computedHash, CANONICAL_HASH, 'Canonical fixture content hash is strictly preserved');
 
@@ -349,7 +349,7 @@ async function main() {
       'Karakteristik Pemuaian dan Risiko Lapangan',
       'Matriks Komparasi Teknis: Aluminium vs uPVC di Iklim Tropis',
       'Pertimbangan Pemilihan Sistem Berdasarkan Kondisi Ruang',
-      'Verdict RancangLoka',
+      'Rekomendasi RancangLoka',
       'Catatan Telaah Teknis dan Rujukan Standar'
     ];
     for (const h of requiredHeadings) {

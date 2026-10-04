@@ -31,11 +31,11 @@ const REQUIRED_HEADINGS = [
   'Karakteristik Pemuaian dan Risiko Lapangan',
   'Matriks Komparasi Teknis: Aluminium vs uPVC di Iklim Tropis',
   'Pertimbangan Pemilihan Sistem Berdasarkan Kondisi Ruang',
-  'Verdict RancangLoka',
+  'Rekomendasi RancangLoka',
   'Catatan Telaah Teknis dan Rujukan Standar'
 ];
 
-const CANONICAL_HASH = '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277';
+const CANONICAL_HASH = '6a634f94ab0a26c889594e71d0fade5886018d963da1cfec602c09e54dec539f';
 const CANONICAL_APPROVAL_ID = 9;
 const CANONICAL_RECEIPT_ID = 'rcpt_bbae85b48e1b2f8d';
 const CANONICAL_PUBLISHED_AT = '2026-09-28T06:10:39.816Z';

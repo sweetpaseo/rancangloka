@@ -307,12 +307,18 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
       forbidden_practices: [
         'Mengganti istilah teknis dengan sinonim yang salah konsep.',
         'Menggunakan kata hiperbola ("luar biasa ajaib", "sempurna tanpa cela").',
-        'Menggunakan frasa generik AI ("hal ini patut diapresiasi", "menjadi bukti nyata").'
+        'Menggunakan frasa generik AI ("hal ini patut diapresiasi", "menjadi bukti nyata").',
+        'Menggunakan istilah asing elitis seperti "verdict" untuk kesimpulan/rekomendasi (gunakan bahasa Indonesia wajar seperti "Penilaian RancangLoka", "Rekomendasi Akhir", atau "Kesimpulan & Rekomendasi").'
       ]
     },
     terminology_consistency: {
       rule: 'Istilah teknis kanonikal wajib konsisten di seluruh naskah. Variasi bahasa dilakukan pada struktur kalimat, bukan dengan mengganti nama konsep.',
       canonical_terms: {
+        penilaian_rekomendasi: {
+          term: 'penilaian / rekomendasi',
+          explanation: 'Rumusan penilaian akhir atau rekomendasi keputusan untuk pembaca.',
+          banned_variants: ['verdict', 'final verdict', 'review verdict', 'verdict produk']
+        },
         kusen_aluminium: {
           term: 'kusen aluminium',
           explanation: 'Rangka jendela/pintu berbahan aluminium ekstrusi.',
@@ -479,7 +485,8 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
       mandatory_elements: [
         'Rekomendasi skenario tegas',
         'Hal spesifik yang harus diverifikasi sebelum transaksi',
-        'Langkah tindakan berikutnya (actionable next step)'
+        'Langkah tindakan berikutnya (actionable next step)',
+        'Larangan mutlak judul "Verdict": gunakan "Penilaian RancangLoka", "Rekomendasi Akhir", atau "Kesimpulan & Rekomendasi" sesuai konteks artikel'
       ]
     }
   },
@@ -664,6 +671,47 @@ export const DECISION_CONFIDENCE_QUESTIONS = [
   'What is my immediate next action?'
 ] as const;
 
+/**
+ * Phase 5: Preparation for RANCANGLOKA_PRODUCT_REVIEW_KNOWLEDGE_V1
+ * Enforces plain, reader-friendly Indonesian decision and review terminology.
+ * Strictly bans "verdict" and technical foreign jargon in user-facing content.
+ */
+export const RANCANGLOKA_PRODUCT_REVIEW_KNOWLEDGE_VERSION = 'RANCANGLOKA_PRODUCT_REVIEW_KNOWLEDGE_V1';
+
+export const CANONICAL_PRODUCT_REVIEW_TERMINOLOGY = {
+  version: RANCANGLOKA_PRODUCT_REVIEW_KNOWLEDGE_VERSION,
+  overall_assessment: {
+    primary: 'Penilaian RancangLoka',
+    alternative: 'Rekomendasi Akhir',
+    comparison_ending: 'Kesimpulan & Rekomendasi'
+  },
+  assessment_headings: {
+    product_review: 'Penilaian RancangLoka',
+    final_recommendation: 'Rekomendasi Akhir',
+    comparison_summary: 'Kesimpulan & Rekomendasi'
+  },
+  decision_sections: {
+    suitable_for: 'Cocok untuk',
+    unsuitable_for: 'Kurang cocok untuk',
+    strengths: 'Kelebihan',
+    limitations: 'Keterbatasan',
+    buying_considerations: 'Pertimbangan sebelum membeli'
+  },
+  decision_recommendations: {
+    general: 'Rekomendasi',
+    more_suitable_choice: 'Pilihan yang Lebih Cocok',
+    context_fit: 'Rekomendasi untuk Kondisi Anda'
+  },
+  banned_terms: [
+    'verdict',
+    'final verdict',
+    'review verdict',
+    'verdict produk',
+    'pros & cons',
+    'pros and cons'
+  ]
+} as const;
+
 export interface CanonicalTermEntry {
   canonical: string;
   explanation: string;
@@ -671,6 +719,21 @@ export interface CanonicalTermEntry {
 }
 
 export const CANONICAL_TERMINOLOGY_MAP: Record<string, CanonicalTermEntry> = {
+  'rekomendasi / penilaian': {
+    canonical: 'rekomendasi / penilaian',
+    explanation: 'Istilah penutup ulasan produk atau komparasi yang dilarang menggunakan kata verdict karena terlalu elitis/asing bagi pembaca.',
+    prohibited_alternations: ['verdict', 'final verdict', 'review verdict', 'verdict produk']
+  },
+  'penilaian rancangloka': {
+    canonical: 'Penilaian RancangLoka',
+    explanation: 'Penilaian akhir redaksional untuk ulasan produk atau tinjauan spesifikasi.',
+    prohibited_alternations: ['verdict', 'product verdict', 'review verdict']
+  },
+  'kesimpulan & rekomendasi': {
+    canonical: 'Kesimpulan & Rekomendasi',
+    explanation: 'Bagian penutup menuntaskan keputusan untuk artikel komparasi atau panduan edukasi.',
+    prohibited_alternations: ['final verdict', 'verdict']
+  },
   'kusen aluminium': {
     canonical: 'kusen aluminium',
     explanation: 'Rangka jendela/pintu berbahan aluminium ekstrusi.',
@@ -693,25 +756,30 @@ export const CANONICAL_TERMINOLOGY_MAP: Record<string, CanonicalTermEntry> = {
   }
 };
 
+
 export function getCanonicalTerm(termOrVariant: string): {
   canonical: string;
   explanation: string;
   is_prohibited_variation: boolean;
 } | null {
   const normalized = termOrVariant.toLowerCase().trim();
-  for (const [canonicalKey, entry] of Object.entries(CANONICAL_TERMINOLOGY_MAP)) {
-    if (normalized === canonicalKey || normalized === entry.canonical.toLowerCase()) {
-      return {
-        canonical: entry.canonical,
-        explanation: entry.explanation,
-        is_prohibited_variation: false
-      };
-    }
+  // Check prohibited variations first
+  for (const entry of Object.values(CANONICAL_TERMINOLOGY_MAP)) {
     if (entry.prohibited_alternations.some(v => v.toLowerCase() === normalized)) {
       return {
         canonical: entry.canonical,
         explanation: entry.explanation,
         is_prohibited_variation: true
+      };
+    }
+  }
+  // Check canonical terms
+  for (const [canonicalKey, entry] of Object.entries(CANONICAL_TERMINOLOGY_MAP)) {
+    if (normalized === canonicalKey.toLowerCase() || normalized === entry.canonical.toLowerCase()) {
+      return {
+        canonical: entry.canonical,
+        explanation: entry.explanation,
+        is_prohibited_variation: false
       };
     }
   }

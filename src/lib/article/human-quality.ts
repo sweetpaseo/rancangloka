@@ -173,6 +173,18 @@ export const FABRICATED_EXPERIENCE_PATTERNS = [
   /kami telah membuktikan sendiri/i
 ];
 
+/**
+ * Prohibited foreign or technical jargon phrases that alienate Indonesian readers.
+ * Specifically strictly bans "verdict" in any user-facing editorial or review copy.
+ */
+export const PROHIBITED_EDITORIAL_JARGON_PATTERNS = [
+  /\bverdict\b/i,
+  /\bfinal verdict\b/i,
+  /\breview verdict\b/i,
+  /\bverdict produk\b/i
+];
+
+
 
 /**
  * Indonesian tropical climate & local reality vocabulary.
@@ -484,6 +496,30 @@ export function evaluateHumanWritingQuality(
     dimVoice = Math.max(0, dimVoice - 10);
     dimEvidence = Math.max(0, dimEvidence - 10);
     dimReader = Math.max(0, dimReader - 10);
+  }
+
+  // --------------------------------------------------------------------------
+  // Prohibited Foreign / Elitist Jargon ("verdict") Check
+  // --------------------------------------------------------------------------
+  const jargonMatches: string[] = [];
+  for (const pattern of PROHIBITED_EDITORIAL_JARGON_PATTERNS) {
+    const match = cleanMd.match(pattern);
+    if (match) {
+      jargonMatches.push(match[0]);
+    }
+  }
+
+  if (jargonMatches.length > 0) {
+    issues.push({
+      code: 'PROHIBITED_JARGON_VERDICT',
+      category: 'EMPTY_GENERALIZATION',
+      severity: 'WARNING',
+      description: `Ditemukan istilah bahasa asing elitis yang dilarang ("${jargonMatches.join('", "')}"). Gunakan bahasa Indonesia wajar seperti "Penilaian RancangLoka", "Rekomendasi Akhir", atau "Kesimpulan & Rekomendasi".`,
+      penalty: 8,
+      occurrences: jargonMatches
+    });
+    dimVoice = Math.max(0, dimVoice - 4);
+    dimReader = Math.max(0, dimReader - 4);
   }
 
   // --------------------------------------------------------------------------
