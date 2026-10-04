@@ -29,7 +29,7 @@ Dokumen ini mencegah Joko, Rina, Irwan, Sari, dan Jefry memiliki definisi yang b
 | :--- | :--- | :--- | :--- |
 | **Irwan** (*Lead Technical Researcher*) | Kebenaran faktual, standar konstruksi (SNI, ASTM, ISO), bukti primer/sekunder, spesifikasi material, kebaruan (*freshness*), kalibrasi ketidakpastian bukti. | Memverifikasi dan menolak klaim teknis yang tidak berdasar. | Dilarang menulis gaya bahasa naskah (*does NOT own article voice*). Tidak memiliki hak publikasi mandiri. |
 | **Joko** (*Writer & Expert Advisor*) | Suara manusia (*Human Voice DNA*), ritme alami (*cadence*), resonansi emosional, perspektif konsultan ahli ke klien, diagnosa masalah, penjelasan trade-off, panduan keputusan pembaca. | Mengarang dan menulis ulang (*rewrite*) naskah artikel publik. | Dilarang mengarang bukti/spesifikasi palsu atau testimoni fiktif ("kami sudah menguji", "berdasarkan pengalaman kami"). Dilarang menerbitkan mandiri. |
-| **Rina** (*Senior Editorial QA*) | Evaluasi kealamian redaksional, QA resonansi emosional, konsistensi terminologi, kohesi leksikal, integritas solusi, penegakan rubric 100-poin dan gerbang penulisan ulang (*rewrite gate*). | Menyetujui (*PASS*), meminta revisi (*REVISE*), atau menolak (*REWRITE*) naskah artikel. | Dilarang menulis ulang naskah secara diam-diam menggantikan peran Joko (*structured feedback only*). Dilarang menyetujui artikel di bawah ambang batas (>=70). |
+| **Rina** (*Senior Editorial QA*) | Evaluasi kealamian redaksional, QA resonansi emosional, konsistensi terminologi, kohesi leksikal, integritas solusi, penegakan rubric 100-poin dan gerbang penulisan ulang (*rewrite gate*). | Menyetujui (*PASS*), meminta revisi (*REVISE*), atau menolak (*REWRITE*) naskah artikel. | Dilarang menulis ulang naskah secara diam-diam menggantikan peran Joko (*structured feedback only*). Dilarang menyetujui artikel di bawah ambang batas (>=85). |
 | **Sari** (*Publication Operations*) | Kesiapan teknis publikasi (*publication readiness*), validasi checklist 13 gerbang (*First Article Gate*), penjadwalan aman. | Menjalankan diseminasi publikasi setelah persetujuan redaksi. | Dilarang menerobos kegagalan bukti, kegagalan uji human writing, atau status *HUMAN_REVIEW_REQUIRED*. Otoritas publikasi = 0 saat saklar darurat aktif. |
 | **Jefry** (*TypeSafe JEV*) | Observasi asinkronik metadata (*shadow advisory only*), telemetri risiko keputusan, analisis sebaran skor mutu. | Memberikan sinyal observabilitas metadata. | **Zero Authority.** Nol otoritas kepenulisan, nol otoritas persetujuan redaksi, nol hak eksekusi, nol wewenang publikasi. |
 
@@ -77,7 +77,10 @@ Gunakan kata yang paling tepat mewakili konsep fisik dan rekayasa. Hindari pengg
 
 #### 6. Terminology Consistency (Konsistensi Istilah Kanonikal)
 Istilah teknis kanonikal bersifat **tetap (*immutable*)** di seluruh artikel. Variasi bahasa dilakukan pada struktur kalimat, bukan dengan mengganti nama konsep.
-* `kusen aluminium` — Dilarang diganti menjadi *frame aluminium*, *bingkai aluminium*, atau *sistem bingkai logam*.
+* **Prinsip Utama Konsistensi Terminologi:**
+  1. **SAME REFERENT → CANONICAL TERM CONSISTENCY:** Jika merujuk pada objek/rakitan yang sama, gunakan satu istilah kanonikal secara konsisten di seluruh naskah. Dilarang mengganti istilah semata-mata demi menghindari pengulangan kata (*anti-synonym-swapping*). Misal: `kusen aluminium` tidak boleh diganti secara semu menjadi `bingkai aluminium` atau `frame aluminium`.
+  2. **DIFFERENT TECHNICAL REFERENT → USE THE PRECISE CORRECT TERM:** Jika merujuk pada komponen teknis yang berbeda secara spesifik, gunakan istilah teknis yang tepat dan presisi. Misal: kata `profil aluminium` sah dan wajib digunakan saat merujuk batang ekstrusi logam mentah sebelum dirakit, berbeda dengan `kusen aluminium` yang merujuk sistem rakitan rangka lengkap yang terpasang pada dinding, atau `daun jendela aluminium` yang merujuk bagian bukaan berengsel. Aturan terminologi tidak boleh mengurangi akurasi teknis rekayasa.
+* `kusen aluminium` — Dilarang diganti menjadi *frame aluminium*, *bingkai aluminium*, atau *sistem bingkai logam* jika merujuk rakitan kusen yang sama.
 * `dak beton` — Dilarang diganti menjadi *atap semen datar* atau *dek coran semen*.
 * `rangka baja ringan` — Dilarang diganti menjadi *besi ringan* atau *baja tipis*.
 * `ventilasi silang` — Dilarang diganti menjadi *angin silang* atau *sirkulasi bolak-balik*.
@@ -86,10 +89,20 @@ Istilah teknis kanonikal bersifat **tetap (*immutable*)** di seluruh artikel. Va
   - Penutup artikel komparasi / edukasi: **"Kesimpulan & Rekomendasi"**.
   - Rekomendasi keputusan terarah: **"Rekomendasi"**, **"Pilihan yang Lebih Cocok"**, atau **"Rekomendasi untuk Kondisi Anda"**.
 
-#### 7. Lexical Cohesion (Kohesi Leksikal)
+#### 7. Reader-Language Accessibility (Aksesibilitas Bahasa Pembaca)
+* **Kaidah Inti:** Ketika ungkapan bahasa Indonesia yang lazim mampu mengomunikasikan konsep yang sama secara akurat dan lugas, utamakan bahasa Indonesia daripada jargon redaksional bahasa Inggris yang tidak perlu (*anti-pretentious editorial English*).
+* **Bukan Larangan Istilah Teknis Sah:** Prinsip ini **tidak melarang** istilah teknis resmi material/rekayasa (seperti *thermal break*, *anodized*, *powder coating*, *uPVC*, dsb.) selama presisi teknis memang memerlukannya.
+* **Area Prioritas Penerapan:**
+  - Subjudul artikel (*Headings / H2 / H3*).
+  - Ringkasan ulasan (*Review summaries*).
+  - Label rekomendasi keputusan (*Recommendation labels*).
+  - Teks tombol ajakan bertindak dan teks pendukung (*CTA & supporting copy*).
+* **Tujuan Akhir:** Kejelasan leksikal bagi pemilik rumah Indonesia, bukan penerjemahan mekanis yang kaku atau dipaksakan.
+
+#### 8. Lexical Cohesion (Kohesi Leksikal)
 Antar-kalimat dan antar-paragraf harus saling mengikat melalui referensi anafora yang bermakna. Jika paragraf 1 membahas kelemahan konduktivitas termal logam, paragraf 2 dibuka dengan *"Kelemahan termal tersebut..."*, bukan mengulang subjek dari nol secara terputus.
 
-#### 8. Semantic Bridging (Jembatan Semantik)
+#### 9. Semantic Bridging (Jembatan Semantik)
 Paragraf baru harus terhubung logis dengan paragraf sebelumnya menggunakan jembatan:
 * **Kausal:** Menyambungkan sebab dan akibat fisik.
 * **Komparatif:** Membandingkan perilaku dua material pada kondisi yang sama.
@@ -97,7 +110,7 @@ Paragraf baru harus terhubung logis dengan paragraf sebelumnya menggunakan jemba
 * **Kontekstual:** Menghubungkan teori material dengan kondisi pengerjaan tukang di lapangan.
 * *Dilarang keras menggunakan transisi generik kaku berulang:* *"Selain itu"*, *"Di sisi lain"*, *"Dengan demikian"*, *"Oleh karena itu"*, *"Pada akhirnya"*, *"Secara keseluruhan"*.
 
-#### 9. Technical-to-Human Translation (Formula Terjemahan 3-Langkah)
+#### 10. Technical-to-Human Translation (Formula Terjemahan 3-Langkah)
 Setiap penjabaran spesifikasi teknis rumit wajib mengikuti pola:
 $$\text{Fakta Teknis / Standar} \longrightarrow \text{Penjelasan Bahasa Manusia (Analogi Fisik)} \longrightarrow \text{Konsekuensi Praktis bagi Penghuni}$$
 
@@ -130,7 +143,7 @@ Jangan terburu-buru meresepkan produk pelapis atau penutup. Bedakan gejala luar 
 
 #### 14. Calibrated Objection Handling (Penanganan Mitos & Prasangka)
 Bahas keberatan dan mitos umum pemilik rumah secara tenang berbasis bukti fisik:
-* *Mitos uPVC:* uPVC tidak selalu lebih unggul daripada aluminium; untuk bentang sangat lebar (>3 meter), kekakuan modulus elastisitas aluminium jauh lebih kokoh terhadap beban angin.
+* *Mitos uPVC:* uPVC tidak selalu lebih unggul daripada aluminium untuk seluruh skenario bukaan. Untuk bukaan bentang lebar, kekakuan struktural dan persyaratan perkuatan profil wajib diverifikasi terhadap spesifikasi teknis serta bukti pengujian sebelum merekomendasikan material (misalnya, pada bentang tertentu kekakuan modulus elastisitas aluminium memberikan ketahanan lendutan beban angin yang lebih teruji) (*ILLUSTRATIVE_EXAMPLE_ONLY: angka batas bentang riil dan spesifikasi perkuatan wajib merujuk pada Evidence Pack Irwan*).
 * *Mitos Waterproofing:* Lapisan semen tebal tanpa aditif elastis justru kaku dan mudah retak akibat muai-susut termal harian di iklim tropis.
 
 #### 15. Solution Fit & Trade-Off Clarity
@@ -198,6 +211,11 @@ Kekuatan bahasa disesuaikan secara presisi dengan kekuatan bukti:
 
 #### 25. Cross-Article Consistency
 Kaidah teknis dan perbandingan material wajib selaras di seluruh artikel RancangLoka. Perbedaan rekomendasi harus bersumber dari perbedaan skenario atau pembaruan standar, bukan karena variasi selera penulis.
+
+#### 26. Technical Evidence Boundary (Pemisahan Pengetahuan Redaksional dari Basis Data Teknis)
+* **Kaidah Batas:** Dokumen *Canonical Editorial Knowledge* mendefinisikan aturan penalaran, kaidah bukti, kepenulisan, konsultasi, keputusan, dan integritas kepercayaan — **BUKAN basis data teknis pengganti**.
+* **Status Nilai Teknis Contoh:** Seluruh nomor standar (SNI, ASTM, ISO), batas bentang, ketebalan profil, nilai insulasi (*U-value*), maupun klaim performa iklim yang muncul dalam contoh-contoh pedoman redaksi ini berstatus **`ILLUSTRATIVE_EXAMPLE_ONLY`**.
+* **Otoritas Data Teknis:** Nilai teknis empiris, spesifikasi material riil, rujukan standar resmi, dan batasan rekayasa lapangan mutlak bersumber dari *Evidence Pack* Irwan (`evidence_researcher_lead`). Dokumen redaksi dilarang secara diam-diam mempromosikan nilai ilustratif menjadi fakta kanonikal terverifikasi.
 
 ---
 

@@ -56,7 +56,18 @@ export interface EditorialLayer2_LanguageCohesion {
   };
   terminology_consistency: {
     rule: string;
+    principles: {
+      same_referent_consistency: { code: string; rule: string };
+      different_technical_referent_precision: { code: string; rule: string };
+    };
     canonical_terms: Record<string, { term: string; explanation: string; banned_variants: string[] }>;
+  };
+  reader_language_accessibility: {
+    principle: string;
+    rule: string;
+    technical_terms_distinction: string;
+    priority_applications: string[];
+    goal: string;
   };
   lexical_cohesion: {
     rule: string;
@@ -172,6 +183,11 @@ export interface EditorialLayer5_TrustAndIntegrity {
   cross_article_consistency: {
     rule: string;
     reconciliation_policy: string;
+  };
+  technical_evidence_boundary: {
+    rule: string;
+    illustrative_marker: string;
+    authoritative_evidence_source: string;
   };
 }
 
@@ -313,6 +329,16 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
     },
     terminology_consistency: {
       rule: 'Istilah teknis kanonikal wajib konsisten di seluruh naskah. Variasi bahasa dilakukan pada struktur kalimat, bukan dengan mengganti nama konsep.',
+      principles: {
+        same_referent_consistency: {
+          code: 'SAME_REFERENT_CANONICAL_CONSISTENCY',
+          rule: 'Satu istilah kanonikal untuk referen yang sama. Dilarang mengganti istilah hanya demi menghindari repetisi gaya (misal: "kusen aluminium" dilarang diganti secara semu menjadi "bingkai aluminium").'
+        },
+        different_technical_referent_precision: {
+          code: 'DIFFERENT_TECHNICAL_REFERENT_PRECISION',
+          rule: 'Jika merujuk pada komponen teknis yang berbeda, gunakan istilah teknis yang tepat secara presisi (misal: "profil aluminium" sah digunakan ketika merujuk batang ekstrusi mentah sebelum perakitan, berbeda dengan "kusen aluminium" yang merujuk sistem rakitan rangka).'
+        }
+      },
       canonical_terms: {
         penilaian_rekomendasi: {
           term: 'penilaian / rekomendasi',
@@ -340,6 +366,18 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
           banned_variants: ['angin silang', 'sirkulasi silang bolak-balik']
         }
       }
+    },
+    reader_language_accessibility: {
+      principle: 'Reader-Language Accessibility',
+      rule: 'Ketika ungkapan bahasa Indonesia yang lazim mampu mengomunikasikan konsep yang sama secara akurat, utamakan bahasa Indonesia daripada jargon redaksional bahasa Inggris yang tidak perlu.',
+      technical_terms_distinction: 'Prinsip ini BUKAN larangan istilah teknis sah (seperti thermal break, anodized, powder coating, uPVC) jika presisi rekayasa memang membutuhkannya.',
+      priority_applications: [
+        'Subjudul artikel (Headings / H2 / H3)',
+        'Ringkasan ulasan (Review summaries)',
+        'Label rekomendasi keputusan (Decision recommendation labels)',
+        'Teks tombol aksi dan copy pendukung (CTA & supporting copy)'
+      ],
+      goal: 'Kejelasan leksikal bagi pemilik rumah Indonesia, bukan penerjemahan kaku yang dipaksakan.'
     },
     lexical_cohesion: {
       rule: 'Antar-kalimat dan antar-paragraf harus saling mengikat melalui referensi leksikal yang bermakna, bukan melompat tanpa keterkaitan gagasan.',
@@ -420,7 +458,7 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
       common_objections_calibrated: {
         upvc_always_better: {
           misconception: 'uPVC selalu lebih unggul daripada aluminium dalam segala situasi.',
-          factual_calibration: 'uPVC memang unggul dalam insulasi termal dan akustik di bukaan standar, namun untuk bentang sangat lebar (> 3 meter) aluminium memiliki modulus elastisitas lebih kaku sehingga tidak melendut terhadap beban angin kencang.'
+          factual_calibration: 'uPVC memang unggul dalam insulasi termal dan akustik di bukaan standar, namun untuk bukaan bentang lebar, kekakuan struktural dan persyaratan perkuatan profil wajib diverifikasi terhadap spesifikasi teknis dan bukti riset sebelum merekomendasikan material (misalnya, pada bentang tertentu kekakuan modulus elastisitas aluminium memberikan ketahanan lendutan angin yang lebih teruji). [ILLUSTRATIVE_EXAMPLE_ONLY: angka batas bentang riil wajib diverifikasi dari Evidence Pack Irwan].'
         },
         thick_waterproofing_enough: {
           misconception: 'Semakin tebal pelapis waterproofing semen, dak semakin anti-bocor.',
@@ -529,7 +567,7 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
       calibration_tiers: [
         {
           tier: 'STRONG_EVIDENCE',
-          acceptable_framing: 'Data uji laboratorium dan SNI 8399:2017 secara tegas menetapkan...',
+          acceptable_framing: 'Data uji laboratorium dan rujukan standar konstruksi resmi (seperti SNI terkait) secara tegas menetapkan... [ILLUSTRATIVE_EXAMPLE_ONLY]',
           unacceptable_framing: 'Mungkin baja ringan cenderung lebih baik menurut standar.'
         },
         {
@@ -580,6 +618,11 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
     cross_article_consistency: {
       rule: 'Kaidah teknis dan perbandingan material wajib konsisten di seluruh artikel RancangLoka. Perbedaan rekomendasi harus berasal dari perbedaan skenario, bukan variasi selera penulis.',
       reconciliation_policy: 'Jika terdapat pertentangan logika rekomendasi antar-artikel, rujukan kembali ke standar SNI dan hierarki bukti tertinggi Irwan.'
+    },
+    technical_evidence_boundary: {
+      rule: 'Canonical Editorial Knowledge mendefinisikan aturan penalaran, kaidah bukti, kepenulisan, konsultasi, keputusan, dan integritas kepercayaan — BUKAN basis data teknis pengganti.',
+      illustrative_marker: 'ILLUSTRATIVE_EXAMPLE_ONLY',
+      authoritative_evidence_source: 'Seluruh angka teknis, spesifikasi material, nilai U-value, batas bentang, ketebalan profil, dan nomor standar wajib bersumber dari Evidence Pack Irwan (evidence_researcher_lead).'
     }
   },
 
@@ -628,7 +671,7 @@ export const UNCERTAINTY_CALIBRATION_TIERS = {
   HIGH_CONFIDENCE: {
     code: 'HIGH_CONFIDENCE',
     tier: 'STRONG_EVIDENCE',
-    acceptable_framing: 'Data uji laboratorium dan SNI 8399:2017 secara tegas menetapkan...',
+    acceptable_framing: 'Data uji laboratorium dan rujukan standar konstruksi resmi (seperti SNI terkait) secara tegas menetapkan... [ILLUSTRATIVE_EXAMPLE_ONLY]',
     unacceptable_framing: 'Mungkin baja ringan cenderung lebih baik menurut standar.'
   },
   MODERATE_INFERENCE: {
@@ -712,10 +755,16 @@ export const CANONICAL_PRODUCT_REVIEW_TERMINOLOGY = {
   ]
 } as const;
 
+export interface DistinctTechnicalReferent {
+  term: string;
+  explanation: string;
+}
+
 export interface CanonicalTermEntry {
   canonical: string;
   explanation: string;
   prohibited_alternations: string[];
+  distinct_technical_referents?: DistinctTechnicalReferent[];
 }
 
 export const CANONICAL_TERMINOLOGY_MAP: Record<string, CanonicalTermEntry> = {
@@ -736,8 +785,18 @@ export const CANONICAL_TERMINOLOGY_MAP: Record<string, CanonicalTermEntry> = {
   },
   'kusen aluminium': {
     canonical: 'kusen aluminium',
-    explanation: 'Rangka jendela/pintu berbahan aluminium ekstrusi.',
-    prohibited_alternations: ['frame aluminium', 'bingkai aluminium', 'sistem bingkai logam']
+    explanation: 'Rangka jendela/pintu berbahan aluminium ekstrusi sebagai kesatuan rakitan bukaan.',
+    prohibited_alternations: ['frame aluminium', 'bingkai aluminium', 'sistem bingkai logam'],
+    distinct_technical_referents: [
+      {
+        term: 'profil aluminium',
+        explanation: 'Batang logam hasil ekstrusi sebelum dirakit menjadi kusen (sah digunakan ketika merujuk komponen spesifik).'
+      },
+      {
+        term: 'daun jendela aluminium',
+        explanation: 'Bagian bukaan bergerak/berengsel yang dipasang pada rangka kusen.'
+      }
+    ]
   },
   'dak beton': {
     canonical: 'dak beton',
@@ -761,6 +820,7 @@ export function getCanonicalTerm(termOrVariant: string): {
   canonical: string;
   explanation: string;
   is_prohibited_variation: boolean;
+  distinct_referent?: DistinctTechnicalReferent;
 } | null {
   const normalized = termOrVariant.toLowerCase().trim();
   // Check prohibited variations first
@@ -771,6 +831,21 @@ export function getCanonicalTerm(termOrVariant: string): {
         explanation: entry.explanation,
         is_prohibited_variation: true
       };
+    }
+  }
+  // Check distinct technical referents (different technical referent -> precise correct term)
+  for (const entry of Object.values(CANONICAL_TERMINOLOGY_MAP)) {
+    if (entry.distinct_technical_referents) {
+      for (const d of entry.distinct_technical_referents) {
+        if (d.term.toLowerCase() === normalized) {
+          return {
+            canonical: d.term,
+            explanation: d.explanation,
+            is_prohibited_variation: false,
+            distinct_referent: d
+          };
+        }
+      }
     }
   }
   // Check canonical terms
@@ -985,7 +1060,7 @@ export function getSariPublicationKnowledge(): SariPublicationKnowledgeView {
     },
     prerequisites: [
       'Irwan technical evidence verification',
-      'Rina editorial quality approval (score >= 70)',
+      'Rina editorial quality approval (score >= 85)',
       'First Article Gate checklist pass',
       'Human operator explicit confirmation'
     ],

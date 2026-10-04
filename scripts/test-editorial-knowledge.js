@@ -223,7 +223,7 @@ test('Sari adapter receives Publication Operations and Invariants with Zero Over
   assert.strictEqual(sari.authority.override_editorial_qa_rejection, false);
   assert.strictEqual(sari.authority.override_evidence_failure, false);
   assert.strictEqual(sari.authority.override_human_review_required, false);
-  assert.ok(sari.prerequisites.includes('Rina editorial quality approval (score >= 70)'));
+  assert.ok(sari.prerequisites.includes('Rina editorial quality approval (score >= 85)'));
 });
 
 test('Jefry adapter is strictly Shadow Advisory with Zero Authority', () => {
@@ -237,7 +237,7 @@ test('Jefry adapter is strictly Shadow Advisory with Zero Authority', () => {
 });
 
 // -----------------------------------------------------------------------------
-// 4. Terminology Helper Function
+// 4. Terminology Helper Function & Same-Referent vs Technical-Referent
 // -----------------------------------------------------------------------------
 test('getCanonicalTerm resolves canonical terms and detects prohibited variations', () => {
   const res1 = getCanonicalTerm('kusen aluminium');
@@ -251,6 +251,45 @@ test('getCanonicalTerm resolves canonical terms and detects prohibited variation
 
   const res3 = getCanonicalTerm('istilah_tidak_dikenal');
   assert.strictEqual(res3, null);
+});
+
+test('getCanonicalTerm allows distinct technical referent (e.g. profil aluminium vs kusen aluminium)', () => {
+  const distinct = getCanonicalTerm('profil aluminium');
+  assert.ok(distinct, 'profil aluminium must be recognized');
+  assert.strictEqual(distinct.canonical, 'profil aluminium');
+  assert.strictEqual(distinct.is_prohibited_variation, false, 'distinct technical referent is NOT prohibited');
+  assert.ok(distinct.distinct_referent);
+  assert.ok(distinct.explanation.includes('Batang logam'));
+
+  const sash = getCanonicalTerm('daun jendela aluminium');
+  assert.ok(sash);
+  assert.strictEqual(sash.canonical, 'daun jendela aluminium');
+  assert.strictEqual(sash.is_prohibited_variation, false);
+});
+
+test('CANONICAL_EDITORIAL_KNOWLEDGE enforces Technical Evidence Boundary and marks illustrative values', () => {
+  const layer5 = CANONICAL_EDITORIAL_KNOWLEDGE.layer5_trust_and_integrity;
+  assert.ok(layer5.technical_evidence_boundary, 'technical_evidence_boundary must be defined');
+  assert.strictEqual(layer5.technical_evidence_boundary.illustrative_marker, 'ILLUSTRATIVE_EXAMPLE_ONLY');
+  assert.ok(layer5.technical_evidence_boundary.authoritative_evidence_source.includes('Irwan'));
+
+  // Ensure illustrative values in Layer 3 objection handling are marked with ILLUSTRATIVE_EXAMPLE_ONLY
+  const upvcObjection = CANONICAL_EDITORIAL_KNOWLEDGE.layer3_expert_consultation.objection_handling.common_objections_calibrated.upvc_always_better;
+  assert.ok(upvcObjection.factual_calibration.includes('ILLUSTRATIVE_EXAMPLE_ONLY'));
+
+  // Ensure confidence calibration framing is marked with ILLUSTRATIVE_EXAMPLE_ONLY
+  const highConf = layer5.confidence_and_uncertainty_calibration.calibration_tiers.find(t => t.tier === 'STRONG_EVIDENCE');
+  assert.ok(highConf.acceptable_framing.includes('ILLUSTRATIVE_EXAMPLE_ONLY'));
+});
+
+test('CANONICAL_EDITORIAL_KNOWLEDGE Layer 2 defines Reader-Language Accessibility and Terminology Principles', () => {
+  const layer2 = CANONICAL_EDITORIAL_KNOWLEDGE.layer2_language_cohesion;
+  assert.ok(layer2.reader_language_accessibility, 'reader_language_accessibility must be defined');
+  assert.strictEqual(layer2.reader_language_accessibility.principle, 'Reader-Language Accessibility');
+  assert.ok(layer2.reader_language_accessibility.rule.includes('bahasa Indonesia'));
+
+  assert.ok(layer2.terminology_consistency.principles.same_referent_consistency);
+  assert.ok(layer2.terminology_consistency.principles.different_technical_referent_precision);
 });
 
 // -----------------------------------------------------------------------------
@@ -284,7 +323,7 @@ test('evaluateHumanWritingQuality stamps knowledge_version RANCANGLOKA_EDITORIAL
 
   const result = evaluateHumanWritingQuality(testArticle.body);
   assert.strictEqual(result.knowledge_version, 'RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1');
-  assert.ok(result.total_score >= 70, `Expected score >= 70, got ${result.total_score}`);
+  assert.ok(result.total_score >= 85, `Expected score >= 85, got ${result.total_score}`);
   assert.strictEqual(result.passed, true);
   assert.strictEqual(result.decision, 'HUMAN_WRITING_PASS');
 });

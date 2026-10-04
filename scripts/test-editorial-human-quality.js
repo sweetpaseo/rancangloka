@@ -28,7 +28,8 @@
 import assert from 'node:assert/strict';
 import {
   evaluateHumanWritingQuality,
-  JOKO_HUMAN_AUTHORING_GUIDELINES
+  JOKO_HUMAN_AUTHORING_GUIDELINES,
+  CANONICAL_HUMAN_QUALITY_THRESHOLDS
 } from '../src/lib/article/human-quality.ts';
 import {
   getRegisteredCapabilities,
@@ -211,6 +212,32 @@ async function main() {
     assert.equal(result.passed, true);
     assert.equal(result.rewrite_brief, null, 'Passing draft should not have a rewrite brief');
     assert.ok(result.strong_areas.length >= 2, 'Should list recognized strong editorial areas');
+  });
+
+  await test('Canonical threshold definition: PASS >= 85, REVISE >= 75, REWRITE < 75', () => {
+    assert.strictEqual(CANONICAL_HUMAN_QUALITY_THRESHOLDS.PASS, 85);
+    assert.strictEqual(CANONICAL_HUMAN_QUALITY_THRESHOLDS.REVISE, 75);
+    assert.strictEqual(CANONICAL_HUMAN_QUALITY_THRESHOLDS.REWRITE, 0);
+  });
+
+  await test('Decision boundary regression: score 84 CANNOT pass, score 85 CAN pass', () => {
+    function simulateDecision(score) {
+      if (score >= CANONICAL_HUMAN_QUALITY_THRESHOLDS.PASS) return { passed: true, decision: 'HUMAN_WRITING_PASS' };
+      if (score >= CANONICAL_HUMAN_QUALITY_THRESHOLDS.REVISE) return { passed: false, decision: 'HUMAN_WRITING_REVISE' };
+      return { passed: false, decision: 'HUMAN_WRITING_REWRITE' };
+    }
+
+    const res84 = simulateDecision(84);
+    assert.strictEqual(res84.passed, false, 'Score 84 must not pass');
+    assert.strictEqual(res84.decision, 'HUMAN_WRITING_REVISE', 'Score 84 must be HUMAN_WRITING_REVISE');
+
+    const res85 = simulateDecision(85);
+    assert.strictEqual(res85.passed, true, 'Score 85 must pass');
+    assert.strictEqual(res85.decision, 'HUMAN_WRITING_PASS', 'Score 85 must be HUMAN_WRITING_PASS');
+
+    const res74 = simulateDecision(74);
+    assert.strictEqual(res74.passed, false);
+    assert.strictEqual(res74.decision, 'HUMAN_WRITING_REWRITE');
   });
 
   console.log('\n--- TEST SECTION 5: Retry Safeguards & Loop Prevention ---');

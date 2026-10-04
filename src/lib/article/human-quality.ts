@@ -229,6 +229,18 @@ export interface EvaluationOptions {
 }
 
 /**
+ * Canonical decision thresholds established in EDITORIAL-HUMAN-QUALITY-1:
+ * - 85–100: HUMAN_WRITING_PASS
+ * - 75–84:  HUMAN_WRITING_REVISE
+ * - 0–74:   HUMAN_WRITING_REWRITE
+ */
+export const CANONICAL_HUMAN_QUALITY_THRESHOLDS = {
+  PASS: 85,
+  REVISE: 75,
+  REWRITE: 0
+} as const;
+
+/**
  * Deterministically evaluates an article's Markdown body against RancangLoka's Human Writing Quality rubric.
  */
 export function evaluateHumanWritingQuality(
@@ -652,10 +664,10 @@ export function evaluateHumanWritingQuality(
   let decision: HumanWritingDecision;
   let passed = false;
 
-  if (totalScore >= 85) {
+  if (totalScore >= CANONICAL_HUMAN_QUALITY_THRESHOLDS.PASS) {
     decision = 'HUMAN_WRITING_PASS';
     passed = true;
-  } else if (totalScore >= 75) {
+  } else if (totalScore >= CANONICAL_HUMAN_QUALITY_THRESHOLDS.REVISE) {
     decision = 'HUMAN_WRITING_REVISE';
     passed = false;
   } else {
