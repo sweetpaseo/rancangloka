@@ -1,0 +1,131 @@
+{
+  "acquisition_status": "SOURCE_ACQUISITION_BLOCKED",
+  "evaluated_at": "2026-10-04T08:52:33.350Z",
+  "total_sources_evaluated": 10,
+  "retrieved_sources_count": 0,
+  "unretrieved_sources_count": 10,
+  "sources_attempted": [
+    {
+      "source_id": "SRC-SNI-6572",
+      "document_title": "SNI 03-6572-2001: Tata Cara Perancangan Sistem Ventilasi dan Pengkondisian Udara pada Bangunan Gedung",
+      "publisher": "Badan Standardisasi Nasional (BSN)",
+      "retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
+      "is_available": false,
+      "why_unavailable": "Dokumen SNI resmi dikelola oleh Badan Standardisasi Nasional (BSN) melalui portal berbayar/terdaftar (akses-bsn.go.id). Teks lengkap tidak di-cache di repositori lokal.",
+      "attempted_method": "INDUSTRY_REFERENCE_CATALOG",
+      "legal_status": "RESTRICTED_PORTAL"
+    },
+    {
+      "source_id": "SRC-ASHRAE-FUND",
+      "document_title": "ASHRAE Handbook of Fundamentals (SI Edition)",
+      "publisher": "ASHRAE",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Buku pegangan teknik ASHRAE adalah publikasi komersial berbayar berhak cipta tinggi ($250+). Sirkumvensi paywall dilarang.",
+      "attempted_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+      "legal_status": "COMMERCIAL_PAYWALL"
+    },
+    {
+      "source_id": "SRC-BRANZ-ROOF",
+      "document_title": "BRANZ Study Report SR156: Thermal Performance of Roof Cavities",
+      "publisher": "BRANZ (Building Research Association of New Zealand)",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Laporan riset BRANZ New Zealand (SR156); metadata bibliografis tercatat namun file PDF dokumen primer belum di-cache secara fisik dalam repositori.",
+      "attempted_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+      "legal_status": "INTERNAL_CACHE_MISSING"
+    },
+    {
+      "source_id": "SRC-ASTM-C1371",
+      "document_title": "ASTM C1371-15: Standard Test Method for Determination of Emittance of Materials Near Room Temperature Using Portable Emissometers",
+      "publisher": "ASTM International",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Standar uji laboratorium ASTM berbayar ($80+). Dokumen primer tidak disimpan di lingkungan lokal untuk menjaga kepatuhan hak cipta.",
+      "attempted_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+      "legal_status": "COMMERCIAL_PAYWALL"
+    },
+    {
+      "source_id": "SRC-ASTM-C1321",
+      "document_title": "ASTM C1321-15: Standard Practice for Installation and Use of Interior Radiation Control Coating Systems (IRCCS) and Radiant Barriers in Building Construction",
+      "publisher": "ASTM International",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Standar praktik ASTM berbayar ($80+). Lokasi pasal spesifik tidak dapat diverifikasi tanpa naskah resmi terinspeksi.",
+      "attempted_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+      "legal_status": "COMMERCIAL_PAYWALL"
+    },
+    {
+      "source_id": "SRC-ASTM-C727",
+      "document_title": "ASTM C727-19: Standard Practice for Installation and Use of Reflective Insulation in Building Applications",
+      "publisher": "ASTM International",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Standar praktik ASTM berbayar ($80+). Tidak tersedia berkas PDF lokal.",
+      "attempted_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+      "legal_status": "COMMERCIAL_PAYWALL"
+    },
+    {
+      "source_id": "SRC-PUPR-LOTENG",
+      "document_title": "Karakteristik Termal Rongga Atap pada Rumah Tinggal Sederhana di Iklim Tropis Basah",
+      "publisher": "Puslitbang Permukiman Kementerian PU & Departemen Arsitektur ITB",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Monograf penelitian Kementerian PU & ITB; terindeks dalam katalog penelitian publik tetapi berkas PDF primer belum diunduh ke cache lokal.",
+      "attempted_method": "PUBLIC_REPOSITORY_INDEX",
+      "legal_status": "INTERNAL_CACHE_MISSING"
+    },
+    {
+      "source_id": "SRC-IRC-R806",
+      "document_title": "International Residential Code (IRC) 2021",
+      "publisher": "International Code Council (ICC)",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Model building code internasional (ICC IRC 2021); rujukan teknik asing dan bukan regulasi wajib Indonesia.",
+      "attempted_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+      "legal_status": "COMMERCIAL_PAYWALL"
+    },
+    {
+      "source_id": "SRC-BRANZ-B519",
+      "document_title": "BRANZ Bulletin 519: Preventing Moisture Problems in Vented Attics",
+      "publisher": "BRANZ",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Buletin teknis BRANZ; metadata tercatat namun dokumen belum di-cache secara lokal.",
+      "attempted_method": "BIBLIOGRAPHIC_METADATA_RECORD",
+      "legal_status": "INTERNAL_CACHE_MISSING"
+    },
+    {
+      "source_id": "SRC-DESAIN-PASIF",
+      "document_title": "Pedoman Teknis Desain Pasif Bangunan Tropis Ramah Lingkungan",
+      "publisher": "Puslitbang Permukiman PU",
+      "retrieval_status": "SOURCE_METADATA_ONLY",
+      "is_available": false,
+      "why_unavailable": "Buku pedoman desain pasif PU; buku fisik kementerian belum di-scan atau di-cache di repositori.",
+      "attempted_method": "PUBLIC_REPOSITORY_INDEX",
+      "legal_status": "INTERNAL_CACHE_MISSING"
+    }
+  ],
+  "claims_affected": [
+    "CLM-001",
+    "CLM-002",
+    "CLM-003",
+    "CLM-004",
+    "CLM-005",
+    "CLM-006",
+    "CLM-007",
+    "CLM-008"
+  ],
+  "safe_qualitative_claims_remaining": [
+    "CLM-001: Prinsip kualitatif dipertahankan; angka persis tidak boleh digunakan.",
+    "CLM-002: Prinsip kualitatif dipertahankan; angka persis tidak boleh digunakan.",
+    "CLM-003: Prinsip kualitatif dipertahankan; angka persis tidak boleh digunakan.",
+    "CLM-004: Prinsip kualitatif dipertahankan; angka persis tidak boleh digunakan.",
+    "CLM-005: Prinsip kualitatif dipertahankan; angka persis tidak boleh digunakan.",
+    "CLM-006: Prinsip kualitatif dipertahankan; angka persis tidak boleh digunakan.",
+    "CLM-007: Prinsip kualitatif dipertahankan; angka persis tidak boleh digunakan.",
+    "CLM-008: Prinsip kualitatif dipertahankan; angka persis tidak boleh digunakan."
+  ],
+  "cache_entries": [],
+  "summary": "Akses dokumen primer tidak tersedia (10 sumber berstatus metadata/unretrieved karena batasan paywall komersial atau ketiadaan cache dokumen lokal). Seluruh klaim (8) dialihkan ke prinsip kualitatif tanpa angka persis."
+}

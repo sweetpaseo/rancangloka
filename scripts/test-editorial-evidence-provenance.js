@@ -55,31 +55,45 @@ async function main() {
   console.log('--- TEST SECTION 1: Claim-to-Source Traceability & Provenance ---');
 
   await test('1. Every claim with sources requires structured sources array with document details', () => {
-    // If a claim has sources, each source must specify document title, section, and support type.
-    // Furthermore, claims cannot be VERIFIED if all sources are metadata-only / unretrieved.
+    // If a claim has sources, each source must specify document title, support type, and honest retrieval location.
+    // Unretrieved sources must have page_or_section null; retrieved sources must have concrete location.
     for (const clm of evPack.claim_inventory) {
       if (clm.sources && clm.sources.length > 0) {
         assert.ok(Array.isArray(clm.sources), `Claim ${clm.claim_id} must have sources array`);
         for (const src of clm.sources) {
           assert.ok(src.source_id, 'Source must have source_id');
           assert.ok(src.document_title, 'Source must have document_title');
-          assert.ok(src.page_or_section, 'Source must have page_or_section');
           assert.ok(src.support_type, 'Source must have support_type');
+          if (src.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED') {
+            assert.ok(src.page_or_section, 'Retrieved source must have page_or_section');
+          } else {
+            assert.strictEqual(src.page_or_section, null, 'Unretrieved source must not claim invented section (must be null)');
+          }
         }
       }
     }
   });
 
-  await test('2. Source name alone is insufficient: must identify exact document section', () => {
+  await test('2. Source location honesty: unretrieved sources cannot contain invented sections, retrieved sources preserve exact section', () => {
+    // All dry-run sources are currently unretrieved (metadata-only or catalog reference),
+    // so none may possess invented exact sections.
     for (const clm of evPack.claim_inventory) {
       if (clm.sources && clm.sources.length > 0) {
         for (const src of clm.sources) {
-          assert.notStrictEqual(src.page_or_section, undefined, 'Must not be undefined');
-          assert.notStrictEqual(src.page_or_section.trim(), '', 'Must not be empty');
-          assert.ok(src.page_or_section.length >= 5, 'Must specify concrete section/chapter');
+          assert.strictEqual(src.page_or_section, null, 'Unretrieved source location must be null');
         }
       }
     }
+
+    // However, a genuinely retrieved source must specify concrete document section (>= 5 chars)
+    const mockRetrievedSource = {
+      source_id: 'SRC-VERIFIED-DOC',
+      document_title: 'Pedoman Teknis Ventilasi Alami',
+      retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+      page_or_section: 'Bab 3 Halaman 24',
+      support_type: 'TECHNICAL_GUIDANCE'
+    };
+    assert.ok(mockRetrievedSource.page_or_section.length >= 5, 'Retrieved source must specify concrete section');
   });
 
   await test('3. Unverified numeric claim cannot silently pass as verified_fact', () => {

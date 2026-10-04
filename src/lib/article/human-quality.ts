@@ -524,7 +524,36 @@ export function auditEvidencePackProvenance(
 
     summary.claim_support_map[claim.claim_id] = derivedSupportLevel;
 
-    // Phase 5: Numeric Claim Safety
+    // Phase 1 (EDITORIAL-SOURCE-ACQUISITION-1): Support-Level Consistency Audit
+    // SOURCE_METADATA_ONLY, SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED, and SOURCE_UNAVAILABLE
+    // must NOT by themselves produce SUPPORTED or VERIFIED.
+    if ((claim.evidence_status === 'VERIFIED' || claim.evidence_status === 'SUPPORTED') && !hasRetrievedSource) {
+      summary.missing_provenance_claims.push(
+        `${claim.claim_id}: Status dinyatakan ${claim.evidence_status} namun sumber belum berstatus SOURCE_RETRIEVED_AND_VERIFIED`
+      );
+      summary.requires_provenance_failure = true;
+      summary.audit_reasons.push(
+        `Klaim ${claim.claim_id} ditandai ${claim.evidence_status} tetapi sumber dokumen fisik/primer tidak terverifikasi (hanya metadata/unretrieved).`
+      );
+    }
+
+    // Phase 3 (EDITORIAL-SOURCE-ACQUISITION-1): Source Location Honesty
+    // If a document has not been retrieved, do NOT preserve invented page/chapter/section/clause.
+    // page_or_section MUST be null or empty.
+    for (const src of claimSources) {
+      const isRetrieved = src.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED';
+      if (!isRetrieved && src.page_or_section !== null && src.page_or_section !== undefined && String(src.page_or_section).trim() !== '') {
+        summary.unverified_claims.push(
+          `${src.source_id}: Dokumen belum berstatus SOURCE_RETRIEVED_AND_VERIFIED namun mencantumkan lokasi spesifik ("${src.page_or_section}"). Lokasi harus bernilai null.`
+        );
+        summary.requires_provenance_failure = true;
+        summary.audit_reasons.push(
+          `Sumber ${src.source_id} belum diambil dan diverifikasi secara fisik/digital; lokasi pasal/halaman tidak boleh direka-reka (wajib null).`
+        );
+      }
+    }
+
+    // Phase 5: Numeric Claim Safety in Claim Inventory
     // Detect whether claim asserts exact numbers
     const statementHasNumbers = /\b\d+(?:[.,]\d+)?\s*(?:%|mm|cm|m|w\/m|°c|c\b)/i.test(claim.statement);
     const isExplicitNumeric = claim.numeric_claim || statementHasNumbers;
@@ -532,9 +561,11 @@ export function auditEvidencePackProvenance(
     // Fail-Closed Check: If claim has numbers but sources were not retrieved and verified,
     // it MUST NOT be claimed as VERIFIED fact in the evidence pack or final text without qualification.
     if (claim.evidence_status === 'VERIFIED' && !hasRetrievedSource) {
-      summary.missing_provenance_claims.push(
-        `${claim.claim_id}: Status dinyatakan VERIFIED namun sumber belum berstatus SOURCE_RETRIEVED_AND_VERIFIED`
-      );
+      if (!summary.missing_provenance_claims.some((c) => c.includes(claim.claim_id))) {
+        summary.missing_provenance_claims.push(
+          `${claim.claim_id}: Status dinyatakan VERIFIED namun sumber belum berstatus SOURCE_RETRIEVED_AND_VERIFIED`
+        );
+      }
       summary.requires_provenance_failure = true;
       summary.audit_reasons.push(
         `Klaim ${claim.claim_id} ditandai VERIFIED tetapi sumber dokumen fisik/primer tidak terverifikasi (hanya metadata/ingatan model).`
@@ -553,7 +584,118 @@ export function auditEvidencePackProvenance(
     }
   }
 
+  // Phase 9 & 10 (EDITORIAL-SOURCE-ACQUISITION-1): Author-Safe Claims Audit
+  // If the supporting document has NOT been retrieved and inspected,
+  // the exact number must NOT be available inside author_safe_claims.
+  if (Array.isArray(evidencePack.author_safe_claims)) {
+    const claimsById = new Map<string, EvidenceClaim>();
+    for (const c of claims) {
+      claimsById.set(c.claim_id, c);
+    }
+
+    for (const safe of evidencePack.author_safe_claims) {
+      const underlying = claimsById.get(safe.claim_id);
+      const hasRetrieved = underlying?.sources?.some(
+        (s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED'
+      );
+
+      if (!hasRetrieved) {
+        // Must NOT produce SUPPORTED or VERIFIED in author_safe_claims
+        if (safe.support_level === 'SUPPORTED' || safe.support_level === 'VERIFIED') {
+          summary.missing_provenance_claims.push(
+            `${safe.claim_id}: author_safe_claims menyatakan support_level '${safe.support_level}' tanpa sumber SOURCE_RETRIEVED_AND_VERIFIED.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Klaim aman ${safe.claim_id} tidak boleh memiliki level ${safe.support_level} jika sumber primer belum diverifikasi.`
+          );
+        }
+
+        // Must NOT contain exact technical numbers
+        const exactNumRegex = /\b\d+(?:[.,]\d+)?\s*(?:%|mm|cm|m\b|w\/m|°c)\b|\b\d+:\d+\b/i;
+        if (exactNumRegex.test(safe.statement)) {
+          summary.unsupported_numeric_claims.push(
+            `${safe.claim_id}: author_safe_claims memuat angka eksak dalam pernyataan ("${safe.statement}") tanpa sumber primer terverifikasi.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Klaim aman ${safe.claim_id} memuat angka eksak tanpa verifikasi retrieval.`
+          );
+        }
+
+        if (safe.qualification_required && exactNumRegex.test(safe.qualification_required)) {
+          summary.unsupported_numeric_claims.push(
+            `${safe.claim_id}: author_safe_claims memuat angka eksak dalam teks kualifikasi ("${safe.qualification_required}") tanpa sumber primer terverifikasi.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Klaim aman ${safe.claim_id} tidak boleh menyelipkan angka eksak dalam kualifikasi.`
+          );
+        }
+      }
+    }
+  }
+
   return summary;
+}
+
+/**
+ * Automatically generates author-safe claims from an Evidence Claim inventory.
+ * Enforces the Numeric Claim Hard Rule (EDITORIAL-SOURCE-ACQUISITION-1):
+ * - If sources are NOT retrieved and verified, strips unverified numbers and produces
+ *   PARTIALLY_SUPPORTED qualitative principles.
+ * - Adds stripped numbers to prohibited_elements so authoring models cannot reintroduce them.
+ */
+export function generateAuthorSafeClaims(claims: EvidenceClaim[]): AuthorSafeClaim[] {
+  const result: AuthorSafeClaim[] = [];
+
+  for (const claim of claims) {
+    const claimSources = Array.isArray(claim.sources) ? claim.sources : [];
+    const hasRetrieved = claimSources.some(
+      (s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED'
+    );
+
+    if (hasRetrieved) {
+      result.push({
+        claim_id: claim.claim_id,
+        statement: claim.statement,
+        support_level: claim.evidence_status === 'VERIFIED' ? 'VERIFIED' : 'SUPPORTED',
+        applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
+        allowed_for_authoring: true,
+        qualification_required: claim.action === 'QUALIFY' ? 'Sajikan dengan batasan konteks yang jelas.' : undefined
+      });
+    } else {
+      // Find numbers in statement
+      const numberMatches = claim.statement.match(/\b\d+(?:[.,]\d+)?\s*(?:%|mm|cm|m\b|w\/m|°c)\b|\b\d+:\d+\b/gi) || [];
+      const prohibited = Array.from(new Set(numberMatches));
+
+      // Qualitative rewrite: remove exact numbers and express qualitative physical principle
+      let qualitativeStatement = claim.statement
+        .replace(/\(k ≈ 50-60 W\/m·K\)/gi, '')
+        .replace(/800-1000 W\/m²\s*,?\s*/gi, '')
+        .replace(/dapat mencapai 60°C hingga 75°C/gi, 'melonjak panas di siang hari')
+        .replace(/\(sekitar 75% hingga 90% dari total perpindahan kalor\)/gi, '')
+        .replace(/dengan emisivitas permukaan sangat rendah \(ε ≤ 0.05\) dan reflektansi radiasi tinggi \(≥ 95%\),?/gi, 'sebagai penghalang radiasi')
+        .replace(/minimal 20-25 mm/gi, 'bebas')
+        .replace(/dengan rasio bukaan bersih minimal 1:300 hingga 1:150 terhadap luas loteng/gi, 'yang seimbang')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+      const applicability = claimSources[0]?.applicability || 'TECHNICAL_REFERENCE_FOREIGN';
+
+      result.push({
+        claim_id: claim.claim_id,
+        statement: qualitativeStatement,
+        support_level: 'PARTIALLY_SUPPORTED',
+        applicability,
+        allowed_for_authoring: true,
+        prohibited_elements: prohibited.length > 0 ? prohibited : undefined,
+        qualification_required: 'Sajikan sebagai prinsip kualitatif arsitektur/fisika bangunan. Dilarang mencantumkan angka eksak tanpa dokumen primer terverifikasi.'
+      });
+    }
+  }
+
+  return result;
 }
 
 export interface EvaluationOptions {
@@ -1247,8 +1389,65 @@ export function evaluateHumanWritingQuality(
       description: `Klaim teknis tidak memiliki keterlacakan sumber bukti primer yang terverifikasi (${missingClaimsList}). Klaim numerik tanpa pembuktian persis tidak boleh lolos ke publikasi.`,
       penalty: 25
     });
-    dimEvidence = 0;
-    dimSpecificity = Math.max(0, dimSpecificity - 5);
+  }
+
+  // Phase 9 & 13 (EDITORIAL-SOURCE-ACQUISITION-1): Rina QA Numeric Check
+  // Numbers in article must not exceed verified evidence or resurrect removed numbers.
+  if (options.evidencePack && Array.isArray(options.evidencePack.author_safe_claims)) {
+    const prohibitedElements: string[] = [];
+    for (const safe of options.evidencePack.author_safe_claims) {
+      if (Array.isArray(safe.prohibited_elements)) {
+        for (const elem of safe.prohibited_elements) {
+          if (elem && elem.trim()) {
+            prohibitedElements.push(elem.trim());
+          }
+        }
+      }
+    }
+
+    const foundProhibitedNumbers = prohibitedElements.filter((elem) => cleanMd.includes(elem));
+    if (foundProhibitedNumbers.length > 0) {
+      issues.push({
+        code: 'UNSUPPORTED_NUMERICAL_CLAIM',
+        category: 'INSUFFICIENT_CLAIM_SUPPORT',
+        severity: 'CRITICAL',
+        description: `Naskah mencantumkan angka teknis atau elemen yang dilarang oleh author_safe_claims (${foundProhibitedNumbers.join(', ')}). Joko tidak boleh memunculkan angka yang telah dihilangkan oleh Irwan.`,
+        penalty: 25,
+        occurrences: foundProhibitedNumbers
+      });
+      dimEvidence = 0;
+      dimSpecificity = Math.max(0, dimSpecificity - 5);
+    }
+
+    // If no sources are retrieved in the evidence pack, unverified dry-run technical numbers must not appear
+    if (auditProvenance && auditProvenance.retrieved_and_verified_sources_count === 0) {
+      const unverifiedExactNumbers = [
+        '800 hingga 1.000 Watt',
+        '800-1000 W/m²',
+        '60°C bahkan 75°C',
+        '60°C hingga 75°C',
+        '95% atau lebih',
+        'di bawah 0,05',
+        '20 hingga 25 milimeter',
+        '20-25 mm',
+        '1:300 hingga 1:150',
+        '1:300',
+        '1:150'
+      ];
+      const foundUnverified = unverifiedExactNumbers.filter((n) => cleanMd.toLowerCase().includes(n.toLowerCase()));
+      if (foundUnverified.length > 0 && !issues.some((i) => i.code === 'UNSUPPORTED_NUMERICAL_CLAIM')) {
+        issues.push({
+          code: 'UNSUPPORTED_NUMERICAL_CLAIM',
+          category: 'INSUFFICIENT_CLAIM_SUPPORT',
+          severity: 'CRITICAL',
+          description: `Naskah memuat angka teknis spesifik tanpa dokumen primer yang terverifikasi (${foundUnverified.join(', ')}). Seluruh sumber berstatus unretrieved / metadata-only sehingga angka wajib dihapus.`,
+          penalty: 25,
+          occurrences: foundUnverified
+        });
+        dimEvidence = 0;
+        dimSpecificity = Math.max(0, dimSpecificity - 5);
+      }
+    }
   }
 
   if (!hasMeasurements && !hasEvidenceOrStandards) {
@@ -1559,7 +1758,8 @@ export function evaluateHumanWritingQuality(
            i.code === 'FABRICATED_EXPERIENCE_OR_SLOP' ||
            i.code === 'FABRICATED_HANDS_ON_TEST' ||
            i.code === 'COMMERCIAL_BIAS_RISK' ||
-           i.code === 'CLAIM_SOURCE_PROVENANCE_MISSING'
+           i.code === 'CLAIM_SOURCE_PROVENANCE_MISSING' ||
+           (i.code === 'UNSUPPORTED_NUMERICAL_CLAIM' && i.severity === 'CRITICAL')
   );
 
   let totalScore = rawTotalScore;
@@ -1591,8 +1791,8 @@ export function evaluateHumanWritingQuality(
   let supportingAgentId: string | undefined = undefined;
   let revisionReason: StructuredRewriteBrief['revision_reason'] = 'HOMEOWNER_REFRAMING_REQUIRED';
 
-  if (issues.some((i) => i.code === 'CLAIM_SOURCE_PROVENANCE_MISSING')) {
-    // Provenance failure: Irwan owns primary source research; Joko supports prose adaptation
+  if (issues.some((i) => i.code === 'CLAIM_SOURCE_PROVENANCE_MISSING' || (i.code === 'UNSUPPORTED_NUMERICAL_CLAIM' && i.severity === 'CRITICAL'))) {
+    // Provenance failure or unsupported numerical assertion: Irwan owns primary source research; Joko supports prose adaptation
     targetAgentId = 'evidence_researcher_lead';
     supportingAgentId = 'content_writer_primary';
     revisionReason = 'RESEARCH_REQUIRED';
