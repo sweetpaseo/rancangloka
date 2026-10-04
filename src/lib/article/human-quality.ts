@@ -70,6 +70,9 @@ export interface EditorialPatternIssue {
     | 'KEYWORD_FORCING'
     | 'PARAGRAPH_UNIFORMITY'
     | 'LACK_OF_LOCAL_CONTEXT'
+    | 'INSUFFICIENT_CLAIM_SUPPORT'
+    | 'FABRICATED_EXPERIENCE'
+    | 'MECHANICAL_AI_STYLE'
     | 'TERMINOLOGY_INCONSISTENCY'
     | 'SPECIFICATION_DUMP'
     | 'COMMERCIAL_BIAS'
@@ -534,12 +537,20 @@ export function evaluateHumanWritingQuality(
 
   if (fabricatedMatches.length > 0) {
     issues.push({
-      code: 'FABRICATED_EXPERIENCE_OR_SLOP',
-      category: 'EMPTY_GENERALIZATION',
+      code: 'FABRICATED_EXPERIENCE',
+      category: 'FABRICATED_EXPERIENCE',
       severity: 'CRITICAL',
       description: `Ditemukan klaim pengalaman atau pengujian personal fiktif ("${fabricatedMatches.join('", "')}") yang melanggar Layer 5 Trust & Editorial Integrity.`,
       penalty: 35,
       occurrences: fabricatedMatches
+    });
+    // Legacy alias for existing tests
+    issues.push({
+      code: 'FABRICATED_EXPERIENCE_OR_SLOP',
+      category: 'FABRICATED_EXPERIENCE',
+      severity: 'CRITICAL',
+      description: `Ditemukan klaim pengalaman fiktif yang melanggar Layer 5 Trust & Editorial Integrity.`,
+      penalty: 0
     });
     dimVoice = Math.max(0, dimVoice - 10);
     dimEvidence = Math.max(0, dimEvidence - 10);
@@ -680,22 +691,45 @@ export function evaluateHumanWritingQuality(
   }
 
   // --------------------------------------------------------------------------
-  // 11. Evidence Integration & Technical Fact Specificity
+  // 11. Evidence Integration & Claim Support (Phase 6 Evidence Blindspot Fix)
   // --------------------------------------------------------------------------
   const hasMeasurements = /\b\d+(?:[.,]\d+)?\s*(?:cm|mm|m2|m²|kg|watt|derajat|persen|%|tahun|bulan|db|dpi|g\/l|wp|kwh)\b/i.test(cleanMd);
-  const hasEvidenceOrStandards = /SNI|ASTM|standar|uji lab|penelitian|spesifikasi|litbang|referensi|\[EVIDENCE:|dokumentasi resmi/i.test(cleanMd);
+  const hasEvidenceOrStandards = /SNI|ASTM|ISO|EN\s*\d+|standar|uji lab|penelitian|spesifikasi|litbang|referensi|\[EVIDENCE:|dokumentasi resmi|manual pemasangan|prinsip fisika|cahaya pantul|efek cerobong|konveksi|radiasi termal|sudut datang matahari|sudut jatuh matahari|cross-ventilation|ventilasi silang|penetrasi panas|hambatan panas|konduktivitas|tekanan angin mikro|cerobong termal|thermal break|anodized|powder coating|ekstrusi|inverter|on-grid|net metering/i.test(cleanMd);
   const hasQualitativeOnlyAdvice = /memilih kayu yang bagus dan kuat|bermutu tinggi|kualitasnya sangat meragukan|jangan memakai kayu sembarangan/i.test(cleanMd);
+
+  // Unsupported Numerical Claims: High numerical density or sensational percentage claim without methodology or standard
+  const sensationalNumberMatch = cleanMd.match(/\b(?:efisiensi|menghemat|hemat|menurunkan panas|reduksi|penurunan)(?:\s+\w+){0,3}\s*(?:hingga|sampai|sebesar)?\s*(?:8[5-9]|9[0-9]|100)\s*%/i);
+  const hasStandardOrLabCitation = /SNI|ASTM|ISO|EN\s*\d+|uji lab|laboratorium|metode uji|terakreditasi/i.test(cleanMd);
+
+  if (sensationalNumberMatch && !hasStandardOrLabCitation) {
+    issues.push({
+      code: 'UNSUPPORTED_NUMERICAL_CLAIM',
+      category: 'INSUFFICIENT_CLAIM_SUPPORT',
+      severity: 'WARNING',
+      description: `Klaim numerik sensasional ("${sensationalNumberMatch[0]}") dicantumkan tanpa penjelasan metodologi, rujukan standar, atau pengujian terakreditasi. Angka tanpa dasar bukti tidak dapat diverifikasi.`,
+      penalty: 15
+    });
+    dimEvidence = Math.max(0, dimEvidence - 10);
+  }
 
   if (!hasMeasurements && !hasEvidenceOrStandards) {
     const penalty = hasQualitativeOnlyAdvice ? 26 : 5;
     issues.push({
-      code: 'WEAK_EVIDENCE_SPECIFICITY',
-      category: 'EMPTY_GENERALIZATION',
+      code: 'INSUFFICIENT_CLAIM_SUPPORT',
+      category: 'INSUFFICIENT_CLAIM_SUPPORT',
       severity: hasQualitativeOnlyAdvice ? 'CRITICAL' : 'WARNING',
       description: hasQualitativeOnlyAdvice
-        ? 'Naskah hanya memberikan nasihat kualitatif umum tanpa satu pun angka teknis terukur atau rujukan standar teknis (melanggar Trust & Evidence Integrity).'
-        : 'Naskah minim angka spesifikasi terukur atau rujukan standar teknis konstruksi.',
+        ? 'Naskah hanya memberikan nasihat kualitatif umum tanpa dasar klaim yang kuat (nihil rujukan standar, prinsip fisika arsitektur, maupun spesifikasi terukur).'
+        : 'Naskah minim dasar klaim teknis terukur atau rujukan standar teknis konstruksi.',
       penalty
+    });
+    // Legacy alias for existing tests
+    issues.push({
+      code: 'WEAK_EVIDENCE_SPECIFICITY',
+      category: 'INSUFFICIENT_CLAIM_SUPPORT',
+      severity: hasQualitativeOnlyAdvice ? 'CRITICAL' : 'WARNING',
+      description: 'Dasar klaim dan spesifisitas bukti teknis belum memadai.',
+      penalty: 0
     });
     dimEvidence = 0;
     if (hasQualitativeOnlyAdvice) {
@@ -704,8 +738,18 @@ export function evaluateHumanWritingQuality(
     } else {
       dimEvidence = Math.max(0, dimEvidence - 5);
     }
-  } else if (hasMeasurements && hasEvidenceOrStandards) {
-    strongAreas.push('Integrasi angka teknis dan rujukan standar terukur terjalin rapi');
+  } else if (hasMeasurements && !hasEvidenceOrStandards) {
+    // Numbers alone do not equal strong evidence: arbitrary dimensions without methodology, standards, or physics
+    issues.push({
+      code: 'INSUFFICIENT_CLAIM_SUPPORT',
+      category: 'INSUFFICIENT_CLAIM_SUPPORT',
+      severity: 'WARNING',
+      description: 'Pencantuman angka atau dimensi fisik tanpa didukung rujukan standar konstruksi, metodologi, maupun prinsip fisika bangunan.',
+      penalty: 10
+    });
+    dimEvidence = Math.max(0, dimEvidence - 6);
+  } else if (hasEvidenceOrStandards && !sensationalNumberMatch) {
+    strongAreas.push('Integrasi dasar klaim teknis, prinsip fisika arsitektur, atau rujukan standar terjalin rapi');
   }
 
   // --------------------------------------------------------------------------
@@ -838,7 +882,8 @@ export function evaluateHumanWritingQuality(
 
   // Hard-Fail Invariant: Critical integrity violations must strictly force REWRITE (capped < 75)
   const hasCriticalIntegrityViolation = issues.some(
-    (i) => i.code === 'FABRICATED_EXPERIENCE_OR_SLOP' ||
+    (i) => i.code === 'FABRICATED_EXPERIENCE' ||
+           i.code === 'FABRICATED_EXPERIENCE_OR_SLOP' ||
            i.code === 'FABRICATED_HANDS_ON_TEST' ||
            i.code === 'COMMERCIAL_BIAS_RISK'
   );
@@ -872,7 +917,7 @@ export function evaluateHumanWritingQuality(
   if (hasCriticalIntegrityViolation) {
     targetAgentId = 'editorial_qa_primary'; // Rina: integrity violation
   } else if (
-    issues.some((i) => i.code === 'WEAK_EVIDENCE_SPECIFICITY' && i.severity === 'CRITICAL') &&
+    issues.some((i) => (i.code === 'INSUFFICIENT_CLAIM_SUPPORT' || i.code === 'WEAK_EVIDENCE_SPECIFICITY') && i.severity === 'CRITICAL') &&
     !issues.some((i) => i.category === 'GENERIC_OPENING' || i.category === 'STRUCTURAL_SYMMETRY' || i.category === 'KEYWORD_FORCING')
   ) {
     targetAgentId = 'evidence_researcher_lead'; // Irwan: purely evidence/source failure without prose defects
@@ -909,6 +954,12 @@ export function evaluateHumanWritingQuality(
         requiredActions.push('Pindahkan tautan pembelian ke akhir naskah dan susun alur penalaran murni berdasar kecocokan pengguna.');
       } else if (issue.category === 'FABRICATED_HANDS_ON') {
         requiredActions.push('Hapus klaim pengujian fisik jika ulasan berstatus analitis tanpa bukti primer.');
+      } else if (issue.category === 'FABRICATED_EXPERIENCE' || issue.code === 'FABRICATED_EXPERIENCE_OR_SLOP') {
+        requiredActions.push('Hapus klaim pengalaman fiktif atau testimoni personal palsu yang melanggar Layer 5 Trust & Editorial Integrity.');
+        failingSections.push('Narasi Pengalaman / Integritas');
+      } else if (issue.category === 'INSUFFICIENT_CLAIM_SUPPORT' || issue.code === 'WEAK_EVIDENCE_SPECIFICITY') {
+        requiredActions.push('Sertakan rujukan standar konstruksi (SNI/ASTM), prinsip fisika hunian, atau metrik spesifikasi terukur untuk mendukung klaim.');
+        failingSections.push('Bukti & Fakta Teknis');
       } else if (issue.category === 'COMPLAINT_OVERGENERALIZATION') {
         requiredActions.push('Pisahkan komplain seorang pembeli dari pola kegagalan berulang yang terverifikasi.');
       } else if (issue.category === 'COMPATIBILITY_GAP') {
