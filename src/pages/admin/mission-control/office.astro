@@ -246,8 +246,15 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             RANCANGLOKA HEADQUARTERS • FLOOR PLAN 1
           </span>
           <span class="text-[10px] font-mono text-slate-400">|</span>
+          <div id="telemetry-status-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-mono font-bold" title="Status sinkronisasi telemetri operasional (MC-LIVEOPS-4)">
+            <span id="telemetry-status-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="telemetry-status-text">LIVE</span>
+            <span id="telemetry-revision-text" class="text-[9px] text-slate-400 font-mono font-normal"></span>
+          </div>
+          <span class="text-[10px] font-mono text-slate-400">|</span>
           <span class="text-[11px] font-mono text-slate-500">Interaksi Klik untuk Inspeksi Ruang & Staf</span>
         </div>
+
         <div class="flex items-center gap-3 text-[10px] font-mono text-slate-500">
           <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Bekerja</span>
           <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Review</span>
@@ -2513,7 +2520,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       const modalStaffLink = document.getElementById('modal-staff-link');
       const modalChatLink = document.getElementById('modal-chat-link');
 
-      let currentOpenAgentId = null;
+      let currentOpenAgentId: string | null = null;
+      let triggerSnapshotRefetch: any = function () {};
+      let checkOperationalEvents: any = function () {};
 
       function closeModal() {
         if (modal) modal.classList.add('hidden');
@@ -2668,15 +2677,8 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             .then(function (res) {
               if (res.status === 200 && res.data && res.data.status === 'success') {
                 closeActionModal();
-                // Refresh canonical office data from server truth
-                fetch('/api/admin/mission-control/office')
-                  .then(function (r) { return r.json(); })
-                  .then(function (freshData) {
-                    officeData = freshData;
-                    if (currentOpenAgentId) {
-                      openStaffInspector(currentOpenAgentId);
-                    }
-                  });
+                triggerSnapshotRefetch('OPERATOR_ACTION_CONFIRMED');
+                checkOperationalEvents();
               } else {
                 const msg = res.data?.message || 'Gagal mengeksekusi tindakan';
                 if (actionModalAlert) {
@@ -3555,47 +3557,167 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         });
       }
 
-      // Safe 30s auto-refresh polling (client-side only, no heavy game loop)
-      let refreshTimeout = setTimeout(function poll() {
-        fetch('/api/admin/mission-control/office')
-          .then(function (res) { return res.json(); })
+      // ========================================================================
+      // CANONICAL ADAPTIVE OPERATIONAL EVENT SUBSCRIBER (MC-LIVEOPS-4)
+      // ========================================================================
+
+      const telemetryDot = document.getElementById('telemetry-status-dot');
+      const telemetryText = document.getElementById('telemetry-status-text');
+      const telemetryRev = document.getElementById('telemetry-revision-text');
+
+      let currentRevision = null;
+      let activePollInterval = 2500; // Rapid cadence on load or after activity
+      const minPollInterval = 2500;
+      const maxPollInterval = 12000; // Backoff cadence during quiet office
+      const backgroundPollInterval = 45000; // Reduced cadence when tab is hidden
+      let isRefetchingSnapshot = false;
+      let pendingSnapshotRefetch = false;
+      let refetchDebounceTimer = null;
+      let subscriberTimeout = null;
+
+      function updateTelemetryBadge(status, revisionTag) {
+        if (!telemetryText || !telemetryDot) return;
+        telemetryText.textContent = status;
+
+        if (status === 'LIVE') {
+          telemetryDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
+          if (telemetryRev && revisionTag) {
+            telemetryRev.textContent = `(${revisionTag.substring(0, 10)})`;
+          }
+        } else if (status === 'SYNCING') {
+          telemetryDot.className = 'w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping';
+        } else if (status === 'STALE') {
+          telemetryDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
+          if (telemetryRev) telemetryRev.textContent = '(stale)';
+        } else if (status === 'OFFLINE') {
+          telemetryDot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+          if (telemetryRev) telemetryRev.textContent = '(auth)';
+        }
+      }
+
+      function triggerSnapshotRefetch(reason) {
+        if (refetchDebounceTimer) clearTimeout(refetchDebounceTimer);
+
+        refetchDebounceTimer = setTimeout(function () {
+          if (isRefetchingSnapshot) {
+            pendingSnapshotRefetch = true;
+            return;
+          }
+
+          isRefetchingSnapshot = true;
+          updateTelemetryBadge('SYNCING', currentRevision);
+
+          fetch('/api/admin/mission-control/office')
+            .then(function (res) {
+              if (!res.ok) throw new Error('Office snapshot status ' + res.status);
+              return res.json();
+            })
+            .then(function (data) {
+              if (data && data.generated_at) {
+                const timeDisplay = document.getElementById('live-time-display');
+                if (timeDisplay) {
+                  timeDisplay.textContent = new Date(data.generated_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
+                }
+              }
+
+              // Reconcile sprite positions for staff journey
+              if (data && Array.isArray(data.sprites)) {
+                data.sprites.forEach(function (newSpr) {
+                  const oldSpr = (officeData.sprites || []).find(function (s) {
+                    return s.agent_id === newSpr.agent_id;
+                  });
+                  if (oldSpr && newSpr.position_key && oldSpr.position_key !== newSpr.position_key) {
+                    startStaffJourney(newSpr.agent_id, oldSpr.position_key, newSpr.position_key, 'TELEMETRY_EVENT_' + (reason || 'UPDATE'));
+                  }
+                });
+              }
+
+              // Reconcile new canonical handoffs
+              if (data && Array.isArray(data.recent_handoffs)) {
+                data.recent_handoffs.forEach(function (h) {
+                  if (consumedHandoffIds.has(h.handoff_id)) return;
+                  markHandoffConsumed(h.handoff_id);
+                  executeCanonicalHandoff(h);
+                });
+              }
+
+              officeData = data;
+
+              // If inspector is open, refresh its operational state
+              if (currentOpenAgentId) {
+                openStaffInspector(currentOpenAgentId);
+              }
+            })
+            .catch(function (err) {
+              console.warn('Snapshot refetch failed', err);
+              updateTelemetryBadge('STALE', currentRevision);
+            })
+            .finally(function () {
+              isRefetchingSnapshot = false;
+              updateTelemetryBadge('LIVE', currentRevision);
+              if (pendingSnapshotRefetch) {
+                pendingSnapshotRefetch = false;
+                triggerSnapshotRefetch('COALESCED_PENDING');
+              }
+            });
+        }, 120); // 120ms coalescing window
+      }
+
+      function checkOperationalEvents() {
+        if (subscriberTimeout) clearTimeout(subscriberTimeout);
+
+        const url = '/api/admin/mission-control/events?since_revision=' + encodeURIComponent(currentRevision || '');
+
+        fetch(url)
+          .then(function (res) {
+            if (res.status === 401) {
+              updateTelemetryBadge('OFFLINE', 'AUTH');
+              throw new Error('UNAUTHORIZED');
+            }
+            if (!res.ok) throw new Error('Event feed status ' + res.status);
+            return res.json();
+          })
           .then(function (data) {
-            if (data && data.generated_at) {
-              const timeDisplay = document.getElementById('live-time-display');
-              if (timeDisplay) {
-                timeDisplay.textContent = new Date(data.generated_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
+            if (data && data.current_revision) {
+              if (data.changed) {
+                // Canonical state change detected!
+                currentRevision = data.current_revision;
+                activePollInterval = minPollInterval; // Rapid mode
+                triggerSnapshotRefetch('EVENT_FEED');
+              } else {
+                // Unchanged: quiet backoff
+                currentRevision = data.current_revision;
+                activePollInterval = Math.min(maxPollInterval, activePollInterval + 1500);
+                updateTelemetryBadge('LIVE', currentRevision);
               }
             }
-            if (data && Array.isArray(data.sprites)) {
-              data.sprites.forEach(function (newSpr) {
-                const oldSpr = (officeData.sprites || []).find(function (s) {
-                  return s.agent_id === newSpr.agent_id;
-                });
-                if (oldSpr && newSpr.position_key && oldSpr.position_key !== newSpr.position_key) {
-                  // Real canonical state transition observed!
-                  startStaffJourney(newSpr.agent_id, oldSpr.position_key, newSpr.position_key, 'TELEMETRY_REFRESH');
-                }
-              });
-            }
-            // Check for new canonical handoffs
-            if (data && Array.isArray(data.recent_handoffs)) {
-              data.recent_handoffs.forEach(function (h) {
-                if (consumedHandoffIds.has(h.handoff_id)) return;
-                markHandoffConsumed(h.handoff_id);
-                executeCanonicalHandoff(h);
-              });
-            }
-            officeData = data;
           })
           .catch(function (err) {
-            console.warn('Auto-refresh poll skipped', err);
+            if (err?.message !== 'UNAUTHORIZED') {
+              updateTelemetryBadge('STALE', currentRevision);
+              activePollInterval = Math.min(maxPollInterval, activePollInterval + 2500);
+            }
           })
           .finally(function () {
-            refreshTimeout = setTimeout(poll, 30000);
+            const isHidden = document.visibilityState === 'hidden';
+            const nextDelay = isHidden ? backgroundPollInterval : activePollInterval;
+            subscriberTimeout = setTimeout(checkOperationalEvents, nextDelay);
           });
-      }, 30000);
+      }
+
+      // Handle Tab Visibility (Slow down in background, rapid on resume)
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+          activePollInterval = minPollInterval;
+          checkOperationalEvents();
+        }
+      });
+
+      // Start initial event subscription check
+      checkOperationalEvents();
     })();
   </script>
+
 
   {isDev && (
     <script is:inline>
