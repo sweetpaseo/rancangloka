@@ -49,11 +49,14 @@ export interface TaskHandoffObservation {
   requires_movement: boolean;
   quality_metadata?: {
     quality_issue?: string;
+    primary_quality_issue?: string;
+    quality_issues?: string[];
     quality_score?: number;
     quality_decision?: string;
     article_intent?: string;
     primary_owner?: string;
     supporting_owner?: string;
+    supporting_owners?: string[];
     revision_reason?: string;
     article_id?: number | string;
     task_id?: string;
@@ -327,12 +330,15 @@ export function deriveCanonicalHandoffsFromPipeline(
         confidence: 'EXACT',
         requires_movement: true,
         quality_metadata: {
-          quality_issue: task.qualityReview.quality_issue,
+          quality_issue: task.qualityReview.primary_quality_issue || task.qualityReview.quality_issue,
+          primary_quality_issue: task.qualityReview.primary_quality_issue || task.qualityReview.quality_issue,
+          quality_issues: task.qualityReview.quality_issues || (task.qualityReview.quality_issue ? [task.qualityReview.quality_issue] : []),
           quality_score: task.qualityReview.quality_score,
           quality_decision: task.qualityReview.quality_decision,
           article_intent: task.qualityReview.article_intent,
           primary_owner: task.qualityReview.primary_owner,
           supporting_owner: task.qualityReview.supporting_owner,
+          supporting_owners: task.qualityReview.supporting_owners || (task.qualityReview.supporting_owner ? [task.qualityReview.supporting_owner] : []),
           revision_reason: task.qualityReview.revision_reason,
           article_id: task.relatedArticleId || undefined,
           task_id: task.taskId,

@@ -89,11 +89,14 @@ export interface TaskCard {
   } | null;
   qualityReview?: {
     quality_issue?: string;
+    primary_quality_issue?: string;
+    quality_issues?: string[];
     quality_score?: number;
     quality_decision?: string;
     article_intent?: string;
     primary_owner?: string;
     supporting_owner?: string;
+    supporting_owners?: string[];
     revision_reason?: string;
     attempt?: number;
     brief?: any;

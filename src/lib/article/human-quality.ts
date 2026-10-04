@@ -140,11 +140,14 @@ export interface HumanWritingQualityResult {
 export interface StructuredRewriteBrief {
   target_agent_id: string; // 'content_writer_primary' | 'evidence_researcher_lead' | 'editorial_qa_primary'
   supporting_agent_id?: string;
+  supporting_agent_ids?: string[];
   reason: 'HUMAN_WRITING_QUALITY';
   revision_reason?: 'RESEARCH_REQUIRED' | 'EDITORIAL_EXPLANATION_REQUIRED' | 'EDITORIAL_INTEGRITY_REVIEW' | 'HOMEOWNER_REFRAMING_REQUIRED';
   quality_decision?: HumanQualityDecision;
   quality_score?: number;
-  quality_issue?: string;
+  quality_issue?: string; // Legacy singular issue code for backward compatibility
+  primary_quality_issue?: string;
+  quality_issues?: string[];
   article_intent?: ArticleIntent;
   article_id?: number | string;
   task_id?: string;
@@ -373,6 +376,8 @@ export interface EvaluationOptions {
   isProductReview?: boolean;
   affiliateCTAPosition?: 'BEFORE_RECOMMENDATION' | 'AFTER_RECOMMENDATION' | 'NONE';
   declaredVariant?: string;
+  hasMissingClaimProvenance?: boolean;
+  missingProvenanceClaims?: string[];
 }
 
 /**
@@ -1017,6 +1022,20 @@ export function evaluateHumanWritingQuality(
     dimEvidence = Math.max(0, dimEvidence - 10);
   }
 
+  // Claim Source Provenance Missing: Unsupported numerical or technical claims lacking exact document provenance
+  if (options.hasMissingClaimProvenance) {
+    const missingClaimsList = options.missingProvenanceClaims?.join(', ') || 'Klaim teknis numerik';
+    issues.push({
+      code: 'CLAIM_SOURCE_PROVENANCE_MISSING',
+      category: 'INSUFFICIENT_CLAIM_SUPPORT',
+      severity: 'CRITICAL',
+      description: `Klaim teknis tidak memiliki keterlacakan sumber bukti primer yang terverifikasi (${missingClaimsList}). Klaim numerik tanpa pembuktian persis tidak boleh lolos ke publikasi.`,
+      penalty: 25
+    });
+    dimEvidence = 0;
+    dimSpecificity = Math.max(0, dimSpecificity - 5);
+  }
+
   if (!hasMeasurements && !hasEvidenceOrStandards) {
     const penalty = hasQualitativeOnlyAdvice ? 26 : 5;
     issues.push({
@@ -1324,7 +1343,8 @@ export function evaluateHumanWritingQuality(
     (i) => i.code === 'FABRICATED_EXPERIENCE' ||
            i.code === 'FABRICATED_EXPERIENCE_OR_SLOP' ||
            i.code === 'FABRICATED_HANDS_ON_TEST' ||
-           i.code === 'COMMERCIAL_BIAS_RISK'
+           i.code === 'COMMERCIAL_BIAS_RISK' ||
+           i.code === 'CLAIM_SOURCE_PROVENANCE_MISSING'
   );
 
   let totalScore = rawTotalScore;
@@ -1356,7 +1376,12 @@ export function evaluateHumanWritingQuality(
   let supportingAgentId: string | undefined = undefined;
   let revisionReason: StructuredRewriteBrief['revision_reason'] = 'HOMEOWNER_REFRAMING_REQUIRED';
 
-  if (hasCriticalIntegrityViolation) {
+  if (issues.some((i) => i.code === 'CLAIM_SOURCE_PROVENANCE_MISSING')) {
+    // Provenance failure: Irwan owns primary source research; Joko supports prose adaptation
+    targetAgentId = 'evidence_researcher_lead';
+    supportingAgentId = 'content_writer_primary';
+    revisionReason = 'RESEARCH_REQUIRED';
+  } else if (hasCriticalIntegrityViolation) {
     // Integrity failure (fabricated experience / commercial bias / fake test)
     targetAgentId = 'editorial_qa_primary'; // Rina
     supportingAgentId = 'content_writer_primary';
@@ -1381,6 +1406,12 @@ export function evaluateHumanWritingQuality(
     // Case B: Evidence exists, but omitted in prose explanation
     targetAgentId = 'content_writer_primary'; // Joko
     revisionReason = 'EDITORIAL_EXPLANATION_REQUIRED';
+  } else if (
+    issues.some((i) => i.code === 'CLAIM_SOURCE_PROVENANCE_MISSING')
+  ) {
+    targetAgentId = 'evidence_researcher_lead'; // Irwan: primary provenance owner
+    supportingAgentId = 'content_writer_primary'; // Joko: secondary prose adaptation owner
+    revisionReason = 'RESEARCH_REQUIRED';
   } else if (
     issues.some((i) => (i.code === 'INSUFFICIENT_CLAIM_SUPPORT' || i.code === 'WEAK_EVIDENCE_SPECIFICITY') && i.severity === 'CRITICAL') &&
     !issues.some((i) => i.category === 'GENERIC_OPENING' || i.category === 'STRUCTURAL_SYMMETRY' || i.category === 'KEYWORD_FORCING')
@@ -1427,6 +1458,9 @@ export function evaluateHumanWritingQuality(
       } else if (issue.category === 'FABRICATED_EXPERIENCE' || issue.code === 'FABRICATED_EXPERIENCE_OR_SLOP') {
         requiredActions.push('Hapus klaim pengalaman fiktif atau testimoni personal palsu yang melanggar Layer 5 Trust & Editorial Integrity.');
         failingSections.push('Narasi Pengalaman / Integritas');
+      } else if (issue.code === 'CLAIM_SOURCE_PROVENANCE_MISSING') {
+        requiredActions.push('Lakukan verifikasi sumber bukti primer (dokumen, bab/pasal, edisi standar) atau kualifikasikan klaim numerik menjadi penjelasan kualitatif tanpa angka fiktif.');
+        failingSections.push('Keterlacakan Sumber Bukti (Provenance)');
       } else if (issue.category === 'INSUFFICIENT_CLAIM_SUPPORT' || issue.code === 'WEAK_EVIDENCE_SPECIFICITY') {
         requiredActions.push('Sertakan rujukan standar konstruksi (SNI/ASTM), prinsip fisika hunian, atau metrik spesifikasi terukur untuk mendukung klaim.');
         failingSections.push('Bukti & Fakta Teknis');
@@ -1456,14 +1490,20 @@ export function evaluateHumanWritingQuality(
       requiredActions.push('Perbaiki kelancaran kalimat dan perdalam detail aplikatif untuk pembaca.');
     }
 
+    const allIssueCodes = Array.from(new Set(issues.map((i) => i.code)));
+    const primaryIssueCode = issues.length > 0 ? issues[0].code : undefined;
+
     rewriteBrief = {
       target_agent_id: targetAgentId,
       supporting_agent_id: supportingAgentId,
+      supporting_agent_ids: supportingAgentId ? [supportingAgentId] : [],
       reason: 'HUMAN_WRITING_QUALITY',
       revision_reason: revisionReason,
       quality_decision: decision,
       quality_score: totalScore,
-      quality_issue: issues.length > 0 ? issues[0].code : undefined,
+      quality_issue: primaryIssueCode, // Backward compatibility
+      primary_quality_issue: primaryIssueCode,
+      quality_issues: allIssueCodes,
       article_intent: articleIntent,
       article_id: options.articleId,
       task_id: options.taskId,

@@ -278,18 +278,21 @@ export async function deriveJobTrace(
           evidence_id: `brief_${matched.taskId}`,
           confidence: 'EXACT',
           details: {
-            quality_issue: qRev.quality_issue,
+            quality_issue: qRev.primary_quality_issue || qRev.quality_issue,
+            primary_quality_issue: qRev.primary_quality_issue || qRev.quality_issue,
+            quality_issues: qRev.quality_issues || (qRev.quality_issue ? [qRev.quality_issue] : []),
             quality_score: qRev.quality_score,
             quality_decision: qRev.quality_decision,
             article_intent: qRev.article_intent,
             primary_owner: qRev.primary_owner,
             supporting_owner: qRev.supporting_owner,
+            supporting_owners: qRev.supporting_owners || (qRev.supporting_owner ? [qRev.supporting_owner] : []),
             revision_reason: qRev.revision_reason,
             article_id: matched.relatedArticleId,
             task_id: matched.taskId,
             attempt: qRev.attempt
           },
-          note: `Rina returned draft to ${targetAgent}: score ${qRev.quality_score ?? 'N/A'} (${qRev.quality_decision ?? 'REVISE'}) - ${qRev.revision_reason ?? 'Revision required'}`
+          note: `Rina returned draft to ${targetAgent}: score ${qRev.quality_score ?? 'N/A'} (${qRev.quality_decision ?? 'REVISE'}) - ${qRev.revision_reason ?? 'Revision required'}${qRev.quality_issues && qRev.quality_issues.length > 1 ? ` [${qRev.quality_issues.length} issues]` : ''}`
         });
       }
     }
@@ -748,6 +751,7 @@ export async function deriveJobTrace(
         evidence_source: h.evidence_source || 'v2_4_task_handoff',
         evidence_id: h.evidence_id || h.handoff_id,
         confidence: h.confidence || 'EXACT',
+        details: h.quality_metadata ? { ...h.quality_metadata } : null,
         note: `Canonical Handoff: ${h.from_agent_id || h.from_department_id} (${h.from_stage}) → ${h.to_agent_id || h.to_department_id} (${h.to_stage})`
       });
     }

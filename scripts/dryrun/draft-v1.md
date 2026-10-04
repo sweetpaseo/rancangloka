@@ -14,7 +14,7 @@ Mengapa atap metal terasa jauh lebih membakar dibanding genteng tanah liat tebal
 
 Dari permukaan atap yang membara ini, panas bergerak menuju ruang hunian melalui tiga jalur yang berbeda:
 
-1. **Radiasi Gelombang Panjang:** Permukaan bawah seng atau galvalum memancarkan kembali panas ke arah bawah dalam bentuk gelombang radiasi inframerah. Radiasi inilah yang menyumbang 75% hingga 90% transfer panas pertama yang langsung memanaskan udara loteng dan permukaan atas plafon.
+1. **Radiasi Gelombang Panjang:** Permukaan bawah seng atau galvalum memancarkan kembali panas ke arah bawah dalam bentuk gelombang radiasi inframerah. Radiasi inilah yang menjadi jalur transfer panas paling dominan yang langsung memanaskan udara loteng dan permukaan atas plafon.
 2. **Konveksi Udara di Loteng:** Udara yang bersentuhan langsung dengan lembaran atap yang panas akan memuai dan menjadi sangat panas. Di dalam ruang loteng yang tertutup rapat, kantong udara panas ini terperangkap tanpa jalan keluar.
 3. **Konduksi Menembus Plafon:** Akumulasi udara panas dan radiasi yang menghantam plafon gypsum atau GRC perlahan merambat menembus material plafon, hingga akhirnya sisi bawah plafon ikut memancarkan hawa panas langsung ke kamar tidur atau ruang keluarga di bawahnya.
 
