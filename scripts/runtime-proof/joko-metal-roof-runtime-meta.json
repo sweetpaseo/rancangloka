@@ -1,0 +1,242 @@
+{
+  "jobId": "job_task_runtime_proof_metal_roof_001",
+  "taskId": "task_runtime_proof_metal_roof_001",
+  "status": "COMPLETED",
+  "finalDecision": "HUMAN_WRITING_PASS",
+  "publicationStatus": "DRAFT",
+  "humanStopGateStatus": "HUMAN_REVIEW_REQUIRED",
+  "finalDraft": "# Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?\n\nSatu tukang menyarankan pemasangan aluminium foil di bawah atap metal. Tukang lain mengatakan masalahnya tidak akan selesai tanpa ventilasi atap atau ventilasi loteng. Keduanya terdengar masuk akal: foil dianggap memantulkan panas, sementara ventilasi membuang udara panas yang terperangkap. Namun, pemilik rumah akhirnya tetap bingung—mana yang harus didahulukan, dan apakah kedua sistem itu sebenarnya saling menggantikan?\n\nKuncinya ada pada jalur perpindahan panas. Atap metal tidak hanya memanaskan ruang melalui udara panas. Lembaran metal yang terkena matahari juga memancarkan radiasi inframerah ke bagian bawah atap, lalu panas tersebut diteruskan melalui rongga loteng dan plafon. Karena itu, foil dan ventilasi atap bekerja pada bagian masalah yang berbeda.\n\n## Mengapa Atap Metal Cepat Terasa Panas?\n\nAtap zincalume, galvalum, atau spandek memiliki massa termal sangat rendah dan konduktivitas tinggi. Di bawah radiasi matahari tropis, suhu permukaan lembaran metal dapat melonjak pada siang hari.\n\nLembaran yang tipis dan ringan tidak menyimpan panas seperti material bermassa besar. Namun, justru karena sifat tersebut, perubahan panas pada permukaan metal berlangsung cepat. Panas kemudian masuk ke sistem atap melalui tiga jalur utama:\n\n1. **Radiasi inframerah gelombang panjang** dari sisi bawah lembaran atap.\n2. **Konveksi udara panas** di dalam rongga loteng.\n3. **Konduksi melalui plafon** dan material bangunan di bawahnya.\n\nKetiga jalur ini saling berkaitan, tetapi tidak bisa ditangani dengan satu solusi yang sama.\n\n## Diagnosis Tiga Jalur Perpindahan Panas\n\n### 1. Radiasi dari sisi bawah atap metal\n\nSetelah permukaan metal menerima panas matahari, sisi bawah lembaran akan memancarkan radiasi inframerah gelombang panjang ke benda-benda yang berhadapan dengannya. Benda tersebut dapat berupa foil, rangka, insulasi, atau permukaan plafon.\n\nPada kondisi ini, udara di antara atap dan plafon bukan satu-satunya media perpindahan panas. Radiasi dapat melintasi rongga udara tanpa harus menunggu udara menjadi panas terlebih dahulu.\n\nInilah alasan atap metal tetap dapat membuat ruang di bawahnya terasa menyengat meskipun terdapat celah udara. Celah tersebut mungkin membantu mengurangi sebagian perpindahan panas melalui konveksi, tetapi tidak otomatis menghentikan radiasi dari lembaran atap.\n\n### 2. Konveksi di dalam rongga loteng\n\nUdara di rongga atap akan memanas ketika menerima panas dari permukaan metal dan material di sekitarnya. Udara panas kemudian bergerak naik dan berkumpul di bagian tertinggi rongga.\n\nJika rongga atap tertutup rapat, udara panas tidak memiliki jalur pembuangan yang memadai. Temperatur di dalam rongga dapat terus meningkat secara bertahap akibat akumulasi panas melalui konveksi dan konduksi.\n\nPada tahap ini, ventilasi atap menjadi penting. Ventilasi tidak terutama berfungsi memantulkan radiasi, melainkan membantu mengeluarkan udara panas yang telah terkumpul.\n\n### 3. Konduksi melalui plafon\n\nPanas dari rongga loteng dapat diteruskan ke material plafon melalui kontak langsung dan perpindahan panas pada elemen bangunan. Setelah plafon ikut memanas, permukaannya dapat memancarkan panas sekunder ke ruang tidur atau ruang keluarga, bahkan ketika matahari sudah tidak langsung mengenai atap.\n\nItulah sebabnya kamar di bawah atap sering tetap terasa gerah hingga sore atau malam hari. Sumber panasnya bukan lagi hanya lembaran metal, melainkan juga rongga loteng dan plafon yang sudah menyimpan panas.\n\n## Cara Kerja Aluminium Foil sebagai Penghalang Radiasi\n\nAluminium foil reflektif bekerja sebagai **radiant barrier**, yaitu penghalang radiasi panas. Permukaannya yang reflektif dapat membantu mengurangi radiasi inframerah yang diterima oleh plafon atau ruang di bawahnya.\n\nNamun, aluminium foil bukan insulasi massa atau **bulk insulation**. Tanpa rongga udara, hambatan termal konduktifnya hampir nol. Foil yang ditempel rapat pada lembaran metal atau plafon tidak otomatis menjadi lapisan insulasi tebal.\n\n### Syarat utama: harus berhadapan dengan air gap\n\nFoil bekerja efektif apabila permukaannya berhadapan langsung dengan rongga udara bebas atau **air gap**. Rongga tersebut memberi jarak agar foil dapat memantulkan radiasi sebelum panas diteruskan ke lapisan berikutnya.\n\nPemasangan foil yang terjepit rapat di antara dua material tidak memberikan kondisi kerja yang sama. Dalam situasi tersebut, foil kehilangan fungsi reflektifnya sebagai penghalang radiasi dan tidak bisa menggantikan insulasi massa.\n\nHal yang perlu diperiksa saat pemasangan antara lain:\n\n- Apakah permukaan reflektif foil menghadap rongga udara?\n- Apakah foil tidak menempel penuh pada lembaran atap atau plafon?\n- Apakah tersedia kawat atau penopang agar foil tidak mengempis?\n- Apakah sambungan foil cukup rapi sehingga tidak banyak bagian yang terbuka?\n- Apakah terdapat jalur air atau titik yang berpotensi menahan kelembapan?\n\nFoil dapat membantu mengurangi panas radiasi, tetapi tidak membuang udara panas yang sudah terakumulasi di dalam loteng.\n\n## Kapan Ventilasi Atap Perlu Ditambahkan?\n\nVentilasi atap diperlukan ketika rongga di bawah atap mengalami penumpukan udara panas. Sistem ini bekerja dengan memanfaatkan **stack effect**, yaitu kecenderungan udara panas bergerak ke atas, serta tekanan angin.\n\nAgar bekerja, ventilasi perlu memiliki dua sisi:\n\n- **Bukaan masuk**, biasanya di area soffit atau teritisan.\n- **Bukaan keluar**, biasanya di area bubungan atau gevel.\n\nKeduanya perlu seimbang. Bukaan keluar tanpa bukaan masuk membuat pasokan udara pengganti terbatas. Sebaliknya, bukaan masuk tanpa jalur keluar membuat udara panas tetap berkumpul di bagian atas.\n\nVentilasi juga tidak sama dengan membuat lubang sebanyak-banyaknya pada atap. Jalur udara perlu dirancang agar udara dapat bergerak dari sisi bawah menuju titik atas, bukan hanya masuk secara acak dan berhenti di dalam rongga.\n\n## Foil atau Ventilasi: Mana yang Didahulukan?\n\nJawabannya bergantung pada jalur panas yang paling dominan dan bentuk atap rumah.\n\n### Jika atap metal berhadapan langsung dengan ruang tanpa plafon\n\nPada atap metal ekspos tanpa plafon, radiasi inframerah langsung mengenai penghuni. Dalam kondisi ini, pemasangan foil dengan kawat penopang dapat memberikan dampak kenyamanan paling cepat karena memutus sebagian paparan radiasi langsung.\n\nNamun, ruang tersebut tetap memerlukan ventilasi silang di bawah atap. Foil tidak mengeluarkan udara panas dari ruang. Jika udara panas terjebak, ruangan tetap dapat terasa pengap meskipun radiasi yang diterima tubuh sudah berkurang.\n\n### Jika terdapat plafon dan loteng tertutup\n\nPada loteng tertutup, foil dapat membantu mengurangi radiasi dari sisi bawah metal ke plafon. Tetapi jika udara panas terus berkumpul di dalam loteng, foil saja tidak menyelesaikan seluruh masalah.\n\nDalam kondisi ini, ventilasi atap perlu dipertimbangkan bersama foil. Bukaan masuk di area teritisan dan bukaan keluar di bubungan atau gevel membantu membuang udara panas yang terkumpul.\n\n### Jika kamar menggunakan pendingin udara\n\nPada kamar ber-AC, panas dari plafon membuat pendingin udara harus bekerja menghadapi beban panas yang lebih besar. Foil dapat membantu mengurangi radiasi menuju plafon, sedangkan ventilasi atap membantu membuang udara panas dari rongga di atas plafon.\n\nSusunan yang masuk akal adalah:\n\n1. Pastikan plafon menutup ruang dengan baik.\n2. Beri foil air gap di sisi yang menghadap rongga.\n3. Sediakan jalur ventilasi dari teritisan menuju bubungan atau gevel.\n4. Hindari celah besar pada plafon yang memungkinkan udara ber-AC terlepas ke loteng.\n5. Periksa apakah ada kelembapan atau kebocoran sebelum menutup rongga dengan lapisan tambahan.\n\nVentilasi atap seharusnya membuang udara panas di rongga, bukan menarik udara dingin dari kamar.\n\n## Kompromi dan Risiko di Lapangan\n\n### Tampias hujan\n\nBukaan ventilasi di teritisan, bubungan, atau gevel dapat menjadi jalur masuk tampias saat hujan lebat, terutama jika arah angin mendorong air ke dalam rongga.\n\nKarena itu, ventilasi perlu dilengkapi perlindungan terhadap tampias. Bentuk dan posisi kisi harus memungkinkan udara bergerak, tetapi tidak membuka jalur langsung bagi air hujan menuju plafon atau rangka.\n\n### Debu dan kotoran\n\nDebu dapat menumpuk di atas permukaan foil. Seiring waktu, lapisan kotoran tersebut dapat meningkatkan emisivitas permukaan dan mengurangi daya pantul radiasi foil.\n\nFoil yang terlihat mengilap saat baru dipasang belum tentu mempertahankan kondisi yang sama setelah lama berada di rongga berdebu. Rancangan perlu mempertimbangkan kemungkinan pemeriksaan dan pembersihan.\n\n### Serangga dan tikus\n\nBukaan ventilasi menjadi jalur potensial bagi serangga, burung kecil, atau tikus. Kisi penahan dan kawat anti-serangga perlu dipasang tanpa menutup aliran udara secara berlebihan.\n\nKisi yang terlalu rapat atau tersumbat debu dapat mengurangi fungsi ventilasi. Pemeriksaan berkala tetap diperlukan, terutama pada area teritisan yang mudah menangkap debu dan sarang.\n\n### Kondensasi dan risiko karat\n\nPerubahan temperatur antara permukaan metal, udara lembap, foil, dan material di bawahnya dapat menciptakan kondisi yang mendukung kondensasi. Jika kelembapan tertahan di sekitar sambungan, sekrup, rangka, atau permukaan metal, risiko korosi perlu diperhatikan.\n\nPemasangan foil tidak boleh menghalangi jalur pembuangan air atau menutup area yang seharusnya dapat mengering. Periksa juga apakah terdapat kebocoran kecil, jejak air, atau bagian metal yang mulai berubah warna sebelum memasang lapisan baru.\n\n## Panduan Keputusan Berdasarkan Kondisi Atap\n\n### Skenario 1: Atap metal tanpa plafon\n\nPrioritasnya adalah mengurangi radiasi langsung dan menyediakan pergerakan udara di ruang hunian.\n\nPertimbangkan:\n\n- Foil reflektif yang dipasang dengan air gap.\n- Kawat atau penopang agar foil tidak menempel pada atap.\n- Ventilasi silang di bawah atap.\n- Perlindungan terhadap debu, serangga, dan tampias jika menggunakan bukaan tambahan.\n\nFoil lebih berpengaruh terhadap radiasi yang langsung mengenai penghuni, sedangkan ventilasi silang membantu mengeluarkan udara panas dari ruang.\n\n### Skenario 2: Atap memiliki plafon, tetapi loteng tertutup\n\nPrioritasnya adalah mengendalikan panas radiasi dan membuang udara panas dari rongga.\n\nPertimbangkan kombinasi:\n\n- Foil yang benar-benar menghadap air gap.\n- Bukaan masuk di soffit atau teritisan.\n- Bukaan keluar di bubungan atau gevel.\n- Kisi penahan tampias dan kawat anti-serangga.\n- Pemeriksaan kelembapan serta kondisi rangka dan sekrup.\n\nMemasang foil tanpa menyediakan jalur keluar udara dapat membuat loteng tetap panas. Sebaliknya, membuat ventilasi tanpa mengurangi radiasi dapat meninggalkan sebagian sumber panas utama.\n\n### Skenario 3: Kamar ber-AC di bawah atap metal\n\nPrioritasnya adalah mengurangi panas yang diterima plafon dan mencegah udara dingin bocor ke loteng.\n\nPeriksa:\n\n- Apakah plafon tertutup rapat pada sambungan dan titik penetrasi?\n- Apakah foil memiliki air gap?\n- Apakah loteng memiliki jalur udara masuk dan keluar?\n- Apakah terdapat kebocoran atau kelembapan?\n- Apakah panas tetap terasa dari permukaan plafon meskipun AC bekerja?\n\nUntuk kamar ber-AC, kombinasi penghalang radiasi dan ventilasi loteng biasanya lebih logis daripada mengandalkan salah satunya saja, selama ventilasi tidak membuka kebocoran udara dari ruang ber-AC.\n\n## Daftar Pemeriksaan Sebelum Mengeluarkan Biaya\n\nLakukan pemeriksaan fisik berikut pada siang hari, dengan tetap memperhatikan keselamatan saat masuk ke area atap atau loteng.\n\n### Periksa bentuk dan susunan atap\n\n- Apakah atap metal langsung menjadi batas ruang, atau masih ada plafon?\n- Apakah terdapat loteng di antara atap dan plafon?\n- Apakah loteng tertutup seluruhnya?\n- Apakah bagian bubungan, gevel, dan teritisan memiliki kisi atau celah ventilasi?\n\n### Periksa sumber panas yang paling terasa\n\n- Apakah panas terasa langsung dari permukaan atap di atas kepala?\n- Apakah plafon tetap hangat hingga sore atau malam?\n- Apakah ruang terasa panas dan pengap, atau hanya menerima radiasi menyengat?\n- Apakah udara panas berkumpul di bagian atas loteng?\n\nJawaban ini membantu membedakan masalah radiasi dari masalah akumulasi udara panas.\n\n### Periksa kondisi foil jika sudah terpasang\n\n- Apakah foil menempel rapat pada atap atau plafon?\n- Apakah terdapat air gap yang jelas?\n- Apakah foil mengempis karena tidak memiliki penopang?\n- Apakah permukaannya tertutup debu atau kotoran?\n- Apakah ada bagian yang robek, terbuka, atau tertahan air?\n\n### Periksa jalur ventilasi\n\n- Apakah ada bukaan masuk di sisi bawah atap?\n- Apakah ada bukaan keluar di titik yang lebih tinggi?\n- Apakah kedua jalur tersebut saling terhubung melalui rongga?\n- Apakah kisi tertutup debu atau sarang?\n- Apakah terdapat tanda tampias setelah hujan?\n\n### Periksa risiko kelembapan\n\n- Cari noda air pada plafon dan rangka.\n- Periksa sekrup atau sambungan yang berubah warna.\n- Perhatikan bau lembap di loteng.\n- Pastikan foil tidak membentuk kantong yang menahan air.\n- Jangan menutup kebocoran dengan foil sebelum sumber airnya ditemukan.\n\n## Panduan Keputusan\n\nAluminium foil dan ventilasi atap bukan dua solusi yang sepenuhnya saling menggantikan.\n\n- **Foil** bekerja terutama untuk mengurangi perpindahan panas melalui radiasi, dengan syarat memiliki air gap.\n- **Ventilasi atap** bekerja terutama untuk membuang udara panas yang menumpuk di rongga.\n- **Plafon** dapat tetap menerima panas jika loteng tertutup tanpa ventilasi.\n- **Ruang tanpa plafon** membutuhkan perhatian pada radiasi langsung sekaligus pergerakan udara di ruang hunian.\n\nJika atap metal terasa panas karena radiasi langsung, foil dengan pemasangan yang benar dapat menjadi langkah penting. Jika panas bertahan di loteng dan plafon tetap hangat hingga malam, ventilasi perlu ditambahkan. Untuk loteng tertutup di bawah kamar ber-AC, kombinasi keduanya lebih masuk akal—dengan syarat terdapat air gap, jalur ventilasi seimbang, perlindungan tampias, serta pemeriksaan terhadap debu, serangga, kelembapan, dan karat.",
+  "totalAttempts": 1,
+  "authorProvenance": {
+    "staff_id": "content_writer_primary",
+    "staff_name": "Joko",
+    "execution_type": "REAL_RUNTIME_EXECUTION",
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "generated_at": "2026-10-04T14:17:00.093Z",
+    "job_id": "task_runtime_proof_metal_roof_001",
+    "attempt_count": 1
+  },
+  "qaResult": {
+    "knowledge_version": "RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1",
+    "total_score": 90,
+    "decision": "HUMAN_WRITING_PASS",
+    "passed": true,
+    "dimensions": {
+      "sentence_rhythm": 20,
+      "specificity_detail": 15,
+      "contextual_relevance": 15,
+      "editorial_voice": 15,
+      "non_template_structure": 10,
+      "evidence_integration": 10,
+      "reader_perspective": 4,
+      "conclusion_originality": 1
+    },
+    "issues": [
+      {
+        "code": "NEXT_ACTION_MISSING",
+        "category": "DECISION_SUPPORT_GAP",
+        "severity": "WARNING",
+        "description": "Bagian penutup artikel tidak memberikan panduan langkah konkret berikutnya (hal yang harus diinspeksi, diukur, diverifikasi, atau ditanyakan ke tukang/aplikator).",
+        "penalty": 10
+      }
+    ],
+    "strong_areas": [
+      "Pembuka langsung menyentuh konteks spesifik pembaca rumah",
+      "Alur antar-paragraf mengalir alami tanpa ketergantungan frasa transisi klise",
+      "Struktur bagian bervariasi secara proporsional sesuai kebutuhan penjelasan",
+      "Bahasa mengalir asli dalam bahasa Indonesia tanpa struktur terjemahan kaku",
+      "Kontekstual kuat terhadap kondisi tropis Indonesia (tropis, kelembapan, tampias, ventilasi silang)",
+      "Terminologi teknis konsisten sesuai standar kanonikal RancangLoka",
+      "Integrasi dasar klaim teknis, prinsip fisika arsitektur, atau rujukan standar terjalin rapi"
+    ],
+    "evaluated_by": "editorial_qa_primary",
+    "evaluated_at": "2026-10-04T14:17:00.084Z",
+    "attempt_count": 0,
+    "max_attempts": 2,
+    "rewrite_brief": null,
+    "article_intent": "PROBLEM_SOLVING",
+    "article_intent_profile": {
+      "primary_intent": "PROBLEM_SOLVING",
+      "secondary_intents": [],
+      "confidence": "HIGH",
+      "reasons": [
+        "Judul membingkai masalah atau solusi perbaikan",
+        "Subjudul membahas diagnosis atau solusi masalah"
+      ]
+    }
+  },
+  "attempts": [
+    {
+      "attemptNumber": 1,
+      "startedAt": "2026-10-04T14:16:36.865Z",
+      "completedAt": "2026-10-04T14:17:00.093Z",
+      "llmLatencyMs": 23204,
+      "tokenUsage": {
+        "promptTokens": 2350,
+        "completionTokens": 3595,
+        "totalTokens": 5945
+      },
+      "draftText": "# Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?\n\nSatu tukang menyarankan pemasangan aluminium foil di bawah atap metal. Tukang lain mengatakan masalahnya tidak akan selesai tanpa ventilasi atap atau ventilasi loteng. Keduanya terdengar masuk akal: foil dianggap memantulkan panas, sementara ventilasi membuang udara panas yang terperangkap. Namun, pemilik rumah akhirnya tetap bingung—mana yang harus didahulukan, dan apakah kedua sistem itu sebenarnya saling menggantikan?\n\nKuncinya ada pada jalur perpindahan panas. Atap metal tidak hanya memanaskan ruang melalui udara panas. Lembaran metal yang terkena matahari juga memancarkan radiasi inframerah ke bagian bawah atap, lalu panas tersebut diteruskan melalui rongga loteng dan plafon. Karena itu, foil dan ventilasi atap bekerja pada bagian masalah yang berbeda.\n\n## Mengapa Atap Metal Cepat Terasa Panas?\n\nAtap zincalume, galvalum, atau spandek memiliki massa termal sangat rendah dan konduktivitas tinggi. Di bawah radiasi matahari tropis, suhu permukaan lembaran metal dapat melonjak pada siang hari.\n\nLembaran yang tipis dan ringan tidak menyimpan panas seperti material bermassa besar. Namun, justru karena sifat tersebut, perubahan panas pada permukaan metal berlangsung cepat. Panas kemudian masuk ke sistem atap melalui tiga jalur utama:\n\n1. **Radiasi inframerah gelombang panjang** dari sisi bawah lembaran atap.\n2. **Konveksi udara panas** di dalam rongga loteng.\n3. **Konduksi melalui plafon** dan material bangunan di bawahnya.\n\nKetiga jalur ini saling berkaitan, tetapi tidak bisa ditangani dengan satu solusi yang sama.\n\n## Diagnosis Tiga Jalur Perpindahan Panas\n\n### 1. Radiasi dari sisi bawah atap metal\n\nSetelah permukaan metal menerima panas matahari, sisi bawah lembaran akan memancarkan radiasi inframerah gelombang panjang ke benda-benda yang berhadapan dengannya. Benda tersebut dapat berupa foil, rangka, insulasi, atau permukaan plafon.\n\nPada kondisi ini, udara di antara atap dan plafon bukan satu-satunya media perpindahan panas. Radiasi dapat melintasi rongga udara tanpa harus menunggu udara menjadi panas terlebih dahulu.\n\nInilah alasan atap metal tetap dapat membuat ruang di bawahnya terasa menyengat meskipun terdapat celah udara. Celah tersebut mungkin membantu mengurangi sebagian perpindahan panas melalui konveksi, tetapi tidak otomatis menghentikan radiasi dari lembaran atap.\n\n### 2. Konveksi di dalam rongga loteng\n\nUdara di rongga atap akan memanas ketika menerima panas dari permukaan metal dan material di sekitarnya. Udara panas kemudian bergerak naik dan berkumpul di bagian tertinggi rongga.\n\nJika rongga atap tertutup rapat, udara panas tidak memiliki jalur pembuangan yang memadai. Temperatur di dalam rongga dapat terus meningkat secara bertahap akibat akumulasi panas melalui konveksi dan konduksi.\n\nPada tahap ini, ventilasi atap menjadi penting. Ventilasi tidak terutama berfungsi memantulkan radiasi, melainkan membantu mengeluarkan udara panas yang telah terkumpul.\n\n### 3. Konduksi melalui plafon\n\nPanas dari rongga loteng dapat diteruskan ke material plafon melalui kontak langsung dan perpindahan panas pada elemen bangunan. Setelah plafon ikut memanas, permukaannya dapat memancarkan panas sekunder ke ruang tidur atau ruang keluarga, bahkan ketika matahari sudah tidak langsung mengenai atap.\n\nItulah sebabnya kamar di bawah atap sering tetap terasa gerah hingga sore atau malam hari. Sumber panasnya bukan lagi hanya lembaran metal, melainkan juga rongga loteng dan plafon yang sudah menyimpan panas.\n\n## Cara Kerja Aluminium Foil sebagai Penghalang Radiasi\n\nAluminium foil reflektif bekerja sebagai **radiant barrier**, yaitu penghalang radiasi panas. Permukaannya yang reflektif dapat membantu mengurangi radiasi inframerah yang diterima oleh plafon atau ruang di bawahnya.\n\nNamun, aluminium foil bukan insulasi massa atau **bulk insulation**. Tanpa rongga udara, hambatan termal konduktifnya hampir nol. Foil yang ditempel rapat pada lembaran metal atau plafon tidak otomatis menjadi lapisan insulasi tebal.\n\n### Syarat utama: harus berhadapan dengan air gap\n\nFoil bekerja efektif apabila permukaannya berhadapan langsung dengan rongga udara bebas atau **air gap**. Rongga tersebut memberi jarak agar foil dapat memantulkan radiasi sebelum panas diteruskan ke lapisan berikutnya.\n\nPemasangan foil yang terjepit rapat di antara dua material tidak memberikan kondisi kerja yang sama. Dalam situasi tersebut, foil kehilangan fungsi reflektifnya sebagai penghalang radiasi dan tidak bisa menggantikan insulasi massa.\n\nHal yang perlu diperiksa saat pemasangan antara lain:\n\n- Apakah permukaan reflektif foil menghadap rongga udara?\n- Apakah foil tidak menempel penuh pada lembaran atap atau plafon?\n- Apakah tersedia kawat atau penopang agar foil tidak mengempis?\n- Apakah sambungan foil cukup rapi sehingga tidak banyak bagian yang terbuka?\n- Apakah terdapat jalur air atau titik yang berpotensi menahan kelembapan?\n\nFoil dapat membantu mengurangi panas radiasi, tetapi tidak membuang udara panas yang sudah terakumulasi di dalam loteng.\n\n## Kapan Ventilasi Atap Perlu Ditambahkan?\n\nVentilasi atap diperlukan ketika rongga di bawah atap mengalami penumpukan udara panas. Sistem ini bekerja dengan memanfaatkan **stack effect**, yaitu kecenderungan udara panas bergerak ke atas, serta tekanan angin.\n\nAgar bekerja, ventilasi perlu memiliki dua sisi:\n\n- **Bukaan masuk**, biasanya di area soffit atau teritisan.\n- **Bukaan keluar**, biasanya di area bubungan atau gevel.\n\nKeduanya perlu seimbang. Bukaan keluar tanpa bukaan masuk membuat pasokan udara pengganti terbatas. Sebaliknya, bukaan masuk tanpa jalur keluar membuat udara panas tetap berkumpul di bagian atas.\n\nVentilasi juga tidak sama dengan membuat lubang sebanyak-banyaknya pada atap. Jalur udara perlu dirancang agar udara dapat bergerak dari sisi bawah menuju titik atas, bukan hanya masuk secara acak dan berhenti di dalam rongga.\n\n## Foil atau Ventilasi: Mana yang Didahulukan?\n\nJawabannya bergantung pada jalur panas yang paling dominan dan bentuk atap rumah.\n\n### Jika atap metal berhadapan langsung dengan ruang tanpa plafon\n\nPada atap metal ekspos tanpa plafon, radiasi inframerah langsung mengenai penghuni. Dalam kondisi ini, pemasangan foil dengan kawat penopang dapat memberikan dampak kenyamanan paling cepat karena memutus sebagian paparan radiasi langsung.\n\nNamun, ruang tersebut tetap memerlukan ventilasi silang di bawah atap. Foil tidak mengeluarkan udara panas dari ruang. Jika udara panas terjebak, ruangan tetap dapat terasa pengap meskipun radiasi yang diterima tubuh sudah berkurang.\n\n### Jika terdapat plafon dan loteng tertutup\n\nPada loteng tertutup, foil dapat membantu mengurangi radiasi dari sisi bawah metal ke plafon. Tetapi jika udara panas terus berkumpul di dalam loteng, foil saja tidak menyelesaikan seluruh masalah.\n\nDalam kondisi ini, ventilasi atap perlu dipertimbangkan bersama foil. Bukaan masuk di area teritisan dan bukaan keluar di bubungan atau gevel membantu membuang udara panas yang terkumpul.\n\n### Jika kamar menggunakan pendingin udara\n\nPada kamar ber-AC, panas dari plafon membuat pendingin udara harus bekerja menghadapi beban panas yang lebih besar. Foil dapat membantu mengurangi radiasi menuju plafon, sedangkan ventilasi atap membantu membuang udara panas dari rongga di atas plafon.\n\nSusunan yang masuk akal adalah:\n\n1. Pastikan plafon menutup ruang dengan baik.\n2. Beri foil air gap di sisi yang menghadap rongga.\n3. Sediakan jalur ventilasi dari teritisan menuju bubungan atau gevel.\n4. Hindari celah besar pada plafon yang memungkinkan udara ber-AC terlepas ke loteng.\n5. Periksa apakah ada kelembapan atau kebocoran sebelum menutup rongga dengan lapisan tambahan.\n\nVentilasi atap seharusnya membuang udara panas di rongga, bukan menarik udara dingin dari kamar.\n\n## Kompromi dan Risiko di Lapangan\n\n### Tampias hujan\n\nBukaan ventilasi di teritisan, bubungan, atau gevel dapat menjadi jalur masuk tampias saat hujan lebat, terutama jika arah angin mendorong air ke dalam rongga.\n\nKarena itu, ventilasi perlu dilengkapi perlindungan terhadap tampias. Bentuk dan posisi kisi harus memungkinkan udara bergerak, tetapi tidak membuka jalur langsung bagi air hujan menuju plafon atau rangka.\n\n### Debu dan kotoran\n\nDebu dapat menumpuk di atas permukaan foil. Seiring waktu, lapisan kotoran tersebut dapat meningkatkan emisivitas permukaan dan mengurangi daya pantul radiasi foil.\n\nFoil yang terlihat mengilap saat baru dipasang belum tentu mempertahankan kondisi yang sama setelah lama berada di rongga berdebu. Rancangan perlu mempertimbangkan kemungkinan pemeriksaan dan pembersihan.\n\n### Serangga dan tikus\n\nBukaan ventilasi menjadi jalur potensial bagi serangga, burung kecil, atau tikus. Kisi penahan dan kawat anti-serangga perlu dipasang tanpa menutup aliran udara secara berlebihan.\n\nKisi yang terlalu rapat atau tersumbat debu dapat mengurangi fungsi ventilasi. Pemeriksaan berkala tetap diperlukan, terutama pada area teritisan yang mudah menangkap debu dan sarang.\n\n### Kondensasi dan risiko karat\n\nPerubahan temperatur antara permukaan metal, udara lembap, foil, dan material di bawahnya dapat menciptakan kondisi yang mendukung kondensasi. Jika kelembapan tertahan di sekitar sambungan, sekrup, rangka, atau permukaan metal, risiko korosi perlu diperhatikan.\n\nPemasangan foil tidak boleh menghalangi jalur pembuangan air atau menutup area yang seharusnya dapat mengering. Periksa juga apakah terdapat kebocoran kecil, jejak air, atau bagian metal yang mulai berubah warna sebelum memasang lapisan baru.\n\n## Panduan Keputusan Berdasarkan Kondisi Atap\n\n### Skenario 1: Atap metal tanpa plafon\n\nPrioritasnya adalah mengurangi radiasi langsung dan menyediakan pergerakan udara di ruang hunian.\n\nPertimbangkan:\n\n- Foil reflektif yang dipasang dengan air gap.\n- Kawat atau penopang agar foil tidak menempel pada atap.\n- Ventilasi silang di bawah atap.\n- Perlindungan terhadap debu, serangga, dan tampias jika menggunakan bukaan tambahan.\n\nFoil lebih berpengaruh terhadap radiasi yang langsung mengenai penghuni, sedangkan ventilasi silang membantu mengeluarkan udara panas dari ruang.\n\n### Skenario 2: Atap memiliki plafon, tetapi loteng tertutup\n\nPrioritasnya adalah mengendalikan panas radiasi dan membuang udara panas dari rongga.\n\nPertimbangkan kombinasi:\n\n- Foil yang benar-benar menghadap air gap.\n- Bukaan masuk di soffit atau teritisan.\n- Bukaan keluar di bubungan atau gevel.\n- Kisi penahan tampias dan kawat anti-serangga.\n- Pemeriksaan kelembapan serta kondisi rangka dan sekrup.\n\nMemasang foil tanpa menyediakan jalur keluar udara dapat membuat loteng tetap panas. Sebaliknya, membuat ventilasi tanpa mengurangi radiasi dapat meninggalkan sebagian sumber panas utama.\n\n### Skenario 3: Kamar ber-AC di bawah atap metal\n\nPrioritasnya adalah mengurangi panas yang diterima plafon dan mencegah udara dingin bocor ke loteng.\n\nPeriksa:\n\n- Apakah plafon tertutup rapat pada sambungan dan titik penetrasi?\n- Apakah foil memiliki air gap?\n- Apakah loteng memiliki jalur udara masuk dan keluar?\n- Apakah terdapat kebocoran atau kelembapan?\n- Apakah panas tetap terasa dari permukaan plafon meskipun AC bekerja?\n\nUntuk kamar ber-AC, kombinasi penghalang radiasi dan ventilasi loteng biasanya lebih logis daripada mengandalkan salah satunya saja, selama ventilasi tidak membuka kebocoran udara dari ruang ber-AC.\n\n## Daftar Pemeriksaan Sebelum Mengeluarkan Biaya\n\nLakukan pemeriksaan fisik berikut pada siang hari, dengan tetap memperhatikan keselamatan saat masuk ke area atap atau loteng.\n\n### Periksa bentuk dan susunan atap\n\n- Apakah atap metal langsung menjadi batas ruang, atau masih ada plafon?\n- Apakah terdapat loteng di antara atap dan plafon?\n- Apakah loteng tertutup seluruhnya?\n- Apakah bagian bubungan, gevel, dan teritisan memiliki kisi atau celah ventilasi?\n\n### Periksa sumber panas yang paling terasa\n\n- Apakah panas terasa langsung dari permukaan atap di atas kepala?\n- Apakah plafon tetap hangat hingga sore atau malam?\n- Apakah ruang terasa panas dan pengap, atau hanya menerima radiasi menyengat?\n- Apakah udara panas berkumpul di bagian atas loteng?\n\nJawaban ini membantu membedakan masalah radiasi dari masalah akumulasi udara panas.\n\n### Periksa kondisi foil jika sudah terpasang\n\n- Apakah foil menempel rapat pada atap atau plafon?\n- Apakah terdapat air gap yang jelas?\n- Apakah foil mengempis karena tidak memiliki penopang?\n- Apakah permukaannya tertutup debu atau kotoran?\n- Apakah ada bagian yang robek, terbuka, atau tertahan air?\n\n### Periksa jalur ventilasi\n\n- Apakah ada bukaan masuk di sisi bawah atap?\n- Apakah ada bukaan keluar di titik yang lebih tinggi?\n- Apakah kedua jalur tersebut saling terhubung melalui rongga?\n- Apakah kisi tertutup debu atau sarang?\n- Apakah terdapat tanda tampias setelah hujan?\n\n### Periksa risiko kelembapan\n\n- Cari noda air pada plafon dan rangka.\n- Periksa sekrup atau sambungan yang berubah warna.\n- Perhatikan bau lembap di loteng.\n- Pastikan foil tidak membentuk kantong yang menahan air.\n- Jangan menutup kebocoran dengan foil sebelum sumber airnya ditemukan.\n\n## Panduan Keputusan\n\nAluminium foil dan ventilasi atap bukan dua solusi yang sepenuhnya saling menggantikan.\n\n- **Foil** bekerja terutama untuk mengurangi perpindahan panas melalui radiasi, dengan syarat memiliki air gap.\n- **Ventilasi atap** bekerja terutama untuk membuang udara panas yang menumpuk di rongga.\n- **Plafon** dapat tetap menerima panas jika loteng tertutup tanpa ventilasi.\n- **Ruang tanpa plafon** membutuhkan perhatian pada radiasi langsung sekaligus pergerakan udara di ruang hunian.\n\nJika atap metal terasa panas karena radiasi langsung, foil dengan pemasangan yang benar dapat menjadi langkah penting. Jika panas bertahan di loteng dan plafon tetap hangat hingga malam, ventilasi perlu ditambahkan. Untuk loteng tertutup di bawah kamar ber-AC, kombinasi keduanya lebih masuk akal—dengan syarat terdapat air gap, jalur ventilasi seimbang, perlindungan tampias, serta pemeriksaan terhadap debu, serangga, kelembapan, dan karat.",
+      "qaResult": {
+        "knowledge_version": "RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1",
+        "total_score": 90,
+        "decision": "HUMAN_WRITING_PASS",
+        "passed": true,
+        "dimensions": {
+          "sentence_rhythm": 20,
+          "specificity_detail": 15,
+          "contextual_relevance": 15,
+          "editorial_voice": 15,
+          "non_template_structure": 10,
+          "evidence_integration": 10,
+          "reader_perspective": 4,
+          "conclusion_originality": 1
+        },
+        "issues": [
+          {
+            "code": "NEXT_ACTION_MISSING",
+            "category": "DECISION_SUPPORT_GAP",
+            "severity": "WARNING",
+            "description": "Bagian penutup artikel tidak memberikan panduan langkah konkret berikutnya (hal yang harus diinspeksi, diukur, diverifikasi, atau ditanyakan ke tukang/aplikator).",
+            "penalty": 10
+          }
+        ],
+        "strong_areas": [
+          "Pembuka langsung menyentuh konteks spesifik pembaca rumah",
+          "Alur antar-paragraf mengalir alami tanpa ketergantungan frasa transisi klise",
+          "Struktur bagian bervariasi secara proporsional sesuai kebutuhan penjelasan",
+          "Bahasa mengalir asli dalam bahasa Indonesia tanpa struktur terjemahan kaku",
+          "Kontekstual kuat terhadap kondisi tropis Indonesia (tropis, kelembapan, tampias, ventilasi silang)",
+          "Terminologi teknis konsisten sesuai standar kanonikal RancangLoka",
+          "Integrasi dasar klaim teknis, prinsip fisika arsitektur, atau rujukan standar terjalin rapi"
+        ],
+        "evaluated_by": "editorial_qa_primary",
+        "evaluated_at": "2026-10-04T14:17:00.084Z",
+        "attempt_count": 0,
+        "max_attempts": 2,
+        "rewrite_brief": null,
+        "article_intent": "PROBLEM_SOLVING",
+        "article_intent_profile": {
+          "primary_intent": "PROBLEM_SOLVING",
+          "secondary_intents": [],
+          "confidence": "HIGH",
+          "reasons": [
+            "Judul membingkai masalah atau solusi perbaikan",
+            "Subjudul membahas diagnosis atau solusi masalah"
+          ]
+        }
+      }
+    }
+  ],
+  "traceEvents": [
+    {
+      "event_id": "evt_ed_1791123396863_112u",
+      "type": "EDITORIAL_JOB_STARTED",
+      "timestamp": "2026-10-04T14:16:36.863Z",
+      "task_id": "task_runtime_proof_metal_roof_001",
+      "staff_id": "operator",
+      "summary": "Operator antigravity_operator memulai tugas penulisan editorial 'Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?'.",
+      "metadata": {
+        "authorizedBy": "antigravity_operator"
+      }
+    },
+    {
+      "event_id": "evt_ed_1791123396865_0tp0",
+      "type": "JOKO_PROMPT_BUILT",
+      "timestamp": "2026-10-04T14:16:36.865Z",
+      "task_id": "task_runtime_proof_metal_roof_001",
+      "staff_id": "content_writer_primary",
+      "summary": "Prompt Joko berhasil dikompilasi (Percobaan 1, 8 klaim aman, intensi EXPLANATORY).",
+      "metadata": {
+        "attempt": 1,
+        "hasRevisionContext": false,
+        "safeClaimsCount": 8
+      }
+    },
+    {
+      "event_id": "evt_ed_1791123396865_kjxf",
+      "type": "JOKO_LLM_REQUEST_STARTED",
+      "timestamp": "2026-10-04T14:16:36.865Z",
+      "task_id": "task_runtime_proof_metal_roof_001",
+      "staff_id": "content_writer_primary",
+      "summary": "Joko mengirimkan permintaan pembuatan draf ke provider sumopod (model: gpt-5.6-luna).",
+      "metadata": {
+        "attempt": 1,
+        "provider": "sumopod",
+        "model": "gpt-5.6-luna"
+      }
+    },
+    {
+      "event_id": "evt_ed_1791123420083_yys9",
+      "type": "JOKO_LLM_RESPONSE_RECEIVED",
+      "timestamp": "2026-10-04T14:17:00.083Z",
+      "task_id": "task_runtime_proof_metal_roof_001",
+      "staff_id": "content_writer_primary",
+      "summary": "Joko menerima respons dari sumopod dalam 23204ms.",
+      "metadata": {
+        "attempt": 1,
+        "latencyMs": 23204,
+        "tokens": 5945
+      }
+    },
+    {
+      "event_id": "evt_ed_1791123420083_rdkp",
+      "type": "JOKO_DRAFT_CREATED",
+      "timestamp": "2026-10-04T14:17:00.083Z",
+      "task_id": "task_runtime_proof_metal_roof_001",
+      "staff_id": "content_writer_primary",
+      "summary": "Draf naskah Joko berhasil diproduksi (14046 karakter).",
+      "metadata": {
+        "attempt": 1,
+        "draftLength": 14046
+      }
+    },
+    {
+      "event_id": "evt_ed_1791123420083_mhma",
+      "type": "RINA_QA_STARTED",
+      "timestamp": "2026-10-04T14:17:00.083Z",
+      "task_id": "task_runtime_proof_metal_roof_001",
+      "staff_id": "editorial_qa_primary",
+      "summary": "Rina memulai evaluasi kualitas tulisan manusia secara deterministik (Percobaan 1).",
+      "metadata": {
+        "attempt": 1
+      }
+    },
+    {
+      "event_id": "evt_ed_1791123420093_p8py",
+      "type": "RINA_QA_COMPLETED",
+      "timestamp": "2026-10-04T14:17:00.093Z",
+      "task_id": "task_runtime_proof_metal_roof_001",
+      "staff_id": "editorial_qa_primary",
+      "summary": "Rina menyelesaikan QA: Skor 90/100, Keputusan: HUMAN_WRITING_PASS (1 isu terdeteksi).",
+      "metadata": {
+        "attempt": 1,
+        "totalScore": 90,
+        "decision": "HUMAN_WRITING_PASS",
+        "issueCodes": [
+          "NEXT_ACTION_MISSING"
+        ]
+      }
+    },
+    {
+      "event_id": "evt_ed_1791123420093_pjxs",
+      "type": "HUMAN_REVIEW_REQUIRED",
+      "timestamp": "2026-10-04T14:17:00.093Z",
+      "task_id": "task_runtime_proof_metal_roof_001",
+      "staff_id": "mission_control_guard",
+      "summary": "Naskah berhenti aman pada status DRAFT untuk peninjauan manusia sebelum publikasi.",
+      "metadata": {
+        "finalDecision": "HUMAN_WRITING_PASS",
+        "autoPublish": "OFF"
+      }
+    }
+  ],
+  "executionSummary": {
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "totalRuntimeMs": 23230,
+    "completedAt": "2026-10-04T14:17:00.095Z",
+    "draftSavedTo": "scripts/runtime-proof/joko-metal-roof-runtime.md"
+  }
+}

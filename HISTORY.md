@@ -17,6 +17,73 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### EDITORIAL-RUNTIME-1: Real Joko LLM Execution + Rina QA 2026-10-04
+
+- **Tujuan & Ruang Lingkup:**
+  - Membangun jalur eksekusi runtime editorial pertama yang nyata dan membuktikan bahwa Joko (`content_writer_primary`) bukan sekadar identitas staf visual, rekaan handoff, atau produsen artefak simulasi.
+  - Mengimplementasikan alur: `Human Operator` → `Editorial Runtime` → `Joko Prompt Builder` → `Real LLM Provider` → `Joko Draft` → `Rina Deterministic QA` → `Human Review Gate`.
+  - Membedakan status eksekusi secara jujur: `REAL_RUNTIME_EXECUTION` versus `STATIC_FIXTURE` / `SCRIPTED_SIMULATION` / `MANUAL_ARTIFACT`.
+  - Mengonsumsi paket bukti berstatus approved yang sudah ada (`scripts/dryrun/evidence-pack.json`), konteks masalah pengunjung (`CTX-05`, `DECISION_UNCERTAINTY`, `DECISION_FORK`), pengetahuan kanonikal editorial, dan kontrak Bahasa Indonesia asli (`authoring_language = id-ID`, larangan mode terjemahan kaku).
+  - Menyediakan loop perbaikan berbatas (*bounded repair*, maksimal 2 percobaan) dan penghentian aman (*fail-safe halt*) apabila terdeteksi isu riset primer (`RESEARCH_REQUIRED`).
+- **Komponen Arsitektur yang Dibangun:**
+  1. `src/lib/editorial/editorial-llm-provider.ts`: Provider transport generasi teks server-side terpisah dari OpenRouter TypeSafe Jev decisions API. Mendukung OpenRouter (`https://openrouter.ai/api/v1/chat/completions`) dan SumoPod (`https://ai.sumopod.com/v1/chat/completions`) dengan batas timeout (60-120s), batas token (4000), retry eksponensial aman, klasifikasi error, dan sanitasi/redaksi kunci API mutlak.
+  2. `src/lib/editorial/joko-prompt-builder.ts`: Modul perakit prompt kanonikal untuk Joko yang menyuntikkan `CANONICAL_EDITORIAL_KNOWLEDGE_V1`, pedoman kepenulisan manusia, larangan verdict komersial, monetary silence, dan claims yang aman ditulis (`author_safe_claims`). Tidak pernah menyalin naskah akhir sebelumnya ke prompt awal.
+  3. `src/lib/editorial/editorial-runtime.ts`: Fungsi runtime server-side `executeEditorialDraftJob(input, options)` yang mewajibkan otorisasi operator (`operatorAuth`), mencatat trace operasional autentik, mengalirkan hasil ke evaluator deterministik Rina (`evaluateHumanWritingQuality`), dan membatasi status akhir ke `DRAFT` / `HUMAN_REVIEW_REQUIRED`.
+  4. `src/lib/editorial/index.ts`: Ekspor modul editorial runtime.
+  5. `scripts/test-editorial-runtime-1.js`: 18 pengujian deterministik (prompt builder, kontrak bahasa, penanganan kegagalan provider, provenance, determinisme Rina, perbaikan berbatas, penghentian riset, dan invarian keamanan).
+  6. `scripts/runtime-proof-runner.js`: Skrip runner eksekusi langsung operator untuk pembuktian artikel atap metal.
+  7. `docs/EDITORIAL_RUNTIME_1.md`: Dokumentasi komprehensif arsitektur dan hasil eksekusi.
+- **Hasil Pembuktian Runtime Nyata (Live Metal-Roof Proof):**
+  - **Provider:** SumoPod (`sumopod`) | **Model:** `gpt-5.6-luna`.
+  - **Telemetri Eksekusi:** Waktu 23.204 ms (23,2 detik), 2.350 prompt tokens, 3.595 completion tokens (total 5.945 tokens), 14.046 karakter draf naskah Markdown asli Bahasa Indonesia, 1 percobaan (tanpa perlu retry).
+  - **Hasil Evaluasi Deterministik Rina:** Skor **90 / 100**, Keputusan: **`HUMAN_WRITING_PASS`** (Lolos ambang batas 85).
+  - **Artefak Pembuktian:** Disimpan ke `scripts/runtime-proof/joko-metal-roof-runtime.md` dan `scripts/runtime-proof/joko-metal-roof-runtime-meta.json`. Naskah benchmark manusia `scripts/dryrun/draft-final.md` tidak disentuh.
+  - **Batas Keterbatasan Jujur:** Eksekusi Irwan belum diterapkan secara mandiri (`SOURCE_ACQUISITION_BLOCKED`). Paket bukti menggunakan data approved yang sudah ada.
+  - **Klasifikasi Milestone:** **`JOKO_RUNTIME_PROVEN`**.
+- **Validasi & Integritas:**
+  - `scripts/test-editorial-runtime-1.js`: 18/18 PASS.
+  - `scripts/test-editorial-production-dryrun.js`: 13/13 PASS.
+  - `scripts/test-visitor-pain-angle.js`: 14/14 PASS.
+  - `scripts/test-editorial-source-acquisition.js`: 14/14 PASS.
+  - `scripts/test-editorial-human-quality.js`: 22/22 PASS.
+  - `npx tsc --noEmit`: 0 error (bersih).
+  - `npm run build`: 100% sukses (server bundle SSR selesai dalam 6.18s).
+  - Invarian keselamatan: `automation_mode = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `mediaWorker = DISABLED`. Nol deploy, nol publikasi.
+
+### EDITORIAL-RUNTIME-EXECUTION-AUDIT-1: Audit Forensik Eksekusi Runtime Staf Editorial Hermes 2026-10-04
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan audit forensik menyeluruh untuk membuktikan apakah alur kerja editorial `Irwan → Joko → Rina` benar-benar dieksekusi oleh agen/LLM runtime mandiri atau merupakan simulasi berbasis skrip/artefak manual yang diproduksi oleh asisten pengembang Antigravity (Codex) dan redaktur manusia.
+  - Memeriksa keterhubungan OpenRouter, runtime Irwan (live source retrieval & extraction), runtime Joko (prompt builder & LLM generation), runtime Rina (deterministik vs LLM), serta kejujuran linimasa Job Trace, Task Handoff, dan animasi Pixel Office.
+- **Temuan Forensik Inti:**
+  1. **Klasifikasi Global: `EDITORIAL_RUNTIME_NOT_PROVEN`**  
+     Lapisan evaluasi mutu lokal (Rina) dan tata kelola keselamatan (Human Stop Gate) bekerja 100% nyata dan deterministik, namun motor kepenulisan (Irwan & Joko) belum terhubung ke proses eksekusi LLM / agen runtime mandiri.
+  2. **Irwan (`evidence_researcher_lead`):**  
+     Hanya entitas staf konseptual di registry. Tidak memiliki runtime loop agen, web scraper, ataupun PDF crawler. `evidence-pack.json` dibuat sebagai berkas statis oleh Antigravity (Codex), dan `source-cache.ts` secara sah memvalidasi bahwa 0 dari 10 sumber primer tersedia di cache lokal (`SOURCE_ACQUISITION_BLOCKED`).
+  3. **Joko (`content_writer_primary`):**  
+     Tidak memiliki fungsi perakitan prompt runtime (*prompt builder*) maupun klien pemanggil API completions di `rancangloka-astro`. Draf naskah (`draft-v1.md`, `draft-final.md`) ditulis langsung oleh Antigravity (Codex) dan dipoles pembukanya oleh redaktur manusia. Seluruh pengetahuan editorial, pedoman bahasa Indonesia asli, dan keluhan pengunjung berstatus `DEFINED_BUT_NOT_RUNTIME_CONNECTED`.
+  4. **Rina (`editorial_qa_primary`):**  
+     Bekerja 100% sebagai evaluator lokal deterministik murni di `human-quality.ts` (regex, aturan struktur, heuristik, larangan kata, skor 0-100). Rina tidak memanggil LLM.
+  5. **OpenRouter Reality:**  
+     Klien OpenRouter di `rancangloka-astro` secara eksklusif memanggil endpoint alfa terstruktur `POST https://openrouter.ai/api/alpha/decisions` untuk mode bayangan (*shadow mode*) TypeSafe Jev (`typesafe/jev-1.13-20260917`). Tidak ada klien OpenRouter Chat Completions (`/api/v1/chat/completions`) yang terpasang untuk Joko.
+  6. **Pixel Office & Task Handoff Truthfulness:**  
+     Modul `task-handoff.ts`, `job-trace.ts`, dan animasi `Pixel Office` memodelkan status data secara deterministik untuk antarmuka observabilitas Mission Control (`read-only visualization layer, zero workflow authority`), bukan sebagai penanda adanya pemanggilan API atau proses pekerja aktif di server (`STATE_SIMULATION_ONLY`).
+- **Komponen Rekayasa & Dokumentasi:**
+  1. `docs/EDITORIAL_RUNTIME_EXECUTION_AUDIT_1.md`: Laporan audit komprehensif 19 bab.
+  2. `state/EDITORIAL_RUNTIME_EXECUTION_AUDIT_CHECKPOINT.md`: Rekaman status checkpoint offline.
+  3. `scripts/test-editorial-production-dryrun.js`: Penyesuaian assertion batas kelulusan untuk mengakomodasi skor draf hasil kurasi redaktur manusia (skor 92, status `HUMAN_WRITING_PASS`).
+  4. `scripts/test-editorial-source-acquisition.js`: Penyelarasan batas kelulusan (skor 92).
+  5. Pembaruan `AGENTS.md` dengan ringkasan status milestone audit.
+- **Validasi & Integritas:**
+  - `scripts/test-editorial-production-dryrun.js`: 13/13 PASS.
+  - `scripts/test-editorial-source-acquisition.js`: 14/14 PASS.
+  - `scripts/test-visitor-pain-angle.js`: 14/14 PASS.
+  - `scripts/test-expert-consultation.js`: 22/22 PASS.
+  - `scripts/test-editorial-human-quality.js`: 22/22 PASS.
+  - `npx tsc --noEmit`: 0 error (bersih).
+  - `npm run build`: Berhasil tanpa kendala (5.83s).
+  - Invarian keselamatan: `automation_mode = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `mediaWorker = DISABLED`. Nol deploy, nol publikasi.
+
 ### RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1: Master Canonical Editorial Knowledge Foundation 2026-10-04
 
 - **Tujuan & Ruang Lingkup:**
