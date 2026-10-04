@@ -1196,8 +1196,9 @@ export function getRinaQAKnowledge(): RinaQAKnowledgeView {
     layer_5_trust_and_editorial_integrity: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity,
     native_indonesian_language_qa: {
       responsibility: 'NATIVE_INDONESIAN_LANGUAGE_QA',
-      rule: 'Rina mengevaluasi apakah naskah terdengar alami ditulis dalam bahasa Indonesia asli atau terindikasi translationese (gaya terjemahan bahasa Inggris).',
+      rule: 'Rina mengevaluasi apakah naskah terbaca sebagai bahasa Indonesia yang mengalir alami (NATIVE_INDONESIAN_STYLE_ASSESSMENT) dan bebas dari pola wacana terjemahan literal bahasa Inggris (translationese). Rina menilai kualitas prosa keluaran, bukan mengklaim pembuktian historis proses penulisan perantara.',
       checks: [
+        'reads as naturally authored Indonesian',
         'sounds originally written in Indonesian',
         'contains translationese patterns',
         'uses unnatural English-derived syntax',
