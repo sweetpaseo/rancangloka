@@ -47,6 +47,18 @@ export interface TaskHandoffObservation {
   evidence_id: string;
   confidence: 'EXACT' | 'DERIVED';
   requires_movement: boolean;
+  quality_metadata?: {
+    quality_issue?: string;
+    quality_score?: number;
+    quality_decision?: string;
+    article_intent?: string;
+    primary_owner?: string;
+    supporting_owner?: string;
+    revision_reason?: string;
+    article_id?: number | string;
+    task_id?: string;
+    attempt?: number;
+  } | null;
 }
 
 /**
@@ -277,6 +289,55 @@ export function deriveCanonicalHandoffsFromPipeline(
         confidence: 'EXACT',
         // Invariant: QUEUED next stage does NOT cause staff movement!
         requires_movement: !isBlocked && !isAutomationOff
+      };
+
+      const safety = validateHandoffSafety(observation, snapshot);
+      if (safety.allowed) {
+        handoffs.push(observation);
+      }
+    }
+
+    // 4. Quality Gate Revision Handoff: Editorial QA -> Primary Revision Owner (Joko or Irwan)
+    else if (task.qualityReview && (task.stage === 'writing' || task.stage === 'researching' || task.stage === 'editorial_qa')) {
+      const targetAgent = task.qualityReview.primary_owner || (task.stage === 'researching' ? 'evidence_researcher_lead' : 'content_writer_primary');
+      const targetDept: DepartmentId = targetAgent === 'evidence_researcher_lead' ? 'research' : 'editorial';
+      const observation: TaskHandoffObservation = {
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'editorial_qa',
+          task.stage,
+          'editorial_qa_primary',
+          targetAgent,
+          task.lastUpdate || timestamp
+        ),
+        workflow_id: task.taskId,
+        task_id: task.taskId,
+        artifact_id: artifactId,
+        task_title: taskTitle,
+        from_agent_id: 'editorial_qa_primary',
+        to_agent_id: targetAgent,
+        from_department_id: 'editorial',
+        to_department_id: targetDept,
+        from_stage: 'editorial_qa',
+        to_stage: task.stage,
+        handoff_state: 'RUNNING',
+        transition_timestamp: task.lastUpdate || timestamp,
+        evidence_source: 'human_quality_brief',
+        evidence_id: `brief_${task.relatedArticleId || task.taskId}`,
+        confidence: 'EXACT',
+        requires_movement: true,
+        quality_metadata: {
+          quality_issue: task.qualityReview.quality_issue,
+          quality_score: task.qualityReview.quality_score,
+          quality_decision: task.qualityReview.quality_decision,
+          article_intent: task.qualityReview.article_intent,
+          primary_owner: task.qualityReview.primary_owner,
+          supporting_owner: task.qualityReview.supporting_owner,
+          revision_reason: task.qualityReview.revision_reason,
+          article_id: task.relatedArticleId || undefined,
+          task_id: task.taskId,
+          attempt: task.qualityReview.attempt
+        }
       };
 
       const safety = validateHandoffSafety(observation, snapshot);

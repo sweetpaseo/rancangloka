@@ -245,6 +245,53 @@ export async function deriveJobTrace(
       currentStage = matched.stage || currentStage;
       currentStatus = matched.status || currentStatus;
       currentBlocker = matched.blockerOrError || null;
+
+      // Extract Quality Gate Review event if present on the active task
+      if (matched.qualityReview) {
+        const qRev = matched.qualityReview;
+        const targetAgent = qRev.primary_owner || (matched.stage === 'researching' ? 'evidence_researcher_lead' : 'content_writer_primary');
+        const targetDept = targetAgent === 'evidence_researcher_lead' ? 'research' : 'editorial';
+        const qTime = matched.lastUpdate || new Date().toISOString();
+
+        rawEvents.push({
+          event_id: deriveDeterministicTraceEventId(
+            workflowId,
+            'HUMAN_WRITING_REVISE_REQUESTED',
+            qTime,
+            'human_quality_brief',
+            `brief_${matched.taskId}`
+          ),
+          workflow_id: workflowId,
+          task_id: taskId,
+          artifact_id: String(matched.relatedArticleId || taskId),
+          event_type: 'HUMAN_WRITING_REVISE_REQUESTED',
+          stage: matched.stage,
+          previous_stage: 'editorial_qa',
+          agent_id: targetAgent,
+          department_id: targetDept,
+          status: 'REVISE_REQUESTED',
+          canonical_timestamp: qTime,
+          end_timestamp: null,
+          duration_ms: null,
+          duration_label: null,
+          evidence_source: 'human_quality_brief',
+          evidence_id: `brief_${matched.taskId}`,
+          confidence: 'EXACT',
+          details: {
+            quality_issue: qRev.quality_issue,
+            quality_score: qRev.quality_score,
+            quality_decision: qRev.quality_decision,
+            article_intent: qRev.article_intent,
+            primary_owner: qRev.primary_owner,
+            supporting_owner: qRev.supporting_owner,
+            revision_reason: qRev.revision_reason,
+            article_id: matched.relatedArticleId,
+            task_id: matched.taskId,
+            attempt: qRev.attempt
+          },
+          note: `Rina returned draft to ${targetAgent}: score ${qRev.quality_score ?? 'N/A'} (${qRev.quality_decision ?? 'REVISE'}) - ${qRev.revision_reason ?? 'Revision required'}`
+        });
+      }
     }
   }
 

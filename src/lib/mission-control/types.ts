@@ -87,6 +87,17 @@ export interface TaskCard {
     approvedBy: string;
     approvedAt: string;
   } | null;
+  qualityReview?: {
+    quality_issue?: string;
+    quality_score?: number;
+    quality_decision?: string;
+    article_intent?: string;
+    primary_owner?: string;
+    supporting_owner?: string;
+    revision_reason?: string;
+    attempt?: number;
+    brief?: any;
+  } | null;
 }
 
 export interface PipelineBoardData {

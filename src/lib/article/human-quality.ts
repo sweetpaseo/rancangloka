@@ -36,6 +36,8 @@ export type HumanWritingDecision =
   | 'HUMAN_WRITING_REWRITE'
   | 'HUMAN_REVIEW_REQUIRED';
 
+export type HumanQualityDecision = HumanWritingDecision;
+
 export interface HumanWritingDimensions {
   sentence_rhythm: number;         // Max 20
   specificity_detail: number;      // Max 15
@@ -140,6 +142,10 @@ export interface StructuredRewriteBrief {
   supporting_agent_id?: string;
   reason: 'HUMAN_WRITING_QUALITY';
   revision_reason?: 'RESEARCH_REQUIRED' | 'EDITORIAL_EXPLANATION_REQUIRED' | 'EDITORIAL_INTEGRITY_REVIEW' | 'HOMEOWNER_REFRAMING_REQUIRED';
+  quality_decision?: HumanQualityDecision;
+  quality_score?: number;
+  quality_issue?: string;
+  article_intent?: ArticleIntent;
   article_id?: number | string;
   task_id?: string;
   attempt: number;
@@ -1455,6 +1461,10 @@ export function evaluateHumanWritingQuality(
       supporting_agent_id: supportingAgentId,
       reason: 'HUMAN_WRITING_QUALITY',
       revision_reason: revisionReason,
+      quality_decision: decision,
+      quality_score: totalScore,
+      quality_issue: issues.length > 0 ? issues[0].code : undefined,
+      article_intent: articleIntent,
       article_id: options.articleId,
       task_id: options.taskId,
       attempt: attemptCount + 1,
