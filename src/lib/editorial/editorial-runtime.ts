@@ -38,6 +38,15 @@ import {
   type HumanWritingDecision
 } from '../article/human-quality.ts';
 
+import {
+  parseGroundedDraftEnvelope,
+  validateClaimGrounding,
+  auditEditorialRefinement,
+  type GroundedDraftEnvelope,
+  type GroundingAuditResult,
+  type EditorialRefinementAudit
+} from './claim-grounding.ts';
+
 export type EditorialRuntimeEventType =
   | 'EDITORIAL_JOB_STARTED'
   | 'JOKO_PROMPT_BUILT'
@@ -45,6 +54,8 @@ export type EditorialRuntimeEventType =
   | 'JOKO_LLM_RESPONSE_RECEIVED'
   | 'JOKO_LLM_REQUEST_FAILED'
   | 'JOKO_DRAFT_CREATED'
+  | 'GROUNDING_AUDIT_COMPLETED'
+  | 'GROUNDING_VIOLATION_HALT'
   | 'RINA_QA_STARTED'
   | 'RINA_QA_COMPLETED'
   | 'EDITORIAL_REPAIR_REQUESTED'
@@ -99,6 +110,8 @@ export interface EditorialAttemptRecord {
     totalTokens: number;
   };
   draftText: string;
+  draftEnvelope?: GroundedDraftEnvelope;
+  groundingAudit?: GroundingAuditResult;
   qaResult: HumanWritingQualityResult;
 }
 
@@ -107,6 +120,7 @@ export type FinalEditorialDecision =
   | 'HUMAN_WRITING_REVISE'
   | 'HUMAN_WRITING_REWRITE'
   | 'HUMAN_REVIEW_REQUIRED'
+  | 'EVIDENCE_GROUNDING_REVIEW_REQUIRED'
   | 'PROVIDER_ERROR';
 
 export interface EditorialJobResult {
@@ -117,6 +131,9 @@ export interface EditorialJobResult {
   publicationStatus: 'DRAFT';
   humanStopGateStatus: 'HUMAN_REVIEW_REQUIRED' | 'OPERATOR_INTERVENTION_REQUIRED';
   finalDraft: string | null;
+  draftEnvelope?: GroundedDraftEnvelope | null;
+  groundingAudit?: GroundingAuditResult | null;
+  refinementAudit?: EditorialRefinementAudit | null;
   totalAttempts: number;
   authorProvenance: EditorialAuthorRuntimeProvenance | null;
   qaResult: HumanWritingQualityResult | null;
@@ -180,7 +197,9 @@ export async function executeEditorialDraftJob(
   // 3. Resolve Intent and Author Safe Claims
   const intent = input.intentProfile || detectArticleIntentProfile(input.requestedTitle || input.topic);
   const rawClaims = Array.isArray(input.evidencePack.claim_inventory) ? input.evidencePack.claim_inventory : [];
-  const authorSafeClaims = generateAuthorSafeClaims(rawClaims);
+  const authorSafeClaims = Array.isArray((input.evidencePack as any).author_safe_claims) && (input.evidencePack as any).author_safe_claims.length > 0
+    ? (input.evidencePack as any).author_safe_claims
+    : generateAuthorSafeClaims(rawClaims);
 
   const basePromptContext: JokoPromptContext = {
     topic: input.topic,
@@ -261,14 +280,64 @@ export async function executeEditorialDraftJob(
       }
     );
 
-    currentDraft = llmResult.content;
+    // Parse Grounded Draft Envelope (JSON or raw markdown fallback)
+    const envelope = parseGroundedDraftEnvelope(llmResult.content);
+    currentDraft = envelope.article_markdown;
 
     addTraceEvent(
       'JOKO_DRAFT_CREATED',
       'content_writer_primary',
       `Draf naskah Joko berhasil diproduksi (${currentDraft.length} karakter).`,
-      { attempt, draftLength: currentDraft.length }
+      { attempt, draftLength: currentDraft.length, declaredClaims: envelope.claim_usage.length }
     );
+
+    // Validate Claim Grounding against Evidence Pack & Safe Claims
+    const groundingAudit = validateClaimGrounding(envelope, input.evidencePack, authorSafeClaims);
+    addTraceEvent(
+      'GROUNDING_AUDIT_COMPLETED',
+      'content_writer_primary',
+      `Audit ketercakupan klaim selesai: Status [${groundingAudit.status}], Valid: ${groundingAudit.isValid} (${groundingAudit.validClaimsCount}/${groundingAudit.declaredClaimsCount} klaim valid).`,
+      {
+        attempt,
+        status: groundingAudit.status,
+        validClaimsCount: groundingAudit.validClaimsCount,
+        declaredClaimsCount: groundingAudit.declaredClaimsCount,
+        unrecognizedClaimIds: groundingAudit.unrecognizedClaimIds,
+        unsupportedCandidates: groundingAudit.unsupportedCandidatesFound,
+        errors: groundingAudit.errors
+      }
+    );
+
+    // If critical grounding violations occur (e.g. prohibited elements or unsupported candidates declared), halt immediately
+    if (!groundingAudit.isValid) {
+      addTraceEvent(
+        'GROUNDING_VIOLATION_HALT',
+        'editorial_qa_primary',
+        `Pelanggaran ketercakupan bukti terdeteksi (${groundingAudit.errors.join('; ')}). Naskah dihentikan untuk review operator.`,
+        { errors: groundingAudit.errors, status: groundingAudit.status }
+      );
+      finalStatus = 'BLOCKED';
+      finalDecision = 'EVIDENCE_GROUNDING_REVIEW_REQUIRED';
+      stopGateStatus = 'OPERATOR_INTERVENTION_REQUIRED';
+      shouldContinue = false;
+
+      attempts.push({
+        attemptNumber: attempt,
+        startedAt: attemptStartTime,
+        completedAt: new Date().toISOString(),
+        llmLatencyMs: llmResult.latencyMs,
+        tokenUsage: llmResult.usage,
+        draftText: currentDraft,
+        draftEnvelope: envelope,
+        groundingAudit,
+        qaResult: evaluateHumanWritingQuality(currentDraft, {
+          articleId,
+          taskId,
+          evidencePack: input.evidencePack
+        })
+      });
+      break;
+    }
 
     // 6. Execute Rina Deterministic QA
     addTraceEvent(
@@ -307,6 +376,8 @@ export async function executeEditorialDraftJob(
       llmLatencyMs: llmResult.latencyMs,
       tokenUsage: llmResult.usage,
       draftText: currentDraft,
+      draftEnvelope: envelope,
+      groundingAudit,
       qaResult
     });
 
@@ -382,6 +453,9 @@ export async function executeEditorialDraftJob(
     };
   }
 
+  const lastAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+  const refinementAudit = currentDraft ? auditEditorialRefinement(currentDraft) : null;
+
   return {
     jobId: `job_${taskId}`,
     taskId,
@@ -390,6 +464,9 @@ export async function executeEditorialDraftJob(
     publicationStatus: 'DRAFT',
     humanStopGateStatus: stopGateStatus,
     finalDraft: currentDraft,
+    draftEnvelope: lastAttempt?.draftEnvelope || null,
+    groundingAudit: lastAttempt?.groundingAudit || null,
+    refinementAudit,
     totalAttempts: attempts.length,
     authorProvenance,
     qaResult: lastQaResult,

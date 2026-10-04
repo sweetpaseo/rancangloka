@@ -17,6 +17,37 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### EDITORIAL-RUNTIME-2: Grounded Joko Output & Editorial Compression 2026-10-04
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan temuan batas mendasar dari evaluasi manusia terhadap draf nyata pertama Joko (`JOKO_EDITORIAL_QUALITY_HUMAN_REVIEW = REVISE`): `AUTHOR_SAFE_INPUT != AUTOMATICALLY_GROUNDED_OUTPUT`.
+  - Mengimplementasikan **Claim Grounding Contract** yang membatasi klaim teknis Joko hanya pada `author_safe_claims` yang disetujui, fakta topik eksplisit, dan inferensi redaksional logis yang ditandai dengan jelas, tanpa memperluas klaim dari pengetahuan umum model (*prior knowledge*).
+  - Merancang **Grounded Draft Envelope** terstruktur: `{ article_markdown, claim_usage, unsupported_claim_candidates }` yang bersifat internal (naskah pembaca bersih tanpa tag sintetis `[CLM-xxx]`).
+  - Mengimplementasikan validasi ID klaim deterministik (`validateClaimGrounding`): menolak klaim tidak dikenal, klaim terlarang (*prohibited*), klaim beraksi `REMOVE`, angka/elemen teknis terlarang, serta menghentikan naskah pada `EVIDENCE_GROUNDING_REVIEW_REQUIRED` bila ada kandidat klaim di luar bukti.
+  - Mempertahankan kejujuran deklarasi (*No False Grounding*): status deklarasi diberi label `AUTHOR_GROUNDING_DECLARATION` dan tidak dimanipulasi sebagai `VERIFIED_EVIDENCE_GROUNDING`.
+  - Menegakkan prinsip kepastian proporsional (`PRESCRIPTIVE_CERTAINTY <= EVIDENCE_CERTAINTY`) dan kompresi redaksional (**ONE IDEA — ONE BEST HOME**) via `auditEditorialRefinement` untuk menghilangkan repetisi subjudul rekomendasi serta melunakkan istilah mutlak ("wajib", "pasti", "harus", "paling efektif", "tidak berfungsi", "hampir nol").
+  - Menjaga nada konsultan ramah (*Consultant Voice*): menerjemahkan konsep teknis menjadi konsekuensi praktis pemilik rumah, serta mengakhiri naskah dengan panduan inspeksi fisik mandiri siang hari (*Next Action Quality*) tanpa CTA pemasaran.
+- **Komponen Arsitektur yang Dibangun:**
+  1. `src/lib/editorial/claim-grounding.ts`: Parser amplop terstruktur draf, validator klaim aman, pemeriksa elemen terlarang, audit kepastian preskriptif, dan audit kompresi redaksional.
+  2. `src/lib/editorial/joko-prompt-builder.ts`: Integrasi kontrak keterikatan klaim, instruksi amplop JSON, kompresi editorial, dan kepastian proporsional.
+  3. `src/lib/editorial/editorial-runtime.ts`: Integrasi validasi ketercakupan klaim dan audit penyempurnaan redaksional ke alur runtime, dengan penghentian aman pada pelanggaran integritas.
+  4. `scripts/test-editorial-runtime-2.js`: 13 pengujian unit deterministik (penolakan klaim tidak dikenal, penolakan klaim terlarang, penolakan klaim REMOVE, pencegahan restorasi angka terlarang, penolakan kandidat tanpa bukti, audit kepastian preskriptif, audit kompresi redaksional, dan invarian keselamatan).
+  5. `scripts/runtime-proof-runner-v2.js`: Runner operator untuk eksekusi runtime V2.
+  6. `docs/EDITORIAL_RUNTIME_2.md` & `state/EDITORIAL_RUNTIME_2_CHECKPOINT.md`: Dokumentasi dan checkpoint resmi.
+- **Hasil Pembuktian Runtime Nyata V2 (Live Metal-Roof Proof V2):**
+  - **Provider:** SumoPod (`sumopod`) | **Model:** `gpt-5.6-luna`.
+  - **Telemetri Eksekusi:** Waktu 22.694 ms (22,7 detik), 2.889 prompt tokens, 3.150 completion tokens (total 6.039 tokens), 8.811 karakter draf naskah Markdown asli Bahasa Indonesia (kompresi 37,3% dari 14.046 karakter pada V1), 1 percobaan.
+  - **Keterikatan Klaim Aman:** 8/8 klaim terpetakan valid (`AUTHOR_GROUNDING_DECLARATION`), 0 klaim di luar bukti.
+  - **Hasil Evaluasi Deterministik Rina:** Skor **100 / 100**, Keputusan: **`HUMAN_WRITING_PASS`** (0 isu terdeteksi, isu `NEXT_ACTION_MISSING` pada V1 terselesaikan).
+  - **Artefak Pembuktian:** Disimpan ke `scripts/runtime-proof/joko-metal-roof-runtime-v2.md` dan `scripts/runtime-proof/joko-metal-roof-runtime-v2-meta.json`. Artefak V1 dan naskah benchmark manusia tidak disentuh.
+  - **Klasifikasi Milestone:** **`JOKO_RUNTIME_V2_HUMAN_REVIEW_REQUIRED`**.
+- **Validasi & Integritas:**
+  - `scripts/test-editorial-runtime-1.js`: 18/18 PASS.
+  - `scripts/test-editorial-runtime-2.js`: 13/13 PASS.
+  - `npx tsc --noEmit`: 0 error (bersih).
+  - `npm run build`: 100% sukses (server bundle SSR selesai dalam 5.76s).
+  - Invarian keselamatan: `automation_mode = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `mediaWorker = DISABLED`. Nol deploy, nol publikasi.
+
 ### EDITORIAL-RUNTIME-1: Real Joko LLM Execution + Rina QA 2026-10-04
 
 - **Tujuan & Ruang Lingkup:**
