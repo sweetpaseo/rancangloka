@@ -66,6 +66,10 @@ export interface LiveTaskProvenance {
   evidence_source: string;
   evidence_id: string;
   blocking_condition: string | null;
+  related_article_id?: number | null;
+  slug?: string | null;
+  approval_state?: string | null;
+  receipt_id?: string | null;
 }
 
 export interface LiveStaffOperation {
@@ -172,6 +176,34 @@ export function deriveLiveStaffOperation(
   let sourceType: LiveStaffOperation['provenance']['source_type'] = 'IDLE_BASELINE';
   let auditNote = 'Default deterministic standby state.';
 
+  // Helper to construct LiveTaskProvenance from a TaskCard deterministically
+  function taskCardToProvenance(
+    task: TaskCard,
+    depId: string,
+    capId: string,
+    evidenceSrc = 'pipeline.tasks',
+    blockingCond: string | null = task.blockerOrError
+  ): LiveTaskProvenance {
+    return {
+      task_id: task.taskId,
+      task_title: task.title,
+      stage: task.stage,
+      status: task.status,
+      department_id: depId,
+      responsible_agent_id: agentId,
+      capability_id: capId,
+      started_at: task.lastUpdate,
+      last_updated_at: task.lastUpdate,
+      evidence_source: evidenceSrc,
+      evidence_id: task.taskId,
+      blocking_condition: blockingCond,
+      related_article_id: task.relatedArticleId ?? null,
+      slug: task.slug ?? null,
+      approval_state: task.approvalEvidence ? 'APPROVED' : null,
+      receipt_id: snapshot?.articles?.latestReceipt?.jobId === task.taskId ? snapshot.articles.latestReceipt.jobId : null
+    };
+  }
+
   switch (agentId) {
     // ------------------------------------------------------------------------
     // 1. Joko (Writer / Editorial)
@@ -191,20 +223,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Tugas penulisan terblokir: ${blockedTask.blockerOrError || 'Kegagalan pipeline penulisan'}.`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `Editorial task ${blockedTask.taskId} is failed/blocked.`;
-        taskProv = {
-          task_id: blockedTask.taskId,
-          task_title: blockedTask.title,
-          stage: blockedTask.stage,
-          status: blockedTask.status,
-          department_id: 'editorial',
-          responsible_agent_id: agentId,
-          capability_id: 'ARTICLE_WRITING',
-          started_at: blockedTask.lastUpdate,
-          last_updated_at: blockedTask.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: blockedTask.taskId,
-          blocking_condition: blockedTask.blockerOrError
-        };
+        taskProv = taskCardToProvenance(blockedTask, 'editorial', 'ARTICLE_WRITING');
         break;
       }
 
@@ -220,20 +239,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Sedang menulis draf artikel [${writingTask.title}].`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `Active drafting in progress for ${writingTask.taskId}.`;
-        taskProv = {
-          task_id: writingTask.taskId,
-          task_title: writingTask.title,
-          stage: writingTask.stage,
-          status: writingTask.status,
-          department_id: 'editorial',
-          responsible_agent_id: agentId,
-          capability_id: 'ARTICLE_WRITING',
-          started_at: writingTask.lastUpdate,
-          last_updated_at: writingTask.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: writingTask.taskId,
-          blocking_condition: null
-        };
+        taskProv = taskCardToProvenance(writingTask, 'editorial', 'ARTICLE_WRITING');
         break;
       }
 
@@ -249,20 +255,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Draf [${draftTask.title}] menunggu giliran penulisan (Antrean).`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `Task ${draftTask.taskId} is queued draft; writer remains standby.`;
-        taskProv = {
-          task_id: draftTask.taskId,
-          task_title: draftTask.title,
-          stage: draftTask.stage,
-          status: draftTask.status,
-          department_id: 'editorial',
-          responsible_agent_id: agentId,
-          capability_id: 'ARTICLE_WRITING',
-          started_at: draftTask.lastUpdate,
-          last_updated_at: draftTask.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: draftTask.taskId,
-          blocking_condition: null
-        };
+        taskProv = taskCardToProvenance(draftTask, 'editorial', 'ARTICLE_WRITING');
         break;
       }
 
@@ -299,20 +292,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Riset bukti terhambat: ${failedResearch.blockerOrError || 'Kegagalan kompilasi bukti'}.`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `Research task ${failedResearch.taskId} failed.`;
-        taskProv = {
-          task_id: failedResearch.taskId,
-          task_title: failedResearch.title,
-          stage: failedResearch.stage,
-          status: failedResearch.status,
-          department_id: 'research_evidence',
-          responsible_agent_id: agentId,
-          capability_id: 'EVIDENCE_RESEARCH',
-          started_at: failedResearch.lastUpdate,
-          last_updated_at: failedResearch.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: failedResearch.taskId,
-          blocking_condition: failedResearch.blockerOrError
-        };
+        taskProv = taskCardToProvenance(failedResearch, 'research_evidence', 'EVIDENCE_RESEARCH');
         break;
       }
 
@@ -328,20 +308,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Sedang menyusun evidence pack dan penelusuran standar SNI untuk [${researchTask.title}].`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `Active research compilation for ${researchTask.taskId}.`;
-        taskProv = {
-          task_id: researchTask.taskId,
-          task_title: researchTask.title,
-          stage: researchTask.stage,
-          status: researchTask.status,
-          department_id: 'research_evidence',
-          responsible_agent_id: agentId,
-          capability_id: 'EVIDENCE_RESEARCH',
-          started_at: researchTask.lastUpdate,
-          last_updated_at: researchTask.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: researchTask.taskId,
-          blocking_condition: null
-        };
+        taskProv = taskCardToProvenance(researchTask, 'research_evidence', 'EVIDENCE_RESEARCH');
         break;
       }
 
@@ -380,20 +347,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Artikel gagal memenuhi First Article Gate: ${failedQA.blockerOrError}.`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `QA gate failed on ${failedQA.taskId}.`;
-        taskProv = {
-          task_id: failedQA.taskId,
-          task_title: failedQA.title,
-          stage: failedQA.stage,
-          status: failedQA.status,
-          department_id: 'editorial',
-          responsible_agent_id: agentId,
-          capability_id: 'EDITORIAL_QA',
-          started_at: failedQA.lastUpdate,
-          last_updated_at: failedQA.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: failedQA.taskId,
-          blocking_condition: failedQA.blockerOrError
-        };
+        taskProv = taskCardToProvenance(failedQA, 'editorial', 'EDITORIAL_QA');
         break;
       }
 
@@ -409,20 +363,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Sedang menjalankan validasi teknis First Article Gate untuk [${validatingTask.title}].`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `Validating 13 criteria checklist for ${validatingTask.taskId}.`;
-        taskProv = {
-          task_id: validatingTask.taskId,
-          task_title: validatingTask.title,
-          stage: validatingTask.stage,
-          status: validatingTask.status,
-          department_id: 'editorial',
-          responsible_agent_id: agentId,
-          capability_id: 'EDITORIAL_QA',
-          started_at: validatingTask.lastUpdate,
-          last_updated_at: validatingTask.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: validatingTask.taskId,
-          blocking_condition: null
-        };
+        taskProv = taskCardToProvenance(validatingTask, 'editorial', 'EDITORIAL_QA');
         break;
       }
 
@@ -440,20 +381,7 @@ export function deriveLiveStaffOperation(
         sourceType = 'CANONICAL_DB';
         auditNote = `Reviewing queue active with ${count} articles.`;
         if (reviewTask) {
-          taskProv = {
-            task_id: reviewTask.taskId,
-            task_title: reviewTask.title,
-            stage: reviewTask.stage,
-            status: reviewTask.status,
-            department_id: 'editorial',
-            responsible_agent_id: agentId,
-            capability_id: 'EDITORIAL_QA',
-            started_at: reviewTask.lastUpdate,
-            last_updated_at: reviewTask.lastUpdate,
-            evidence_source: 'pipeline.tasks',
-            evidence_id: reviewTask.taskId,
-            blocking_condition: null
-          };
+          taskProv = taskCardToProvenance(reviewTask, 'editorial', 'EDITORIAL_QA');
         }
         break;
       }
@@ -487,20 +415,7 @@ export function deriveLiveStaffOperation(
           liveStatus = 'BLOCKED';
           animKey = 'BLOCKED_WARNING';
           stateEvidence = `Pekerja media nonaktif & tugas [${failedTask.title}] terhenti: ${failedTask.blockerOrError || 'Worker offline'}.`;
-          taskProv = {
-            task_id: failedTask.taskId,
-            task_title: failedTask.title,
-            stage: failedTask.stage,
-            status: failedTask.status,
-            department_id: 'media',
-            responsible_agent_id: agentId,
-            capability_id: 'MEDIA_OPERATIONS',
-            started_at: failedTask.lastUpdate,
-            last_updated_at: failedTask.lastUpdate,
-            evidence_source: 'pipeline.tasks',
-            evidence_id: failedTask.taskId,
-            blocking_condition: failedTask.blockerOrError || 'Worker disabled'
-          };
+          taskProv = taskCardToProvenance(failedTask, 'media', 'MEDIA_OPERATIONS', 'pipeline.tasks', failedTask.blockerOrError || 'Worker disabled');
         }
         break;
       }
@@ -534,20 +449,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Sedang memproses generasi media visual untuk [${activeMedia.title}].`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `Active media generation job ${activeMedia.taskId}.`;
-        taskProv = {
-          task_id: activeMedia.taskId,
-          task_title: activeMedia.title,
-          stage: activeMedia.stage,
-          status: activeMedia.status,
-          department_id: 'media',
-          responsible_agent_id: agentId,
-          capability_id: 'MEDIA_OPERATIONS',
-          started_at: activeMedia.lastUpdate,
-          last_updated_at: activeMedia.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: activeMedia.taskId,
-          blocking_condition: null
-        };
+        taskProv = taskCardToProvenance(activeMedia, 'media', 'MEDIA_OPERATIONS');
         break;
       }
 
@@ -563,20 +465,7 @@ export function deriveLiveStaffOperation(
         stateEvidence = `Tugas media visual [${queuedMedia.title}] mengantre alokasi perangkat.`;
         sourceType = 'PIPELINE_TASK';
         auditNote = `Media job ${queuedMedia.taskId} is queued waiting.`;
-        taskProv = {
-          task_id: queuedMedia.taskId,
-          task_title: queuedMedia.title,
-          stage: queuedMedia.stage,
-          status: queuedMedia.status,
-          department_id: 'media',
-          responsible_agent_id: agentId,
-          capability_id: 'MEDIA_OPERATIONS',
-          started_at: queuedMedia.lastUpdate,
-          last_updated_at: queuedMedia.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: queuedMedia.taskId,
-          blocking_condition: null
-        };
+        taskProv = taskCardToProvenance(queuedMedia, 'media', 'MEDIA_OPERATIONS');
         break;
       }
 
@@ -633,20 +522,26 @@ export function deriveLiveStaffOperation(
           : `Sedang mengeksekusi Cron publikasi: ${activeCron?.jobName}.`;
         sourceType = activeTask ? 'PIPELINE_TASK' : 'TELEMETRY';
         auditNote = activeTask ? `Publication task ${activeTask.taskId}` : `Active cron run ${activeCron?.runId}`;
-        taskProv = {
-          task_id: activeTask?.taskId || activeCron?.runId || 'cron_active',
-          task_title: activeTask?.title || `Cron: ${activeCron?.jobName}`,
-          stage: activeTask?.stage || 'ingesting',
-          status: activeTask?.status || 'RUNNING',
-          department_id: 'publication_operations',
-          responsible_agent_id: agentId,
-          capability_id: 'PUBLICATION_OPERATIONS',
-          started_at: activeTask?.lastUpdate || activeCron?.startedAt || null,
-          last_updated_at: activeTask?.lastUpdate || activeCron?.startedAt || null,
-          evidence_source: activeTask ? 'pipeline.tasks' : 'scheduler.cloudflareCron',
-          evidence_id: activeTask?.taskId || activeCron?.runId || 'cron_run',
-          blocking_condition: null
-        };
+        taskProv = activeTask
+          ? taskCardToProvenance(activeTask, 'publication_operations', 'PUBLICATION_OPERATIONS')
+          : {
+              task_id: activeCron?.runId || 'cron_active',
+              task_title: `Cron: ${activeCron?.jobName}`,
+              stage: 'ingesting',
+              status: 'RUNNING',
+              department_id: 'publication_operations',
+              responsible_agent_id: agentId,
+              capability_id: 'PUBLICATION_OPERATIONS',
+              started_at: activeCron?.startedAt || null,
+              last_updated_at: activeCron?.startedAt || null,
+              evidence_source: 'scheduler.cloudflareCron',
+              evidence_id: activeCron?.runId || 'cron_run',
+              blocking_condition: null,
+              related_article_id: null,
+              slug: null,
+              approval_state: null,
+              receipt_id: null
+            };
         break;
       }
 
@@ -674,20 +569,7 @@ export function deriveLiveStaffOperation(
         }
         sourceType = 'CANONICAL_DB';
         auditNote = `Scheduled queue contains ${scheduledTasks.length} articles; automation mode is ${health?.automation?.mode || 'OFF'}.`;
-        taskProv = {
-          task_id: topSched.taskId,
-          task_title: topSched.title,
-          stage: topSched.stage,
-          status: topSched.status,
-          department_id: 'publication_operations',
-          responsible_agent_id: agentId,
-          capability_id: 'PUBLICATION_OPERATIONS',
-          started_at: topSched.lastUpdate,
-          last_updated_at: topSched.lastUpdate,
-          evidence_source: 'pipeline.tasks',
-          evidence_id: topSched.taskId,
-          blocking_condition: null
-        };
+        taskProv = taskCardToProvenance(topSched, 'publication_operations', 'PUBLICATION_OPERATIONS');
         break;
       }
 

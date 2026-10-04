@@ -2512,108 +2512,252 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             </div>
           `;
         } else {
-          modalBody.innerHTML = `
-            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">Status Operasional:</span>
-                <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
-                  sprite.visual_mode === 'ACTIVE'
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : sprite.visual_mode === 'BLOCKED'
-                    ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                    : 'bg-slate-200 text-slate-800 border border-slate-300'
-                }">${sprite.badge_text}</span>
-              </div>
-              <div class="flex items-start justify-between gap-2">
-                <span class="text-slate-500 font-medium">Animasi Kerja:</span>
-                <span class="text-emerald-700 font-mono font-bold text-[11px]">${sprite.animation_key || 'IDLE_STANDBY'}</span>
-              </div>
-              <div class="flex items-start justify-between gap-2">
-                <span class="text-slate-500 font-medium">Detail Visual:</span>
-                <span class="text-slate-900 text-right font-medium max-w-[280px]">${(sprite.work_visual_state && sprite.work_visual_state.visual_detail) || sprite.state_reason.summary}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">Ruangan Spasial:</span>
-                <span class="text-slate-900 font-bold">${sprite.room_key}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">Posisi Kerja:</span>
-                <span class="text-slate-700">${sprite.position_key}</span>
-              </div>
+        const liveOps = (officeData.live_operations && officeData.live_operations.staff_operations) || {};
+        const staffOp = liveOps[agentId] || null;
+
+        const effectiveStatus = staffOp ? staffOp.live_status : (sprite.badge_text || 'IDLE');
+        const effectiveOpState = staffOp ? staffOp.operational_state : (sprite.visual_mode || 'IDLE');
+        const taskProv = staffOp ? staffOp.current_task : null;
+        const anomaly = staffOp ? staffOp.active_anomaly : null;
+        const handoff = staffOp ? staffOp.active_handoff : null;
+
+        modalBody.innerHTML = `
+          <!-- 1. Live Operational Status Header Box -->
+          <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500 font-medium">Status Operasional Nyata:</span>
+              <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
+                effectiveOpState === 'WORKING'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : effectiveOpState === 'REVIEWING'
+                  ? 'bg-teal-100 text-teal-800 border border-teal-300'
+                  : effectiveOpState === 'BLOCKED' || effectiveStatus === 'BLOCKED'
+                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                  : effectiveStatus === 'OFFLINE'
+                  ? 'bg-slate-200 text-slate-800 border border-slate-400'
+                  : 'bg-amber-100 text-amber-900 border border-amber-300'
+              }">${staffOp ? (staffOp.live_status + ' (' + staffOp.operational_state + ')') : sprite.badge_text}</span>
             </div>
 
-            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-slate-500 font-medium">Animasi Kerja:</span>
+              <span class="text-emerald-700 font-mono font-bold text-[11px]">${(staffOp && staffOp.animation && staffOp.animation.animation_key) || sprite.animation_key || 'IDLE_STANDBY'}</span>
+            </div>
+
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-slate-500 font-medium">Bukti Keadaan:</span>
+              <span class="text-slate-900 text-right font-medium max-w-[280px]">${(staffOp && staffOp.state_evidence) || (sprite.work_visual_state && sprite.work_visual_state.visual_detail) || (sprite.state_reason && sprite.state_reason.summary) || 'Siaga di Lounge'}</span>
+            </div>
+
+            <div class="flex items-center justify-between border-t border-slate-200 pt-1.5">
+              <span class="text-slate-500 font-medium">Lokasi Ruangan / Posisi:</span>
+              <span class="text-slate-800 font-bold">${(staffOp && staffOp.location && staffOp.location.room_key) || sprite.room_key} • ${(staffOp && staffOp.location && staffOp.location.position_key) || sprite.position_key}</span>
+            </div>
+          </div>
+
+          <!-- 2. Backing Task & Provenance Section -->
+          <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-600 font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full ${taskProv ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
+                Tugas Backing Riil
+              </span>
+              <span class="text-[10px] text-slate-400 font-mono">${taskProv ? ('ID: ' + taskProv.task_id) : 'TIDAK ADA TUGAS AKTIF'}</span>
+            </div>
+
+            ${taskProv ? `
+              <div class="space-y-1.5">
+                <div class="text-slate-900 font-bold text-xs">${taskProv.task_title}</div>
+                <div class="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200">
+                  <div>Tahap: <strong class="text-blue-700 uppercase">${taskProv.stage}</strong></div>
+                  <div>Status: <strong class="text-slate-800">${taskProv.status}</strong></div>
+                  <div>Dimulai: <span class="text-slate-700">${taskProv.started_at ? new Date(taskProv.started_at).toLocaleTimeString('id-ID', { hour12: false }) + ' WIB' : 'Tersedia'}</span></div>
+                  <div>Kapabilitas: <span class="text-slate-700">${taskProv.capability_id || '-'}</span></div>
+                </div>
+
+                <div class="text-[10px] font-mono text-slate-500 flex items-center justify-between pt-1">
+                  <span>Sumber Bukti: <strong>${taskProv.evidence_source}</strong></span>
+                  <span>Ref: ${taskProv.evidence_id}</span>
+                </div>
+
+                ${taskProv.blocking_condition ? `
+                  <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-mono font-bold flex items-center gap-1.5">
+                    <span>⚠️ Penghambat:</span>
+                    <span>${taskProv.blocking_condition}</span>
+                  </div>
+                ` : ''}
+
+                <!-- Safe Read-Only Deep Links -->
+                <div class="pt-2 border-t border-slate-200 flex flex-wrap gap-1.5">
+                  ${taskProv.related_article_id ? `
+                    <a
+                      href="/admin/posts/${encodeURIComponent(taskProv.related_article_id)}"
+                      class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold border border-blue-200 transition text-[10px] flex items-center gap-1"
+                    >
+                      <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      <span>Lihat Artikel #${taskProv.related_article_id}</span>
+                    </a>
+                  ` : ''}
+
+                  ${taskProv.slug ? `
+                    <a
+                      href="/admin/preview/${encodeURIComponent(taskProv.slug)}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold border border-teal-200 transition text-[10px] flex items-center gap-1"
+                    >
+                      <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      <span>Preview Draft Publik</span>
+                    </a>
+                  ` : ''}
+
+                  <button
+                    type="button"
+                    data-open-job-trace="${taskProv.task_id}"
+                    class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 transition text-[10px] flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Timeline / Job Trace →</span>
+                  </button>
+                </div>
+              </div>
+            ` : `
+              <div class="text-slate-500 italic py-1">
+                Tidak ada tugas pipeline aktif yang diemban. Personel siaga di Lounge untuk mencegah beban kerja fiktif (Zero fake workload).
+              </div>
+            `}
+          </div>
+
+          <!-- 3. Specialized Persona Invariants & Deep Links -->
+          ${agentId === 'management_advisor_jefry' ? `
+            <div class="bg-purple-50 p-3.5 rounded-2xl border-2 border-purple-200 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-bold">Tugas Berjalan:</span>
-                <span class="text-[10px] text-slate-400 font-mono">Task ID: ${(sprite.work_visual_state && sprite.work_visual_state.task_id) || '-'}</span>
+                <span class="text-[10px] font-mono font-bold uppercase text-purple-900 tracking-wider flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
+                  TYPE SAFE JEV • SHADOW ADVISORY
+                </span>
+                <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-200 text-purple-900 border border-purple-300">
+                  OTORITAS EKSEKUSI: 0
+                </span>
               </div>
-              <div class="text-slate-900 font-medium">${sprite.task_label || sprite.current_task_title || 'Tidak ada tugas aktif (Siaga di Lounge)'}</div>
-              <div class="text-[10px] text-slate-500 font-mono flex items-center justify-between border-t border-slate-200 pt-1.5">
-                <span>Tahap: <strong class="text-blue-700">${sprite.current_task_status || '-'}</strong></span>
-                <span>Kesegaran: <strong class="text-slate-700">${(sprite.work_visual_state && sprite.work_visual_state.freshness) || 'RECENT'}</strong></span>
+              <div class="text-xs text-purple-950 font-medium">
+                Jefry (TypeSafe JEV) beroperasi dalam mode bayangan (Shadow Mode). Zero otoritas untuk menerbitkan, mengubah, membatalkan, atau merilis artikel secara otonom.
               </div>
-              ${((sprite.work_visual_state && sprite.work_visual_state.task_id) || sprite.current_task_id) ? `
+              <div class="text-[10px] font-mono text-purple-800 bg-white/80 p-2 rounded-lg border border-purple-200">
+                Saran Keputusan: Hanya memberikan rekomendasi struktural (continue, revise, human_review, stop) untuk operator manusia.
+              </div>
+            </div>
+          ` : ''}
+
+          ${agentId === 'lokamedia_worker_primary' ? `
+            <div class="bg-orange-50 p-3.5 rounded-2xl border border-orange-200 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold uppercase text-orange-900">KEBIJAKAN WORKER MEDIA</span>
+                <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-orange-200 text-orange-950 border border-orange-300">
+                  WORKER DISABLED
+                </span>
+              </div>
+              <div class="text-xs text-orange-950">
+                LokaMedia Studio Worker dinonaktifkan oleh kebijakan operator. Budi berstatus OFFLINE tanpa aktivitas generasi visual semu.
+              </div>
+            </div>
+          ` : ''}
+
+          ${agentId === 'publication_dispatcher_core' ? `
+            <div class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold uppercase text-emerald-900">PUBLICATION SAFETY GATE</span>
+                <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-950 border border-emerald-300">
+                  AUTO_PUBLISH = OFF
+                </span>
+              </div>
+              <div class="text-xs text-emerald-950">
+                Semua artikel terjadwal memerlukan persetujuan operator manusia. Sari siaga tanpa mengeksekusi publikasi otonom.
+              </div>
+              <div class="pt-1">
+                <a
+                  href="/admin/publication/operations"
+                  class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] inline-flex items-center gap-1 transition"
+                >
+                  <span>Buka Panel Operasi Publikasi →</span>
+                </a>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- 4. Active Anomaly Callout -->
+          ${anomaly ? `
+            <div class="bg-rose-50 p-3.5 rounded-2xl border-2 border-rose-300 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold uppercase text-rose-900 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-rose-600 animate-ping"></span>
+                  ANOMALI SISTEM AKTIF
+                </span>
+                <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-rose-200 text-rose-900 uppercase">
+                  ${anomaly.severity}
+                </span>
+              </div>
+              <div class="text-xs font-bold text-rose-950">${anomaly.title}</div>
+              <div class="text-[11px] font-mono text-rose-800">
+                Penyebab Terhambat: ${anomaly.blocking_condition || 'Kegagalan subsystem terdeteksi'}
+              </div>
+              <div class="pt-1 flex items-center justify-between border-t border-rose-200">
+                <span class="text-[10px] text-rose-700 font-mono">ID: ${anomaly.anomaly_id}</span>
+                <a
+                  href="/admin/mission-control/alerts"
+                  class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] transition"
+                >
+                  Buka Alert Center →
+                </a>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- 5. Observed Workflow Transition / Handoff -->
+          ${handoff ? `
+            <div class="bg-indigo-50/80 p-3 rounded-2xl border border-indigo-200 space-y-1.5 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold uppercase text-indigo-900 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                  Observed Workflow Transition
+                </span>
+                <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                  handoff.handoff_state === 'RUNNING' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                  handoff.handoff_state === 'QUEUED' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                  'bg-rose-100 text-rose-800 border-rose-300'
+                }">${handoff.handoff_state}</span>
+              </div>
+              <div class="font-bold text-slate-800">${handoff.task_title || handoff.task_id}</div>
+              <div class="text-[11px] font-mono text-slate-600 flex items-center justify-between">
+                <span>Tahap: <strong>${handoff.from_stage} → ${handoff.to_stage}</strong></span>
+                <span>${new Date(handoff.transition_timestamp).toLocaleTimeString('id-ID', { hour12: false })} WIB</span>
+              </div>
+              <div class="text-[10px] font-mono text-indigo-700 border-t border-indigo-100 pt-1 flex items-center justify-between">
+                <span>Bukti: ${handoff.evidence_source} (${handoff.evidence_id})</span>
                 <button
                   type="button"
-                  data-open-job-trace="${(sprite.work_visual_state && sprite.work_visual_state.task_id) || sprite.current_task_id}"
-                  class="w-full mt-2 py-1.5 px-3 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                  data-open-job-trace="${handoff.task_id}"
+                  class="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition text-[10px] cursor-pointer"
                 >
-                  <span>Lihat Timeline / Job Trace →</span>
+                  Buka Trace →
                 </button>
-              ` : ''}
-            </div>
-
-            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5">
-              <div class="text-slate-500 font-bold">Kapabilitas Mesin:</div>
-              <div class="flex flex-wrap gap-1 mt-1">
-                ${(sprite.capabilities || []).map(function (c) {
-                  return `<span class="px-1.5 py-0.5 bg-slate-200 text-slate-700 border border-slate-300 rounded text-[9px] font-bold">${c}</span>`;
-                }).join('')}
               </div>
             </div>
+          ` : ''}
 
-            ${(function () {
-              const normId = normalizeAgentKey(agentId);
-              const handoff = (officeData.recent_handoffs || []).find(function (h) {
-                return normalizeAgentKey(h.to_agent_id) === normId || normalizeAgentKey(h.from_agent_id) === normId;
-              });
-              if (!handoff) return '';
-              return `
-                <div class="bg-indigo-50/80 p-3 rounded-xl border border-indigo-200 space-y-1.5 text-xs">
-                  <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-mono font-bold uppercase text-indigo-900 flex items-center gap-1.5">
-                      <span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
-                      Observed Workflow Transition
-                    </span>
-                    <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
-                      handoff.handoff_state === 'RUNNING' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                      handoff.handoff_state === 'QUEUED' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                      'bg-rose-100 text-rose-800 border-rose-300'
-                    }">${handoff.handoff_state}</span>
-                  </div>
-                  <div class="font-bold text-slate-800">${handoff.task_title || handoff.task_id}</div>
-                  <div class="text-[11px] font-mono text-slate-600 flex items-center justify-between">
-                    <span>Tahap: <strong>${handoff.from_stage} → ${handoff.to_stage}</strong></span>
-                    <span>${new Date(handoff.transition_timestamp).toLocaleTimeString('id-ID', { hour12: false })} WIB</span>
-                  </div>
-                  <div class="text-[10px] font-mono text-indigo-700 border-t border-indigo-100 pt-1 flex items-center justify-between">
-                    <span>Bukti: ${handoff.evidence_source} (${handoff.evidence_id})</span>
-                    <button
-                      type="button"
-                      data-open-job-trace="${handoff.task_id}"
-                      class="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition text-[10px] cursor-pointer"
-                    >
-                      Buka Trace →
-                    </button>
-                  </div>
-                </div>
-              `;
-            })()}
-
-            <div class="text-[10px] font-mono text-slate-500 text-center pt-1 border-t border-slate-200">
-              ⚡ Visualisasi berdasarkan telemetry nyata • Zero synthetic animation
+          <!-- 6. Capabilities Strip -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+            <div class="text-slate-500 font-bold text-[10px] uppercase">Kapabilitas Mesin:</div>
+            <div class="flex flex-wrap gap-1 mt-1">
+              ${(sprite.capabilities || []).map(function (c) {
+                return `<span class="px-1.5 py-0.5 bg-slate-200 text-slate-700 border border-slate-300 rounded text-[9px] font-bold">${c}</span>`;
+              }).join('')}
             </div>
-          `;
+          </div>
+
+          <div class="text-[10px] font-mono text-slate-400 text-center pt-1 border-t border-slate-200">
+            ⚡ Visualisasi telemetri operasional nyata • Zero synthetic animation • Read-only
+          </div>
+        `;
         }
 
         modal.classList.remove('hidden');
