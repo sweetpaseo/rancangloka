@@ -1914,7 +1914,94 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       </div>
     </div>
 
+    <!-- 6. CONTROLLED OPERATOR ACTION GATE MODAL (MC-LIVEOPS-3) -->
+    <div
+      id="action-confirm-modal"
+      class="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="action-modal-title"
+    >
+      <div class="bg-white border-2 border-slate-300 rounded-3xl max-w-lg w-full p-6 text-slate-800 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+        <!-- Header -->
+        <div class="flex items-start justify-between border-b border-slate-200 pb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="action-modal-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold uppercase border border-amber-300">
+                ACTION PREVIEW
+              </span>
+              <span class="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                HUMAN GATE
+              </span>
+            </div>
+            <h3 id="action-modal-title" class="text-lg font-outfit font-black text-slate-900 mt-1">
+              Pratinjau Tindakan Operator
+            </h3>
+            <p id="action-modal-subtitle" class="text-xs font-mono text-slate-500 mt-0.5">
+              Verifikasi efek dan batas keselamatan sebelum konfirmasi
+            </p>
+          </div>
+          <button
+            type="button"
+            id="action-modal-close-btn"
+            class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer text-xl leading-none"
+            aria-label="Tutup dialog konfirmasi tindakan"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Body Content -->
+        <div id="action-modal-body" class="space-y-3 text-xs font-mono">
+          <!-- Populated dynamically via preview API -->
+        </div>
+
+        <!-- Operator Note Input -->
+        <div class="space-y-1.5">
+          <label for="action-operator-reason" class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+            Catatan / Alasan Operator:
+          </label>
+          <textarea
+            id="action-operator-reason"
+            rows="2"
+            class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Contoh: Eskalasi tinjauan bukti standar teknis SNI..."
+          ></textarea>
+        </div>
+
+        <!-- Status / Error Alert -->
+        <div id="action-modal-alert" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono hidden"></div>
+
+        <!-- Footer Buttons -->
+        <div class="border-t border-slate-200 pt-3 flex items-center justify-between gap-3">
+          <div class="text-[10px] text-slate-400 font-mono">
+            Audit logging aktif • Zero autonomous execution.
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="action-cancel-btn"
+              class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-outfit font-bold text-xs border border-slate-300 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              id="action-confirm-btn"
+              class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-outfit font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            >
+              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Konfirmasi & Eksekusi</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
+
 
   <!-- Raw State Payload for Client Hydration & Safe Inspection -->
   <script id="office-data-payload" type="application/json" set:html={JSON.stringify(office)}></script>
@@ -2426,8 +2513,11 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       const modalStaffLink = document.getElementById('modal-staff-link');
       const modalChatLink = document.getElementById('modal-chat-link');
 
+      let currentOpenAgentId = null;
+
       function closeModal() {
         if (modal) modal.classList.add('hidden');
+        currentOpenAgentId = null;
       }
 
       if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
@@ -2437,6 +2527,182 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
           if (e.target === modal) closeModal();
         });
       }
+
+      // Action Confirmation Modal Controller (MC-LIVEOPS-3)
+      const actionModal = document.getElementById('action-confirm-modal');
+      const actionModalTitle = document.getElementById('action-modal-title');
+      const actionModalBody = document.getElementById('action-modal-body');
+      const actionModalAlert = document.getElementById('action-modal-alert');
+      const actionModalReason = document.getElementById('action-operator-reason') as HTMLTextAreaElement | null;
+      const actionConfirmBtn = document.getElementById('action-confirm-btn') as HTMLButtonElement | null;
+      const actionCancelBtn = document.getElementById('action-cancel-btn');
+      const actionCloseBtn = document.getElementById('action-modal-close-btn');
+
+      let currentActionRequest: any = null;
+
+      function closeActionModal() {
+        if (!actionModal) return;
+        actionModal.classList.add('hidden');
+        if (actionModalAlert) {
+          actionModalAlert.classList.add('hidden');
+          actionModalAlert.textContent = '';
+        }
+        if (actionModalReason) actionModalReason.value = '';
+        currentActionRequest = null;
+      }
+
+      if (actionCancelBtn) actionCancelBtn.addEventListener('click', closeActionModal);
+      if (actionCloseBtn) actionCloseBtn.addEventListener('click', closeActionModal);
+      if (actionModal) {
+        actionModal.addEventListener('click', function (e) {
+          if (e.target === actionModal) closeActionModal();
+        });
+      }
+
+      function openActionPreviewModal(actionReq: any) {
+        if (!actionModal || !actionModalBody) return;
+        currentActionRequest = actionReq;
+
+        if (actionModalAlert) {
+          actionModalAlert.classList.add('hidden');
+          actionModalAlert.textContent = '';
+        }
+        actionModalBody.innerHTML = `
+          <div class="p-4 text-center text-slate-500 font-mono">
+            Memuat pratinjau tindakan dan verifikasi status server...
+          </div>
+        `;
+        actionModal.classList.remove('hidden');
+
+        fetch('/api/admin/mission-control/actions?preview=true', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(actionReq)
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (!data || !data.preview) {
+              throw new Error(data?.message || 'Gagal memuat pratinjau tindakan.');
+            }
+            const p = data.preview;
+            if (actionModalTitle) actionModalTitle.textContent = p.action_label;
+
+            actionModalBody.innerHTML = `
+              <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-500 font-bold uppercase text-[10px]">Tindakan:</span>
+                  <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-900 font-mono font-bold text-[10px]">${p.action_type}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-500 font-bold uppercase text-[10px]">Target:</span>
+                  <span class="text-slate-900 font-bold font-mono">${p.target_type} #${p.target_id}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-500 font-bold uppercase text-[10px]">Pemilik / Penanggung Jawab:</span>
+                  <span class="text-slate-800 font-bold">${p.current_owner_name || p.current_owner || '-'}</span>
+                </div>
+                <div class="border-t border-slate-200 pt-1.5 text-slate-700">
+                  <strong class="text-[11px] font-mono">Efek yang Diusulkan:</strong>
+                  <p class="mt-0.5 text-slate-900 font-mono text-xs">${p.proposed_effect}</p>
+                </div>
+              </div>
+
+              <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200 space-y-1">
+                <div class="text-amber-900 font-bold text-[10px] uppercase">Catatan Batas Keselamatan:</div>
+                <div class="text-[11px] text-amber-950 font-mono">${p.safety_boundary_note}</div>
+                <div class="text-[10px] text-slate-500 border-t border-amber-200 pt-1 flex items-center justify-between">
+                  <span>Subsystem: <strong>${p.subsystem_affected}</strong></span>
+                  <span>Sistem Eksternal: <strong>${p.external_system_affected}</strong></span>
+                </div>
+              </div>
+
+              ${p.can_execute ? '' : `
+                <div class="p-2.5 rounded-xl bg-rose-100 border border-rose-300 text-rose-900 font-bold">
+                  ⚠️ Tindakan ini diblokir: ${p.block_reason || 'Kebijakan keamanan menolak tindakan ini.'}
+                </div>
+              `}
+            `;
+
+            if (actionConfirmBtn) {
+              actionConfirmBtn.disabled = !p.can_execute;
+              if (!p.can_execute) {
+                actionConfirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+              } else {
+                actionConfirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+              }
+            }
+          })
+          .catch(function (err) {
+            actionModalBody.innerHTML = `
+              <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-mono text-xs">
+                Gagal memuat pratinjau: ${err?.message || err}
+              </div>
+            `;
+            if (actionConfirmBtn) actionConfirmBtn.disabled = true;
+          });
+      }
+
+      if (actionConfirmBtn) {
+        actionConfirmBtn.addEventListener('click', function () {
+          if (!currentActionRequest) return;
+          const reason = actionModalReason ? actionModalReason.value.trim() : '';
+
+          actionConfirmBtn.disabled = true;
+          actionConfirmBtn.innerHTML = `<span>Mengeksekusi...</span>`;
+
+          const payload = {
+            ...currentActionRequest,
+            reason: reason || undefined
+          };
+
+          fetch('/api/admin/mission-control/actions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+            .then(function (res) {
+              return res.json().then(function (json) {
+                return { status: res.status, data: json };
+              });
+            })
+            .then(function (res) {
+              if (res.status === 200 && res.data && res.data.status === 'success') {
+                closeActionModal();
+                // Refresh canonical office data from server truth
+                fetch('/api/admin/mission-control/office')
+                  .then(function (r) { return r.json(); })
+                  .then(function (freshData) {
+                    officeData = freshData;
+                    if (currentOpenAgentId) {
+                      openStaffInspector(currentOpenAgentId);
+                    }
+                  });
+              } else {
+                const msg = res.data?.message || 'Gagal mengeksekusi tindakan';
+                if (actionModalAlert) {
+                  actionModalAlert.classList.remove('hidden');
+                  actionModalAlert.textContent = 'Gagal: ' + msg;
+                }
+              }
+            })
+            .catch(function (err) {
+              if (actionModalAlert) {
+                actionModalAlert.classList.remove('hidden');
+                actionModalAlert.textContent = 'Network error: ' + (err?.message || err);
+              }
+            })
+            .finally(function () {
+              actionConfirmBtn.disabled = false;
+              actionConfirmBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span>Konfirmasi & Eksekusi</span>
+              `;
+            });
+        });
+      }
+
 
       function openStaffInspector(agentId) {
         const sprite = (officeData.sprites || []).find(function (s) {
@@ -2744,7 +3010,135 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
             </div>
           ` : ''}
 
-          <!-- 6. Capabilities Strip -->
+          <!-- 6. Controlled Operator Actions (MC-LIVEOPS-3) -->
+          <div class="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-mono font-bold uppercase text-blue-900 tracking-wider flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                Tindakan Operator Terkendali
+              </span>
+              <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 border border-blue-300">
+                HUMAN GATE
+              </span>
+            </div>
+
+            ${(function() {
+              if (agentId === 'management_advisor_jefry') {
+                return `
+                  <div class="text-[11px] text-purple-900 bg-purple-100/70 p-2 rounded-xl border border-purple-200 font-mono">
+                    Otoritas Eksekusi: 0 (Advisory Only). Jefry tidak memiliki wewenang mengeksekusi instruksi mutasi.
+                  </div>
+                `;
+              }
+              if (agentId === 'lokamedia_worker_primary') {
+                return `
+                  <div class="text-[11px] text-orange-900 bg-orange-100/70 p-2 rounded-xl border border-orange-200 font-mono">
+                    Worker Media Disabled. Operasi pembuatan visual dinonaktifkan oleh kebijakan sistem.
+                  </div>
+                `;
+              }
+              if (agentId === 'publication_dispatcher_core') {
+                return `
+                  <div class="text-[11px] text-emerald-900 bg-emerald-100/70 p-2 rounded-xl border border-emerald-200 font-mono">
+                    Auto-Publish OFF. Penerbitan hanya dapat dilakukan melalui persetujuan manual di panel operasi.
+                  </div>
+                `;
+              }
+
+              const actions = [];
+              if (anomaly && anomaly.state === 'OPEN') {
+                actions.push(`
+                  <button
+                    type="button"
+                    data-operator-action="ACKNOWLEDGE_ANOMALY"
+                    data-target-type="ANOMALY"
+                    data-target-id="${anomaly.anomaly_id}"
+                    data-expected-state='${JSON.stringify({ anomaly_state: "OPEN" })}'
+                    class="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                  >
+                    <span>✓ Akui Anomali (${anomaly.anomaly_id})</span>
+                  </button>
+                `);
+              }
+
+              if (taskProv) {
+                const isBlocked = Boolean(taskProv.blocking_condition) || taskProv.status === 'BLOCKED' || taskProv.stage === 'failed';
+                if (isBlocked) {
+                  actions.push(`
+                    <button
+                      type="button"
+                      data-operator-action="ESCALATE_BLOCKED_TASK"
+                      data-target-type="TASK"
+                      data-target-id="${taskProv.task_id}"
+                      data-expected-state='${JSON.stringify({ status: taskProv.status, stage: taskProv.stage })}'
+                      class="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                    >
+                      <span>🚨 Eskalasi Tugas Terhambat</span>
+                    </button>
+                  `);
+                  if (agentId === 'evidence_researcher_lead') {
+                    actions.push(`
+                      <button
+                        type="button"
+                        data-operator-action="REQUEST_EVIDENCE_FOLLOWUP"
+                        data-target-type="TASK"
+                        data-target-id="${taskProv.task_id}"
+                        data-expected-state='${JSON.stringify({ status: taskProv.status, stage: taskProv.stage })}'
+                        class="px-2.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                      >
+                        <span>📚 Minta Tindak Lanjut Bukti</span>
+                      </button>
+                    `);
+                  }
+                } else {
+                  if (['writing', 'draft', 'editorial_qa', 'validating', 'ready_for_review'].includes(taskProv.stage)) {
+                    actions.push(`
+                      <button
+                        type="button"
+                        data-operator-action="REQUEST_HUMAN_REVIEW"
+                        data-target-type="TASK"
+                        data-target-id="${taskProv.task_id}"
+                        data-expected-state='${JSON.stringify({ status: taskProv.status, stage: taskProv.stage })}'
+                        class="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                      >
+                        <span>🔍 Minta Review Redaksi</span>
+                      </button>
+                    `);
+                  }
+                  if (agentId === 'evidence_researcher_lead') {
+                    actions.push(`
+                      <button
+                        type="button"
+                        data-operator-action="REQUEST_EVIDENCE_FOLLOWUP"
+                        data-target-type="TASK"
+                        data-target-id="${taskProv.task_id}"
+                        data-expected-state='${JSON.stringify({ status: taskProv.status, stage: taskProv.stage })}'
+                        class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                      >
+                        <span>📚 Minta Tindak Lanjut Bukti</span>
+                      </button>
+                    `);
+                  }
+                }
+              }
+
+              if (actions.length === 0) {
+                return `
+                  <div class="text-[11px] text-slate-500 italic py-1 font-mono">
+                    Tidak ada tindakan mutasi yang berlaku untuk keadaan staf ini (Siaga di Lounge / Tanpa Tugas Terhambat).
+                  </div>
+                `;
+              }
+
+              return `
+                <div class="flex flex-wrap gap-2 pt-1">
+                  ${actions.join('')}
+                </div>
+              `;
+            })()}
+          </div>
+
+          <!-- 7. Capabilities Strip -->
           <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
             <div class="text-slate-500 font-bold text-[10px] uppercase">Kapabilitas Mesin:</div>
             <div class="flex flex-wrap gap-1 mt-1">
@@ -2755,13 +3149,37 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
           </div>
 
           <div class="text-[10px] font-mono text-slate-400 text-center pt-1 border-t border-slate-200">
-            ⚡ Visualisasi telemetri operasional nyata • Zero synthetic animation • Read-only
+            ⚡ Visualisasi telemetri operasional nyata • Zero synthetic animation • Controlled Human Gate
           </div>
         `;
         }
 
+        currentOpenAgentId = agentId;
+
+        // Bind operator action click listeners inside inspector
+        modalBody.querySelectorAll('[data-operator-action]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const actionType = btn.getAttribute('data-operator-action');
+            const targetType = btn.getAttribute('data-target-type');
+            const targetId = btn.getAttribute('data-target-id');
+            let expectedState = {};
+            try {
+              expectedState = JSON.parse(btn.getAttribute('data-expected-state') || '{}');
+            } catch {
+              expectedState = {};
+            }
+            openActionPreviewModal({
+              action_type: actionType,
+              target_type: targetType,
+              target_id: targetId,
+              expected_current_state: expectedState
+            });
+          });
+        });
+
         modal.classList.remove('hidden');
       }
+
 
       // Handle staff inspection on stationary buttons
       document.querySelectorAll('[data-staff-inspect]').forEach(function (btn) {

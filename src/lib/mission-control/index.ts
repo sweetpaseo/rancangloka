@@ -60,6 +60,7 @@ export * from './staff-movement.ts';
 export * from './task-handoff.ts';
 export * from './job-trace.ts';
 export * from './live-operations.ts';
+export * from './actions.ts';
 
 export interface MissionControlOrganization {
   generated_at: string;

@@ -1151,3 +1151,121 @@ export function getAnomaliesSnapshot(snapshot: MissionControlSnapshot | null): A
   };
 }
 
+/**
+ * Retrieve anomaly by its anomaly_id from memory or D1 store.
+ */
+export async function getAnomalyById(db: any, anomalyId: string): Promise<MissionControlAnomaly | null> {
+  if (memoryAnomalies.has(anomalyId)) {
+    return memoryAnomalies.get(anomalyId)!;
+  }
+  if (db && typeof db.prepare === 'function') {
+    try {
+      const row = await db.prepare('SELECT * FROM mission_control_anomalies WHERE anomaly_id = ?').bind(anomalyId).first();
+      if (row) {
+        return {
+          anomaly_id: row.anomaly_id,
+          detected_at: row.detected_at,
+          updated_at: row.updated_at,
+          source_system: row.source_system,
+          source_event_id: row.source_event_id,
+          department_id: row.department_id,
+          responsible_agent_id: row.responsible_agent_id,
+          task_id: row.task_id,
+          entity_type: row.entity_type,
+          entity_id: row.entity_id,
+          severity: row.severity,
+          anomaly_type: row.anomaly_type,
+          error_class: row.error_class,
+          title: row.title,
+          summary: row.summary,
+          technical_detail: row.technical_detail,
+          state: row.state,
+          retryable: Boolean(row.retryable),
+          operator_action_required: Boolean(row.operator_action_required),
+          expected_condition: Boolean(row.expected_condition),
+          evidence_reference: row.evidence_reference,
+          fingerprint: row.fingerprint,
+          occurrence_count: row.occurrence_count,
+          first_seen_at: row.first_seen_at,
+          last_seen_at: row.last_seen_at,
+          resolved_at: row.resolved_at,
+          metadata: row.metadata_json ? JSON.parse(row.metadata_json) : undefined
+        };
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  return null;
+}
+
+/**
+ * Acknowledge an anomaly by a human operator.
+ * Sets state to ACKNOWLEDGED, creates audit event, and updates memory/D1 store.
+ */
+export async function acknowledgeAnomaly(
+  db: any,
+  anomalyId: string,
+  actor = 'admin_operator',
+  reason?: string | null
+): Promise<{ anomaly: MissionControlAnomaly; event: MissionControlAnomalyEvent }> {
+  let anom = await getAnomalyById(db, anomalyId);
+  if (!anom) {
+    throw new Error(`ANOMALY_NOT_FOUND: Anomaly with ID ${anomalyId} does not exist.`);
+  }
+
+  const now = new Date().toISOString();
+  const previousState = anom.state;
+  anom.state = 'ACKNOWLEDGED';
+  anom.updated_at = now;
+  anom.operator_action_required = false;
+
+  const eventId = `anev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const event: MissionControlAnomalyEvent = {
+    event_id: eventId,
+    anomaly_id: anom.anomaly_id,
+    event_type: 'ACKNOWLEDGED',
+    previous_state: previousState,
+    new_state: 'ACKNOWLEDGED',
+    message: `Diakui oleh operator manusia (${actor})${reason ? ': ' + reason : ''}`,
+    created_at: now,
+    metadata: { actor, reason: reason || null }
+  };
+
+  if (db && typeof db.prepare === 'function') {
+    try {
+      await db.prepare(
+        'UPDATE mission_control_anomalies SET state = ?, updated_at = ?, operator_action_required = 0 WHERE anomaly_id = ?'
+      ).bind('ACKNOWLEDGED', now, anom.anomaly_id).run();
+
+      await db.prepare(
+        'INSERT INTO mission_control_anomaly_events (event_id, anomaly_id, event_type, previous_state, new_state, message, created_at, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      ).bind(
+        event.event_id,
+        event.anomaly_id,
+        event.event_type,
+        event.previous_state || null,
+        event.new_state,
+        event.message,
+        event.created_at,
+        JSON.stringify(event.metadata || {})
+      ).run();
+    } catch {
+      // Memory fallback
+    }
+  }
+
+  memoryAnomalies.set(anom.anomaly_id, anom);
+  memoryAnomalyEvents.push(event);
+
+  return { anomaly: anom, event };
+}
+
+/**
+ * Register an anomaly directly into memory store for testing or dynamic ingestion.
+ */
+export function registerMemoryAnomaly(anomaly: MissionControlAnomaly): void {
+  memoryAnomalies.set(anomaly.anomaly_id, anomaly);
+}
+
+
