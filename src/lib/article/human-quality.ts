@@ -101,6 +101,15 @@ export type ArticleIntent =
   | 'PRODUCT_REVIEW'
   | 'INSTALLATION_HOW_TO';
 
+export type IntentConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface ArticleIntentProfile {
+  primary_intent: ArticleIntent;
+  secondary_intents: ArticleIntent[];
+  confidence: IntentConfidence;
+  reasons: string[];
+}
+
 import {
   RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
   CANONICAL_TERMINOLOGY_MAP,
@@ -123,11 +132,16 @@ export interface HumanWritingQualityResult {
   max_attempts: number;
   rewrite_brief: StructuredRewriteBrief | null;
   article_intent?: ArticleIntent;
+  article_intent_profile?: ArticleIntentProfile;
 }
 
 export interface StructuredRewriteBrief {
   target_agent_id: string; // 'content_writer_primary' | 'evidence_researcher_lead' | 'editorial_qa_primary'
+  supporting_agent_id?: string;
   reason: 'HUMAN_WRITING_QUALITY';
+  revision_reason?: 'RESEARCH_REQUIRED' | 'EDITORIAL_EXPLANATION_REQUIRED' | 'EDITORIAL_INTEGRITY_REVIEW' | 'HOMEOWNER_REFRAMING_REQUIRED';
+  article_id?: number | string;
+  task_id?: string;
   attempt: number;
   required_actions: string[];
   preserved_invariants: string[];
@@ -340,8 +354,13 @@ export interface EvaluationOptions {
   maxAttempts?: number;
   focusKeyword?: string;
   evaluatedAt?: string;
-  // Article Intent option (EDITORIAL-EXPERT-CONSULTATION-1)
+  // Article Intent options (EDITORIAL-EXPERT-CONSULTATION-1 & STABILIZE)
   articleIntent?: ArticleIntent;
+  articleIntentProfile?: ArticleIntentProfile;
+  articleId?: number | string;
+  taskId?: string;
+  hasTradeOffEvidence?: boolean;
+  isBiasedTradeOffSuppression?: boolean;
   // Product review & calibration options
   reviewType?: ProductReviewType;
   hasFirstPartyEvidence?: boolean;
@@ -351,40 +370,143 @@ export interface EvaluationOptions {
 }
 
 /**
- * Deterministically infers an article's editorial intent from its title, headings, and early paragraphs.
- * Milestone: EDITORIAL-EXPERT-CONSULTATION-1
+ * Deterministically derives an article's multi-signal intent profile.
+ * Supports primary intent, secondary intents, and confidence level.
+ * Milestone: EDITORIAL-EXPERT-CONSULTATION-1-STABILIZE
  */
-export function detectArticleIntent(contentMd: string, options: EvaluationOptions = {}): ArticleIntent {
+export function detectArticleIntentProfile(
+  contentMd: string,
+  options: EvaluationOptions = {}
+): ArticleIntentProfile {
+  if (options.articleIntentProfile) {
+    return options.articleIntentProfile;
+  }
   if (options.articleIntent) {
-    return options.articleIntent;
+    return {
+      primary_intent: options.articleIntent,
+      secondary_intents: [],
+      confidence: 'HIGH',
+      reasons: ['Intensi ditentukan secara eksplisit melalui opsi evaluasi.']
+    };
   }
   if (options.isProductReview || options.reviewType) {
-    return 'PRODUCT_REVIEW';
+    return {
+      primary_intent: 'PRODUCT_REVIEW',
+      secondary_intents: [],
+      confidence: 'HIGH',
+      reasons: ['Artikel diklasifikasikan sebagai product review dari opsi reviewType/isProductReview.']
+    };
   }
 
   const clean = contentMd.trim();
-  const first500 = clean.slice(0, 500).toLowerCase();
-  const headings = (clean.match(/^##?\s+.+$/gm) || []).join(' ').toLowerCase();
-  const combined = first500 + ' ' + headings;
+  const first500 = clean.slice(0, 500);
+  const titleLine = (clean.match(/^##?\s+(.+)$/m) || [])[1] || '';
+  const headings = (clean.match(/^##?\s+(.+)$/gm) || []).map((h) => h.replace(/^##?\s+/, '')).join(' ');
 
-  // Comparison signals (titles, headings, or opening)
-  if (/\b(?:vs|versus|perbandingan|memilih antara|dibandingkan)\b/i.test(headings || first500)) {
-    return 'COMPARISON';
+  const reasons: string[] = [];
+  const scores: Record<ArticleIntent, number> = {
+    EXPLANATORY: 1, // baseline fallback
+    PROBLEM_SOLVING: 0,
+    COMPARISON: 0,
+    PRODUCT_REVIEW: 0,
+    INSTALLATION_HOW_TO: 0
+  };
+
+  // 1. Comparison signals
+  const hasComparisonTitle = /\b(?:vs|versus|perbandingan|antara\s+.+\s+dan\b|memilih\s+antara|dibandingkan)\b/i.test(titleLine);
+  const hasComparisonHeadings = /\b(?:vs|versus|perbandingan|komparasi|kelebihan dan kelemahan|plus minus)\b/i.test(headings);
+  if (hasComparisonTitle) {
+    scores.COMPARISON += 3;
+    reasons.push('Judul mengindikasikan komparasi langsung');
   }
-  // Product review signals
-  if (/\b(?:tinjauan spesifikasi|ulasan produk|panduan pembelian|review produk)\b/i.test(headings || first500)) {
-    return 'PRODUCT_REVIEW';
-  }
-  // How-to / Installation signals
-  if (/\b(?:langkah pemasangan|cara memasang|panduan instalasi|cara merawat|tahapan pengerjaan)\b/i.test(headings || first500)) {
-    return 'INSTALLATION_HOW_TO';
-  }
-  // Problem solving signals in headings (Title/H2/H3 specifically)
-  if (/\b(?:solusi|mengapa|mengatasi|penyebab|kenapa|cara mengatasi|troubleshooting)\b/i.test(headings)) {
-    return 'PROBLEM_SOLVING';
+  if (hasComparisonHeadings) {
+    scores.COMPARISON += 2;
+    reasons.push('Subjudul mengandung pola pembandingan material/opsi');
   }
 
-  return 'EXPLANATORY';
+  // 2. Problem Solving signals
+  const hasProblemTitle = /\b(?:solusi|mengapa|mengatasi|penyebab|kenapa|cara mengatasi|troubleshooting|masalah|bocor|rembes|panas)\b/i.test(titleLine);
+  const hasProblemHeadings = /\b(?:solusi|mengapa|mengatasi|penyebab|gejala|diagnosis|akar masalah|langkah perbaikan)\b/i.test(headings);
+  if (hasProblemTitle) {
+    scores.PROBLEM_SOLVING += 3;
+    reasons.push('Judul membingkai masalah atau solusi perbaikan');
+  }
+  if (hasProblemHeadings) {
+    scores.PROBLEM_SOLVING += 2;
+    reasons.push('Subjudul membahas diagnosis atau solusi masalah');
+  }
+
+  // 3. Installation / How-To signals
+  const hasHowToTitle = /\b(?:langkah pemasangan|cara memasang|panduan instalasi|cara merawat|tahapan pengerjaan|tutorial)\b/i.test(titleLine);
+  const hasHowToHeadings = /\b(?:langkah|tahap|persiapan|cara memasang|urutan kerja|pemasangan)\b/i.test(headings);
+  if (hasHowToTitle) {
+    scores.INSTALLATION_HOW_TO += 3;
+    reasons.push('Judul mengindikasikan panduan cara/instalasi');
+  }
+  if (hasHowToHeadings) {
+    scores.INSTALLATION_HOW_TO += 2;
+    reasons.push('Subjudul memuat langkah pengerjaan sekuensial');
+  }
+
+  // 4. Product Review signals
+  const hasReviewTitle = /\b(?:review|ulasan|tinjauan spesifikasi|bedah produk)\b/i.test(titleLine);
+  const hasReviewHeadings = /\b(?:spesifikasi|ulasan|kelebihan|kekurangan|fitur|performa)\b/i.test(headings);
+  if (hasReviewTitle) {
+    scores.PRODUCT_REVIEW += 3;
+    reasons.push('Judul mengindikasikan ulasan produk');
+  }
+  if (hasReviewHeadings) {
+    scores.PRODUCT_REVIEW += 2;
+    reasons.push('Subjudul memuat struktur evaluasi produk');
+  }
+
+  // 5. Explanatory signals
+  const hasExplanatoryTitle = /\b(?:mengenal|apa itu|prinsip|dasar|memahami|analisis|panduan|sains|dinamika|optimalisasi|pendekatan|kajian|karakteristik|teori|tinjauan|efisiensi|sistem|peran|konsep)\b/i.test(titleLine);
+  const hasExplanatoryHeadings = /\b(?:prinsip|analisis|dinamika|optimalisasi|karakteristik|efisiensi|metodologi|pemilihan material)\b/i.test(headings);
+  if (hasExplanatoryTitle) {
+    scores.EXPLANATORY += 2;
+    reasons.push('Judul mengindikasikan paparan konsep atau pemahaman');
+  }
+  if (hasExplanatoryHeadings) {
+    scores.EXPLANATORY += 1;
+    reasons.push('Subjudul memuat struktur analisis atau prinsip teknis');
+  }
+
+  // Sort intents by score descending
+  const sorted = (Object.keys(scores) as ArticleIntent[]).sort((a, b) => scores[b] - scores[a]);
+  const primary = sorted[0];
+  const highestScore = scores[primary];
+  const secondScore = scores[sorted[1]];
+
+  // Secondary intents: any other intent with score >= 2
+  const secondary = sorted.slice(1).filter((intent) => scores[intent] >= 2);
+
+  // Confidence determination
+  let confidence: IntentConfidence = 'MEDIUM';
+  if (highestScore >= 3) {
+    confidence = 'HIGH';
+    if (highestScore === secondScore) {
+      reasons.push('Artikel bertipe hibrida dengan sinyal kuat pada intensi primer dan sekunder');
+    }
+  } else if (highestScore <= 1) {
+    confidence = 'LOW';
+    reasons.push('Sinyal intensi lemah, menggunakan klasifikasi default eksplanatori');
+  }
+
+  return {
+    primary_intent: primary,
+    secondary_intents: secondary,
+    confidence,
+    reasons
+  };
+}
+
+/**
+ * Deterministically infers an article's primary editorial intent.
+ * Milestone: EDITORIAL-EXPERT-CONSULTATION-1
+ */
+export function detectArticleIntent(contentMd: string, options: EvaluationOptions = {}): ArticleIntent {
+  return detectArticleIntentProfile(contentMd, options).primary_intent;
 }
 
 /**
@@ -462,8 +584,10 @@ export function evaluateHumanWritingQuality(
   const issues: EditorialPatternIssue[] = [];
   const strongAreas: string[] = [];
 
-  // Determine intent (EDITORIAL-EXPERT-CONSULTATION-1)
-  const articleIntent: ArticleIntent = detectArticleIntent(cleanMd, options);
+  // Determine intent & multi-signal profile (EDITORIAL-EXPERT-CONSULTATION-1 & STABILIZE)
+  const intentProfile: ArticleIntentProfile = detectArticleIntentProfile(cleanMd, options);
+  const articleIntent: ArticleIntent = intentProfile.primary_intent;
+  const isLowConfidenceIntent = intentProfile.confidence === 'LOW';
 
   // Default dimension baseline (100 total potential)
   let dimRhythm = 20;
@@ -1027,7 +1151,7 @@ export function evaluateHumanWritingQuality(
   }
 
   // --------------------------------------------------------------------------
-  // 17. Expert Consultation & Practical Decision Depth Gate (Milestone: EDITORIAL-EXPERT-CONSULTATION-1)
+  // 17. Expert Consultation & Practical Decision Depth Gate (Milestone: EDITORIAL-EXPERT-CONSULTATION-1-STABILIZE)
   // --------------------------------------------------------------------------
   // Signals for Expert-to-Client Consultation (Layer 3) & Practical Decision Support (Layer 4)
   const hasTradeOffs = /\b(?:trade-off|kompromi|konsekuensi|kelemahan|kekurangan|keterbatasan|risiko|sisi lain|namun menuntut|perlu diantisipasi|perawatan berkala|kelemahan termal|rentan|biaya perawatan|debu|karat|meredam panas lebih optimal|menahan beban angin|pertimbangan teknis|prioritaskan\b[^\n.]+?\bjika\b)\b/i.test(cleanMd);
@@ -1041,43 +1165,46 @@ export function evaluateHumanWritingQuality(
   if (articleIntent === 'PROBLEM_SOLVING' || articleIntent === 'COMPARISON') {
     const hasProblemFraming = /\b(?:masalah|dilema|kebingungan|keluhan|panas|bocor|rembes\w*|rusak|sulit|tantangan|memilih|perbedaan|antara|perbandingan|frustrasi|kecemasan|kekhawatiran|mengantong)\b/i.test(firstParagraph);
     if (!hasProblemFraming && firstParagraph.length > 30) {
+      const penalty = isLowConfidenceIntent ? 4 : 8;
       issues.push({
         code: 'READER_PROBLEM_UNCLEAR',
         category: 'EXPERT_CONSULTATION_GAP',
         severity: 'WARNING',
         description: 'Pembuka artikel tidak membingkai secara jelas masalah atau dilema riil yang dialami pemilik rumah.',
-        penalty: 8
+        penalty
       });
-      dimReader = Math.max(0, dimReader - 5);
-      dimVoice = Math.max(0, dimVoice - 3);
+      dimReader = Math.max(0, dimReader - Math.round(penalty * 0.6));
+      dimVoice = Math.max(0, dimVoice - Math.round(penalty * 0.4));
     }
   }
 
   // B. Diagnosis Before Prescription (Problem Solving)
   if (articleIntent === 'PROBLEM_SOLVING' && hasPrescriptionWithoutDiagnosis) {
+    const penalty = isLowConfidenceIntent ? 5 : 10;
     issues.push({
       code: 'DIAGNOSIS_MISSING',
       category: 'EXPERT_CONSULTATION_GAP',
       severity: 'WARNING',
       description: 'Naskah langsung meresepkan produk atau tindakan tanpa terlebih dahulu mendiagnosis gejala dan akar penyebab teknis.',
-      penalty: 10
+      penalty
     });
-    dimEvidence = Math.max(0, dimEvidence - 6);
-    dimReader = Math.max(0, dimReader - 4);
+    dimEvidence = Math.max(0, dimEvidence - Math.round(penalty * 0.6));
+    dimReader = Math.max(0, dimReader - Math.round(penalty * 0.4));
   }
 
   // C. Trade-Off Depth & Incomplete Trade-Offs (Comparison & Problem Solving)
   if (articleIntent === 'COMPARISON') {
     if (!hasTradeOffs) {
+      const penalty = isLowConfidenceIntent ? 8 : 16;
       issues.push({
         code: 'TRADE_OFFS_INCOMPLETE',
         category: 'DECISION_SUPPORT_GAP',
-        severity: 'CRITICAL',
+        severity: isLowConfidenceIntent ? 'WARNING' : 'CRITICAL',
         description: 'Artikel komparasi tidak membeberkan trade-off atau kompromi fisik/material secara transparan bagi pemilik rumah.',
-        penalty: 16
+        penalty
       });
-      dimVoice = Math.max(0, dimVoice - 8);
-      dimReader = Math.max(0, dimReader - 8);
+      dimVoice = Math.max(0, dimVoice - Math.round(penalty / 2));
+      dimReader = Math.max(0, dimReader - Math.round(penalty / 2));
     } else {
       strongAreas.push('Komparasi menguraikan trade-off material secara transparan dan berimbang');
     }
@@ -1086,62 +1213,71 @@ export function evaluateHumanWritingQuality(
   // D. Universal Recommendation / Missing Scenario Fit (Comparison)
   const hasUniversalRecommendation = /\b(?:produk terbaik untuk semua|pilihan nomor satu tanpa tanding|selalu lebih unggul dalam segala hal|wajib dipilih oleh siapa pun)\b/i.test(cleanMd);
   if (articleIntent === 'COMPARISON' && (hasUniversalRecommendation || (!hasScenarioFit && !hasUniversalRecommendation && !/pertimbangkan|tergantung pada/i.test(cleanMd)))) {
+    const penalty = isLowConfidenceIntent ? 5 : 10;
     issues.push({
       code: 'SCENARIO_FIT_MISSING',
       category: 'DECISION_SUPPORT_GAP',
       severity: 'WARNING',
       description: 'Rekomendasi bersifat mutlak/universal tanpa percabangan skenario (kondisi jika X maka A, jika Y maka B).',
-      penalty: 10
+      penalty
     });
-    dimReader = Math.max(0, dimReader - 6);
-    dimVoice = Math.max(0, dimVoice - 4);
+    dimReader = Math.max(0, dimReader - Math.round(penalty * 0.6));
+    dimVoice = Math.max(0, dimVoice - Math.round(penalty * 0.4));
   }
 
   // E. Next Action / Decision Resolution (All actionable intents: Comparison, Problem Solving, How-to, Product Review)
   if (articleIntent === 'COMPARISON' || articleIntent === 'PROBLEM_SOLVING' || articleIntent === 'INSTALLATION_HOW_TO' || articleIntent === 'PRODUCT_REVIEW') {
     if (!hasActionGuidance && lastSection.length > 50) {
+      const penalty = isLowConfidenceIntent ? 5 : 10;
       issues.push({
         code: 'NEXT_ACTION_MISSING',
         category: 'DECISION_SUPPORT_GAP',
         severity: 'WARNING',
         description: 'Bagian penutup artikel tidak memberikan panduan langkah konkret berikutnya (hal yang harus diinspeksi, diukur, diverifikasi, atau ditanyakan ke tukang/aplikator).',
-        penalty: 10
+        penalty
       });
-      dimReader = Math.max(0, dimReader - 6);
-      dimConclusion = Math.max(0, dimConclusion - 4);
+      dimReader = Math.max(0, dimReader - Math.round(penalty * 0.6));
+      dimConclusion = Math.max(0, dimConclusion - Math.round(penalty * 0.4));
     }
   }
 
   // F. Academic Distance Excessive (Explanatory / General Articles that detach from homeowner reality)
   // Evaluates when technical concepts are described in abstract theory without practical homeowner relevance,
   // without context qualification, without trade-offs, and ending with an essay summary rather than client action.
-  const hasAbstractTone = /\b(?:sains kenyamanan termal|rekayasa amplop bangunan|beban pendinginan pasif|selubung adaptif ganda|dinamika ventilasi|keberlanjutan konstruksi|efisiensi termal arsitektur|karakter arsitektural tropis modern)\b/i.test(cleanMd);
-  const lacksHomeownerRelevance = !/\b(?:bagi pemilik rumah|untuk rumah|di rumah|kamar tidur|kamar mandi|ruang keluarga|biaya perawatan|saat hujan|saat panas|tukang|aplikator|lapangan|penghuni rumah)\b/i.test(cleanMd);
+  const hasAbstractTone = /\b(?:analisis teoritis|rekayasa (?:amplop|fasad|termal|struktur|akustik|bangunan)|sains kenyamanan|dinamika (?:ventilasi|fluida|aliran|udara)|efisiensi termal|beban pendinginan pasif|selubung adaptif|karakter arsitektural|fenomena (?:beban|perpindahan|degradasi|termal)|parameter penentu keberhasilan|prinsip termodinamika|koefisien (?:perpindahan|reduksi|penyerapan|transmisi)|kajian literatur|studi komparatif|tinjauan pustaka|keberlanjutan konstruksi)\b/i.test(cleanMd);
+  const lacksHomeownerRelevance = !/\b(?:bagi pemilik rumah|untuk rumah|di rumah|kamar tidur|kamar mandi|ruang keluarga|ruang tamu|dapur|biaya perawatan|anggaran|saat hujan|saat kemarau|saat panas|tukang|mandor|aplikator|lapangan|penghuni rumah|keseharian keluarga)\b/i.test(cleanMd);
   const lacksPracticalTradeOffs = !hasTradeOffs;
   const lacksNextAction = !hasActionGuidance;
 
   if (articleIntent === 'EXPLANATORY' && hasAbstractTone && lacksHomeownerRelevance && lacksPracticalTradeOffs && lacksNextAction) {
+    const penalty = isLowConfidenceIntent ? 8 : 16;
     issues.push({
       code: 'ACADEMIC_DISTANCE_EXCESSIVE',
       category: 'ACADEMIC_DISTANCE',
       severity: 'WARNING',
       description: 'Artikel bernada esai akademis/makalah ilmiah yang berjarak dari realitas pemilik rumah (nihil relevansi hunian praktis, ketiadaan trade-off perawatan, dan tidak ada resolusi tindakan nyata).',
-      penalty: 16
+      penalty
     });
-    dimVoice = Math.max(0, dimVoice - 8);
-    dimReader = Math.max(0, dimReader - 8);
+    dimVoice = Math.max(0, dimVoice - Math.round(penalty / 2));
+    dimReader = Math.max(0, dimReader - Math.round(penalty / 2));
   }
 
-  // G. Content Depth Adequacy vs Scope (Short Prototype Filter)
-  // Broad complex scope with very brief content (< 120 words) triggers scope-depth mismatch
-  const isBroadScopeTopic = /\b(?:solusi rumah panas|panduan smart home|tren desain interior|sistem keamanan rumah|solusi|panduan lengkap|desain rumah)\b/i.test(firstParagraph + ' ' + headings.join(' '));
-  const isTooBriefForBroadScope = words.length < 120;
-  if (isBroadScopeTopic && isTooBriefForBroadScope) {
+  // G. Content Depth Adequacy vs Scope (Promised Scope vs Delivered Depth)
+  // Canonical Principle: PROMISED SCOPE > DELIVERED DEPTH
+  const firstHeading = (cleanMd.match(/^##?\s+(.+)$/m) || [])[1] || '';
+  const isBroadScopeTopic = /\b(?:panduan lengkap|panduan komprehensif|semua hal tentang|solusi menyeluruh|master guide|dari nol sampai jadi|panduan memilih .* untuk seluruh rumah|panduan total|solusi rumah panas|panduan smart home|tren desain interior|sistem keamanan rumah)\b/i.test(firstHeading + ' ' + firstParagraph);
+  const isNarrowScopeTopic = /\b(?:apa itu|berapa (?:jarak|ketebalan|ukuran)|arti istilah|fungsi utama|definisi)\b/i.test(firstHeading);
+
+  // Delivered depth: substantive subsections (H2 headings with >= 25 words beneath them)
+  const substantiveSections = (cleanMd.split(/^##\s+/m).slice(1)).filter((s) => s.trim().split(/\s+/).length >= 25).length;
+  const isTooBriefForPromisedScope = isBroadScopeTopic && (words.length < 150 || (substantiveSections < 2 && words.length < 200));
+
+  if (isTooBriefForPromisedScope && !isNarrowScopeTopic) {
     issues.push({
       code: 'SCOPE_DEPTH_MISMATCH',
       category: 'CONTENT_DEPTH_MISMATCH',
       severity: 'WARNING',
-      description: `Cakupan topik luas dibahas terlalu singkat (~${words.length} kata), menyisakan kesenjangan kedalaman eksplanasi dan panduan keputusan.`,
+      description: `Cakupan topik luas yang dijanjikan dibahas terlalu singkat (~${words.length} kata, ${substantiveSections} sub-bahasan), menyisakan kesenjangan kedalaman eksplanasi dan panduan keputusan.`,
       penalty: 7
     });
     dimSpecificity = Math.max(0, dimSpecificity - 4);
@@ -1209,15 +1345,46 @@ export function evaluateHumanWritingQuality(
     decision = 'HUMAN_REVIEW_REQUIRED';
   }
 
-  // Role Correction Routing (Phase 16)
+  // Role Correction Routing (Stabilization: Deterministic Irwan / Joko / Rina mapping)
   let targetAgentId = 'content_writer_primary'; // Default: Joko
+  let supportingAgentId: string | undefined = undefined;
+  let revisionReason: StructuredRewriteBrief['revision_reason'] = 'HOMEOWNER_REFRAMING_REQUIRED';
+
   if (hasCriticalIntegrityViolation) {
-    targetAgentId = 'editorial_qa_primary'; // Rina: integrity violation
+    // Integrity failure (fabricated experience / commercial bias / fake test)
+    targetAgentId = 'editorial_qa_primary'; // Rina
+    supportingAgentId = 'content_writer_primary';
+    revisionReason = 'EDITORIAL_INTEGRITY_REVIEW';
+  } else if (options.isBiasedTradeOffSuppression) {
+    // Case C: Known limitation hidden / biased recommendation
+    targetAgentId = 'editorial_qa_primary'; // Rina
+    supportingAgentId = 'content_writer_primary';
+    revisionReason = 'EDITORIAL_INTEGRITY_REVIEW';
+  } else if (
+    issues.some((i) => i.code === 'TRADE_OFFS_INCOMPLETE') &&
+    options.hasTradeOffEvidence === false
+  ) {
+    // Case A: Missing trade-off evidence
+    targetAgentId = 'evidence_researcher_lead'; // Irwan
+    supportingAgentId = 'content_writer_primary';
+    revisionReason = 'RESEARCH_REQUIRED';
+  } else if (
+    issues.some((i) => i.code === 'TRADE_OFFS_INCOMPLETE') &&
+    (options.hasTradeOffEvidence === true || options.hasTradeOffEvidence === undefined)
+  ) {
+    // Case B: Evidence exists, but omitted in prose explanation
+    targetAgentId = 'content_writer_primary'; // Joko
+    revisionReason = 'EDITORIAL_EXPLANATION_REQUIRED';
   } else if (
     issues.some((i) => (i.code === 'INSUFFICIENT_CLAIM_SUPPORT' || i.code === 'WEAK_EVIDENCE_SPECIFICITY') && i.severity === 'CRITICAL') &&
     !issues.some((i) => i.category === 'GENERIC_OPENING' || i.category === 'STRUCTURAL_SYMMETRY' || i.category === 'KEYWORD_FORCING')
   ) {
-    targetAgentId = 'evidence_researcher_lead'; // Irwan: purely evidence/source failure without prose defects
+    targetAgentId = 'evidence_researcher_lead'; // Irwan: purely evidence failure
+    supportingAgentId = 'content_writer_primary';
+    revisionReason = 'RESEARCH_REQUIRED';
+  } else if (issues.some((i) => i.code === 'ACADEMIC_DISTANCE_EXCESSIVE' || i.code === 'READER_PROBLEM_UNCLEAR')) {
+    targetAgentId = 'content_writer_primary'; // Joko: homeowner reframing
+    revisionReason = 'HOMEOWNER_REFRAMING_REQUIRED';
   }
 
   // Generate Structured Rewrite Brief if revise/rewrite is required
@@ -1285,7 +1452,11 @@ export function evaluateHumanWritingQuality(
 
     rewriteBrief = {
       target_agent_id: targetAgentId,
+      supporting_agent_id: supportingAgentId,
       reason: 'HUMAN_WRITING_QUALITY',
+      revision_reason: revisionReason,
+      article_id: options.articleId,
+      task_id: options.taskId,
       attempt: attemptCount + 1,
       required_actions: requiredActions,
       preserved_invariants: [
@@ -1310,7 +1481,8 @@ export function evaluateHumanWritingQuality(
     attempt_count: attemptCount,
     max_attempts: maxAttempts,
     rewrite_brief: rewriteBrief,
-    article_intent: articleIntent
+    article_intent: articleIntent,
+    article_intent_profile: intentProfile
   };
 }
 
