@@ -17,6 +17,38 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
 
+### EDITORIAL-RUNTIME-3: Real Irwan Research & Evidence Acquisition 2026-10-04
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengubah Irwan (`evidence_researcher_lead`) dari sekadar identitas staf konseptual menjadi **runtime riset dan akuisisi bukti ilmiah yang nyata**.
+  - Mengimplementasikan alur nyata: `Human Operator` → `Research Job` → `Irwan Runtime` → `Real Search / Source Discovery` → `Real Source Retrieval` → `Read Source` → `Extract Evidence` → `Classify Claim` → `Assess Applicability` → `Generate Author-Safe Claims` → `Evidence Pack` → `Human Review Gate`.
+  - Menegakkan prinsip tegas bahwa pencarian adalah penemuan, bukan bukti (`SEARCH_IS_DISCOVERY != EVIDENCE`). Snippet mesin pencari tidak pernah dapat menghasilkan status klaim `VERIFIED`.
+  - Mengintegrasikan API terbuka yang sah (CrossRef Open API dan Wikipedia Technical/Building Science API) untuk penelusuran pustaka dan ekstraksi teks penuh dokumen primer, lengkap dengan kalkulasi sidik jari kriptografis (SHA-256 hash).
+  - Mengklasifikasikan sumber tertahan secara jujur tanpa simulasi atau sirkumvensi paywall (`RESTRICTED_PORTAL` untuk SNI, `COMMERCIAL_PAYWALL` untuk ASHRAE/ASTM).
+  - Menerapkan **Exact Numbers Policy**: angka teknis yang tidak terverifikasi oleh dokumen primer yang diunduh langsung dihapus dari klaim aman penulis (`author_safe_claims`), serta prinsip **Monetary Silence** ditegakkan mutlak.
+  - Membatasi status akhir riset pada gerbang `RESEARCH_HUMAN_REVIEW_REQUIRED` sebelum draf naskah dikonsumsi oleh Joko.
+- **Komponen Arsitektur yang Dibangun:**
+  1. `src/lib/editorial/source-discovery.ts`: Modul pencarian terbuka CrossRef & Wikipedia, pengunduh teks dokumen primer, kalkulator SHA-256, dan ekstraktor kutipan terverifikasi (`extractPassagesFromText`).
+  2. `src/lib/editorial/irwan-research-runtime.ts`: Engine runtime server-side `executeEditorialResearchJob(input, options)` yang mengorkestrasi penelusuran, pengunduhan, pembacaan, klasifikasi inventaris klaim, pembuatan klaim aman penulis, perakitan Evidence Pack baru, dan pencatatan trace operasional.
+  3. `src/lib/editorial/index.ts`: Ekspor barrel modul penemuan sumber dan runtime riset Irwan.
+  4. `scripts/run-irwan-research-proof.js`: Skrip eksekusi langsung operator untuk pembuktian riset autentik topik atap metal.
+  5. `scripts/test-editorial-runtime-3.js`: Rangkaian 18 tes unit deterministik untuk membuktikan batasan verifikasi, penghapusan angka persis, deteksi sumber tertahan, keabsahan SHA-256, pewarisan ketidakpastian, dan isolasi keselamatan.
+  6. `docs/EDITORIAL_RUNTIME_3_IRWAN.md`: Dokumentasi komprehensif arsitektur riset Irwan dan telemetri runtime nyata.
+- **Hasil Pembuktian Runtime Nyata (Live Metal-Roof Research Proof):**
+  - **Topik:** *"Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?"*
+  - **Operator:** `antigravity_operator` (`CHIEF_EDITOR`).
+  - **Durasi Eksekusi:** 3.709 ms (3,7 detik).
+  - **Statistik Operasional:** 4 kueri dijalankan, 19 sumber ditemukan, 1 dokumen primer berhasil diunduh dan diinspeksi penuh (17.629 bytes, SHA-256: `c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401`), 32 kutipan bukti diekstrak, 3 sumber berbayar/portal tertahan dicatat jujur, 8 klaim disusun (6 terverifikasi, 2 terdukung/konsensus), 8 klaim aman penulis dihasilkan.
+  - **Artefak Pembuktian:** Disimpan ke `scripts/runtime-proof/irwan-metal-roof-evidence-pack.json` dan `scripts/runtime-proof/irwan-metal-roof-runtime-meta.json`. Paket bukti lama tidak ditimpa.
+  - **Klasifikasi Milestone:** **`IRWAN_RUNTIME_PROVEN`**.
+- **Validasi & Integritas:**
+  - `scripts/test-editorial-runtime-1.js`: 18/18 PASS.
+  - `scripts/test-editorial-runtime-2.js`: 13/13 PASS.
+  - `scripts/test-editorial-runtime-3.js`: 18/18 PASS.
+  - `npx tsc --noEmit`: 0 error (bersih).
+  - `npm run build`: 100% sukses (server bundle SSR selesai dalam 5.83s).
+  - Invarian keselamatan: `automation_mode = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `mediaWorker = DISABLED`. Nol deploy, nol publikasi, Joko tidak dipanggil.
+
 ### EDITORIAL-RUNTIME-2: Grounded Joko Output & Editorial Compression 2026-10-04
 
 - **Tujuan & Ruang Lingkup:**
