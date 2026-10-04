@@ -1,10 +1,10 @@
 # Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?
 
-Banyak pemilik rumah di Indonesia memilih penutup atap metal—baik galvalum, zincalume, maupun spandek—karena bobotnya yang ringan, pemasangannya yang cepat, dan ketahanannya terhadap kebocoran genteng retak. Namun, begitu memasuki musim kemarau dengan terik matahari siang yang menyengat, keluhan yang muncul hampir seragam: ruang di bawah atap terasa panas seperti oven, bahkan hembusan kipas angin di dalam ruangan hanya terasa memutar udara gerah.
+Satu tukang menyarankan pasang aluminium foil. Tukang lain justru bilang rongga atapnya perlu diberi ventilasi. Keduanya terdengar masuk akal—dan di situlah keputusan renovasi mulai membingungkan.
 
-Pertanyaan yang kemudian sering diajukan kepada tukang atau toko material bangunan adalah: apakah cukup dengan memasang lembaran aluminium foil di bawah atap, ataukah loteng rumah juga perlu dipasangi ventilasi atap?
+Foil dan ventilasi memang sama-sama bisa membantu mengurangi masalah panas, tetapi keduanya bekerja pada bagian yang berbeda. Foil berhubungan dengan panas radiasi dari permukaan atap, sementara ventilasi membantu mengalirkan udara panas yang terkumpul di rongga atap.
 
-Nah, di sinilah keputusan renovasi sering keliru sasaran. Banyak pemilik rumah terburu-buru membeli material peredam tanpa memastikan terlebih dahulu bagaimana panas sebenarnya masuk dan merambat ke ruang hunian. Untuk menjawab dilema ini secara tepat tanpa membuang anggaran renovasi, kita perlu membedah jalur perpindahan panasnya terlebih dahulu sebelum menentukan langkah yang pas untuk rumah Anda.
+Jadi sebelum membeli material atau mulai membongkar bagian atap, ada satu hal yang lebih penting untuk dicari tahu: panas di rumah Anda sebenarnya masuk lewat jalur mana, dan tertahan di bagian mana?
 
 ---
 
