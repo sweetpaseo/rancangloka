@@ -119,6 +119,9 @@ test('Layer 2 (Language & Cohesion) enforces terminology consistency, lexical co
     'plain_language_explanation',
     'practical_consequence'
   ]);
+  assert.ok(l2.native_indonesian_authoring);
+  assert.strictEqual(l2.native_indonesian_authoring.principle, 'NATIVE_INDONESIAN_AUTHORING');
+  assert.strictEqual(l2.native_indonesian_authoring.canonical_language, 'Bahasa Indonesia');
 });
 
 test('Layer 3 (Expert Consultation) structures expert-to-client perspective and diagnosis', () => {
@@ -198,6 +201,8 @@ test('Joko adapter receives Human Voice, Language, Consultation, and Decision Su
   assert.ok(joko.language_and_cohesion);
   assert.ok(joko.expert_consultation);
   assert.ok(joko.decision_support);
+  assert.ok(joko.native_indonesian_authoring);
+  assert.strictEqual(joko.native_indonesian_authoring.principle, 'NATIVE_INDONESIAN_AUTHORING');
   assert.ok(joko.trust_boundaries.no_fabricated_experience);
   assert.strictEqual(joko.trust_boundaries.monetary_silence, 'STRICT_EMPIRICAL_RESEARCH_ONLY_NO_GUESSES');
 });
@@ -213,6 +218,8 @@ test('Rina adapter receives Complete 5-Layer Knowledge and QA Rewrite Gates', ()
   assert.ok(rina.layer_3_expert_consultation);
   assert.ok(rina.layer_4_decision_support);
   assert.ok(rina.layer_5_trust_and_editorial_integrity);
+  assert.ok(rina.native_indonesian_language_qa);
+  assert.strictEqual(rina.native_indonesian_language_qa.responsibility, 'NATIVE_INDONESIAN_LANGUAGE_QA');
   assert.strictEqual(rina.qa_responsibilities.rewrite_policy, 'STRUCTURED_BRIEF_TO_JOKO_MAX_2_ATTEMPTS');
 });
 

@@ -29,14 +29,24 @@ import {
   RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
   CANONICAL_EDITORIAL_KNOWLEDGE_V1,
   CANONICAL_PRODUCT_REVIEW_TERMINOLOGY,
+  CANONICAL_NATIVE_INDONESIAN_AUTHORING_RULE,
+  TECHNICAL_ENGLISH_ALLOWLIST,
+  getRinaQAKnowledge,
   type ClaimHierarchyClass,
   type RancangLokaEditorialKnowledge,
+  type NativeIndonesianAuthoringRule,
   type IrwanEvidenceKnowledgeView,
   type JokoAuthoringKnowledgeView,
   type RinaQAKnowledgeView,
   type SariPublicationKnowledgeView,
   type JefryAdvisoryKnowledgeView
 } from './editorial-knowledge.ts';
+
+export {
+  CANONICAL_NATIVE_INDONESIAN_AUTHORING_RULE,
+  TECHNICAL_ENGLISH_ALLOWLIST,
+  type NativeIndonesianAuthoringRule
+};
 
 export const RANCANGLOKA_PRODUCT_REVIEW_KNOWLEDGE_VERSION = 'RANCANGLOKA_PRODUCT_REVIEW_KNOWLEDGE_V1';
 
@@ -1006,6 +1016,7 @@ export interface JokoProductReviewKnowledgeView {
     banned_phrases: string[];
     rule: string;
   };
+  native_indonesian_authoring: NativeIndonesianAuthoringRule;
   authority: {
     author_review_copy: boolean;
     override_evidence_limits: boolean;
@@ -1020,6 +1031,7 @@ export interface RinaProductReviewQAKnowledgeView {
   hands_on_boundary_check: typeof detectFabricatedHandsOnClaims;
   affiliate_boundary_check: typeof validateAffiliateCTABoundary;
   commercial_neutrality_rules: typeof CANONICAL_PRODUCT_REVIEW_KNOWLEDGE_V1.commercial_integrity;
+  native_indonesian_language_qa: RinaQAKnowledgeView['native_indonesian_language_qa'];
   qa_responsibilities: {
     reject_unsupported_superlatives: boolean;
     reject_fabricated_hands_on: boolean;
@@ -1128,6 +1140,7 @@ export function getJokoProductReviewKnowledge(): JokoProductReviewKnowledgeView 
       banned_phrases: BANNED_HANDS_ON_PHRASES,
       rule: HANDS_ON_BOUNDARY_RULES.rule
     },
+    native_indonesian_authoring: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer2_language_cohesion.native_indonesian_authoring,
     authority: {
       author_review_copy: true,
       override_evidence_limits: false,
@@ -1147,6 +1160,7 @@ export function getRinaProductReviewQAKnowledge(): RinaProductReviewQAKnowledgeV
     hands_on_boundary_check: detectFabricatedHandsOnClaims,
     affiliate_boundary_check: validateAffiliateCTABoundary,
     commercial_neutrality_rules: CANONICAL_PRODUCT_REVIEW_KNOWLEDGE_V1.commercial_integrity,
+    native_indonesian_language_qa: getRinaQAKnowledge().native_indonesian_language_qa,
     qa_responsibilities: {
       reject_unsupported_superlatives: true,
       reject_fabricated_hands_on: true,

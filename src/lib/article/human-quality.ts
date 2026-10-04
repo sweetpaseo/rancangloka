@@ -78,7 +78,8 @@ export interface EditorialPatternIssue {
     | 'COMMERCIAL_BIAS'
     | 'FABRICATED_HANDS_ON'
     | 'COMPLAINT_OVERGENERALIZATION'
-    | 'COMPATIBILITY_GAP';
+    | 'COMPATIBILITY_GAP'
+    | 'TRANSLATIONESE';
   severity: 'WARNING' | 'CRITICAL';
   description: string;
   penalty: number;
@@ -87,7 +88,9 @@ export interface EditorialPatternIssue {
 
 import {
   RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
-  CANONICAL_TERMINOLOGY_MAP
+  CANONICAL_TERMINOLOGY_MAP,
+  CANONICAL_NATIVE_INDONESIAN_AUTHORING_RULE,
+  TECHNICAL_ENGLISH_ALLOWLIST
 } from './editorial-knowledge.ts';
 import type { ProductReviewType } from './product-review-knowledge.ts';
 
@@ -202,6 +205,68 @@ export const PROHIBITED_EDITORIAL_JARGON_PATTERNS = [
   /\bfinal verdict\b/i,
   /\breview verdict\b/i,
   /\bverdict produk\b/i
+];
+
+/**
+ * Translationese patterns representing translated English discourse structures.
+ * Milestone: NATIVE-INDONESIAN-AUTHORING-1
+ *
+ * Checks for unnatural English sentence structures literally translated into Indonesian:
+ * - "ketika datang ke..." (when it comes to...)
+ * - "ini adalah sesuatu yang perlu Anda pertimbangkan..." (this is something you need to consider...)
+ * - "dalam hal pemilihan X, terdapat beberapa faktor..." (in terms of choosing X...)
+ * - "dalam hal ini, penting untuk memahami bahwa..." (in this case, it is important to understand that...)
+ * - "hadir dengan sejumlah/berbagai fitur..." (comes with a number of features...)
+ * - "keputusan berada di tangan Anda..." (the decision is in your hands...)
+ * - "pilihan terbaik akan bergantung pada kebutuhan Anda..." (the best choice will depend on your needs...)
+ * - "memainkan peran kunci dalam..." (plays a key role in...)
+ * - "yang mana hal ini..." (which is...)
+ * - English copula copycat "adalah penting / adalah dirancang untuk..."
+ *
+ * NOTE: Does NOT ban legitimate technical English terms (e.g. thermal break, U-value, low-e, firmware)
+ * or formal regulatory/standard Indonesian citations.
+ */
+export const TRANSLATIONESE_PATTERNS = [
+  {
+    regex: /\b(?:ketika|saat)\s+datang\s+ke\b/i,
+    label: 'ketika datang ke (when it comes to)'
+  },
+  {
+    regex: /\bini\s+adalah\s+(?:sesuatu|hal)\s+yang\s+(?:perlu|harus)\s+anda\s+pertimbangkan\b/i,
+    label: 'ini adalah sesuatu yang perlu Anda pertimbangkan (this is something you need to consider)'
+  },
+  {
+    regex: /\bdalam\s+hal\s+(?:pemilihan|pembelian|penggunaan|pertimbangan)\s+[^,\n]+,\s*(?:terdapat|ada)\s+beberapa\s+faktor\b/i,
+    label: 'dalam hal pemilihan X, terdapat beberapa faktor (in terms of choosing X...)'
+  },
+  {
+    regex: /\bdalam\s+hal\s+ini,\s*penting\s+untuk\s+memahami\s+bahwa\b/i,
+    label: 'dalam hal ini, penting untuk memahami bahwa (in this case, it is important to understand that)'
+  },
+  {
+    regex: /\bhadir\s+dengan\s+(?:sejumlah|berbagai)\s+fitur\b/i,
+    label: 'hadir dengan sejumlah/berbagai fitur (comes with a number of features)'
+  },
+  {
+    regex: /\b(?:pada\s+akhirnya,\s+)?keputusan\s+(?:berada|ada)\s+di\s+tangan\s+anda\b/i,
+    label: 'keputusan berada di tangan Anda (at the end of the day, the decision is in your hands)'
+  },
+  {
+    regex: /\bpilihan\s+terbaik\s+akan\s+bergantung\s+pada\s+kebutuhan\s+anda\b/i,
+    label: 'pilihan terbaik akan bergantung pada kebutuhan Anda (the best choice will depend on your needs)'
+  },
+  {
+    regex: /\bmemainkan\s+peran\s+(?:kunci|penting)\s+dalam\b/i,
+    label: 'memainkan peran kunci dalam (plays a key role in)'
+  },
+  {
+    regex: /\byang\s+mana\s+(?:hal\s+ini|ini)\b/i,
+    label: 'yang mana hal ini (which is)'
+  },
+  {
+    regex: /\badalah\s+(?:penting|sangat\s+krusial|lebih\s+unggul|dirancang\s+untuk)\b/i,
+    label: 'konstruksi kopula "adalah" tiruan bahasa Inggris ("is important", "is designed to")'
+  }
 ];
 
 
@@ -579,6 +644,57 @@ export function evaluateHumanWritingQuality(
     });
     dimVoice = Math.max(0, dimVoice - 4);
     dimReader = Math.max(0, dimReader - 4);
+  }
+
+  // --------------------------------------------------------------------------
+  // Native Indonesian Authoring & Translationese Detection (NATIVE-INDONESIAN-AUTHORING-1)
+  // --------------------------------------------------------------------------
+  const foundTranslationese: string[] = [];
+  for (const item of TRANSLATIONESE_PATTERNS) {
+    const matches = cleanMd.match(new RegExp(item.regex, 'gi')) || [];
+    if (matches.length > 0) {
+      foundTranslationese.push(`${item.label} (${matches.length}x)`);
+    }
+  }
+
+  const translationeseCount = foundTranslationese.length;
+  if (translationeseCount === 1) {
+    issues.push({
+      code: 'TRANSLATIONESE_DETECTED',
+      category: 'TRANSLATIONESE',
+      severity: 'WARNING',
+      description: `Ditemukan konstruksi kalimat berstruktur terjemahan bahasa Inggris (${foundTranslationese.join(', ')}). RancangLoka mengutamakan bahasa Indonesia asli yang mengalir wajar.`,
+      penalty: 6,
+      occurrences: foundTranslationese
+    });
+    dimVoice = Math.max(0, dimVoice - 4);
+    dimRhythm = Math.max(0, dimRhythm - 2);
+  } else if (translationeseCount >= 2 && translationeseCount <= 3) {
+    issues.push({
+      code: 'TRANSLATIONESE_DETECTED',
+      category: 'TRANSLATIONESE',
+      severity: 'WARNING',
+      description: `Ditemukan pola kalimat berstruktur terjemahan bahasa Inggris berulang (${foundTranslationese.join(', ')}). Alur bahasa terasa seperti hasil terjemahan mesin/korporat.`,
+      penalty: 16,
+      occurrences: foundTranslationese
+    });
+    dimVoice = Math.max(0, dimVoice - 8);
+    dimRhythm = Math.max(0, dimRhythm - 5);
+    dimReader = Math.max(0, dimReader - 3);
+  } else if (translationeseCount >= 4) {
+    issues.push({
+      code: 'TRANSLATIONESE_DETECTED',
+      category: 'TRANSLATIONESE',
+      severity: 'CRITICAL',
+      description: `Naskah sarat dengan struktur wacana terjemahan literal bahasa Inggris (${foundTranslationese.join(', ')}). Seluruh naskah harus ditulis ulang langsung dalam bahasa Indonesia asli.`,
+      penalty: 28,
+      occurrences: foundTranslationese
+    });
+    dimVoice = Math.max(0, dimVoice - 12);
+    dimRhythm = Math.max(0, dimRhythm - 10);
+    dimReader = Math.max(0, dimReader - 6);
+  } else {
+    strongAreas.push('Bahasa mengalir asli dalam bahasa Indonesia tanpa struktur terjemahan kaku');
   }
 
   // --------------------------------------------------------------------------
@@ -964,6 +1080,9 @@ export function evaluateHumanWritingQuality(
         requiredActions.push('Pisahkan komplain seorang pembeli dari pola kegagalan berulang yang terverifikasi.');
       } else if (issue.category === 'COMPATIBILITY_GAP') {
         requiredActions.push('Tambahkan evaluasi dimensi kompatibilitas dan kendala instalasi fisik/sistem.');
+      } else if (issue.category === 'TRANSLATIONESE' || issue.code === 'TRANSLATIONESE_DETECTED') {
+        requiredActions.push('Tulis ulang langsung dalam bahasa Indonesia alami; hilangkan pola wacana terjemahan literal bahasa Inggris ("ketika datang ke", "hadir dengan sejumlah fitur", "dalam hal ini penting untuk memahami", "keputusan berada di tangan Anda", dll.).');
+        failingSections.push('Gaya Bahasa & Konstruksi Kalimat');
       }
     }
 
@@ -1017,6 +1136,8 @@ export const JOKO_HUMAN_AUTHORING_GUIDELINES = {
     'Pahami iklim tropis lembap Indonesia: tampias, panas sore, lumut, dan ventilasi silang.',
     'Jaga kerendahan hati editorial: jika bukti memiliki batas, nyatakan secara presisi tanpa hedging berlebihan.',
     'Tutup artikel dengan panduan aksi atau trade-off yang jelas bagi pembaca.',
-    'MUTLAK: Dilarang mengarang klaim uji coba mandiri ("kami telah menguji") jika tidak ada bukti tangan pertama.'
+    'MUTLAK: Dilarang mengarang klaim uji coba mandiri ("kami telah menguji") jika tidak ada bukti tangan pertama.',
+    'NATIVE INDONESIAN AUTHORING: Tulis langsung dalam bahasa Indonesia alami sejak awal alur pemikiran; hindari pola wacana terjemahan bahasa Inggris (translationese).',
+    'TECHNICAL ENGLISH EXCEPTION: Pertahankan istilah teknis kanonikal dan istilah bahasa Inggris yang sah sesuai standar industri (seperti thermal break, U-value, low-e, mortise, firmware) lalu jelaskan maknanya secara alami dalam bahasa Indonesia.'
   ]
 };

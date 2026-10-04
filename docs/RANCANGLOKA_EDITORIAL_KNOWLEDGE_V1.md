@@ -116,6 +116,86 @@ $$\text{Fakta Teknis / Standar} \longrightarrow \text{Penjelasan Bahasa Manusia 
 
 ---
 
+# Bahasa Redaksi — Native Indonesian Authoring
+
+### 1. Indonesian as Native Source Language
+Bahasa Indonesia adalah **bahasa sumber asli (*native authoring language*)** di seluruh penulisan redaksional RancangLoka. Gagasan, konstruksi kalimat, ritme paragraf, jembatan transisi, penjelasan teknis, dan suara redaksional wajib disusun dan dipikirkan langsung dalam bahasa Indonesia alami, **bukan** dihasilkan dalam bahasa Inggris lalu diterjemahkan ke bahasa Indonesia.
+
+### 2. Larangan Translationese (Anti-Translationese Invariant)
+Kalimat dapat secara gramatikal benar menurut tata bahasa baku, namun tetap terasa seperti teks terjemahan (*translationese*). RancangLoka secara mutlak melarang pola wacana terjemahan literal bahasa Inggris yang berulang, antara lain:
+- `Ini adalah sesuatu yang perlu Anda pertimbangkan...` (terjemahan literal dari *"This is something you need to consider..."*)
+- `Dalam hal ini, penting untuk memahami bahwa...` (terjemahan literal dari *"In this case, it is important to understand that..."*)
+- `Ketika datang ke pemilihan material...` (terjemahan literal dari *"When it comes to..."*)
+- `Pada akhirnya, keputusan berada di tangan Anda.` (terjemahan klise dari *"At the end of the day, the decision is in your hands."*)
+- `Produk ini hadir dengan sejumlah fitur...` (terjemahan literal dari *"This product comes with a number of features..."*)
+- Penggunaan kopula `adalah` berlebih yang menjiplak `is/are` bahasa Inggris.
+- Penggunaan frasa penghubung berulang: `Di sisi lain...`, `Dengan demikian...`, `Selain itu...`.
+
+**Alur Berpikir Asli Indonesia (Indonesian Thought Flow):**
+- *Hindari:* "Dalam hal pemilihan kusen, terdapat beberapa faktor yang perlu dipertimbangkan."
+- *Utamakan:* "Sebelum memilih kusen, cek dulu kondisi bukaannya."
+- *Hindari:* "Pada akhirnya, pilihan terbaik akan bergantung pada kebutuhan Anda."
+- *Utamakan:* "Kalau bukaan lebar dan kekakuan menjadi prioritas, aluminium lebih masuk akal. Untuk kamar yang banyak menerima panas sore, pertimbangan termalnya berbeda."
+
+### 3. Pengecualian Istilah Teknis Bahasa Inggris (Technical English Exception)
+RancangLoka **BUKAN** media puritan bahasa yang anti-bahasa Inggris. Istilah teknis rekayasa, industri, dan arsitektur **tetap sah dan diizinkan menggunakan bahasa Inggris** jika:
+1. Merupakan terminologi standar industri (*industry-standard terminology*).
+2. Lebih presisi daripada padanan bahasa Indonesia yang tersedia.
+3. Lazim dipahami oleh praktisi, arsitek, dan teknisi terkait.
+4. Diperlukan untuk menjaga akurasi teknis rekayasa.
+
+Contoh istilah yang sah tetap dalam bahasa Inggris:
+`thermal break`, `U-value`, `low-e`, `firmware`, `mortise`, `bitrate`, `cloud storage`, `anodized`, `powder coating`, `smart lock`, `inverter`, `on-grid`, `net metering`, `cross-ventilation`.
+
+**Rumus Redaksional:**
+$$\text{Istilah Teknis Bahasa Inggris} \longrightarrow \text{Jelaskan maknanya secara alami dalam bahasa Indonesia beserta konsekuensi praktisnya}$$
+Dilarang menerjemahkan istilah teknis menjadi istilah bahasa Indonesia yang canggung atau tidak lazim hanya demi kemurnian bahasa semu.
+
+### 4. Pengecualian Bahasa Regulasi & Formal (Regulatory & Formal Exception)
+Sistem evaluasi dilarang memberi penalti (*false positive*) pada:
+- Kutipan regulasi resmi (SNI, Permen PUPR, UU, peraturan perundang-undangan).
+- Definisi standar teknis dan terminologi spesifikasi.
+- Kalimat pasif alami bahasa Indonesia (seperti *"dianjurkan"*, *"dipasang"*, *"ditetapkan"*) yang lazim dalam komunikasi teknis.
+
+### 5. Register Target (Target Voice & Register)
+Suara RancangLoka adalah:
+> **"Editor / konsultan Indonesia yang memahami bangunan dan menjelaskan persoalan kepada pemilik rumah dengan bahasa yang alami."**
+
+Bukan:
+- Artikel bahasa Inggris yang diterjemahkan ke bahasa Indonesia.
+- Terjemahan siaran korporat.
+- Hasil machine translation mentah.
+- Prosa birokrasi pemerintahan yang kaku dan berbelit.
+- Copywriting sensasional influencer/slang gaul berlebih.
+
+Register Resmi: **`PROFESSIONAL + NATURAL + CLEAR + INDONESIAN`**
+
+### 6. Tanggung Jawab Kepenulisan Joko (Joko Authoring Rule)
+Joko (`content_writer_primary`) memegang tanggung jawab kanonikal:
+1. Memformulasikan artikel langsung dalam bahasa Indonesia sejak awal alur pemikiran.
+2. Mempertahankan urutan klausa dan tata kalimat alami bahasa Indonesia.
+3. Menggunakan logika konektif Indonesia, bukan menerjemahkan transisi bahasa Inggris.
+4. Mengutamakan ungkapan bahasa Indonesia yang akrab dan lugas bagi pemilik rumah.
+5. Menghindari pola terjemahan literal (*translationese*).
+6. Mempertahankan istilah teknis kanonikal dan istilah teknis bahasa Inggris yang sah.
+7. Menjaga kohesi leksikal dan kontinuitas argumen.
+8. Menulis sebagai satu suara redaksi Indonesia yang utuh dari awal hingga akhir naskah.
+9. **Dilarang** menggunakan draf bahasa Inggris sebagai artefak antara (*intermediate draft*) kecuali secara eksplisit ditugaskan untuk penerjemahan terpisah.
+
+### 7. Tanggung Jawab QA Rina (NATIVE_INDONESIAN_LANGUAGE_QA)
+Rina (`editorial_qa_primary`) bertindak sebagai penjaga mutu bahasa:
+- Mengevaluasi apakah naskah terdengar ditulis asli dalam bahasa Indonesia.
+- Mengidentifikasi pola wacana terjemahan literal (*translationese*).
+- Menilai kewajaran sintaksis dan transisi antar-gagasan.
+- Menolak naskah yang bergeser ke gaya terjemahan korporat kaku atau slang serampangan.
+- Memastikan istilah teknis bahasa Inggris yang digunakan sah dan dijelaskan dengan benar.
+- Jika artikel secara teknis akurat namun kental gaya translationese:
+  - *Mild / isolated:* Beri catatan temuan / sinyal revisi minor.
+  - *Persistent across article:* Rute ke Joko untuk **`REVISE`**.
+  - *Severe / machine translation style:* Rute ke Joko untuk **`REWRITE`** (skor jatuh di bawah ambang batas <75).
+
+---
+
 ### LAYER 3 — EXPERT CONSULTATION
 
 #### 10. Expert-to-Client Perspective

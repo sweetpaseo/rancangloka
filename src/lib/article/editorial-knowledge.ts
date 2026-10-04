@@ -82,7 +82,144 @@ export interface EditorialLayer2_LanguageCohesion {
     three_step_pattern: ['technical_fact', 'plain_language_explanation', 'practical_consequence'];
     rule: string;
   };
+  native_indonesian_authoring: NativeIndonesianAuthoringRule;
 }
+
+export interface NativeIndonesianAuthoringRule {
+  principle: 'NATIVE_INDONESIAN_AUTHORING';
+  canonical_name: string;
+  canonical_language: 'Bahasa Indonesia';
+  definition: string;
+  target_register: 'PROFESSIONAL_NATURAL_CLEAR_INDONESIAN';
+  target_voice_description: string;
+  thought_flow_principles: {
+    rule: string;
+    guidelines: string[];
+    preferred_vs_avoided: Array<{
+      avoid: string;
+      prefer: string;
+      reason: string;
+    }>;
+  };
+  translationese_prohibition: {
+    rule: string;
+    banned_translationese_patterns: string[];
+  };
+  technical_english_exception: {
+    rule: string;
+    criteria: string[];
+    allowed_terms: readonly string[];
+    explanation_pattern: string;
+  };
+  regulatory_and_formal_exception: {
+    rule: string;
+    principles: string[];
+  };
+}
+
+export const TECHNICAL_ENGLISH_ALLOWLIST = [
+  'thermal break',
+  'u-value',
+  'low-e',
+  'firmware',
+  'mortise',
+  'bitrate',
+  'cloud storage',
+  'anodized',
+  'powder coating',
+  'smart lock',
+  'inverter',
+  'on-grid',
+  'net metering',
+  'cross-ventilation',
+  'backset',
+  'fingerprint scanner',
+  'ip65',
+  'ip67',
+  'ip68',
+  'waterproofing',
+  'sound transmission class',
+  'stc',
+  'solar heat gain coefficient',
+  'shgc'
+] as const;
+
+export const CANONICAL_NATIVE_INDONESIAN_AUTHORING_RULE: NativeIndonesianAuthoringRule = {
+  principle: 'NATIVE_INDONESIAN_AUTHORING',
+  canonical_name: 'Bahasa Redaksi — Native Indonesian Authoring',
+  canonical_language: 'Bahasa Indonesia',
+  definition: 'Bahasa Indonesia is the native authoring language of RancangLoka. Ideas, sentence construction, paragraph rhythm, transitions, explanations, recommendations, and editorial voice must be composed directly in natural Indonesian rather than generated in English and translated afterward.',
+  target_register: 'PROFESSIONAL_NATURAL_CLEAR_INDONESIAN',
+  target_voice_description: 'Editor / konsultan Indonesia yang memahami bangunan dan menjelaskan persoalan kepada pemilik rumah dengan bahasa yang alami. Bukan hasil terjemahan artikel bahasa Inggris, bukan terjemahan korporat, bukan machine translation, bukan prosa birokrasi kaku, dan bukan bahasa slang influencer.',
+  thought_flow_principles: {
+    rule: 'Konstruksi penalaran dan kalimat harus mengalir secara asli dalam bahasa Indonesia, bukan menjiplak urutan klausa bahasa Inggris.',
+    guidelines: [
+      'Formulasikan ide dan alur argumen langsung dalam bahasa Indonesia sejak awal alur pemikiran.',
+      'Pertahankan susunan kalimat dan urutan klausa alami bahasa Indonesia.',
+      'Gunakan logika penghubung gagasan bahasa Indonesia, bukan menerjemahkan transisi mekanis bahasa Inggris.',
+      'Utamakan ungkapan bahasa Indonesia yang akrab dan lugas bagi pemilik rumah.',
+      'Hindari pola wacana terjemahan literal (translationese).',
+      'Pertahankan istilah teknis kanonikal dan istilah bahasa Inggris yang sah sesuai standar industri.',
+      'Jaga kohesi leksikal dan kesinambungan argumen antar-kalimat.',
+      'Tulis sebagai satu suara redaksi Indonesia yang utuh dari awal hingga akhir naskah.'
+    ],
+    preferred_vs_avoided: [
+      {
+        avoid: 'Dalam hal pemilihan kusen, terdapat beberapa faktor yang perlu dipertimbangkan.',
+        prefer: 'Sebelum memilih kusen, cek dulu kondisi bukaannya.',
+        reason: 'Langsung mengarah pada aksi nyata pembaca tanpa pembuka berbelit ala terjemahan "in terms of".'
+      },
+      {
+        avoid: 'Pada akhirnya, pilihan terbaik akan bergantung pada kebutuhan Anda.',
+        prefer: 'Kalau bukaan lebar dan kekakuan menjadi prioritas, aluminium lebih masuk akal. Untuk kamar yang banyak menerima panas sore, pertimbangan termalnya berbeda.',
+        reason: 'Memberikan kriteria pembeda dan konsekuensi nyata yang membantu pembaca memutuskan.'
+      },
+      {
+        avoid: 'Produk ini hadir dengan sejumlah fitur yang menarik.',
+        prefer: 'Kelebihan utama perangkat ini ada pada ketahanan motornya dan kemudahan pemasangan.',
+        reason: 'Menghindari klise "comes with a number of features" dan langsung menyebut komponen bernilai.'
+      },
+      {
+        avoid: 'Ini adalah sesuatu yang perlu Anda pertimbangkan sebelum renovasi.',
+        prefer: 'Poin ini penting diperhatikan sebelum renovasi dimulai.',
+        reason: 'Menghilangkan konstruksi kopula "is something that" yang tidak alami dalam bahasa Indonesia.'
+      }
+    ]
+  },
+  translationese_prohibition: {
+    rule: 'Dilarang menggunakan struktur kalimat atau wacana bahasa Inggris yang diterjemahkan secara mekanis ke dalam bahasa Indonesia.',
+    banned_translationese_patterns: [
+      'ketika datang ke / saat datang ke (when it comes to)',
+      'ini adalah sesuatu yang perlu Anda pertimbangkan (this is something you need to consider)',
+      'dalam hal pemilihan / dalam hal ini penting untuk memahami (in terms of / in this case it is important to understand)',
+      'hadir dengan sejumlah fitur / hadir dengan berbagai fitur (comes with a number of features)',
+      'keputusan berada di tangan Anda / keputusan ada di tangan Anda (at the end of the day the decision is in your hands)',
+      'pilihan terbaik akan bergantung pada kebutuhan Anda (the best choice will depend on your needs)',
+      'penggunaan "adalah" berulang yang menjiplak kopula "is/are" bahasa Inggris',
+      'yang mana hal ini / di mana hal ini (which is / where this)',
+      'memainkan peran kunci dalam (plays a key role in)'
+    ]
+  },
+  technical_english_exception: {
+    rule: 'Istilah teknis rekayasa dan industri tetap boleh menggunakan bahasa Inggris jika merupakan standar industri yang lebih presisi dan lazim dipahami praktisi. Dilarang menerjemahkan istilah teknis menjadi istilah canggung demi kemurnian bahasa semu.',
+    criteria: [
+      'Merupakan terminologi standar industri rekayasa/arsitektur (industry-standard terminology)',
+      'Lebih presisi daripada padanan bahasa Indonesia yang tersedia',
+      'Umum dipahami oleh praktisi dan teknisi terkait',
+      'Diperlukan untuk menjaga akurasi teknis'
+    ],
+    allowed_terms: TECHNICAL_ENGLISH_ALLOWLIST,
+    explanation_pattern: 'Istilah teknis bahasa Inggris -> jelaskan secara alami dalam bahasa Indonesia beserta konsekuensi praktisnya.'
+  },
+  regulatory_and_formal_exception: {
+    rule: 'Kutipan regulasi resmi (SNI, Permen PUPR, UU), definisi standar teknis, dan kalimat pasif wajar dalam konteks teknis bahasa Indonesia tidak boleh dianggap translationese.',
+    principles: [
+      'Bahasa formal regulasi dan ketetapan hukum sah digunakan sesuai konteksnya.',
+      'Bentuk pasif alami bahasa Indonesia (misal: "dianjurkan", "dipasang", "ditetapkan") adalah struktur sah bahasa Indonesia.',
+      'Target editorial adalah kealamian dan kejernihan pemahaman, bukan bahasa percakapan informal slang.'
+    ]
+  }
+};
 
 export interface EditorialLayer3_ExpertConsultation {
   expert_to_client_perspective: {
@@ -212,6 +349,7 @@ export interface RancangLokaEditorialKnowledge {
   layer4_decision_support: EditorialLayer4_DecisionSupport;
   layer5_trust_and_integrity: EditorialLayer5_TrustAndIntegrity;
   continuous_intelligence: ContinuousEditorialIntelligence;
+  native_indonesian_authoring?: NativeIndonesianAuthoringRule;
   // Aliases for snake_case layer notation
   layer_1_human_writing?: EditorialLayer1_HumanWriting;
   layer_2_language_and_cohesion?: EditorialLayer2_LanguageCohesion;
@@ -406,7 +544,8 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
     technical_to_human_translation: {
       three_step_pattern: ['technical_fact', 'plain_language_explanation', 'practical_consequence'],
       rule: 'Sampaikan fakta teknis -> jelaskan mekanismenya dengan analogi fisik -> simpulkan konsekuensi praktis bagi pemilik rumah.'
-    }
+    },
+    native_indonesian_authoring: CANONICAL_NATIVE_INDONESIAN_AUTHORING_RULE
   },
 
   // --------------------------------------------------------------------------
@@ -655,6 +794,7 @@ CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_2_language_and_cohesion = CANONICAL_EDITO
 CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_3_expert_consultation = CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer3_expert_consultation;
 CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_4_decision_support = CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer4_decision_support;
 CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_5_trust_and_editorial_integrity = CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity;
+CANONICAL_EDITORIAL_KNOWLEDGE_V1.native_indonesian_authoring = CANONICAL_NATIVE_INDONESIAN_AUTHORING_RULE;
 
 // Master alias
 export const CANONICAL_EDITORIAL_KNOWLEDGE = CANONICAL_EDITORIAL_KNOWLEDGE_V1;
@@ -899,6 +1039,8 @@ export interface JokoAuthoringKnowledgeView {
   language_and_cohesion: EditorialLayer2_LanguageCohesion;
   expert_consultation: EditorialLayer3_ExpertConsultation;
   decision_support: EditorialLayer4_DecisionSupport;
+  native_indonesian_authoring: NativeIndonesianAuthoringRule;
+  joko_authoring_rules: string[];
   trust_boundaries: {
     no_fabricated_experience: EditorialLayer5_TrustAndIntegrity['no_fabricated_experience'];
     commercial_integrity: EditorialLayer5_TrustAndIntegrity['commercial_integrity'];
@@ -922,6 +1064,12 @@ export interface RinaQAKnowledgeView {
   layer_3_expert_consultation: EditorialLayer3_ExpertConsultation;
   layer_4_decision_support: EditorialLayer4_DecisionSupport;
   layer_5_trust_and_editorial_integrity: EditorialLayer5_TrustAndIntegrity;
+  native_indonesian_language_qa: {
+    responsibility: 'NATIVE_INDONESIAN_LANGUAGE_QA';
+    rule: string;
+    checks: string[];
+    routing: string;
+  };
   qa_responsibilities: {
     minimum_passing_score: number;
     revise_score_range: [number, number];
@@ -1006,6 +1154,18 @@ export function getJokoAuthoringKnowledge(): JokoAuthoringKnowledgeView {
     language_and_cohesion: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer2_language_cohesion,
     expert_consultation: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer3_expert_consultation,
     decision_support: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer4_decision_support,
+    native_indonesian_authoring: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer2_language_cohesion.native_indonesian_authoring,
+    joko_authoring_rules: [
+      'Formulasikan naskah artikel langsung dalam bahasa Indonesia sejak awal alur pemikiran.',
+      'Pertahankan susunan kalimat dan urutan klausa alami bahasa Indonesia.',
+      'Gunakan logika penghubung gagasan Indonesia, bukan menerjemahkan transisi mekanis bahasa Inggris.',
+      'Utamakan ungkapan bahasa Indonesia yang akrab dan lugas bagi pemilik rumah.',
+      'Hindari pola wacana terjemahan literal (translationese).',
+      'Pertahankan istilah teknis kanonikal dan istilah bahasa Inggris yang sah sesuai standar industri.',
+      'Jaga kohesi leksikal dan kesinambungan argumen antar-kalimat.',
+      'Tulis sebagai satu suara redaksi Indonesia yang utuh dari awal hingga akhir naskah.',
+      'DILARANG menggunakan draf bahasa Inggris sebagai artefak antara kecuali ditugaskan secara eksplisit.'
+    ],
     trust_boundaries: {
       no_fabricated_experience: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity.no_fabricated_experience,
       commercial_integrity: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity.commercial_integrity,
@@ -1034,6 +1194,20 @@ export function getRinaQAKnowledge(): RinaQAKnowledgeView {
     layer_3_expert_consultation: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer3_expert_consultation,
     layer_4_decision_support: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer4_decision_support,
     layer_5_trust_and_editorial_integrity: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity,
+    native_indonesian_language_qa: {
+      responsibility: 'NATIVE_INDONESIAN_LANGUAGE_QA',
+      rule: 'Rina mengevaluasi apakah naskah terdengar alami ditulis dalam bahasa Indonesia asli atau terindikasi translationese (gaya terjemahan bahasa Inggris).',
+      checks: [
+        'sounds originally written in Indonesian',
+        'contains translationese patterns',
+        'uses unnatural English-derived syntax',
+        'shifts unexpectedly into translated corporate language',
+        'uses unnecessary English editorial jargon',
+        'has natural Indonesian transitions',
+        'preserves technical accuracy and allowed technical English terms'
+      ],
+      routing: 'Jika artikel secara teknis akurat namun kental gaya translationese, arahkan ke Joko untuk REVISE atau REWRITE sesuai tingkat keparahan.'
+    },
     qa_responsibilities: {
       minimum_passing_score: 85,
       revise_score_range: [75, 84],
