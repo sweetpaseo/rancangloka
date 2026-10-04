@@ -1,0 +1,27 @@
+{
+  "task_id": "task_dryrun_metal_roof_01",
+  "article_working_id": "art_dryrun_metal_roof_01",
+  "topic": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "requested_title": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "intent_profile": {
+    "primary_intent": "PROBLEM_SOLVING",
+    "secondary_intents": ["COMPARISON", "EXPLANATORY"],
+    "confidence": "HIGH",
+    "detection_signals": [
+      "Judul membingkai masalah atau solusi perbaikan (Atap Metal Terasa Panas)",
+      "Judul membandingkan dua pendekatan intervensi termal (Foil vs Ventilasi)"
+    ]
+  },
+  "workflow_stage": "researching",
+  "assigned_department": "research",
+  "assigned_agent_id": "evidence_researcher_lead",
+  "assigned_agent_name": "Irwan",
+  "attempt": 1,
+  "created_at": "2026-10-04T14:47:00.000Z",
+  "invariants": {
+    "automation_mode": "OFF",
+    "auto_publish": "OFF",
+    "publishing_authority": 0,
+    "jev_mode": "shadow"
+  }
+}

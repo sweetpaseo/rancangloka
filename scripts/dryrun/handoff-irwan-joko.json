@@ -1,0 +1,27 @@
+{
+  "handoff_id": "hnd_task_dryrun_metal_roof_01_researching_to_writing",
+  "workflow_id": "task_dryrun_metal_roof_01",
+  "task_id": "task_dryrun_metal_roof_01",
+  "artifact_id": "evpack_metal_roof_heat_01",
+  "task_title": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "from_agent_id": "evidence_researcher_lead",
+  "to_agent_id": "content_writer_primary",
+  "from_department_id": "research",
+  "to_department_id": "editorial",
+  "from_stage": "researching",
+  "to_stage": "writing",
+  "handoff_state": "RUNNING",
+  "transition_timestamp": "2026-10-04T14:48:30.000Z",
+  "evidence_source": "evidence_pack_v1",
+  "evidence_id": "evpack_metal_roof_heat_01",
+  "confidence": "EXACT",
+  "requires_movement": true,
+  "guidance": {
+    "focus": "Gunakan bahasa Indonesia asli dari perspektif orang rumah yang paham bangunan. Jangan menerjemahkan istilah asing secara harfiah. Diagnosa jalur panas sebelum memberikan rekomendasi.",
+    "mandatory_invariants": [
+      "Kepatuhan Monetary Silence mutlak (jangan sebut nominal rupiah).",
+      "Jangan mengarang hasil uji lab fiktif.",
+      "Jangan menggunakan istilah elitis asing seperti 'verdict'."
+    ]
+  }
+}

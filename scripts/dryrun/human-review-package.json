@@ -1,0 +1,61 @@
+{
+  "package_id": "hrp_dryrun_metal_roof_01",
+  "task_id": "task_dryrun_metal_roof_01",
+  "article_id": "art_dryrun_metal_roof_01",
+  "topic": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "status": "HUMAN_REVIEW_REQUIRED",
+  "generated_at": "2026-10-04T14:48:45.000Z",
+  "summary": {
+    "workflow": "Irwan (Research) -> Joko (Authoring) -> Rina (QA) -> Human Review Stop Gate",
+    "attempts_count": 1,
+    "final_score": 100,
+    "final_decision": "HUMAN_WRITING_PASS",
+    "human_stop_gate_status": "HUMAN_REVIEW_REQUIRED"
+  },
+  "evidence_pack_summary": {
+    "evidence_pack_id": "evpack_metal_roof_heat_01",
+    "researcher": "Irwan (evidence_researcher_lead)",
+    "claims_count": 8,
+    "key_references": [
+      "SNI 03-6572-2001 (Tata Cara Perancangan Sistem Ventilasi dan Pengkondisian Udara pada Bangunan Gedung)",
+      "ASHRAE Handbook of Fundamentals (Building Envelope & Solar Heat Gain)",
+      "ASTM C1371 & ASTM C1321 (Standard Test Method for Reflective Insulation/Radiant Barrier)",
+      "BRE & BRANZ Thermal Performance of Roof Cavities Study"
+    ]
+  },
+  "qa_result": {
+    "evaluated_by": "Rina (editorial_qa_primary)",
+    "knowledge_version": "RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1",
+    "total_score": 100,
+    "decision": "HUMAN_WRITING_PASS",
+    "rubric_breakdown": {
+      "sentence_rhythm": 20,
+      "specificity_detail": 15,
+      "contextual_relevance": 15,
+      "editorial_voice": 15,
+      "non_template_structure": 10,
+      "evidence_integration": 10,
+      "reader_perspective": 10,
+      "conclusion_originality": 5
+    },
+    "issues": []
+  },
+  "editorial_self_check": {
+    "natural_indonesian_voice": true,
+    "expert_to_client_perspective": true,
+    "diagnose_before_prescribing": true,
+    "trade_offs_transparent": true,
+    "actionable_next_steps": true,
+    "evidence_grounded": true,
+    "zero_generic_ai_filler": true,
+    "monetary_silence_preserved": true,
+    "verdict_prohibition_preserved": true
+  },
+  "human_governance": {
+    "auto_publish": "OFF",
+    "publishing_authority": 0,
+    "automation_mode": "OFF",
+    "jev_mode": "shadow",
+    "operator_action_required": "Operator manusia wajib meninjau naskah secara manual di panel redaksi sebelum menjadwalkan penerbitan."
+  }
+}
