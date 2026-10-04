@@ -58,7 +58,6 @@ export const DEFAULT_HUMAN_QUALITY_RUBRIC: Record<keyof HumanWritingDimensions, 
   conclusion_originality: 5
 };
 
-
 export interface EditorialPatternIssue {
   code: string;
   category:
@@ -70,14 +69,24 @@ export interface EditorialPatternIssue {
     | 'ARTIFICIAL_CONCLUSION'
     | 'KEYWORD_FORCING'
     | 'PARAGRAPH_UNIFORMITY'
-    | 'LACK_OF_LOCAL_CONTEXT';
+    | 'LACK_OF_LOCAL_CONTEXT'
+    | 'TERMINOLOGY_INCONSISTENCY'
+    | 'SPECIFICATION_DUMP'
+    | 'COMMERCIAL_BIAS'
+    | 'FABRICATED_HANDS_ON'
+    | 'COMPLAINT_OVERGENERALIZATION'
+    | 'COMPATIBILITY_GAP';
   severity: 'WARNING' | 'CRITICAL';
   description: string;
   penalty: number;
   occurrences?: string[];
 }
 
-import { RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION } from './editorial-knowledge.ts';
+import {
+  RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
+  CANONICAL_TERMINOLOGY_MAP
+} from './editorial-knowledge.ts';
+import type { ProductReviewType } from './product-review-knowledge.ts';
 
 export interface HumanWritingQualityResult {
   knowledge_version: string;
@@ -95,7 +104,7 @@ export interface HumanWritingQualityResult {
 }
 
 export interface StructuredRewriteBrief {
-  target_agent_id: string; // 'content_writer_primary' (Joko)
+  target_agent_id: string; // 'content_writer_primary' | 'evidence_researcher_lead' | 'editorial_qa_primary'
   reason: 'HUMAN_WRITING_QUALITY';
   attempt: number;
   required_actions: string[];
@@ -132,6 +141,7 @@ export const REPETITIVE_TRANSITION_MARKERS = [
   'oleh karena itu',
   'pada akhirnya',
   'secara keseluruhan',
+  'pada dasarnya',
   'penting untuk diingat',
   'perlu diperhatikan',
   'dalam hal ini',
@@ -144,10 +154,17 @@ export const REPETITIVE_TRANSITION_MARKERS = [
  */
 export const EMPTY_GENERALIZATION_PATTERNS = [
   /setiap pilihan memiliki kelebihan dan kekurangan/i,
+  /tentu memiliki kelebihan dan kekurangan/i,
+  /memiliki kelebihan dan kekurangan(?: masing-masing)?/i,
+  /semua ada kelebihan dan kekurangan/i,
   /pilihan terbaik tergantung kebutuhan masing-masing/i,
+  /semua pilihan kembali pada/i,
   /ada banyak faktor yang perlu dipertimbangkan/i,
   /semua kembali kepada selera dan anggaran/i,
-  /masing-masing memiliki karakteristik tersendiri/i
+  /masing-masing memiliki karakteristik tersendiri/i,
+  /memilih kayu yang bagus dan kuat/i,
+  /kayu solid yang bermutu tinggi/i,
+  /kualitasnya sangat meragukan/i
 ];
 
 /**
@@ -214,7 +231,20 @@ export const INDONESIAN_LOCAL_REALITY_MARKERS = [
   'talang air',
   'drainase',
   'dinding bata',
-  'bata ringan'
+  'bata ringan',
+  'indonesia',
+  'musim hujan',
+  'musim penghujan',
+  'pln',
+  'mati lampu',
+  'daun pintu',
+  'kayu solid',
+  'kayu jati',
+  'kamper',
+  'merbau',
+  'kamar mandi',
+  'kamar tidur',
+  'dapur'
 ];
 
 // ============================================================================
@@ -226,6 +256,12 @@ export interface EvaluationOptions {
   maxAttempts?: number;
   focusKeyword?: string;
   evaluatedAt?: string;
+  // Product review & calibration options
+  reviewType?: ProductReviewType;
+  hasFirstPartyEvidence?: boolean;
+  isProductReview?: boolean;
+  affiliateCTAPosition?: 'BEFORE_RECOMMENDATION' | 'AFTER_RECOMMENDATION' | 'NONE';
+  declaredVariant?: string;
 }
 
 /**
@@ -596,7 +632,7 @@ export function evaluateHumanWritingQuality(
   if (isConclusionSection) {
     // Check if conclusion is purely summarizing or gives concrete trade-offs / actionable checklist
     const hasDecisionWords = /pilih|prioritaskan|periksa|pastikan|cek|pertimbangkan jika|tahap berikutnya/i.test(lastSection);
-    const merelySummarizes = /seperti yang telah dijelaskan di atas|sebagaimana dibahas sebelumnya|secara keseluruhan artikel ini/i.test(lastSection);
+    const merelySummarizes = /(?:seperti|sebagaimana) (?:yang )?telah (?:dijelaskan|dibahas) (?:di atas|sebelumnya)|secara keseluruhan(?: artikel ini)?/i.test(lastSection);
 
     if (merelySummarizes && !hasDecisionWords) {
       issues.push({
@@ -604,36 +640,175 @@ export function evaluateHumanWritingQuality(
         category: 'ARTIFICIAL_CONCLUSION',
         severity: 'WARNING',
         description: 'Bagian akhir hanya merangkum ulang poin-poin sebelumnya tanpa membantu pembaca mengambil keputusan praktis.',
-        penalty: 3
+        penalty: 17
       });
-      dimConclusion = Math.max(0, dimConclusion - 3);
+      dimConclusion = 0;
+      dimReader = Math.max(0, dimReader - 6);
+      dimVoice = Math.max(0, dimVoice - 6);
     } else if (hasDecisionWords) {
       strongAreas.push('Penutup berorientasi pada keputusan dan panduan aksi bagi pembaca');
     }
   }
 
   // --------------------------------------------------------------------------
-  // 10. Evidence Integration (Impacts: Evidence Integration)
+  // 10. Terminology Consistency Check (Phase 10 Lexical Cohesion Calibration)
   // --------------------------------------------------------------------------
-  // Check for presence of numbers, measurements, standards (SNI/ASTM), or citation markers
-  const hasMeasurements = /\b\d+(?:[.,]\d+)?\s*(?:cm|mm|m2|m²|kg|watt|derajat|persen|%|tahun|bulan)\b/i.test(cleanMd);
-  const hasEvidenceOrStandards = /SNI|ASTM|standar|uji lab|penelitian|spesifikasi|litbang|referensi|\[EVIDENCE:/i.test(cleanMd);
+  const foundTermVariations: string[] = [];
+  for (const entry of Object.values(CANONICAL_TERMINOLOGY_MAP)) {
+    for (const prohibited of entry.prohibited_alternations) {
+      const escaped = prohibited.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const reg = new RegExp(`\\b${escaped}\\b`, 'i');
+      if (reg.test(cleanMd)) {
+        foundTermVariations.push(`"${prohibited}" (seharusnya "${entry.canonical}")`);
+      }
+    }
+  }
+
+  if (foundTermVariations.length > 0) {
+    issues.push({
+      code: 'TERMINOLOGY_INCONSISTENCY_DETECTED',
+      category: 'TERMINOLOGY_INCONSISTENCY',
+      severity: 'WARNING',
+      description: `Ditemukan variasi istilah tidak baku atau sinonim semu (${foundTermVariations.join(', ')}). Gunakan istilah kanonikal konsisten sesuai Layer 2.`,
+      penalty: 16,
+      occurrences: foundTermVariations
+    });
+    dimVoice = Math.max(0, dimVoice - 8);
+    dimReader = Math.max(0, dimReader - 8);
+  } else {
+    strongAreas.push('Terminologi teknis konsisten sesuai standar kanonikal RancangLoka');
+  }
+
+  // --------------------------------------------------------------------------
+  // 11. Evidence Integration & Technical Fact Specificity
+  // --------------------------------------------------------------------------
+  const hasMeasurements = /\b\d+(?:[.,]\d+)?\s*(?:cm|mm|m2|m²|kg|watt|derajat|persen|%|tahun|bulan|db|dpi|g\/l|wp|kwh)\b/i.test(cleanMd);
+  const hasEvidenceOrStandards = /SNI|ASTM|standar|uji lab|penelitian|spesifikasi|litbang|referensi|\[EVIDENCE:|dokumentasi resmi/i.test(cleanMd);
+  const hasQualitativeOnlyAdvice = /memilih kayu yang bagus dan kuat|bermutu tinggi|kualitasnya sangat meragukan|jangan memakai kayu sembarangan/i.test(cleanMd);
 
   if (!hasMeasurements && !hasEvidenceOrStandards) {
+    const penalty = hasQualitativeOnlyAdvice ? 26 : 5;
     issues.push({
       code: 'WEAK_EVIDENCE_SPECIFICITY',
       category: 'EMPTY_GENERALIZATION',
-      severity: 'WARNING',
-      description: 'Naskah minim angka spesifikasi terukur atau rujukan standar teknis konstruksi.',
-      penalty: 5
+      severity: hasQualitativeOnlyAdvice ? 'CRITICAL' : 'WARNING',
+      description: hasQualitativeOnlyAdvice
+        ? 'Naskah hanya memberikan nasihat kualitatif umum tanpa satu pun angka teknis terukur atau rujukan standar teknis (melanggar Trust & Evidence Integrity).'
+        : 'Naskah minim angka spesifikasi terukur atau rujukan standar teknis konstruksi.',
+      penalty
     });
-    dimEvidence = Math.max(0, dimEvidence - 5);
+    dimEvidence = 0;
+    if (hasQualitativeOnlyAdvice) {
+      dimSpecificity = Math.max(0, dimSpecificity - 10);
+      dimReader = Math.max(0, dimReader - 6);
+    } else {
+      dimEvidence = Math.max(0, dimEvidence - 5);
+    }
   } else if (hasMeasurements && hasEvidenceOrStandards) {
     strongAreas.push('Integrasi angka teknis dan rujukan standar terukur terjalin rapi');
   }
 
   // --------------------------------------------------------------------------
-  // Score Aggregation & Decision Logic
+  // 12. Specification Dump Without Interpretation (Product Reviews)
+  // --------------------------------------------------------------------------
+  const isProdReview = Boolean(options.isProductReview || options.reviewType || /tinjauan spesifikasi|panduan pembelian|ulasan/i.test(headings[0] || ''));
+  const specMetricMatches = (cleanMd.match(/\b\d+(?:[.,]\d+)?\s*(?:megapixel|mp|fps|mm|cm|gb|watt|volt|kg|derajat|ip\d{2}|hz|m²)\b/gi) || []).length;
+  const consequenceExplanations = (cleanMd.match(/\b(?:artinya|berdampak|konsekuensinya|akibatnya|sehingga|bagi pemilik rumah|cocok untuk|kurang cocok untuk|menghasilkan|mengurangi beban|prioritaskan jika)\b/gi) || []).length;
+  if (isProdReview && specMetricMatches >= 8 && consequenceExplanations < 2) {
+    issues.push({
+      code: 'SPEC_DUMP_WITHOUT_INTERPRETATION',
+      category: 'SPECIFICATION_DUMP',
+      severity: 'CRITICAL',
+      description: 'Naskah menumpuk data spesifikasi teknis tanpa menerjemahkan konsekuensi praktis bagi penggunaan sehari-hari pembaca.',
+      penalty: 26
+    });
+    dimReader = Math.max(0, dimReader - 10);
+    dimVoice = Math.max(0, dimVoice - 10);
+    dimSpecificity = Math.max(0, dimSpecificity - 6);
+  }
+
+  // --------------------------------------------------------------------------
+  // 13. Affiliate / Commercial Bias Risk
+  // --------------------------------------------------------------------------
+  const hasEarlyAffiliateCTA = options.affiliateCTAPosition === 'BEFORE_RECOMMENDATION' ||
+    /\[>>.*?klik (?:di sini|beli sekarang).*?<<\]/i.test(cleanMd.slice(0, Math.floor(cleanMd.length * 0.75)));
+  const hasCommercialSuperlatives = /terbaik nomor satu|paling sempurna tanpa(?: ada)? kekurangan|kualitas bintang lima/i.test(cleanMd);
+
+  if (hasEarlyAffiliateCTA) {
+    issues.push({
+      code: 'COMMERCIAL_BIAS_RISK',
+      category: 'COMMERCIAL_BIAS',
+      severity: 'CRITICAL',
+      description: 'Tautan atau ajakan pembelian afiliasi disisipkan sebelum alur penalaran dan rekomendasi editorial selesai.',
+      penalty: 35
+    });
+    dimVoice = 0;
+    dimReader = 0;
+  }
+  if (hasCommercialSuperlatives) {
+    issues.push({
+      code: 'UNSUPPORTED_SUPERLATIVE',
+      category: 'EMPTY_GENERALIZATION',
+      severity: 'WARNING',
+      description: 'Klaim superlatif berlebihan bernada promosi sales tanpa bukti komparasi objektif.',
+      penalty: 10
+    });
+    dimVoice = Math.max(0, dimVoice - 5);
+  }
+
+  // --------------------------------------------------------------------------
+  // 14. Fabricated Hands-On Claims in Analytical Reviews
+  // --------------------------------------------------------------------------
+  if ((options.reviewType === 'ANALYTICAL_REVIEW' || !options.hasFirstPartyEvidence) &&
+      /dalam pengujian kami|kami sudah mencoba|kami memasangnya|saat kami pasang|hasil tes kami|laboratorium kami/i.test(cleanMd)) {
+    issues.push({
+      code: 'FABRICATED_HANDS_ON_TEST',
+      category: 'FABRICATED_HANDS_ON',
+      severity: 'CRITICAL',
+      description: 'Artikel mengklaim pengujian fisik langsung padahal berstatus ulasan analitis tanpa bukti primer.',
+      penalty: 35
+    });
+    dimEvidence = 0;
+    dimVoice = Math.max(0, dimVoice - 10);
+    dimReader = 0;
+  }
+
+  // --------------------------------------------------------------------------
+  // 15. Single Complaint Overgeneralization
+  // --------------------------------------------------------------------------
+  if (/(?:satu|ada satu|seorang) ulasan pembeli.*?mengeluhkan.*?menyimpulkan bahwa produk ini (?:memiliki cacat|tidak layak)/is.test(cleanMd)) {
+    issues.push({
+      code: 'SINGLE_REVIEW_OVERGENERALIZATION',
+      category: 'COMPLAINT_OVERGENERALIZATION',
+      severity: 'WARNING',
+      description: 'Ulasan atau komplain seorang pembeli tunggal digeneralisasi menjadi cacat total produk tanpa bukti pola berulang.',
+      penalty: 16
+    });
+    dimVoice = Math.max(0, dimVoice - 8);
+    dimReader = Math.max(0, dimReader - 8);
+  }
+
+  // --------------------------------------------------------------------------
+  // 16. Compatibility Blind Review (Product Review)
+  // --------------------------------------------------------------------------
+  if (isProdReview) {
+    const hasCompatibilityChecks = /ketebalan|mortise|kusen|substrat|daya|voltase|meteran|pln|kapasitas|jaringan|arah bukaan/i.test(cleanMd);
+    const isGenericRecommendationWithoutFit = /sangat kami rekomendasikan untuk segera dipasang oleh semua pemilik rumah/i.test(cleanMd);
+    if (isGenericRecommendationWithoutFit || !hasCompatibilityChecks) {
+      issues.push({
+        code: 'COMPATIBILITY_NOT_EVALUATED',
+        category: 'COMPATIBILITY_GAP',
+        severity: 'WARNING',
+        description: 'Rekomendasi produk tidak memeriksa dimensi kompatibilitas fisik atau sistem instalasi hunian.',
+        penalty: 16
+      });
+      dimContext = Math.max(0, dimContext - 8);
+      dimReader = Math.max(0, dimReader - 8);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Score Aggregation & Hard-Fail Decision Logic
   // --------------------------------------------------------------------------
   const dimensions: HumanWritingDimensions = {
     sentence_rhythm: Math.round(dimRhythm),
@@ -646,7 +821,7 @@ export function evaluateHumanWritingQuality(
     conclusion_originality: Math.round(dimConclusion)
   };
 
-  const totalScore = Math.max(
+  let rawTotalScore = Math.max(
     0,
     Math.min(
       100,
@@ -660,6 +835,18 @@ export function evaluateHumanWritingQuality(
         dimensions.conclusion_originality
     )
   );
+
+  // Hard-Fail Invariant: Critical integrity violations must strictly force REWRITE (capped < 75)
+  const hasCriticalIntegrityViolation = issues.some(
+    (i) => i.code === 'FABRICATED_EXPERIENCE_OR_SLOP' ||
+           i.code === 'FABRICATED_HANDS_ON_TEST' ||
+           i.code === 'COMMERCIAL_BIAS_RISK'
+  );
+
+  let totalScore = rawTotalScore;
+  if (hasCriticalIntegrityViolation) {
+    totalScore = Math.min(totalScore, 65);
+  }
 
   let decision: HumanWritingDecision;
   let passed = false;
@@ -676,10 +863,19 @@ export function evaluateHumanWritingQuality(
   }
 
   // Safeguard: Retry Cap Escalation (Phase 8)
-  // If rewrite/revise attempts exhausted (>= maxAttempts), escalate to HUMAN_REVIEW_REQUIRED.
-  // Never lower standards automatically!
   if (!passed && attemptCount >= maxAttempts) {
     decision = 'HUMAN_REVIEW_REQUIRED';
+  }
+
+  // Role Correction Routing (Phase 16)
+  let targetAgentId = 'content_writer_primary'; // Default: Joko
+  if (hasCriticalIntegrityViolation) {
+    targetAgentId = 'editorial_qa_primary'; // Rina: integrity violation
+  } else if (
+    issues.some((i) => i.code === 'WEAK_EVIDENCE_SPECIFICITY' && i.severity === 'CRITICAL') &&
+    !issues.some((i) => i.category === 'GENERIC_OPENING' || i.category === 'STRUCTURAL_SYMMETRY' || i.category === 'KEYWORD_FORCING')
+  ) {
+    targetAgentId = 'evidence_researcher_lead'; // Irwan: purely evidence/source failure without prose defects
   }
 
   // Generate Structured Rewrite Brief if revise/rewrite is required
@@ -705,6 +901,18 @@ export function evaluateHumanWritingQuality(
       } else if (issue.category === 'ARTIFICIAL_CONCLUSION') {
         requiredActions.push('Tulis ulang kesimpulan sebagai panduan keputusan praktis: kapan harus memilih opsi A vs B, dan apa yang harus dicek pembaca.');
         failingSections.push('Bagian Kesimpulan / Penutup');
+      } else if (issue.category === 'TERMINOLOGY_INCONSISTENCY') {
+        requiredActions.push('Standardisasi istilah teknis: gunakan istilah kanonikal konsisten tanpa variasi sinonim semu.');
+      } else if (issue.category === 'SPECIFICATION_DUMP') {
+        requiredActions.push('Terjemahkan spesifikasi teknis menjadi dampak praktis bagi penggunaan sehari-hari pembaca.');
+      } else if (issue.category === 'COMMERCIAL_BIAS') {
+        requiredActions.push('Pindahkan tautan pembelian ke akhir naskah dan susun alur penalaran murni berdasar kecocokan pengguna.');
+      } else if (issue.category === 'FABRICATED_HANDS_ON') {
+        requiredActions.push('Hapus klaim pengujian fisik jika ulasan berstatus analitis tanpa bukti primer.');
+      } else if (issue.category === 'COMPLAINT_OVERGENERALIZATION') {
+        requiredActions.push('Pisahkan komplain seorang pembeli dari pola kegagalan berulang yang terverifikasi.');
+      } else if (issue.category === 'COMPATIBILITY_GAP') {
+        requiredActions.push('Tambahkan evaluasi dimensi kompatibilitas dan kendala instalasi fisik/sistem.');
       }
     }
 
@@ -713,7 +921,7 @@ export function evaluateHumanWritingQuality(
     }
 
     rewriteBrief = {
-      target_agent_id: 'content_writer_primary',
+      target_agent_id: targetAgentId,
       reason: 'HUMAN_WRITING_QUALITY',
       attempt: attemptCount + 1,
       required_actions: requiredActions,

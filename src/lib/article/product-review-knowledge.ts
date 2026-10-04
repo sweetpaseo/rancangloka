@@ -227,6 +227,59 @@ export const PRODUCT_EVIDENCE_HIERARCHY: Record<ProductEvidenceTier, ProductEvid
   }
 };
 
+/**
+ * Claim-Specific Evidence Model (Phase 3 Refinement)
+ * Principle: Evidence strength depends on the specific claim being evaluated.
+ * Universal linear rankings can be misleading because different evidence types answer different questions.
+ */
+export interface ClaimSpecificEvidenceModel {
+  identity_and_specification_evidence: {
+    primary_question: string;
+    authoritative_sources: ProductEvidenceTier[];
+    limitations: string;
+  };
+  performance_evidence: {
+    primary_question: string;
+    authoritative_sources: ProductEvidenceTier[];
+    limitations: string;
+  };
+  ownership_and_reliability_signal: {
+    primary_question: string;
+    authoritative_sources: ProductEvidenceTier[];
+    limitations: string;
+  };
+  individual_anecdote: {
+    primary_question: string;
+    authoritative_sources: ProductEvidenceTier[];
+    limitations: string;
+  };
+  core_principle: string;
+}
+
+export const CLAIM_SPECIFIC_EVIDENCE_MODEL: ClaimSpecificEvidenceModel = {
+  identity_and_specification_evidence: {
+    primary_question: 'Apa nomor model, dimensi nominal, kapasitas, sertifikasi, dan fitur yang diklaim pabrikan?',
+    authoritative_sources: ['OFFICIAL_MANUFACTURER_DOCS', 'CERTIFICATION_AND_STANDARDS'],
+    limitations: 'Dokumentasi pabrikan sangat otoritatif untuk spesifikasi nominal, namun TIDAK membuktikan keandalan di lapangan.'
+  },
+  performance_evidence: {
+    primary_question: 'Bagaimana performa terukur produk dalam kondisi uji nyata (kecepatan respon, ketahanan beban, konsumsi daya)?',
+    authoritative_sources: ['FIRST_PARTY_TEST', 'ACCREDITED_INDEPENDENT_TEST'],
+    limitations: 'Hasil uji lab memerlukan kalibrasi terhadap variabilitas cuaca dan instalasi hunian Indonesia.'
+  },
+  ownership_and_reliability_signal: {
+    primary_question: 'Masalah apa yang sering muncul setelah pemakaian berbulan-bulan (stabilitas aplikasi, aus mekanis, rembesan)?',
+    authoritative_sources: ['AGGREGATED_USER_SIGNALS'],
+    limitations: 'Sinyal perseptual pengguna menunjukkan gesekan operasional nyata, tetapi bukan fakta laboratorium mutlak.'
+  },
+  individual_anecdote: {
+    primary_question: 'Apakah ada pengalaman khusus dari seorang pembeli tertentu?',
+    authoritative_sources: ['INDIVIDUAL_ANECDOTE'],
+    limitations: 'Hanya bernilai sebagai hipotesis awal investigasi redaksi; DILARANG ditarik menjadi kesimpulan cacat produk umum.'
+  },
+  core_principle: 'Kekuatan bukti bergantung pada jenis klaim yang sedang dievaluasi (Evidence strength depends on the claim being evaluated). Dokumentasi pabrikan otoritatif untuk klaim spesifikasi, namun tidak memadai untuk mengklaim keandalan jangka panjang tanpa sinyal lapangan.'
+};
+
 // ============================================================================
 // Claim Classification for Products
 // ============================================================================
@@ -415,6 +468,7 @@ export interface RancangLokaProductReviewKnowledge {
     rules: typeof HANDS_ON_BOUNDARY_RULES;
   };
   evidence_hierarchy: typeof PRODUCT_EVIDENCE_HIERARCHY;
+  claim_specific_evidence_model: ClaimSpecificEvidenceModel;
   claim_classes: typeof PRODUCT_CLAIM_CLASSES;
   decision_questions: typeof PRODUCT_DECISION_QUESTIONS;
   layer1_identity_and_specs: ProductReviewLayer1_IdentityAndSpecs;
@@ -457,6 +511,7 @@ export const CANONICAL_PRODUCT_REVIEW_KNOWLEDGE_V1: RancangLokaProductReviewKnow
   },
 
   evidence_hierarchy: PRODUCT_EVIDENCE_HIERARCHY,
+  claim_specific_evidence_model: CLAIM_SPECIFIC_EVIDENCE_MODEL,
   claim_classes: PRODUCT_CLAIM_CLASSES,
   decision_questions: PRODUCT_DECISION_QUESTIONS,
 
@@ -1113,7 +1168,7 @@ export function getRinaProductReviewQAKnowledge(): RinaProductReviewQAKnowledgeV
 export function getSariProductReviewPublicationKnowledge(): SariProductReviewPublicationKnowledgeView {
   return {
     persona: 'Sari — Publication Operations Lead',
-    role: 'Sari — Product Review Gatekeeper & Dispatch Controller',
+    role: 'Sari — Product Review Gatekeeper & Human-Governed Dispatch Operations',
     publication_invariants: {
       review_type_declared: true,
       commercial_disclosure_verified: true,
@@ -1123,7 +1178,7 @@ export function getSariProductReviewPublicationKnowledge(): SariProductReviewPub
       auto_publish_state: 'OFF'
     },
     authority: {
-      dispatch_publication: true,
+      dispatch_publication: true, // Sah HANYA di bawah tata kelola otorisasi manusia eksplisit (human-governed execution only)
       override_qa_failure: false
     }
   };

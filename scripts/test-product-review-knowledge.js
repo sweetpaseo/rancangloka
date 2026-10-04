@@ -36,6 +36,7 @@ import {
   BANNED_HANDS_ON_PHRASES,
   HANDS_ON_BOUNDARY_RULES,
   PRODUCT_EVIDENCE_HIERARCHY,
+  CLAIM_SPECIFIC_EVIDENCE_MODEL,
   PRODUCT_CLAIM_CLASSES,
   PRODUCT_DECISION_QUESTIONS,
   PRODUCT_REVIEW_QA_ISSUE_DEFINITIONS,
@@ -119,14 +120,14 @@ async function main() {
     assert.ok(BANNED_HANDS_ON_PHRASES.includes('hasil tes kami'));
 
     // Check detector function on violating text
-    const sampleViolatingText = 'Kunci digital ini sangat responsif, kami sudah mencoba memasangnya di pintu kayu jati.';
+    const sampleViolatingText = '[ILLUSTRATIVE_EXAMPLE_ONLY] Kunci digital ini sangat responsif, kami sudah mencoba memasangnya di pintu kayu jati.';
     const violationResult = detectFabricatedHandsOnClaims(sampleViolatingText, 'ANALYTICAL_REVIEW', false);
     assert.strictEqual(violationResult.has_violation, true);
     assert.ok(violationResult.detected_phrases.includes('kami sudah mencoba'));
     assert.strictEqual(violationResult.violation_code, 'FABRICATED_HANDS_ON_TEST');
 
     // Clean analytical text passes
-    const sampleCleanText = 'Berdasarkan spesifikasi resmi pabrikan dan laporan pengujian laboratorium terakreditasi, kunci ini menggunakan mortise stainless steel 304.';
+    const sampleCleanText = '[ILLUSTRATIVE_EXAMPLE_ONLY] Berdasarkan spesifikasi resmi pabrikan dan laporan pengujian laboratorium terakreditasi, kunci ini menggunakan mortise stainless steel 304.';
     const cleanResult = detectFabricatedHandsOnClaims(sampleCleanText, 'ANALYTICAL_REVIEW', false);
     assert.strictEqual(cleanResult.has_violation, false);
     assert.strictEqual(cleanResult.detected_phrases.length, 0);
@@ -134,7 +135,7 @@ async function main() {
 
   await test('5. "Tested by RancangLoka" requires first-party physical evidence', () => {
     // If text uses "Tested by RancangLoka" without physical evidence, flag violation
-    const fakeClaimText = 'Produk ini berlabel Tested by RancangLoka dengan keandalan tinggi.';
+    const fakeClaimText = '[ILLUSTRATIVE_EXAMPLE_ONLY] Produk ini berlabel Tested by RancangLoka dengan keandalan tinggi.';
     const resultWithoutEvidence = detectFabricatedHandsOnClaims(fakeClaimText, 'HANDS_ON_REVIEW', false);
     assert.strictEqual(resultWithoutEvidence.has_violation, true);
 
@@ -321,6 +322,7 @@ async function main() {
     assert.strictEqual(sari.publication_invariants.auto_publish_state, 'OFF');
     assert.strictEqual(sari.publication_invariants.cannot_override_rina_or_irwan_rejection, true);
     assert.strictEqual(sari.authority.override_qa_failure, false);
+    assert.strictEqual(sari.role, 'Sari — Product Review Gatekeeper & Human-Governed Dispatch Operations');
 
     const rina = getRinaProductReviewQAKnowledge();
     assert.strictEqual(rina.authority.autonomous_publishing, false);
@@ -335,7 +337,7 @@ async function main() {
   });
 
   // --- SECTION 7: 9 Decision Questions Verification ---
-  console.log('--- TEST SECTION 7: 9 Decision Questions ---');
+  console.log('--- TEST SECTION 7: 9 Decision Questions & Claim-Specific Evidence Model ---');
 
   await test('23. Master decision questions contain exact 9 canonical questions', () => {
     assert.strictEqual(PRODUCT_DECISION_QUESTIONS.length, 9);
@@ -344,6 +346,19 @@ async function main() {
     assert.ok(PRODUCT_DECISION_QUESTIONS[3].includes('keterbatasan nyata'));
     assert.ok(PRODUCT_DECISION_QUESTIONS[4].includes('Keluhan apa yang berulang'));
     assert.ok(PRODUCT_DECISION_QUESTIONS[8].includes('biaya kepemilikan totalnya'));
+  });
+
+  await test('24. Claim-Specific Evidence Model distinguishes question types and enforces core principle', () => {
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL);
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL.identity_and_specification_evidence);
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL.performance_evidence);
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL.ownership_and_reliability_signal);
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL.individual_anecdote);
+
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL.core_principle.includes('Kekuatan bukti bergantung pada jenis klaim yang sedang dievaluasi'));
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL.identity_and_specification_evidence.authoritative_sources.includes('OFFICIAL_MANUFACTURER_DOCS'));
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL.performance_evidence.authoritative_sources.includes('FIRST_PARTY_TEST'));
+    assert.ok(CLAIM_SPECIFIC_EVIDENCE_MODEL.ownership_and_reliability_signal.authoritative_sources.includes('AGGREGATED_USER_SIGNALS'));
   });
 
   console.log(`\n🎉 All ${passed} tests in RANCANGLOKA_PRODUCT_REVIEW_KNOWLEDGE_V1 passed successfully!`);

@@ -97,11 +97,11 @@ Modul ulasan produk menambahkan logika keputusan pembelian dan evaluasi spesifik
 
 ### Sari — Publication Readiness Lead
 * **Domain Kepemilikan:**
-  - Verifikasi deklarasi jenis ulasan (Analitis / Hands-on / Komparasi).
+  - Verifikasi checklist deklarasi jenis ulasan (Analitis / Hands-on / Komparasi).
   - Kepatuhan pengungkapan komersial dan transparansi sponsor.
   - Verifikasi istilah rekomendasi ramah pembaca (*Penilaian RancangLoka*, *Cocok untuk*, dll.).
   - Verifikasi eksistensi artefak fisik jika artikel berlabel `Tested by RancangLoka`.
-* **Invarian Mutlak:** Publikasi tidak dapat mengesampingkan penolakan Rina atau Irwan. Saklar darurat dan `AUTO_PUBLISH = OFF` tetap berlaku.
+* **Invarian Mutlak:** Publikasi berlangsung di bawah tata kelola otorisasi manusia eksplisit (*strictly human-governed operations*). Sari dilarang melakukan publikasi mandiri/otomatis (*zero autonomous dispatch*), dan tidak dapat mengesampingkan penolakan Rina atau Irwan. Saklar darurat dan `AUTO_PUBLISH = OFF` tetap berlaku mutlak.
 
 ### Jefry — Management Decision Advisor (TypeSafe JEV)
 * **Status:** `SHADOW ADVISORY ONLY`.
@@ -207,8 +207,9 @@ RancangLoka menerapkan kebijakan toleransi nol (*zero tolerance*) terhadap pemal
 
 ---
 
-## 7. Hierarki Bukti Produk (Product Evidence Hierarchy)
+## 7. Hierarki Bukti Produk & Model Spesifik Klaim (Claim-Specific Evidence Model)
 
+### Hierarki 7 Tingkat Bukti:
 1. **Rank 1 — FIRST_PARTY_TEST:** Pengujian fisik langsung oleh RancangLoka dengan dokumentasi primer asli (Bobot: *HIGHEST*).
 2. **Rank 2 — ACCREDITED_INDEPENDENT_TEST:** Laporan laboratorium uji independen atau lembaga konsumen terakreditasi (Bobot: *HIGH*).
 3. **Rank 3 — OFFICIAL_MANUFACTURER_DOCS:** Buku manual, spesifikasi resmi, dan syarat garansi pabrikan (Bobot: *MODERATE*).
@@ -216,6 +217,21 @@ RancangLoka menerapkan kebijakan toleransi nol (*zero tolerance*) terhadap pemal
 5. **Rank 5 — REPUTABLE_TECHNICAL_SOURCES:** Analisis asosiasi industri bahan bangunan dan publikasi teknologi bereputasi (Bobot: *MODERATE*).
 6. **Rank 6 — AGGREGATED_USER_SIGNALS:** Pola keluhan/kepuasan dari puluhan ulasan pengguna terverifikasi di marketplace (Bobot: *MODERATE*).
 7. **Rank 7 — INDIVIDUAL_ANECDOTE:** Komentar pengguna tunggal. Hanya hipotesis investigasi awal, dilarang dijadikan vonis cacat produk (Bobot: *SUPPLEMENTAL_ONLY*).
+
+### Model Bukti Spesifik Berdasarkan Klaim (Claim-Specific Evidence Model):
+Prinsip utama: **Kekuatan bukti bergantung pada jenis klaim yang sedang dievaluasi (Evidence strength depends on the claim being evaluated).** Peringkat linear universal tidak boleh menyesatkan perbandingan karena sumber bukti yang berbeda menjawab pertanyaan yang berbeda:
+* **Bukti Identitas & Spesifikasi (*Identity & Specification Evidence*):**
+  - *Pertanyaan:* Apa nomor model, dimensi nominal, kapasitas, sertifikasi, dan fitur yang diklaim pabrikan?
+  - *Sumber Terbaik:* Dokumentasi resmi pabrikan (`OFFICIAL_MANUFACTURER_DOCS`), catatan sertifikasi (`CERTIFICATION_AND_STANDARDS`), buku manual.
+  - *Batas:* Sangat otoritatif untuk spesifikasi nominal, namun **TIDAK** membuktikan keandalan di lapangan.
+* **Bukti Kinerja Nyata (*Performance Evidence*):**
+  - *Pertanyaan:* Bagaimana performa terukur produk dalam kondisi uji nyata (kecepatan respon, ketahanan beban, konsumsi daya)?
+  - *Sumber Terbaik:* Pengujian fisik langsung RancangLoka (`FIRST_PARTY_TEST`), laporan pengujian laboratorium terakreditasi (`ACCREDITED_INDEPENDENT_TEST`).
+* **Sinyal Kepemilikan & Keandalan (*Ownership & Reliability Signal*):**
+  - *Pertanyaan:* Masalah apa yang sering muncul setelah pemakaian berbulan-bulan (stabilitas aplikasi, keausan mekanis, rembesan)?
+  - *Sumber Terbaik:* Agregasi laporan pengguna terverifikasi (`AGGREGATED_USER_SIGNALS`), pola keluhan berulang.
+* **Anekdot Pengguna Tunggal (*Individual Anecdote*):**
+  - *Batas:* Bersifat suplemental saja; tidak boleh dijadikan dasar kesimpulan umum cacat produk.
 
 ---
 
@@ -249,10 +265,13 @@ Setiap ulasan produk RancangLoka yang lengkap harus memungkinkan pembaca menjawa
 
 Fondasi pengetahuan ini mendefinisikan **ontologi dan aturan logika redaksional** sebelum implementasi pipeline otomatis:
 
-1. **Tahap Saat Ini (Knowledge V1):** Mendefinisikan struktur data, batasan pengujian, hierarki klaim, dan adapter peran editorial (Irwan, Joko, Rina, Sari, Jefry).
+1. **Tahap Saat Ini (Knowledge V1):** Mendefinisikan struktur data, batasan pengujian, hierarki klaim, model bukti spesifik klaim, dan adapter peran editorial (Irwan, Joko, Rina, Sari, Jefry).
 2. **Tahap Berikutnya (Calibration & Engine Integration):**
    - Kalibrasi benchmark penulisan ulasan produk Joko dengan Human Writing Quality Gate.
    - Pembangunan ingestion berbasis schema verifikasi spesifikasi Irwan.
    - Pengecekan otomatis batas hands-on dan batas tautan afiliasi pada saat kurasi draf.
+
+> **PEMBERITAHUAN KESELAMATAN FIKSIONAL (ILLUSTRATIVE_EXAMPLE_ONLY):**  
+> Seluruh contoh produk, tipe mortise, parameter nirkabel, dimensi teknis, maupun data pengujian dalam dokumen ini serta suite pengujian adalah contoh ilustratif tiruan semata (**ILLUSTRATIVE_EXAMPLE_ONLY**) untuk keperluan kalibrasi sistem redaksional, dan dilarang dikutip sebagai rujukan data teknis faktual hunian.
 
 *Dokumen ini disahkan sebagai standar kanonikal RancangLoka Product Review Knowledge V1 pada 4 Oktober 2026.*
