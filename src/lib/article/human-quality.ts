@@ -79,12 +79,27 @@ export interface EditorialPatternIssue {
     | 'FABRICATED_HANDS_ON'
     | 'COMPLAINT_OVERGENERALIZATION'
     | 'COMPATIBILITY_GAP'
-    | 'TRANSLATIONESE';
+    | 'TRANSLATIONESE'
+    | 'EXPERT_CONSULTATION_GAP'
+    | 'DECISION_SUPPORT_GAP'
+    | 'ACADEMIC_DISTANCE'
+    | 'CONTENT_DEPTH_MISMATCH';
   severity: 'WARNING' | 'CRITICAL';
   description: string;
   penalty: number;
   occurrences?: string[];
 }
+
+/**
+ * Editorial Article Intent Classification
+ * Milestone: EDITORIAL-EXPERT-CONSULTATION-1
+ */
+export type ArticleIntent =
+  | 'EXPLANATORY'
+  | 'PROBLEM_SOLVING'
+  | 'COMPARISON'
+  | 'PRODUCT_REVIEW'
+  | 'INSTALLATION_HOW_TO';
 
 import {
   RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
@@ -107,6 +122,7 @@ export interface HumanWritingQualityResult {
   attempt_count: number;
   max_attempts: number;
   rewrite_brief: StructuredRewriteBrief | null;
+  article_intent?: ArticleIntent;
 }
 
 export interface StructuredRewriteBrief {
@@ -324,12 +340,51 @@ export interface EvaluationOptions {
   maxAttempts?: number;
   focusKeyword?: string;
   evaluatedAt?: string;
+  // Article Intent option (EDITORIAL-EXPERT-CONSULTATION-1)
+  articleIntent?: ArticleIntent;
   // Product review & calibration options
   reviewType?: ProductReviewType;
   hasFirstPartyEvidence?: boolean;
   isProductReview?: boolean;
   affiliateCTAPosition?: 'BEFORE_RECOMMENDATION' | 'AFTER_RECOMMENDATION' | 'NONE';
   declaredVariant?: string;
+}
+
+/**
+ * Deterministically infers an article's editorial intent from its title, headings, and early paragraphs.
+ * Milestone: EDITORIAL-EXPERT-CONSULTATION-1
+ */
+export function detectArticleIntent(contentMd: string, options: EvaluationOptions = {}): ArticleIntent {
+  if (options.articleIntent) {
+    return options.articleIntent;
+  }
+  if (options.isProductReview || options.reviewType) {
+    return 'PRODUCT_REVIEW';
+  }
+
+  const clean = contentMd.trim();
+  const first500 = clean.slice(0, 500).toLowerCase();
+  const headings = (clean.match(/^##?\s+.+$/gm) || []).join(' ').toLowerCase();
+  const combined = first500 + ' ' + headings;
+
+  // Comparison signals (titles, headings, or opening)
+  if (/\b(?:vs|versus|perbandingan|memilih antara|dibandingkan)\b/i.test(headings || first500)) {
+    return 'COMPARISON';
+  }
+  // Product review signals
+  if (/\b(?:tinjauan spesifikasi|ulasan produk|panduan pembelian|review produk)\b/i.test(headings || first500)) {
+    return 'PRODUCT_REVIEW';
+  }
+  // How-to / Installation signals
+  if (/\b(?:langkah pemasangan|cara memasang|panduan instalasi|cara merawat|tahapan pengerjaan)\b/i.test(headings || first500)) {
+    return 'INSTALLATION_HOW_TO';
+  }
+  // Problem solving signals in headings (Title/H2/H3 specifically)
+  if (/\b(?:solusi|mengapa|mengatasi|penyebab|kenapa|cara mengatasi|troubleshooting)\b/i.test(headings)) {
+    return 'PROBLEM_SOLVING';
+  }
+
+  return 'EXPLANATORY';
 }
 
 /**
@@ -393,7 +448,8 @@ export function evaluateHumanWritingQuality(
         required_actions: ['Tulis naskah lengkap dari awal.'],
         preserved_invariants: ['Fakta riset teknis dan SNI harus dipertahankan.'],
         failing_sections: ['Seluruh naskah']
-      }
+      },
+      article_intent: options.articleIntent ?? 'EXPLANATORY'
     };
   }
 
@@ -405,6 +461,9 @@ export function evaluateHumanWritingQuality(
 
   const issues: EditorialPatternIssue[] = [];
   const strongAreas: string[] = [];
+
+  // Determine intent (EDITORIAL-EXPERT-CONSULTATION-1)
+  const articleIntent: ArticleIntent = detectArticleIntent(cleanMd, options);
 
   // Default dimension baseline (100 total potential)
   let dimRhythm = 20;
@@ -810,7 +869,7 @@ export function evaluateHumanWritingQuality(
   // 11. Evidence Integration & Claim Support (Phase 6 Evidence Blindspot Fix)
   // --------------------------------------------------------------------------
   const hasMeasurements = /\b\d+(?:[.,]\d+)?\s*(?:cm|mm|m2|m²|kg|watt|derajat|persen|%|tahun|bulan|db|dpi|g\/l|wp|kwh)\b/i.test(cleanMd);
-  const hasEvidenceOrStandards = /SNI|ASTM|ISO|EN\s*\d+|standar|uji lab|penelitian|spesifikasi|litbang|referensi|\[EVIDENCE:|dokumentasi resmi|manual pemasangan|prinsip fisika|cahaya pantul|efek cerobong|konveksi|radiasi termal|sudut datang matahari|sudut jatuh matahari|cross-ventilation|ventilasi silang|penetrasi panas|hambatan panas|konduktivitas|tekanan angin mikro|cerobong termal|thermal break|anodized|powder coating|ekstrusi|inverter|on-grid|net metering/i.test(cleanMd);
+  const hasEvidenceOrStandards = /SNI|ASTM|ISO|EN\s*\d+|standar|uji lab|penelitian|spesifikasi|litbang|referensi|\[EVIDENCE:|dokumentasi resmi|manual pemasangan|prinsip fisika|cahaya pantul|efek cerobong|konveksi|radiasi termal|sudut datang matahari|sudut jatuh matahari|sudut jatuh air hujan|overstek|kantilever|cross-ventilation|ventilasi silang|penetrasi panas|hambatan panas|konduktivitas|tekanan angin mikro|cerobong termal|thermal break|anodized|powder coating|ekstrusi|inverter|on-grid|net metering/i.test(cleanMd);
   const hasQualitativeOnlyAdvice = /memilih kayu yang bagus dan kuat|bermutu tinggi|kualitasnya sangat meragukan|jangan memakai kayu sembarangan/i.test(cleanMd);
 
   // Unsupported Numerical Claims: High numerical density or sensational percentage claim without methodology or standard
@@ -968,6 +1027,128 @@ export function evaluateHumanWritingQuality(
   }
 
   // --------------------------------------------------------------------------
+  // 17. Expert Consultation & Practical Decision Depth Gate (Milestone: EDITORIAL-EXPERT-CONSULTATION-1)
+  // --------------------------------------------------------------------------
+  // Signals for Expert-to-Client Consultation (Layer 3) & Practical Decision Support (Layer 4)
+  const hasTradeOffs = /\b(?:trade-off|kompromi|konsekuensi|kelemahan|kekurangan|keterbatasan|risiko|sisi lain|namun menuntut|perlu diantisipasi|perawatan berkala|kelemahan termal|rentan|biaya perawatan|debu|karat|meredam panas lebih optimal|menahan beban angin|pertimbangan teknis|prioritaskan\b[^\n.]+?\bjika\b)\b/i.test(cleanMd);
+  const hasActionGuidance = /\b(?:(?:mem)?periksa(?:lah)?|pastikan|memastikan|(?:meng)?ukur|(?:menge)?cek|(?:men)?tanyakan|(?:mem)?verifikasi|spesifikasi|langkah berikutnya|tahapan|pilihan|rekomendasi|alternatif|hubungi aplikator|ahli struktur|uji)\b/i.test(lastSection || cleanMd);
+  const hasScenarioFit = /\b(?:jika|apabila|bila|untuk rumah|pada bukaan|cocok untuk|kurang cocok|lebih masuk akal|paling tepat|prioritaskan jika|dalam kondisi)\b/i.test(cleanMd);
+  const hasDiagnosticDepth = /\b(?:akar penyebab|penyebab utama|indikasi fisik|rembesan kapiler|sumber air|pemicu utama|diagnosis|gejala|kenapa hal ini terjadi|mengapa bisa)\b/i.test(cleanMd);
+  const hasDirectPrescription = /\b(?:harus dipasang|wajib memakai|segera gunakan|langsung pasang|solusinya adalah dengan membeli|langsung beli)\b/i.test(cleanMd);
+  const hasPrescriptionWithoutDiagnosis = !hasDiagnosticDepth && hasDirectPrescription;
+
+  // A. Reader Problem Framing (Problem Solving & Comparison articles)
+  if (articleIntent === 'PROBLEM_SOLVING' || articleIntent === 'COMPARISON') {
+    const hasProblemFraming = /\b(?:masalah|dilema|kebingungan|keluhan|panas|bocor|rembes\w*|rusak|sulit|tantangan|memilih|perbedaan|antara|perbandingan|frustrasi|kecemasan|kekhawatiran|mengantong)\b/i.test(firstParagraph);
+    if (!hasProblemFraming && firstParagraph.length > 30) {
+      issues.push({
+        code: 'READER_PROBLEM_UNCLEAR',
+        category: 'EXPERT_CONSULTATION_GAP',
+        severity: 'WARNING',
+        description: 'Pembuka artikel tidak membingkai secara jelas masalah atau dilema riil yang dialami pemilik rumah.',
+        penalty: 8
+      });
+      dimReader = Math.max(0, dimReader - 5);
+      dimVoice = Math.max(0, dimVoice - 3);
+    }
+  }
+
+  // B. Diagnosis Before Prescription (Problem Solving)
+  if (articleIntent === 'PROBLEM_SOLVING' && hasPrescriptionWithoutDiagnosis) {
+    issues.push({
+      code: 'DIAGNOSIS_MISSING',
+      category: 'EXPERT_CONSULTATION_GAP',
+      severity: 'WARNING',
+      description: 'Naskah langsung meresepkan produk atau tindakan tanpa terlebih dahulu mendiagnosis gejala dan akar penyebab teknis.',
+      penalty: 10
+    });
+    dimEvidence = Math.max(0, dimEvidence - 6);
+    dimReader = Math.max(0, dimReader - 4);
+  }
+
+  // C. Trade-Off Depth & Incomplete Trade-Offs (Comparison & Problem Solving)
+  if (articleIntent === 'COMPARISON') {
+    if (!hasTradeOffs) {
+      issues.push({
+        code: 'TRADE_OFFS_INCOMPLETE',
+        category: 'DECISION_SUPPORT_GAP',
+        severity: 'CRITICAL',
+        description: 'Artikel komparasi tidak membeberkan trade-off atau kompromi fisik/material secara transparan bagi pemilik rumah.',
+        penalty: 16
+      });
+      dimVoice = Math.max(0, dimVoice - 8);
+      dimReader = Math.max(0, dimReader - 8);
+    } else {
+      strongAreas.push('Komparasi menguraikan trade-off material secara transparan dan berimbang');
+    }
+  }
+
+  // D. Universal Recommendation / Missing Scenario Fit (Comparison)
+  const hasUniversalRecommendation = /\b(?:produk terbaik untuk semua|pilihan nomor satu tanpa tanding|selalu lebih unggul dalam segala hal|wajib dipilih oleh siapa pun)\b/i.test(cleanMd);
+  if (articleIntent === 'COMPARISON' && (hasUniversalRecommendation || (!hasScenarioFit && !hasUniversalRecommendation && !/pertimbangkan|tergantung pada/i.test(cleanMd)))) {
+    issues.push({
+      code: 'SCENARIO_FIT_MISSING',
+      category: 'DECISION_SUPPORT_GAP',
+      severity: 'WARNING',
+      description: 'Rekomendasi bersifat mutlak/universal tanpa percabangan skenario (kondisi jika X maka A, jika Y maka B).',
+      penalty: 10
+    });
+    dimReader = Math.max(0, dimReader - 6);
+    dimVoice = Math.max(0, dimVoice - 4);
+  }
+
+  // E. Next Action / Decision Resolution (All actionable intents: Comparison, Problem Solving, How-to, Product Review)
+  if (articleIntent === 'COMPARISON' || articleIntent === 'PROBLEM_SOLVING' || articleIntent === 'INSTALLATION_HOW_TO' || articleIntent === 'PRODUCT_REVIEW') {
+    if (!hasActionGuidance && lastSection.length > 50) {
+      issues.push({
+        code: 'NEXT_ACTION_MISSING',
+        category: 'DECISION_SUPPORT_GAP',
+        severity: 'WARNING',
+        description: 'Bagian penutup artikel tidak memberikan panduan langkah konkret berikutnya (hal yang harus diinspeksi, diukur, diverifikasi, atau ditanyakan ke tukang/aplikator).',
+        penalty: 10
+      });
+      dimReader = Math.max(0, dimReader - 6);
+      dimConclusion = Math.max(0, dimConclusion - 4);
+    }
+  }
+
+  // F. Academic Distance Excessive (Explanatory / General Articles that detach from homeowner reality)
+  // Evaluates when technical concepts are described in abstract theory without practical homeowner relevance,
+  // without context qualification, without trade-offs, and ending with an essay summary rather than client action.
+  const hasAbstractTone = /\b(?:sains kenyamanan termal|rekayasa amplop bangunan|beban pendinginan pasif|selubung adaptif ganda|dinamika ventilasi|keberlanjutan konstruksi|efisiensi termal arsitektur|karakter arsitektural tropis modern)\b/i.test(cleanMd);
+  const lacksHomeownerRelevance = !/\b(?:bagi pemilik rumah|untuk rumah|di rumah|kamar tidur|kamar mandi|ruang keluarga|biaya perawatan|saat hujan|saat panas|tukang|aplikator|lapangan|penghuni rumah)\b/i.test(cleanMd);
+  const lacksPracticalTradeOffs = !hasTradeOffs;
+  const lacksNextAction = !hasActionGuidance;
+
+  if (articleIntent === 'EXPLANATORY' && hasAbstractTone && lacksHomeownerRelevance && lacksPracticalTradeOffs && lacksNextAction) {
+    issues.push({
+      code: 'ACADEMIC_DISTANCE_EXCESSIVE',
+      category: 'ACADEMIC_DISTANCE',
+      severity: 'WARNING',
+      description: 'Artikel bernada esai akademis/makalah ilmiah yang berjarak dari realitas pemilik rumah (nihil relevansi hunian praktis, ketiadaan trade-off perawatan, dan tidak ada resolusi tindakan nyata).',
+      penalty: 16
+    });
+    dimVoice = Math.max(0, dimVoice - 8);
+    dimReader = Math.max(0, dimReader - 8);
+  }
+
+  // G. Content Depth Adequacy vs Scope (Short Prototype Filter)
+  // Broad complex scope with very brief content (< 120 words) triggers scope-depth mismatch
+  const isBroadScopeTopic = /\b(?:solusi rumah panas|panduan smart home|tren desain interior|sistem keamanan rumah|solusi|panduan lengkap|desain rumah)\b/i.test(firstParagraph + ' ' + headings.join(' '));
+  const isTooBriefForBroadScope = words.length < 120;
+  if (isBroadScopeTopic && isTooBriefForBroadScope) {
+    issues.push({
+      code: 'SCOPE_DEPTH_MISMATCH',
+      category: 'CONTENT_DEPTH_MISMATCH',
+      severity: 'WARNING',
+      description: `Cakupan topik luas dibahas terlalu singkat (~${words.length} kata), menyisakan kesenjangan kedalaman eksplanasi dan panduan keputusan.`,
+      penalty: 7
+    });
+    dimSpecificity = Math.max(0, dimSpecificity - 4);
+    dimReader = Math.max(0, dimReader - 3);
+  }
+
+  // --------------------------------------------------------------------------
   // Score Aggregation & Hard-Fail Decision Logic
   // --------------------------------------------------------------------------
   const dimensions: HumanWritingDimensions = {
@@ -1083,6 +1264,18 @@ export function evaluateHumanWritingQuality(
       } else if (issue.category === 'TRANSLATIONESE' || issue.code === 'TRANSLATIONESE_DETECTED') {
         requiredActions.push('Tulis ulang langsung dalam bahasa Indonesia alami; hilangkan pola wacana terjemahan literal bahasa Inggris ("ketika datang ke", "hadir dengan sejumlah fitur", "dalam hal ini penting untuk memahami", "keputusan berada di tangan Anda", dll.).');
         failingSections.push('Gaya Bahasa & Konstruksi Kalimat');
+      } else if (issue.category === 'EXPERT_CONSULTATION_GAP') {
+        requiredActions.push('Perjelas masalah riil pemilik rumah di awal naskah dan lakukan diagnosa gejala/sebab sebelum meresepkan solusi.');
+        failingSections.push('Perspektif Konsultasi Ahli');
+      } else if (issue.category === 'DECISION_SUPPORT_GAP') {
+        requiredActions.push('Sertakan trade-off material secara berimbang, percabangan skenario ("jika X maka A, jika Y maka B"), dan langkah aksi konkret di penutup.');
+        failingSections.push('Dukungan Keputusan & Aksi Lanjutan');
+      } else if (issue.category === 'ACADEMIC_DISTANCE') {
+        requiredActions.push('Dekatkan naskah pada realitas pemilik rumah: kaitkan prinsip fisika bangunan dengan konsekuensi praktis, perawatan rutin, dan panduan tindakan di lapangan.');
+        failingSections.push('Relevansi & Jarak Akademis');
+      } else if (issue.category === 'CONTENT_DEPTH_MISMATCH') {
+        requiredActions.push('Perdalam bahasan topik agar sepadan dengan keluasan cakupan yang dijanjikan, atau persempit fokus pembahasan.');
+        failingSections.push('Kedalaman Konten');
       }
     }
 
@@ -1116,7 +1309,8 @@ export function evaluateHumanWritingQuality(
     evaluated_at: evaluatedAt,
     attempt_count: attemptCount,
     max_attempts: maxAttempts,
-    rewrite_brief: rewriteBrief
+    rewrite_brief: rewriteBrief,
+    article_intent: articleIntent
   };
 }
 

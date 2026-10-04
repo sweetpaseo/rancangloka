@@ -71,12 +71,14 @@ async function main() {
     const a6Row = d1.prepare('SELECT content_md FROM articles WHERE id = 6').get();
     assert.ok(a6Row);
     const resA6 = evaluateHumanWritingQuality(a6Row.content_md);
-    // Honest observation per Phase 9:
-    // With physical principles recognized (ventilasi silang, cerobong termal), machine evaluator gives 100 PASS.
-    // However, human editorial assessment identifies it as REVISE (lacks concrete homeowner trade-offs & actionable scenario ending).
-    // System records this mismatch as FALSE PASS (omission of practical trade-off check) without artificially forcing a fake failure.
-    assert.ok(resA6.total_score >= 85, 'Machine evaluation on physical principles rates text as PASS');
-    assert.strictEqual(resA6.decision, 'HUMAN_WRITING_PASS');
+    // Honest observation per Phase 9 (EDITORIAL-EXPERT-CONSULTATION-1):
+    // Article 6 has sound physical principles and natural Indonesian, but lacks homeowner trade-offs,
+    // context qualification, and actionable next steps.
+    // With Expert Consultation & Decision Depth Gate active, it triggers ACADEMIC_DISTANCE_EXCESSIVE,
+    // dropping its score from false PASS (100) to REVISE (84), agreeing with human editorial judgment.
+    assert.strictEqual(resA6.decision, 'HUMAN_WRITING_REVISE');
+    assert.ok(resA6.total_score >= 75 && resA6.total_score < 85, 'Must land cleanly in REVISE tier');
+    assert.ok(resA6.issues.some((i) => i.code === 'ACADEMIC_DISTANCE_EXCESSIVE'));
   });
 
   // --- SECTION 3: Evidence Model & Qualitative Claim Support (Phase 6) ---

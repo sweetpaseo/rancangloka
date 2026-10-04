@@ -19,14 +19,15 @@ Milestone `EDITORIAL-REAL-CORPUS-2` menjalankan validasi ulang bayangan (*shadow
 Mengukur perubahan evaluasi secara jujur tanpa menala (*tuning*) evaluator terlebih dahulu. Secara khusus memeriksa dampak aturan terhadap:
 - **Artikel 5** (Standar emas kanonikal komparasi).
 - **Artikel 6** (Kasus diagnostik fasad adaptif terkarantina).
-- **Draf D1 aktif**.
-- **Katalog prototipe naskah editorial**.
+- **3 Draf D1 aktif** (ID 2, 3, dan 5).
+- **20 Katalog prototipe naskah editorial** (`proto-01` s/d `proto-20`).
+- **Total Korpus Nyata Dievaluasi:** **25 item korpus nyata**.
 
 ### Temuan Kunci
 1. **Tidak Ada Penalti Palsu (*Zero False Penalties*):** Naskah berkualitas tinggi berbahasa Indonesia asli (Artikel 5, Draf D1 ID 2, Draf D1 ID 3, Prototipe 20) **mempertahankan skor sempurna 100 / 95** dan tidak ada yang tersandung penalti terjemahan palsu.
-2. **Koreksi Bahasa Pembuktian QA (*Provenance Language Correction*):** Tanggung jawab QA Rina diperjelas menjadi `NATIVE_INDONESIAN_STYLE_ASSESSMENT`. QA mengevaluasi apakah prosa keluaran terbaca sebagai bahasa Indonesia alami dan bebas pola translationese, tanpa mengklaim pembuktian historis bahasa perantara yang tidak dapat diverifikasi semata-mata dari naskah akhir. Joko tetap terikat secara kanonikal untuk menyusun ide langsung dalam bahasa Indonesia.
-3. **Hasil Diagnostik Artikel 6:** Artikel 6 tetap mencatat skor mesin **100 (`HUMAN_WRITING_PASS`)**, sementara penilaian redaksi manusia memberi label **`REVISE / REWRITE`**. Ini membuktikan secara empiris bahwa kelemahan Artikel 6 **bukanlah translationese**, melainkan ketiadaan perspektif konsultasi ahli (*Expert-to-Client*), ketiadaan trade-off aplikatif bagi pemilik rumah, dan gaya esai akademis konseptual.
-4. **Audit Translationese Korpus Nyata:** Tidak ditemukan satupun pola *translationese* pada seluruh 20 naskah nyata yang ada. Ini membuktikan bahwa draf historis RancangLoka ditulis asli dalam bahasa Indonesia, bukan hasil mesin penerjemah.
+2. **Koreksi Bahasa Pembuktian QA (*Provenance Language Correction*):** Tanggung jawab QA Rina diperjelas menjadi `NATIVE_INDONESIAN_STYLE_ASSESSMENT`. QA mengevaluasi apakah prosa keluaran terbaca sebagai bahasa Indonesia alami dan bebas pola translationese. Sesuai disiplin pelaporan: **tidak terdeteksinya pola terjemahan (*no targeted translationese patterns detected*) tidak sama dengan klaim bahwa naskah secara historis terbukti ditulis langsung dalam bahasa Indonesia atau bahwa *false negatives = 0*, kecuali jika korpus memiliki sampel positif terjemahan terkalibrasi secara independen**.
+3. **Hasil Diagnostik Artikel 6:** Artikel 6 mencatat skor mesin **100 (`HUMAN_WRITING_PASS`)** pada evaluasi awal RC-2, sementara penilaian redaksi manusia memberi label **`REVISE / REWRITE`**. Ini membuktikan secara empiris bahwa kelemahan Artikel 6 **bukanlah translationese**, melainkan ketiadaan perspektif konsultasi ahli (*Expert-to-Client*), ketiadaan trade-off aplikatif bagi pemilik rumah, dan gaya esai akademis konseptual.
+4. **Audit Translationese Korpus Nyata:** Tidak ditemukan satupun pola *translationese* pada seluruh 25 naskah nyata yang dievaluasi (`No targeted translationese patterns detected in final prose`).
 5. **Invarian Keselamatan Mutlak:** Evaluasi dilakukan sepenuhnya dalam mode bayangan (*shadow mode*). Tidak ada mutasi konten pada basis data D1, tidak ada perubahan status artikel, tidak ada komit hash baru, dan `AUTO_PUBLISH = OFF` tetap 100% terkunci.
 
 ---
@@ -67,9 +68,12 @@ Korpus nyata yang dievaluasi identik 100% dengan inventaris resmi pada `EDITORIA
 
 ## 3. Matriks Perbandingan Sebelum vs Sesudah (*Before vs After Matrix*)
 
-Berikut adalah rekaman evaluasi komparatif antara `EDITORIAL-REAL-CORPUS-1` (sebelum aktivasi Layer Native Indonesian) dan `EDITORIAL-REAL-CORPUS-2` (setelah aktivasi Layer Native Indonesian):
+Berikut adalah rekaman evaluasi komparatif antara `EDITORIAL-REAL-CORPUS-1` (sebelum aktivasi Layer Native Indonesian) dan `EDITORIAL-REAL-CORPUS-2` (setelah aktivasi Layer Native Indonesian).
 
-| ID Naskah | Label Redaksi Manusia | Skor RC-1 | Keputusan RC-1 | Skor RC-2 | Keputusan RC-2 | Isu Translationese | Isu Lain Terdeteksi Mesin |
+> **Catatan Provenansi Skor (*Score Provenance Audit*):**  
+> Skor RC-1 pada tabel di bawah diberi label `HISTORICAL_REPORTED_SCORE`. Pada RC-1, evaluator berjalan pada iterasi pra-penyesuaian di mana item tertentu (misalnya D1 Draft 5 = 85 vs 95, Proto 03/07/12 = 83 vs 93) dinilai sebelum pengakuan prinsip fisika/arsitektur tertentu atau sebelum penggabungan alias aturan. Perubahan nilai bukan disebabkan oleh mutasi naskah atau pengenalan aturan terjemahan, melainkan perbedaan versi mesin evaluasi. Untuk menjaga transparansi saintifik, skor historis tersebut tidak direkayasa ulang sebagai pengukuran replay mesin persis, melainkan dicatat sesuai status pelaporan historisnya.
+
+| ID Naskah | Label Redaksi Manusia | Skor RC-1 (`HISTORICAL_REPORTED_SCORE`) | Keputusan RC-1 | Skor RC-2 (Replay Mesin) | Keputusan RC-2 | Isu Translationese | Isu Lain Terdeteksi Mesin |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | **`article-5-canonical`** | `PASS` | **100** | `PASS` | **100** | `PASS` | Nihil | Tidak ada. Standar emas redaksi. |
 | **`article-6-published`** | `REVISE` | **100** | `PASS` | **100** | `PASS` | Nihil | Tidak ada (Esai fisik arsitektur). |
@@ -130,15 +134,16 @@ Berikut adalah rekaman evaluasi komparatif antara `EDITORIAL-REAL-CORPUS-1` (seb
 
 ## 6. Audit Positif Palsu & Negatif Palsu (*False Positive / Negative Audit*)
 
-Audit terhadap 20 naskah nyata membuktikan:
+Audit terhadap 25 naskah nyata membuktikan:
 
 1. **Positif Palsu (*False Positives*): 0 Kasus (0%)**
    - Istilah bahasa Inggris rekayasa (*thermal break*, *solar altitude angle*, *louver*, *downlight*, *cavity*, *mmWave*, *cove lighting*, *cross-ventilation*, *secondary skin*, *smart home*) **tidak satupun memicu penalti terjemahan palsu**.
    - Kalimat pasif wajar bahasa Indonesia teknis (*"dibiasan"*, *"dipasang"*, *"dialirkan"*, *"diuji"*) diakui sebagai struktur sah bahasa Indonesia.
    - Kutipan regulasi dan standar (SNI, ASTM, Permen PUPR) tidak memicu penalti sintaksis.
 
-2. **Negatif Palsu (*False Negatives*): 0 Kasus Translationese**
-   - Tidak ada naskah dalam korpus nyata yang merupakan terjemahan mesin bahasa Inggris yang lolos tanpa terdeteksi, karena korpus riil RancangLoka memang disusun langsung oleh penulis redaksi Indonesia.
+2. **Deteksi Translationese (*No Targeted Patterns Detected*):**
+   - Tidak ditemukan satupun pola terjemahan (*translationese*) pada seluruh 25 naskah nyata yang dievaluasi.
+   - **Disiplin Pelaporan:** Status ini dilaporkan sebagai `NO TARGETED TRANSLATIONESE PATTERNS DETECTED IN EVALUATED FINAL PROSE`, bukan sebagai klaim pembuktian absolut riwayat authoring atau klaim `false negatives = 0`, karena penentuan *false negatives* secara matematis memerlukan kontrol positif terjemahan independen di dalam korpus evaluasi.
 
 3. **Kesenjangan Redaksional yang Teramati (*The Real Operational Gap*):**
    - Naskah seperti Prototipe 01–04, 07, 08, 12, 17, 19, dan Artikel 6 memperoleh skor $\ge 85$ (`PASS`) semata-mata karena memenuhi irama kalimat, keterikatan lokal, dan prinsip fisika bangunan, **meskipun naskahnya sangat ringkas (400–800 karakter) atau bernada esai akademis tanpa pendampingan konsultatif**.
