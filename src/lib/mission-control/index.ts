@@ -55,6 +55,7 @@ export * from './pixel-office.ts';
 export * from './job-animation-registry.ts';
 export * from './chat.ts';
 export * from './anomalies.ts';
+export * from './anomaly-intelligence.ts';
 export * from './office-route-graph.ts';
 export * from './staff-movement.ts';
 export * from './task-handoff.ts';

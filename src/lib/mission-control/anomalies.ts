@@ -23,6 +23,7 @@ import {
 } from './capability-registry.ts';
 import { redactSensitiveString } from './redact.ts';
 import { getOrCreateConversation, appendMessage } from './chat.ts';
+import { deriveAnomalyIntelligence, type AnomalyIntelligence } from './anomaly-intelligence.ts';
 
 // ============================================================================
 // Types & Data Contracts
@@ -59,6 +60,7 @@ export interface MissionControlAnomaly {
   last_seen_at: string;
   resolved_at?: string | null;
   metadata?: Record<string, any>;
+  intelligence?: AnomalyIntelligence;
 }
 
 export interface MissionControlAnomalyEvent {
@@ -76,6 +78,7 @@ export interface AnomaliesSummary {
   active_anomalies: MissionControlAnomaly[];
   expected_conditions: MissionControlAnomaly[];
   resolved_anomalies: MissionControlAnomaly[];
+  intelligence_map?: Record<string, AnomalyIntelligence>;
   counts: {
     total_active: number;
     critical: number;
@@ -1009,10 +1012,18 @@ export async function scanAndSyncAnomalies(
     resolved: resolved_anomalies.length
   };
 
+  const intelligence_map: Record<string, AnomalyIntelligence> = {};
+  for (const anom of [...active_anomalies, ...expected_conditions, ...resolved_anomalies]) {
+    const intel = deriveAnomalyIntelligence(anom, snapshot);
+    anom.intelligence = intel;
+    intelligence_map[anom.anomaly_id] = intel;
+  }
+
   return {
     active_anomalies,
     expected_conditions,
     resolved_anomalies,
+    intelligence_map,
     counts
   };
 }
@@ -1143,10 +1154,18 @@ export function getAnomaliesSnapshot(snapshot: MissionControlSnapshot | null): A
     resolved: resolved_anomalies.length
   };
 
+  const intelligence_map: Record<string, AnomalyIntelligence> = {};
+  for (const anom of [...active_anomalies, ...expected_conditions, ...resolved_anomalies]) {
+    const intel = deriveAnomalyIntelligence(anom, snapshot);
+    anom.intelligence = intel;
+    intelligence_map[anom.anomaly_id] = intel;
+  }
+
   return {
     active_anomalies,
     expected_conditions,
     resolved_anomalies,
+    intelligence_map,
     counts
   };
 }

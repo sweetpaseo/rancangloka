@@ -100,7 +100,7 @@ export function deriveCanonicalRevision(
       (b.updated_at || b.detected_at || '').localeCompare(a.updated_at || a.detected_at || '')
     );
     const latestAnom = sortedAnoms[0];
-    parts.push(`latest_anom:${latestAnom.anomaly_id}:${latestAnom.state}:${latestAnom.updated_at || latestAnom.detected_at}`);
+    parts.push(`latest_anom:${latestAnom.anomaly_id}:${latestAnom.state}:${latestAnom.severity || 'UNKNOWN'}:${latestAnom.occurrence_count || 1}:${latestAnom.updated_at || latestAnom.detected_at}`);
   }
 
   // 3. Pipeline Tasks Signature

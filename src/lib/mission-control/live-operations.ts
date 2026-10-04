@@ -21,6 +21,7 @@ import type { MissionControlSnapshot, TaskCard } from './types.ts';
 import type { StaffOperationalState, StaffMemberStatus } from './staff-registry.ts';
 import { getStaffDefinitions } from './staff-registry.ts';
 import { attributeTaskOwnership } from './department-registry.ts';
+import { deriveAnomalyIntelligence } from './anomaly-intelligence.ts';
 import {
   JOB_ANIMATION_REGISTRY,
   getAnimationDefinition,
@@ -98,6 +99,7 @@ export interface LiveStaffOperation {
     title: string;
     severity: string;
     blocking_condition: string | null;
+    intelligence?: any;
   } | null;
   state_evidence: string;
   provenance: {
@@ -739,7 +741,8 @@ export function deriveLiveStaffOperation(
           anomaly_id: agentAnomaly.anomaly_id,
           title: agentAnomaly.title,
           severity: agentAnomaly.severity,
-          blocking_condition: agentAnomaly.blocker_reason || agentAnomaly.title
+          blocking_condition: agentAnomaly.blocker_reason || agentAnomaly.title,
+          intelligence: agentAnomaly.intelligence || deriveAnomalyIntelligence(agentAnomaly, snapshot)
         }
       : null,
     state_evidence: stateEvidence,
