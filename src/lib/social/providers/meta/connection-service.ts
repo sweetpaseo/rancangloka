@@ -7,7 +7,7 @@
  * No access token or App Secret is stored in D1.
  */
 
-import { getSiteSettings, updateSiteSettings } from '../../../db.ts';
+import { getSiteSettings, getSiteSettingByKey, updateSiteSettings } from '../../../db.ts';
 import type { MetaConnectionHealth, MetaConnectionRecord } from './binding-types.ts';
 import { evaluateConnectionHealth } from './connection-health.ts';
 
@@ -17,8 +17,7 @@ const SETTINGS_KEY_META_CONNECTION = 'social_meta_connection_json';
  * Retrieve current Meta connection record from D1 settings
  */
 export async function getMetaConnection(db: any): Promise<MetaConnectionRecord | null> {
-  const settings = await getSiteSettings(db);
-  const rawJson = settings[SETTINGS_KEY_META_CONNECTION];
+  const rawJson = await getSiteSettingByKey(db, SETTINGS_KEY_META_CONNECTION);
   if (!rawJson) return null;
 
   try {

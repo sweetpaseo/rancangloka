@@ -1335,3 +1335,84 @@ export function getStaffRoster(snapshot: MissionControlSnapshot | null): StaffRo
     departments: DEPARTMENTS_METADATA
   };
 }
+
+/**
+ * Lightweight staff operational state lookup for targeted chat polling.
+ * Avoids executing full getMissionControlSnapshot() during frequent chat status refreshes.
+ */
+export async function getLightweightStaffState(
+  db: any,
+  agentId: string
+): Promise<{ state: StaffOperationalState; current_task: StaffCurrentTask | null }> {
+  if (!db || typeof db.prepare !== 'function') {
+    return { state: 'IDLE', current_task: null };
+  }
+
+  try {
+    if (agentId === 'content_writer_primary') {
+      const artRow = await db
+        .prepare("SELECT id, title, updated_at FROM articles WHERE status = 'draft' ORDER BY updated_at DESC LIMIT 1")
+        .first();
+      if (artRow) {
+        return {
+          state: 'WORKING',
+          current_task: {
+            current_task_id: `art_${artRow.id}`,
+            current_task_title: sanitizeString(artRow.title),
+            current_task_status: 'draft',
+            current_task_updated_at: artRow.updated_at || new Date().toISOString()
+          }
+        };
+      }
+    } else if (agentId === 'lokamedia_worker_primary') {
+      const activeJob = await db
+        .prepare("SELECT job_id, article_title, status, updated_at FROM media_jobs WHERE status IN ('IN_PROGRESS', 'GENERATING', 'LEASED') ORDER BY updated_at DESC LIMIT 1")
+        .first();
+      if (activeJob) {
+        return {
+          state: 'WORKING',
+          current_task: {
+            current_task_id: sanitizeString(activeJob.job_id),
+            current_task_title: sanitizeString(activeJob.article_title),
+            current_task_status: sanitizeString(activeJob.status),
+            current_task_updated_at: activeJob.updated_at || new Date().toISOString()
+          }
+        };
+      }
+
+      const blockedJob = await db
+        .prepare("SELECT job_id, article_title, status, updated_at FROM media_jobs WHERE status IN ('FAILED', 'FAILED_TERMINAL') ORDER BY updated_at DESC LIMIT 1")
+        .first();
+      if (blockedJob) {
+        return {
+          state: 'BLOCKED',
+          current_task: {
+            current_task_id: sanitizeString(blockedJob.job_id),
+            current_task_title: sanitizeString(blockedJob.article_title),
+            current_task_status: sanitizeString(blockedJob.status),
+            current_task_updated_at: blockedJob.updated_at || new Date().toISOString()
+          }
+        };
+      }
+    } else if (agentId === 'editorial_qa_chief') {
+      const draftArt = await db
+        .prepare("SELECT id, title, updated_at FROM articles WHERE status = 'draft' ORDER BY updated_at DESC LIMIT 1")
+        .first();
+      if (draftArt) {
+        return {
+          state: 'REVIEWING',
+          current_task: {
+            current_task_id: `qa_${draftArt.id}`,
+            current_task_title: sanitizeString(draftArt.title),
+            current_task_status: 'reviewing',
+            current_task_updated_at: draftArt.updated_at || new Date().toISOString()
+          }
+        };
+      }
+    }
+
+    return { state: 'IDLE', current_task: null };
+  } catch {
+    return { state: 'IDLE', current_task: null };
+  }
+}

@@ -227,11 +227,11 @@ export async function getJevObservabilitySummary(db: any): Promise<JevObservabil
         .first();
       totalObservationsCount = Number(countRow?.count || 0);
 
-      // Agreement Rate
-      const agreeRow = await db
-        .prepare("SELECT COUNT(*) as count FROM decision_observations WHERE disagreement_classification LIKE 'AGREE%'")
-        .first();
+      // Agreement Rate (only calculate if observations exist)
       if (totalObservationsCount > 0) {
+        const agreeRow = await db
+          .prepare("SELECT COUNT(*) as count FROM decision_observations WHERE disagreement_classification LIKE 'AGREE%'")
+          .first();
         const agreeCount = Number(agreeRow?.count || 0);
         agreementRatePercent = Math.round((agreeCount / totalObservationsCount) * 100);
       }

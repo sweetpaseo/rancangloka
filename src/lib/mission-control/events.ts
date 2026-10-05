@@ -127,6 +127,66 @@ export function deriveCanonicalRevision(
   return 'rev_' + computeStateHash(parts.join(';'));
 }
 
+/**
+ * Lightweight revision derivation for heartbeat polling.
+ * Reads <= 4 bounded D1 rows across core state tables instead of full snapshot.
+ */
+export async function getLightweightRevision(db: any): Promise<string> {
+  if (!db || typeof db.prepare !== 'function') {
+    return 'rev_lightweight_default';
+  }
+
+  try {
+    // 1. automation_control (latest/current row) -> 1 row
+    let autoSig = 'auto:none';
+    try {
+      const autoRow = await db
+        .prepare('SELECT updated_at, mode, kill_switch_engaged FROM automation_control WHERE id = 1')
+        .first();
+      if (autoRow) {
+        autoSig = `auto:${autoRow.mode || autoRow.automation_mode || 'OFF'}:${autoRow.kill_switch_engaged || 0}:${autoRow.updated_at || '0'}`;
+      }
+    } catch {}
+
+    // 2. mission_control_operator_actions (latest row) -> 1 row
+    let actSig = 'act:none';
+    try {
+      const actRow = await db
+        .prepare('SELECT action_id, requested_at, completed_at, action_type FROM mission_control_operator_actions ORDER BY requested_at DESC LIMIT 1')
+        .first();
+      if (actRow) {
+        actSig = `act:${actRow.action_id}:${actRow.completed_at || actRow.requested_at || '0'}:${actRow.action_type || ''}`;
+      }
+    } catch {}
+
+    // 3. publication_cron_runs (latest row) -> 1 row
+    let cronSig = 'cron:none';
+    try {
+      const cronRow = await db
+        .prepare('SELECT id, status, started_at, finished_at FROM publication_cron_runs ORDER BY id DESC LIMIT 1')
+        .first();
+      if (cronRow) {
+        cronSig = `cron:${cronRow.id}:${cronRow.status || ''}:${cronRow.finished_at || cronRow.started_at || '0'}`;
+      }
+    } catch {}
+
+    // 4. mission_control_anomalies (latest updated/detected anomaly) -> 1 row
+    let anomSig = 'anom:none';
+    try {
+      const anomRow = await db
+        .prepare('SELECT anomaly_id, state, severity, updated_at, detected_at FROM mission_control_anomalies ORDER BY last_seen_at DESC LIMIT 1')
+        .first();
+      if (anomRow) {
+        anomSig = `anom:${anomRow.anomaly_id}:${anomRow.state || ''}:${anomRow.severity || ''}:${anomRow.updated_at || anomRow.detected_at || '0'}`;
+      }
+    } catch {}
+
+    return 'rev_' + computeStateHash([autoSig, actSig, cronSig, anomSig].join(';'));
+  } catch {
+    return 'rev_lightweight_error';
+  }
+}
+
 // ============================================================================
 // Recent Events Aggregator
 // ============================================================================
@@ -143,14 +203,34 @@ export async function getRecentOperationalEvents(
 ): Promise<OperationalEventsResponse> {
   const now = new Date().toISOString();
 
-  // 1. Fetch or use snapshot
+  // FAST PATH: If client provided a revision cursor and no explicit synthetic snapshot is injected,
+  // evaluate the lightweight revision check FIRST (reads <= 4 rows).
+  // Zero calls to getMissionControlSnapshot or full operator action scans when unchanged!
+  if (!injectedSnapshot && db && sinceRevision && sinceRevision.trim().length > 0) {
+    const lightweightRev = await getLightweightRevision(db);
+    if (sinceRevision.trim() === lightweightRev) {
+      return {
+        changed: false,
+        current_revision: lightweightRev,
+        server_timestamp: now,
+        event_count: 0,
+        events: [],
+        telemetry_status: 'HEALTHY'
+      };
+    }
+  }
+
+  // SLOW PATH (State changed or client has no cursor, or injected snapshot present):
+  // Compile full canonical snapshot and event envelopes
   const snapshot = injectedSnapshot || (await getMissionControlSnapshot(db, {}));
   const actions = await getOperatorActionsHistory(db, 20);
 
-  // 2. Compute current canonical revision
-  const currentRevision = deriveCanonicalRevision(snapshot, actions);
+  // Derive revision: use lightweight revision if db is present and no injected snapshot, else derive from snapshot
+  const currentRevision = (!injectedSnapshot && db)
+    ? await getLightweightRevision(db)
+    : deriveCanonicalRevision(snapshot, actions);
 
-  // 3. Check cursor match (Unchanged fast-path)
+  // Check cursor match (Unchanged fast-path for injected snapshot or fallback)
   if (sinceRevision && sinceRevision.trim() === currentRevision) {
     return {
       changed: false,

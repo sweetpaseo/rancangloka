@@ -5,7 +5,7 @@ import TableOfContents from '../components/TableOfContents.astro';
 import AuthorCard from '../components/AuthorCard.astro';
 import RelatedArticles from '../components/RelatedArticles.astro';
 import SocialShareBar from '../components/SocialShareBar.astro';
-import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, getInternalLinkCandidates, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
 import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../lib/article/renderer.ts';
 import { renderMediaSlotAnchors } from '../lib/media/renderer.ts';
@@ -52,9 +52,9 @@ if (xRobotsTag) {
 }
 
 if (article) {
-  const [fetchedRelated, allArticles] = await Promise.all([
+  const [fetchedRelated, internalLinkCandidates] = await Promise.all([
     getRelatedArticles(db, article.id, article.category_id, 3),
-    getAllArticles(db, 1000, 0, 'published')
+    getInternalLinkCandidates(db, 50)
   ]);
 
   let rawContentHtml = article.content_html;
@@ -73,7 +73,7 @@ if (article) {
   processedHtml = processArticleContent(
     safeArticleHtml,
     article,
-    allArticles,
+    internalLinkCandidates,
     relatedArticles[0],
     siteSettings,
     toc

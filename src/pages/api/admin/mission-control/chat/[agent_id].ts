@@ -14,6 +14,7 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../../../../lib/db.ts';
 import {
   getMissionControlSnapshot,
+  getLightweightStaffState,
   getStaffDefinitionByAgentId,
   getOrCreateConversation,
   getConversationMessages,
@@ -38,8 +39,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
   try {
     const conversation = await getOrCreateConversation(db, staff.agent_id);
     const messages = await getConversationMessages(db, conversation.conversation_id);
-    const snapshot = await getMissionControlSnapshot(db, env);
-    const staffState = snapshot.staff?.staff?.find((s: any) => s.agent_id === staff.agent_id);
+    const staffState = await getLightweightStaffState(db, staff.agent_id);
 
     return new Response(
       JSON.stringify({

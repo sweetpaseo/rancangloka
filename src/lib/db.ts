@@ -20,7 +20,7 @@ import {
   buildCanonicalPublicationPreflightState,
   computeCanonicalPreflightHash
 } from './decision/publication-preflight-state.ts';
-import { isPubliclyDiscoverable } from './quarantine.ts';
+import { isPubliclyDiscoverable, QUARANTINE_REGISTRY } from './quarantine.ts';
 export { isPubliclyDiscoverable, isIndexableArticle, getQuarantineState } from './quarantine.ts';
 import { renderArticleMarkdownSafely, sanitizeArticleHtml } from './article/renderer.ts';
 
@@ -54,6 +54,11 @@ export interface Article {
   published_at: string;
   updated_at: string;
 }
+
+export type ArticleSummary = Omit<Article, 'content_md' | 'content_html'> & {
+  content_md?: string;
+  content_html?: string;
+};
 
 export interface Category {
   id: number;
@@ -929,32 +934,74 @@ export async function getAllArticles(
     .map(sanitizeArticle);
 
   let dbArticles: Article[] = [];
-  if (db) {
+  if (db && typeof db.prepare === 'function') {
     try {
-      const { results } = await db
-        .prepare(`
-          SELECT a.*, c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
-                 au.name as author_name, au.avatar as author_avatar, au.role as author_role
-          FROM articles a
-          LEFT JOIN categories c ON a.category_id = c.id
-          LEFT JOIN authors au ON a.author_id = au.id
-          WHERE (? IS NULL OR a.status = ?)
-          ORDER BY a.published_at DESC
-        `)
-        .bind(status === 'all' ? null : status, status === 'all' ? null : status)
-        .all();
-      if (results && results.length > 0) {
-        dbArticles = (results as Article[]).map(sanitizeArticle);
+      const orderDirection = options?.sort === 'oldest' ? 'ASC' : 'DESC';
+      const selectColumns = `
+        SELECT a.id, a.slug, a.title, a.description, a.featured_image, a.image_alt,
+               a.category_id, a.author_id, a.status, a.views, a.reading_time_minutes,
+               a.key_takeaways, a.focus_keyword, a.content_hash, a.is_featured,
+               a.is_trending, a.is_sponsored, a.disable_internal_links,
+               a.published_at, a.updated_at,
+               '' as content_md, '' as content_html,
+               c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
+               au.name as author_name, au.avatar as author_avatar, au.role as author_role
+        FROM articles a
+        LEFT JOIN categories c ON a.category_id = c.id
+        LEFT JOIN authors au ON a.author_id = au.id
+      `;
+
+      // Build WHERE clauses separately for optimal index utilization
+      const whereClauses: string[] = [];
+      const bindings: any[] = [];
+
+      if (status !== 'all') {
+        whereClauses.push('a.status = ?');
+        bindings.push(status);
+      }
+
+      // Filter quarantine at DB level for public published queries
+      if (status === 'published' && !options?.includeQuarantined) {
+        const quarantinedSlugs = Object.keys(QUARANTINE_REGISTRY);
+        if (quarantinedSlugs.length > 0) {
+          whereClauses.push(`a.slug NOT IN (${quarantinedSlugs.map(() => '?').join(', ')})`);
+          bindings.push(...quarantinedSlugs);
+        }
+      }
+
+      if (options?.category && options.category !== 'all') {
+        whereClauses.push('(c.slug = ? OR a.category_id = ?)');
+        bindings.push(options.category, options.category);
+      }
+
+      if (options?.q) {
+        whereClauses.push('(LOWER(a.title) LIKE ? OR LOWER(a.description) LIKE ?)');
+        const qTerm = `%${options.q.toLowerCase()}%`;
+        bindings.push(qTerm, qTerm);
+      }
+
+      const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      const orderSql = `ORDER BY a.published_at ${orderDirection}`;
+
+      // Push limit and offset in SQL
+      const query = `${selectColumns} ${whereSql} ${orderSql} LIMIT ? OFFSET ?`;
+      bindings.push(limit, offset);
+
+      const { results } = await db.prepare(query).bind(...bindings).all();
+      if (results) {
+        let items = (results as Article[]).map(sanitizeArticle);
+        if (status === 'published' && !options?.includeQuarantined) {
+          items = items.filter((a) => isPubliclyDiscoverable(a));
+        }
+        return items;
       }
     } catch (e) {
       console.warn('D1 Query fallback to mock:', e);
     }
   }
 
-  // Combine: inMemoryArticles are authoritative, plus any new dynamic DB articles
-  const inMemSlugs = new Set(inMemFiltered.map(a => a.slug));
-  const newFromDb = dbArticles.filter(a => !inMemSlugs.has(a.slug));
-  let combined = [...inMemFiltered, ...newFromDb];
+  // Fallback: inMemoryArticles when DB is absent or query throws
+  let combined = [...inMemFiltered];
 
   // Apply centralized quarantine filter for public published surfaces
   if (status === 'published' && !options?.includeQuarantined) {
@@ -982,8 +1029,74 @@ export async function getAllArticles(
 }
 
 export async function getTotalArticlesCount(db: any, status = 'published'): Promise<number> {
-  const all = await getAllArticles(db, 1000, 0, status);
-  return all.length;
+  if (db && typeof db.prepare === 'function') {
+    try {
+      if (status === 'all') {
+        const row = await db.prepare('SELECT COUNT(*) as count FROM articles').first();
+        return Number(row?.count || 0);
+      } else {
+        const row = await db.prepare('SELECT COUNT(*) as count FROM articles WHERE status = ?').bind(status).first();
+        return Number(row?.count || 0);
+      }
+    } catch {
+      // fallback
+    }
+  }
+  const filtered = inMemoryArticles.filter(a => status === 'all' || a.status === status);
+  return filtered.length;
+}
+
+export interface InternalLinkCandidate {
+  id: number;
+  slug: string;
+  title: string;
+  focus_keyword?: string;
+  status: string;
+  is_featured?: number;
+  published_at?: string;
+}
+
+export async function getInternalLinkCandidates(
+  db: any,
+  limit = 50
+): Promise<InternalLinkCandidate[]> {
+  if (db && typeof db.prepare === 'function') {
+    try {
+      const quarantinedSlugs = Object.keys(QUARANTINE_REGISTRY);
+      let query = `
+        SELECT id, slug, title, focus_keyword, status, is_featured, published_at
+        FROM articles
+        WHERE status = 'published'
+      `;
+      const bindings: any[] = [];
+      if (quarantinedSlugs.length > 0) {
+        query += ` AND slug NOT IN (${quarantinedSlugs.map(() => '?').join(', ')})`;
+        bindings.push(...quarantinedSlugs);
+      }
+      query += ' ORDER BY published_at DESC LIMIT ?';
+      bindings.push(limit);
+
+      const { results } = await db.prepare(query).bind(...bindings).all();
+      if (Array.isArray(results)) {
+        return results as InternalLinkCandidate[];
+      }
+    } catch (e) {
+      console.warn('Failed to query internal link candidates from D1:', e);
+    }
+  }
+
+  return inMemoryArticles
+    .filter(a => a.status === 'published' && isPubliclyDiscoverable(a))
+    .slice(0, limit)
+    .map(a => ({
+      id: a.id,
+      slug: a.slug,
+      title: a.title,
+      focus_keyword: a.focus_keyword,
+      status: a.status,
+      is_featured: a.is_featured,
+      published_at: a.published_at
+    }));
 }
 
 export async function getArticleBySlug(db: any, slug: string): Promise<Article | null> {
@@ -1254,6 +1367,20 @@ export async function getSiteSettings(db: any): Promise<Record<string, string>> 
     }
   }
   return MOCK_SETTINGS;
+}
+
+export async function getSiteSettingByKey(db: any, key: string): Promise<string | null> {
+  if (db && typeof db.prepare === 'function') {
+    try {
+      const row = await db.prepare('SELECT value FROM settings WHERE key = ? LIMIT 1').bind(key).first();
+      if (row && typeof row.value === 'string') {
+        return row.value;
+      }
+    } catch (e) {
+      console.warn('D1 Query setting key fallback:', e);
+    }
+  }
+  return MOCK_SETTINGS[key] ?? null;
 }
 
 export async function updateSiteSettings(db: any, newSettings: Record<string, string>): Promise<void> {

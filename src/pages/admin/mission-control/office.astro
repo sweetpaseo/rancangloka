@@ -3617,10 +3617,11 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
       const telemetryRev = document.getElementById('telemetry-revision-text');
 
       let currentRevision = null;
-      let activePollInterval = 2500; // Rapid cadence on load or after activity
-      const minPollInterval = 2500;
-      const maxPollInterval = 12000; // Backoff cadence during quiet office
-      const backgroundPollInterval = 45000; // Reduced cadence when tab is hidden
+      let activePollInterval = 10000; // Minimum 10 seconds base cadence
+      const minPollInterval = 10000;  // 10 seconds minimum
+      const maxPollInterval = 30000;  // Backoff cadence up to 30s during quiet office
+      const backgroundPollInterval = 60000; // Reduced cadence (60s) when tab is hidden
+      let isCheckingEvents = false;   // In-flight events guard to prevent overlapping calls
       let isRefetchingSnapshot = false;
       let pendingSnapshotRefetch = false;
       let refetchDebounceTimer = null;
@@ -3716,7 +3717,9 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
 
       function checkOperationalEvents() {
         if (subscriberTimeout) clearTimeout(subscriberTimeout);
+        if (isCheckingEvents) return; // Prevent overlapping in-flight events poll
 
+        isCheckingEvents = true;
         const url = '/api/admin/mission-control/events?since_revision=' + encodeURIComponent(currentRevision || '');
 
         fetch(url)
@@ -3731,14 +3734,14 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
           .then(function (data) {
             if (data && data.current_revision) {
               if (data.changed) {
-                // Canonical state change detected!
+                // Canonical state change detected: update revision, trigger ONE snapshot refetch
                 currentRevision = data.current_revision;
-                activePollInterval = minPollInterval; // Rapid mode
+                activePollInterval = minPollInterval; // Reset to base 10s (NOT aggressive 2.5s)
                 triggerSnapshotRefetch('EVENT_FEED');
               } else {
-                // Unchanged: quiet backoff
+                // Unchanged: DO NOT trigger office snapshot! Quiet backoff up to 30s
                 currentRevision = data.current_revision;
-                activePollInterval = Math.min(maxPollInterval, activePollInterval + 1500);
+                activePollInterval = Math.min(maxPollInterval, activePollInterval + 5000);
                 updateTelemetryBadge('LIVE', currentRevision);
               }
             }
@@ -3746,20 +3749,23 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
           .catch(function (err) {
             if (err?.message !== 'UNAUTHORIZED') {
               updateTelemetryBadge('STALE', currentRevision);
-              activePollInterval = Math.min(maxPollInterval, activePollInterval + 2500);
+              activePollInterval = Math.min(maxPollInterval, activePollInterval + 5000);
             }
           })
           .finally(function () {
+            isCheckingEvents = false;
             const isHidden = document.visibilityState === 'hidden';
             const nextDelay = isHidden ? backgroundPollInterval : activePollInterval;
             subscriberTimeout = setTimeout(checkOperationalEvents, nextDelay);
           });
       }
 
-      // Handle Tab Visibility (Slow down in background, rapid on resume)
+      // Handle Tab Visibility (Slow down to 60s in background, immediate check on resume)
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') {
           activePollInterval = minPollInterval;
+          if (subscriberTimeout) clearTimeout(subscriberTimeout);
+          // Perform one immediate lightweight revision check when tab becomes visible
           checkOperationalEvents();
         }
       });

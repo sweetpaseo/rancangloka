@@ -5,7 +5,7 @@ import TableOfContents from '../../../components/TableOfContents.astro';
 import AuthorCard from '../../../components/AuthorCard.astro';
 import RelatedArticles from '../../../components/RelatedArticles.astro';
 import SocialShareBar from '../../../components/SocialShareBar.astro';
-import { getDb, getArticleBySlug, getRelatedArticles, getAllArticles, getAllCategories, getSiteSettings } from '../../../lib/db';
+import { getDb, getArticleBySlug, getRelatedArticles, getInternalLinkCandidates, getAllArticles, getAllCategories, getSiteSettings } from '../../../lib/db';
 import { extractTableOfContents, processArticleContent } from '../../../lib/seo';
 import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../../../lib/article/renderer.ts';
 import { isValidAdminSession, getSafeAdminRedirect } from '../../../lib/auth';
@@ -50,9 +50,9 @@ let keyTakeaways: string[] = [];
 let breadcrumbItems: any[] = [];
 
 if (article) {
-  const [fetchedRelated, allArticles] = await Promise.all([
+  const [fetchedRelated, internalLinkCandidates] = await Promise.all([
     getRelatedArticles(db, article.id, article.category_id, 3),
-    getAllArticles(db, 50, 0, 'published')
+    getInternalLinkCandidates(db, 50)
   ]);
 
   relatedArticles = fetchedRelated;
@@ -72,7 +72,7 @@ if (article) {
   processedHtml = processArticleContent(
     safeArticleHtml,
     article,
-    allArticles,
+    internalLinkCandidates,
     relatedArticles[0],
     siteSettings,
     toc
