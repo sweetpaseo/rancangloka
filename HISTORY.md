@@ -13,6 +13,43 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+
+---
+
+### JOKO-PROMPT-GENERALIZATION-1: Purging Legacy Domain Semantics & Deterministic Prompt Leak Audit 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan akar penyebab penghentian naskah pada `RUNTIME4B_FINAL_GROUNDING_BLOCKED` di mana Joko mendeklarasikan kandidat klaim di luar bukti (insulasi foil, ventilasi atap) akibat instruksi statis dan contoh pembuka hardcoded di `joko-prompt-builder.ts`.
+  - Membersihkan seluruh semantik atap metal lama (`insulasi foil`, `ventilasi atap`, `ventilasi loteng`, `radiant barrier`, `atap metal`, `rongga atap`, `kontraktor menyarankan foil/ventilasi`, dll.) dari instruksi generik produksi.
+  - Memastikan panduan pembuka Joko dibentuk secara dinamis murni dari topik aktif, konteks masalah pengunjung (`Visitor Pain`), sudut pembuka (`openingAngle`), dan tanda tangan naratif.
+  - Menggeneralisasikan skenario konflik tukang (`CONTRACTOR_CONFLICT`) agar diturunkan secara dinamis dari konteks topik aktif (misal pelapisan cat vs perbaikan sumber air untuk dinding lembap; aluminium vs uPVC untuk jendela) tanpa hardcoding.
+  - Mengimplementasikan audit kebocoran semantik prompt deterministik (`auditPromptSemanticLeaks`) sebelum pemanggilan LLM provider yang menolak instruksi statis jika menyusupkan istilah teknis di luar topik dan bukti aktif dengan kode kegagalan `WRITER_PROMPT_DOMAIN_LEAK`.
+  - Menjaga validitas topik atap metal agar kosakata foil/ventilasi tetap diizinkan apabila berasal dari input/bukti aktif yang sah.
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/editorial/joko-prompt-builder.ts`:
+    - Pembersihan semantik atap metal dari system prompt, guideline struktur 6 poin, dan template opening.
+    - Implementasi `buildDynamicOpeningGuidance()` dan `deriveCompetingOptionsFromTopicOrContext()`.
+    - Perbaikan perakitan kamus terminologi kanonikal (`CANONICAL_TERMINOLOGY_MAP`) dan penggunaan label dimensi masalah yang bersih dari teks kurung.
+    - Implementasi `auditPromptSemanticLeaks()` dan konstanta `SUSPICIOUS_STATIC_DOMAIN_TERMS`.
+  - `src/lib/editorial/editorial-runtime.ts`:
+    - Integrasi langkah **4b** `auditPromptSemanticLeaks` sebelum pemanggilan provider LLM.
+    - Penambahan status event `PROMPT_DOMAIN_LEAK_DETECTED` dan keputusan `WRITER_PROMPT_DOMAIN_LEAK`.
+  - `scripts/test-joko-prompt-generalization.js`:
+    - Suite pengujian 6 skenario deterministik (Test A s.d. F) mencakup deteksi kebocoran, isolasi konsep lintas domain, dinamika benturan tukang, validitas atap metal sejati, dan penolakan injeksi teks statis yang tidak berdasar.
+- **Hasil Pengujian & Verifikasi:**
+  - `scripts/test-joko-prompt-generalization.js`: **6/6 PASS**.
+  - `scripts/test-editorial-provider-resilience.js`: **11/11 PASS**.
+  - `scripts/test-editorial-runtime-4b-stabilize.js`: **11/11 PASS**.
+  - `scripts/test-editorial-runtime-4a-generalization.js`: **12/12 PASS**.
+  - `scripts/test-editorial-runtime-3b-stabilize.js`: **18/18 PASS**.
+  - `scripts/test-editorial-runtime-2.js`: **13/13 PASS**.
+  - `scripts/test-editorial-runtime-1.js`: **18/18 PASS**.
+  - `npx tsc --noEmit`: **0 errors (Bersih)**.
+- **Status & Stop Gate:**
+  - `git commit -m "fix(editorial): generalize Joko writer prompt"` (`5615c98`).
+  - Working tree bersih.
+  - Sesuai tata tertib keselamatan, Runtime-4B tidak dijalankan ulang pada milestone ini dan berhenti pada: **`JOKO_PROMPT_GENERALIZATION_1_HUMAN_REVIEW_REQUIRED`**.
+
 ---
 
 ### EDITORIAL-RUNTIME-4B FINAL CLEAN PROOF: End-to-End Generalization Proof & Grounding Gate 2026-10-05
