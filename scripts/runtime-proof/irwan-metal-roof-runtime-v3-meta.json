@@ -1,0 +1,82 @@
+{
+  "jobId": "job_research_task_runtime_proof_irwan_research_v3_001",
+  "taskId": "task_runtime_proof_irwan_research_v3_001",
+  "status": "COMPLETED",
+  "finalGateStatus": "IRWAN_EVIDENCE_V3_HUMAN_REVIEW_REQUIRED",
+  "humanReviewStatus": "IRWAN_EVIDENCE_V3_HUMAN_REVIEW_REQUIRED",
+  "topic": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "researchRuntime": {
+    "staff_id": "evidence_researcher_lead",
+    "staff_name": "Irwan",
+    "execution_type": "REAL_RUNTIME_EXECUTION",
+    "provider": "open_apis_and_verified_documents",
+    "model": "crossref+wikipedia_technical_inspection",
+    "generated_at": "2026-10-05T00:55:52.408Z",
+    "job_id": "job_research_task_runtime_proof_irwan_research_v3_001"
+  },
+  "stats": {
+    "queriesExecuted": 4,
+    "sourcesDiscovered": 19,
+    "sourcesRetrieved": 2,
+    "sourcesBlocked": 3,
+    "passagesExtracted": 8,
+    "totalPassageObjects": 8,
+    "uniqueExcerptCount": 8,
+    "duplicatePassagesRemoved": 0,
+    "claimsTotal": 10,
+    "claimsVerified": 4,
+    "claimsSupported": 4,
+    "claimsConsensus": 9,
+    "authorSafeClaimsTotal": 10,
+    "authorSafeClaimsAllowed": 9
+  },
+  "deduplication": {
+    "total_passage_objects": 8,
+    "unique_excerpt_count": 8,
+    "duplicate_passages_removed": 0
+  },
+  "sources": [
+    {
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "title": "Radiant barrier",
+      "publisher": "Wikimedia Foundation",
+      "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+      "authority_level": "SECONDARY_ENCYCLOPEDIC",
+      "independence": "PARTIALLY_DEPENDENT",
+      "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+      "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+      "extracted_passages_count": 4
+    },
+    {
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "title": "Radiant Barriers",
+      "publisher": "U.S. Department of Energy (Building Technologies Office)",
+      "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+      "authority_level": "INSTITUTIONAL_OFFICIAL",
+      "independence": "INDEPENDENT",
+      "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+      "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+      "extracted_passages_count": 4
+    }
+  ],
+  "provenanceAudit": {
+    "clean": true,
+    "total_claims": 10,
+    "verified_sources": 16,
+    "unverified_claims": [],
+    "missing_provenance": [],
+    "audit_reasons": []
+  },
+  "safetyInvariants": {
+    "automation_mode": "OFF",
+    "SOCIAL_AUTOMATION": "OFF",
+    "AUTO_PUBLISH": "OFF",
+    "publishingAuthority": 0,
+    "JEV_MODE": "shadow",
+    "mediaWorker": "DISABLED",
+    "jefryExecutionAuthority": 0,
+    "jokoInvoked": false,
+    "deployed": false,
+    "published": false
+  }
+}

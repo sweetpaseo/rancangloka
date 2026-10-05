@@ -391,24 +391,40 @@ export type SourceApplicability =
   | 'RESEARCH_STUDY'
   | 'MANUFACTURER_DOCUMENTATION';
 
+export type SourceIndependence =
+  | 'INDEPENDENT'
+  | 'PARTIALLY_DEPENDENT'
+  | 'DERIVED'
+  | 'DERIVATIVE'
+  | 'UNKNOWN';
+
 export interface SourceQualityProfile {
   authority: 'INSTITUTIONAL_OFFICIAL' | 'PEER_REVIEWED_RESEARCH' | 'STANDARDS_BODY' | 'SECONDARY_ENCYCLOPEDIC' | 'COMMERCIAL_MANUFACTURER' | string;
   primary_vs_secondary: 'PRIMARY' | 'SECONDARY' | 'TERTIARY';
   retrieval_integrity: 'HASH_VERIFIED' | 'METADATA_ONLY' | 'UNVERIFIED';
   claim_relevance: 'DIRECT' | 'SUPPORTING' | 'BACKGROUND';
   geographic_applicability: 'UNIVERSAL_PHYSICS' | 'TROPICAL_LOCAL' | 'FOREIGN_TEMPERATE' | string;
-  independence: 'INDEPENDENT' | 'DERIVATIVE';
+  independence: SourceIndependence;
+  dependency_note?: string;
 }
+
+export type SourceClassification =
+  | 'PRIMARY_RESEARCH_DOCUMENT'
+  | 'OFFICIAL_INSTITUTIONAL_GUIDANCE'
+  | 'ENCYCLOPEDIC_SECONDARY_SOURCE'
+  | 'STANDARDS_PUBLICATION'
+  | 'INDUSTRY_REFERENCE';
 
 export interface EvidenceSource {
   source_id: string;
   source_type?: string;
-  source_classification?: 'PRIMARY_RESEARCH_DOCUMENT' | 'ENCYCLOPEDIC_SECONDARY_SOURCE' | 'STANDARDS_PUBLICATION' | 'INDUSTRY_REFERENCE';
+  source_classification?: SourceClassification;
   authority_level?: 'INSTITUTIONAL_OFFICIAL' | 'INSTITUTIONAL_PEER_REVIEW' | 'SECONDARY_ENCYCLOPEDIC' | 'STANDARDS_BODY' | 'INDUSTRY_REFERENCE';
   primary_vs_secondary?: 'PRIMARY' | 'SECONDARY' | 'TERTIARY';
   publisher_or_author?: string;
   document_title: string;
   canonical_url?: string;
+  retrieved_url?: string;
   publication_or_revision_date?: string;
   edition_or_revision?: string;
   page_or_section?: string;
@@ -417,8 +433,11 @@ export interface EvidenceSource {
   retrieval_status?: SourceRetrievalStatus;
   retrieval_method?: string;
   retrieved_at?: string;
+  http_status?: number;
   content_location?: string;
   content_hash?: string;
+  snapshot_reference?: string;
+  raw_content_preview?: string;
   limitations?: string;
   quality_profile?: SourceQualityProfile;
 }
@@ -648,7 +667,7 @@ export function auditEvidencePackProvenance(
       }
     }
 
-    // Phase 13 (EDITORIAL-RUNTIME-3A): Editorial Recommendation cannot be VERIFIED_FACT
+    // Phase 13 (EDITORIAL-RUNTIME-3A & 3B): Editorial Recommendation cannot be VERIFIED_FACT and must declare derived_from_claim_ids
     const isRecommendation = claim.claim_class === 'editorial_recommendation' || claim.claim_class === 'EDITORIAL_RECOMMENDATION';
     if (isRecommendation) {
       if (claim.evidence_status === 'VERIFIED' || (claim.claim_class as string) === 'VERIFIED_FACT') {
@@ -658,6 +677,15 @@ export function auditEvidencePackProvenance(
         summary.requires_provenance_failure = true;
         summary.audit_reasons.push(
           `Rekomendasi editorial ${claim.claim_id} merupakan panduan keputusan terapan, bukan fakta empiris mandiri.`
+        );
+      }
+      if (!Array.isArray(claim.derived_from_claim_ids) || claim.derived_from_claim_ids.length === 0) {
+        summary.missing_provenance_claims.push(
+          `${claim.claim_id}: Rekomendasi editorial wajib memiliki derived_from_claim_ids yang valid.`
+        );
+        summary.requires_provenance_failure = true;
+        summary.audit_reasons.push(
+          `Rekomendasi editorial ${claim.claim_id} harus diturunkan dari klaim-klaim bukti empiris (derived_from_claim_ids).`
         );
       }
     }
@@ -686,13 +714,32 @@ export function auditEvidencePackProvenance(
     }
   }
 
-  // Phase 15 (EDITORIAL-RUNTIME-3A): Top-level evidence_passages collection verification
+  // Phase 15 (EDITORIAL-RUNTIME-3B): Top-level evidence_passages deduplication & bidirectional integrity
   if (Array.isArray(evidencePack.evidence_passages)) {
     const passageMap = new Map<string, EvidencePassage>();
+    const seenHashes = new Set<string>();
+
     for (const p of evidencePack.evidence_passages) {
+      const dedupeKey = `${p.source_id}::${p.locator}::${p.content_hash || p.exact_or_normalized_excerpt}`;
+      if (seenHashes.has(dedupeKey)) {
+        summary.unverified_claims.push(
+          `DUPLICATE_PASSAGE_OBJECTS: Passage '${p.passage_id}' merupakan duplikat kutipan yang sama (${dedupeKey}). Wajib satu kutipan = satu passage_id.`
+        );
+        summary.requires_provenance_failure = true;
+        summary.audit_reasons.push(
+          `Duplikasi objek passage terdeteksi untuk ${p.passage_id}. Satu kutipan wajib direpresentasikan oleh tepat satu ID passage.`
+        );
+      }
+      seenHashes.add(dedupeKey);
       passageMap.set(p.passage_id, p);
     }
 
+    const claimsById = new Map<string, EvidenceClaim>();
+    for (const c of claims) {
+      claimsById.set(c.claim_id, c);
+    }
+
+    // Direction 1: claim.evidence_passage_ids -> passage.supports_claim_ids
     for (const claim of claims) {
       if (Array.isArray(claim.evidence_passage_ids)) {
         for (const pid of claim.evidence_passage_ids) {
@@ -706,19 +753,81 @@ export function auditEvidencePackProvenance(
           } else {
             if (Array.isArray(passage.supports_claim_ids) && !passage.supports_claim_ids.includes(claim.claim_id)) {
               summary.missing_provenance_claims.push(
-                `${claim.claim_id}: Passage '${pid}' tidak mencantumkan '${claim.claim_id}' dalam supports_claim_ids.`
+                `CLAIM_PASSAGE_LINK_ASYMMETRY: Klaim '${claim.claim_id}' merujuk passage '${pid}', namun passage tidak mencantumkan '${claim.claim_id}' dalam supports_claim_ids.`
               );
               summary.requires_provenance_failure = true;
+              summary.audit_reasons.push(
+                `Asimetri link: Klaim ${claim.claim_id} merujuk passage ${pid}, namun passage tidak mencantumkannya dalam supports_claim_ids.`
+              );
             }
           }
         }
       }
     }
+
+    // Direction 2: passage.supports_claim_ids -> claim.evidence_passage_ids
+    for (const passage of evidencePack.evidence_passages) {
+      if (Array.isArray(passage.supports_claim_ids)) {
+        for (const cid of passage.supports_claim_ids) {
+          const claim = claimsById.get(cid);
+          if (!claim) {
+            summary.missing_provenance_claims.push(
+              `CLAIM_PASSAGE_LINK_ASYMMETRY: Passage '${passage.passage_id}' mencantumkan klaim '${cid}' yang tidak ada dalam claim_inventory.`
+            );
+            summary.requires_provenance_failure = true;
+          } else if (!Array.isArray(claim.evidence_passage_ids) || !claim.evidence_passage_ids.includes(passage.passage_id)) {
+            summary.missing_provenance_claims.push(
+              `CLAIM_PASSAGE_LINK_ASYMMETRY: Passage '${passage.passage_id}' mendukung klaim '${cid}', namun klaim '${cid}' tidak mencantumkan '${passage.passage_id}' dalam evidence_passage_ids.`
+            );
+            summary.requires_provenance_failure = true;
+            summary.audit_reasons.push(
+              `Asimetri link: Passage ${passage.passage_id} mendukung ${cid}, namun klaim ${cid} tidak mencantumkannya.`
+            );
+          }
+        }
+      }
+    }
+
+    // Substring Check: Verify passage excerpt exists in retrieved source content
+    const sourceTextMap = new Map<string, string>();
+    if (Array.isArray(evidencePack.retrieved_documents)) {
+      for (const d of evidencePack.retrieved_documents) {
+        if (d.content_text) sourceTextMap.set(d.source_id, d.content_text);
+      }
+    }
+    if (evidencePack.source_snapshots && typeof evidencePack.source_snapshots === 'object') {
+      for (const [sid, text] of Object.entries(evidencePack.source_snapshots)) {
+        if (typeof text === 'string') sourceTextMap.set(sid, text);
+      }
+    }
+    for (const claim of claims) {
+      for (const s of (claim.sources || [])) {
+        if ((s as any).raw_content_preview && !sourceTextMap.has(s.source_id)) {
+          sourceTextMap.set(s.source_id, (s as any).raw_content_preview);
+        }
+      }
+    }
+
+    for (const passage of evidencePack.evidence_passages) {
+      const sourceText = sourceTextMap.get(passage.source_id);
+      if (sourceText) {
+        const normSource = sourceText.replace(/\s+/g, ' ');
+        const normExcerpt = (passage.exact_or_normalized_excerpt || '').replace(/\s+/g, ' ').trim();
+        // Check first 50 chars of passage excerpt in normalized source text
+        if (normExcerpt.length >= 25 && !normSource.includes(normExcerpt.slice(0, 45))) {
+          summary.unverified_claims.push(
+            `PASSAGE_NOT_FOUND_IN_RETRIEVED_CONTENT: Kutipan passage '${passage.passage_id}' tidak ditemukan di dalam teks dokumen sumber '${passage.source_id}'.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Passage ${passage.passage_id} tidak terdapat di dalam teks dokumen sumber ${passage.source_id}.`
+          );
+        }
+      }
+    }
   }
 
-  // Phase 9 & 10 (EDITORIAL-SOURCE-ACQUISITION-1): Author-Safe Claims Audit
-  // If the supporting document has NOT been retrieved and inspected,
-  // the exact number must NOT be available inside author_safe_claims.
+  // Phase 9 & 10 (EDITORIAL-SOURCE-ACQUISITION-1 & EDITORIAL-RUNTIME-3B): Author-Safe Claims Audit
   if (Array.isArray(evidencePack.author_safe_claims)) {
     const claimsById = new Map<string, EvidenceClaim>();
     for (const c of claims) {
@@ -727,9 +836,32 @@ export function auditEvidencePackProvenance(
 
     for (const safe of evidencePack.author_safe_claims) {
       const underlying = claimsById.get(safe.claim_id);
+      const isRecommendation = underlying?.claim_class === 'editorial_recommendation' || underlying?.claim_class === 'EDITORIAL_RECOMMENDATION';
       const hasRetrieved = underlying?.sources?.some(
         (s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED'
       );
+      const hasPassages = Array.isArray(underlying?.evidence_passage_ids) && underlying.evidence_passage_ids.length > 0;
+
+      // Requirement 5: Unsourced technical claims CANNOT enter authoring
+      const packHasPassagesOrRetrieval = (Array.isArray(evidencePack.evidence_passages) && evidencePack.evidence_passages.length > 0) ||
+        claims.some((c) => c.sources?.some((s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED'));
+
+      const isUnsourced = (underlying?.sources?.length === 0) ||
+        underlying?.action === 'RESEARCH_REQUIRED' ||
+        underlying?.action === 'REMOVE' ||
+        (packHasPassagesOrRetrieval && !hasRetrieved && !hasPassages);
+
+      if (!isRecommendation && isUnsourced) {
+        if (safe.allowed_for_authoring) {
+          summary.missing_provenance_claims.push(
+            `UNSOURCED_CLAIM_ALLOWED_FOR_AUTHORING: Klaim teknis '${safe.claim_id}' tidak memiliki sumber/passage terverifikasi namun diizinkan untuk authoring (allowed_for_authoring = true). Wajib false.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Klaim tanpa sumber (${safe.claim_id}) dilarang masuk ke author_safe_claims dengan allowed_for_authoring=true.`
+          );
+        }
+      }
 
       if (!hasRetrieved) {
         // Must NOT produce SUPPORTED or VERIFIED in author_safe_claims
@@ -772,8 +904,8 @@ export function auditEvidencePackProvenance(
 }
 
 /**
- * Deterministically calculates overall evidence confidence from source quality and coverage.
- * Milestone: EDITORIAL-RUNTIME-3A
+ * Deterministically calculates overall evidence confidence from source quality, independence, and unique passage coverage.
+ * Milestone: EDITORIAL-RUNTIME-3B
  */
 export function calculateOverallConfidence(evidencePack: EvidencePackInput): 'HIGH' | 'MEDIUM' | 'LOW' {
   const claims = evidencePack.claim_inventory || [];
@@ -794,22 +926,34 @@ export function calculateOverallConfidence(evidencePack: EvidencePackInput): 'HI
     }
   }
 
+  // Deduplicate passages by excerpt hash to count truly unique excerpts
+  const uniqueExcerptHashes = new Set<string>();
+  for (const p of passages) {
+    if (p.content_hash) {
+      uniqueExcerptHashes.add(p.content_hash);
+    } else if (p.exact_or_normalized_excerpt) {
+      uniqueExcerptHashes.add(p.exact_or_normalized_excerpt.trim());
+    }
+  }
+
+  // Source Independence Check (Requirement 8)
+  const hasDependentSources = retrievedSources.some(
+    s => s.quality_profile?.independence === 'PARTIALLY_DEPENDENT' || s.quality_profile?.independence === 'DERIVATIVE'
+  );
+
   const hasPrimaryRetrieved = retrievedSources.some(
     s => s.source_classification === 'PRIMARY_RESEARCH_DOCUMENT' || s.source_classification === 'STANDARDS_PUBLICATION'
   );
-  const onlySecondary = retrievedSources.length > 0 && retrievedSources.every(
-    s => s.source_classification === 'ENCYCLOPEDIC_SECONDARY_SOURCE'
-  );
 
-  // If only secondary sources or no primary retrieved, confidence cannot be HIGH
-  if (onlySecondary || retrievedSources.length <= 1 || !hasPrimaryRetrieved) {
+  // If only secondary/institutional guidance, or sources are partially dependent, confidence cannot be HIGH
+  if (hasDependentSources || !hasPrimaryRetrieved || retrievedSources.length <= 1) {
     return 'MEDIUM';
   }
 
   const verifiedCount = claims.filter(c => c.evidence_status === 'VERIFIED').length;
   const verifiedCoverage = verifiedCount / claims.length;
 
-  if (hasPrimaryRetrieved && retrievedSources.length >= 2 && passages.length >= 4 && verifiedCoverage >= 0.5) {
+  if (hasPrimaryRetrieved && !hasDependentSources && retrievedSources.length >= 2 && uniqueExcerptHashes.size >= 4 && verifiedCoverage >= 0.5) {
     return 'HIGH';
   }
 
@@ -818,28 +962,68 @@ export function calculateOverallConfidence(evidencePack: EvidencePackInput): 'HI
 
 /**
  * Automatically generates author-safe claims from an Evidence Claim inventory.
- * Enforces the Numeric Claim Hard Rule (EDITORIAL-SOURCE-ACQUISITION-1):
- * - If sources are NOT retrieved and verified, strips unverified numbers and produces
- *   PARTIALLY_SUPPORTED qualitative principles.
+ * Enforces the Numeric Claim Hard Rule (EDITORIAL-SOURCE-ACQUISITION-1) and Milestone 3B Unsourced Claim Safety:
+ * - If sources are NOT retrieved and verified or factual claims have zero supporting passages,
+ *   sets allowed_for_authoring = false and action = RESEARCH_REQUIRED.
+ * - Editorial recommendations are allowed when transparently derived from supported claims.
  * - Adds stripped numbers to prohibited_elements so authoring models cannot reintroduce them.
  */
 export function generateAuthorSafeClaims(claims: EvidenceClaim[]): AuthorSafeClaim[] {
   const result: AuthorSafeClaim[] = [];
 
   for (const claim of claims) {
+    const isRecommendation = claim.claim_class === 'editorial_recommendation' || claim.claim_class === 'EDITORIAL_RECOMMENDATION';
     const claimSources = Array.isArray(claim.sources) ? claim.sources : [];
     const hasRetrieved = claimSources.some(
       (s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED'
     );
+    const hasPassages = Array.isArray(claim.evidence_passage_ids) && claim.evidence_passage_ids.length > 0;
 
-    if (hasRetrieved) {
+    // Requirement 5: Unsourced technical claims cannot enter authoring!
+    const packHasPassagesOrRetrieval = claims.some(
+      (c) => (Array.isArray(c.evidence_passage_ids) && c.evidence_passage_ids.length > 0) ||
+        (c.sources || []).some((s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED')
+    );
+    const isUnsourcedTechnical = !isRecommendation && (
+      claimSources.length === 0 ||
+      claim.action === 'RESEARCH_REQUIRED' ||
+      claim.action === 'REMOVE' ||
+      (packHasPassagesOrRetrieval && !hasPassages && !hasRetrieved)
+    );
+
+    if (isUnsourcedTechnical) {
+      result.push({
+        claim_id: claim.claim_id,
+        statement: claim.statement,
+        support_level: 'PARTIALLY_SUPPORTED',
+        applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
+        allowed_for_authoring: false,
+        qualification_required: 'RESEARCH_REQUIRED: Klaim teknis ini belum memiliki rujukan sumber terverifikasi dan dilarang masuk ke naskah penulisan.'
+      });
+      continue;
+    }
+
+    if (isRecommendation) {
+      result.push({
+        claim_id: claim.claim_id,
+        statement: claim.statement,
+        support_level: 'SUPPORTED',
+        applicability: claimSources[0]?.applicability || 'EDITORIAL_INFERENCE',
+        allowed_for_authoring: true,
+        qualification_required: 'Sajikan sebagai panduan keputusan editorial berbasis kondisi lapangan.'
+      });
+      continue;
+    }
+
+    if (hasRetrieved && hasPassages) {
       result.push({
         claim_id: claim.claim_id,
         statement: claim.statement,
         support_level: claim.evidence_status === 'VERIFIED' ? 'VERIFIED' : 'SUPPORTED',
         applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
         allowed_for_authoring: true,
-        qualification_required: claim.action === 'QUALIFY' ? 'Sajikan dengan batasan konteks yang jelas.' : undefined
+        qualification_required: claim.action === 'QUALIFY' ? 'Sajikan dengan batasan konteks yang jelas.' : undefined,
+        evidence_passage_ids: claim.evidence_passage_ids
       });
     } else {
       // Find numbers in statement
@@ -865,7 +1049,7 @@ export function generateAuthorSafeClaims(claims: EvidenceClaim[]): AuthorSafeCla
         statement: qualitativeStatement,
         support_level: 'PARTIALLY_SUPPORTED',
         applicability,
-        allowed_for_authoring: true,
+        allowed_for_authoring: false,
         prohibited_elements: prohibited.length > 0 ? prohibited : undefined,
         qualification_required: 'Sajikan sebagai prinsip kualitatif arsitektur/fisika bangunan. Dilarang mencantumkan angka eksak tanpa dokumen primer terverifikasi.'
       });
