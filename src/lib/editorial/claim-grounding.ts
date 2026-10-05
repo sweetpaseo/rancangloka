@@ -198,8 +198,12 @@ export function validateClaimGrounding(
   const unsupportedCandidatesFound: string[] = [];
   if (envelope.unsupported_claim_candidates && envelope.unsupported_claim_candidates.length > 0) {
     for (const cand of envelope.unsupported_claim_candidates) {
-      if (cand && cand.trim()) {
-        unsupportedCandidatesFound.push(cand.trim());
+      const cAny = cand as any;
+      const candStr = typeof cand === 'string'
+        ? cand
+        : (cand && typeof cand === 'object' ? (cAny.statement || cAny.claim || cAny.description || JSON.stringify(cand)) : String(cand || ''));
+      if (candStr && candStr.trim()) {
+        unsupportedCandidatesFound.push(candStr.trim());
       }
     }
     errors.push(

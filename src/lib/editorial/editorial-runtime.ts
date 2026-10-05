@@ -115,12 +115,19 @@ export interface EditorialAttemptRecord {
   qaResult: HumanWritingQualityResult;
 }
 
+import {
+  auditTopicEvidenceAlignment,
+  type TopicAlignmentResult
+} from './topic-alignment.ts';
+
 export type FinalEditorialDecision =
   | 'HUMAN_WRITING_PASS'
   | 'HUMAN_WRITING_REVISE'
   | 'HUMAN_WRITING_REWRITE'
   | 'HUMAN_REVIEW_REQUIRED'
   | 'EVIDENCE_GROUNDING_REVIEW_REQUIRED'
+  | 'TOPIC_EVIDENCE_ALIGNMENT_FAIL'
+  | 'RESEARCH_COVERAGE_INSUFFICIENT'
   | 'PROVIDER_ERROR';
 
 export interface EditorialJobResult {
@@ -190,6 +197,34 @@ export async function executeEditorialDraftJob(
     `Operator ${input.operatorAuth.authorizedBy} memulai tugas penulisan editorial '${input.topic}'.`,
     { authorizedBy: input.operatorAuth.authorizedBy }
   );
+
+  // 1b. Pre-writing Research Gate Verification:
+  // EVIDENCE_PACK_MUST_ADDRESS_REQUESTED_TOPIC
+  const alignmentResult = auditTopicEvidenceAlignment(input.topic, input.evidencePack);
+  if (!alignmentResult.aligned) {
+    addTraceEvent(
+      'RESEARCH_REQUIRED_HALT',
+      'editorial_qa_primary',
+      `Penulisan dibatalkan sebelum Joko: [${alignmentResult.rejection_code}] ${alignmentResult.rejection_reason}`,
+      { rejection_code: alignmentResult.rejection_code, reason: alignmentResult.rejection_reason }
+    );
+
+    return {
+      jobId: `job_${taskId}`,
+      taskId,
+      status: 'BLOCKED',
+      finalDecision: alignmentResult.rejection_code as FinalEditorialDecision,
+      publicationStatus: 'DRAFT',
+      humanStopGateStatus: 'OPERATOR_INTERVENTION_REQUIRED',
+      finalDraft: null,
+      totalAttempts: 0,
+      authorProvenance: null,
+      qaResult: null,
+      attempts: [],
+      traceEvents,
+      error: alignmentResult.rejection_reason
+    };
+  }
 
   // 2. Prepare Provider
   const provider = options.providerInstance || new EditorialLlmProvider(options.llmOptions);

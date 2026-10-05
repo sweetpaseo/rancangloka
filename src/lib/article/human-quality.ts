@@ -442,14 +442,28 @@ export interface EvidenceSource {
   quality_profile?: SourceQualityProfile;
 }
 
-export type EvidenceSemanticRole =
+export type GeneralEvidenceRole =
+  | 'CAUSE_MECHANISM'
+  | 'DIAGNOSTIC_SIGNAL'
+  | 'MATERIAL_BEHAVIOR'
+  | 'INTERVENTION_EFFECT'
+  | 'INSTALLATION_GUIDANCE'
+  | 'LIMITATION'
+  | 'RISK'
+  | 'CONTEXT_DEPENDENCY'
+  | 'MAINTENANCE'
+  | 'REGULATORY_REFERENCE'
+  | 'USER_EXPERIENCE_SIGNAL';
+
+export type LegacyRoofEvidenceRole =
   | 'ROOF_HEAT_TRANSFER'
   | 'RADIANT_BARRIER_MECHANISM'
   | 'AIR_SPACE_REQUIREMENT'
   | 'ATTIC_VENTILATION'
   | 'DUST_DEGRADATION'
-  | 'MATERIAL_PROPERTY'
-  | 'INSTALLATION_GUIDANCE';
+  | 'MATERIAL_PROPERTY';
+
+export type EvidenceSemanticRole = GeneralEvidenceRole | LegacyRoofEvidenceRole;
 
 export const CLAIM_ALLOWED_SEMANTIC_ROLES: Record<string, EvidenceSemanticRole[]> = {
   'CLM-001A': ['ROOF_HEAT_TRANSFER', 'MATERIAL_PROPERTY'],
@@ -538,9 +552,18 @@ export interface ProvenanceAuditSummary {
  * Fail-closed default: if provenance is missing/unverified for exact numeric assertions,
  * it is flagged automatically without requiring manual caller booleans.
  */
+import { auditTopicEvidenceAlignment } from '../editorial/topic-alignment.ts';
+
+export interface ProvenanceAuditOptions {
+  topic?: string;
+  researchQuestions?: any[];
+  minOverlapScore?: number;
+}
+
 export function auditEvidencePackProvenance(
   evidencePack: EvidencePackInput | null | undefined,
-  contentMd: string = ''
+  contentMd: string = '',
+  options?: ProvenanceAuditOptions
 ): ProvenanceAuditSummary {
   const summary: ProvenanceAuditSummary = {
     total_claims: 0,
@@ -557,6 +580,23 @@ export function auditEvidencePackProvenance(
 
   if (!evidencePack || !Array.isArray(evidencePack.claim_inventory)) {
     return summary;
+  }
+
+  // Pre-writing Invariant: EVIDENCE_PACK_MUST_ADDRESS_REQUESTED_TOPIC
+  if (options?.topic) {
+    const alignment = auditTopicEvidenceAlignment(options.topic, evidencePack, {
+      researchQuestions: options.researchQuestions
+    });
+    if (!alignment.aligned) {
+      summary.requires_provenance_failure = true;
+      if (alignment.rejection_code) {
+        summary.unverified_claims.push(alignment.rejection_code);
+        summary.missing_provenance_claims.push(alignment.rejection_code);
+      }
+      if (alignment.rejection_reason) {
+        summary.audit_reasons.push(alignment.rejection_reason);
+      }
+    }
   }
 
   const claims = evidencePack.claim_inventory;

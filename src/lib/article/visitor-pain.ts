@@ -749,12 +749,237 @@ Sebelum memutuskan belanja material atau memanggil tukang, ada beberapa langkah 
 }
 
 // ============================================================================
-// 11. VISITOR PAIN SELECTION PACKAGE BUILDER
+// 11. GENERALIZED & DYNAMIC VISITOR PAIN GENERATION
 // ============================================================================
 
-export function buildHumanVisitorPainSelectionPackage(): HumanVisitorPainSelectionPackage {
-  const candidateContexts = getCanonicalMetalRoofProblemContexts();
-  const candidateOpenings = getCanonicalMetalRoofCandidateOpenings();
+export interface DynamicVisitorPainPackage {
+  topic: string;
+  content_family: string;
+  primary_context: VisitorProblemContext;
+  secondary_contexts: VisitorProblemContext[];
+  decision_state: string;
+  opening_angle: OpeningAngle;
+  narrative_signature: string;
+}
+
+export interface VisitorPainSelectionOptions {
+  topic?: string;
+  contentFamily?: string;
+  searchIntent?: ArticleIntent;
+}
+
+export function inferContentFamily(topic: string, explicitFamily?: string): string {
+  if (explicitFamily && explicitFamily.trim()) return explicitFamily.trim();
+  const lower = topic.toLowerCase();
+  if (/\b(?:dinding|lembap|jamur|waterproofing|bocor|rembes|dak|kapiler|plester|aci)\b/i.test(lower)) {
+    return 'MOISTURE_AND_WATERPROOFING';
+  }
+  if (/\b(?:atap|genteng|seng|galvalum|foil|insulasi|loteng|plafon|ventilasi|soffit|ridge)\b/i.test(lower)) {
+    return 'BUILDING_ENVELOPE_THERMAL';
+  }
+  if (/\b(?:kusen|jendela|pintu|kaca|aluminium|upvc|kayu|profil)\b/i.test(lower)) {
+    return 'FENESTRATION_AND_OPENINGS';
+  }
+  if (/\b(?:lantai|keramik|granit|popping|nat|screed|vinil|spc)\b/i.test(lower)) {
+    return 'FLOORING_AND_FINISHES';
+  }
+  if (/\b(?:pondasi|retak|amblas|tanah|tiang|sloof|kolom)\b/i.test(lower)) {
+    return 'FOUNDATION_AND_STRUCTURE';
+  }
+  return 'MATERIAL_AND_BUILDING_DECISION';
+}
+
+export function generateDynamicVisitorContexts(
+  topic: string,
+  contentFamily: string,
+  intent: ArticleIntent
+): VisitorProblemContext[] {
+  const isComparison = intent === 'COMPARISON' || /\b(?:vs|versus|atau|mana yang)\b/i.test(topic);
+
+  return [
+    {
+      context_id: 'CTX-01-FAILED-QUICK-FIX',
+      primary_problem: `Solusi instan atau perbaikan dangkal pada topik "${topic}" telah dicoba namun gejala terus berulang.`,
+      pain_dimension: 'FAILED_SOLUTION',
+      secondary_pain_dimensions: ['FINANCIAL_RISK', 'PERFORMANCE_GAP'],
+      pain_state: 'Kecewa karena perbaikan permukaan atau penggantian komponen awal tidak menyelesaikan akar persoalan fisik.',
+      decision_state: 'Ragu apakah harus mengulang perbaikan yang sama atau mencari akar penyebab fisik di balik gejala tersebut.',
+      existing_condition: 'Kondisi bangunan eksisting menunjukkan gejala fisik berulang meski sudah dilapisi atau dipasang komponen baru.',
+      failed_attempt: 'Membeli produk populer atau memanggil tukang untuk perbaikan cepat tanpa diagnosis sistemik.',
+      risk_or_concern: 'Pemborosan biaya renovasi berulang kali tanpa memecahkan sumber kerusakan jangka panjang.',
+      desired_outcome: 'Menemukan penanganan definitif yang tahan bertahun-tahun di iklim tropis.',
+      confidence: 'HIGH',
+      basis: ['ARTICLE_TOPIC', 'SEARCH_INTENT', 'KNOWN_READER_SCENARIO'],
+      source_mode: 'INFERRED_EDITORIAL_CONTEXT'
+    },
+    {
+      context_id: 'CTX-02-DECISION-FORK',
+      primary_problem: `Dilema komparasi atau pilihan intervensi dalam menentukan langkah tepat untuk "${topic}".`,
+      pain_dimension: 'DECISION_UNCERTAINTY',
+      secondary_pain_dimensions: ['INFORMATION_CONFLICT', 'FINANCIAL_RISK'],
+      pain_state: 'Bingung memilih antara dua material atau dua jalur penanganan dengan klaim performa yang saling bertentangan.',
+      decision_state: isComparison
+        ? 'Membandingkan kelebihan, kekurangan, dan kecocokan iklim sebelum menetapkan anggaran belanja.'
+        : 'Menimbang apakah cukup perbaikan ringan pada komponen atau harus melakukan renovasi sumber yang lebih mendasar.',
+      existing_condition: 'Tahap perencanaan renovasi atau penanganan mendesak di mana anggaran terbatas dan keputusan harus diambil.',
+      risk_or_concern: 'Salah membeli material atau memilih solusi yang salah kaprah untuk kondisi lapangan spesifik.',
+      desired_outcome: 'Memiliki komparasi objektif berbasis perilaku material nyata dan batas fisik bangunan.',
+      confidence: 'HIGH',
+      basis: ['ARTICLE_TOPIC', 'SEARCH_INTENT', 'QUERY_LANGUAGE'],
+      source_mode: 'INFERRED_EDITORIAL_CONTEXT'
+    },
+    {
+      context_id: 'CTX-03-DIAGNOSTIC-UNCERTAINTY',
+      primary_problem: `Ketidakpastian diagnosis gejala vs akar penyebab fisik pada "${topic}".`,
+      pain_dimension: 'DIAGNOSTIC_UNCERTAINTY',
+      secondary_pain_dimensions: ['PHYSICAL_DISCOMFORT', 'INFORMATION_CONFLICT'],
+      pain_state: 'Melihat gejala visual atau fisik namun tidak tahu pasti sumber pemicu internalnya.',
+      decision_state: 'Membutuhkan daftar periksa diagnosa mandiri sebelum memanggil tukang atau membeli material.',
+      existing_condition: 'Gejala muncul musiman (misal: saat musim hujan atau terik siang) pada area tertentu di rumah.',
+      risk_or_concern: 'Mengobati gejala luar sementara kerusakan struktur atau material di dalam terus memburuk.',
+      desired_outcome: 'Memahami jalur fisik terjadinya masalah sehingga dapat mengawasi tukang secara tepat.',
+      confidence: 'HIGH',
+      basis: ['ARTICLE_TOPIC', 'SEARCH_INTENT'],
+      source_mode: 'INFERRED_EDITORIAL_CONTEXT'
+    },
+    {
+      context_id: 'CTX-04-CONTRACTOR-CONFLICT',
+      primary_problem: `Pertentangan saran teknis antara tukang, kontraktor, dan klaim brosur mengenai "${topic}".`,
+      pain_dimension: 'INFORMATION_CONFLICT',
+      secondary_pain_dimensions: ['DECISION_UNCERTAINTY', 'INSTALLATION_RISK'],
+      pain_state: 'Mendapat anjuran yang saling bertolak belakang dari berbagai pihak lapangan.',
+      decision_state: 'Mencari rujukan netral yang tidak terafiliasi dengan penjualan merek tertentu.',
+      existing_condition: 'Konsultasi awal dengan aplikator atau tukang lokal menghasilkan opini yang membingungkan.',
+      risk_or_concern: 'Mengikuti saran yang hanya menguntungkan pihak pemasang tanpa mempertimbangkan fisika bangunan.',
+      desired_outcome: 'Argumen teknis yang jelas untuk memverifikasi metode kerja tukang.',
+      confidence: 'HIGH',
+      basis: ['ARTICLE_TOPIC', 'KNOWN_READER_SCENARIO'],
+      source_mode: 'INFERRED_EDITORIAL_CONTEXT'
+    },
+    {
+      context_id: 'CTX-05-PRE-EXPENDITURE-CHECK',
+      primary_problem: `Kebutuhan audit kelayakan dan urutan kerja sebelum mengeluarkan biaya untuk "${topic}".`,
+      pain_dimension: 'FINANCIAL_RISK',
+      secondary_pain_dimensions: ['DECISION_UNCERTAINTY', 'MAINTENANCE_BURDEN'],
+      pain_state: 'Khawatir pengeluaran renovasi tidak sebanding dengan hasil atau menimbulkan beban perawatan baru.',
+      decision_state: 'Menyiapkan anggaran dan ingin memastikan urutan prioritas kerja yang paling hemat dan rasional.',
+      existing_condition: 'Rencana alokasi anggaran renovasi rumah sedang disusun.',
+      risk_or_concern: 'Biaya membengkak karena pekerjaan harus dibongkar ulang akibat salah urutan perbaikan.',
+      desired_outcome: 'Panduan keputusan bertahap: kapan solusi A cukup, kapan perbaikan sumber B mutlak diperlukan.',
+      confidence: 'HIGH',
+      basis: ['ARTICLE_TOPIC', 'SEARCH_INTENT'],
+      source_mode: 'INFERRED_EDITORIAL_CONTEXT'
+    }
+  ];
+}
+
+export function generateDynamicCandidateOpenings(
+  topic: string,
+  contexts: VisitorProblemContext[]
+): CandidateOpening[] {
+  return [
+    {
+      visitor_context_id: contexts[0].context_id,
+      pain_angle: 'FAILED_SOLUTION',
+      opening_angle: 'FAILURE_AFTER_SOLUTION',
+      opening_signature: 'FAILED_FIX > CONTRADICTION > ROOT_CAUSE',
+      opening_text: `Banyak pemilik rumah mengira masalah pada ${topic.toLowerCase()} selesai begitu lapisan baru diaplikasikan atau material diganti. Namun beberapa pekan kemudian, tanda-tanda kerusakan yang sama sering kali muncul kembali di titik yang sama.\n\nKegagalan perbaikan berulang ini hampir selalu bersumber dari hal yang sama: tindakan dilakukan pada gejala visual di permukaan, sementara jalur fisik yang memicunya belum pernah dihentikan.`,
+      why_this_angle_fits: 'Membongkar ilusi solusi cepat dan memvalidasi frustrasi pemilik rumah akibat perbaikan yang bolak-balik gagal.',
+      narrative_structure: ['Observation of repeated failure after fix', 'Physical root cause vs surface symptom', 'Promise of fundamental diagnostic approach']
+    },
+    {
+      visitor_context_id: contexts[1].context_id,
+      pain_angle: 'DECISION_UNCERTAINTY',
+      opening_angle: 'DECISION_FORK',
+      opening_signature: 'DECISION > TRADEOFF > QUESTION',
+      opening_text: `Menghadapi pilihan pada ${topic.toLowerCase()} bukan sekadar soal mana yang lebih murah di toko bangunan, melainkan memahami kompromi fisik jangka panjang yang harus ditanggung rumah Anda.\n\nSetiap opsi membawa konsekuensi berbeda terhadap ketahanan cuaca tropis, kemudahan perawatan, dan risiko biaya di kemudian hari. Sebelum memutuskan belanja material, ada batas-batas teknis yang perlu diuji di lapangan.`,
+      why_this_angle_fits: 'Membuka artikel dari persimpangan keputusan praktis dengan pendekatan komparasi objektif.',
+      narrative_structure: ['Decision fork dilemma', 'Real physical trade-offs in tropical climate', 'Pre-purchase field verification']
+    },
+    {
+      visitor_context_id: contexts[2].context_id,
+      pain_angle: 'DIAGNOSTIC_UNCERTAINTY',
+      opening_angle: 'DIAGNOSTIC_MYSTERY',
+      opening_signature: 'QUESTION > SYMPTOM > DIAGNOSIS',
+      opening_text: `Kapan terakhir kali Anda benar-benar memeriksa dari mana masalah pada ${topic.toLowerCase()} bermula?\n\nGejala yang terlihat di dalam rumah sering kali hanyalah ujung rantai dari fenomena fisik yang berlangsung di tempat lain. Menemukan sumber aslinya jauh lebih menentukan keberhasilan renovasi dibanding tergesa-gesa memilih merek produk pelapis.`,
+      why_this_angle_fits: 'Mengajak pembaca berhenti sejenak dan melacak alur fisik masalah secara runut.',
+      narrative_structure: ['Diagnostic reflective question', 'End of chain symptom recognition', 'Diagnostic priority before product selection']
+    },
+    {
+      visitor_context_id: contexts[3].context_id,
+      pain_angle: 'INFORMATION_CONFLICT',
+      opening_angle: 'EXPERT_OBSERVATION',
+      opening_signature: 'CONTEXT > CONTRADICTION > ROOT_CAUSE',
+      opening_text: `Jika Anda meminta pendapat beberapa tukang atau aplikator mengenai ${topic.toLowerCase()}, Anda kemungkinan akan menerima saran yang saling bertolak belakang.\n\nSatu pihak menyarankan penanganan cepat dengan produk pelapis khusus, sementara pihak lain bersikeras membongkar bagian struktur. Memahami logika fisika di balik kedua saran tersebut membantu Anda menyaring mana yang benar-benar relevan untuk kondisi rumah Anda.`,
+      why_this_angle_fits: 'Menjawab kebingungan akibat simpang siur saran lapangan dengan kacamata fisika netral.',
+      narrative_structure: ['Conflicting contractor opinions', 'Contrasting recommendations', 'Neutral physical synthesis']
+    },
+    {
+      visitor_context_id: contexts[4].context_id,
+      pain_angle: 'FINANCIAL_RISK',
+      opening_angle: 'COST_OF_WRONG_DECISION',
+      opening_signature: 'SCENE > TRADEOFF > ACTION',
+      opening_text: `Keputusan renovasi untuk ${topic.toLowerCase()} kerap menguras anggaran bukan karena harga materialnya, melainkan karena salah urutan pengerjaan.\n\nKetika pekerjaan pelapisan dilakukan sebelum sumber fisik diperbaiki, seluruh biaya material dan ongkos tukang akhirnya terbuang sia-sia. Daftar periksa sederhana sebelum belanja dapat mencegah kerugian tersebut.`,
+      why_this_angle_fits: 'Menekankan pencegahan pemborosan anggaran dan urutan kerja yang tepat sebelum uang dikeluarkan.',
+      narrative_structure: ['Cost trap of wrong sequence', 'Wasted materials and labor risk', 'Pre-expenditure checklist promise']
+    }
+  ];
+}
+
+export function generateDynamicVisitorPain(
+  topic: string,
+  contentFamily?: string,
+  options?: {
+    intent?: ArticleIntent;
+    readerUncertainty?: string;
+    competingOptions?: string[];
+  }
+): DynamicVisitorPainPackage {
+  const family = inferContentFamily(topic, contentFamily);
+  const intent: ArticleIntent = options?.intent || (/\b(?:vs|versus|atau|mana yang)\b/i.test(topic) ? 'COMPARISON' : 'PROBLEM_SOLVING');
+  const contexts = generateDynamicVisitorContexts(topic, family, intent);
+  const openings = generateDynamicCandidateOpenings(topic, contexts);
+
+  const primaryContext = contexts[1]; // CTX-02-DECISION-FORK
+  const secondaryContexts = [contexts[0], contexts[2]];
+
+  return {
+    topic,
+    content_family: family,
+    primary_context: primaryContext,
+    secondary_contexts: secondaryContexts,
+    decision_state: `Menentukan langkah atau material terbaik untuk ${topic} dengan pertimbangan batas fisik dan efisiensi biaya.`,
+    opening_angle: openings[1].opening_angle,
+    narrative_signature: openings[1].opening_signature
+  };
+}
+
+export function buildHumanVisitorPainSelectionPackage(
+  options?: VisitorPainSelectionOptions
+): HumanVisitorPainSelectionPackage {
+  const requestedTopic = options?.topic?.trim();
+  const canonicalRoofTopic = 'Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?';
+  const isRoofTopic = !requestedTopic || requestedTopic.toLowerCase() === canonicalRoofTopic.toLowerCase();
+
+  let candidateContexts: VisitorProblemContext[];
+  let candidateOpenings: CandidateOpening[];
+  let topicString: string;
+  let searchIntent: ArticleIntent;
+
+  if (isRoofTopic) {
+    // Preserve canonical historical metal-roof fixtures for existing tests
+    candidateContexts = getCanonicalMetalRoofProblemContexts();
+    candidateOpenings = getCanonicalMetalRoofCandidateOpenings();
+    topicString = canonicalRoofTopic;
+    searchIntent = 'PROBLEM_SOLVING';
+  } else {
+    // Dynamic generation for arbitrary new topics
+    topicString = requestedTopic!;
+    const contentFamily = inferContentFamily(topicString, options?.contentFamily);
+    searchIntent = options?.searchIntent || (/\b(?:vs|versus|atau|mana yang)\b/i.test(topicString) ? 'COMPARISON' : 'PROBLEM_SOLVING');
+    candidateContexts = generateDynamicVisitorContexts(topicString, contentFamily, searchIntent);
+    candidateOpenings = generateDynamicCandidateOpenings(topicString, candidateContexts);
+  }
 
   // Baseline memory of recent opening structure signatures to avoid repetitive rhythm
   const recentMemory: RecentOpeningMemory[] = [
@@ -810,8 +1035,8 @@ export function buildHumanVisitorPainSelectionPackage(): HumanVisitorPainSelecti
 
   return {
     status: 'HUMAN_VISITOR_PAIN_SELECTION_REQUIRED',
-    topic: 'Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?',
-    search_intent: 'PROBLEM_SOLVING',
+    topic: topicString,
+    search_intent: searchIntent,
     source_mode: 'INFERRED_EDITORIAL_CONTEXT',
     candidate_contexts: candidateContexts,
     candidate_openings: candidateOpenings,
