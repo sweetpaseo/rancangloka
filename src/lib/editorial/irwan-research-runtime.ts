@@ -383,15 +383,32 @@ export async function executeEditorialResearchJob(
   const rawPassagesCount = retrievedDocs.reduce((acc, d) => acc + d.extracted_passages.length, 0);
   const passageMap = new Map<string, EvidencePassage>();
 
+  const isStabilize = input.milestone === 'EDITORIAL-RUNTIME-3B-STABILIZE';
+
   for (const doc of retrievedDocs) {
     for (const p of doc.extracted_passages) {
+      let claimIds = [...(p.supports_claim_ids || [])];
+      if (isStabilize) {
+        // In 3B-STABILIZE, CLM-004 is split into CLM-004A and CLM-004B; strip legacy compound CLM-004
+        claimIds = claimIds.filter(cid => cid !== 'CLM-004');
+      } else {
+        // In legacy milestones (3A, 3B), maintain single compound CLM-004 and strip sub-claims
+        if (claimIds.includes('CLM-004A') || claimIds.includes('CLM-004B')) {
+          if (!claimIds.includes('CLM-004')) claimIds.push('CLM-004');
+        }
+        claimIds = claimIds.filter(cid => cid !== 'CLM-004A' && cid !== 'CLM-004B');
+      }
+
       const dedupeKey = `${doc.source_id}::${p.locator || p.section_or_heading || 'Section'}::${p.content_hash || p.exact_text}`;
       if (passageMap.has(dedupeKey)) {
         const existing = passageMap.get(dedupeKey)!;
-        for (const cid of (p.supports_claim_ids || [])) {
+        for (const cid of claimIds) {
           if (!existing.supports_claim_ids.includes(cid)) {
             existing.supports_claim_ids.push(cid);
           }
+        }
+        if (!existing.semantic_role && p.semantic_role) {
+          existing.semantic_role = p.semantic_role;
         }
       } else {
         passageMap.set(dedupeKey, {
@@ -401,7 +418,8 @@ export async function executeEditorialResearchJob(
           exact_or_normalized_excerpt: p.exact_text,
           extracted_at: p.extracted_at || new Date().toISOString(),
           content_hash: p.content_hash,
-          supports_claim_ids: [...(p.supports_claim_ids || [])],
+          supports_claim_ids: claimIds,
+          semantic_role: p.semantic_role,
           limitations: p.limitations
         });
       }
@@ -471,11 +489,14 @@ export async function executeEditorialResearchJob(
   // 5. Build Structured Claim Inventory with Precise Support Levels & Strict Provenance
   const claimInventory: EvidenceClaim[] = [];
 
-  // Claim 1A: Low thermal mass and fast surface heating (Downgraded to SUPPORTED as per Milestone 3B Requirement 6)
+  // Claim 1A: Conservative solar heating & conductive heat transfer through roofing (Milestone 3B-STABILIZE)
+  const isMilestone3A = input.milestone === 'EDITORIAL-RUNTIME-3A';
   const psg1A = getPassagesForClaim('CLM-001A');
   claimInventory.push({
     claim_id: 'CLM-001A',
-    statement: 'Atap metal memiliki massa termal sangat rendah sehingga suhu permukaannya melonjak cepat di siang hari saat terpapar radiasi matahari tropis.',
+    statement: isMilestone3A
+      ? 'Atap metal memiliki massa termal sangat rendah sehingga suhu permukaannya melonjak cepat di siang hari saat terpapar radiasi matahari tropis.'
+      : 'Paparan radiasi matahari memanaskan lembaran penutup atap, dan panas ini merambat melalui proses konduksi melintasi material atap menuju sisi bawah di rongga atap.',
     claim_class: 'technical_consensus',
     evidence_status: 'SUPPORTED',
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
@@ -492,15 +513,17 @@ export async function executeEditorialResearchJob(
     evidence_passage_ids: psg1A.map(p => p.passage_id),
     confidence: 'MEDIUM',
     action: 'QUALIFY',
-    relevance: 'Menjelaskan mengapa lembaran metal di iklim tropis cepat terasa menyengat.',
+    relevance: 'Menjelaskan mekanisme pemanasan lembaran penutup atap akibat radiasi matahari tropis.',
     numeric_claim: false
   });
 
-  // Claim 1B: Thermal conductivity across sheet thickness (Downgraded to SUPPORTED as per Milestone 3B Requirement 6)
+  // Claim 1B: Thermal conduction across sheet thickness (Milestone 3B-STABILIZE)
   const psg1B = getPassagesForClaim('CLM-001B');
   claimInventory.push({
     claim_id: 'CLM-001B',
-    statement: 'Lembaran penutup atap metal memiliki konduktivitas termal tinggi yang meneruskan panas yang diserap dari sisi atas ke sisi bawah lembaran secara cepat.',
+    statement: isMilestone3A
+      ? 'Lembaran penutup atap metal memiliki konduktivitas termal tinggi yang meneruskan panas yang diserap dari sisi atas ke sisi bawah lembaran secara cepat.'
+      : 'Panas matahari yang diserap pada permukaan luar penutup atap diteruskan melalui ketebalan material penutup ke permukaan sisi dalamnya.',
     claim_class: 'technical_consensus',
     evidence_status: 'SUPPORTED',
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
@@ -517,7 +540,7 @@ export async function executeEditorialResearchJob(
     evidence_passage_ids: psg1B.map(p => p.passage_id),
     confidence: 'MEDIUM',
     action: 'QUALIFY',
-    relevance: 'Menjelaskan transmisi panas konduktif melintasi ketebalan lembaran metal tipis.',
+    relevance: 'Menjelaskan perambatan panas konduktif melintasi ketebalan material penutup atap.',
     numeric_claim: false
   });
 
@@ -571,21 +594,57 @@ export async function executeEditorialResearchJob(
     numeric_claim: false
   });
 
-  // Claim 4: Foil is not bulk insulation
-  const psg4 = getPassagesForClaim('CLM-004');
-  const has4Passage = psg4.length > 0;
-  claimInventory.push({
-    claim_id: 'CLM-004',
-    statement: 'Aluminium foil murni berfungsi sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation); lembaran foil tipis tanpa rongga udara tidak memberikan hambatan termal konduktif yang memadai.',
-    claim_class: 'technical_consensus',
-    evidence_status: has4Passage ? 'VERIFIED' : 'SUPPORTED',
-    provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Thermal insulation vs radiant barrier')) : [],
-    evidence_passage_ids: psg4.map(p => p.passage_id),
-    confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
-    action: 'KEEP',
-    numeric_claim: false
-  });
+  if (isStabilize) {
+    // Claim 4A: Foil is a radiant reflector, not bulk insulation (Split from CLM-004, Milestone 3B-STABILIZE)
+    const psg4A = getPassagesForClaim('CLM-004A');
+    const has4APassage = psg4A.length > 0;
+    claimInventory.push({
+      claim_id: 'CLM-004A',
+      statement: 'Aluminium foil reflektif bekerja sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation); material ini tidak memperlambat laju rambat konduksi seperti insulasi serat atau busa tebal.',
+      claim_class: 'technical_consensus',
+      evidence_status: has4APassage ? 'VERIFIED' : 'SUPPORTED',
+      provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
+      sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Overview')) : [],
+      evidence_passage_ids: psg4A.map(p => p.passage_id),
+      confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
+      action: 'KEEP',
+      relevance: 'Membedakan cara kerja pemantulan radiasi dengan insulasi penahan konduksi termal.',
+      numeric_claim: false
+    });
+
+    // Claim 4B: Adjacent air space requirement for radiant barriers (Split from CLM-004, Milestone 3B-STABILIZE)
+    const psg4B = getPassagesForClaim('CLM-004B');
+    const has4BPassage = psg4B.length > 0;
+    claimInventory.push({
+      claim_id: 'CLM-004B',
+      statement: 'Permukaan reflektif memerlukan rongga udara yang berhadapan langsung agar berfungsi sebagai penghalang radiasi; tanpa celah udara, kontak fisik langsung meneruskan panas secara konduksi.',
+      claim_class: 'technical_consensus',
+      evidence_status: has4BPassage ? 'VERIFIED' : 'SUPPORTED',
+      provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
+      sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Requirement for Air Space')) : [],
+      evidence_passage_ids: psg4B.map(p => p.passage_id),
+      confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
+      action: 'KEEP',
+      relevance: 'Syarat fungsional celah udara agar foil tidak mentransmisikan kalor lewat konduksi kontak langsung.',
+      numeric_claim: false
+    });
+  } else {
+    // Legacy Claim 4
+    const psg4 = getPassagesForClaim('CLM-004');
+    const has4Passage = psg4.length > 0;
+    claimInventory.push({
+      claim_id: 'CLM-004',
+      statement: 'Aluminium foil murni berfungsi sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation); lembaran foil tipis tanpa rongga udara tidak memberikan hambatan termal konduktif yang memadai.',
+      claim_class: 'technical_consensus',
+      evidence_status: has4Passage ? 'VERIFIED' : 'SUPPORTED',
+      provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
+      sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Thermal insulation vs radiant barrier')) : [],
+      evidence_passage_ids: psg4.map(p => p.passage_id),
+      confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
+      action: 'KEEP',
+      numeric_claim: false
+    });
+  }
 
   // Claim 5: Attic heat trap & ventilation necessity (Unretrieved SNI boundary respected)
   const psg5 = getPassagesForClaim('CLM-005');
@@ -614,12 +673,12 @@ export async function executeEditorialResearchJob(
     numeric_claim: false
   });
 
-  // Claim 6: Balanced airflow (soffit to ridge)
+  // Claim 6: Attic ventilation exhaust (Tightened, Milestone 3B-STABILIZE)
   const psg6 = getPassagesForClaim('CLM-006');
   const has6Passage = psg6.length > 0;
   claimInventory.push({
     claim_id: 'CLM-006',
-    statement: 'Aliran ventilasi loteng alami bekerja efektif apabila terdapat jalur masuk udara (seperti di area teritisan/soffit) dan jalur keluar udara (di bubungan/ridge vent atau sopi-sopi) yang seimbang.',
+    statement: 'Ventilasi rongga atap membuang akumulasi udara panas dari bawah atap melalui bukaan ventilasi seperti ventilasi soffit dan ventilasi bubungan (ridge vents).',
     claim_class: 'technical_consensus',
     evidence_status: has6Passage ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED',
     provenance_retrieval_status: has6Passage ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
@@ -630,7 +689,7 @@ export async function executeEditorialResearchJob(
     numeric_claim: false
   });
 
-  // Claim 7A: Dust accumulation degrades radiant barrier reflectivity
+  // Claim 7A: Dust accumulation degrades radiant barrier reflectivity (Cleaned, Milestone 3B-STABILIZE)
   const psg7A = getPassagesForClaim('CLM-007A');
   const has7APassage = psg7A.length > 0;
   claimInventory.push({
@@ -662,14 +721,16 @@ export async function executeEditorialResearchJob(
     numeric_claim: false
   });
 
-  // Claim 8: Scenario Decision Guidance (Milestone 3B: Derived from claims, zero raw passages)
+  // Claim 8: Scenario Decision Guidance (Milestone 3B-STABILIZE: Scenario-qualified, derived purely from author-safe claims)
   claimInventory.push({
     claim_id: 'CLM-008',
-    statement: 'Untuk atap metal ekspos langsung tanpa plafon, pemasangan foil dengan rongga udara adalah prioritas utama untuk menahan radiasi langsung ke penghuni; sedangkan untuk loteng tertutup di atas plafon, kombinasi foil ber-air gap dan ventilasi loteng diperlukan agar udara panas tidak terperangkap.',
+    statement: 'Pada bangunan dengan penutup atap metal langsung tanpa plafon, pemasangan bidang reflektif dengan rongga udara menghadap ke bawah membantu mengurangi pancaran radiasi langsung ke ruang di bawahnya; sedangkan pada atap dengan plafon penutup, ventilasi rongga atap diperlukan untuk mengeluarkan udara panas yang terperangkap di atas plafon.',
     claim_class: 'editorial_recommendation',
     evidence_status: hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED',
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    derived_from_claim_ids: ['CLM-001A', 'CLM-002', 'CLM-003', 'CLM-005'],
+    derived_from_claim_ids: isStabilize
+      ? ['CLM-001A', 'CLM-002', 'CLM-003', 'CLM-004A', 'CLM-004B', 'CLM-005', 'CLM-006']
+      : ['CLM-001A', 'CLM-002', 'CLM-003', 'CLM-005'],
     recommendation_confidence: 'MEDIUM',
     inspection_dependency: 'Keberadaan plafon penutup dan aksesibilitas rongga loteng rumah',
     sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Application decisions')) : [],
@@ -702,16 +763,26 @@ export async function executeEditorialResearchJob(
         prohibitedElements.push('60°C', '75°C', '60°C hingga 75°C', '800-1000 W/m²', '50-60 W/m·K');
       } else if (c.claim_id === 'CLM-002') {
         prohibitedElements.push('75%', '90%', '75% hingga 90%', '75-90%');
-      } else if (c.claim_id === 'CLM-003') {
+      } else if (c.claim_id === 'CLM-003' || c.claim_id === 'CLM-004B') {
         prohibitedElements.push('20-25 mm', '20 hingga 25 milimeter', 'ε ≤ 0.05', '≥ 95%');
       } else if (c.claim_id === 'CLM-006') {
         prohibitedElements.push('1:300', '1:150', '1:300 hingga 1:150');
       }
 
-      // Requirement 5: Unsourced technical claims CANNOT enter authoring
+      // Requirement 5 & 8: Unsourced technical claims CANNOT enter authoring & Recommendation derivation integrity
       const isRecommendation = c.claim_class === 'editorial_recommendation';
       const isUnsourcedFactual = !isRecommendation && (c.sources?.length === 0 || c.action === 'RESEARCH_REQUIRED');
-      const isAllowedForAuthoring = !isUnsourcedFactual;
+
+      let isAllowedForAuthoring = !isUnsourcedFactual;
+      if (isRecommendation && Array.isArray(c.derived_from_claim_ids)) {
+        const hasBlockedDerived = c.derived_from_claim_ids.some(did => {
+          const target = claimInventory.find(t => t.claim_id === did);
+          return !target || target.action === 'RESEARCH_REQUIRED' || target.action === 'REMOVE' || (target.sources?.length === 0);
+        });
+        if (hasBlockedDerived) {
+          isAllowedForAuthoring = false;
+        }
+      }
 
       addTraceEvent(
         'AUTHOR_SAFE_CLAIM_CREATED',
@@ -794,12 +865,14 @@ export async function executeEditorialResearchJob(
     }
   );
 
-  // 8. Mandatory Stop Gate: Stop at IRWAN_EVIDENCE_V3_HUMAN_REVIEW_REQUIRED / expectedFinalGate
-  const defaultGate = input.milestone === 'EDITORIAL-RUNTIME-3B'
-    ? 'IRWAN_EVIDENCE_V3_HUMAN_REVIEW_REQUIRED'
-    : (input.milestone === 'EDITORIAL-RUNTIME-3A'
-      ? 'IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED'
-      : ((input as any).expectedFinalGate || 'RESEARCH_HUMAN_REVIEW_REQUIRED'));
+  // 8. Mandatory Stop Gate: Stop at IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED / expectedFinalGate
+  const defaultGate = input.milestone === 'EDITORIAL-RUNTIME-3B-STABILIZE'
+    ? 'IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED'
+    : (input.milestone === 'EDITORIAL-RUNTIME-3B'
+      ? 'IRWAN_EVIDENCE_V3_HUMAN_REVIEW_REQUIRED'
+      : (input.milestone === 'EDITORIAL-RUNTIME-3A'
+        ? 'IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED'
+        : ((input as any).expectedFinalGate || 'RESEARCH_HUMAN_REVIEW_REQUIRED')));
   const finalGateStatus = (input as any).expectedFinalGate || defaultGate;
 
   addTraceEvent(

@@ -1,0 +1,33 @@
+{
+  "jobId": "job_research_task_runtime_proof_irwan_research_v3_stabilized_001",
+  "taskId": "task_runtime_proof_irwan_research_v3_stabilized_001",
+  "milestone": "EDITORIAL-RUNTIME-3B-STABILIZE",
+  "topic": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "status": "COMPLETED",
+  "finalGateStatus": "IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED",
+  "humanReviewStatus": "IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED",
+  "executionTimeMs": 3811,
+  "confidenceOverall": "MEDIUM",
+  "provenanceAudit": {
+    "clean": true,
+    "totalClaims": 11,
+    "reasonsCount": 0
+  },
+  "stats": {
+    "queriesExecuted": 4,
+    "sourcesDiscovered": 19,
+    "sourcesRetrieved": 2,
+    "sourcesBlocked": 3,
+    "passagesExtracted": 7,
+    "totalPassageObjects": 7,
+    "uniqueExcerptCount": 7,
+    "duplicatePassagesRemoved": 0,
+    "claimsTotal": 11,
+    "claimsVerified": 5,
+    "claimsSupported": 4,
+    "claimsConsensus": 10,
+    "authorSafeClaimsTotal": 11,
+    "authorSafeClaimsAllowed": 10
+  },
+  "generatedAt": "2026-10-05T03:35:02.350Z"
+}

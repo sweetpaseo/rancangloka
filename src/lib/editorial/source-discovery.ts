@@ -56,6 +56,15 @@ export interface RetrievedDocument {
   blocked_reason?: string;
 }
 
+export type EvidenceSemanticRole =
+  | 'ROOF_HEAT_TRANSFER'
+  | 'RADIANT_BARRIER_MECHANISM'
+  | 'AIR_SPACE_REQUIREMENT'
+  | 'ATTIC_VENTILATION'
+  | 'DUST_DEGRADATION'
+  | 'MATERIAL_PROPERTY'
+  | 'INSTALLATION_GUIDANCE';
+
 export interface ExtractedPassage {
   passage_id: string;
   source_id: string;
@@ -67,6 +76,7 @@ export interface ExtractedPassage {
   claim_relationship: 'DIRECT_SUPPORT' | 'CONTEXTUAL_BACKGROUND' | 'CONTRAST_LIMITATION';
   content_hash?: string;
   supports_claim_ids?: string[];
+  semantic_role?: EvidenceSemanticRole;
   limitations?: string;
   extracted_at?: string;
 }
@@ -293,8 +303,11 @@ function derivePassageRelevance(claimIds: string[]): string {
   if (claimIds.includes('CLM-005') || claimIds.includes('CLM-006')) {
     return 'Ventilasi loteng mengalirkan dan membuang akumulasi udara panas dari rongga atap.';
   }
-  if (claimIds.includes('CLM-003') || claimIds.includes('CLM-004')) {
+  if (claimIds.includes('CLM-003') || claimIds.includes('CLM-004B')) {
     return 'Syarat mutlak rongga udara berhadapan agar foil (radiant barrier) tidak menghantarkan panas lewat konduksi langsung.';
+  }
+  if (claimIds.includes('CLM-004A') || claimIds.includes('CLM-004')) {
+    return 'Karakteristik aluminium foil sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation).';
   }
   if (claimIds.includes('CLM-001A') || claimIds.includes('CLM-001B') || claimIds.includes('CLM-002')) {
     return 'Mekanisme pemanasan atap dan transmisi radiasi termal (radiant barrier) ke rongga atap di bawahnya.';
@@ -304,9 +317,10 @@ function derivePassageRelevance(claimIds: string[]): string {
 
 /**
  * Inspects retrieved text and extracts passages relevant to heat pathways, radiant barriers, air gaps, and ventilation.
- * Enforces Milestone 3B Semantic Invariants:
+ * Enforces Milestone 3B & 3B-STABILIZE Semantic Invariants:
  * 1. ONE PASSAGE = ONE ACTUAL EXCERPT (deterministic deduplication by source_id + locator + excerpt_hash).
- * 2. Strict semantic claim relevance (bans ungrounded associations from Apollo/space, window treatments, Canada, etc.).
+ * 2. Strict semantic claim relevance (bans ungrounded associations from Apollo/space, window treatments, Canada, walls, etc.).
+ * 3. Deterministic semantic role assignment per passage (ROOF_HEAT_TRANSFER, RADIANT_BARRIER_MECHANISM, AIR_SPACE_REQUIREMENT, ATTIC_VENTILATION, DUST_DEGRADATION).
  */
 export function extractPassagesFromText(
   sourceId: string,
@@ -326,46 +340,53 @@ export function extractPassagesFromText(
 
     if (chunk.length < 50) return;
 
-    // Ignore non-substantive / external / historical sections that do not apply to modern building claims
-    if (/\b(?:External links|References|See also|Further reading|Space exploration|Apollo|History|Window treatments|Canada)\b/i.test(heading)) {
+    // Ignore non-substantive / external / historical / off-roof sections that do not apply to roof building claims
+    if (/\b(?:External links|References|See also|Further reading|Space exploration|Apollo|History|Window treatments|Canada|Walls|Wall)\b/i.test(heading)) {
       return;
     }
 
+    // Determine deterministic semantic role
+    let semanticRole: EvidenceSemanticRole | undefined;
+    if (/\b(?:dust accumulation on the reflective surface|when dust settles on an upward-facing radiant barrier|dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates)\b/i.test(chunk)) {
+      semanticRole = 'DUST_DEGRADATION';
+    } else if (/\b(?:attic ventilation works synergistically with radiant barriers to exhaust warm attic air|proper attic ventilation|exhaust warm attic air via soffit and ridge vents|soffit and ridge vents)\b/i.test(chunk)) {
+      semanticRole = 'ATTIC_VENTILATION';
+    } else if (/\b(?:must face an open air space|facing an open air space|open space or adjacent air space|air gap|adjacent air space|direct contact with another building material, heat is transferred by direct conduction|dual air spaces are created|facing into various air spaces|facing air spaces)\b/i.test(chunk)) {
+      semanticRole = 'AIR_SPACE_REQUIREMENT';
+    } else if (/\b(?:heating the roofing material|travels by conduction through the roofing|conduction through the roofing materials)\b/i.test(chunk)) {
+      semanticRole = 'ROOF_HEAT_TRANSFER';
+    } else if (/\b(?:reflects radiant heat rather than absorbing it|radiates its gained heat energy onto the cooler attic surfaces|radiate heat downward through the roof space|heat radiated from the hot roof is reflected|reflects thermal radiation and reduces heat transfer|supplemented with thermal insulation that slows down heat transfer by conduction or convection|not bulk insulation)\b/i.test(chunk)) {
+      semanticRole = 'RADIANT_BARRIER_MECHANISM';
+    }
+
+    if (!semanticRole) return;
+
     const matchedClaims: string[] = [];
 
-    // CLM-001A & CLM-001B: Heating of roofing material from solar radiation and conduction to attic
-    if (/\b(?:heating the roofing material|travels by conduction through the roofing|conduction through the roofing materials)\b/i.test(chunk)) {
-      matchedClaims.push('CLM-001A', 'CLM-001B');
-    }
-
-    // CLM-002: Radiant heat transfer across the roof cavity / attic to cooler surfaces
-    if (/\b(?:reflects radiant heat rather than absorbing it|radiates its gained heat energy onto the cooler attic surfaces|radiate heat downward through the roof space|heat radiated from the hot roof is reflected|reflects thermal radiation and reduces heat transfer)\b/i.test(chunk) && !/\b(?:dust)\b/i.test(chunk)) {
-      if (!matchedClaims.includes('CLM-002')) matchedClaims.push('CLM-002');
-    }
-
-    // CLM-003: Air space requirement
-    if (/\b(?:must face an open air space|facing an open air space|open space or adjacent air space|air gap|adjacent air space|direct contact with another building material, heat is transferred by direct conduction|dual air spaces are created|facing into various air spaces|facing air spaces)\b/i.test(chunk)) {
-      if (!matchedClaims.includes('CLM-003')) matchedClaims.push('CLM-003');
-    }
-
-    // CLM-004: Not bulk insulation / supplemented with thermal insulation
-    if (/\b(?:supplemented with thermal insulation that slows down heat transfer by conduction or convection|not a substitute for proper attic ventilation or thermal insulation|not bulk insulation)\b/i.test(chunk)) {
-      if (!matchedClaims.includes('CLM-004')) matchedClaims.push('CLM-004');
-    }
-
-    // CLM-005: Attic ventilation necessity / heat trap
-    if (/\b(?:attic ventilation works synergistically with radiant barriers to exhaust warm attic air|proper attic ventilation)\b/i.test(chunk) && !/\b(?:dust)\b/i.test(chunk)) {
-      if (!matchedClaims.includes('CLM-005')) matchedClaims.push('CLM-005');
-    }
-
-    // CLM-006: Balanced airflow paths (soffit and ridge vents)
-    if (/\b(?:exhaust warm attic air via soffit and ridge vents|soffit and ridge vents)\b/i.test(chunk)) {
-      if (!matchedClaims.includes('CLM-006')) matchedClaims.push('CLM-006');
-    }
-
-    // CLM-007A: Dust accumulation degrades radiant barrier emissivity/reflectivity
-    if (/\b(?:dust accumulation on the reflective surface|when dust settles on an upward-facing radiant barrier|dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates)\b/i.test(chunk)) {
-      if (!matchedClaims.includes('CLM-007A')) matchedClaims.push('CLM-007A');
+    // Map claims strictly according to semantic role and specific evidence content
+    if (semanticRole === 'ROOF_HEAT_TRANSFER') {
+      if (/\b(?:heating the roofing material|travels by conduction through the roofing|conduction through the roofing materials)\b/i.test(chunk)) {
+        matchedClaims.push('CLM-001A', 'CLM-001B');
+      }
+      if (/\b(?:radiates its gained heat energy onto the cooler attic surfaces|radiate heat downward through the roof space|heat radiated from the hot roof is reflected|reflects radiant heat rather than absorbing it)\b/i.test(chunk)) {
+        matchedClaims.push('CLM-002');
+      }
+    } else if (semanticRole === 'RADIANT_BARRIER_MECHANISM') {
+      if (/\b(?:reflects radiant heat rather than absorbing it|radiates its gained heat energy onto the cooler attic surfaces|radiate heat downward through the roof space|heat radiated from the hot roof is reflected|reflects thermal radiation and reduces heat transfer)\b/i.test(chunk)) {
+        matchedClaims.push('CLM-002');
+      }
+      if (/\b(?:supplemented with thermal insulation that slows down heat transfer by conduction or convection|not bulk insulation)\b/i.test(chunk)) {
+        matchedClaims.push('CLM-004A', 'CLM-004');
+      }
+    } else if (semanticRole === 'AIR_SPACE_REQUIREMENT') {
+      matchedClaims.push('CLM-003', 'CLM-004B', 'CLM-004');
+    } else if (semanticRole === 'ATTIC_VENTILATION') {
+      matchedClaims.push('CLM-005');
+      if (/\b(?:soffit and ridge vents|exhaust warm attic air via soffit and ridge vents)\b/i.test(chunk)) {
+        matchedClaims.push('CLM-006');
+      }
+    } else if (semanticRole === 'DUST_DEGRADATION') {
+      matchedClaims.push('CLM-007A');
     }
 
     if (matchedClaims.length === 0) return;
@@ -381,6 +402,9 @@ export function extractPassagesFromText(
           existing.supports_claim_ids!.push(cid);
         }
       }
+      if (!existing.semantic_role) {
+        existing.semantic_role = semanticRole;
+      }
     } else {
       const canonicalIndex = passageByHash.size + 1;
       passageByHash.set(canonicalKey, {
@@ -394,7 +418,8 @@ export function extractPassagesFromText(
         relevance: derivePassageRelevance(matchedClaims),
         claim_relationship: matchedClaims.includes('CLM-007A') ? 'CONTRAST_LIMITATION' : 'DIRECT_SUPPORT',
         content_hash: excerptHash,
-        supports_claim_ids: matchedClaims
+        supports_claim_ids: matchedClaims,
+        semantic_role: semanticRole
       });
     }
   };

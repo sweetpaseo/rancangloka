@@ -442,6 +442,30 @@ export interface EvidenceSource {
   quality_profile?: SourceQualityProfile;
 }
 
+export type EvidenceSemanticRole =
+  | 'ROOF_HEAT_TRANSFER'
+  | 'RADIANT_BARRIER_MECHANISM'
+  | 'AIR_SPACE_REQUIREMENT'
+  | 'ATTIC_VENTILATION'
+  | 'DUST_DEGRADATION'
+  | 'MATERIAL_PROPERTY'
+  | 'INSTALLATION_GUIDANCE';
+
+export const CLAIM_ALLOWED_SEMANTIC_ROLES: Record<string, EvidenceSemanticRole[]> = {
+  'CLM-001A': ['ROOF_HEAT_TRANSFER', 'MATERIAL_PROPERTY'],
+  'CLM-001B': ['ROOF_HEAT_TRANSFER', 'MATERIAL_PROPERTY'],
+  'CLM-002': ['ROOF_HEAT_TRANSFER', 'RADIANT_BARRIER_MECHANISM'],
+  'CLM-003': ['AIR_SPACE_REQUIREMENT'],
+  'CLM-004': ['RADIANT_BARRIER_MECHANISM', 'AIR_SPACE_REQUIREMENT'],
+  'CLM-004A': ['RADIANT_BARRIER_MECHANISM'],
+  'CLM-004B': ['AIR_SPACE_REQUIREMENT'],
+  'CLM-005': ['ATTIC_VENTILATION'],
+  'CLM-006': ['ATTIC_VENTILATION'],
+  'CLM-007A': ['DUST_DEGRADATION'],
+  'CLM-007B': ['INSTALLATION_GUIDANCE'],
+  'CLM-008': []
+};
+
 export interface EvidencePassage {
   passage_id: string;
   source_id: string;
@@ -450,6 +474,7 @@ export interface EvidencePassage {
   extracted_at: string;
   content_hash?: string;
   supports_claim_ids: string[];
+  semantic_role?: EvidenceSemanticRole;
   limitations?: string;
 }
 
@@ -825,9 +850,77 @@ export function auditEvidencePackProvenance(
         }
       }
     }
+
+    // Phase 16 (EDITORIAL-RUNTIME-3B-STABILIZE): Semantic Claim-Passage Entailment & Boundary Contract
+    for (const claim of claims) {
+      const allowedRoles = CLAIM_ALLOWED_SEMANTIC_ROLES[claim.claim_id];
+      if (Array.isArray(claim.evidence_passage_ids)) {
+        for (const pid of claim.evidence_passage_ids) {
+          const passage = passageMap.get(pid);
+          if (passage) {
+            // Check 1: Walls passage must NOT support roof thermal/mass/conductivity or dust claims
+            const locatorIsWall = /\b(?:Walls|Wall)\b/i.test(passage.locator || '') ||
+              /\b(?:vented wall skin|sheathing to create a vented air space between the radiant barrier and the siding)\b/i.test(passage.exact_or_normalized_excerpt || '');
+            if (locatorIsWall && (claim.claim_id === 'CLM-001A' || claim.claim_id === 'CLM-001B' || claim.claim_id === 'CLM-007A')) {
+              summary.unverified_claims.push(
+                `INVALID_PASSAGE_CLAIM_ENTAILMENT: Passage '${pid}' dari locator '${passage.locator}' tidak dapat mendukung klaim '${claim.claim_id}'. Topik dinding tidak membuktikan properti atap atau degradasi debu.`
+              );
+              summary.requires_provenance_failure = true;
+              summary.audit_reasons.push(
+                `Passage '${pid}' (Walls) tidak memenuhi syarat entailment untuk '${claim.claim_id}'.`
+              );
+            }
+
+            // Check 2: Semantic role compatibility
+            if (passage.semantic_role && allowedRoles) {
+              if (allowedRoles.length > 0 && !allowedRoles.includes(passage.semantic_role)) {
+                summary.unverified_claims.push(
+                  `SEMANTIC_ROLE_MISMATCH: Passage '${pid}' dengan peran '${passage.semantic_role}' tidak kompatibel dengan klaim '${claim.claim_id}' (peran yang diizinkan: ${allowedRoles.join(', ')}).`
+                );
+                summary.requires_provenance_failure = true;
+                summary.audit_reasons.push(
+                  `Peran semantik passage '${passage.semantic_role}' tidak dapat digunakan untuk membuktikan klaim '${claim.claim_id}'.`
+                );
+              }
+            }
+
+            // Check 3: Specific adversarial mismatch checks
+            // Dust passage -> conductivity or ventilation
+            const isDustPassage = passage.semantic_role === 'DUST_DEGRADATION' || /\bdust\b/i.test(passage.exact_or_normalized_excerpt || '');
+            if (isDustPassage && (claim.claim_id === 'CLM-001B' || claim.claim_id === 'CLM-005' || claim.claim_id === 'CLM-006')) {
+              summary.unverified_claims.push(
+                `SEMANTIC_ROLE_MISMATCH: Passage debu '${pid}' tidak dapat mendukung klaim konduktivitas atau ventilasi '${claim.claim_id}'.`
+              );
+              summary.requires_provenance_failure = true;
+              summary.audit_reasons.push(`Passage debu tidak dapat membuktikan ${claim.claim_id}.`);
+            }
+
+            // Ventilation passage -> bulk insulation property
+            const isVentPassage = passage.semantic_role === 'ATTIC_VENTILATION' || /\battic ventilation\b/i.test(passage.exact_or_normalized_excerpt || '');
+            if (isVentPassage && (claim.claim_id === 'CLM-004A' || (claim.claim_id === 'CLM-004' && !claim.statement.includes('ventilasi')))) {
+              summary.unverified_claims.push(
+                `SEMANTIC_ROLE_MISMATCH: Passage ventilasi '${pid}' tidak dapat mendukung klaim insulasi massa '${claim.claim_id}'.`
+              );
+              summary.requires_provenance_failure = true;
+              summary.audit_reasons.push(`Passage ventilasi tidak dapat membuktikan insulasi massa ${claim.claim_id}.`);
+            }
+
+            // Air space passage -> unrelated metal material-property claim (CLM-001A, CLM-001B)
+            const isAirSpacePassage = passage.semantic_role === 'AIR_SPACE_REQUIREMENT';
+            if (isAirSpacePassage && (claim.claim_id === 'CLM-001A' || claim.claim_id === 'CLM-001B')) {
+              summary.unverified_claims.push(
+                `SEMANTIC_ROLE_MISMATCH: Passage rongga udara '${pid}' tidak dapat mendukung klaim sifat fisik material lembaran metal '${claim.claim_id}'.`
+              );
+              summary.requires_provenance_failure = true;
+              summary.audit_reasons.push(`Passage rongga udara tidak dapat membuktikan sifat fisik lembaran ${claim.claim_id}.`);
+            }
+          }
+        }
+      }
+    }
   }
 
-  // Phase 9 & 10 (EDITORIAL-SOURCE-ACQUISITION-1 & EDITORIAL-RUNTIME-3B): Author-Safe Claims Audit
+  // Phase 9, 10 & 16 (EDITORIAL-SOURCE-ACQUISITION-1, 3B & 3B-STABILIZE): Author-Safe Claims Audit & Invariants
   if (Array.isArray(evidencePack.author_safe_claims)) {
     const claimsById = new Map<string, EvidenceClaim>();
     for (const c of claims) {
@@ -841,6 +934,28 @@ export function auditEvidencePackProvenance(
         (s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED'
       );
       const hasPassages = Array.isArray(underlying?.evidence_passage_ids) && underlying.evidence_passage_ids.length > 0;
+
+      // Invariant: AUTHOR_SAFE_STRENGTH <= EVIDENCE_STRENGTH
+      if (underlying) {
+        if (underlying.evidence_status === 'SUPPORTED' && safe.support_level === 'VERIFIED') {
+          summary.missing_provenance_claims.push(
+            `AUTHOR_SAFE_STRENGTH_OVERREACH: Klaim aman '${safe.claim_id}' berstatus VERIFIED melampaui status bukti inventaris SUPPORTED.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Kekuatan klaim aman '${safe.claim_id}' tidak boleh melampaui kekuatan bukti inventaris (AUTHOR_SAFE_STRENGTH <= EVIDENCE_STRENGTH).`
+          );
+        }
+        if (underlying.evidence_status === 'PARTIALLY_SUPPORTED' && (safe.support_level === 'VERIFIED' || safe.support_level === 'SUPPORTED')) {
+          summary.missing_provenance_claims.push(
+            `AUTHOR_SAFE_STRENGTH_OVERREACH: Klaim aman '${safe.claim_id}' berstatus ${safe.support_level} melampaui status bukti dasar PARTIALLY_SUPPORTED.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Kekuatan klaim aman '${safe.claim_id}' tidak boleh melampaui kekuatan bukti dasar.`
+          );
+        }
+      }
 
       // Requirement 5: Unsourced technical claims CANNOT enter authoring
       const packHasPassagesOrRetrieval = (Array.isArray(evidencePack.evidence_passages) && evidencePack.evidence_passages.length > 0) ||
@@ -859,6 +974,49 @@ export function auditEvidencePackProvenance(
           summary.requires_provenance_failure = true;
           summary.audit_reasons.push(
             `Klaim tanpa sumber (${safe.claim_id}) dilarang masuk ke author_safe_claims dengan allowed_for_authoring=true.`
+          );
+        }
+      }
+
+      // Recommendation Derivation Integrity: Derived claims must be valid and allowed for authoring
+      if (isRecommendation && Array.isArray(underlying?.derived_from_claim_ids)) {
+        for (const derivedId of underlying.derived_from_claim_ids) {
+          const derivedClaim = claimsById.get(derivedId);
+          const derivedSafe = evidencePack.author_safe_claims?.find(c => c.claim_id === derivedId);
+          if (!derivedClaim) {
+            summary.missing_provenance_claims.push(
+              `RECOMMENDATION_DERIVED_FROM_UNKNOWN_CLAIM: Rekomendasi '${safe.claim_id}' diturunkan dari klaim '${derivedId}' yang tidak terdaftar.`
+            );
+            summary.requires_provenance_failure = true;
+          } else if (derivedSafe && !derivedSafe.allowed_for_authoring) {
+            summary.missing_provenance_claims.push(
+              `RECOMMENDATION_DERIVED_FROM_BLOCKED_CLAIM: Rekomendasi '${safe.claim_id}' diturunkan dari klaim '${derivedId}' yang diblokir untuk authoring (allowed_for_authoring = false).`
+            );
+            summary.requires_provenance_failure = true;
+            summary.audit_reasons.push(
+              `Rekomendasi editorial tidak boleh diturunkan dari klaim yang diblokir (${derivedId}).`
+            );
+          } else if (derivedClaim.action === 'RESEARCH_REQUIRED' || derivedClaim.action === 'REMOVE') {
+            summary.missing_provenance_claims.push(
+              `RECOMMENDATION_DERIVED_FROM_BLOCKED_CLAIM: Rekomendasi '${safe.claim_id}' diturunkan dari klaim '${derivedId}' dengan aksi ${derivedClaim.action}.`
+            );
+            summary.requires_provenance_failure = true;
+            summary.audit_reasons.push(
+              `Rekomendasi editorial tidak boleh diturunkan dari klaim berstatus ${derivedClaim.action} (${derivedId}).`
+            );
+          }
+        }
+
+        // Banning unjustified absolutes in recommendation statements
+        const hasUnjustifiedAbsolute = /\b(?:prioritas utama|selalu diperlukan)\b/i.test(underlying?.statement || '') &&
+          !/\b(?:sedangkan|pada bangunan|kondisi|tergantung)\b/i.test(underlying?.statement || '');
+        if (hasUnjustifiedAbsolute) {
+          summary.unverified_claims.push(
+            `UNJUSTIFIED_ABSOLUTE_RECOMMENDATION: Rekomendasi '${safe.claim_id}' memuat klausa mutlak tanpa kualifikasi skenario.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Rekomendasi ${safe.claim_id} dilarang menggunakan pernyataan mutlak tanpa diferensiasi kondisi fisik.`
           );
         }
       }
@@ -1004,13 +1162,21 @@ export function generateAuthorSafeClaims(claims: EvidenceClaim[]): AuthorSafeCla
     }
 
     if (isRecommendation) {
+      const derivedIds = claim.derived_from_claim_ids || [];
+      const hasBlockedDerived = derivedIds.some(did => {
+        const target = claims.find(c => c.claim_id === did);
+        return !target || target.action === 'RESEARCH_REQUIRED' || target.action === 'REMOVE' || (target.sources?.length === 0);
+      });
+
       result.push({
         claim_id: claim.claim_id,
         statement: claim.statement,
         support_level: 'SUPPORTED',
         applicability: claimSources[0]?.applicability || 'EDITORIAL_INFERENCE',
-        allowed_for_authoring: true,
-        qualification_required: 'Sajikan sebagai panduan keputusan editorial berbasis kondisi lapangan.'
+        allowed_for_authoring: !hasBlockedDerived,
+        qualification_required: hasBlockedDerived
+          ? 'RESEARCH_REQUIRED: Rekomendasi editorial diturunkan dari klaim yang belum terverifikasi.'
+          : 'Sajikan sebagai panduan keputusan editorial berbasis kondisi lapangan.'
       });
       continue;
     }
