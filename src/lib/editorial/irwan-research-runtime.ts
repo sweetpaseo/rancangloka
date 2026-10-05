@@ -47,7 +47,9 @@ import {
   type DiscoveredSourceCandidate,
   type RetrievedDocument,
   type ExtractedPassage,
-  type GeneralEvidenceRole
+  type GeneralEvidenceRole,
+  type SourceOrigin,
+  type CachedSnapshotProvenance
 } from './source-discovery.ts';
 
 import {
@@ -98,6 +100,7 @@ export interface IrwanResearchJobInput {
   editorialRequirements?: string[];
   expectedFinalGate?: string;
   milestone?: string;
+  execution_type?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
   operatorAuth: {
     authorizedBy: string;
     operatorRole?: string;
@@ -157,6 +160,8 @@ export interface IrwanRuntimeOptions {
   wikiSearchFn?: typeof searchWikipediaTechnical;
   wikiContentFn?: typeof fetchWikipediaPageContent;
   openTechnicalDocFn?: typeof fetchOpenTechnicalDocument;
+  executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
+  dryRun?: boolean;
 }
 
 // Helper to map a retrieved doc into an EvidenceSource entry with lawful provenance & URL resilience
@@ -178,7 +183,11 @@ export const mapDocToSource = (doc: RetrievedDocument, pageOrSection?: string): 
     retrieval_status: doc.retrieval_status,
     retrieval_method: doc.retrieval_method,
     retrieved_at: doc.retrieved_at,
-    http_status: 200,
+    http_status: doc.http_status ?? 200,
+    source_origin: doc.source_origin,
+    requested_url: doc.requested_url,
+    resolved_url: doc.resolved_url,
+    snapshot_provenance: doc.snapshot_provenance,
     content_location: doc.url || undefined,
     content_hash: doc.content_hash || undefined,
     snapshot_reference: 'LOCAL_SNAPSHOT_VERIFIED',
@@ -293,6 +302,17 @@ export async function executeGeneralizedResearchJob(
     wikiSourceId = 'SRC-OPEN-WIKI-DAMP';
   }
 
+  const isMockedTest = Boolean(options.wikiContentFn || options.crossRefSearchFn);
+  const isTestExecution = isMockedTest ||
+    Boolean(options.dryRun) ||
+    Boolean(input.taskId && input.taskId.toLowerCase().includes('test')) ||
+    Boolean((input as any).runId && String((input as any).runId).toUpperCase().includes('TEST'));
+
+  const executionType: 'REAL_RUNTIME_EXECUTION' | 'TEST' =
+    input.execution_type ||
+    options.executionType ||
+    (isTestExecution ? 'TEST' : 'REAL_RUNTIME_EXECUTION');
+
   // A. Retrieve Wikipedia
   addTraceEvent('SOURCE_RETRIEVAL_STARTED', `Irwan memulai pengambilan teks sumber sekunder Wikipedia untuk "${wikiTitle}".`);
   const wikiArticle = await wikiContent(wikiTitle, { fetchFn: options.fetchFn });
@@ -316,6 +336,9 @@ export async function executeGeneralizedResearchJob(
       read_status: 'READ_AND_EXTRACTED',
       extracted_passages: passages,
       applicability: 'UNIVERSAL_PHYSICS',
+      source_origin: wikiArticle.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'LIVE_RETRIEVAL'),
+      requested_url: wikiArticle.requested_url,
+      resolved_url: wikiArticle.resolved_url,
       limitations: `Sumber sekunder ensiklopedis: merangkum prinsip fisik dan sains bangunan untuk ${wikiTitle}.`,
       is_blocked: false
     });
@@ -325,38 +348,108 @@ export async function executeGeneralizedResearchJob(
   }
 
   // B. Retrieve Primary Institutional Document
-  const isMockedTest = Boolean(options.wikiContentFn || options.crossRefSearchFn);
   const openDocFn = options.openTechnicalDocFn || (isMockedTest ? null : fetchOpenTechnicalDocument);
 
   if (openDocFn) {
     addTraceEvent('SOURCE_RETRIEVAL_STARTED', `Irwan memulai pengambilan dokumen institusional resmi [${openDocId}].`);
-    const doc = await openDocFn(openDocId, { fetchFn: options.fetchFn });
+    let doc: any = null;
+    try {
+      doc = await openDocFn(openDocId, { fetchFn: options.fetchFn });
+    } catch (err: any) {
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Pengambilan dokumen institusional [${openDocId}] gagal: ${err.message || String(err)}.`);
+    }
+
     if (doc && doc.text) {
-      const docPassages = extractDynamicPassagesFromText(openDocId, doc.title, doc.text);
+      const docOrigin: SourceOrigin = doc.source_origin || (doc.snapshot_provenance ? 'VERIFIED_CACHED_SNAPSHOT' : 'SYNTHETIC_FIXTURE');
+
+      // Real Runtime Authenticity Rule & No Silent Fixture Fallback
+      if (executionType === 'REAL_RUNTIME_EXECUTION' && (docOrigin === 'TEST_FIXTURE' || docOrigin === 'SYNTHETIC_FIXTURE')) {
+        retrievedDocs.push({
+          source_id: openDocId,
+          title: doc.title,
+          publisher: doc.publisher,
+          url: doc.url,
+          canonical_url: doc.canonical_url,
+          source_classification: doc.source_classification || 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
+          authority_level: doc.authority_level || 'INSTITUTIONAL_OFFICIAL',
+          primary_vs_secondary: doc.primary_vs_secondary || 'SECONDARY',
+          retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+          retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
+          retrieved_at: new Date().toISOString(),
+          content_hash: doc.hash,
+          content_text: '',
+          content_length_bytes: 0,
+          read_status: 'UNAVAILABLE',
+          extracted_passages: [],
+          applicability: 'UNIVERSAL_PHYSICS',
+          source_origin: docOrigin,
+          requested_url: doc.requested_url || doc.url,
+          resolved_url: doc.resolved_url || doc.canonical_url,
+          limitations: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: Fixture tidak diizinkan sebagai sumber bukti pada eksekusi produksi nyata.',
+          is_blocked: true,
+          blocked_reason: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME'
+        });
+
+        addTraceEvent(
+          'SOURCE_RETRIEVAL_BLOCKED',
+          `Dokumen institusional [${openDocId}] ditolak: FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME (${docOrigin} tidak diizinkan di eksekusi produksi riil).`,
+          { source_id: openDocId, source_origin: docOrigin }
+        );
+      } else {
+        const docPassages = extractDynamicPassagesFromText(openDocId, doc.title, doc.text);
+        retrievedDocs.push({
+          source_id: openDocId,
+          title: doc.title,
+          publisher: doc.publisher,
+          url: doc.url,
+          canonical_url: doc.canonical_url,
+          source_classification: doc.source_classification || 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
+          authority_level: doc.authority_level || 'INSTITUTIONAL_OFFICIAL',
+          primary_vs_secondary: doc.primary_vs_secondary || 'SECONDARY',
+          retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+          retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
+          retrieved_at: new Date().toISOString(),
+          content_hash: doc.hash,
+          content_text: doc.text,
+          content_length_bytes: Buffer.byteLength(doc.text, 'utf8'),
+          read_status: 'READ_AND_EXTRACTED',
+          extracted_passages: docPassages,
+          applicability: 'UNIVERSAL_PHYSICS',
+          source_origin: docOrigin,
+          requested_url: doc.requested_url || doc.url,
+          resolved_url: doc.resolved_url || doc.canonical_url,
+          snapshot_provenance: doc.snapshot_provenance,
+          limitations: `Pedoman institusional sains bangunan resmi (${doc.publisher}).`,
+          is_blocked: false
+        });
+
+        addTraceEvent('SOURCE_RETRIEVED', `Dokumen resmi institusional "${doc.title}" (${doc.publisher}) berhasil diunduh.`, { source_id: openDocId });
+        addTraceEvent('SOURCE_READ', `Irwan membaca panduan institusional lengkap dan mengekstrak ${docPassages.length} bagian bukti terverifikasi.`, { source_id: openDocId, count: docPassages.length });
+      }
+    } else {
       retrievedDocs.push({
         source_id: openDocId,
-        title: doc.title,
-        publisher: doc.publisher,
-        url: doc.url,
-        canonical_url: doc.canonical_url,
-        source_classification: doc.source_classification || 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
-        authority_level: doc.authority_level || 'INSTITUTIONAL_OFFICIAL',
-        primary_vs_secondary: doc.primary_vs_secondary || 'SECONDARY',
-        retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+        title: `Dokumen Resmi Institusional [${openDocId}]`,
+        publisher: 'Institutional Authority',
+        url: null,
+        source_classification: 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
+        authority_level: 'INSTITUTIONAL_OFFICIAL',
+        primary_vs_secondary: 'SECONDARY',
+        retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
         retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
         retrieved_at: new Date().toISOString(),
-        content_hash: doc.hash,
-        content_text: doc.text,
-        content_length_bytes: Buffer.byteLength(doc.text, 'utf8'),
-        read_status: 'READ_AND_EXTRACTED',
-        extracted_passages: docPassages,
+        content_hash: null,
+        content_text: null,
+        content_length_bytes: 0,
+        read_status: 'UNAVAILABLE',
+        extracted_passages: [],
         applicability: 'UNIVERSAL_PHYSICS',
-        limitations: `Pedoman institusional sains bangunan resmi (${doc.publisher}).`,
-        is_blocked: false
+        source_origin: 'SYNTHETIC_FIXTURE',
+        limitations: 'SOURCE_RETRIEVAL_FAILED: Pengambilan dokumen institusional resmi gagal atau dokumen tidak ditemukan.',
+        is_blocked: true,
+        blocked_reason: 'SOURCE_RETRIEVAL_FAILED'
       });
-
-      addTraceEvent('SOURCE_RETRIEVED', `Dokumen resmi institusional "${doc.title}" (${doc.publisher}) berhasil diunduh.`, { source_id: openDocId });
-      addTraceEvent('SOURCE_READ', `Irwan membaca panduan institusional lengkap dan mengekstrak ${docPassages.length} bagian bukti terverifikasi.`, { source_id: openDocId, count: docPassages.length });
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Pengambilan dokumen institusional [${openDocId}] gagal: SOURCE_RETRIEVAL_FAILED.`);
     }
   }
 
@@ -514,7 +607,11 @@ export async function executeGeneralizedResearchJob(
   }
 
   // F. Generate Author-Safe Claims
-  const authorSafeClaims = generateAuthorSafeClaims(claimInventory, { evidencePassages: allPassages });
+  const authorSafeClaims = generateAuthorSafeClaims(claimInventory, {
+    evidencePassages: allPassages,
+    executionType,
+    retrievedDocuments: retrievedDocs
+  });
 
   const verifiedSourceIds = Array.from(new Set(
     claimInventory.flatMap(c => (c.sources || [])
@@ -534,6 +631,7 @@ export async function executeGeneralizedResearchJob(
     evidence_pack_id: `pack_${taskId}`,
     topic: input.topic,
     article_topic: input.topic,
+    execution_type: executionType,
     confidence_overall: 'HIGH',
     discovered_sources: discoveredCandidates,
     retrieved_documents: retrievedDocs,
@@ -744,6 +842,11 @@ export async function executeEditorialResearchJob(
   // 4. Source Retrieval & Content Inspection (Distinguishing Retrieved from Metadata-only & Blocked)
   const retrievedDocs: RetrievedDocument[] = [];
   const blockedSourcesList: { source_id: string; title: string; reason: string; legal_status: string }[] = [];
+  const isMockedTest = Boolean(options.wikiContentFn || options.crossRefSearchFn);
+  const executionType: 'REAL_RUNTIME_EXECUTION' | 'TEST' =
+    input.execution_type ||
+    options.executionType ||
+    (isMockedTest || options.dryRun ? 'TEST' : 'REAL_RUNTIME_EXECUTION');
 
   // A1. Truthful Wikipedia Retrieval (Secondary Encyclopedic Source)
   addTraceEvent(
@@ -775,6 +878,9 @@ export async function executeEditorialResearchJob(
       read_status: 'READ_AND_EXTRACTED',
       extracted_passages: passages,
       applicability: 'UNIVERSAL_PHYSICS',
+      source_origin: wikiArticle.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'LIVE_RETRIEVAL'),
+      requested_url: wikiArticle.requested_url,
+      resolved_url: wikiArticle.resolved_url,
       limitations: 'Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.',
       is_blocked: false
     });
@@ -801,7 +907,6 @@ export async function executeEditorialResearchJob(
   }
 
   // A2. Open Institutional Primary Technical Document Retrieval (U.S. Department of Energy / Building Technologies Office)
-  const isMockedTest = Boolean(options.wikiContentFn || options.crossRefSearchFn);
   const openDocFn = options.openTechnicalDocFn || (isMockedTest ? null : fetchOpenTechnicalDocument);
 
   if (openDocFn) {
@@ -834,6 +939,9 @@ export async function executeEditorialResearchJob(
         read_status: 'READ_AND_EXTRACTED',
         extracted_passages: doePassages,
         applicability: 'UNIVERSAL_PHYSICS',
+        source_origin: doeDoc.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'SYNTHETIC_FIXTURE'),
+        requested_url: doeDoc.requested_url || doeDoc.url,
+        resolved_url: doeDoc.resolved_url || doeDoc.canonical_url,
         limitations: 'Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.',
         is_blocked: false
       });
@@ -1299,13 +1407,14 @@ export async function executeEditorialResearchJob(
   const rawPack: EvidencePackInput = {
     evidence_pack_id: `evpack_irwan_real_${Date.now()}`,
     topic: input.topic,
+    execution_type: executionType,
     compiled_by: 'evidence_researcher_lead',
     compiled_by_name: 'Irwan',
     compiled_at: new Date().toISOString(),
     research_runtime: {
       staff_id: 'evidence_researcher_lead',
       staff_name: 'Irwan',
-      execution_type: 'REAL_RUNTIME_EXECUTION',
+      execution_type: executionType,
       provider: 'open_apis_and_verified_documents',
       model: 'crossref+wikipedia_technical_inspection',
       generated_at: new Date().toISOString(),

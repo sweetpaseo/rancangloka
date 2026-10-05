@@ -31,6 +31,15 @@
  */
 
 import crypto from 'node:crypto';
+import {
+  type SourceOrigin,
+  type CachedSnapshotProvenance,
+  verifyCachedSnapshotProvenance,
+  createCachedSnapshotProvenance
+} from '../editorial/source-discovery.ts';
+
+export type { SourceOrigin, CachedSnapshotProvenance };
+export { verifyCachedSnapshotProvenance, createCachedSnapshotProvenance };
 
 export type HumanWritingDecision =
   | 'HUMAN_WRITING_PASS'
@@ -370,6 +379,7 @@ export type SourceRetrievalStatus =
   | 'SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED'
   | 'SOURCE_REFERENCE_KNOWN_BUT_NOT_RETRIEVED' // legacy alias
   | 'SOURCE_UNAVAILABLE'
+  | 'SOURCE_RETRIEVAL_FAILED'
   | 'SOURCE_PROVENANCE_UNKNOWN';
 
 export type ClaimSupportLevel =
@@ -757,6 +767,16 @@ export interface EvidenceSource {
   raw_content_preview?: string;
   limitations?: string;
   quality_profile?: SourceQualityProfile;
+
+  // Milestone: SOURCE-ACQUISITION-AUTHENTICITY-1
+  source_origin?: SourceOrigin;
+  requested_url?: string;
+  resolved_url?: string;
+  raw_content_hash?: string;
+  snapshot_provenance?: CachedSnapshotProvenance;
+  snapshot_created_at?: string;
+  snapshot_source_hash?: string;
+  snapshot_verification_status?: 'VERIFIED_AUTHENTIC' | 'UNVERIFIED' | 'FAILED_INTEGRITY';
 }
 
 export type GeneralEvidenceRole =
@@ -857,6 +877,8 @@ export interface EvidencePassage {
   source_character_start?: number;
   source_character_end?: number;
   passage_nature?: PassageNature;
+  source_origin?: SourceOrigin;
+  snapshot_provenance?: CachedSnapshotProvenance;
 }
 
 export interface EvidenceClaim {
@@ -903,6 +925,8 @@ export interface EvidencePackInput {
   claim_inventory?: EvidenceClaim[];
   author_safe_claims?: AuthorSafeClaim[];
   evidence_passages?: EvidencePassage[];
+  retrieved_documents?: any[];
+  execution_type?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
   [key: string]: any;
 }
 
@@ -922,6 +946,13 @@ export interface ProvenanceAuditSummary {
   claim_support_map: Record<string, ClaimSupportLevel>;
   requires_provenance_failure: boolean;
   audit_reasons: string[];
+
+  // Milestone: SOURCE-ACQUISITION-AUTHENTICITY-1
+  live_retrieved_source_count: number;
+  verified_cached_snapshot_count: number;
+  test_fixture_source_count: number;
+  synthetic_fixture_source_count: number;
+  real_authoritative_source_count: number;
 }
 
 /**
@@ -937,6 +968,7 @@ export interface ProvenanceAuditOptions {
   researchQuestions?: any[];
   minOverlapScore?: number;
   legacyRoofFixtures?: boolean;
+  executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
 }
 
 export function isHistoricalRoofPack(
@@ -976,7 +1008,12 @@ export function auditEvidencePackProvenance(
     missing_provenance_claims: [],
     claim_support_map: {},
     requires_provenance_failure: false,
-    audit_reasons: []
+    audit_reasons: [],
+    live_retrieved_source_count: 0,
+    verified_cached_snapshot_count: 0,
+    test_fixture_source_count: 0,
+    synthetic_fixture_source_count: 0,
+    real_authoritative_source_count: 0
   };
 
   if (!evidencePack || !Array.isArray(evidencePack.claim_inventory)) {
@@ -1188,9 +1225,91 @@ export function auditEvidencePackProvenance(
     }
   }
 
-  const retrievedDocsList = Array.isArray(evidencePack.retrieved_documents)
-    ? evidencePack.retrieved_documents.filter(d => d.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED' || d.read_status === 'READ_AND_EXTRACTED')
-    : [];
+  const historicalRoofPack = isHistoricalRoofPack(evidencePack, options);
+  const executionType = options?.executionType || (evidencePack as any)?.execution_type || 'TEST';
+  const isRealRuntime = executionType === 'REAL_RUNTIME_EXECUTION';
+
+  const allRetrievedDocs = Array.isArray(evidencePack.retrieved_documents) ? evidencePack.retrieved_documents : [];
+  const docMap = new Map<string, any>();
+
+  let liveCount = 0;
+  let cachedCount = 0;
+  let testFixCount = 0;
+  let synthFixCount = 0;
+
+  for (const doc of allRetrievedDocs) {
+    if (doc.source_id) {
+      docMap.set(doc.source_id, doc);
+    }
+    const origin: SourceOrigin = doc.source_origin;
+    if (origin === 'LIVE_RETRIEVAL') {
+      liveCount++;
+    } else if (origin === 'VERIFIED_CACHED_SNAPSHOT') {
+      cachedCount++;
+    } else if (origin === 'TEST_FIXTURE') {
+      testFixCount++;
+    } else if (origin === 'SYNTHETIC_FIXTURE') {
+      synthFixCount++;
+    }
+
+    if (isRealRuntime && !historicalRoofPack) {
+      // 1. Fixture prohibition in real runtime
+      if (origin === 'TEST_FIXTURE' || origin === 'SYNTHETIC_FIXTURE') {
+        summary.unverified_claims.push(
+          `FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: Sumber '${doc.source_id}' adalah ${origin} dan dilarang digunakan dalam REAL_RUNTIME_EXECUTION.`
+        );
+        summary.requires_provenance_failure = true;
+        summary.audit_reasons.push(
+          `Sumber fixture (${doc.source_id}) dilarang digunakan dalam eksekusi produksi nyata.`
+        );
+      } else if (origin === 'VERIFIED_CACHED_SNAPSHOT') {
+        // 2. Snapshot provenance verification
+        const snapCheck = verifyCachedSnapshotProvenance(doc.snapshot_provenance, doc.content_text);
+        if (!snapCheck.isValid) {
+          summary.unverified_claims.push(
+            `CACHED_SNAPSHOT_PROVENANCE_INVALID: Sumber snapshot '${doc.source_id}' tidak memiliki bukti akuisisi yang valid (${snapCheck.reason}).`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Snapshot '${doc.source_id}' gagal verifikasi integritas rantai akuisisi.`
+          );
+        }
+      } else if (origin === 'LIVE_RETRIEVAL') {
+        // 3. Live retrieval acquisition provenance
+        if (!doc.url && !doc.requested_url) {
+          summary.unverified_claims.push(
+            `SOURCE_ACQUISITION_PROVENANCE_MISSING: Dokumen live retrieval '${doc.source_id}' tidak memiliki URL permintaan yang sah.`
+          );
+          summary.requires_provenance_failure = true;
+        }
+        if (!doc.content_hash) {
+          summary.unverified_claims.push(
+            `SOURCE_ACQUISITION_PROVENANCE_MISSING: Dokumen live retrieval '${doc.source_id}' tidak memiliki content_hash.`
+          );
+          summary.requires_provenance_failure = true;
+        }
+      } else if (!origin) {
+        summary.unverified_claims.push(
+          `SOURCE_ACQUISITION_PROVENANCE_MISSING: Sumber '${doc.source_id}' tidak menyatakan source_origin dalam REAL_RUNTIME_EXECUTION.`
+        );
+        summary.requires_provenance_failure = true;
+      }
+    }
+  }
+
+  summary.live_retrieved_source_count = liveCount;
+  summary.verified_cached_snapshot_count = cachedCount;
+  summary.test_fixture_source_count = testFixCount;
+  summary.synthetic_fixture_source_count = synthFixCount;
+  summary.real_authoritative_source_count = liveCount + cachedCount;
+
+  const retrievedDocsList = allRetrievedDocs.filter(d => {
+    if (d.retrieval_status !== 'SOURCE_RETRIEVED_AND_VERIFIED' && d.read_status !== 'READ_AND_EXTRACTED') return false;
+    if (isRealRuntime && !historicalRoofPack && (d.source_origin === 'TEST_FIXTURE' || d.source_origin === 'SYNTHETIC_FIXTURE')) {
+      return false;
+    }
+    return true;
+  });
 
   for (const doc of retrievedDocsList) {
     if (doc.source_id) {
@@ -1205,8 +1324,6 @@ export function auditEvidencePackProvenance(
   summary.retrieved_and_verified_sources_count = claimSourceRelCount;
   summary.metadata_only_sources_count = metadataOnlyRelCount;
   summary.unretrieved_sources_count = unretrievedRelCount;
-
-  const historicalRoofPack = isHistoricalRoofPack(evidencePack, options);
 
   // Applicability & Scope Audit: Metadata-based verification replacing country regexes
   for (const claim of claims) {
@@ -1636,6 +1753,36 @@ export function auditEvidencePackProvenance(
         }
       }
 
+      // SOURCE-ACQUISITION-AUTHENTICITY-1: Fixture-only author-safe claim check in REAL_RUNTIME_EXECUTION
+      if (isRealRuntime && !historicalRoofPack && safe.allowed_for_authoring && !isRecommendation) {
+        const supportingDocIds = new Set<string>();
+        if (Array.isArray(safe.evidence_passage_ids)) {
+          for (const pid of safe.evidence_passage_ids) {
+            const p = (evidencePack.evidence_passages || []).find((ep: any) => ep.passage_id === pid);
+            if (p?.source_id) supportingDocIds.add(p.source_id);
+          }
+        }
+        if (underlying?.sources) {
+          for (const s of underlying.sources) {
+            if (s.source_id) supportingDocIds.add(s.source_id);
+          }
+        }
+
+        const supportingDocs = Array.from(supportingDocIds).map(id => docMap.get(id)).filter(Boolean);
+        const hasRealSource = supportingDocs.some(d => d.source_origin === 'LIVE_RETRIEVAL' || d.source_origin === 'VERIFIED_CACHED_SNAPSHOT');
+        const isFixtureOnly = supportingDocs.length > 0 && supportingDocs.every(d => d.source_origin === 'TEST_FIXTURE' || d.source_origin === 'SYNTHETIC_FIXTURE');
+
+        if (isFixtureOnly || (!hasRealSource && supportingDocs.length > 0)) {
+          summary.missing_provenance_claims.push(
+            `FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: Klaim aman '${safe.claim_id}' hanya didukung oleh sumber fixture dan dilarang untuk authoring di lingkungan produksi riil.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Klaim aman '${safe.claim_id}' hanya didukung sumber fixture di eksekusi produksi.`
+          );
+        }
+      }
+
       if (!hasRetrieved) {
         // Must NOT produce SUPPORTED or VERIFIED in author_safe_claims
         if (safe.support_level === 'SUPPORTED' || safe.support_level === 'VERIFIED') {
@@ -1828,9 +1975,19 @@ export function generateAuthorSafeClaims(
     targetJurisdiction?: string;
     isForeignComparisonTopic?: boolean;
     articleContext?: string;
+    executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
+    retrievedDocuments?: any[];
   }
 ): AuthorSafeClaim[] {
   const result: AuthorSafeClaim[] = [];
+  const isRealExecution = options?.executionType === 'REAL_RUNTIME_EXECUTION';
+
+  const docsMap = new Map<string, any>();
+  if (Array.isArray(options?.retrievedDocuments)) {
+    for (const doc of options.retrievedDocuments) {
+      if (doc && doc.source_id) docsMap.set(doc.source_id, doc);
+    }
+  }
 
   const passagesById = new Map<string, EvidencePassage>();
   if (Array.isArray(options?.evidencePassages)) {
@@ -1842,10 +1999,66 @@ export function generateAuthorSafeClaims(
   for (const claim of claims) {
     const isRecommendation = claim.claim_class === 'editorial_recommendation' || claim.claim_class === 'EDITORIAL_RECOMMENDATION';
     const claimSources = Array.isArray(claim.sources) ? claim.sources : [];
-    const hasRetrieved = claimSources.some(
-      (s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED'
-    );
-    const hasPassages = Array.isArray(claim.evidence_passage_ids) && claim.evidence_passage_ids.length > 0;
+
+    // Helper to evaluate source authenticity in REAL_RUNTIME_EXECUTION
+    const isSourceAuthentic = (s: EvidenceSource): boolean => {
+      if (!isRealExecution) return true;
+      const origin: SourceOrigin | undefined = s.source_origin || docsMap.get(s.source_id)?.source_origin;
+      if (origin === 'LIVE_RETRIEVAL') return true;
+      if (origin === 'VERIFIED_CACHED_SNAPSHOT') {
+        const snap = s.snapshot_provenance || docsMap.get(s.source_id)?.snapshot_provenance;
+        return snap ? verifyCachedSnapshotProvenance(snap).isValid : false;
+      }
+      return false;
+    };
+
+    const authenticSources = claimSources.filter(s => isSourceAuthentic(s) && s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED');
+    const hasRetrieved = isRealExecution
+      ? authenticSources.length > 0
+      : claimSources.some(s => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED');
+
+    const authenticPassageIds = (claim.evidence_passage_ids || []).filter(pid => {
+      if (!isRealExecution) return true;
+      const p = passagesById.get(pid);
+      if (!p) return false;
+      const sId = p.source_id;
+      const src = claimSources.find(s => s.source_id === sId);
+      const origin = p.source_origin || src?.source_origin || docsMap.get(sId)?.source_origin;
+      if (origin === 'LIVE_RETRIEVAL') return true;
+      if (origin === 'VERIFIED_CACHED_SNAPSHOT') {
+        const snap = src?.snapshot_provenance || docsMap.get(sId)?.snapshot_provenance;
+        return snap ? verifyCachedSnapshotProvenance(snap).isValid : false;
+      }
+      return false;
+    });
+
+    const hasPassages = isRealExecution
+      ? authenticPassageIds.length > 0
+      : (Array.isArray(claim.evidence_passage_ids) && claim.evidence_passage_ids.length > 0);
+
+    // Fixture-only detection in real runtime
+    const hasAnyFixture = claimSources.some(s => {
+      const origin = s.source_origin || docsMap.get(s.source_id)?.source_origin;
+      return origin === 'TEST_FIXTURE' || origin === 'SYNTHETIC_FIXTURE';
+    }) || (claim.evidence_passage_ids || []).some(pid => {
+      const p = passagesById.get(pid);
+      const origin = p?.source_origin || docsMap.get(p?.source_id || '')?.source_origin;
+      return origin === 'TEST_FIXTURE' || origin === 'SYNTHETIC_FIXTURE';
+    });
+
+    const isFixtureOnlyInReal = isRealExecution && !isRecommendation && hasAnyFixture && !hasRetrieved && !hasPassages;
+    if (isFixtureOnlyInReal) {
+      result.push({
+        claim_id: claim.claim_id,
+        statement: claim.statement,
+        support_level: 'PARTIALLY_SUPPORTED',
+        applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
+        allowed_for_authoring: false,
+        source_provenance_blocked: true,
+        qualification_required: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: Klaim ini bersumber dari fixture dan dilarang masuk ke naskah penulisan produksi riil.'
+      });
+      continue;
+    }
 
     // Requirement 5: Unsourced technical claims cannot enter authoring!
     const packHasPassagesOrRetrieval = claims.some(
@@ -1995,7 +2208,7 @@ export function generateAuthorSafeClaims(
           : (isStandard
             ? `Rujukan standar: Terikat pada ketentuan standar [${scope.standards.join(', ')}].`
             : (claim.action === 'QUALIFY' ? 'Sajikan dengan batasan konteks yang jelas.' : undefined)),
-        evidence_passage_ids: claim.evidence_passage_ids
+        evidence_passage_ids: isRealExecution ? authenticPassageIds : claim.evidence_passage_ids
       });
     } else {
       // Find numbers in statement

@@ -33,6 +33,21 @@ export interface DiscoveredSourceCandidate {
   discovered_at: string;
 }
 
+export type SourceOrigin =
+  | 'LIVE_RETRIEVAL'
+  | 'VERIFIED_CACHED_SNAPSHOT'
+  | 'TEST_FIXTURE'
+  | 'SYNTHETIC_FIXTURE';
+
+export interface CachedSnapshotProvenance {
+  original_source_url: string;
+  original_retrieved_at: string;
+  original_http_status: number;
+  raw_snapshot_hash: string;
+  canonical_source_identity: string;
+  snapshot_integrity_hash: string;
+}
+
 export interface RetrievedDocument {
   source_id: string;
   title: string;
@@ -54,6 +69,17 @@ export interface RetrievedDocument {
   limitations: string;
   is_blocked: boolean;
   blocked_reason?: string;
+
+  // Milestone: SOURCE-ACQUISITION-AUTHENTICITY-1
+  source_origin?: SourceOrigin;
+  requested_url?: string;
+  resolved_url?: string;
+  http_status?: number;
+  raw_content_hash?: string;
+  snapshot_created_at?: string;
+  snapshot_source_hash?: string;
+  snapshot_verification_status?: 'VERIFIED_AUTHENTIC' | 'UNVERIFIED' | 'FAILED_INTEGRITY';
+  snapshot_provenance?: CachedSnapshotProvenance;
 }
 
 export type GeneralEvidenceRole =
@@ -299,7 +325,14 @@ export async function searchWikipediaTechnical(
 export async function fetchWikipediaPageContent(
   title: string,
   options: DiscoveryOptions = {}
-): Promise<{ text: string; hash: string } | null> {
+): Promise<{
+  text: string;
+  hash: string;
+  source_origin: SourceOrigin;
+  requested_url?: string;
+  resolved_url?: string;
+  http_status?: number;
+} | null> {
   const fetchFn = options.fetchFn || globalThis.fetch;
   const timeoutMs = options.timeoutMs || 15000;
 
@@ -326,7 +359,14 @@ export async function fetchWikipediaPageContent(
         if (rawText && typeof rawText === 'string' && rawText.trim()) {
           const cleanText = rawText.trim();
           const hash = crypto.createHash('sha256').update(cleanText, 'utf8').digest('hex');
-          return { text: cleanText, hash };
+          return {
+            text: cleanText,
+            hash,
+            source_origin: 'LIVE_RETRIEVAL',
+            requested_url: url,
+            resolved_url: url,
+            http_status: res.status
+          };
         }
       }
     }
@@ -353,7 +393,13 @@ Attic ventilation works synergistically with radiant barriers to exhaust warm at
 When dust settles on an upward-facing radiant barrier, dust accumulation on the reflective surface increases emissivity over time, which degrades reflective performance.
     `.trim();
     const hash = crypto.createHash('sha256').update(fallbackText, 'utf8').digest('hex');
-    return { text: fallbackText, hash };
+    return {
+      text: fallbackText,
+      hash,
+      source_origin: 'TEST_FIXTURE',
+      requested_url: url,
+      resolved_url: url
+    };
   }
 
   if (/\b(?:damp|moisture|waterproofing)\b/i.test(title)) {
@@ -374,7 +420,13 @@ Applying internal waterproofing coatings or impermeable paints over damp masonry
 Remediation must prioritize eliminating external water entry points, installing or repairing damp-proof courses, and improving sub-floor ventilation before applying breathable internal finish coats.
     `.trim();
     const hash = crypto.createHash('sha256').update(fallbackDampText, 'utf8').digest('hex');
-    return { text: fallbackDampText, hash };
+    return {
+      text: fallbackDampText,
+      hash,
+      source_origin: 'TEST_FIXTURE',
+      requested_url: url,
+      resolved_url: url
+    };
   }
 
   if (/\b(?:window|fenestration|upvc|aluminium)\b/i.test(title)) {
@@ -392,7 +444,13 @@ Acoustic insulation depends heavily on frame joint integrity and sealing gaskets
 Aluminium frames offer superior structural stiffness and fire resistance, with anodized or powder-coated finishes that resist extreme heat without warping. uPVC frames require UV stabilizers to resist tropical sunlight discoloration and internal galvanized steel reinforcement to prevent deflection on large spans.
     `.trim();
     const hash = crypto.createHash('sha256').update(fallbackWindowText, 'utf8').digest('hex');
-    return { text: fallbackWindowText, hash };
+    return {
+      text: fallbackWindowText,
+      hash,
+      source_origin: 'TEST_FIXTURE',
+      requested_url: url,
+      resolved_url: url
+    };
   }
 
   return null;
@@ -664,6 +722,9 @@ export async function fetchOpenTechnicalDocument(
   primary_vs_secondary?: 'SECONDARY' | 'PRIMARY';
   text: string;
   hash: string;
+  source_origin: SourceOrigin;
+  requested_url: string;
+  resolved_url: string;
 } | null> {
   const doc = OPEN_INSTITUTIONAL_DOCUMENTS[sourceId];
   if (!doc) return null;
@@ -680,9 +741,76 @@ export async function fetchOpenTechnicalDocument(
       authority_level: doc.authority_level,
       primary_vs_secondary: doc.primary_vs_secondary,
       text: cleanText,
-      hash
+      hash,
+      source_origin: 'SYNTHETIC_FIXTURE',
+      requested_url: doc.url,
+      resolved_url: doc.canonical_url
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * Verifies the integrity and authenticity of a cached snapshot against its stored text.
+ * Milestone: SOURCE-ACQUISITION-AUTHENTICITY-1
+ */
+export function verifyCachedSnapshotProvenance(
+  snapshot: CachedSnapshotProvenance | undefined,
+  actualText?: string | null
+): { isValid: boolean; reason?: string } {
+  if (!snapshot) {
+    return { isValid: false, reason: 'Snapshot provenance object is missing' };
+  }
+  if (!snapshot.original_source_url || !snapshot.original_retrieved_at) {
+    return { isValid: false, reason: 'Snapshot missing original_source_url or original_retrieved_at' };
+  }
+  if (snapshot.original_http_status !== 200) {
+    return { isValid: false, reason: `Original HTTP status must be 200, got ${snapshot.original_http_status}` };
+  }
+  if (!snapshot.raw_snapshot_hash || !snapshot.canonical_source_identity || !snapshot.snapshot_integrity_hash) {
+    return { isValid: false, reason: 'Snapshot missing raw_snapshot_hash, canonical_source_identity, or snapshot_integrity_hash' };
+  }
+  if (actualText !== null && actualText !== undefined) {
+    const textHash = crypto.createHash('sha256').update(actualText.trim(), 'utf8').digest('hex');
+    if (textHash !== snapshot.raw_snapshot_hash) {
+      return { isValid: false, reason: `Snapshot content hash mismatch: expected ${snapshot.raw_snapshot_hash}, got ${textHash}` };
+    }
+  }
+  const expectedIntegrity = crypto
+    .createHash('sha256')
+    .update(`${snapshot.canonical_source_identity}::${snapshot.original_source_url}::${snapshot.raw_snapshot_hash}::${snapshot.original_retrieved_at}`, 'utf8')
+    .digest('hex');
+  if (snapshot.snapshot_integrity_hash !== expectedIntegrity) {
+    return { isValid: false, reason: 'Snapshot integrity hash validation failed' };
+  }
+  return { isValid: true };
+}
+
+/**
+ * Creates an authentic CachedSnapshotProvenance token for previously retrieved documents.
+ * Milestone: SOURCE-ACQUISITION-AUTHENTICITY-1
+ */
+export function createCachedSnapshotProvenance(params: {
+  canonical_source_identity: string;
+  original_source_url: string;
+  original_retrieved_at: string;
+  original_http_status: number;
+  text: string;
+}): CachedSnapshotProvenance {
+  const cleanText = params.text.trim();
+  const raw_snapshot_hash = crypto.createHash('sha256').update(cleanText, 'utf8').digest('hex');
+  const snapshot_integrity_hash = crypto
+    .createHash('sha256')
+    .update(`${params.canonical_source_identity}::${params.original_source_url}::${raw_snapshot_hash}::${params.original_retrieved_at}`, 'utf8')
+    .digest('hex');
+
+  return {
+    canonical_source_identity: params.canonical_source_identity,
+    original_source_url: params.original_source_url,
+    original_retrieved_at: params.original_retrieved_at,
+    original_http_status: params.original_http_status,
+    raw_snapshot_hash,
+    snapshot_integrity_hash
+  };
 }
