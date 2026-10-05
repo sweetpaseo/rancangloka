@@ -396,10 +396,245 @@ export type SourceApplicability =
   | 'TECHNICAL_REFERENCE_FOREIGN' // backward compatibility
   | 'FOREIGN_BUILDING_CODE'
   | 'RESEARCH_STUDY'
-  | 'MANUFACTURER_DOCUMENTATION';
+  | 'MANUFACTURER_DOCUMENTATION'
+  | 'UNKNOWN_SCOPE';
 
 export type ClaimApplicability = SourceApplicability;
 
+export type ApplicabilityScopeKind =
+  | 'UNIVERSAL_PHYSICS'
+  | 'CLIMATE_DEPENDENT'
+  | 'MATERIAL_SYSTEM_SPECIFIC'
+  | 'REGION_SPECIFIC'
+  | 'JURISDICTION_SPECIFIC'
+  | 'STANDARD_SPECIFIC'
+  | 'UNKNOWN_SCOPE';
+
+export interface EvidenceScope {
+  applicability_kind: ApplicabilityScopeKind;
+  jurisdictions: string[];
+  standards: string[];
+  scope_basis?: string;
+}
+
+const SCOPE_RESTRICTION_ORDER: Record<ApplicabilityScopeKind, number> = {
+  UNKNOWN_SCOPE: 100, // most restricted / fail-closed
+  JURISDICTION_SPECIFIC: 90,
+  STANDARD_SPECIFIC: 80,
+  REGION_SPECIFIC: 70,
+  MATERIAL_SYSTEM_SPECIFIC: 60,
+  CLIMATE_DEPENDENT: 50,
+  UNIVERSAL_PHYSICS: 10 // broadest
+};
+
+export function narrowestEvidenceScope(scopes: EvidenceScope[]): EvidenceScope {
+  if (!scopes || scopes.length === 0) {
+    return { applicability_kind: 'UNKNOWN_SCOPE', jurisdictions: [], standards: [], scope_basis: 'empty scopes' };
+  }
+  let narrowest = scopes[0];
+  for (let i = 1; i < scopes.length; i++) {
+    const s = scopes[i];
+    const currRank = SCOPE_RESTRICTION_ORDER[narrowest.applicability_kind] || 0;
+    const nextRank = SCOPE_RESTRICTION_ORDER[s.applicability_kind] || 0;
+    if (nextRank > currRank) {
+      narrowest = s;
+    }
+  }
+  const allJurisdictions = Array.from(new Set(scopes.flatMap(s => s.jurisdictions || []))).filter(Boolean);
+  const allStandards = Array.from(new Set(scopes.flatMap(s => s.standards || []))).filter(Boolean);
+  return {
+    applicability_kind: narrowest.applicability_kind,
+    jurisdictions: allJurisdictions,
+    standards: allStandards,
+    scope_basis: narrowest.scope_basis || 'inherited from supporting sources'
+  };
+}
+
+/**
+ * Resolves structured EvidenceScope from evidence source or claim metadata.
+ * Domain-agnostic contract: replaces hardcoded country regexes as the primary source of truth.
+ * Invariant: Regulatory or standard claims without explicit jurisdiction or standard_id fail-close to UNKNOWN_SCOPE.
+ */
+export function resolveEvidenceScope(item: any): EvidenceScope {
+  if (!item || typeof item !== 'object') {
+    return {
+      applicability_kind: 'UNKNOWN_SCOPE',
+      jurisdictions: [],
+      standards: [],
+      scope_basis: 'item is null or non-object'
+    };
+  }
+
+  // 1. Direct explicit evidence_scope on item
+  if (item.evidence_scope && typeof item.evidence_scope === 'object') {
+    const kind: ApplicabilityScopeKind = item.evidence_scope.applicability_kind || 'UNKNOWN_SCOPE';
+    const jur = Array.isArray(item.evidence_scope.jurisdictions) ? item.evidence_scope.jurisdictions.filter(Boolean) : [];
+    const std = Array.isArray(item.evidence_scope.standards) ? item.evidence_scope.standards.filter(Boolean) : [];
+    return {
+      applicability_kind: kind,
+      jurisdictions: jur,
+      standards: std,
+      scope_basis: item.evidence_scope.scope_basis || 'explicit evidence_scope'
+    };
+  }
+
+  // 2. Structured metadata properties
+  const docType = String(item.document_type || item.source_classification || item.claim_class || '').toUpperCase();
+  const rawJurisdiction = item.jurisdiction || item.geographic_applicability;
+  const jurisdictions: string[] = Array.isArray(item.jurisdictions)
+    ? item.jurisdictions.filter(Boolean)
+    : (rawJurisdiction && typeof rawJurisdiction === 'string' && rawJurisdiction !== 'JURISDICTION_SPECIFIC' ? [rawJurisdiction] : []);
+
+  const rawStandardId = item.standard_id || item.standard;
+  const standards: string[] = Array.isArray(item.standards)
+    ? item.standards.filter(Boolean)
+    : (rawStandardId ? [String(rawStandardId)] : []);
+
+  // Check document type: REGULATION
+  const isRegulation = docType.includes('REGULATION') ||
+    docType.includes('BUILDING_CODE') ||
+    item.claim_class === 'regulatory_reference' ||
+    item.claim_class === 'REGULATORY_REFERENCE' ||
+    item.applicability === 'INDONESIAN_REGULATION' ||
+    item.applicability === 'FOREIGN_BUILDING_CODE';
+
+  if (isRegulation) {
+    if (item.applicability === 'INDONESIAN_REGULATION' && jurisdictions.length === 0) {
+      jurisdictions.push('Indonesia');
+    }
+    if (jurisdictions.length > 0) {
+      return {
+        applicability_kind: 'JURISDICTION_SPECIFIC',
+        jurisdictions,
+        standards,
+        scope_basis: 'regulation with explicit jurisdiction metadata'
+      };
+    }
+    // Fail-Closed: Regulation without reliable jurisdiction metadata => UNKNOWN_SCOPE
+    return {
+      applicability_kind: 'UNKNOWN_SCOPE',
+      jurisdictions: [],
+      standards,
+      scope_basis: 'REGULATION requires explicit jurisdiction metadata'
+    };
+  }
+
+  // Check document type: STANDARD
+  const isStandard = docType.includes('STANDARD') ||
+    item.applicability === 'STANDARD_SPECIFIC' ||
+    standards.length > 0;
+
+  if (isStandard) {
+    if (standards.length > 0) {
+      return {
+        applicability_kind: 'STANDARD_SPECIFIC',
+        jurisdictions,
+        standards,
+        scope_basis: 'standard with explicit standard_id metadata'
+      };
+    }
+    // Fail-Closed: STANDARD without standard identifier => UNKNOWN_SCOPE
+    return {
+      applicability_kind: 'UNKNOWN_SCOPE',
+      jurisdictions,
+      standards: [],
+      scope_basis: 'STANDARD requires explicit standard identifier metadata'
+    };
+  }
+
+  // Editorial recommendations are contextual synthesis / guidance
+  const isRecommendation = item.claim_class === 'editorial_recommendation' ||
+    item.claim_class === 'EDITORIAL_RECOMMENDATION' ||
+    item.applicability === 'EDITORIAL_INFERENCE';
+
+  if (isRecommendation) {
+    return {
+      applicability_kind: 'UNIVERSAL_PHYSICS',
+      jurisdictions: [],
+      standards: [],
+      scope_basis: 'editorial recommendation / inference'
+    };
+  }
+
+  // NON-AUTHORITATIVE HINT (REGEX_HINT != SEMANTIC_PROOF)
+  // Check text blob for jurisdiction-specific markers before accepting universal physics claim
+  const textBlob = `${item.statement || ''} ${item.relevance || ''} ${item.document_title || ''} ${item.locator || ''}`;
+  if (isJurisdictionSpecific(textBlob)) {
+    return {
+      applicability_kind: 'JURISDICTION_SPECIFIC',
+      jurisdictions: jurisdictions.length > 0 ? jurisdictions : ['Foreign (detected by legacy hint)'],
+      standards,
+      scope_basis: 'regex hint non-authoritative fallback (REGEX_HINT != SEMANTIC_PROOF)'
+    };
+  }
+
+  // Check physical mechanism / scientific guidance
+  const applicabilityBasis = String(item.applicability_basis || item.scope_basis || '').toLowerCase();
+  const isPhysicalBasis = applicabilityBasis.includes('physical mechanism') ||
+    applicabilityBasis.includes('physics') ||
+    docType === 'SCIENTIFIC_GUIDANCE' ||
+    item.applicability === 'UNIVERSAL_PHYSICS';
+
+  if (isPhysicalBasis) {
+    return {
+      applicability_kind: 'UNIVERSAL_PHYSICS',
+      jurisdictions: [],
+      standards: [],
+      scope_basis: item.applicability_basis || 'physical mechanism'
+    };
+  }
+
+  // Check legacy string applicability mappings
+  if (item.applicability === 'CLIMATE_DEPENDENT') {
+    return { applicability_kind: 'CLIMATE_DEPENDENT', jurisdictions, standards, scope_basis: 'legacy applicability' };
+  }
+  if (item.applicability === 'MATERIAL_SYSTEM_SPECIFIC') {
+    return { applicability_kind: 'MATERIAL_SYSTEM_SPECIFIC', jurisdictions, standards, scope_basis: 'legacy applicability' };
+  }
+  if (item.applicability === 'REGION_SPECIFIC') {
+    return { applicability_kind: 'REGION_SPECIFIC', jurisdictions, standards, scope_basis: 'legacy applicability' };
+  }
+  if (item.applicability === 'TECHNICAL_GUIDANCE_LOCAL' || item.applicability === 'INDONESIAN_TECHNICAL_GUIDANCE') {
+    return { applicability_kind: 'REGION_SPECIFIC', jurisdictions: ['Indonesia'], standards, scope_basis: 'local technical guidance' };
+  }
+  if (item.applicability === 'TECHNICAL_REFERENCE_FOREIGN') {
+    return { applicability_kind: 'JURISDICTION_SPECIFIC', jurisdictions: ['Foreign'], standards, scope_basis: 'foreign technical reference' };
+  }
+  if (item.applicability === 'JURISDICTION_SPECIFIC') {
+    if (jurisdictions.length > 0) {
+      return { applicability_kind: 'JURISDICTION_SPECIFIC', jurisdictions, standards, scope_basis: 'legacy jurisdiction specific' };
+    }
+    return { applicability_kind: 'UNKNOWN_SCOPE', jurisdictions: [], standards, scope_basis: 'JURISDICTION_SPECIFIC missing jurisdiction metadata' };
+  }
+
+  // If item has sources, inherit narrowest scope from sources
+  if (Array.isArray(item.sources) && item.sources.length > 0) {
+    return narrowestEvidenceScope(item.sources.map(resolveEvidenceScope));
+  }
+
+  // If not a regulation and not a standard, general technical claims default to UNIVERSAL_PHYSICS
+  if (!isRegulation && !isStandard) {
+    return {
+      applicability_kind: 'UNIVERSAL_PHYSICS',
+      jurisdictions: [],
+      standards: [],
+      scope_basis: 'general technical consensus'
+    };
+  }
+
+  return {
+    applicability_kind: 'UNKNOWN_SCOPE',
+    jurisdictions,
+    standards,
+    scope_basis: 'unresolved scope'
+  };
+}
+
+/**
+ * NON-AUTHORITATIVE HEURISTIC HINTS:
+ * CRITICAL RULE: REGEX_HINT != SEMANTIC_PROOF.
+ * These patterns exist ONLY as secondary diagnostic warnings, NOT as primary evidence proofs.
+ */
 export const JURISDICTION_SPECIFIC_PATTERNS = [
   /\b(?:UK Building Regulations|Building Regulations 2010|Homes \(Fitness for Human Habitation\) Act|Awaab's Law|Section 11 Landlord and Tenant Act|Housing Health and Safety Rating System|HHSRS|Approved Document [A-Z]|Part [A-Z] regulations)\b/i,
   /\b(?:IRC\b|International Residential Code|IBC\b|International Building Code|ASHRAE Standard|OSHA regulations|Title 24 California|HUD Guidelines)\b/i,
@@ -408,6 +643,7 @@ export const JURISDICTION_SPECIFIC_PATTERNS = [
 
 export function isJurisdictionSpecific(text: string): boolean {
   if (!text) return false;
+  // Non-authoritative hint: cannot independently prove jurisdiction validity
   return JURISDICTION_SPECIFIC_PATTERNS.some(pat => pat.test(text));
 }
 
@@ -930,7 +1166,7 @@ export function auditEvidencePackProvenance(
 
     // Phase 14 (EDITORIAL-RUNTIME-3A): Wikipedia cannot masquerade as Primary Research
     for (const src of claimSources) {
-      const isWiki = (src.canonical_url?.includes('wikipedia.org') || src.content_location?.includes('wikipedia.org') || src.source_id.includes('WIKI'));
+      const isWiki = (src.canonical_url?.includes('wikipedia.org') || src.content_location?.includes('wikipedia.org') || src.source_id?.includes('WIKI'));
       if (isWiki) {
         if (src.source_classification === 'PRIMARY_RESEARCH_DOCUMENT') {
           summary.unverified_claims.push(
@@ -970,19 +1206,45 @@ export function auditEvidencePackProvenance(
   summary.metadata_only_sources_count = metadataOnlyRelCount;
   summary.unretrieved_sources_count = unretrievedRelCount;
 
-  // Jurisdiction Specificity Check: UK/Foreign regulations must not be marked UNIVERSAL_PHYSICS
+  const historicalRoofPack = isHistoricalRoofPack(evidencePack, options);
+
+  // Applicability & Scope Audit: Metadata-based verification replacing country regexes
   for (const claim of claims) {
-    const claimText = `${claim.statement || ''} ${(claim as any).relevance || ''} ${(claim.sources || []).map(s => `${s.document_title || ''} ${s.page_or_section || ''}`).join(' ')}`;
-    if (isJurisdictionSpecific(claimText)) {
+    const scope = resolveEvidenceScope(claim);
+
+    // Rule 1: Regulations or standards with UNKNOWN_SCOPE must fail provenance
+    if (scope.applicability_kind === 'UNKNOWN_SCOPE') {
+      const docType = String((claim as any).document_type || claim.claim_class || '').toUpperCase();
+      const isRegOrStd = docType.includes('REGULATION') || docType.includes('STANDARD') ||
+        (claim.sources || []).some(s => {
+          const dt = String((s as any).document_type || s.source_classification || '').toUpperCase();
+          return dt.includes('REGULATION') || dt.includes('STANDARD');
+        });
+
+      if (isRegOrStd) {
+        summary.missing_provenance_claims.push(
+          `REGULATORY_SCOPE_UNKNOWN: Klaim '${claim.claim_id}' memuat regulasi/standar namun tidak memiliki metadata yurisdiksi atau identifier standar yang valid.`
+        );
+        summary.requires_provenance_failure = true;
+        summary.audit_reasons.push(
+          `Klaim regulasi/standar (${claim.claim_id}) berstatus UNKNOWN_SCOPE dan diblokir secara fail-closed.`
+        );
+      }
+    }
+
+    // Rule 2: Jurisdiction or Standard specific claims cannot be marked UNIVERSAL_PHYSICS
+    if (!historicalRoofPack && (scope.applicability_kind === 'JURISDICTION_SPECIFIC' || scope.applicability_kind === 'STANDARD_SPECIFIC')) {
       const isMarkedUniversal = claim.applicability === 'UNIVERSAL_PHYSICS' ||
         (claim.sources || []).some(s => s.applicability === 'UNIVERSAL_PHYSICS');
       if (isMarkedUniversal) {
         summary.unverified_claims.push(
-          `JURISDICTION_MISCLASSIFIED_AS_UNIVERSAL: Klaim '${claim.claim_id}' memuat regulasi/hukum yurisdiksi spesifik namun ditandai sebagai UNIVERSAL_PHYSICS.`
+          scope.applicability_kind === 'JURISDICTION_SPECIFIC'
+            ? `JURISDICTION_MISCLASSIFIED_AS_UNIVERSAL: Klaim '${claim.claim_id}' memuat regulasi/hukum yurisdiksi spesifik namun ditandai sebagai UNIVERSAL_PHYSICS.`
+            : `STANDARD_MISCLASSIFIED_AS_UNIVERSAL: Klaim '${claim.claim_id}' memuat standar spesifik namun ditandai sebagai UNIVERSAL_PHYSICS.`
         );
         summary.requires_provenance_failure = true;
         summary.audit_reasons.push(
-          `Regulasi dan undang-undang (${claim.claim_id}) wajib diklasifikasikan sebagai JURISDICTION_SPECIFIC, bukan UNIVERSAL_PHYSICS.`
+          `Regulasi dan standar (${claim.claim_id}) wajib diklasifikasikan sebagai JURISDICTION_SPECIFIC atau STANDARD_SPECIFIC, bukan UNIVERSAL_PHYSICS.`
         );
       }
     }
@@ -1616,28 +1878,47 @@ export function generateAuthorSafeClaims(
       continue;
     }
 
-    // Jurisdiction Specificity Check: UK / foreign laws must not enter Indonesian generic articles
-    const claimFullText = `${claim.statement || ''} ${(claim as any).relevance || ''} ${claimSources.map(s => `${s.document_title || ''} ${s.page_or_section || ''}`).join(' ')}`;
-    const isJurisdiction = claim.applicability === 'JURISDICTION_SPECIFIC' ||
-      claimSources.some(s => s.applicability === 'JURISDICTION_SPECIFIC') ||
-      isJurisdictionSpecific(claimFullText);
+    // Applicability & Scope Check via Structured EvidenceScope
+    const scope = resolveEvidenceScope(claim);
 
-    const allowForeignJurisdiction = options?.targetJurisdiction === 'UK' ||
-      options?.isForeignComparisonTopic === true ||
-      Boolean(options?.articleContext && /\b(?:UK|Inggris|United Kingdom|komparasi hukum luar negeri)\b/i.test(options.articleContext));
-
-    if (isJurisdiction && !allowForeignJurisdiction) {
+    // Fail-Closed Rule: UNKNOWN_SCOPE is prohibited from authoring
+    if (scope.applicability_kind === 'UNKNOWN_SCOPE') {
       result.push({
         claim_id: claim.claim_id,
         statement: claim.statement,
-        support_level: (claim.evidence_status as ClaimSupportLevel) || 'SUPPORTED',
-        applicability: 'JURISDICTION_SPECIFIC',
+        support_level: 'PARTIALLY_SUPPORTED',
+        applicability: 'UNKNOWN_SCOPE',
         allowed_for_authoring: false,
-        jurisdiction_blocked: true,
-        evidence_passage_ids: claim.evidence_passage_ids,
-        qualification_required: 'JURISDICTION_SPECIFIC: Regulasi/standar hukum ini spesifik yurisdiksi luar negeri (misal UK) dan diblokir untuk artikel umum Indonesia kecuali sebagai komparasi eksplisit.'
+        source_provenance_blocked: true,
+        qualification_required: `UNKNOWN_SCOPE: Cakupan penerapan bukti (${scope.scope_basis || 'tidak terdefinisi'}) belum valid dan dilarang untuk penulisan.`
       });
       continue;
+    }
+
+    // Jurisdiction Specificity Check: Non-Indonesian jurisdiction blocked for general Indonesian articles
+    if (scope.applicability_kind === 'JURISDICTION_SPECIFIC') {
+      const isIndonesian = scope.jurisdictions.some(j => /indonesia/i.test(j));
+      const targetJur = options?.targetJurisdiction?.toLowerCase();
+      const textBlob = `${claim.statement || ''} ${(claim as any).relevance || ''} ${claimSources.map(s => `${s.document_title || ''} ${s.page_or_section || ''}`).join(' ')}`.toLowerCase();
+      const matchesTarget = targetJur && (scope.jurisdictions.some(j => j.toLowerCase().includes(targetJur)) || textBlob.includes(targetJur));
+      const allowForeign = options?.isForeignComparisonTopic === true ||
+        Boolean(matchesTarget) ||
+        options?.targetJurisdiction === 'UK' ||
+        Boolean(options?.articleContext && /\b(?:UK|Inggris|United Kingdom|komparasi|studi banding|luar negeri)\b/i.test(options.articleContext));
+
+      if (!isIndonesian && !allowForeign) {
+        result.push({
+          claim_id: claim.claim_id,
+          statement: claim.statement,
+          support_level: (claim.evidence_status as ClaimSupportLevel) || 'SUPPORTED',
+          applicability: 'JURISDICTION_SPECIFIC',
+          allowed_for_authoring: false,
+          jurisdiction_blocked: true,
+          evidence_passage_ids: claim.evidence_passage_ids,
+          qualification_required: `JURISDICTION_SPECIFIC: Regulasi/standar hukum ini spesifik yurisdiksi luar negeri (${scope.jurisdictions.join(', ')}) dan diblokir untuk artikel umum Indonesia kecuali sebagai komparasi eksplisit.`
+        });
+        continue;
+      }
     }
 
     if (isRecommendation) {
@@ -1699,16 +1980,21 @@ export function generateAuthorSafeClaims(
       continue;
     }
 
+    const isJurisdiction = scope.applicability_kind === 'JURISDICTION_SPECIFIC';
+    const isStandard = scope.applicability_kind === 'STANDARD_SPECIFIC';
+
     if (hasRetrieved && hasPassages) {
       result.push({
         claim_id: claim.claim_id,
         statement: claim.statement,
         support_level: claim.evidence_status === 'VERIFIED' ? 'VERIFIED' : 'SUPPORTED',
-        applicability: isJurisdiction ? 'JURISDICTION_SPECIFIC' : (claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL'),
+        applicability: isJurisdiction ? 'JURISDICTION_SPECIFIC' : (isStandard ? 'STANDARD_SPECIFIC' : (claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL')),
         allowed_for_authoring: true,
         qualification_required: isJurisdiction
           ? 'Kualifikasi yurisdiksi: Wajib disebutkan secara eksplisit sebagai komparasi hukum/standar luar negeri dan bukan aturan otomatis Indonesia.'
-          : (claim.action === 'QUALIFY' ? 'Sajikan dengan batasan konteks yang jelas.' : undefined),
+          : (isStandard
+            ? `Rujukan standar: Terikat pada ketentuan standar [${scope.standards.join(', ')}].`
+            : (claim.action === 'QUALIFY' ? 'Sajikan dengan batasan konteks yang jelas.' : undefined)),
         evidence_passage_ids: claim.evidence_passage_ids
       });
     } else {
@@ -1728,7 +2014,7 @@ export function generateAuthorSafeClaims(
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-      const applicability = isJurisdiction ? 'JURISDICTION_SPECIFIC' : (claimSources[0]?.applicability || 'TECHNICAL_REFERENCE_FOREIGN');
+      const applicability = isJurisdiction ? 'JURISDICTION_SPECIFIC' : (isStandard ? 'STANDARD_SPECIFIC' : (claimSources[0]?.applicability || 'TECHNICAL_REFERENCE_FOREIGN'));
 
       result.push({
         claim_id: claim.claim_id,
