@@ -16,6 +16,79 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### RESEARCH-SOURCE-COVERAGE-1: Authentic Multi-Source Acquisition & Admissible Coverage Architecture 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan cacat arsitektur kalkulasi ketercakupan riset (*coverage accounting defect*) yang ditemukan pada `EDITORIAL FINAL CLEAN PROOF #3` (`run-runtime-final3.js`).
+  - Memisahkan secara ketat antara ketercakupan mentah/observabilitas (`raw_research_coverage_ratio`) dengan ketercakupan otoritas produksi (`admissible_evidence_coverage_ratio`).
+  - Menegakkan invarian nol-otoritas: jika jumlah sumber autentik riil adalah 0 (`authentic_source_count === 0`), maka ketercakupan bukti yang diakui (`admissible_evidence_coverage_ratio`) DILARANG > 0. Pelanggaran langsung menggugurkan paket dengan penolakan `ADMISSIBLE_COVERAGE_AUTHORITY_MISMATCH`.
+  - Mengimplementasikan HTTP Document Retriever generik dan terkendali (`fetchHttpDocument`) yang mendukung `text/html` dan `text/plain`, serta menolak PDF biner dengan `CONTENT_TYPE_NOT_SUPPORTED` secara jujur tanpa pemalsuan teks.
+  - Membangun modul identitas sumber (`establishSourceIdentity`) dan metrik keberagaman sumber (`calculateSourceDiversity`) yang mengukur jumlah dokumen autentik, publisher independen, ragam kelas sumber, dan risiko konsentrasi (`concentration_risk`).
+  - Menerapkan loop riset terarah celah (*gap-directed research loop*) dengan batas keras `MAX_RESEARCH_PASSES = 2` yang secara dinamis menghasilkan query spesifik peran semantik untuk menutup kategori pertanyaan riset yang belum terpenuhi.
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/editorial/research-questions.ts`:
+    - Pembaruan tipe `QuestionCoverageEvaluation` dan `ResearchCoverageResult` dengan field eksplisit `is_addressed_raw`, `is_addressed_admissible`, `raw_claim_ids`, `admissible_claim_ids`, dll.
+    - Implementasi invarian `ADMISSIBLE_COVERAGE_AUTHORITY_MISMATCH`.
+    - Implementasi `generateQuestionSpecificQueries()` untuk loop riset terarah.
+  - `src/lib/editorial/source-discovery.ts`:
+    - Implementasi `fetchHttpDocument()`, `sanitizeHtmlToPlainText()`, `establishSourceIdentity()`, dan `calculateSourceDiversity()`.
+  - `src/lib/editorial/topic-alignment.ts`:
+    - Penerusan `rejection_code` (`ADMISSIBLE_COVERAGE_AUTHORITY_MISMATCH` / `RESEARCH_COVERAGE_INSUFFICIENT`) pada gerbang pra-penulisan.
+  - `src/lib/editorial/irwan-research-runtime.ts`:
+    - Integrasi loop riset 2 putaran terarah celah, pengambilan dokumen HTTP multi-sumber, dan kalkulasi risiko konsentrasi.
+  - `scripts/test-research-source-coverage.js`:
+    - Pembuatan suite pengujian deterministik 12 tes (Test A s.d. L).
+- **Hasil Pengujian & Verifikasi:**
+  - `scripts/test-research-source-coverage.js`: **12/12 PASS**.
+  - `scripts/test-source-acquisition-authenticity.js`: **10/10 PASS**.
+  - `scripts/test-editorial-grounding-generalization-v2.js`: **12/12 PASS**.
+  - `scripts/test-editorial-evidence-grounding-hardening.js`: **11/11 PASS**.
+  - `scripts/test-joko-prompt-generalization.js`: **6/6 PASS**.
+  - `scripts/test-editorial-provider-resilience.js`: **11/11 PASS**.
+  - `scripts/test-editorial-runtime-4b-stabilize.js`: **11/11 PASS**.
+  - `scripts/test-editorial-runtime-4a-generalization.js`: **12/12 PASS**.
+  - `scripts/test-editorial-runtime-3b-stabilize.js`: **18/18 PASS**.
+  - `scripts/test-editorial-runtime-2.js`: **13/13 PASS**.
+  - `scripts/test-editorial-runtime-1.js`: **18/18 PASS**.
+  - `npx tsc --noEmit`: **0 errors (Bersih)**.
+- **Status & Stop Gate:**
+  - `git commit -m "fix(editorial): expand authentic research acquisition coverage"` (`273265c`).
+  - Berhenti aman pada: **`RESEARCH_SOURCE_COVERAGE_1_HUMAN_REVIEW_REQUIRED`**.
+
+---
+
+### SOURCE-ACQUISITION-AUTHENTICITY-1: Real Source vs Fixture Provenance Hardening 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan celah provenansi di mana fixture lokal sintetis (`SRC-OPEN-EPA-MOISTURE`) sebelumnya dapat diperlakukan setara dengan dokumen eksternal riil jika substring pencarian cocok.
+  - Memisahkan secara ketat asal-usul sumber: `LIVE_RETRIEVAL`, `VERIFIED_CACHED_SNAPSHOT`, `TEST_FIXTURE`, dan `SYNTHETIC_FIXTURE`.
+  - Menolak fixture lokal dalam mode `REAL_RUNTIME_EXECUTION` dengan kode `FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME`.
+  - Memastikan klaim yang hanya didukung oleh fixture memiliki `allowed_for_authoring = false`.
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/article/human-quality.ts`: Penambahan audit provenansi sumber `auditEvidencePackProvenance()`.
+  - `src/lib/editorial/source-discovery.ts` & `src/lib/editorial/irwan-research-runtime.ts`: Pelabelan asal usul sumber dan validasi rantai akuisisi snapshot.
+  - `scripts/test-source-acquisition-authenticity.js`: Suite 10 pengujian deterministik.
+- **Hasil Pengujian & Verifikasi:**
+  - `scripts/test-source-acquisition-authenticity.js`: **10/10 PASS**.
+  - Commit: `88a6ef1`.
+
+---
+
+### EDITORIAL-GROUNDING-GENERALIZATION-V2: Domain-Agnostic Grounding & Ledger Architecture 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengganti pencocokan kata kunci overfit dengan leksikon proposisi domain-agnostik pada ledger asersi artikel.
+  - Mengimplementasikan evaluasi semantik proposisi murni tanpa bergantung pada nomor ID klaim warisan.
+  - Mengevaluasi klaim majemuk (*compound claim*) dan yurisdiksi regulasi secara terisolasi.
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/editorial/claim-grounding.ts`: Rekonstruksi evaluasi entailment dan ledger asersi artikel.
+  - `scripts/test-editorial-grounding-generalization-v2.js`: Suite 12 pengujian deterministik.
+- **Hasil Pengujian & Verifikasi:**
+  - `scripts/test-editorial-grounding-generalization-v2.js`: **12/12 PASS**.
+  - Commit: `97059d5`.
+
+---
+
 ### JOKO-PROMPT-GENERALIZATION-1: Purging Legacy Domain Semantics & Deterministic Prompt Leak Audit 2026-10-05
 
 - **Tujuan & Ruang Lingkup:**
