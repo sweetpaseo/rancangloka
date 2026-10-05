@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "code": null,
+  "rejection_reason": null,
+  "static_prompt_domain_terms": [
+    "radiant barrier",
+    "doe radiant barrier",
+    "insulasi foil",
+    "aluminium foil",
+    "foil",
+    "ventilasi atap",
+    "ventilasi loteng",
+    "atap metal",
+    "metal roof",
+    "rongga atap",
+    "karat atap",
+    "kondensasi atap"
+  ],
+  "active_input_domain_terms": [],
+  "detected_static_domain_leaks": []
+}

@@ -33,7 +33,8 @@ import type {
 import {
   calculateOverallConfidence,
   generateAuthorSafeClaims,
-  calculateAuthorSafeMetrics
+  calculateAuthorSafeMetrics,
+  isJurisdictionSpecific
 } from '../article/human-quality.ts';
 
 import {
@@ -450,6 +451,14 @@ export async function executeGeneralizedResearchJob(
 
     const doc = retrievedDocs.find(d => d.source_id === p.source_id);
     const sourceEntry = doc ? mapDocToSource(doc, p.locator) : undefined;
+    const isJurisdiction = isJurisdictionSpecific(`${p.exact_or_normalized_excerpt || ''} ${p.locator || ''}`);
+
+    if (sourceEntry && isJurisdiction) {
+      sourceEntry.applicability = 'JURISDICTION_SPECIFIC';
+      if (sourceEntry.quality_profile) {
+        sourceEntry.quality_profile.geographic_applicability = 'JURISDICTION_SPECIFIC';
+      }
+    }
 
     claimInventory.push({
       claim_id: claimId,
@@ -457,10 +466,11 @@ export async function executeGeneralizedResearchJob(
       claim_class: 'technical_consensus',
       evidence_status: 'VERIFIED',
       provenance_retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+      applicability: isJurisdiction ? 'JURISDICTION_SPECIFIC' : (sourceEntry?.applicability || 'UNIVERSAL_PHYSICS'),
       sources: sourceEntry ? [sourceEntry] : [],
       evidence_passage_ids: [p.passage_id],
       confidence: 'HIGH',
-      action: 'KEEP',
+      action: isJurisdiction ? 'QUALIFY' : 'KEEP',
       relevance: `${p.semantic_role || 'Bukti teknis'}: ${p.locator}`,
       numeric_claim: false,
       semantic_role: p.semantic_role

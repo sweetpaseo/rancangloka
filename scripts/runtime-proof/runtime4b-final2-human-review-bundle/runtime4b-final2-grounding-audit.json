@@ -1,0 +1,15 @@
+{
+  "status": "DECLARED_GROUNDED",
+  "isValid": true,
+  "requiresReview": false,
+  "declaredClaimsCount": 16,
+  "validClaimsCount": 16,
+  "unrecognizedClaimIds": [],
+  "prohibitedClaimIds": [],
+  "removedClaimsUsed": [],
+  "prohibitedElementsFound": [],
+  "unsupportedCandidatesFound": [],
+  "declarationProvenance": "AUTHOR_GROUNDING_DECLARATION",
+  "warnings": [],
+  "errors": []
+}

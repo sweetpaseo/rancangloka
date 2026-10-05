@@ -1,0 +1,125 @@
+{
+  "milestone": "EDITORIAL-RUNTIME-4B-FINAL2",
+  "executed_at": "2026-10-05T11:44:13.388Z",
+  "topic": "Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?",
+  "content_family": "problem_solver",
+  "stage_reached": "FINAL_HUMAN_REVIEW_REQUIRED",
+  "blocked_at": null,
+  "primary_classification": "GENERALIZATION_SEMANTIC_LEAK_DETECTED",
+  "stop_reason": null,
+  "prompt_metrics": {
+    "system_prompt_characters": 6385,
+    "user_prompt_characters": 23336,
+    "total_prompt_characters": 29721,
+    "request_body_bytes": null,
+    "prompt_tokens": 6737,
+    "completion_tokens": 3659,
+    "total_tokens": 10396
+  },
+  "joko_timing": {
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "start": "2026-10-05T11:43:52.059Z",
+    "end": "2026-10-05T11:44:13.374Z",
+    "duration_ms": 21315
+  },
+  "provider_telemetry": {
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "attempts_count": 1,
+    "http_status": 200,
+    "finish_reason": "stop",
+    "raw_response_body_bytes": 16063,
+    "prompt_telemetry": {
+      "system_prompt_characters": 6385,
+      "user_prompt_characters": 23332,
+      "total_prompt_characters": 29717,
+      "request_body_bytes": 30216,
+      "estimated_input_tokens": 8491
+    },
+    "attempts_diagnostics": [
+      {
+        "attempt": 1,
+        "timestamp": "2026-10-05T11:44:13.343Z",
+        "elapsedMs": 21273,
+        "httpStatus": 200,
+        "responseBodyBytes": 16063,
+        "finishReason": "stop"
+      }
+    ]
+  },
+  "source_stats": {
+    "retrieved_documents_count": 2,
+    "unique_retrieved_sources_count": 2,
+    "unique_verified_source_ids": [
+      "SRC-OPEN-WIKI-DAMP",
+      "SRC-OPEN-EPA-MOISTURE"
+    ],
+    "claim_source_relationship_count": 49
+  },
+  "author_safe_metrics": {
+    "total_claims": 49,
+    "allowed_for_authoring_count": 49,
+    "blocked_count": 0,
+    "qualified_count": 1,
+    "recommendation_count": 1,
+    "research_required_count": 0
+  },
+  "provenance_audit": {
+    "requires_provenance_failure": false,
+    "total_claims": 49,
+    "unverified_claims_count": 0,
+    "failures": []
+  },
+  "joko_invoked": true,
+  "rina_invoked": true,
+  "qa_score": 90,
+  "qa_decision": "HUMAN_WRITING_PASS",
+  "leaks_found": [
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "radiant barrier"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "doe radiant barrier"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "metal roof"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "atap metal"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "insulasi foil"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "aluminium foil"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "ventilasi atap"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "ventilasi loteng"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "rongga atap"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "karat atap"
+    },
+    {
+      "file": "runtime4b-final2-prompt-leak-audit.json",
+      "term": "kondensasi atap"
+    }
+  ],
+  "final_gate": "EDITORIAL_RUNTIME4B_FINAL2_HUMAN_REVIEW_REQUIRED"
+}

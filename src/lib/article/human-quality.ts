@@ -30,6 +30,8 @@
  *    - Stylistic rewrites must strictly preserve technical specifications, citations, and evidence markers.
  */
 
+import crypto from 'node:crypto';
+
 export type HumanWritingDecision =
   | 'HUMAN_WRITING_PASS'
   | 'HUMAN_WRITING_REVISE'
@@ -379,6 +381,11 @@ export type ClaimSupportLevel =
 
 export type SourceApplicability =
   | 'UNIVERSAL_PHYSICS'
+  | 'CLIMATE_DEPENDENT'
+  | 'MATERIAL_SYSTEM_SPECIFIC'
+  | 'REGION_SPECIFIC'
+  | 'JURISDICTION_SPECIFIC'
+  | 'STANDARD_SPECIFIC'
   | 'FOREIGN_BUILDING_GUIDANCE'
   | 'INDONESIAN_REGULATION'
   | 'INDONESIAN_TECHNICAL_GUIDANCE'
@@ -390,6 +397,80 @@ export type SourceApplicability =
   | 'FOREIGN_BUILDING_CODE'
   | 'RESEARCH_STUDY'
   | 'MANUFACTURER_DOCUMENTATION';
+
+export type ClaimApplicability = SourceApplicability;
+
+export const JURISDICTION_SPECIFIC_PATTERNS = [
+  /\b(?:UK Building Regulations|Building Regulations 2010|Homes \(Fitness for Human Habitation\) Act|Awaab's Law|Section 11 Landlord and Tenant Act|Housing Health and Safety Rating System|HHSRS|Approved Document [A-Z]|Part [A-Z] regulations)\b/i,
+  /\b(?:IRC\b|International Residential Code|IBC\b|International Building Code|ASHRAE Standard|OSHA regulations|Title 24 California|HUD Guidelines)\b/i,
+  /\b(?:BCA\b|Building Code of Australia|National Construction Code|NCC\b|AS\/NZS \d+)\b/i
+];
+
+export function isJurisdictionSpecific(text: string): boolean {
+  if (!text) return false;
+  return JURISDICTION_SPECIFIC_PATTERNS.some(pat => pat.test(text));
+}
+
+export function normalizeSourceText(text: string): string {
+  if (!text) return '';
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+export function locatePassageInSource(
+  passageText: string,
+  sourceText: string
+): {
+  found: boolean;
+  charStart: number;
+  charEnd: number;
+  sourceRawHash: string;
+  sourceNormalizedHash: string;
+  passageHash: string;
+} {
+  const normSource = normalizeSourceText(sourceText);
+  const normPassage = normalizeSourceText(passageText);
+
+  const sourceRawHash = crypto.createHash('sha256').update(sourceText || '', 'utf8').digest('hex');
+  const sourceNormalizedHash = crypto.createHash('sha256').update(normSource, 'utf8').digest('hex');
+  const passageHash = crypto.createHash('sha256').update(normPassage, 'utf8').digest('hex');
+
+  if (!normPassage) {
+    return { found: false, charStart: -1, charEnd: -1, sourceRawHash, sourceNormalizedHash, passageHash };
+  }
+
+  const start = normSource.indexOf(normPassage);
+  if (start !== -1) {
+    return {
+      found: true,
+      charStart: start,
+      charEnd: start + normPassage.length,
+      sourceRawHash,
+      sourceNormalizedHash,
+      passageHash
+    };
+  }
+
+  const rawStart = (sourceText || '').indexOf(passageText);
+  if (rawStart !== -1) {
+    return {
+      found: true,
+      charStart: rawStart,
+      charEnd: rawStart + passageText.length,
+      sourceRawHash,
+      sourceNormalizedHash,
+      passageHash
+    };
+  }
+
+  return {
+    found: false,
+    charStart: -1,
+    charEnd: -1,
+    sourceRawHash,
+    sourceNormalizedHash,
+    passageHash
+  };
+}
 
 export type SourceIndependence =
   | 'INDEPENDENT'
@@ -517,16 +598,29 @@ export const CLAIM_ALLOWED_SEMANTIC_ROLES: Record<string, EvidenceSemanticRole[]
   'CLM-008': []
 };
 
+export type PassageNature =
+  | 'EXACT_LOCATED'
+  | 'SOURCE_PARAPHRASE'
+  | 'SOURCE_SYNTHESIS'
+  | 'EDITORIAL_INFERENCE';
+
 export interface EvidencePassage {
   passage_id: string;
   source_id: string;
   locator: string; // section, heading, or locator
+  exact_text?: string;
   exact_or_normalized_excerpt: string;
   extracted_at: string;
   content_hash?: string;
   supports_claim_ids: string[];
   semantic_role?: EvidenceSemanticRole;
   limitations?: string;
+  source_raw_hash?: string;
+  source_normalized_hash?: string;
+  passage_hash?: string;
+  source_character_start?: number;
+  source_character_end?: number;
+  passage_nature?: PassageNature;
 }
 
 export interface EvidenceClaim {
@@ -547,6 +641,7 @@ export interface EvidenceClaim {
   numeric_claim?: boolean;
   semantic_role?: EvidenceSemanticRole;
   absolute_language_allowed?: boolean;
+  applicability?: string;
 }
 
 export interface AuthorSafeClaim {
@@ -558,6 +653,9 @@ export interface AuthorSafeClaim {
   prohibited_elements?: string[];
   qualification_required?: string;
   evidence_passage_ids?: string[];
+  jurisdiction_blocked?: boolean;
+  source_provenance_blocked?: boolean;
+  semantic_support_blocked?: boolean;
 }
 
 export interface EvidencePackInput {
@@ -872,6 +970,24 @@ export function auditEvidencePackProvenance(
   summary.metadata_only_sources_count = metadataOnlyRelCount;
   summary.unretrieved_sources_count = unretrievedRelCount;
 
+  // Jurisdiction Specificity Check: UK/Foreign regulations must not be marked UNIVERSAL_PHYSICS
+  for (const claim of claims) {
+    const claimText = `${claim.statement || ''} ${(claim as any).relevance || ''} ${(claim.sources || []).map(s => `${s.document_title || ''} ${s.page_or_section || ''}`).join(' ')}`;
+    if (isJurisdictionSpecific(claimText)) {
+      const isMarkedUniversal = claim.applicability === 'UNIVERSAL_PHYSICS' ||
+        (claim.sources || []).some(s => s.applicability === 'UNIVERSAL_PHYSICS');
+      if (isMarkedUniversal) {
+        summary.unverified_claims.push(
+          `JURISDICTION_MISCLASSIFIED_AS_UNIVERSAL: Klaim '${claim.claim_id}' memuat regulasi/hukum yurisdiksi spesifik namun ditandai sebagai UNIVERSAL_PHYSICS.`
+        );
+        summary.requires_provenance_failure = true;
+        summary.audit_reasons.push(
+          `Regulasi dan undang-undang (${claim.claim_id}) wajib diklasifikasikan sebagai JURISDICTION_SPECIFIC, bukan UNIVERSAL_PHYSICS.`
+        );
+      }
+    }
+  }
+
   // Phase 15 (EDITORIAL-RUNTIME-3B): Top-level evidence_passages deduplication & bidirectional integrity
   if (Array.isArray(evidencePack.evidence_passages)) {
     const passageMap = new Map<string, EvidencePassage>();
@@ -1001,17 +1117,29 @@ export function auditEvidencePackProvenance(
     for (const passage of evidencePack.evidence_passages) {
       const sourceText = sourceTextMap.get(passage.source_id);
       if (sourceText) {
-        const normSource = sourceText.replace(/\s+/g, ' ');
-        const normExcerpt = (passage.exact_or_normalized_excerpt || '').replace(/\s+/g, ' ').trim();
-        // Check first 50 chars of passage excerpt in normalized source text
-        if (normExcerpt.length >= 25 && !normSource.includes(normExcerpt.slice(0, 45))) {
+        const textToCheck = passage.exact_text || passage.exact_or_normalized_excerpt || '';
+        const loc = locatePassageInSource(textToCheck, sourceText);
+
+        passage.source_raw_hash = loc.sourceRawHash;
+        passage.source_normalized_hash = loc.sourceNormalizedHash;
+        passage.passage_hash = loc.passageHash;
+        passage.source_character_start = loc.charStart;
+        passage.source_character_end = loc.charEnd;
+
+        const isClaimedExact = !passage.passage_nature ||
+          passage.passage_nature === 'EXACT_LOCATED' ||
+          Boolean(passage.exact_text);
+
+        if (isClaimedExact && !loc.found) {
           summary.unverified_claims.push(
-            `PASSAGE_NOT_FOUND_IN_RETRIEVED_CONTENT: Kutipan passage '${passage.passage_id}' tidak ditemukan di dalam teks dokumen sumber '${passage.source_id}'.`
+            `PASSAGE_NOT_IN_RETRIEVED_SOURCE: Kutipan passage '${passage.passage_id}' ditandai sebagai bukti eksak namun teksnya tidak ditemukan di dalam teks dokumen sumber '${passage.source_id}'.`
           );
           summary.requires_provenance_failure = true;
           summary.audit_reasons.push(
-            `Passage ${passage.passage_id} tidak terdapat di dalam teks dokumen sumber ${passage.source_id}.`
+            `Passage ${passage.passage_id} tidak terdapat sebagai substring eksak pada dokumen sumber ${passage.source_id} (PASSAGE_NOT_IN_RETRIEVED_SOURCE).`
           );
+        } else if (loc.found && !passage.passage_nature) {
+          passage.passage_nature = 'EXACT_LOCATED';
         }
       }
     }
@@ -1358,6 +1486,9 @@ export interface AuthorSafeMetrics {
   qualified_count: number;
   recommendation_count: number;
   research_required_count: number;
+  jurisdiction_blocked_count: number;
+  source_provenance_blocked_count: number;
+  semantic_support_blocked_count: number;
 }
 
 export function calculateAuthorSafeMetrics(
@@ -1370,12 +1501,24 @@ export function calculateAuthorSafeMetrics(
   let qualified_count = 0;
   let recommendation_count = 0;
   let research_required_count = 0;
+  let jurisdiction_blocked_count = 0;
+  let source_provenance_blocked_count = 0;
+  let semantic_support_blocked_count = 0;
 
   for (const safe of authorSafeClaims) {
     if (safe.allowed_for_authoring) {
       allowed_for_authoring_count++;
     } else {
       blocked_count++;
+    }
+    if (safe.jurisdiction_blocked) {
+      jurisdiction_blocked_count++;
+    }
+    if (safe.source_provenance_blocked) {
+      source_provenance_blocked_count++;
+    }
+    if (safe.semantic_support_blocked) {
+      semantic_support_blocked_count++;
     }
     if (safe.qualification_required) {
       qualified_count++;
@@ -1398,15 +1541,21 @@ export function calculateAuthorSafeMetrics(
     blocked_count,
     qualified_count,
     recommendation_count,
-    research_required_count
+    research_required_count,
+    jurisdiction_blocked_count,
+    source_provenance_blocked_count,
+    semantic_support_blocked_count
   };
 }
 
 /**
  * Automatically generates author-safe claims from an Evidence Claim inventory.
- * Enforces the Numeric Claim Hard Rule (EDITORIAL-SOURCE-ACQUISITION-1) and Milestone 3B & 4B Unsourced Claim Safety:
+ * Enforces the Numeric Claim Hard Rule (EDITORIAL-SOURCE-ACQUISITION-1), Milestone 3B & 4B Unsourced Claim Safety,
+ * and Milestone EDITORIAL-EVIDENCE-GROUNDING-HARDENING-1 Jurisdiction & Provenance Filtering:
  * - If sources are NOT retrieved and verified or factual claims have zero supporting passages,
- *   sets allowed_for_authoring = false and action = RESEARCH_REQUIRED.
+ *   sets allowed_for_authoring = false and action = RESEARCH_REQUIRED (source_provenance_blocked = true).
+ * - Foreign regulations/laws default to blocked on Indonesian generic articles unless explicitly qualified (jurisdiction_blocked = true).
+ * - Semantic role mismatches block authoring (semantic_support_blocked = true).
  * - Editorial recommendations are allowed when transparently derived from supported claims and free of prohibited absolutes.
  * - Adds stripped numbers to prohibited_elements so authoring models cannot reintroduce them.
  */
@@ -1414,6 +1563,9 @@ export function generateAuthorSafeClaims(
   claims: EvidenceClaim[],
   options?: {
     evidencePassages?: EvidencePassage[];
+    targetJurisdiction?: string;
+    isForeignComparisonTopic?: boolean;
+    articleContext?: string;
   }
 ): AuthorSafeClaim[] {
   const result: AuthorSafeClaim[] = [];
@@ -1458,7 +1610,32 @@ export function generateAuthorSafeClaims(
         support_level: 'PARTIALLY_SUPPORTED',
         applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
         allowed_for_authoring: false,
+        source_provenance_blocked: true,
         qualification_required: 'RESEARCH_REQUIRED: Klaim teknis ini belum memiliki rujukan sumber terverifikasi dan dilarang masuk ke naskah penulisan.'
+      });
+      continue;
+    }
+
+    // Jurisdiction Specificity Check: UK / foreign laws must not enter Indonesian generic articles
+    const claimFullText = `${claim.statement || ''} ${(claim as any).relevance || ''} ${claimSources.map(s => `${s.document_title || ''} ${s.page_or_section || ''}`).join(' ')}`;
+    const isJurisdiction = claim.applicability === 'JURISDICTION_SPECIFIC' ||
+      claimSources.some(s => s.applicability === 'JURISDICTION_SPECIFIC') ||
+      isJurisdictionSpecific(claimFullText);
+
+    const allowForeignJurisdiction = options?.targetJurisdiction === 'UK' ||
+      options?.isForeignComparisonTopic === true ||
+      Boolean(options?.articleContext && /\b(?:UK|Inggris|United Kingdom|komparasi hukum luar negeri)\b/i.test(options.articleContext));
+
+    if (isJurisdiction && !allowForeignJurisdiction) {
+      result.push({
+        claim_id: claim.claim_id,
+        statement: claim.statement,
+        support_level: (claim.evidence_status as ClaimSupportLevel) || 'SUPPORTED',
+        applicability: 'JURISDICTION_SPECIFIC',
+        allowed_for_authoring: false,
+        jurisdiction_blocked: true,
+        evidence_passage_ids: claim.evidence_passage_ids,
+        qualification_required: 'JURISDICTION_SPECIFIC: Regulasi/standar hukum ini spesifik yurisdiksi luar negeri (misal UK) dan diblokir untuk artikel umum Indonesia kecuali sebagai komparasi eksplisit.'
       });
       continue;
     }
@@ -1516,6 +1693,7 @@ export function generateAuthorSafeClaims(
         support_level: 'PARTIALLY_SUPPORTED',
         applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
         allowed_for_authoring: false,
+        semantic_support_blocked: true,
         qualification_required: 'GENERIC_SEMANTIC_ROLE_MISMATCH: Peran semantik bukti rujukan tidak sesuai dengan klaim.'
       });
       continue;
@@ -1526,9 +1704,11 @@ export function generateAuthorSafeClaims(
         claim_id: claim.claim_id,
         statement: claim.statement,
         support_level: claim.evidence_status === 'VERIFIED' ? 'VERIFIED' : 'SUPPORTED',
-        applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
+        applicability: isJurisdiction ? 'JURISDICTION_SPECIFIC' : (claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL'),
         allowed_for_authoring: true,
-        qualification_required: claim.action === 'QUALIFY' ? 'Sajikan dengan batasan konteks yang jelas.' : undefined,
+        qualification_required: isJurisdiction
+          ? 'Kualifikasi yurisdiksi: Wajib disebutkan secara eksplisit sebagai komparasi hukum/standar luar negeri dan bukan aturan otomatis Indonesia.'
+          : (claim.action === 'QUALIFY' ? 'Sajikan dengan batasan konteks yang jelas.' : undefined),
         evidence_passage_ids: claim.evidence_passage_ids
       });
     } else {
@@ -1548,7 +1728,7 @@ export function generateAuthorSafeClaims(
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-      const applicability = claimSources[0]?.applicability || 'TECHNICAL_REFERENCE_FOREIGN';
+      const applicability = isJurisdiction ? 'JURISDICTION_SPECIFIC' : (claimSources[0]?.applicability || 'TECHNICAL_REFERENCE_FOREIGN');
 
       result.push({
         claim_id: claim.claim_id,
@@ -1556,6 +1736,7 @@ export function generateAuthorSafeClaims(
         support_level: 'PARTIALLY_SUPPORTED',
         applicability,
         allowed_for_authoring: false,
+        source_provenance_blocked: true,
         prohibited_elements: prohibited.length > 0 ? prohibited : undefined,
         qualification_required: 'Sajikan sebagai prinsip kualitatif arsitektur/fisika bangunan. Dilarang mencantumkan angka eksak tanpa dokumen primer terverifikasi.'
       });

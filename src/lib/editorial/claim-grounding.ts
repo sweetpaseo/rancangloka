@@ -13,7 +13,8 @@
  * - Prescriptive certainty & editorial compression audits
  */
 
-import type { EvidencePackInput, AuthorSafeClaim } from '../article/human-quality.ts';
+import crypto from 'node:crypto';
+import type { EvidencePackInput, AuthorSafeClaim, EvidenceClaim } from '../article/human-quality.ts';
 
 export type ClaimUsageType =
   | 'DIRECT_PARAPHRASE'
@@ -24,6 +25,10 @@ export interface AuthorClaimUsageDeclaration {
   claim_id: string;
   article_excerpt: string;
   usage_type: ClaimUsageType;
+  article_character_start?: number;
+  article_character_end?: number;
+  span_hash?: string;
+  entailment_status?: 'VALID' | 'CLAIM_USAGE_ENTAILMENT_MISMATCH' | 'CLAIM_USAGE_ARTICLE_SPAN_NOT_FOUND';
 }
 
 export interface GroundedDraftEnvelope {
@@ -49,9 +54,119 @@ export interface GroundingAuditResult {
   removedClaimsUsed: string[];
   prohibitedElementsFound: string[];
   unsupportedCandidatesFound: string[];
+  spanNotFoundCount: number;
+  entailmentMismatchCount: number;
   declarationProvenance: 'AUTHOR_GROUNDING_DECLARATION';
   warnings: string[];
   errors: string[];
+}
+
+export function normalizeArticleText(text: string): string {
+  if (!text) return '';
+  return text.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').trim();
+}
+
+export function locateArticleSpan(
+  articleExcerpt: string,
+  articleMarkdown: string
+): {
+  found: boolean;
+  charStart: number;
+  charEnd: number;
+  spanHash: string;
+} {
+  const normMarkdown = normalizeArticleText(articleMarkdown);
+  const cleanExcerpt = (articleExcerpt || '').replace(/[.…]+$/, '').trim();
+  const normExcerpt = normalizeArticleText(cleanExcerpt);
+  const spanHash = crypto.createHash('sha256').update(normExcerpt, 'utf8').digest('hex');
+
+  if (!normExcerpt) {
+    return { found: false, charStart: -1, charEnd: -1, spanHash };
+  }
+
+  const normStart = normMarkdown.indexOf(normExcerpt);
+  if (normStart !== -1) {
+    return {
+      found: true,
+      charStart: normStart,
+      charEnd: normStart + normExcerpt.length,
+      spanHash
+    };
+  }
+
+  const rawStart = (articleMarkdown || '').indexOf(cleanExcerpt);
+  if (rawStart !== -1) {
+    return {
+      found: true,
+      charStart: rawStart,
+      charEnd: rawStart + cleanExcerpt.length,
+      spanHash
+    };
+  }
+
+  // 3. Match ignoring parenthetical clauses in markdown
+  const mdNoParens = normMarkdown.replace(/\s*\([^)]*\)\s*/g, ' ');
+  const parenStart = mdNoParens.indexOf(normExcerpt);
+  if (parenStart !== -1) {
+    const prefix = normExcerpt.slice(0, Math.min(25, normExcerpt.length));
+    const approxStart = normMarkdown.indexOf(prefix);
+    return {
+      found: true,
+      charStart: approxStart !== -1 ? approxStart : parenStart,
+      charEnd: (approxStart !== -1 ? approxStart : parenStart) + normExcerpt.length,
+      spanHash
+    };
+  }
+
+  return {
+    found: false,
+    charStart: -1,
+    charEnd: -1,
+    spanHash
+  };
+}
+
+export interface EntailmentValidationResult {
+  isEntailed: boolean;
+  code?: 'VALID' | 'CLAIM_USAGE_ENTAILMENT_MISMATCH';
+  reason?: string;
+}
+
+export function validateClaimUsageEntailment(
+  usage: AuthorClaimUsageDeclaration,
+  claim: { statement?: string; claim_id?: string; semantic_role?: string; relevance?: string }
+): EntailmentValidationResult {
+  const excerpt = usage.article_excerpt || '';
+  const statement = claim.statement || '';
+
+  // 1. Health / Respiratory / Allergy / Medical impacts
+  const healthExcerptRegex = /\b(?:pernapasan|alergi|asma|respirasi|kesehatan|iritasi saluran|paru-paru|gejala napas|keluhan pernapasan|reaksi alergi)\b/i;
+  const healthClaimRegex = /\b(?:health|respiratory|respirasi|allergy|allergies|alergi|asthma|asma|lung|lungs|airway|breathing|symptom|illness|disease|penyakit|pernapasan|kesehatan)\b/i;
+
+  const excerptHasHealth = healthExcerptRegex.test(excerpt);
+  const claimHasHealth = healthClaimRegex.test(statement);
+
+  if (excerptHasHealth && !claimHasHealth) {
+    return {
+      isEntailed: false,
+      code: 'CLAIM_USAGE_ENTAILMENT_MISMATCH',
+      reason: `CLAIM_USAGE_ENTAILMENT_MISMATCH: Kutipan artikel untuk klaim '${usage.claim_id}' memuat dampak kesehatan/pernapasan/alergi, namun klaim rujukan hanya membahas penyebab fisik/kelembapan tanpa bukti dampak kesehatan.`
+    };
+  }
+
+  // 2. Foreign Law / Legal Regulations
+  const lawExcerptRegex = /\b(?:UK Building Regulations|Building Regulations 2010|Homes \(Fitness for Human Habitation\)|Awaab's Law|Section 11 Landlord|HHSRS)\b/i;
+  const lawClaimRegex = /\b(?:UK Building Regulations|Building Regulations 2010|Homes \(Fitness for Human Habitation\)|Awaab's Law|Section 11|HHSRS|regulasi|undang-undang)\b/i;
+
+  if (lawExcerptRegex.test(excerpt) && !lawClaimRegex.test(statement)) {
+    return {
+      isEntailed: false,
+      code: 'CLAIM_USAGE_ENTAILMENT_MISMATCH',
+      reason: `CLAIM_USAGE_ENTAILMENT_MISMATCH: Kutipan artikel menyatakan regulasi hukum spesifik yang tidak dibuktikan oleh klaim '${usage.claim_id}'.`
+    };
+  }
+
+  return { isEntailed: true, code: 'VALID' };
 }
 
 /**
@@ -109,6 +224,9 @@ export function parseGroundedDraftEnvelope(rawResponse: string): GroundedDraftEn
 /**
  * Validates the draft envelope against the approved evidence pack and safe claims.
  * Non-Negotiable: Author grounding declaration is NOT verified evidence grounding.
+ * Milestone EDITORIAL-EVIDENCE-GROUNDING-HARDENING-1:
+ * Enforces article span integrity (CLAIM_USAGE_ARTICLE_SPAN_NOT_FOUND) and
+ * semantic entailment (CLAIM_USAGE_ENTAILMENT_MISMATCH).
  */
 export function validateClaimGrounding(
   envelope: GroundedDraftEnvelope,
@@ -118,14 +236,16 @@ export function validateClaimGrounding(
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // 1. Compile Valid Claim IDs from evidence pack
+  // 1. Compile Valid Claim IDs and claim map from evidence pack
   const validClaimIdSet = new Set<string>();
   const removedClaimIdSet = new Set<string>();
+  const claimMap = new Map<string, any>();
 
   if (Array.isArray(evidencePack.claim_inventory)) {
     for (const c of evidencePack.claim_inventory) {
       if (c && c.claim_id) {
         validClaimIdSet.add(c.claim_id);
+        claimMap.set(c.claim_id, c);
       }
     }
   }
@@ -134,6 +254,9 @@ export function validateClaimGrounding(
     for (const sc of authorSafeClaims) {
       if (sc.claim_id) {
         validClaimIdSet.add(sc.claim_id);
+        if (!claimMap.has(sc.claim_id)) {
+          claimMap.set(sc.claim_id, sc);
+        }
         if (sc.allowed_for_authoring === false) {
           removedClaimIdSet.add(sc.claim_id);
         }
@@ -152,24 +275,64 @@ export function validateClaimGrounding(
     }
   }
 
-  // 2. Validate declared claim usages
+  // 2. Validate declared claim usages, article span integrity, and semantic entailment
   const unrecognizedClaimIds: string[] = [];
   const prohibitedClaimIds: string[] = [];
   const removedClaimsUsed: string[] = [];
   let validClaimsCount = 0;
+  let spanNotFoundCount = 0;
+  let entailmentMismatchCount = 0;
 
   for (const usage of envelope.claim_usage) {
     const cid = usage.claim_id?.trim();
+    let usageError = false;
+
     if (!cid || !validClaimIdSet.has(cid)) {
       unrecognizedClaimIds.push(cid || 'UNKNOWN');
       errors.push(`Klaim [${cid}] tidak terdaftar dalam paket bukti yang disetujui.`);
+      usageError = true;
     } else if (prohibitedClaimIdSet.has(cid)) {
       prohibitedClaimIds.push(cid);
       errors.push(`Klaim [${cid}] terdaftar sebagai klaim terlarang dalam paket bukti.`);
+      usageError = true;
     } else if (removedClaimIdSet.has(cid)) {
       removedClaimsUsed.push(cid);
       errors.push(`Klaim [${cid}] memiliki aksi REMOVE dan dilarang digunakan untuk penulisan.`);
-    } else {
+      usageError = true;
+    }
+
+    // Check Article Span Integrity
+    const spanLoc = locateArticleSpan(usage.article_excerpt, envelope.article_markdown);
+    usage.article_character_start = spanLoc.charStart;
+    usage.article_character_end = spanLoc.charEnd;
+    usage.span_hash = spanLoc.spanHash;
+
+    if (!spanLoc.found) {
+      usage.entailment_status = 'CLAIM_USAGE_ARTICLE_SPAN_NOT_FOUND';
+      spanNotFoundCount++;
+      errors.push(
+        `CLAIM_USAGE_ARTICLE_SPAN_NOT_FOUND: Kutipan teks '${(usage.article_excerpt || '').slice(0, 60)}...' untuk klaim '${usage.claim_id}' tidak ditemukan sebagai span eksak/ternormalisasi di dalam naskah artikel (article_markdown).`
+      );
+      usageError = true;
+    }
+
+    // Check Semantic Entailment
+    if (cid && claimMap.has(cid)) {
+      const targetClaim = claimMap.get(cid);
+      const entailment = validateClaimUsageEntailment(usage, targetClaim);
+      if (!entailment.isEntailed) {
+        usage.entailment_status = 'CLAIM_USAGE_ENTAILMENT_MISMATCH';
+        entailmentMismatchCount++;
+        errors.push(
+          entailment.reason || `CLAIM_USAGE_ENTAILMENT_MISMATCH: Klaim '${cid}' tidak mendukung proposisi semantik pada kutipan artikel.`
+        );
+        usageError = true;
+      } else if (spanLoc.found) {
+        usage.entailment_status = 'VALID';
+      }
+    }
+
+    if (!usageError) {
       validClaimsCount++;
     }
   }
@@ -221,7 +384,13 @@ export function validateClaimGrounding(
   } else if (unsupportedCandidatesFound.length > 0) {
     status = 'UNSUPPORTED_CLAIMS_DETECTED';
     requiresReview = true;
-  } else if (unrecognizedClaimIds.length > 0 || removedClaimsUsed.length > 0 || envelope.claim_usage.length === 0) {
+  } else if (
+    unrecognizedClaimIds.length > 0 ||
+    removedClaimsUsed.length > 0 ||
+    spanNotFoundCount > 0 ||
+    entailmentMismatchCount > 0 ||
+    envelope.claim_usage.length === 0
+  ) {
     status = 'GROUNDING_REVIEW_REQUIRED';
     requiresReview = true;
     if (envelope.claim_usage.length === 0) {
@@ -242,6 +411,8 @@ export function validateClaimGrounding(
     removedClaimsUsed,
     prohibitedElementsFound,
     unsupportedCandidatesFound,
+    spanNotFoundCount,
+    entailmentMismatchCount,
     declarationProvenance: 'AUTHOR_GROUNDING_DECLARATION',
     warnings,
     errors
@@ -296,3 +467,129 @@ export function auditEditorialRefinement(markdown: string): EditorialRefinementA
     notes
   };
 }
+
+/**
+ * Audits technical assertion coverage in draft article markdown.
+ * Enforces:
+ * Substantive technical assertions (mechanisms, physics, biology, material behaviors)
+ * must be covered by a declared claim_usage, otherwise flagged as UNDECLARED_TECHNICAL_ASSERTION.
+ * Milestone: EDITORIAL-EVIDENCE-GROUNDING-HARDENING-1
+ */
+export interface TechnicalAssertion {
+  sentence: string;
+  classification?: ClaimUsageType;
+  linked_claim_id?: string;
+  isDeclared: boolean;
+}
+
+export interface TechnicalAssertionCoverageReport {
+  passed: boolean;
+  total_assertions_count: number;
+  declared_assertions_count: number;
+  undeclared_assertions_count: number;
+  undeclared_assertions: string[];
+  assertions: TechnicalAssertion[];
+  errors: string[];
+}
+
+export function auditTechnicalAssertionCoverage(
+  articleMarkdown: string,
+  claimUsages: AuthorClaimUsageDeclaration[],
+  options?: {
+    approvedClaims?: any[];
+  }
+): TechnicalAssertionCoverageReport {
+  const errors: string[] = [];
+  const undeclared_assertions: string[] = [];
+  const assertions: TechnicalAssertion[] = [];
+
+  // Substantive technical/physical patterns that require evidentiary backing
+  const technicalPatterns = [
+    /\b(?:aliran cairan|tarikan kapiler|kapilaritas|pergerakan udara yang membawa uap|tekanan hidrostatik|rising damp|kelembapan naik|kondensasi|titik embun)\b/i,
+    /\b(?:porositas|material berpori|daya rekat|cat kedap|membran kedap|waterproofing|kerusakan substrat|delaminasi|cat menggelembung|nat rusak|pasangan bata)\b/i,
+    /\b(?:keluhan pernapasan|spora jamur|alergi|respirasi|asma|kualitas udara dalam ruangan|toksin jamur)\b/i,
+    /\b(?:konduksi|konveksi|radiasi termal|emisivitas|pantulan panas|penghalang radiasi|massa termal)\b/i
+  ];
+
+  // Pure conversational or transition phrases that do NOT require citations
+  const conversationalPhrases = [
+    /^\s*mari kita\b/i,
+    /^\s*bagaimana dengan\b/i,
+    /^\s*kuncinya adalah\b/i,
+    /^\s*pertanyaannya\b/i,
+    /^\s*menurut pandangan kami\b/i,
+    /^\s*di rancangloka\b/i,
+    /^\s*langkah pertama\b/i,
+    /^\s*kesimpulannya\b/i,
+    /^\s*pada akhirnya\b/i
+  ];
+
+  const cleanLines = (articleMarkdown || '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => !line.startsWith('#') && line.length > 0);
+
+  const sentences: string[] = [];
+  for (const line of cleanLines) {
+    const rawSentences = line
+      .replace(/^[-*•]\s+/, '')
+      .split(/(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 25 && !s.endsWith('?'));
+    sentences.push(...rawSentences);
+  }
+
+  for (const sentence of sentences) {
+    const isConversational = conversationalPhrases.some(p => p.test(sentence));
+    if (isConversational) continue;
+
+    const isTechnical = technicalPatterns.some(p => p.test(sentence));
+    if (!isTechnical) continue;
+
+    // Check if covered by any declared claim usage
+    const normSentence = normalizeArticleText(sentence);
+    const matchedUsage = claimUsages.find(u => {
+      const normEx = normalizeArticleText(u.article_excerpt);
+      if (!normEx) return false;
+      return normEx.includes(normSentence) || normSentence.includes(normEx) || (
+        normSentence.length > 30 && normEx.length > 30 && (
+          normSentence.slice(0, 35) === normEx.slice(0, 35) ||
+          normSentence.slice(-35) === normEx.slice(-35)
+        )
+      );
+    });
+
+    if (matchedUsage) {
+      assertions.push({
+        sentence,
+        isDeclared: true,
+        linked_claim_id: matchedUsage.claim_id,
+        classification: matchedUsage.usage_type
+      });
+    } else {
+      assertions.push({
+        sentence,
+        isDeclared: false
+      });
+      undeclared_assertions.push(sentence);
+      errors.push(
+        `UNDECLARED_TECHNICAL_ASSERTION: Kalimat asersi teknis substansial ditemukan di naskah tanpa deklarasi klaim bukti: "${sentence.slice(0, 100)}..."`
+      );
+    }
+  }
+
+  const declared_assertions_count = assertions.filter(a => a.isDeclared).length;
+  const undeclared_assertions_count = undeclared_assertions.length;
+  const passed = undeclared_assertions_count === 0;
+
+  return {
+    passed,
+    total_assertions_count: assertions.length,
+    declared_assertions_count,
+    undeclared_assertions_count,
+    undeclared_assertions,
+    assertions,
+    errors
+  };
+}
+

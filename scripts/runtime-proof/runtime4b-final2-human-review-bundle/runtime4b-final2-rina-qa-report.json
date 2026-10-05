@@ -1,0 +1,55 @@
+{
+  "knowledge_version": "RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1",
+  "total_score": 90,
+  "decision": "HUMAN_WRITING_PASS",
+  "passed": true,
+  "dimensions": {
+    "sentence_rhythm": 20,
+    "specificity_detail": 15,
+    "contextual_relevance": 15,
+    "editorial_voice": 15,
+    "non_template_structure": 10,
+    "evidence_integration": 0,
+    "reader_perspective": 10,
+    "conclusion_originality": 5
+  },
+  "issues": [
+    {
+      "code": "INSUFFICIENT_CLAIM_SUPPORT",
+      "category": "INSUFFICIENT_CLAIM_SUPPORT",
+      "severity": "WARNING",
+      "description": "Naskah minim dasar klaim teknis terukur atau rujukan standar teknis konstruksi.",
+      "penalty": 5
+    },
+    {
+      "code": "WEAK_EVIDENCE_SPECIFICITY",
+      "category": "INSUFFICIENT_CLAIM_SUPPORT",
+      "severity": "WARNING",
+      "description": "Dasar klaim dan spesifisitas bukti teknis belum memadai.",
+      "penalty": 0
+    }
+  ],
+  "strong_areas": [
+    "Pembuka langsung menyentuh konteks spesifik pembaca rumah",
+    "Alur antar-paragraf mengalir alami tanpa ketergantungan frasa transisi klise",
+    "Variasi panjang kalimat dinamis dan berirama hidup",
+    "Struktur bagian bervariasi secara proporsional sesuai kebutuhan penjelasan",
+    "Bahasa mengalir asli dalam bahasa Indonesia tanpa struktur terjemahan kaku",
+    "Kontekstual kuat terhadap kondisi tropis Indonesia (kelembapan, rembesan, lumut, genteng)",
+    "Terminologi teknis konsisten sesuai standar kanonikal RancangLoka"
+  ],
+  "evaluated_by": "editorial_qa_primary",
+  "evaluated_at": "2026-10-05T11:44:13.345Z",
+  "attempt_count": 0,
+  "max_attempts": 2,
+  "rewrite_brief": null,
+  "article_intent": "PROBLEM_SOLVING",
+  "article_intent_profile": {
+    "primary_intent": "PROBLEM_SOLVING",
+    "secondary_intents": [],
+    "confidence": "MEDIUM",
+    "reasons": [
+      "Subjudul membahas diagnosis atau solusi masalah"
+    ]
+  }
+}

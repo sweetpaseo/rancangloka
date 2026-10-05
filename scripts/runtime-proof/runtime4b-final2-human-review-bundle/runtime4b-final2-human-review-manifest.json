@@ -1,0 +1,79 @@
+{
+  "milestone": "EDITORIAL-RUNTIME-4B-FINAL2",
+  "baseline_commit": "90e725a30f71e995fe52333a1eb88f8843078309",
+  "final_machine_classification": "EDITORIAL_RUNTIME4B_FINAL2_END_TO_END_PROVEN",
+  "human_review_status": "PENDING_EXTERNAL_HUMAN_REVIEW",
+  "artifact_count": 13,
+  "artifacts": [
+    {
+      "filename": "runtime4b-final2-visitor-pain.json",
+      "byte_size": 4178,
+      "sha256": "f6ccac11deed1dbf2aa1531dac6b1dab5a7e883262878c41d9b6804f7b183156"
+    },
+    {
+      "filename": "runtime4b-final2-research-questions.json",
+      "byte_size": 2692,
+      "sha256": "3802b5f02bc0e8767f66dcd9419737b81d8b3d51fbbe8ce1c49ed77b1b6db026"
+    },
+    {
+      "filename": "runtime4b-final2-evidence-pack.json",
+      "byte_size": 386472,
+      "sha256": "d31df3fb3c8f247b353f49e5776a7fa5e894af76f53d4c7898d656bff9d5d979"
+    },
+    {
+      "filename": "runtime4b-final2-author-safe-claims.json",
+      "byte_size": 31193,
+      "sha256": "0f2a2a93b0eae8d13a5b55b772a25638e14d090f2dfbda125239fee7830ae772"
+    },
+    {
+      "filename": "runtime4b-final2-joko-prompt-envelope.json",
+      "byte_size": 89407,
+      "sha256": "5891fc0d1a17592c3a4a2ba63ba642f752a91bd96acef44a4b8d490c41b569c8"
+    },
+    {
+      "filename": "runtime4b-final2-prompt-leak-audit.json",
+      "byte_size": 422,
+      "sha256": "c01dd1ed9817e7ea5366f8aa268d445578b46b10a0d498299835b074ba775c11"
+    },
+    {
+      "filename": "runtime4b-final2-raw-draft.md",
+      "byte_size": 10553,
+      "sha256": "3135f20e1896c0cce8b87a6016d4dde3ff93595763f0b810e1fed48d7f646f71"
+    },
+    {
+      "filename": "runtime4b-final2-draft-envelope.json",
+      "byte_size": 14713,
+      "sha256": "79075ce7a62593a0105af0b29d600cb048a8b2824d5b2057e584479bb3c0c680"
+    },
+    {
+      "filename": "runtime4b-final2-grounded-draft.md",
+      "byte_size": 10553,
+      "sha256": "3135f20e1896c0cce8b87a6016d4dde3ff93595763f0b810e1fed48d7f646f71"
+    },
+    {
+      "filename": "runtime4b-final2-grounding-audit.json",
+      "byte_size": 383,
+      "sha256": "a48d5e1f427e82c3d46c84952462e307592c62158c61b764424d32d7d4f6e156"
+    },
+    {
+      "filename": "runtime4b-final2-rina-qa-report.json",
+      "byte_size": 1884,
+      "sha256": "8efa8daf7849e78e62905f12e47b9bfb651e2fb61441e841ebfba2ea844ba670"
+    },
+    {
+      "filename": "runtime4b-final2-execution-trace.json",
+      "byte_size": 29175,
+      "sha256": "a9c16c9153c9fda2782ccad3e1d9534d17f1d0ab5f32aca6b4c3c6d419955cc3"
+    },
+    {
+      "filename": "runtime4b-final2-meta.json",
+      "byte_size": 3417,
+      "sha256": "e41bbefefb467b227bfa4705669daa0c2037795a79d6a0df853f13c73e707c5e"
+    }
+  ],
+  "checklist": {
+    "filename": "runtime4b-final2-human-review-checklist.md",
+    "byte_size": 1180,
+    "sha256": "c1f9ece1ba3b15a7df112f05a3d095220e8d415c8d6101079b65d52dfc139ef0"
+  }
+}
