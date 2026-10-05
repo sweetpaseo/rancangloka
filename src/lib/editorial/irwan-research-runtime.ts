@@ -383,13 +383,13 @@ export async function executeEditorialResearchJob(
   const rawPassagesCount = retrievedDocs.reduce((acc, d) => acc + d.extracted_passages.length, 0);
   const passageMap = new Map<string, EvidencePassage>();
 
-  const isStabilize = input.milestone === 'EDITORIAL-RUNTIME-3B-STABILIZE';
+  const isStabilize = input.milestone === 'EDITORIAL-RUNTIME-3B-STABILIZE' || input.milestone === 'EDITORIAL-RUNTIME-3B-FINAL';
 
   for (const doc of retrievedDocs) {
     for (const p of doc.extracted_passages) {
       let claimIds = [...(p.supports_claim_ids || [])];
       if (isStabilize) {
-        // In 3B-STABILIZE, CLM-004 is split into CLM-004A and CLM-004B; strip legacy compound CLM-004
+        // In 3B-STABILIZE & 3B-FINAL, CLM-004 is split into CLM-004A and CLM-004B; strip legacy compound CLM-004
         claimIds = claimIds.filter(cid => cid !== 'CLM-004');
       } else {
         // In legacy milestones (3A, 3B), maintain single compound CLM-004 and strip sub-claims
@@ -398,6 +398,8 @@ export async function executeEditorialResearchJob(
         }
         claimIds = claimIds.filter(cid => cid !== 'CLM-004A' && cid !== 'CLM-004B');
       }
+      // Guarantee doc.extracted_passages does not contain dangling claim IDs
+      p.supports_claim_ids = [...claimIds];
 
       const dedupeKey = `${doc.source_id}::${p.locator || p.section_or_heading || 'Section'}::${p.content_hash || p.exact_text}`;
       if (passageMap.has(dedupeKey)) {
@@ -595,12 +597,12 @@ export async function executeEditorialResearchJob(
   });
 
   if (isStabilize) {
-    // Claim 4A: Foil is a radiant reflector, not bulk insulation (Split from CLM-004, Milestone 3B-STABILIZE)
+    // Claim 4A: Foil is a radiant reflector, not bulk insulation (Split from CLM-004, Milestone 3B-STABILIZE & 3B-FINAL)
     const psg4A = getPassagesForClaim('CLM-004A');
     const has4APassage = psg4A.length > 0;
     claimInventory.push({
       claim_id: 'CLM-004A',
-      statement: 'Aluminium foil reflektif bekerja sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation); material ini tidak memperlambat laju rambat konduksi seperti insulasi serat atau busa tebal.',
+      statement: 'Fungsi utama radiant barrier adalah mengurangi perpindahan panas radiasi. Untuk menghambat perpindahan panas melalui konduksi dan konveksi, radiant barrier dapat dikombinasikan dengan material insulasi termal.',
       claim_class: 'technical_consensus',
       evidence_status: has4APassage ? 'VERIFIED' : 'SUPPORTED',
       provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
@@ -721,10 +723,12 @@ export async function executeEditorialResearchJob(
     numeric_claim: false
   });
 
-  // Claim 8: Scenario Decision Guidance (Milestone 3B-STABILIZE: Scenario-qualified, derived purely from author-safe claims)
+  // Claim 8: Scenario Decision Guidance (Milestone 3B-STABILIZE & 3B-FINAL: Scenario-qualified, derived purely from author-safe claims)
   claimInventory.push({
     claim_id: 'CLM-008',
-    statement: 'Pada bangunan dengan penutup atap metal langsung tanpa plafon, pemasangan bidang reflektif dengan rongga udara menghadap ke bawah membantu mengurangi pancaran radiasi langsung ke ruang di bawahnya; sedangkan pada atap dengan plafon penutup, ventilasi rongga atap diperlukan untuk mengeluarkan udara panas yang terperangkap di atas plafon.',
+    statement: isStabilize
+      ? 'Pada bangunan dengan sisi bawah atap langsung berhadapan dengan ruang, radiant barrier yang menghadap rongga udara dapat membantu mengurangi perpindahan panas radiasi ke bawah. Jika terdapat rongga atap di atas plafon, ventilasi rongga dapat membantu membuang udara panas, sehingga foil dan ventilasi dapat dipertimbangkan sebagai bagian dari strategi yang saling melengkapi.'
+      : 'Pada bangunan dengan penutup atap metal langsung tanpa plafon, pemasangan bidang reflektif dengan rongga udara menghadap ke bawah membantu mengurangi pancaran radiasi langsung ke ruang di bawahnya; sedangkan pada atap dengan plafon penutup, ventilasi rongga atap dapat membantu membuang udara panas yang terperangkap di atas plafon.',
     claim_class: 'editorial_recommendation',
     evidence_status: hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED',
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
@@ -865,14 +869,16 @@ export async function executeEditorialResearchJob(
     }
   );
 
-  // 8. Mandatory Stop Gate: Stop at IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED / expectedFinalGate
-  const defaultGate = input.milestone === 'EDITORIAL-RUNTIME-3B-STABILIZE'
-    ? 'IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED'
-    : (input.milestone === 'EDITORIAL-RUNTIME-3B'
-      ? 'IRWAN_EVIDENCE_V3_HUMAN_REVIEW_REQUIRED'
-      : (input.milestone === 'EDITORIAL-RUNTIME-3A'
-        ? 'IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED'
-        : ((input as any).expectedFinalGate || 'RESEARCH_HUMAN_REVIEW_REQUIRED')));
+  // 8. Mandatory Stop Gate: Stop at IRWAN_EVIDENCE_V3_FINAL_HUMAN_REVIEW_REQUIRED / IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED
+  const defaultGate = input.milestone === 'EDITORIAL-RUNTIME-3B-FINAL'
+    ? 'IRWAN_EVIDENCE_V3_FINAL_HUMAN_REVIEW_REQUIRED'
+    : (input.milestone === 'EDITORIAL-RUNTIME-3B-STABILIZE'
+      ? 'IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED'
+      : (input.milestone === 'EDITORIAL-RUNTIME-3B'
+        ? 'IRWAN_EVIDENCE_V3_HUMAN_REVIEW_REQUIRED'
+        : (input.milestone === 'EDITORIAL-RUNTIME-3A'
+          ? 'IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED'
+          : ((input as any).expectedFinalGate || 'RESEARCH_HUMAN_REVIEW_REQUIRED'))));
   const finalGateStatus = (input as any).expectedFinalGate || defaultGate;
 
   addTraceEvent(

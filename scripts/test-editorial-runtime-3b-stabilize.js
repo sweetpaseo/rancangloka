@@ -189,7 +189,10 @@ async function main() {
     assert.ok(clm4B, 'CLM-004B must exist');
     assert.strictEqual(legacy4, undefined, 'Compound CLM-004 must not exist in stabilized pack');
 
-    assert.ok(clm4A.statement.includes('bukan insulasi massa'));
+    assert.ok(clm4A.statement.includes('mengurangi perpindahan panas radiasi'));
+    assert.ok(clm4A.statement.includes('material insulasi termal'));
+    assert.ok(!clm4A.statement.includes('serat'));
+    assert.ok(!clm4A.statement.includes('busa'));
     assert.ok(clm4B.statement.includes('rongga udara yang berhadapan langsung'));
 
     // Check that ventilation passage is NOT attached to CLM-004A
@@ -237,8 +240,13 @@ async function main() {
 
     // Ensure statement does NOT use unqualified absolutes
     assert.ok(!clm8.statement.includes('prioritas utama'));
-    assert.ok(clm8.statement.includes('sedangkan pada atap dengan plafon penutup'));
-    assert.ok(clm8.statement.includes('Pada bangunan dengan penutup atap metal langsung tanpa plafon'));
+    assert.ok(!clm8.statement.includes('diperlukan'));
+    assert.ok(!clm8.statement.includes('harus'));
+    assert.ok(!clm8.statement.includes('wajib'));
+    assert.ok(!clm8.statement.includes('selalu'));
+    assert.ok(!clm8.statement.includes('mutlak'));
+    assert.ok(clm8.statement.includes('Pada bangunan dengan sisi bawah atap langsung berhadapan dengan ruang'));
+    assert.ok(clm8.statement.includes('Jika terdapat rongga atap di atas plafon'));
   });
 
   await test('12. Joko invocation prevention during this milestone is strictly enforced', () => {
@@ -252,6 +260,73 @@ async function main() {
     assert.strictEqual(autoPublish, 'OFF');
     assert.strictEqual(jevMode, 'shadow');
     assert.strictEqual(baseResult.finalGateStatus, 'IRWAN_EVIDENCE_V3_STABILIZED_HUMAN_REVIEW_REQUIRED');
+  });
+
+  // --- TEST SECTION 3: Final Micro-Cleanup & Dangling Reference Elimination ---
+  await test('13. Dangling claim ID in retrieved extracted passages FAILS audit with DANGLING_CLAIM_REFERENCE', () => {
+    const pack = JSON.parse(JSON.stringify(cleanPack));
+    const targetDoc = pack.retrieved_documents[0];
+    assert.ok(targetDoc && targetDoc.extracted_passages.length > 0);
+    targetDoc.extracted_passages[0].supports_claim_ids.push('CLM-004-DANGLING-LEGACY');
+
+    const audit = auditEvidencePackProvenance(pack);
+    assert.strictEqual(audit.requires_provenance_failure, true);
+    assert.ok(audit.audit_reasons.some(r => r.includes('DANGLING_CLAIM_REFERENCE') && r.includes('CLM-004-DANGLING-LEGACY')));
+  });
+
+  await test('14. Dangling claim ID in canonical evidence_passages FAILS audit with DANGLING_CLAIM_REFERENCE', () => {
+    const pack = JSON.parse(JSON.stringify(cleanPack));
+    const targetPassage = pack.evidence_passages[0];
+    assert.ok(targetPassage);
+    targetPassage.supports_claim_ids.push('CLM-999-NONEXISTENT');
+
+    const audit = auditEvidencePackProvenance(pack);
+    assert.strictEqual(audit.requires_provenance_failure, true);
+    assert.ok(audit.audit_reasons.some(r => r.includes('DANGLING_CLAIM_REFERENCE') && r.includes('CLM-999-NONEXISTENT')));
+  });
+
+  await test('15. CLM-004A with unsupported fiber/foam comparison FAILS audit with UNSUPPORTED_MATERIAL_COMPARISON', () => {
+    const pack = JSON.parse(JSON.stringify(cleanPack));
+    const clm4A = pack.claim_inventory.find(c => c.claim_id === 'CLM-004A');
+    assert.ok(clm4A);
+    clm4A.statement = 'Foil tidak memperlambat laju rambat konduksi seperti insulasi serat atau busa tebal.';
+
+    const audit = auditEvidencePackProvenance(pack);
+    assert.strictEqual(audit.requires_provenance_failure, true);
+    assert.ok(audit.audit_reasons.some(r => r.includes('UNSUPPORTED_MATERIAL_COMPARISON') || r.includes('serat/busa')));
+  });
+
+  await test('16. CLM-008 with universal absolutes (harus, wajib, selalu, mutlak, diperlukan, prioritas utama) FAILS audit', () => {
+    const absolutes = ['harus', 'wajib', 'selalu', 'mutlak', 'diperlukan', 'prioritas utama'];
+    for (const word of absolutes) {
+      const pack = JSON.parse(JSON.stringify(cleanPack));
+      const clm8 = pack.claim_inventory.find(c => c.claim_id === 'CLM-008');
+      clm8.statement = `Ventilasi atap ${word} dipasang untuk mengalirkan panas.`;
+
+      const audit = auditEvidencePackProvenance(pack);
+      assert.strictEqual(audit.requires_provenance_failure, true, `Absolute word '${word}' must fail audit`);
+      assert.ok(audit.audit_reasons.some(r => r.includes('UNJUSTIFIED_ABSOLUTE_RECOMMENDATION') || r.includes(word)));
+    }
+  });
+
+  await test('17. author_safe_claims strictly mirrors claim strength and allowed status', () => {
+    for (const safe of cleanPack.author_safe_claims) {
+      const underlying = cleanPack.claim_inventory.find(c => c.claim_id === safe.claim_id);
+      assert.ok(underlying, `Underlying claim for ${safe.claim_id} must exist`);
+      assert.strictEqual(safe.support_level, underlying.evidence_status, `Support level for ${safe.claim_id} must mirror underlying evidence status`);
+      assert.strictEqual(safe.statement, underlying.statement, `Statement for ${safe.claim_id} must mirror underlying claim statement`);
+    }
+  });
+
+  await test('18. CLM-007B remains strictly blocked from authoring (RESEARCH_REQUIRED)', () => {
+    const clm7B = cleanPack.claim_inventory.find(c => c.claim_id === 'CLM-007B');
+    assert.ok(clm7B);
+    assert.strictEqual(clm7B.action, 'RESEARCH_REQUIRED');
+
+    const safe7B = cleanPack.author_safe_claims.find(c => c.claim_id === 'CLM-007B');
+    assert.ok(safe7B);
+    assert.strictEqual(safe7B.allowed_for_authoring, false);
+    assert.ok(safe7B.qualification_required?.includes('RESEARCH_REQUIRED'));
   });
 
   console.log(`\n🎉 All ${passed} tests in EDITORIAL-RUNTIME-3B-STABILIZE passed successfully!`);

@@ -797,9 +797,15 @@ export function auditEvidencePackProvenance(
           const claim = claimsById.get(cid);
           if (!claim) {
             summary.missing_provenance_claims.push(
-              `CLAIM_PASSAGE_LINK_ASYMMETRY: Passage '${passage.passage_id}' mencantumkan klaim '${cid}' yang tidak ada dalam claim_inventory.`
+              `DANGLING_CLAIM_REFERENCE: Passage '${passage.passage_id}' mencantumkan klaim '${cid}' yang tidak ada dalam claim_inventory.`
+            );
+            summary.unverified_claims.push(
+              `DANGLING_CLAIM_REFERENCE: ID klaim '${cid}' pada evidence_passages '${passage.passage_id}' tidak ditemukan di dalam claim_inventory.`
             );
             summary.requires_provenance_failure = true;
+            summary.audit_reasons.push(
+              `DANGLING_CLAIM_REFERENCE: Passage '${passage.passage_id}' merujuk claim_id '${cid}' yang tidak ada dalam claim_inventory.`
+            );
           } else if (!Array.isArray(claim.evidence_passage_ids) || !claim.evidence_passage_ids.includes(passage.passage_id)) {
             summary.missing_provenance_claims.push(
               `CLAIM_PASSAGE_LINK_ASYMMETRY: Passage '${passage.passage_id}' mendukung klaim '${cid}', namun klaim '${cid}' tidak mencantumkan '${passage.passage_id}' dalam evidence_passage_ids.`
@@ -808,6 +814,32 @@ export function auditEvidencePackProvenance(
             summary.audit_reasons.push(
               `Asimetri link: Passage ${passage.passage_id} mendukung ${cid}, namun klaim ${cid} tidak mencantumkannya.`
             );
+          }
+        }
+      }
+    }
+
+    // Validation: EVERY supports_claim_ids in retrieved_documents[].extracted_passages[] must resolve to claim_inventory
+    if (Array.isArray(evidencePack.retrieved_documents)) {
+      for (const doc of evidencePack.retrieved_documents) {
+        if (Array.isArray(doc.extracted_passages)) {
+          for (const p of doc.extracted_passages) {
+            if (Array.isArray(p.supports_claim_ids)) {
+              for (const cid of p.supports_claim_ids) {
+                if (!claimsById.has(cid)) {
+                  summary.missing_provenance_claims.push(
+                    `DANGLING_CLAIM_REFERENCE: Retrieved passage '${p.passage_id}' (${doc.source_id}) mencantumkan klaim '${cid}' yang tidak ada dalam claim_inventory.`
+                  );
+                  summary.unverified_claims.push(
+                    `DANGLING_CLAIM_REFERENCE: ID klaim '${cid}' pada retrieved_documents[${doc.source_id}].extracted_passages '${p.passage_id}' tidak ditemukan di dalam claim_inventory.`
+                  );
+                  summary.requires_provenance_failure = true;
+                  summary.audit_reasons.push(
+                    `DANGLING_CLAIM_REFERENCE: Retrieved passage '${p.passage_id}' (${doc.source_id}) merujuk claim_id '${cid}' yang tidak ada dalam claim_inventory.`
+                  );
+                }
+              }
+            }
           }
         }
       }
@@ -917,6 +949,19 @@ export function auditEvidencePackProvenance(
           }
         }
       }
+
+      // Check 4: CLM-004A cannot contain unsupported fiber/foam comparison
+      if (claim.claim_id === 'CLM-004A') {
+        if (/\b(?:serat|busa|fiber|foam)\b/i.test(claim.statement || '')) {
+          summary.unverified_claims.push(
+            `UNSUPPORTED_MATERIAL_COMPARISON: CLM-004A memuat perbandingan material serat/busa yang tidak didukung langsung oleh kutipan bukti sumber: ${claim.statement}`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `CLM-004A dilarang memuat perbandingan serat/busa tanpa bukti primer langsung.`
+          );
+        }
+      }
     }
   }
 
@@ -1007,16 +1052,16 @@ export function auditEvidencePackProvenance(
           }
         }
 
-        // Banning unjustified absolutes in recommendation statements
-        const hasUnjustifiedAbsolute = /\b(?:prioritas utama|selalu diperlukan)\b/i.test(underlying?.statement || '') &&
-          !/\b(?:sedangkan|pada bangunan|kondisi|tergantung)\b/i.test(underlying?.statement || '');
-        if (hasUnjustifiedAbsolute) {
+        // Banning universal absolutes in recommendation statements: harus, wajib, selalu, mutlak, diperlukan, prioritas utama
+        const hasUniversalAbsolute = /\b(?:harus|wajib|selalu|mutlak|diperlukan|prioritas utama)\b/i.test(underlying?.statement || '');
+        if (hasUniversalAbsolute) {
+          const matchWord = underlying?.statement.match(/\b(?:harus|wajib|selalu|mutlak|diperlukan|prioritas utama)\b/i)?.[0];
           summary.unverified_claims.push(
-            `UNJUSTIFIED_ABSOLUTE_RECOMMENDATION: Rekomendasi '${safe.claim_id}' memuat klausa mutlak tanpa kualifikasi skenario.`
+            `UNJUSTIFIED_ABSOLUTE_RECOMMENDATION: Rekomendasi '${safe.claim_id}' memuat kata mutlak/absolut yang dilarang ('${matchWord}').`
           );
           summary.requires_provenance_failure = true;
           summary.audit_reasons.push(
-            `Rekomendasi ${safe.claim_id} dilarang menggunakan pernyataan mutlak tanpa diferensiasi kondisi fisik.`
+            `Rekomendasi ${safe.claim_id} dilarang menggunakan kata mutlak (${matchWord}).`
           );
         }
       }

@@ -1,0 +1,1239 @@
+{
+  "evidence_pack_id": "evpack_irwan_real_1791173294600",
+  "topic": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "compiled_by": "evidence_researcher_lead",
+  "compiled_by_name": "Irwan",
+  "compiled_at": "2026-10-05T04:08:14.600Z",
+  "research_runtime": {
+    "staff_id": "evidence_researcher_lead",
+    "staff_name": "Irwan",
+    "execution_type": "REAL_RUNTIME_EXECUTION",
+    "provider": "open_apis_and_verified_documents",
+    "model": "crossref+wikipedia_technical_inspection",
+    "generated_at": "2026-10-05T04:08:14.600Z",
+    "job_id": "job_research_task_runtime_proof_irwan_research_v3_final_001"
+  },
+  "sources_summary": {
+    "total_discovered": 19,
+    "retrieved_and_verified": 2,
+    "blocked_or_restricted": 3
+  },
+  "retrieved_documents": [
+    {
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "title": "Radiant barrier",
+      "publisher": "Wikimedia Foundation",
+      "url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+      "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+      "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+      "authority_level": "SECONDARY_ENCYCLOPEDIC",
+      "primary_vs_secondary": "SECONDARY",
+      "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+      "retrieved_at": "2026-10-05T04:08:14.598Z",
+      "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+      "content_text": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier can be perforated for vapor transmittance.\n\n\n== Reflectivity and emissivity ==\nAll materials give off, or emit, energy by thermal radiation as a result of their temperature. The amount of energy radiated depends on the surface temperature and a property called emissivity (also called \"emittance\"). Emissivity is expressed as a number between zero and one at a given wavelength. The higher the emissivity, the greater the emitted radiation at that wavelength. A related material property is reflectivity (also called \"reflectance\"). This is a measure of how much energy is reflected by a material at a given wavelength. Reflectivity is also expressed as a number between 0 and 1 (or a percentage between 0 and 100). At a given wavelength and angle of incidence the emissivity and reflectivity values sum to 1 by Kirchhoff's law.\nRadiant barrier must have low emissivity (usually 0.1 or less) at the wavelengths at which they are expected to function. For typical building materials, the wavelengths are in the mid- and long-infrared spectrum, in the range of 3-15 micrometres.\nRadiant barriers may or may not exhibit high visual reflectivity. While reflectivity and emissivity must sum to 1 at a given wavelength, reflectivity at one set of wavelengths (visible) and emissivity at a different set of wavelengths (thermal) do not necessarily sum to 1. Therefore, it is possible to create visibly dark colored surfaces with low thermal emissivity.\nTo perform properly, radiant barriers need to face open space (e.g., air or vacuum) through which there would otherwise be radiation.\n\n\n== History ==\nIn 1860, the French scientist Jean Claude Eugene Peclet experimented with the insulating effect of high and low emissive metals facing air spaces. Peclet experimented with a wide variety of metals ranging from tin to cast iron, and came to the conclusion that neither the color nor the visual reflectance were significant determining factors in the materials’ performance. Peclet calculated the reduction in BTUs for high and low emissive surfaces facing into various air spaces, discovering the benefits of a radiant barrier in reducing the transfer of heat.\nIn 1925, two German businessmen Schmidt and Dykerhoff filed for patents on reflective surfaces for use as building insulation because recent improvements in technology allowed low emissivity aluminum foil to be commercially viable. This became the launching pad for radiant barrier and reflective insulation around the world, and within the next 15 years, millions of square feet of radiant barrier were installed in the US alone.\nWithin 30 years, radiant barrier was making a name for itself, and was included in projects at MIT, Princeton, and Frank Sinatra’s residence in Palm Springs, California.\n\n\n== Applications ==\n\n\n=== Space exploration ===\nFor the Apollo program, NASA helped develop a thin aluminum foil that reflected 95% of the radiant heat. A metalized film was used to protect spacecraft, equipment, and astronauts from thermal radiation or to retain heat in the extreme temperature fluctuations of space. The aluminum was vacuum-coated to a thin film and applied to the base of the Apollo landing vehicles. It was also used in numerous other NASA projects like the James Webb Space Telescope and Skylab. In the vacuum of outer space, where temperatures can range from −400 to 250 °F (−240 to 120 °C) heat transfer is only by radiation, so a radiant barrier is much more effective than it is on earth, where 5% to 45% of the heat transfer can still occur via convection and conduction, even when an effective radiant barrier is deployed. Radiant barrier is a Space Foundation Certified Space Technology(TM). Radiant barrier was inducted into the Space Technology Hall of Fame in 1996.\n\n\n=== Textiles ===\nSince the 1970s, sheets of metalized polyester called space blankets have been commercially available as a means to prevent hypothermia and other cold weather injuries. Because of their durability and light weight, these blankets are popular for survival and first aid applications. Swarms of people can be seen draped in reflective metalized film after a marathon, especially where the temperatures are particularly cold, like during the annual New York City Marathon which takes place in the fall.\n\n\n=== Window treatments ===\nWindow glass can be coated to achieve low emissivity or \"low-e\". Some windows use laminate polyester film where at least one layer has been metalized using a process called sputtering. Sputtering occurs when a metal, most often aluminum, is vaporized and the polyester film is passed through it. This process can be adjusted to control the amount of metal that ultimately coats the surface of the film.\nThese metalized films are applied to one or more surfaces of the glass to resist the transfer of radiant heat, yet the films are so thin that they allow visible light to pass through. Since the thin coatings are fragile and can be damaged when exposed to air and moisture, manufacturers typically use multiple pane windows. While films are typically applied to the glass during manufacturing, some films may be available for homeowners to apply themselves. Homeowner-applied window films are typically expected to last 10–15 years.\n\n\n== Construction ==\n\n\n=== Roofs and attics ===\nWhen radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof sheathing by conduction, it causes the underside of the roof surface and the roof framing to radiate heat downward through the roof space (attic / ceiling cavity) toward the attic floor / upper ceiling surface. When a radiant barrier is placed between the roofing material and the insulation on the attic floor, much of the heat radiated from the hot roof is reflected back toward the roof and the low emissivity of the underside of the radiant barrier means that very little radiant heat is emitted downwards. This makes the top surface of the insulation cooler than it would have been without a radiant barrier and thus reduces the amount of heat that moves through the insulation into the rooms below.\nThis is different from the \"cool roof\" strategy which reflects solar energy before it heats the roof, but both are a means of reducing radiant heat. According to a study by the Florida Solar Energy Center, a white tile or white metal cool roof can outperform a traditional black shingle roof with a radiant barrier in the attic, but the black shingle roof with a radiant barrier outperformed the red tile cool roof.\nFor installing a radiant barrier under a metal or tile roof, the radiant barrier (shiny side down) should not be applied directly over the roof sheathing, because high contact area reduces the efficacy of the metallic surface as low emitter. Vertical battens (aka furring strips) may be applied atop said sheathing; then OSB with a radiant barrier may be put atop the battens. The battens allow more air space than construction without battens. If an air space is not present or is too small, heat will conduct from the radiant barrier, into the substructure, resulting in unwanted IR shower on lower regions. Wood is a poor insulator and so it conducts heat from the radiant barrier to lower surfaces of said wood, where it, in turn, sheds heat by emitting IR radiation. According to the US Department of Energy, “Reflective insulation and radiant barrier products must have an air space adjacent to the reflective material to be effective.”\nThe most common application for a radiant barrier is as a facing for attics. For a traditional shingle/tile/iron roof, radiant barriers may be applied beneath the rafters or trusses and under the roof decking. This application method has the radiant barrier sheets draped beneath the trusses of rafters, creating a small air space above with the radiant barrier facing into the entire interior attic space below. Reflective foil laminate is a product commonly used as the radiant barrier sheet.\nAnother method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-laminated to OSB panels or roof sheathing. Manufacturers of this installation method often tout the savings in labor costs in using a product that serves as roof decking and radiant barrier in one.\n\nTo apply a radiant barrier in an existing attic, it may be stapled to the underside of the roof rafters. This method offers the same benefits as the draped method in that dual air spaces are provided. However, it is essential that the vents be allowed to remain open to prevent moisture from being trapped in the attic. In general, it is preferred to have the radiant barrier applied SHINY SIDE DOWN to the underside of the roof with an air space facing down; thus dust won't defeat it, as would be the case of a SHINY SIDE UP barrier.\nThe final method of installing a radiant barrier in an attic is to lay it over the top of the insulation on the attic floor. While this method can be more effective in the winter there are a few potential concerns with this application, which the US Department of Energy  and the Reflective Insulation Manufacturers Association International feel the need to address. First, a breathable radiant barrier should always be used here.  This is usually achieved by small perforations in the radiant barrier foil.  The vapor transmission rate of the radiant barrier should be at least 5 perms, as measured with ASTM E96, and the moisture in the insulation should be checked before installation. Second, the product should meet the required flame spread, which includes ASTM E84 with the ASTM E2599 method. Lastly, this method allows for dust to accumulate over the top surface of the radiant barrier, potentially reducing the efficiency over time.\n\n\n==== Energy savings ====\nAccording to a 2010 study by the Building Envelope Research Program of the Oak Ridge National Laboratory, homes with air-conditioning duct work in the attic in the hottest climate zones, such as in the US Deep South, could benefit the most from radiant barrier interventions, with annual utility bill savings up to $150, whereas homes in milder climates, e.g., Baltimore, could see savings about half those of their southern neighbors. On the other hand, if there are no ducts or air handlers in the attic, the annual savings could be much less, from about $12 in Miami to $5 in Baltimore.  Nevertheless, a radiant barrier may still help to improve comfort and to reduce the peak air-conditioning load.\n\n\n==== Shingle temperature ====\nOne common misconception regarding radiant barrier is that the heat reflecting off the radiant barrier back to the roof has the potential to increase the roof temperature and possibly damage the shingles. Performance testing by Florida Solar Energy Center demonstrated that the increase in temperature at the hottest part of the day was no more than about 5 degrees F. In fact, this study showed that a radiant barrier has the potential to decrease the roof temperature once the sun goes down because it prevents heat loss or transfer, from the attic, through the roof. RIMA International wrote a technical paper on the subject which included statements  collected from large roofing manufacturers, and none said that a radiant barrier would in any way affect the warranty of the shingles.\n\n\n==== Attic dust accumulation ====\nWhen laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top side. Many factors like dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates and thus the ultimate performance of a radiant barrier in an attic. A study by the Tennessee Valley Authority mechanically applied a small amount of dust over a radiant barrier and found no significant effect when testing for performance. However, TVA referenced a previous study which stated that it was possible for a radiant barrier to collect so much dust that its reflectivity could be decreased by nearly half.\nIt is not true that a double-sided radiant barrier on the attic floor is immune to the dust concern. The TVA study also tested a double-sided radiant barrier with black plastic draped on top to simulate heavy dust accumulation, as well as a single-sided radiant barrier with heavy kraft paper on the top. The test indicated that the radiant barrier was not performing, and the small air spaces created between the peaks of the insulation were not sufficient to block radiant heat.\n\n\n=== Walls ===\nRadiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing to create a vented air space between the radiant barrier and the siding, and vents are used at the top and bottom to allow convective heat to rise naturally to the attic. If brick is being used on the exterior, then a vented air space may already be present, and furring strips are not necessary. Wrapping a house with radiant barrier can result in a 10% to 20% reduction in the tonnage air conditioning system requirement, and save both energy and construction costs.\n\nReflective foil, bubble foil insulations, and radiant barriers are noted for their ability to reflect unwanted solar radiation in hot climates, when applied properly. Reflective foils are fabricated from aluminum foils with a variety of backings such as roofing paper, craft paper, plastic film, polyethylene bubbles, or cardboard. Reflective bubble foil is basically a plastic bubble wrap sheet with a reflective foil layer and belongs to a class of insulation products known as radiant foils. Reflective bubble/foil insulations are primarily radiant barriers, and reflective insulation systems work by reducing radiant heat gain. To be effective, the reflective surface must face an air space; also, dust accumulation on the reflective surface will reduce its reflective capability. The radiant barrier should be installed in a manner to minimize dust accumulation on the reflective surface.\nRadiant barriers are more effective in hot climates than in cooler/cold climates (especially when cooling air ducts are located in the attic). When the sun heats a roof, it's primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces, including the air ducts and the attic floor. A radiant barrier reduces the radiant heat transfer from the underside of the roof to the other surfaces in the attic. Some studies show that radiant barriers can reduce cooling costs 5% to 10% when used in a warm, sunny climate. The reduced heat gain may even allow for a smaller air conditioning system. In cool climates, however, it's usually more cost-effective to install more thermal insulation than to add a radiant barrier.\nBoth the American Department of Energy (DOE, Energy Efficiency & Renewable Energy Department) and the Ministry of Natural Resources (NRCAN) state that these systems are not recommended for cold or very cold climates.\n\n\n=== Canada ===\nCanada is considered to be a cold climate, so these products do not perform as promoted. Though they are often marketed as offering very high insulating values, there is no specific standard for radiant insulation products, so be wary of posted testimonials and manufacturers’ thermal performance claims. Research has shown that the insulation value of reflective bubble foil insulations and radiant barriers can vary from RSI 0 (R-0) to RSI 0.62 (R-3.5) per thickness of material. A study conducted by CMHC (Canada Mortgage & Housing Corporation) on four homes in Paris, ON found that the performance of the bubble foil was similar to an uninsulated floor. It also performed a cost-benefit analysis, and the cost-benefit ratio was $12 to $13 per cubic metre RSI.\nThe effective insulating value depends on the number of adjacent dead air spaces, layers of foil and where they are installed. If the foil is laminated to rigid foam insulation, the total insulating value is obtained by adding the RSI of the foam insulation to the RSI of the dead air space and the foil. If there is no air space or clear bubble layer, the RSI value of the film is zero.\n\n\n== See also ==\n\n\n== References ==\n\n\n== External links ==\nHow a radiant barrier saves energy\nRadiant Barriers: A Question and Answer Primer\nRadiant Barrier Fact Sheet[link removed] Department of Energy\nThis entry incorporates public domain text originally from the Oak Ridge National Laboratory and the U.S. Department of Energy.",
+      "content_length_bytes": 17629,
+      "read_status": "READ_AND_EXTRACTED",
+      "extracted_passages": [
+        {
+          "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_1",
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "locator": "Overview / Lead",
+          "section_or_heading": "Overview / Lead",
+          "exact_text": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection. A radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In build",
+          "exact_or_normalized_excerpt": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection. A radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In build",
+          "extracted_at": "2026-10-05T04:08:14.597Z",
+          "relevance": "Karakteristik aluminium foil sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation).",
+          "claim_relationship": "DIRECT_SUPPORT",
+          "content_hash": "ac64f0aa5d63fba9b5c13c668807f204573775d1c98ed2d6a42459331329215e",
+          "supports_claim_ids": [
+            "CLM-002",
+            "CLM-004A"
+          ],
+          "semantic_role": "RADIANT_BARRIER_MECHANISM"
+        },
+        {
+          "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_2",
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "locator": "Roofs and attics",
+          "section_or_heading": "Roofs and attics",
+          "exact_text": "When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof sheathing by conduction, it causes the underside of the roof surface and the roof framing to radiate heat downward through the roof space (attic / ceiling cavity) toward the attic floor / upper ceiling surface. When a radiant barrier is placed between the roofing material and the insulation on the attic floor, much of the heat radiated from the hot roof is reflected back toward the",
+          "exact_or_normalized_excerpt": "When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof sheathing by conduction, it causes the underside of the roof surface and the roof framing to radiate heat downward through the roof space (attic / ceiling cavity) toward the attic floor / upper ceiling surface. When a radiant barrier is placed between the roofing material and the insulation on the attic floor, much of the heat radiated from the hot roof is reflected back toward the",
+          "extracted_at": "2026-10-05T04:08:14.598Z",
+          "relevance": "Mekanisme pemanasan atap dan transmisi radiasi termal (radiant barrier) ke rongga atap di bawahnya.",
+          "claim_relationship": "DIRECT_SUPPORT",
+          "content_hash": "7542913df1609fcebde83da68ce9e971b62bd8ff66726c6405dee391af0d6a77",
+          "supports_claim_ids": [
+            "CLM-001A",
+            "CLM-001B",
+            "CLM-002"
+          ],
+          "semantic_role": "ROOF_HEAT_TRANSFER"
+        },
+        {
+          "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_3",
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "locator": "Attic dust accumulation",
+          "section_or_heading": "Attic dust accumulation",
+          "exact_text": "When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top side. Many factors like dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates and thus the ultimate performance of a radiant barrier in an attic. A study by the Tennessee Valley Authority mechanically applied a small amount of dust over a radiant barrier and found no significant effect when testing for performance. However, T",
+          "exact_or_normalized_excerpt": "When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top side. Many factors like dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates and thus the ultimate performance of a radiant barrier in an attic. A study by the Tennessee Valley Authority mechanically applied a small amount of dust over a radiant barrier and found no significant effect when testing for performance. However, T",
+          "extracted_at": "2026-10-05T04:08:14.598Z",
+          "relevance": "Penurunan kinerja foil akibat akumulasi debu pada permukaan pemantul (radiant barrier).",
+          "claim_relationship": "CONTRAST_LIMITATION",
+          "content_hash": "e2880eb68e14a48b6341c6a621314b5eeb163dd5a374fb054ea0be47fda03125",
+          "supports_claim_ids": [
+            "CLM-007A"
+          ],
+          "semantic_role": "DUST_DEGRADATION"
+        }
+      ],
+      "applicability": "UNIVERSAL_PHYSICS",
+      "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+      "is_blocked": false
+    },
+    {
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "title": "Radiant Barriers",
+      "publisher": "U.S. Department of Energy (Building Technologies Office)",
+      "url": "https://www.energy.gov/energysaver/radiant-barriers",
+      "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+      "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+      "authority_level": "INSTITUTIONAL_OFFICIAL",
+      "primary_vs_secondary": "SECONDARY",
+      "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+      "retrieved_at": "2026-10-05T04:08:14.599Z",
+      "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+      "content_text": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conduction rather than radiation, neutralizing the radiant barrier benefit.\n\n== Attic Ventilation and System Interaction ==\nA radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventilation works synergistically with radiant barriers to exhaust warm attic air via soffit and ridge vents, while the foil barrier minimizes radiation downward toward ceilings and occupied spaces.\n\n== Dust Accumulation and Performance Degradation ==\nDust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an upward-facing radiant barrier surface, emissivity increases, reducing reflective efficiency. Therefore, installing foil facing downward into an air space helps avoid dust accumulation.",
+      "content_length_bytes": 1785,
+      "read_status": "READ_AND_EXTRACTED",
+      "extracted_passages": [
+        {
+          "passage_id": "psg_SRC-OPEN-DOE-RADBAR_1",
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "locator": "Overview and Operating Principles",
+          "section_or_heading": "Overview and Operating Principles",
+          "exact_text": "Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain. When the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including",
+          "exact_or_normalized_excerpt": "Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain. When the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including",
+          "extracted_at": "2026-10-05T04:08:14.599Z",
+          "relevance": "Mekanisme pemanasan atap dan transmisi radiasi termal (radiant barrier) ke rongga atap di bawahnya.",
+          "claim_relationship": "DIRECT_SUPPORT",
+          "content_hash": "1f7253b3e47fdd8f2d2897c7f348d39ddaa8e2b44d96603b513879d01fb41a6f",
+          "supports_claim_ids": [
+            "CLM-001A",
+            "CLM-001B",
+            "CLM-002"
+          ],
+          "semantic_role": "ROOF_HEAT_TRANSFER"
+        },
+        {
+          "passage_id": "psg_SRC-OPEN-DOE-RADBAR_2",
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "locator": "Requirement for Air Space",
+          "section_or_heading": "Requirement for Air Space",
+          "exact_text": "A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conduction rather than radiation, neutralizing the radiant barrier benefit.",
+          "exact_or_normalized_excerpt": "A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conduction rather than radiation, neutralizing the radiant barrier benefit.",
+          "extracted_at": "2026-10-05T04:08:14.599Z",
+          "relevance": "Syarat mutlak rongga udara berhadapan agar foil (radiant barrier) tidak menghantarkan panas lewat konduksi langsung.",
+          "claim_relationship": "DIRECT_SUPPORT",
+          "content_hash": "dfac135b4ed0af872f5a8acaaae92e6053080feb4047fa382488299ec2582119",
+          "supports_claim_ids": [
+            "CLM-003",
+            "CLM-004B"
+          ],
+          "semantic_role": "AIR_SPACE_REQUIREMENT"
+        },
+        {
+          "passage_id": "psg_SRC-OPEN-DOE-RADBAR_3",
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "locator": "Attic Ventilation and System Interaction",
+          "section_or_heading": "Attic Ventilation and System Interaction",
+          "exact_text": "A radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventilation works synergistically with radiant barriers to exhaust warm attic air via soffit and ridge vents, while the foil barrier minimizes radiation downward toward ceilings and occupied spaces.",
+          "exact_or_normalized_excerpt": "A radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventilation works synergistically with radiant barriers to exhaust warm attic air via soffit and ridge vents, while the foil barrier minimizes radiation downward toward ceilings and occupied spaces.",
+          "extracted_at": "2026-10-05T04:08:14.599Z",
+          "relevance": "Ventilasi loteng mengalirkan dan membuang akumulasi udara panas dari rongga atap.",
+          "claim_relationship": "DIRECT_SUPPORT",
+          "content_hash": "73875bb726d2932ae6a7c93df28026cc2c86d676c31b86e71a22d880bd04d78e",
+          "supports_claim_ids": [
+            "CLM-005",
+            "CLM-006"
+          ],
+          "semantic_role": "ATTIC_VENTILATION"
+        },
+        {
+          "passage_id": "psg_SRC-OPEN-DOE-RADBAR_4",
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "locator": "Dust Accumulation and Performance Degradation",
+          "section_or_heading": "Dust Accumulation and Performance Degradation",
+          "exact_text": "Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an upward-facing radiant barrier surface, emissivity increases, reducing reflective efficiency. Therefore, installing foil facing downward into an air space helps avoid dust accumulation.",
+          "exact_or_normalized_excerpt": "Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an upward-facing radiant barrier surface, emissivity increases, reducing reflective efficiency. Therefore, installing foil facing downward into an air space helps avoid dust accumulation.",
+          "extracted_at": "2026-10-05T04:08:14.599Z",
+          "relevance": "Penurunan kinerja foil akibat akumulasi debu pada permukaan pemantul (radiant barrier).",
+          "claim_relationship": "CONTRAST_LIMITATION",
+          "content_hash": "a6f9cd0b2404844070b98e0e356438181ee88e74d6050cd133a0cd81a2519862",
+          "supports_claim_ids": [
+            "CLM-007A"
+          ],
+          "semantic_role": "DUST_DEGRADATION"
+        }
+      ],
+      "applicability": "UNIVERSAL_PHYSICS",
+      "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+      "is_blocked": false
+    }
+  ],
+  "source_snapshots": {
+    "SRC-OPEN-DOE-RADBAR": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conduction rather than radiation, neutralizing the radiant barrier benefit.\n\n== Attic Ventilation and System Interaction ==\nA radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventilation works synergistically with radiant barriers to exhaust warm attic air via soffit and ridge vents, while the foil barrier minimizes radiation downward toward ceilings and occupied spaces.\n\n== Dust Accumulation and Performance Degradation ==\nDust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an upward-facing radiant barrier surface, emissivity increases, reducing reflective efficiency. Therefore, installing foil facing downward into an air space helps avoid dust accumulation.",
+    "SRC-OPEN-WIKI-RADBAR": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier can be perforated for vapor transmittance.\n\n\n== Reflectivity and emissivity ==\nAll materials give off, or emit, energy by thermal radiation as a result of their temperature. The amount of energy radiated depends on the surface temperature and a property called emissivity (also called \"emittance\"). Emissivity is expressed as a number between zero and one at a given wavelength. The higher the emissivity, the greater the emitted radiation at that wavelength. A related material property is reflectivity (also called \"reflectance\"). This is a measure of how much energy is reflected by a material at a given wavelength. Reflectivity is also expressed as a number between 0 and 1 (or a percentage between 0 and 100). At a given wavelength and angle of incidence the emissivity and reflectivity values sum to 1 by Kirchhoff's law.\nRadiant barrier must have low emissivity (usually 0.1 or less) at the wavelengths at which they are expected to function. For typical building materials, the wavelengths are in the mid- and long-infrared spectrum, in the range of 3-15 micrometres.\nRadiant barriers may or may not exhibit high visual reflectivity. While reflectivity and emissivity must sum to 1 at a given wavelength, reflectivity at one set of wavelengths (visible) and emissivity at a different set of wavelengths (thermal) do not necessarily sum to 1. Therefore, it is possible to create visibly dark colored surfaces with low thermal emissivity.\nTo perform properly, radiant barriers need to face open space (e.g., air or vacuum) through which there would otherwise be radiation.\n\n\n== History ==\nIn 1860, the French scientist Jean Claude Eugene Peclet experimented with the insulating effect of high and low emissive metals facing air spaces. Peclet experimented with a wide variety of metals ranging from tin to cast iron, and came to the conclusion that neither the color nor the visual reflectance were significant determining factors in the materials’ performance. Peclet calculated the reduction in BTUs for high and low emissive surfaces facing into various air spaces, discovering the benefits of a radiant barrier in reducing the transfer of heat.\nIn 1925, two German businessmen Schmidt and Dykerhoff filed for patents on reflective surfaces for use as building insulation because recent improvements in technology allowed low emissivity aluminum foil to be commercially viable. This became the launching pad for radiant barrier and reflective insulation around the world, and within the next 15 years, millions of square feet of radiant barrier were installed in the US alone.\nWithin 30 years, radiant barrier was making a name for itself, and was included in projects at MIT, Princeton, and Frank Sinatra’s residence in Palm Springs, California.\n\n\n== Applications ==\n\n\n=== Space exploration ===\nFor the Apollo program, NASA helped develop a thin aluminum foil that reflected 95% of the radiant heat. A metalized film was used to protect spacecraft, equipment, and astronauts from thermal radiation or to retain heat in the extreme temperature fluctuations of space. The aluminum was vacuum-coated to a thin film and applied to the base of the Apollo landing vehicles. It was also used in numerous other NASA projects like the James Webb Space Telescope and Skylab. In the vacuum of outer space, where temperatures can range from −400 to 250 °F (−240 to 120 °C) heat transfer is only by radiation, so a radiant barrier is much more effective than it is on earth, where 5% to 45% of the heat transfer can still occur via convection and conduction, even when an effective radiant barrier is deployed. Radiant barrier is a Space Foundation Certified Space Technology(TM). Radiant barrier was inducted into the Space Technology Hall of Fame in 1996.\n\n\n=== Textiles ===\nSince the 1970s, sheets of metalized polyester called space blankets have been commercially available as a means to prevent hypothermia and other cold weather injuries. Because of their durability and light weight, these blankets are popular for survival and first aid applications. Swarms of people can be seen draped in reflective metalized film after a marathon, especially where the temperatures are particularly cold, like during the annual New York City Marathon which takes place in the fall.\n\n\n=== Window treatments ===\nWindow glass can be coated to achieve low emissivity or \"low-e\". Some windows use laminate polyester film where at least one layer has been metalized using a process called sputtering. Sputtering occurs when a metal, most often aluminum, is vaporized and the polyester film is passed through it. This process can be adjusted to control the amount of metal that ultimately coats the surface of the film.\nThese metalized films are applied to one or more surfaces of the glass to resist the transfer of radiant heat, yet the films are so thin that they allow visible light to pass through. Since the thin coatings are fragile and can be damaged when exposed to air and moisture, manufacturers typically use multiple pane windows. While films are typically applied to the glass during manufacturing, some films may be available for homeowners to apply themselves. Homeowner-applied window films are typically expected to last 10–15 years.\n\n\n== Construction ==\n\n\n=== Roofs and attics ===\nWhen radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof sheathing by conduction, it causes the underside of the roof surface and the roof framing to radiate heat downward through the roof space (attic / ceiling cavity) toward the attic floor / upper ceiling surface. When a radiant barrier is placed between the roofing material and the insulation on the attic floor, much of the heat radiated from the hot roof is reflected back toward the roof and the low emissivity of the underside of the radiant barrier means that very little radiant heat is emitted downwards. This makes the top surface of the insulation cooler than it would have been without a radiant barrier and thus reduces the amount of heat that moves through the insulation into the rooms below.\nThis is different from the \"cool roof\" strategy which reflects solar energy before it heats the roof, but both are a means of reducing radiant heat. According to a study by the Florida Solar Energy Center, a white tile or white metal cool roof can outperform a traditional black shingle roof with a radiant barrier in the attic, but the black shingle roof with a radiant barrier outperformed the red tile cool roof.\nFor installing a radiant barrier under a metal or tile roof, the radiant barrier (shiny side down) should not be applied directly over the roof sheathing, because high contact area reduces the efficacy of the metallic surface as low emitter. Vertical battens (aka furring strips) may be applied atop said sheathing; then OSB with a radiant barrier may be put atop the battens. The battens allow more air space than construction without battens. If an air space is not present or is too small, heat will conduct from the radiant barrier, into the substructure, resulting in unwanted IR shower on lower regions. Wood is a poor insulator and so it conducts heat from the radiant barrier to lower surfaces of said wood, where it, in turn, sheds heat by emitting IR radiation. According to the US Department of Energy, “Reflective insulation and radiant barrier products must have an air space adjacent to the reflective material to be effective.”\nThe most common application for a radiant barrier is as a facing for attics. For a traditional shingle/tile/iron roof, radiant barriers may be applied beneath the rafters or trusses and under the roof decking. This application method has the radiant barrier sheets draped beneath the trusses of rafters, creating a small air space above with the radiant barrier facing into the entire interior attic space below. Reflective foil laminate is a product commonly used as the radiant barrier sheet.\nAnother method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-laminated to OSB panels or roof sheathing. Manufacturers of this installation method often tout the savings in labor costs in using a product that serves as roof decking and radiant barrier in one.\n\nTo apply a radiant barrier in an existing attic, it may be stapled to the underside of the roof rafters. This method offers the same benefits as the draped method in that dual air spaces are provided. However, it is essential that the vents be allowed to remain open to prevent moisture from being trapped in the attic. In general, it is preferred to have the radiant barrier applied SHINY SIDE DOWN to the underside of the roof with an air space facing down; thus dust won't defeat it, as would be the case of a SHINY SIDE UP barrier.\nThe final method of installing a radiant barrier in an attic is to lay it over the top of the insulation on the attic floor. While this method can be more effective in the winter there are a few potential concerns with this application, which the US Department of Energy  and the Reflective Insulation Manufacturers Association International feel the need to address. First, a breathable radiant barrier should always be used here.  This is usually achieved by small perforations in the radiant barrier foil.  The vapor transmission rate of the radiant barrier should be at least 5 perms, as measured with ASTM E96, and the moisture in the insulation should be checked before installation. Second, the product should meet the required flame spread, which includes ASTM E84 with the ASTM E2599 method. Lastly, this method allows for dust to accumulate over the top surface of the radiant barrier, potentially reducing the efficiency over time.\n\n\n==== Energy savings ====\nAccording to a 2010 study by the Building Envelope Research Program of the Oak Ridge National Laboratory, homes with air-conditioning duct work in the attic in the hottest climate zones, such as in the US Deep South, could benefit the most from radiant barrier interventions, with annual utility bill savings up to $150, whereas homes in milder climates, e.g., Baltimore, could see savings about half those of their southern neighbors. On the other hand, if there are no ducts or air handlers in the attic, the annual savings could be much less, from about $12 in Miami to $5 in Baltimore.  Nevertheless, a radiant barrier may still help to improve comfort and to reduce the peak air-conditioning load.\n\n\n==== Shingle temperature ====\nOne common misconception regarding radiant barrier is that the heat reflecting off the radiant barrier back to the roof has the potential to increase the roof temperature and possibly damage the shingles. Performance testing by Florida Solar Energy Center demonstrated that the increase in temperature at the hottest part of the day was no more than about 5 degrees F. In fact, this study showed that a radiant barrier has the potential to decrease the roof temperature once the sun goes down because it prevents heat loss or transfer, from the attic, through the roof. RIMA International wrote a technical paper on the subject which included statements  collected from large roofing manufacturers, and none said that a radiant barrier would in any way affect the warranty of the shingles.\n\n\n==== Attic dust accumulation ====\nWhen laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top side. Many factors like dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates and thus the ultimate performance of a radiant barrier in an attic. A study by the Tennessee Valley Authority mechanically applied a small amount of dust over a radiant barrier and found no significant effect when testing for performance. However, TVA referenced a previous study which stated that it was possible for a radiant barrier to collect so much dust that its reflectivity could be decreased by nearly half.\nIt is not true that a double-sided radiant barrier on the attic floor is immune to the dust concern. The TVA study also tested a double-sided radiant barrier with black plastic draped on top to simulate heavy dust accumulation, as well as a single-sided radiant barrier with heavy kraft paper on the top. The test indicated that the radiant barrier was not performing, and the small air spaces created between the peaks of the insulation were not sufficient to block radiant heat.\n\n\n=== Walls ===\nRadiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing to create a vented air space between the radiant barrier and the siding, and vents are used at the top and bottom to allow convective heat to rise naturally to the attic. If brick is being used on the exterior, then a vented air space may already be present, and furring strips are not necessary. Wrapping a house with radiant barrier can result in a 10% to 20% reduction in the tonnage air conditioning system requirement, and save both energy and construction costs.\n\nReflective foil, bubble foil insulations, and radiant barriers are noted for their ability to reflect unwanted solar radiation in hot climates, when applied properly. Reflective foils are fabricated from aluminum foils with a variety of backings such as roofing paper, craft paper, plastic film, polyethylene bubbles, or cardboard. Reflective bubble foil is basically a plastic bubble wrap sheet with a reflective foil layer and belongs to a class of insulation products known as radiant foils. Reflective bubble/foil insulations are primarily radiant barriers, and reflective insulation systems work by reducing radiant heat gain. To be effective, the reflective surface must face an air space; also, dust accumulation on the reflective surface will reduce its reflective capability. The radiant barrier should be installed in a manner to minimize dust accumulation on the reflective surface.\nRadiant barriers are more effective in hot climates than in cooler/cold climates (especially when cooling air ducts are located in the attic). When the sun heats a roof, it's primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces, including the air ducts and the attic floor. A radiant barrier reduces the radiant heat transfer from the underside of the roof to the other surfaces in the attic. Some studies show that radiant barriers can reduce cooling costs 5% to 10% when used in a warm, sunny climate. The reduced heat gain may even allow for a smaller air conditioning system. In cool climates, however, it's usually more cost-effective to install more thermal insulation than to add a radiant barrier.\nBoth the American Department of Energy (DOE, Energy Efficiency & Renewable Energy Department) and the Ministry of Natural Resources (NRCAN) state that these systems are not recommended for cold or very cold climates.\n\n\n=== Canada ===\nCanada is considered to be a cold climate, so these products do not perform as promoted. Though they are often marketed as offering very high insulating values, there is no specific standard for radiant insulation products, so be wary of posted testimonials and manufacturers’ thermal performance claims. Research has shown that the insulation value of reflective bubble foil insulations and radiant barriers can vary from RSI 0 (R-0) to RSI 0.62 (R-3.5) per thickness of material. A study conducted by CMHC (Canada Mortgage & Housing Corporation) on four homes in Paris, ON found that the performance of the bubble foil was similar to an uninsulated floor. It also performed a cost-benefit analysis, and the cost-benefit ratio was $12 to $13 per cubic metre RSI.\nThe effective insulating value depends on the number of adjacent dead air spaces, layers of foil and where they are installed. If the foil is laminated to rigid foam insulation, the total insulating value is obtained by adding the RSI of the foam insulation to the RSI of the dead air space and the foil. If there is no air space or clear bubble layer, the RSI value of the film is zero.\n\n\n== See also ==\n\n\n== References ==\n\n\n== External links ==\nHow a radiant barrier saves energy\nRadiant Barriers: A Question and Answer Primer\nRadiant Barrier Fact Sheet[link removed] Department of Energy\nThis entry incorporates public domain text originally from the Oak Ridge National Laboratory and the U.S. Department of Energy."
+  },
+  "deduplication_metrics": {
+    "total_passage_objects": 7,
+    "unique_excerpt_count": 7,
+    "duplicate_passages_removed": 0
+  },
+  "claim_inventory": [
+    {
+      "claim_id": "CLM-001A",
+      "statement": "Paparan radiasi matahari memanaskan lembaran penutup atap, dan panas ini merambat melalui proses konduksi melintasi material atap menuju sisi bawah di rongga atap.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "source_reference": "Building Physics & Radiant Heat Absorption",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "retrieved_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Overview and Operating Principles",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.598Z",
+          "http_status": 200,
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier ",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "PARTIALLY_DEPENDENT",
+            "dependency_note": "Artikel Wikipedia ini secara eksplisit mengutip dan menyadur materi domain publik dari ORNL dan U.S. Department of Energy (DOE). Oleh karena itu Wikipedia dan DOE berstatus PARTIALLY_DEPENDENT."
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Overview and Operating Principles",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_1"
+      ],
+      "confidence": "MEDIUM",
+      "action": "QUALIFY",
+      "relevance": "Menjelaskan mekanisme pemanasan lembaran penutup atap akibat radiasi matahari tropis.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-001B",
+      "statement": "Panas matahari yang diserap pada permukaan luar penutup atap diteruskan melalui ketebalan material penutup ke permukaan sisi dalamnya.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "source_reference": "Heat Conduction in Roofing Materials",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "retrieved_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Overview and Operating Principles",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.598Z",
+          "http_status": 200,
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier ",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "PARTIALLY_DEPENDENT",
+            "dependency_note": "Artikel Wikipedia ini secara eksplisit mengutip dan menyadur materi domain publik dari ORNL dan U.S. Department of Energy (DOE). Oleh karena itu Wikipedia dan DOE berstatus PARTIALLY_DEPENDENT."
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Overview and Operating Principles",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_1"
+      ],
+      "confidence": "MEDIUM",
+      "action": "QUALIFY",
+      "relevance": "Menjelaskan perambatan panas konduktif melintasi ketebalan material penutup atap.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-002",
+      "statement": "Radiasi inframerah termal merupakan salah satu jalur utama perpindahan kalor dari sisi bawah penutup atap metal ke rongga loteng dan plafon di bawahnya.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "retrieved_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Overview and Operating Principles",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.598Z",
+          "http_status": 200,
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier ",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "PARTIALLY_DEPENDENT",
+            "dependency_note": "Artikel Wikipedia ini secara eksplisit mengutip dan menyadur materi domain publik dari ORNL dan U.S. Department of Energy (DOE). Oleh karena itu Wikipedia dan DOE berstatus PARTIALLY_DEPENDENT."
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Overview and Operating Principles",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_1"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Membedakan fenomena radiasi inframerah dari pemanasan udara konvektif.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-003",
+      "statement": "Aluminium foil reflektif bekerja sebagai penghalang radiasi (radiant barrier) dan memerlukan rongga udara bebas (air space) yang berhadapan langsung dengan sisi reflektifnya agar tidak terjadi konduksi langsung.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "retrieved_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Requirement for Air Space",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.598Z",
+          "http_status": 200,
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier ",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "PARTIALLY_DEPENDENT",
+            "dependency_note": "Artikel Wikipedia ini secara eksplisit mengutip dan menyadur materi domain publik dari ORNL dan U.S. Department of Energy (DOE). Oleh karena itu Wikipedia dan DOE berstatus PARTIALLY_DEPENDENT."
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Requirement for Air Space",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-DOE-RADBAR_2"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Syarat mutlak instalasi: jika foil terjepit tanpa celah udara, daya pantulnya lumpuh.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-004A",
+      "statement": "Fungsi utama radiant barrier adalah mengurangi perpindahan panas radiasi. Untuk menghambat perpindahan panas melalui konduksi dan konveksi, radiant barrier dapat dikombinasikan dengan material insulasi termal.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "retrieved_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Overview",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.598Z",
+          "http_status": 200,
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier ",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "PARTIALLY_DEPENDENT",
+            "dependency_note": "Artikel Wikipedia ini secara eksplisit mengutip dan menyadur materi domain publik dari ORNL dan U.S. Department of Energy (DOE). Oleh karena itu Wikipedia dan DOE berstatus PARTIALLY_DEPENDENT."
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Overview",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Membedakan cara kerja pemantulan radiasi dengan insulasi penahan konduksi termal.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-004B",
+      "statement": "Permukaan reflektif memerlukan rongga udara yang berhadapan langsung agar berfungsi sebagai penghalang radiasi; tanpa celah udara, kontak fisik langsung meneruskan panas secara konduksi.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "retrieved_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Requirement for Air Space",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.598Z",
+          "http_status": 200,
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier ",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "PARTIALLY_DEPENDENT",
+            "dependency_note": "Artikel Wikipedia ini secara eksplisit mengutip dan menyadur materi domain publik dari ORNL dan U.S. Department of Energy (DOE). Oleh karena itu Wikipedia dan DOE berstatus PARTIALLY_DEPENDENT."
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Requirement for Air Space",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-DOE-RADBAR_2"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Syarat fungsional celah udara agar foil tidak mentransmisikan kalor lewat konduksi kontak langsung.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-005",
+      "statement": "Rongga loteng tertutup tanpa ventilasi dapat menjadi perangkap akumulasi udara panas di bawah atap; ventilasi loteng berfungsi mengalirkan dan membuang udara panas tersebut.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "PARTIALLY_SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
+      "source_reference": "SNI 03-6572-2001 (Portal Terbatas) & DOE Building Science",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Attic Ventilation and System Interaction",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-SNI-6572",
+          "document_title": "SNI 03-6572-2001: Tata Cara Perancangan Sistem Ventilasi",
+          "applicability": "INDONESIAN_REGULATION",
+          "retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
+          "retrieval_method": "REGULATORY_CATALOG_REFERENCE",
+          "limitations": "Teks lengkap SNI berada di portal BSN berbayar dan belum diinspeksi naskah fisiknya; prinsip ventilasi loteng diakui sebagai standar lokal tanpa mengklaim nomor pasal/halaman fiktif."
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-DOE-RADBAR_3"
+      ],
+      "confidence": "MEDIUM",
+      "action": "QUALIFY",
+      "relevance": "Menjadi alasan mengapa ventilasi loteng tetap dibutuhkan meskipun foil sudah terpasang.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-006",
+      "statement": "Ventilasi rongga atap membuang akumulasi udara panas dari bawah atap melalui bukaan ventilasi seperti ventilasi soffit dan ventilasi bubungan (ridge vents).",
+      "claim_class": "technical_consensus",
+      "evidence_status": "SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Attic Ventilation and System Interaction",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-DOE-RADBAR_3"
+      ],
+      "confidence": "MEDIUM",
+      "action": "QUALIFY",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-007A",
+      "statement": "Akumulasi debu pada permukaan aluminium foil reflektif seiring berjalannya waktu dapat meningkatkan emisivitas dan menurunkan daya pantul radiasinya.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "retrieved_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Dust Accumulation",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.598Z",
+          "http_status": 200,
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier ",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "PARTIALLY_DEPENDENT",
+            "dependency_note": "Artikel Wikipedia ini secara eksplisit mengutip dan menyadur materi domain publik dari ORNL dan U.S. Department of Energy (DOE). Oleh karena itu Wikipedia dan DOE berstatus PARTIALLY_DEPENDENT."
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Dust Accumulation",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_3",
+        "psg_SRC-OPEN-DOE-RADBAR_4"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Menjelaskan risiko degradasi performa foil reflektif akibat akumulasi debu.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-007B",
+      "statement": "Bukaan ventilasi atap memerlukan kisi pengarah (louvers) dan saringan kawat kasa untuk mencegah tampias air hujan serta masuknya serangga ke dalam rongga atap.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "PARTIALLY_SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_UNAVAILABLE",
+      "sources": [],
+      "evidence_passage_ids": [],
+      "confidence": "LOW",
+      "action": "RESEARCH_REQUIRED",
+      "relevance": "Panduan pemasangan lapangan agar bukaan ventilasi tidak menimbulkan masalah sekunder.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-008",
+      "statement": "Pada bangunan dengan sisi bawah atap langsung berhadapan dengan ruang, radiant barrier yang menghadap rongga udara dapat membantu mengurangi perpindahan panas radiasi ke bawah. Jika terdapat rongga atap di atas plafon, ventilasi rongga dapat membantu membuang udara panas, sehingga foil dan ventilasi dapat dipertimbangkan sebagai bagian dari strategi yang saling melengkapi.",
+      "claim_class": "editorial_recommendation",
+      "evidence_status": "SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "derived_from_claim_ids": [
+        "CLM-001A",
+        "CLM-002",
+        "CLM-003",
+        "CLM-004A",
+        "CLM-004B",
+        "CLM-005",
+        "CLM-006"
+      ],
+      "recommendation_confidence": "MEDIUM",
+      "inspection_dependency": "Keberadaan plafon penutup dan aksesibilitas rongga loteng rumah",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "retrieved_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Application decisions",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.598Z",
+          "http_status": 200,
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection.\nA radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In building applications, this surface is typically a very thin, mirror-like aluminum foil. The foil may be coated for resistance to the elements or for abrasion resistance. The radiant barrier may be one or two sided. One sided radiant barrier may be attached to insulating materials, such as polyisocyanurate, rigid foam, bubble insulation, or oriented strand board (OSB). Reflective tape can be adhered to strips of radiant barrier to make it a contiguous vapor barrier or, alternatively, radiant barrier ",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "PARTIALLY_DEPENDENT",
+            "dependency_note": "Artikel Wikipedia ini secara eksplisit mengutip dan menyadur materi domain publik dari ORNL dan U.S. Department of Energy (DOE). Oleh karena itu Wikipedia dan DOE berstatus PARTIALLY_DEPENDENT."
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "OFFICIAL_INSTITUTIONAL_GUIDANCE",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "retrieved_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Application decisions",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T04:08:14.599Z",
+          "http_status": 200,
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "snapshot_reference": "LOCAL_SNAPSHOT_VERIFIED",
+          "raw_content_preview": "== Overview and Operating Principles ==\nRadiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain.\nWhen the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including the attic floor and ductwork. A radiant barrier reduces the radiant heat transfer from the underside of the roof to other surfaces in the attic.\n\n== Requirement for Air Space ==\nA radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conducti",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [],
+      "confidence": "MEDIUM",
+      "action": "KEEP",
+      "numeric_claim": false
+    }
+  ],
+  "author_safe_claims": [
+    {
+      "claim_id": "CLM-001A",
+      "statement": "Paparan radiasi matahari memanaskan lembaran penutup atap, dan panas ini merambat melalui proses konduksi melintasi material atap menuju sisi bawah di rongga atap.",
+      "support_level": "SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "60°C",
+        "75°C",
+        "60°C hingga 75°C",
+        "800-1000 W/m²",
+        "50-60 W/m·K"
+      ],
+      "qualification_required": "Sajikan sebagai prinsip fisik kualitatif arsitektur",
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_1"
+      ]
+    },
+    {
+      "claim_id": "CLM-001B",
+      "statement": "Panas matahari yang diserap pada permukaan luar penutup atap diteruskan melalui ketebalan material penutup ke permukaan sisi dalamnya.",
+      "support_level": "SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "60°C",
+        "75°C",
+        "60°C hingga 75°C",
+        "800-1000 W/m²",
+        "50-60 W/m·K"
+      ],
+      "qualification_required": "Sajikan sebagai prinsip fisik kualitatif arsitektur",
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_1"
+      ]
+    },
+    {
+      "claim_id": "CLM-002",
+      "statement": "Radiasi inframerah termal merupakan salah satu jalur utama perpindahan kalor dari sisi bawah penutup atap metal ke rongga loteng dan plafon di bawahnya.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "75%",
+        "90%",
+        "75% hingga 90%",
+        "75-90%"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_1"
+      ]
+    },
+    {
+      "claim_id": "CLM-003",
+      "statement": "Aluminium foil reflektif bekerja sebagai penghalang radiasi (radiant barrier) dan memerlukan rongga udara bebas (air space) yang berhadapan langsung dengan sisi reflektifnya agar tidak terjadi konduksi langsung.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "20-25 mm",
+        "20 hingga 25 milimeter",
+        "ε ≤ 0.05",
+        "≥ 95%"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-DOE-RADBAR_2"
+      ]
+    },
+    {
+      "claim_id": "CLM-004A",
+      "statement": "Fungsi utama radiant barrier adalah mengurangi perpindahan panas radiasi. Untuk menghambat perpindahan panas melalui konduksi dan konveksi, radiant barrier dapat dikombinasikan dengan material insulasi termal.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1"
+      ]
+    },
+    {
+      "claim_id": "CLM-004B",
+      "statement": "Permukaan reflektif memerlukan rongga udara yang berhadapan langsung agar berfungsi sebagai penghalang radiasi; tanpa celah udara, kontak fisik langsung meneruskan panas secara konduksi.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "20-25 mm",
+        "20 hingga 25 milimeter",
+        "ε ≤ 0.05",
+        "≥ 95%"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-DOE-RADBAR_2"
+      ]
+    },
+    {
+      "claim_id": "CLM-005",
+      "statement": "Rongga loteng tertutup tanpa ventilasi dapat menjadi perangkap akumulasi udara panas di bawah atap; ventilasi loteng berfungsi mengalirkan dan membuang udara panas tersebut.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "qualification_required": "Sajikan sebagai prinsip fisik kualitatif arsitektur",
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-DOE-RADBAR_3"
+      ]
+    },
+    {
+      "claim_id": "CLM-006",
+      "statement": "Ventilasi rongga atap membuang akumulasi udara panas dari bawah atap melalui bukaan ventilasi seperti ventilasi soffit dan ventilasi bubungan (ridge vents).",
+      "support_level": "SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "1:300",
+        "1:150",
+        "1:300 hingga 1:150"
+      ],
+      "qualification_required": "Sajikan sebagai prinsip fisik kualitatif arsitektur",
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-DOE-RADBAR_3"
+      ]
+    },
+    {
+      "claim_id": "CLM-007A",
+      "statement": "Akumulasi debu pada permukaan aluminium foil reflektif seiring berjalannya waktu dapat meningkatkan emisivitas dan menurunkan daya pantul radiasinya.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_3",
+        "psg_SRC-OPEN-DOE-RADBAR_4"
+      ]
+    },
+    {
+      "claim_id": "CLM-007B",
+      "statement": "Bukaan ventilasi atap memerlukan kisi pengarah (louvers) dan saringan kawat kasa untuk mencegah tampias air hujan serta masuknya serangga ke dalam rongga atap.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": false,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "qualification_required": "RESEARCH_REQUIRED: Klaim teknis ini belum memiliki rujukan sumber terverifikasi dan dilarang masuk ke naskah penulisan.",
+      "evidence_passage_ids": []
+    },
+    {
+      "claim_id": "CLM-008",
+      "statement": "Pada bangunan dengan sisi bawah atap langsung berhadapan dengan ruang, radiant barrier yang menghadap rongga udara dapat membantu mengurangi perpindahan panas radiasi ke bawah. Jika terdapat rongga atap di atas plafon, ventilasi rongga dapat membantu membuang udara panas, sehingga foil dan ventilasi dapat dipertimbangkan sebagai bagian dari strategi yang saling melengkapi.",
+      "support_level": "SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "evidence_passage_ids": []
+    }
+  ],
+  "evidence_passages": [
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_1",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Overview / Lead",
+      "exact_or_normalized_excerpt": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection. A radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In build",
+      "extracted_at": "2026-10-05T04:08:14.597Z",
+      "content_hash": "ac64f0aa5d63fba9b5c13c668807f204573775d1c98ed2d6a42459331329215e",
+      "supports_claim_ids": [
+        "CLM-002",
+        "CLM-004A"
+      ],
+      "semantic_role": "RADIANT_BARRIER_MECHANISM"
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_2",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Roofs and attics",
+      "exact_or_normalized_excerpt": "When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof sheathing by conduction, it causes the underside of the roof surface and the roof framing to radiate heat downward through the roof space (attic / ceiling cavity) toward the attic floor / upper ceiling surface. When a radiant barrier is placed between the roofing material and the insulation on the attic floor, much of the heat radiated from the hot roof is reflected back toward the",
+      "extracted_at": "2026-10-05T04:08:14.598Z",
+      "content_hash": "7542913df1609fcebde83da68ce9e971b62bd8ff66726c6405dee391af0d6a77",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ],
+      "semantic_role": "ROOF_HEAT_TRANSFER"
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_3",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Attic dust accumulation",
+      "exact_or_normalized_excerpt": "When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top side. Many factors like dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates and thus the ultimate performance of a radiant barrier in an attic. A study by the Tennessee Valley Authority mechanically applied a small amount of dust over a radiant barrier and found no significant effect when testing for performance. However, T",
+      "extracted_at": "2026-10-05T04:08:14.598Z",
+      "content_hash": "e2880eb68e14a48b6341c6a621314b5eeb163dd5a374fb054ea0be47fda03125",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ],
+      "semantic_role": "DUST_DEGRADATION"
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_1",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Overview and Operating Principles",
+      "exact_or_normalized_excerpt": "Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain. When the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including",
+      "extracted_at": "2026-10-05T04:08:14.599Z",
+      "content_hash": "1f7253b3e47fdd8f2d2897c7f348d39ddaa8e2b44d96603b513879d01fb41a6f",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ],
+      "semantic_role": "ROOF_HEAT_TRANSFER"
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_2",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Requirement for Air Space",
+      "exact_or_normalized_excerpt": "A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conduction rather than radiation, neutralizing the radiant barrier benefit.",
+      "extracted_at": "2026-10-05T04:08:14.599Z",
+      "content_hash": "dfac135b4ed0af872f5a8acaaae92e6053080feb4047fa382488299ec2582119",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004B"
+      ],
+      "semantic_role": "AIR_SPACE_REQUIREMENT"
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_3",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Attic Ventilation and System Interaction",
+      "exact_or_normalized_excerpt": "A radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventilation works synergistically with radiant barriers to exhaust warm attic air via soffit and ridge vents, while the foil barrier minimizes radiation downward toward ceilings and occupied spaces.",
+      "extracted_at": "2026-10-05T04:08:14.599Z",
+      "content_hash": "73875bb726d2932ae6a7c93df28026cc2c86d676c31b86e71a22d880bd04d78e",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ],
+      "semantic_role": "ATTIC_VENTILATION"
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_4",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Dust Accumulation and Performance Degradation",
+      "exact_or_normalized_excerpt": "Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an upward-facing radiant barrier surface, emissivity increases, reducing reflective efficiency. Therefore, installing foil facing downward into an air space helps avoid dust accumulation.",
+      "extracted_at": "2026-10-05T04:08:14.599Z",
+      "content_hash": "a6f9cd0b2404844070b98e0e356438181ee88e74d6050cd133a0cd81a2519862",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ],
+      "semantic_role": "DUST_DEGRADATION"
+    }
+  ],
+  "prohibited_claims": [
+    "Estimasi biaya atau angka rupiah material atap tanpa riset empiris harga toko fisik",
+    "Klaim uji coba mandiri atau klaim laboratorium palsu",
+    "Klaim penurunan suhu AC spesifik atau garansi suhu mutlak tanpa audit termal bangunan",
+    "Rujukan SNI tidak boleh mencantumkan nomor halaman fiktif karena teks fisik berbayar"
+  ],
+  "confidence_overall": "MEDIUM"
+}

@@ -376,10 +376,10 @@ export function extractPassagesFromText(
         matchedClaims.push('CLM-002');
       }
       if (/\b(?:supplemented with thermal insulation that slows down heat transfer by conduction or convection|not bulk insulation)\b/i.test(chunk)) {
-        matchedClaims.push('CLM-004A', 'CLM-004');
+        matchedClaims.push('CLM-004A');
       }
     } else if (semanticRole === 'AIR_SPACE_REQUIREMENT') {
-      matchedClaims.push('CLM-003', 'CLM-004B', 'CLM-004');
+      matchedClaims.push('CLM-003', 'CLM-004B');
     } else if (semanticRole === 'ATTIC_VENTILATION') {
       matchedClaims.push('CLM-005');
       if (/\b(?:soffit and ridge vents|exhaust warm attic air via soffit and ridge vents)\b/i.test(chunk)) {
