@@ -15,6 +15,34 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### D1-ROW-READ-HOTFIX-1: Mission Control Polling & Query Efficiency 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan lonjakan pemakaian baris baca Cloudflare D1 (5M rows/day exhaustion) akibat polling Mission Control/Pixel Office yang sangat agresif (2,5s), ketiadaan indeks performa, dan pemanggilan snapshot penuh tanpa pengecekan revisi ringan.
+  - Mempertahankan invarian keselamatan 100%: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `mediaWorker = DISABLED`, `Jefry authority = 0`.
+  - Menerapkan arsitektur zero-mutation lokal: tanpa deploy, tanpa migrasi remote D1, tanpa modifikasi data produksi.
+- **Solusi & Komponen yang Diterapkan:**
+  1. **Events Fast-Path First (`src/lib/mission-control/events.ts`):** Mengganti panggilan awal `getMissionControlSnapshot` dengan `getLightweightRevision(db)` yang hanya membaca $\le 4$ baris terikat (`automation_control`, `mission_control_operator_actions`, `publication_cron_runs`, `mission_control_anomalies`). Polling tanpa perubahan revisi langsung mengembalikan `{ changed: false }` dengan penghematan baris baca ~95%–98%.
+  2. **Pixel Office Polling Backoff & In-Flight Mutex (`src/pages/admin/mission-control/office.astro`):** Melonggarkan polling aktif ke 10s base (`minPollInterval = 10000`), quiet backoff ke 30s (`maxPollInterval = 30000`), dan background tab ke 60s (`backgroundPollInterval = 60000`). Menambahkan mutex `isCheckingEvents` untuk mencegah overlapping request. Snapshot penuh hanya diambil jika `changed === true`.
+  3. **Migrasi Indeks Kinerja Aditif (`db/migrations/0029_d1_performance_indexes.sql`):** 9 indeks baru untuk `publication_cron_runs(started_at DESC)`, `media_job_events(created_at DESC)`, `article_editorial_approvals(approval_status, created_at DESC)`, `articles(updated_at DESC)`, `media_jobs(created_at DESC)`, `article_ingest_receipts(created_at DESC)`, `social_execution_receipts(created_at DESC)`, `social_execution_receipts(outcome, created_at DESC)`, dan `mission_control_operator_actions(requested_at DESC)`.
+  4. **Optimasi Query Artikel & Internal Links (`src/lib/db.ts`, `src/pages/[slug].astro`, `src/pages/admin/preview/[slug].astro`):** Mengeliminasi blob konten teks dari query daftar artikel di `getAllArticles`, menerapkan SQL-level `LIMIT ? OFFSET ?`, branch status terpisah untuk index scan, query metadata terikat `getInternalLinkCandidates(db, 50)` untuk halaman baca artikel, dan `getTotalArticlesCount` via `COUNT(*)`.
+  5. **Decoupling Chat Staf (`src/lib/mission-control/staff-registry.ts`):** Menambahkan `getLightweightStaffState(db, agentId)` untuk inspeksi 1 staf (1–2 baris) tanpa memanggil snapshot 9 subsistem.
+  6. **Optimasi Pembacaan Settings Tunggal (`src/lib/social/providers/meta/connection-service.ts`):** Menggunakan `getSiteSettingByKey(db, key)` untuk lookup baris tunggal via primary key.
+- **Validasi & Verifikasi:**
+  - `scripts/test-d1-read-hotfix.js`: 24/24 PASS (termasuk 9 verifikasi EXPLAIN QUERY PLAN tanpa temporary B-tree).
+  - `scripts/test-soak-safety.js`: 54/54 PASS.
+  - `scripts/test-mission-control-liveops.js`: 78/78 PASS.
+  - `scripts/test-mission-control-liveops-4.js`: 15/15 PASS.
+  - `scripts/test-mission-control-chat.js`: 20/20 PASS.
+  - `scripts/test-content-quarantine.js`: 19/19 PASS.
+  - `scripts/test-article-render-integrity.js`: 6/6 PASS.
+  - `scripts/test-article-persistence.js`: 7/7 PASS.
+  - `npx tsc --noEmit`: 0 error (bersih).
+  - `npm run build`: 100% sukses.
+- **Status Akhir:** **`D1_HOTFIX_LOCAL_VALIDATED`** (Tersimpan pada commit `77198cb`, siap ditinjau operator, zero deploy remote).
+
+---
+
 ### EDITORIAL-RUNTIME-3A: Evidence Quality Hardening & Source Upgrade 2026-10-05
 
 - **Tujuan & Ruang Lingkup:**
