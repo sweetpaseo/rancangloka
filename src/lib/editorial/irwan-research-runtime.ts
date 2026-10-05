@@ -32,7 +32,8 @@ import type {
 
 import {
   calculateOverallConfidence,
-  generateAuthorSafeClaims
+  generateAuthorSafeClaims,
+  calculateAuthorSafeMetrics
 } from '../article/human-quality.ts';
 
 import {
@@ -128,6 +129,10 @@ export interface IrwanResearchJobResult {
     queriesExecuted: number;
     sourcesDiscovered: number;
     sourcesRetrieved: number;
+    unique_retrieved_sources_count?: number;
+    retrieved_documents_count?: number;
+    claim_source_relationship_count?: number;
+    unique_verified_source_ids?: string[];
     sourcesBlocked: number;
     passagesExtracted: number;
     totalPassageObjects?: number;
@@ -139,6 +144,7 @@ export interface IrwanResearchJobResult {
     claimsConsensus: number;
     authorSafeClaimsTotal: number;
     authorSafeClaimsAllowed?: number;
+    author_safe_metrics?: any;
   };
   error?: string;
   errorCategory?: string;
@@ -471,16 +477,13 @@ export async function executeGeneralizedResearchJob(
   // Add synthesis editorial recommendation derived from verified claims
   if (claimInventory.length > 0) {
     const recId = `CLM-${claimSeq.toString().padStart(3, '0')}`;
-    const firstPassage = allPassages[0];
     const derivedIds = claimInventory.slice(0, 3).map(c => c.claim_id);
 
-    firstPassage.supports_claim_ids.push(recId);
-
     const recStatement = domain === 'MOISTURE_WALL_REMEDIATION'
-      ? 'Penanganan dinding lembap wajib mendahulukan pelacakan dan penghentian sumber intrusi air sebelum mengaplikasikan lapisan cat waterproofing.'
+      ? 'Penanganan dinding lembap dapat dipertimbangkan setelah sumber masalah dikonfirmasi, dengan mendahulukan pelacakan dan penanganan sumber intrusi air sebelum mengevaluasi lapisan cat waterproofing.'
       : domain === 'FENESTRATION_WINDOW_DOOR'
-      ? 'Pemilihan profil kusen wajib mempertimbangkan kompromi konduktivitas termal dan kebutuhan kekedapan suara spesifik sebelum menentukan material.'
-      : 'Keputusan intervensi fisik wajib mendasarkan diri pada diagnosis mekanisme kalor dan batas material lapangan.';
+      ? 'Pemilihan profil kusen dapat membantu kenyamanan termal dan akustik jika disesuaikan dengan kebutuhan spesifik, serta perlu dievaluasi berdasarkan kompromi konduktivitas dan kekedapan suara.'
+      : 'Keputusan intervensi fisik lebih relevan ketika didasarkan pada diagnosis mekanisme fisik dan evaluasi batas material lapangan.';
 
     claimInventory.push({
       claim_id: recId,
@@ -489,18 +492,33 @@ export async function executeGeneralizedResearchJob(
       evidence_status: 'SUPPORTED',
       provenance_retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
       sources: claimInventory[0].sources,
-      evidence_passage_ids: [firstPassage.passage_id],
+      evidence_passage_ids: [],
       derived_from_claim_ids: derivedIds,
       confidence: 'HIGH',
       action: 'KEEP',
       relevance: 'Rekomendasi tindakan editorial terapan berbasis bukti empiris.',
       numeric_claim: false,
-      semantic_role: 'INTERVENTION_EFFECT'
+      semantic_role: 'INTERVENTION_EFFECT',
+      absolute_language_allowed: false
     } as any);
   }
 
   // F. Generate Author-Safe Claims
-  const authorSafeClaims = generateAuthorSafeClaims(claimInventory);
+  const authorSafeClaims = generateAuthorSafeClaims(claimInventory, { evidencePassages: allPassages });
+
+  const verifiedSourceIds = Array.from(new Set(
+    claimInventory.flatMap(c => (c.sources || [])
+      .filter(s => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED')
+      .map(s => s.source_id)
+      .filter(Boolean)
+    )
+  ));
+
+  const claimSourceRelCount = claimInventory.reduce((acc, c) => {
+    return acc + (c.sources ? c.sources.filter(s => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED').length : 0);
+  }, 0);
+
+  const authorSafeMetrics = calculateAuthorSafeMetrics(claimInventory, authorSafeClaims);
 
   const rawPack: EvidencePackInput = {
     evidence_pack_id: `pack_${taskId}`,
@@ -512,11 +530,16 @@ export async function executeGeneralizedResearchJob(
     blocked_sources: blockedSourcesList,
     stats: {
       total_retrieved_documents: retrievedDocs.length,
+      unique_retrieved_sources_count: verifiedSourceIds.length,
+      retrieved_documents_count: retrievedDocs.length,
+      claim_source_relationship_count: claimSourceRelCount,
+      unique_verified_source_ids: verifiedSourceIds,
       total_passages: allPassages.length,
       total_claims: claimInventory.length,
       total_passage_objects: allPassages.length,
       unique_excerpt_count: allPassages.length,
-      duplicate_passages_removed: 0
+      duplicate_passages_removed: 0,
+      author_safe_metrics: authorSafeMetrics
     },
     claim_inventory: claimInventory,
     author_safe_claims: authorSafeClaims,
@@ -588,6 +611,10 @@ export async function executeGeneralizedResearchJob(
       queriesExecuted: queries.length,
       sourcesDiscovered: discoveredCandidates.length,
       sourcesRetrieved: retrievedDocs.length,
+      unique_retrieved_sources_count: verifiedSourceIds.length,
+      retrieved_documents_count: retrievedDocs.length,
+      claim_source_relationship_count: claimSourceRelCount,
+      unique_verified_source_ids: verifiedSourceIds,
       sourcesBlocked: blockedSourcesList.length,
       passagesExtracted: allPassages.length,
       totalPassageObjects: allPassages.length,
@@ -598,7 +625,8 @@ export async function executeGeneralizedResearchJob(
       claimsSupported: claimInventory.filter(c => c.evidence_status === 'SUPPORTED').length,
       claimsConsensus: claimInventory.filter(c => c.claim_class === 'technical_consensus').length,
       authorSafeClaimsTotal: authorSafeClaims.length,
-      authorSafeClaimsAllowed: authorSafeClaims.filter(s => s.allowed_for_authoring).length
+      authorSafeClaimsAllowed: authorSafeClaims.filter(s => s.allowed_for_authoring).length,
+      author_safe_metrics: authorSafeMetrics
     }
   };
 }

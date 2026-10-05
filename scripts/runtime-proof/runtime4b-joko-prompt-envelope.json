@@ -1,0 +1,26 @@
+{
+  "taskId": "task_proof_runtime4b_1791178342292",
+  "topic": "Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?",
+  "safeClaimsCount": 49,
+  "visitorContext": {
+    "context_id": "CTX-02-DECISION-FORK",
+    "primary_problem": "Dilema komparasi atau pilihan intervensi dalam menentukan langkah tepat untuk \"Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?\".",
+    "pain_dimension": "DECISION_UNCERTAINTY",
+    "secondary_pain_dimensions": [
+      "INFORMATION_CONFLICT",
+      "FINANCIAL_RISK"
+    ],
+    "pain_state": "Bingung memilih antara dua material atau dua jalur penanganan dengan klaim performa yang saling bertentangan.",
+    "decision_state": "Membandingkan kelebihan, kekurangan, dan kecocokan iklim sebelum menetapkan anggaran belanja.",
+    "existing_condition": "Tahap perencanaan renovasi atau penanganan mendesak di mana anggaran terbatas dan keputusan harus diambil.",
+    "risk_or_concern": "Salah membeli material atau memilih solusi yang salah kaprah untuk kondisi lapangan spesifik.",
+    "desired_outcome": "Memiliki komparasi objektif berbasis perilaku material nyata dan batas fisik bangunan.",
+    "confidence": "HIGH",
+    "basis": [
+      "ARTICLE_TOPIC",
+      "SEARCH_INTENT",
+      "QUERY_LANGUAGE"
+    ],
+    "source_mode": "INFERRED_EDITORIAL_CONTEXT"
+  }
+}

@@ -1,0 +1,65 @@
+[
+  {
+    "question_id": "RQ-01",
+    "category": "PLAUSIBLE_CAUSES",
+    "question_text": "Apa mekanisme fisik, termal, atau struktural yang memicu kelembapan berlebih dan pertumbuhan jamur pada dinding bangunan?",
+    "rationale": "Menjamin artikel bertolak dari hukum fisika dan penyebab mendasar, bukan sekadar gejala tampak.",
+    "expected_evidence_roles": [
+      "CAUSE_MECHANISM",
+      "MATERIAL_BEHAVIOR"
+    ]
+  },
+  {
+    "question_id": "RQ-02",
+    "category": "DIFFERENTIAL_DIAGNOSIS",
+    "question_text": "Bagaimana cara membedakan berbagai kemungkinan penyebab atau jalur timbulnya kelembapan berlebih dan pertumbuhan jamur di lapangan?",
+    "rationale": "Memberikan panduan diagnostik mandiri kepada pembaca sebelum mengambil tindakan perbaikan.",
+    "expected_evidence_roles": [
+      "DIAGNOSTIC_SIGNAL",
+      "CONTEXT_DEPENDENCY"
+    ]
+  },
+  {
+    "question_id": "RQ-03",
+    "category": "INTERVENTION_MAPPING",
+    "question_text": "Bagaimana efektivitas Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki dalam menyelesaikan masing-masing akar penyebab yang teridentifikasi?",
+    "rationale": "Memetakan solusi secara presisi ke akar masalah, mencegah pengobatan yang salah sasaran.",
+    "expected_evidence_roles": [
+      "INTERVENTION_EFFECT",
+      "MATERIAL_BEHAVIOR"
+    ]
+  },
+  {
+    "question_id": "RQ-04",
+    "category": "LIMITATIONS_AND_FALSE_FIXES",
+    "question_text": "Apa keterbatasan material, batasan fisik, atau kekeliruan umum (solusi semu) saat menangani kelembapan berlebih dan pertumbuhan jamur?",
+    "rationale": "Melindungi pembaca dari pemborosan biaya akibat solusi instan yang gagal menyelesaikan masalah.",
+    "expected_evidence_roles": [
+      "LIMITATION",
+      "RISK"
+    ]
+  },
+  {
+    "question_id": "RQ-05",
+    "category": "ESCALATION_CONDITIONS",
+    "question_text": "Kondisi atau tanda lapangan apa yang memerlukan pembongkaran, perbaikan sumber struktural, atau inspeksi ahli?",
+    "rationale": "Menegaskan batasan kapan perbaikan mandiri cukup dan kapan eskalasi profesional mutlak diperlukan.",
+    "expected_evidence_roles": [
+      "RISK",
+      "INSTALLATION_GUIDANCE",
+      "CONTEXT_DEPENDENCY"
+    ]
+  },
+  {
+    "question_id": "RQ-06",
+    "category": "EMPIRICAL_RECOMMENDATION_SUPPORT",
+    "question_text": "Bukti empiris, pengujian standar, atau prinsip sains bangunan apa yang mendasari urutan prioritas rekomendasi?",
+    "rationale": "Menjamin rekomendasi tindakan tidak berakar dari intuisi model semata melainkan dari bukti terverifikasi.",
+    "expected_evidence_roles": [
+      "CAUSE_MECHANISM",
+      "INTERVENTION_EFFECT",
+      "REGULATORY_REFERENCE",
+      "MATERIAL_BEHAVIOR"
+    ]
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "milestone": "EDITORIAL-RUNTIME-4B",
+  "executed_at": "2026-10-05T05:35:15.187Z",
+  "topic": "Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?",
+  "content_family": "problem_solver",
+  "stage_reached": "RESEARCH_INTEGRITY_GATE",
+  "blocked_at": "RESEARCH_INTEGRITY_GATE",
+  "primary_classification": "RUNTIME4B_RESEARCH_INTEGRITY_BLOCKED",
+  "stop_reason": "auditEvidencePackProvenance failed with SEMANTIC_ROLE_MISMATCH on 5 claims and UNJUSTIFIED_ABSOLUTE_RECOMMENDATION on 1 claim",
+  "provenance_audit": {
+    "requires_provenance_failure": true,
+    "total_claims": 49,
+    "retrieved_and_verified_sources_count": 49,
+    "unverified_claims_count": 6,
+    "failures": [
+      "SEMANTIC_ROLE_MISMATCH: CLM-002 (psg_SRC_OPEN_WIKI_DAMP_2, CAUSE_MECHANISM vs allowed legacy roof roles)",
+      "SEMANTIC_ROLE_MISMATCH: CLM-003 (psg_SRC_OPEN_WIKI_DAMP_3, CAUSE_MECHANISM vs allowed legacy roof roles)",
+      "SEMANTIC_ROLE_MISMATCH: CLM-004 (psg_SRC_OPEN_WIKI_DAMP_4, CAUSE_MECHANISM vs allowed legacy roof roles)",
+      "SEMANTIC_ROLE_MISMATCH: CLM-005 (psg_SRC_OPEN_WIKI_DAMP_5, RISK vs allowed legacy roof roles)",
+      "SEMANTIC_ROLE_MISMATCH: CLM-006 (psg_SRC_OPEN_WIKI_DAMP_6, CAUSE_MECHANISM vs allowed legacy roof roles)",
+      "UNJUSTIFIED_ABSOLUTE_RECOMMENDATION: CLM-049 contains universal absolute word (wajib)"
+    ]
+  },
+  "joko_invoked": false,
+  "rina_invoked": false,
+  "final_gate": "EDITORIAL_RUNTIME4B_HUMAN_REVIEW_REQUIRED"
+}

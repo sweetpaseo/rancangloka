@@ -465,6 +465,43 @@ export type LegacyRoofEvidenceRole =
 
 export type EvidenceSemanticRole = GeneralEvidenceRole | LegacyRoofEvidenceRole;
 
+export const GENERAL_EVIDENCE_ROLES: GeneralEvidenceRole[] = [
+  'CAUSE_MECHANISM',
+  'DIAGNOSTIC_SIGNAL',
+  'MATERIAL_BEHAVIOR',
+  'INTERVENTION_EFFECT',
+  'INSTALLATION_GUIDANCE',
+  'LIMITATION',
+  'RISK',
+  'CONTEXT_DEPENDENCY',
+  'MAINTENANCE',
+  'REGULATORY_REFERENCE',
+  'USER_EXPERIENCE_SIGNAL'
+];
+
+export function isGeneralEvidenceRole(role: any): role is GeneralEvidenceRole {
+  return typeof role === 'string' && GENERAL_EVIDENCE_ROLES.includes(role as GeneralEvidenceRole);
+}
+
+export const GENERAL_SEMANTIC_ROLE_COMPATIBILITY: Record<GeneralEvidenceRole, GeneralEvidenceRole[]> = {
+  CAUSE_MECHANISM: ['CAUSE_MECHANISM'],
+  DIAGNOSTIC_SIGNAL: ['DIAGNOSTIC_SIGNAL'],
+  MATERIAL_BEHAVIOR: ['MATERIAL_BEHAVIOR'],
+  INTERVENTION_EFFECT: ['INTERVENTION_EFFECT'],
+  INSTALLATION_GUIDANCE: ['INSTALLATION_GUIDANCE'],
+  LIMITATION: ['LIMITATION'],
+  RISK: ['RISK'],
+  CONTEXT_DEPENDENCY: ['CONTEXT_DEPENDENCY'],
+  MAINTENANCE: ['MAINTENANCE'],
+  REGULATORY_REFERENCE: ['REGULATORY_REFERENCE'],
+  USER_EXPERIENCE_SIGNAL: ['USER_EXPERIENCE_SIGNAL']
+};
+
+/**
+ * Historical metal-roof ID-specific role mappings.
+ * Strictly preserved for historical fixtures and tests (Milestone 3B).
+ * In generalized runtime, validation depends solely on claim/passage semantic roles and claim class, never on claim ID.
+ */
 export const CLAIM_ALLOWED_SEMANTIC_ROLES: Record<string, EvidenceSemanticRole[]> = {
   'CLM-001A': ['ROOF_HEAT_TRANSFER', 'MATERIAL_PROPERTY'],
   'CLM-001B': ['ROOF_HEAT_TRANSFER', 'MATERIAL_PROPERTY'],
@@ -508,6 +545,8 @@ export interface EvidenceClaim {
   action?: 'KEEP' | 'QUALIFY' | 'REMOVE_NUMBER' | 'REMOVE_CLAIM' | 'RESEARCH_REQUIRED' | string;
   relevance?: string;
   numeric_claim?: boolean;
+  semantic_role?: EvidenceSemanticRole;
+  absolute_language_allowed?: boolean;
 }
 
 export interface AuthorSafeClaim {
@@ -535,7 +574,12 @@ export interface EvidencePackInput {
 
 export interface ProvenanceAuditSummary {
   total_claims: number;
+  /** @deprecated Ambiguous historical field counting claim-source relationships. Use unique_retrieved_sources_count or claim_source_relationship_count. */
   retrieved_and_verified_sources_count: number;
+  unique_retrieved_sources_count: number;
+  retrieved_documents_count: number;
+  claim_source_relationship_count: number;
+  unique_verified_source_ids: string[];
   metadata_only_sources_count: number;
   unretrieved_sources_count: number;
   unverified_claims: string[];
@@ -558,6 +602,25 @@ export interface ProvenanceAuditOptions {
   topic?: string;
   researchQuestions?: any[];
   minOverlapScore?: number;
+  legacyRoofFixtures?: boolean;
+}
+
+export function isHistoricalRoofPack(
+  evidencePack: EvidencePackInput | null | undefined,
+  options?: ProvenanceAuditOptions
+): boolean {
+  if (!evidencePack) return false;
+  if (options?.legacyRoofFixtures) return true;
+  if (evidencePack.is_historical_roof_pack === true) return true;
+  if (typeof evidencePack.milestone === 'string' && /EDITORIAL-RUNTIME-3/i.test(evidencePack.milestone)) {
+    return true;
+  }
+  const claims = Array.isArray(evidencePack.claim_inventory) ? evidencePack.claim_inventory : [];
+  const hasGenericClaimRoles = claims.some(c => isGeneralEvidenceRole((c as any).semantic_role));
+  if (!hasGenericClaimRoles && evidencePack.topic && /atap metal terasa panas/i.test(evidencePack.topic)) {
+    return true;
+  }
+  return false;
 }
 
 export function auditEvidencePackProvenance(
@@ -568,6 +631,10 @@ export function auditEvidencePackProvenance(
   const summary: ProvenanceAuditSummary = {
     total_claims: 0,
     retrieved_and_verified_sources_count: 0,
+    unique_retrieved_sources_count: 0,
+    retrieved_documents_count: 0,
+    claim_source_relationship_count: 0,
+    unique_verified_source_ids: [],
     metadata_only_sources_count: 0,
     unretrieved_sources_count: 0,
     unverified_claims: [],
@@ -602,6 +669,11 @@ export function auditEvidencePackProvenance(
   const claims = evidencePack.claim_inventory;
   summary.total_claims = claims.length;
 
+  const verifiedSourceIdSet = new Set<string>();
+  let claimSourceRelCount = 0;
+  let metadataOnlyRelCount = 0;
+  let unretrievedRelCount = 0;
+
   for (const claim of claims) {
     const claimSources = Array.isArray(claim.sources) ? claim.sources : [];
     let hasRetrievedSource = false;
@@ -615,17 +687,20 @@ export function auditEvidencePackProvenance(
         'SOURCE_PROVENANCE_UNKNOWN';
 
       if (status === 'SOURCE_RETRIEVED_AND_VERIFIED') {
-        summary.retrieved_and_verified_sources_count++;
+        claimSourceRelCount++;
+        if (src.source_id) {
+          verifiedSourceIdSet.add(src.source_id);
+        }
         hasRetrievedSource = true;
       } else if (status === 'SOURCE_METADATA_ONLY') {
-        summary.metadata_only_sources_count++;
+        metadataOnlyRelCount++;
         hasMetadataOnlySource = true;
       } else if (
         status === 'SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED' ||
         status === 'SOURCE_REFERENCE_KNOWN_BUT_NOT_RETRIEVED' ||
         status === 'SOURCE_UNAVAILABLE'
       ) {
-        summary.unretrieved_sources_count++;
+        unretrievedRelCount++;
         hasKnownUnretrievedSource = true;
       }
     }
@@ -779,6 +854,24 @@ export function auditEvidencePackProvenance(
     }
   }
 
+  const retrievedDocsList = Array.isArray(evidencePack.retrieved_documents)
+    ? evidencePack.retrieved_documents.filter(d => d.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED' || d.read_status === 'READ_AND_EXTRACTED')
+    : [];
+
+  for (const doc of retrievedDocsList) {
+    if (doc.source_id) {
+      verifiedSourceIdSet.add(doc.source_id);
+    }
+  }
+
+  summary.unique_retrieved_sources_count = verifiedSourceIdSet.size;
+  summary.retrieved_documents_count = retrievedDocsList.length;
+  summary.claim_source_relationship_count = claimSourceRelCount;
+  summary.unique_verified_source_ids = Array.from(verifiedSourceIdSet);
+  summary.retrieved_and_verified_sources_count = claimSourceRelCount;
+  summary.metadata_only_sources_count = metadataOnlyRelCount;
+  summary.unretrieved_sources_count = unretrievedRelCount;
+
   // Phase 15 (EDITORIAL-RUNTIME-3B): Top-level evidence_passages deduplication & bidirectional integrity
   if (Array.isArray(evidencePack.evidence_passages)) {
     const passageMap = new Map<string, EvidencePassage>();
@@ -923,75 +1016,114 @@ export function auditEvidencePackProvenance(
       }
     }
 
-    // Phase 16 (EDITORIAL-RUNTIME-3B-STABILIZE): Semantic Claim-Passage Entailment & Boundary Contract
+    // Phase 16 (EDITORIAL-RUNTIME-3B-STABILIZE & 4B-STABILIZE): Semantic Claim-Passage Entailment & Boundary Contract
+    const historicalRoofPack = isHistoricalRoofPack(evidencePack, options);
+
     for (const claim of claims) {
-      const allowedRoles = CLAIM_ALLOWED_SEMANTIC_ROLES[claim.claim_id];
+      const claimDeclaredGenericRole = isGeneralEvidenceRole((claim as any).semantic_role);
+      const allowedRoles = historicalRoofPack && !claimDeclaredGenericRole
+        ? CLAIM_ALLOWED_SEMANTIC_ROLES[claim.claim_id]
+        : undefined;
+
       if (Array.isArray(claim.evidence_passage_ids)) {
         for (const pid of claim.evidence_passage_ids) {
           const passage = passageMap.get(pid);
           if (passage) {
-            // Check 1: Walls passage must NOT support roof thermal/mass/conductivity or dust claims
-            const locatorIsWall = /\b(?:Walls|Wall)\b/i.test(passage.locator || '') ||
-              /\b(?:vented wall skin|sheathing to create a vented air space between the radiant barrier and the siding)\b/i.test(passage.exact_or_normalized_excerpt || '');
-            if (locatorIsWall && (claim.claim_id === 'CLM-001A' || claim.claim_id === 'CLM-001B' || claim.claim_id === 'CLM-007A')) {
-              summary.unverified_claims.push(
-                `INVALID_PASSAGE_CLAIM_ENTAILMENT: Passage '${pid}' dari locator '${passage.locator}' tidak dapat mendukung klaim '${claim.claim_id}'. Topik dinding tidak membuktikan properti atap atau degradasi debu.`
-              );
-              summary.requires_provenance_failure = true;
-              summary.audit_reasons.push(
-                `Passage '${pid}' (Walls) tidak memenuhi syarat entailment untuk '${claim.claim_id}'.`
-              );
-            }
+            // Case 1: Generic Semantic Contract (active whenever claim has a generic semantic role OR pack is not historical roof)
+            if (claimDeclaredGenericRole || !historicalRoofPack) {
+              const claimRole = (claim as any).semantic_role as GeneralEvidenceRole;
+              const passageRole = passage.semantic_role as GeneralEvidenceRole;
 
-            // Check 2: Semantic role compatibility
-            if (passage.semantic_role && allowedRoles) {
-              if (allowedRoles.length > 0 && !allowedRoles.includes(passage.semantic_role)) {
+              if (!claimRole) {
                 summary.unverified_claims.push(
-                  `SEMANTIC_ROLE_MISMATCH: Passage '${pid}' dengan peran '${passage.semantic_role}' tidak kompatibel dengan klaim '${claim.claim_id}' (peran yang diizinkan: ${allowedRoles.join(', ')}).`
+                  `MISSING_CLAIM_SEMANTIC_ROLE: Klaim '${claim.claim_id}' tidak menyatakan peran semantik (semantic_role) dalam runtime generalisasi.`
                 );
                 summary.requires_provenance_failure = true;
                 summary.audit_reasons.push(
-                  `Peran semantik passage '${passage.semantic_role}' tidak dapat digunakan untuk membuktikan klaim '${claim.claim_id}'.`
+                  `Klaim '${claim.claim_id}' wajib menyatakan peran semantik.`
+                );
+              } else if (!passageRole) {
+                summary.unverified_claims.push(
+                  `GENERIC_SEMANTIC_ROLE_MISMATCH: Passage '${pid}' tidak menyatakan peran semantik (semantic_role) untuk mendukung klaim '${claim.claim_id}'.`
+                );
+                summary.requires_provenance_failure = true;
+                summary.audit_reasons.push(
+                  `GENERIC_SEMANTIC_ROLE_MISMATCH: Passage '${pid}' tidak memiliki semantic_role.`
+                );
+              } else {
+                const compatibleRoles = GENERAL_SEMANTIC_ROLE_COMPATIBILITY[claimRole] || [claimRole];
+                if (!compatibleRoles.includes(passageRole)) {
+                  summary.unverified_claims.push(
+                    `GENERIC_SEMANTIC_ROLE_MISMATCH: Passage '${pid}' dengan peran '${passageRole}' tidak kompatibel dengan peran klaim '${claimRole}' pada klaim '${claim.claim_id}' (peran yang diizinkan: ${compatibleRoles.join(', ')}).`
+                  );
+                  summary.requires_provenance_failure = true;
+                  summary.audit_reasons.push(
+                    `GENERIC_SEMANTIC_ROLE_MISMATCH: Peran semantik passage '${passageRole}' tidak kompatibel dengan klaim '${claim.claim_id}' (peran: '${claimRole}').`
+                  );
+                }
+              }
+            } else {
+              // Case 2: Historical Metal-Roof Fixtures & Tests
+              // Check 1: Walls passage must NOT support roof thermal/mass/conductivity or dust claims
+              const locatorIsWall = /\b(?:Walls|Wall)\b/i.test(passage.locator || '') ||
+                /\b(?:vented wall skin|sheathing to create a vented air space between the radiant barrier and the siding)\b/i.test(passage.exact_or_normalized_excerpt || '');
+              if (locatorIsWall && (claim.claim_id === 'CLM-001A' || claim.claim_id === 'CLM-001B' || claim.claim_id === 'CLM-007A')) {
+                summary.unverified_claims.push(
+                  `INVALID_PASSAGE_CLAIM_ENTAILMENT: Passage '${pid}' dari locator '${passage.locator}' tidak dapat mendukung klaim '${claim.claim_id}'. Topik dinding tidak membuktikan properti atap atau degradasi debu.`
+                );
+                summary.requires_provenance_failure = true;
+                summary.audit_reasons.push(
+                  `Passage '${pid}' (Walls) tidak memenuhi syarat entailment untuk '${claim.claim_id}'.`
                 );
               }
-            }
 
-            // Check 3: Specific adversarial mismatch checks
-            // Dust passage -> conductivity or ventilation
-            const isDustPassage = passage.semantic_role === 'DUST_DEGRADATION' || /\bdust\b/i.test(passage.exact_or_normalized_excerpt || '');
-            if (isDustPassage && (claim.claim_id === 'CLM-001B' || claim.claim_id === 'CLM-005' || claim.claim_id === 'CLM-006')) {
-              summary.unverified_claims.push(
-                `SEMANTIC_ROLE_MISMATCH: Passage debu '${pid}' tidak dapat mendukung klaim konduktivitas atau ventilasi '${claim.claim_id}'.`
-              );
-              summary.requires_provenance_failure = true;
-              summary.audit_reasons.push(`Passage debu tidak dapat membuktikan ${claim.claim_id}.`);
-            }
+              // Check 2: Historical semantic role compatibility
+              if (passage.semantic_role && allowedRoles) {
+                if (allowedRoles.length > 0 && !allowedRoles.includes(passage.semantic_role)) {
+                  summary.unverified_claims.push(
+                    `SEMANTIC_ROLE_MISMATCH: Passage '${pid}' dengan peran '${passage.semantic_role}' tidak kompatibel dengan klaim '${claim.claim_id}' (peran yang diizinkan: ${allowedRoles.join(', ')}).`
+                  );
+                  summary.requires_provenance_failure = true;
+                  summary.audit_reasons.push(
+                    `Peran semantik passage '${passage.semantic_role}' tidak dapat digunakan untuk membuktikan klaim '${claim.claim_id}'.`
+                  );
+                }
+              }
 
-            // Ventilation passage -> bulk insulation property
-            const isVentPassage = passage.semantic_role === 'ATTIC_VENTILATION' || /\battic ventilation\b/i.test(passage.exact_or_normalized_excerpt || '');
-            if (isVentPassage && (claim.claim_id === 'CLM-004A' || (claim.claim_id === 'CLM-004' && !claim.statement.includes('ventilasi')))) {
-              summary.unverified_claims.push(
-                `SEMANTIC_ROLE_MISMATCH: Passage ventilasi '${pid}' tidak dapat mendukung klaim insulasi massa '${claim.claim_id}'.`
-              );
-              summary.requires_provenance_failure = true;
-              summary.audit_reasons.push(`Passage ventilasi tidak dapat membuktikan insulasi massa ${claim.claim_id}.`);
-            }
+              // Check 3: Specific adversarial mismatch checks
+              const isDustPassage = passage.semantic_role === 'DUST_DEGRADATION' || /\bdust\b/i.test(passage.exact_or_normalized_excerpt || '');
+              if (isDustPassage && (claim.claim_id === 'CLM-001B' || claim.claim_id === 'CLM-005' || claim.claim_id === 'CLM-006')) {
+                summary.unverified_claims.push(
+                  `SEMANTIC_ROLE_MISMATCH: Passage debu '${pid}' tidak dapat mendukung klaim konduktivitas atau ventilasi '${claim.claim_id}'.`
+                );
+                summary.requires_provenance_failure = true;
+                summary.audit_reasons.push(`Passage debu tidak dapat membuktikan ${claim.claim_id}.`);
+              }
 
-            // Air space passage -> unrelated metal material-property claim (CLM-001A, CLM-001B)
-            const isAirSpacePassage = passage.semantic_role === 'AIR_SPACE_REQUIREMENT';
-            if (isAirSpacePassage && (claim.claim_id === 'CLM-001A' || claim.claim_id === 'CLM-001B')) {
-              summary.unverified_claims.push(
-                `SEMANTIC_ROLE_MISMATCH: Passage rongga udara '${pid}' tidak dapat mendukung klaim sifat fisik material lembaran metal '${claim.claim_id}'.`
-              );
-              summary.requires_provenance_failure = true;
-              summary.audit_reasons.push(`Passage rongga udara tidak dapat membuktikan sifat fisik lembaran ${claim.claim_id}.`);
+              const isVentPassage = passage.semantic_role === 'ATTIC_VENTILATION' || /\battic ventilation\b/i.test(passage.exact_or_normalized_excerpt || '');
+              if (isVentPassage && (claim.claim_id === 'CLM-004A' || (claim.claim_id === 'CLM-004' && !claim.statement.includes('ventilasi')))) {
+                summary.unverified_claims.push(
+                  `SEMANTIC_ROLE_MISMATCH: Passage ventilasi '${pid}' tidak dapat mendukung klaim insulasi massa '${claim.claim_id}'.`
+                );
+                summary.requires_provenance_failure = true;
+                summary.audit_reasons.push(`Passage ventilasi tidak dapat membuktikan insulasi massa ${claim.claim_id}.`);
+              }
+
+              const isAirSpacePassage = passage.semantic_role === 'AIR_SPACE_REQUIREMENT';
+              if (isAirSpacePassage && (claim.claim_id === 'CLM-001A' || claim.claim_id === 'CLM-001B')) {
+                summary.unverified_claims.push(
+                  `SEMANTIC_ROLE_MISMATCH: Passage rongga udara '${pid}' tidak dapat mendukung klaim sifat fisik material lembaran metal '${claim.claim_id}'.`
+                );
+                summary.requires_provenance_failure = true;
+                summary.audit_reasons.push(`Passage rongga udara tidak dapat membuktikan sifat fisik lembaran ${claim.claim_id}.`);
+              }
             }
           }
         }
       }
 
-      // Check 4: CLM-004A cannot contain unsupported fiber/foam comparison
-      if (claim.claim_id === 'CLM-004A') {
+      // Check 4: CLM-004A cannot contain unsupported fiber/foam comparison (Historical roof only)
+      if (historicalRoofPack && !claimDeclaredGenericRole && claim.claim_id === 'CLM-004A') {
         if (/\b(?:serat|busa|fiber|foam)\b/i.test(claim.statement || '')) {
           summary.unverified_claims.push(
             `UNSUPPORTED_MATERIAL_COMPARISON: CLM-004A memuat perbandingan material serat/busa yang tidak didukung langsung oleh kutipan bukti sumber: ${claim.statement}`
@@ -1092,17 +1224,25 @@ export function auditEvidencePackProvenance(
           }
         }
 
-        // Banning universal absolutes in recommendation statements: harus, wajib, selalu, mutlak, diperlukan, prioritas utama
-        const hasUniversalAbsolute = /\b(?:harus|wajib|selalu|mutlak|diperlukan|prioritas utama)\b/i.test(underlying?.statement || '');
+        // Banning universal absolutes in recommendation statements: harus, wajib, selalu, mutlak, pasti, diperlukan, prioritas utama
+        const absoluteAllowed = underlying?.absolute_language_allowed === true;
+        const hasUniversalAbsolute = /\b(?:harus|wajib|selalu|mutlak|pasti|diperlukan|prioritas utama)\b/i.test(underlying?.statement || '');
         if (hasUniversalAbsolute) {
-          const matchWord = underlying?.statement.match(/\b(?:harus|wajib|selalu|mutlak|diperlukan|prioritas utama)\b/i)?.[0];
-          summary.unverified_claims.push(
-            `UNJUSTIFIED_ABSOLUTE_RECOMMENDATION: Rekomendasi '${safe.claim_id}' memuat kata mutlak/absolut yang dilarang ('${matchWord}').`
-          );
-          summary.requires_provenance_failure = true;
-          summary.audit_reasons.push(
-            `Rekomendasi ${safe.claim_id} dilarang menggunakan kata mutlak (${matchWord}).`
-          );
+          const matchWord = underlying?.statement.match(/\b(?:harus|wajib|selalu|mutlak|pasti|diperlukan|prioritas utama)\b/i)?.[0];
+          const hasDirectJustification = absoluteAllowed &&
+            underlying?.evidence_status === 'VERIFIED' &&
+            Array.isArray(underlying?.evidence_passage_ids) &&
+            underlying.evidence_passage_ids.length > 0;
+
+          if (!hasDirectJustification) {
+            summary.unverified_claims.push(
+              `UNJUSTIFIED_ABSOLUTE_RECOMMENDATION: Rekomendasi '${safe.claim_id}' memuat kata mutlak/absolut yang dilarang ('${matchWord}').`
+            );
+            summary.requires_provenance_failure = true;
+            summary.audit_reasons.push(
+              `Rekomendasi ${safe.claim_id} dilarang menggunakan kata mutlak (${matchWord}).`
+            );
+          }
         }
       }
 
@@ -1211,8 +1351,79 @@ export function calculateOverallConfidence(evidencePack: EvidencePackInput): 'HI
  * - Editorial recommendations are allowed when transparently derived from supported claims.
  * - Adds stripped numbers to prohibited_elements so authoring models cannot reintroduce them.
  */
-export function generateAuthorSafeClaims(claims: EvidenceClaim[]): AuthorSafeClaim[] {
+export interface AuthorSafeMetrics {
+  total_claims: number;
+  allowed_for_authoring_count: number;
+  blocked_count: number;
+  qualified_count: number;
+  recommendation_count: number;
+  research_required_count: number;
+}
+
+export function calculateAuthorSafeMetrics(
+  claims: EvidenceClaim[],
+  authorSafeClaims: AuthorSafeClaim[]
+): AuthorSafeMetrics {
+  const total_claims = claims.length;
+  let allowed_for_authoring_count = 0;
+  let blocked_count = 0;
+  let qualified_count = 0;
+  let recommendation_count = 0;
+  let research_required_count = 0;
+
+  for (const safe of authorSafeClaims) {
+    if (safe.allowed_for_authoring) {
+      allowed_for_authoring_count++;
+    } else {
+      blocked_count++;
+    }
+    if (safe.qualification_required) {
+      qualified_count++;
+    }
+  }
+
+  for (const claim of claims) {
+    const isRecommendation = claim.claim_class === 'editorial_recommendation' || claim.claim_class === 'EDITORIAL_RECOMMENDATION';
+    if (isRecommendation) {
+      recommendation_count++;
+    }
+    if (claim.action === 'RESEARCH_REQUIRED' || claim.evidence_status === 'RESEARCH_REQUIRED') {
+      research_required_count++;
+    }
+  }
+
+  return {
+    total_claims,
+    allowed_for_authoring_count,
+    blocked_count,
+    qualified_count,
+    recommendation_count,
+    research_required_count
+  };
+}
+
+/**
+ * Automatically generates author-safe claims from an Evidence Claim inventory.
+ * Enforces the Numeric Claim Hard Rule (EDITORIAL-SOURCE-ACQUISITION-1) and Milestone 3B & 4B Unsourced Claim Safety:
+ * - If sources are NOT retrieved and verified or factual claims have zero supporting passages,
+ *   sets allowed_for_authoring = false and action = RESEARCH_REQUIRED.
+ * - Editorial recommendations are allowed when transparently derived from supported claims and free of prohibited absolutes.
+ * - Adds stripped numbers to prohibited_elements so authoring models cannot reintroduce them.
+ */
+export function generateAuthorSafeClaims(
+  claims: EvidenceClaim[],
+  options?: {
+    evidencePassages?: EvidencePassage[];
+  }
+): AuthorSafeClaim[] {
   const result: AuthorSafeClaim[] = [];
+
+  const passagesById = new Map<string, EvidencePassage>();
+  if (Array.isArray(options?.evidencePassages)) {
+    for (const p of options.evidencePassages) {
+      passagesById.set(p.passage_id, p);
+    }
+  }
 
   for (const claim of claims) {
     const isRecommendation = claim.claim_class === 'editorial_recommendation' || claim.claim_class === 'EDITORIAL_RECOMMENDATION';
@@ -1227,10 +1438,16 @@ export function generateAuthorSafeClaims(claims: EvidenceClaim[]): AuthorSafeCla
       (c) => (Array.isArray(c.evidence_passage_ids) && c.evidence_passage_ids.length > 0) ||
         (c.sources || []).some((s) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED')
     );
+
+    const isExplicitlyBlocked = claim.action === 'RESEARCH_REQUIRED' ||
+      claim.action === 'REMOVE' ||
+      claim.action === 'REMOVE_CLAIM' ||
+      claim.evidence_status === 'RESEARCH_REQUIRED' ||
+      claim.evidence_status === 'UNVERIFIED';
+
     const isUnsourcedTechnical = !isRecommendation && (
       claimSources.length === 0 ||
-      claim.action === 'RESEARCH_REQUIRED' ||
-      claim.action === 'REMOVE' ||
+      isExplicitlyBlocked ||
       (packHasPassagesOrRetrieval && !hasPassages && !hasRetrieved)
     );
 
@@ -1250,18 +1467,56 @@ export function generateAuthorSafeClaims(claims: EvidenceClaim[]): AuthorSafeCla
       const derivedIds = claim.derived_from_claim_ids || [];
       const hasBlockedDerived = derivedIds.some(did => {
         const target = claims.find(c => c.claim_id === did);
-        return !target || target.action === 'RESEARCH_REQUIRED' || target.action === 'REMOVE' || (target.sources?.length === 0);
+        return !target ||
+          target.action === 'RESEARCH_REQUIRED' ||
+          target.action === 'REMOVE' ||
+          target.action === 'REMOVE_CLAIM' ||
+          target.evidence_status === 'RESEARCH_REQUIRED' ||
+          target.evidence_status === 'UNVERIFIED' ||
+          (!target.sources || target.sources.length === 0);
       });
+
+      // Check universal absolutes in recommendation
+      const absoluteAllowed = claim.absolute_language_allowed === true;
+      const hasUniversalAbsolute = /\b(?:harus|wajib|selalu|mutlak|pasti|diperlukan|prioritas utama)\b/i.test(claim.statement || '');
+      const recommendationDisqualified = hasBlockedDerived || (hasUniversalAbsolute && !absoluteAllowed);
 
       result.push({
         claim_id: claim.claim_id,
         statement: claim.statement,
-        support_level: 'SUPPORTED',
+        support_level: (claim.evidence_status as ClaimSupportLevel) || 'SUPPORTED',
         applicability: claimSources[0]?.applicability || 'EDITORIAL_INFERENCE',
-        allowed_for_authoring: !hasBlockedDerived,
-        qualification_required: hasBlockedDerived
-          ? 'RESEARCH_REQUIRED: Rekomendasi editorial diturunkan dari klaim yang belum terverifikasi.'
+        allowed_for_authoring: !recommendationDisqualified,
+        qualification_required: recommendationDisqualified
+          ? (hasUniversalAbsolute
+              ? 'UNJUSTIFIED_ABSOLUTE_RECOMMENDATION: Rekomendasi memuat kata absolut yang tidak diizinkan.'
+              : 'RESEARCH_REQUIRED: Rekomendasi editorial diturunkan dari klaim yang belum terverifikasi.')
           : 'Sajikan sebagai panduan keputusan editorial berbasis kondisi lapangan.'
+      });
+      continue;
+    }
+
+    // Check semantic role compatibility if passages are provided
+    let semanticMismatch = false;
+    if (passagesById.size > 0 && Array.isArray(claim.evidence_passage_ids) && isGeneralEvidenceRole((claim as any).semantic_role)) {
+      const compatibleRoles = GENERAL_SEMANTIC_ROLE_COMPATIBILITY[(claim as any).semantic_role as GeneralEvidenceRole] || [(claim as any).semantic_role];
+      for (const pid of claim.evidence_passage_ids) {
+        const p = passagesById.get(pid);
+        if (p && p.semantic_role && !compatibleRoles.includes(p.semantic_role as GeneralEvidenceRole)) {
+          semanticMismatch = true;
+          break;
+        }
+      }
+    }
+
+    if (semanticMismatch) {
+      result.push({
+        claim_id: claim.claim_id,
+        statement: claim.statement,
+        support_level: 'PARTIALLY_SUPPORTED',
+        applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
+        allowed_for_authoring: false,
+        qualification_required: 'GENERIC_SEMANTIC_ROLE_MISMATCH: Peran semantik bukti rujukan tidak sesuai dengan klaim.'
       });
       continue;
     }
@@ -1306,6 +1561,9 @@ export function generateAuthorSafeClaims(claims: EvidenceClaim[]): AuthorSafeCla
       });
     }
   }
+
+  const metrics = calculateAuthorSafeMetrics(claims, result);
+  (result as any).metrics = metrics;
 
   return result;
 }
