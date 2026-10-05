@@ -23,6 +23,7 @@ import {
 import {
   buildJokoPrompt,
   buildJokoRepairPrompt,
+  auditPromptSemanticLeaks,
   type JokoPromptContext,
   type JokoVisitorContextInput
 } from './joko-prompt-builder.ts';
@@ -61,6 +62,7 @@ export type EditorialRuntimeEventType =
   | 'EDITORIAL_REPAIR_REQUESTED'
   | 'RESEARCH_REQUIRED_HALT'
   | 'MAX_RETRIES_EXHAUSTED'
+  | 'PROMPT_DOMAIN_LEAK_DETECTED'
   | 'HUMAN_REVIEW_REQUIRED';
 
 export interface EditorialRuntimeEvent {
@@ -137,7 +139,8 @@ export type FinalEditorialDecision =
   | 'PROVIDER_EMPTY_RESPONSE'
   | 'PROVIDER_MISSING_CONTENT'
   | 'PROVIDER_CONTEXT_LIMIT'
-  | 'PROVIDER_TRANSPORT_ERROR';
+  | 'PROVIDER_TRANSPORT_ERROR'
+  | 'WRITER_PROMPT_DOMAIN_LEAK';
 
 export interface EditorialJobResult {
   jobId: string;
@@ -281,6 +284,22 @@ export async function executeEditorialDraftJob(
         safeClaimsCount: compiledPrompt.metadata.safeClaimsCount
       }
     );
+
+    // 4b. Pre-Provider Prompt Semantic Leak Audit
+    const promptLeakAudit = auditPromptSemanticLeaks(compiledPrompt, basePromptContext);
+    if (!promptLeakAudit.passed) {
+      addTraceEvent(
+        'PROMPT_DOMAIN_LEAK_DETECTED',
+        'pipeline_supervisor',
+        `Kebocoran konsep domain statis terdeteksi pada prompt Joko: ${promptLeakAudit.rejectionReason}`,
+        { leaks: promptLeakAudit.leaks }
+      );
+      finalStatus = 'BLOCKED';
+      finalDecision = 'WRITER_PROMPT_DOMAIN_LEAK';
+      stopGateStatus = 'OPERATOR_INTERVENTION_REQUIRED';
+      shouldContinue = false;
+      break;
+    }
 
     // 5. Request Generation from LLM Provider
     addTraceEvent(

@@ -1,6 +1,6 @@
 /**
  * RancangLoka Joko Runtime Prompt Builder
- * Milestone: EDITORIAL-RUNTIME-1
+ * Milestone: JOKO-PROMPT-GENERALIZATION-1
  *
  * Assembles canonical runtime prompts for `content_writer_primary` (Joko).
  * Compiles master editorial knowledge, Native Indonesian authoring invariants,
@@ -12,6 +12,9 @@
  * - Only author_safe_claims can be asserted as factual numbers.
  * - The existing final draft is NEVER passed into the initial prompt.
  * - Supports targeted repair prompt assembly when Rina issues a StructuredRewriteBrief.
+ * - Generalization Invariant: Static prompt templates MUST be domain-neutral.
+ *   Domain vocabulary (e.g. foil, ventilasi, waterproofing, aluminium, etc.) must originate
+ *   ONLY from active inputs (topic, visitor context, evidence pack), NEVER from static generic instructions.
  */
 
 import {
@@ -45,6 +48,8 @@ export interface JokoVisitorContextInput {
   openingAngle: OpeningAngle | string;
   preferredSignature?: string;
   recentOpeningPatternsToAvoid?: string[];
+  competingOptions?: string[];
+  primaryProblem?: string;
 }
 
 export interface JokoPromptContext {
@@ -61,10 +66,23 @@ export interface JokoPromptContext {
   };
 }
 
+export interface PromptSectionComponents {
+  staticSystemInstructions: string;
+  staticEditorialGuidelines: string;
+  staticFormattingContract: string;
+  topicTitleBlock: string;
+  dynamicVisitorPainBlock: string;
+  dynamicAuthorSafeClaimsBlock: string;
+  dynamicProhibitedClaimsBlock: string;
+  staticStructureGuidelines: string;
+  dynamicRevisionBlock?: string;
+}
+
 export interface JokoCompiledPrompt {
   systemPrompt: string;
   userPrompt: string;
   messages: EditorialChatMessage[];
+  components?: PromptSectionComponents;
   metadata: {
     intent: string;
     safeClaimsCount: number;
@@ -75,14 +93,167 @@ export interface JokoCompiledPrompt {
   };
 }
 
+export const SUSPICIOUS_STATIC_DOMAIN_TERMS = [
+  'radiant barrier',
+  'doe radiant barrier',
+  'insulasi foil',
+  'aluminium foil',
+  'foil',
+  'ventilasi atap',
+  'ventilasi loteng',
+  'atap metal',
+  'metal roof',
+  'rongga atap',
+  'karat atap',
+  'kondensasi atap'
+];
+
+export interface PromptSemanticLeakAuditResult {
+  passed: boolean;
+  leaks: Array<{
+    term: string;
+    section: 'STATIC_SYSTEM' | 'STATIC_USER_STRUCTURE' | 'STATIC_OPENING_TEMPLATE' | 'STATIC_GENERAL';
+    snippet: string;
+  }>;
+  code?: 'WRITER_PROMPT_DOMAIN_LEAK';
+  rejectionReason?: string;
+}
+
+/**
+ * Derives competing options or choices dynamically from the active topic or context.
+ * Never hardcodes domain assumptions into generic instructions.
+ */
+export function deriveCompetingOptionsFromTopicOrContext(
+  topic: string,
+  visitorContext?: JokoVisitorContextInput,
+  authorSafeClaims?: AuthorSafeClaim[]
+): { optionA?: string; optionB?: string; summary: string } {
+  // 1. Check if visitorContext has explicit competing options passed
+  if (visitorContext?.competingOptions && Array.isArray(visitorContext.competingOptions) && visitorContext.competingOptions.length >= 2) {
+    const a = String(visitorContext.competingOptions[0]).trim();
+    const b = String(visitorContext.competingOptions[1]).trim();
+    return {
+      optionA: a,
+      optionB: b,
+      summary: `antara ${a} dan ${b}`
+    };
+  }
+
+  // 2. Parse topic for dichotomy (versus / vs / atau)
+  const cleanOption = (s: string): string => {
+    return s
+      .replace(/^apakah\s+/i, '')
+      .replace(/^perlu\s+/i, '')
+      .replace(/\s+cukup$/i, '')
+      .replace(/[?!.]+$/, '')
+      .trim();
+  };
+
+  const parts = topic.includes(':') ? topic.split(/:\s*/) : [topic];
+  const queryPart = parts[parts.length - 1];
+
+  const vsMatch = queryPart.match(/(.+?)\s+(?:vs\.?|versus)\s+([^,?!]+)/i);
+  if (vsMatch && vsMatch[1] && vsMatch[2]) {
+    const a = cleanOption(vsMatch[1]);
+    const b = cleanOption(vsMatch[2]);
+    return {
+      optionA: a,
+      optionB: b,
+      summary: `antara ${a} dan ${b}`
+    };
+  }
+
+  const atauMatch = queryPart.match(/(.+?)\s+atau\s+([^,?!]+)/i);
+  if (atauMatch && atauMatch[1] && atauMatch[2]) {
+    const a = cleanOption(atauMatch[1]);
+    const b = cleanOption(atauMatch[2]);
+    return {
+      optionA: a,
+      optionB: b,
+      summary: `antara ${a} atau ${b}`
+    };
+  }
+
+  return {
+    summary: `dua pilihan atau pendekatan penanganan yang sedang dipertimbangkan pada topik "${topic}"`
+  };
+}
+
+/**
+ * Builds dynamic opening instructions derived purely from active topic, visitor context,
+ * and author safe claims. Free of static domain-specific assumptions.
+ */
+export function buildDynamicOpeningGuidance(
+  topic: string,
+  visitorContext: JokoVisitorContextInput,
+  authorSafeClaims?: AuthorSafeClaim[]
+): string {
+  const angle = visitorContext.openingAngle;
+  const isContractorConflict =
+    visitorContext.primaryContextId === 'CTX-04-CONTRACTOR-CONFLICT' ||
+    visitorContext.primaryPainDimension === 'INFORMATION_CONFLICT' ||
+    angle === 'EXPERT_OBSERVATION';
+
+  const competing = deriveCompetingOptionsFromTopicOrContext(topic, visitorContext, authorSafeClaims);
+
+  const lines: string[] = [];
+
+  if (isContractorConflict) {
+    const conflictDesc = competing.optionA && competing.optionB
+      ? `satu pihak menyarankan ${competing.optionA.toLowerCase()}, sementara pihak lain menyarankan ${competing.optionB.toLowerCase()}`
+      : competing.summary;
+    lines.push(
+      `- Awali naskah dari situasi saat pemilik rumah bingung karena tukang/kontraktor memberikan saran yang saling bertentangan di lapangan (${conflictDesc}).`,
+      `- Tunjukkan bahwa kedua anjuran tersebut terdengar masuk akal bagi pembaca, lalu jelaskan mengapa diagnosis kondisi fisik lapangan dibutuhkan sebelum memutuskan solusi mana yang tepat.`
+    );
+  } else if (angle === 'DECISION_FORK') {
+    const forkDesc = competing.optionA && competing.optionB
+      ? `memilih antara ${competing.optionA.toLowerCase()} atau ${competing.optionB.toLowerCase()}`
+      : competing.summary;
+    lines.push(
+      `- Awali naskah dari persimpangan keputusan nyata yang sedang dihadapi pemilik rumah terkait "${topic}" (${forkDesc}).`,
+      `- Tunjukkan dua pilihan atau pendekatan penanganan yang sedang dipertimbangkan pembaca, lalu jelaskan mengapa diagnosis konteks lapangan dibutuhkan sebelum menentukan pilihan material atau tindakan.`
+    );
+  } else if (angle === 'FAILURE_AFTER_SOLUTION') {
+    lines.push(
+      `- Awali naskah dari situasi saat pemilik rumah sudah mencoba langkah perbaikan awal pada "${topic}" namun masalah tetap berulang.`,
+      `- Tunjukkan frustrasi wajar pemilik rumah akibat perbaikan yang tidak tuntas sebelum Anda masuk ke akar penyebab fisik yang sebenarnya.`
+    );
+  } else if (angle === 'DIAGNOSTIC_MYSTERY') {
+    lines.push(
+      `- Awali naskah dengan pertanyaan reflektif atau gejala fisik yang membingungkan seputar "${topic}".`,
+      `- Ajak pembaca melacak dari mana masalah sebenarnya bermula sebelum tergesa-gesa membeli produk atau material pelindung.`
+    );
+  } else if (angle === 'COST_OF_WRONG_DECISION') {
+    lines.push(
+      `- Awali naskah dari kekhawatiran salah urutan penanganan atau pemborosan anggaran renovasi untuk "${topic}".`,
+      `- Tunjukkan risiko biaya yang sia-sia bila intervensi permukaan dilakukan sebelum akar masalah fisik diperbaiki.`
+    );
+  } else {
+    lines.push(
+      `- Awali naskah dari sudut pandang dilema nyata pemilik rumah terkait "${topic}".`,
+      `- Hadirkan empati terhadap kesulitan atau keraguan lapangan sebelum masuk mendiagnosa jalur masalah secara teknis.`
+    );
+  }
+
+  // Universal quality rules for openings
+  lines.push(
+    `- JANGAN gunakan pembuka generik klise ("Di era modern...", "Banyak pemilik rumah mengira...", "Memilih material bukanlah hal yang mudah...").`,
+    `- JANGAN menyalin teks naskah lain secara harfiah. Tuliskan prosa pembuka yang segar, mengalir alami, dan langsung terikat pada topik ini.`
+  );
+
+  return lines.join('\n');
+}
+
 /**
  * Builds the canonical System Prompt for Joko.
  * Integrates Master Editorial Knowledge, Native Indonesian contract, and safety invariants.
+ * Guaranteed 100% domain-neutral and free of hardcoded building-component assumptions.
  */
 export function buildJokoSystemPrompt(): string {
-  const terminologyRules = Object.entries(CANONICAL_TERMINOLOGY_MAP)
+  const terminologyRules = Object.values(CANONICAL_TERMINOLOGY_MAP)
     .slice(0, 15)
-    .map(([raw, canonical]) => `- Gunakan "${canonical}" (bukan "${raw}")`)
+    .map((entry) => `- Gunakan "${entry.canonical}" (bukan ${entry.prohibited_alternations.map((p: string) => `"${p}"`).join(', ')})`)
     .join('\n');
 
   const bannedVerdictTerms = (CANONICAL_PRODUCT_REVIEW_TERMINOLOGY?.banned_terms || ['verdict', 'pemenang mutlak'])
@@ -118,11 +289,11 @@ ${terminologyRules}
 3. Kompresi Redaksional (Editorial Compression: ONE IDEA — ONE BEST HOME):
    Jangan mengulang kerangka keputusan yang sama di berbagai subjudul terpisah. Jika perbandingan skenario telah dijelaskan di bagian panduan skenario, JANGAN mengulang kesimpulan yang sama persis di bagian kesimpulan. Setiap ide memiliki satu tempat penyampaian terbaik.
 4. Diagnosis Mendahului Solusi:
-   Sebelum menyarankan produk, material, atau intervensi, diagnosa terlebih dahulu gejala fisik dan jalur masalahnya (misal: bedakan radiasi gelombang panjang dari seng, udara panas loteng, dan konduksi plafon).
+   Sebelum menyarankan produk, material, atau tindakan perbaikan, diagnosa terlebih dahulu gejala fisik, akar penyebab struktural, dan jalur terjadinya masalah pada bangunan.
 5. Rekomendasi Berbasis Skenario:
-   Gunakan pola percabangan konkret: "Jika [Kondisi A: atap tanpa plafon], maka [Opsi 1]. Tetapi jika [Kondisi B: loteng tertutup], maka [Opsi 2]."
+   Gunakan pola percabangan konkret yang relevan dengan topik: "Jika [Kondisi Lapangan A], maka [Opsi Penanganan 1]. Tetapi jika [Kondisi Lapangan B], maka [Opsi Penanganan 2]."
 6. Transparansi Risiko & Kompromi Nyata:
-   Paparkan trade-off lapangan nyata (tampias hujan, debu/kotoran, serangga, kondensasi, atau karat) secara berimbang.
+   Paparkan trade-off dan konsekuensi lapangan nyata (keterbatasan teknis material, konsekuensi jangka panjang, perawatan, atau potensi efek samping) secara berimbang.
 7. Langkah Aksi Lanjutan Nyata & Daftar Periksa Pra-Biaya (Next Action Quality):
    Tutup artikel dengan panduan aksi atau daftar periksa pra-biaya (inspeksi fisik mandiri sebelum membeli material): apa yang harus diperiksa pertama kali di siang hari, tanda fisik apa yang mengubah pilihan solusi, dan kapan harus berkonsultasi dengan aplikator/tukang. BUKAN CTA marketing penjualan ("Hubungi kami sekarang").
 
@@ -186,23 +357,21 @@ export function buildJokoUserPrompt(context: JokoPromptContext): string {
     .map((p: string) => `- ${p}`)
     .join('\n');
 
-  // Format Visitor Problem Context
+  // Format Visitor Problem Context dynamically
   let visitorPainBlock = '';
   if (visitorContext) {
     const painDef = CANONICAL_PAIN_DIMENSIONS[visitorContext.primaryPainDimension as PainDimension];
+    const openingGuidance = buildDynamicOpeningGuidance(topic, visitorContext, authorSafeClaims);
 
     visitorPainBlock = `
 # KONTEKS MASALAH PENGUNJUNG & SUDUT PEMBUKA (VISITOR PROBLEM CONTEXT)
-- Konteks Masalah Utama: [${visitorContext.primaryContextId}] ${visitorContext.primaryContextLabel || 'Dilema Renovasi Termal'}
-- Dimensi Keluhan Utama: ${visitorContext.primaryPainDimension} (${painDef?.description || 'Ketidakpastian keputusan'})
+- Konteks Masalah Utama: [${visitorContext.primaryContextId}] ${visitorContext.primaryContextLabel || 'Dilema Keputusan Pemilik Rumah'}
+- Dimensi Keluhan Utama: ${visitorContext.primaryPainDimension} (${painDef?.label || 'Keraguan Keputusan'})
 - Sudut Pembuka Naratif: ${visitorContext.openingAngle}
-- Urutan Pola Pembuka yang Diharapkan: ${visitorContext.preferredSignature || 'DECISION > CONFLICT > DIAGNOSIS'}
+- Urutan Pola Pembuka yang Diharapkan: ${visitorContext.preferredSignature || 'DECISION > TRADEOFF > QUESTION'}
 
 ARAHAN KHUSUS PARAGRAF PEMBUKA:
-- Awali naskah DARI SUDUT PANDANG DILEMA NYATA PEMILIK RUMAH: situasi saat pemilik rumah bingung karena tukang/kontraktor memberikan saran yang saling bertentangan (satu tukang menyarankan insulasi foil, tukang lain menyarankan ventilasi atap/loteng).
-- Tunjukkan bahwa kedua saran tersebut terdengar masuk akal tetapi membuat bingung, sebelum Anda masuk mendiagnosa jalur perpindahan panas.
-- JANGAN gunakan pembuka generik klise ("Di era modern...", "Banyak pemilik rumah...").
-- JANGAN menyalin teks naskah lain secara harfiah. Tuliskan prosa pembuka yang segar dan mengalir alami.`;
+${openingGuidance}`;
   }
 
   // Format Revision Instructions if applicable
@@ -225,6 +394,14 @@ ${previousDraft}
 Tugas Anda: Tuliskan ulang naskah di atas dengan memperbaiki kekurangan yang disebutkan Rina tanpa merusak akurasi teknis yang sudah benar.`;
   }
 
+  const staticStructureBlock = `# PERSYARATAN STRUKTUR ARTIKEL (ONE IDEA — ONE BEST HOME)
+1. Paragraf Pembuka Masalah Riil: Menghadirkan dilema atau keraguan keputusan pemilik rumah secara wajar, empatik, dan tidak terburu-buru.
+2. Diagnosis Akar Masalah Fisik: Menguraikan bagaimana mekanisme fisik atau kerusakan terjadi (alur fisik, gejala vs sumber masalah) dengan menghubungkan ke kenyamanan dan keamanan penghuni.
+3. Evaluasi Solusi Teknis & Komparasi Pilihan: Membedah efektivitas masing-masing pilihan solusi/material secara berimbang berdasarkan bukti aman yang disediakan, tanpa melebih-lebihkan klaim sepihak.
+4. Kompromi, Batasan & Risiko Lapangan: Membahas trade-off nyata di lapangan (keterbatasan teknis, konsekuensi pemeliharaan, potensi efek samping jika salah penanganan).
+5. Panduan Skenario Kondisi Rumah: Rekomendasi terpadu berbasis skenario lapangan konkret. JANGAN membuat subjudul kesimpulan terpisah yang mengulang skenario ini secara berlebihan (ONE IDEA — ONE BEST HOME).
+6. Panduan Aksi & Daftar Periksa Pra-Biaya (Next Action): Langkah pemeriksaan fisik mandiri di siang hari sebelum mengeluarkan uang, tanda apa yang mengubah keputusan solusi, dan kapan harus berkonsultasi dengan tenaga profesional/ahli.`;
+
   return `# TUGAS PENULISAN DRAF ARTIKEL
 Topik Artikel: ${topic}
 Judul Naskah: ${title}
@@ -238,20 +415,14 @@ ${safeClaimsFormatted}
 # KLAIM DILARANG & BATASAN ETIKA
 ${prohibitedFormatted || '- Jangan mengarang nominal harga rupiah.\n- Jangan mengarang pengujian laboratorium palsu.'}
 
-# PERSYARATAN STRUKTUR ARTIKEL (ONE IDEA — ONE BEST HOME)
-1. Paragraf Pembuka Masalah Riil: Menghadirkan dilema keputusan pemilik rumah secara wajar dan tidak terburu-buru.
-2. Bagian Diagnosis Jalur Panas: Menguraikan bagaimana panas masuk (radiasi, konveksi loteng, konduksi plafon) dengan menghubungkan ke kenyamanan penghuni.
-3. Evaluasi Solusi Teknis: Menjelaskan syarat fisik foil (air gap) dan kapan ventilasi atap dibutuhkan secara berimbang tanpa klaim berlebihan.
-4. Ulasan Kompromi & Risiko Lapangan: Membahas trade-off nyata (tampias hujan, debu/kotoran, serangga, kondensasi/karat).
-5. Panduan Skenario Nyata: Rekomendasi terpadu berbasis skenario (atap tanpa plafon, loteng tertutup, kamar ber-AC). JANGAN membuat subjudul kesimpulan yang mengulang skenario ini secara berlebihan.
-6. Panduan Aksi & Inspeksi Mandiri (Next Action): Langkah pemeriksaan fisik siang hari sebelum mengeluarkan uang, tanda apa yang mengubah keputusan, dan kapan perlu memanggil tenaga profesional.
+${staticStructureBlock}
 ${revisionBlock}
 
 Hasilkan sekarang draf naskah lengkap dalam format JSON Grounded Draft Envelope yang diminta di System Prompt (dengan properti "article_markdown", "claim_usage", dan "unsupported_claim_candidates"). Langsung berikan JSON tanpa basa-basi teks pengantar.`;
 }
 
 /**
- * Compiles complete prompt messages for Joko execution.
+ * Compiles complete prompt messages for Joko execution with separated static components.
  */
 export function buildJokoPrompt(context: JokoPromptContext): JokoCompiledPrompt {
   const systemPrompt = buildJokoSystemPrompt();
@@ -260,6 +431,26 @@ export function buildJokoPrompt(context: JokoPromptContext): JokoCompiledPrompt 
   const safeClaimsCount = context.authorSafeClaims?.length || context.evidencePack?.claim_inventory?.length || 0;
   const prohibitedClaimsCount = context.evidencePack?.prohibited_claims?.length || 0;
 
+  const staticStructureBlock = `# PERSYARATAN STRUKTUR ARTIKEL (ONE IDEA — ONE BEST HOME)
+1. Paragraf Pembuka Masalah Riil: Menghadirkan dilema atau keraguan keputusan pemilik rumah secara wajar, empatik, dan tidak terburu-buru.
+2. Diagnosis Akar Masalah Fisik: Menguraikan bagaimana mekanisme fisik atau kerusakan terjadi (alur fisik, gejala vs sumber masalah) dengan menghubungkan ke kenyamanan dan keamanan penghuni.
+3. Evaluasi Solusi Teknis & Komparasi Pilihan: Membedah efektivitas masing-masing pilihan solusi/material secara berimbang berdasarkan bukti aman yang disediakan, tanpa melebih-lebihkan klaim sepihak.
+4. Kompromi, Batasan & Risiko Lapangan: Membahas trade-off nyata di lapangan (keterbatasan teknis, konsekuensi pemeliharaan, potensi efek samping jika salah penanganan).
+5. Panduan Skenario Kondisi Rumah: Rekomendasi terpadu berbasis skenario lapangan konkret. JANGAN membuat subjudul kesimpulan terpisah yang mengulang skenario ini secara berlebihan (ONE IDEA — ONE BEST HOME).
+6. Panduan Aksi & Daftar Periksa Pra-Biaya (Next Action): Langkah pemeriksaan fisik mandiri di siang hari sebelum mengeluarkan uang, tanda apa yang mengubah keputusan solusi, dan kapan harus berkonsultasi dengan tenaga profesional/ahli.`;
+
+  const components: PromptSectionComponents = {
+    staticSystemInstructions: systemPrompt,
+    staticEditorialGuidelines: '# PRINSIP KONSULTAN AHLI & GAYA PENULISAN\n# KONTRAK KETERCANTUMAN KLAIM\n# INVARIAN KESELAMATAN & INTEGRITAS BUKTI',
+    staticFormattingContract: '# FORMAT KELUARAN WAJIB (GROUNDED DRAFT ENVELOPE)',
+    topicTitleBlock: `Topik Artikel: ${context.topic}\nJudul Naskah: ${context.requestedTitle || context.topic}`,
+    dynamicVisitorPainBlock: context.visitorContext ? JSON.stringify(context.visitorContext) : '',
+    dynamicAuthorSafeClaimsBlock: (context.authorSafeClaims || []).map((c) => c.statement).join('\n'),
+    dynamicProhibitedClaimsBlock: (context.evidencePack?.prohibited_claims || []).join('\n'),
+    staticStructureGuidelines: staticStructureBlock,
+    dynamicRevisionBlock: context.revisionContext ? JSON.stringify(context.revisionContext.rewriteBrief) : undefined
+  };
+
   return {
     systemPrompt,
     userPrompt,
@@ -267,6 +458,7 @@ export function buildJokoPrompt(context: JokoPromptContext): JokoCompiledPrompt 
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ],
+    components,
     metadata: {
       intent: context.intentProfile?.primary_intent || 'PROBLEM_SOLVING',
       safeClaimsCount,
@@ -275,6 +467,86 @@ export function buildJokoPrompt(context: JokoPromptContext): JokoCompiledPrompt 
       openingAngle: context.visitorContext?.openingAngle,
       hasRevisionContext: !!context.revisionContext
     }
+  };
+}
+
+/**
+ * Deterministic Pre-Provider Prompt Semantic Leak Audit.
+ * Detects whether static prompt sections (system prompt, static instructions, general templates)
+ * introduce technical domain concepts that do NOT originate from the active topic,
+ * visitor context, or author safe claims.
+ */
+export function auditPromptSemanticLeaks(
+  compiledPrompt: JokoCompiledPrompt,
+  context: JokoPromptContext
+): PromptSemanticLeakAuditResult {
+  // Aggregate all active topic, context, claims and evidence text
+  const activeInput = [
+    context.topic || '',
+    context.requestedTitle || '',
+    JSON.stringify(context.visitorContext || {}),
+    (context.authorSafeClaims || []).map((c) => `${c.statement} ${c.qualification_required || ''}`).join(' '),
+    Array.isArray(context.evidencePack?.claim_inventory)
+      ? context.evidencePack.claim_inventory.map((c: any) => c.statement || '').join(' ')
+      : '',
+    Array.isArray(context.evidencePack?.evidence_passages)
+      ? context.evidencePack.evidence_passages.map((p: any) => p.passage_text || '').join(' ')
+      : ''
+  ].join(' ').toLowerCase();
+
+  const leaks: PromptSemanticLeakAuditResult['leaks'] = [];
+
+  const staticSystem = compiledPrompt.systemPrompt;
+  const staticStructure = compiledPrompt.components?.staticStructureGuidelines || '';
+  const staticUser = compiledPrompt.userPrompt;
+
+  // Extract non-evidence portions of user prompt
+  const safeClaimsIndex = staticUser.indexOf('# FAKTA & KLAIM TEKNIS AMAN');
+  const userPromptStaticNonEvidence = safeClaimsIndex !== -1
+    ? (staticUser.substring(0, safeClaimsIndex) + '\n' + staticUser.substring(staticUser.indexOf('# PERSYARATAN STRUKTUR ARTIKEL')))
+    : staticUser;
+
+  for (const term of SUSPICIOUS_STATIC_DOMAIN_TERMS) {
+    const termLower = term.toLowerCase();
+    const isPresentInActiveInput = activeInput.includes(termLower);
+
+    // If the term is NOT part of the active topic, visitor context, or evidence pack,
+    // it MUST NOT appear in the compiled prompt (system prompt or user prompt).
+    if (!isPresentInActiveInput) {
+      if (staticSystem.toLowerCase().includes(termLower)) {
+        leaks.push({
+          term,
+          section: 'STATIC_SYSTEM',
+          snippet: `Found "${term}" in static system instructions`
+        });
+      } else if (staticStructure.toLowerCase().includes(termLower)) {
+        leaks.push({
+          term,
+          section: 'STATIC_USER_STRUCTURE',
+          snippet: `Found "${term}" in static article structure guidelines`
+        });
+      } else if (staticUser.toLowerCase().includes(termLower)) {
+        leaks.push({
+          term,
+          section: 'STATIC_GENERAL',
+          snippet: `Found "${term}" in compiled user prompt instructions (absent from active inputs)`
+        });
+      }
+    }
+  }
+
+  if (leaks.length > 0) {
+    return {
+      passed: false,
+      leaks,
+      code: 'WRITER_PROMPT_DOMAIN_LEAK',
+      rejectionReason: `Static prompt instructions introduced technical domain concepts not present in active input: ${leaks.map((l) => l.term).join(', ')}`
+    };
+  }
+
+  return {
+    passed: true,
+    leaks: []
   };
 }
 
