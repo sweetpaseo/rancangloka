@@ -15,6 +15,101 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### EDITORIAL-RUNTIME-4B FINAL CLEAN PROOF: End-to-End Generalization Proof & Grounding Gate 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menjalankan pembuktian bersih (*Clean Proof Run*) alur editorial penuh (*End-to-End*) untuk topik baru non-atap-metal: *"Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?"* (`PROBLEM_SOLVER`).
+  - Membekukan harness eksekusi (`run-runtime4b-final.js`) dengan verifikasi sidik jari SHA-256 sebelum dan sesudah eksekusi (`26aa1a3d93e241938d934a7521aeb4c00dc3196331d16aaa4603b9219ee10169`) tanpa modifikasi kode selama atau setelah eksekusi.
+  - Membuktikan bahwa perbaikan keandalan provider pada `EDITORIAL-PROVIDER-RESILIENCE-1` berhasil menyelesaikan masalah draf kosong Joko secara tuntas.
+  - Memverifikasi kinerja deterministik seluruh gerbang pipeline: Dynamic Visitor Pain → Dynamic Research Questions → Real Irwan Research → Topic/Evidence Alignment Gate → Research Coverage Gate → Research Integrity Gate → Author-Safe Claims Filtering → Real Joko Draft Job → Grounding Gate.
+- **Hasil Eksekusi Runtime Nyata:**
+  1. **Riset Irwan Autentik:** 10 sumber ditemukan, 2 dokumen primer terbuka diunduh (`SRC-OPEN-WIKI-DAMP`, `SRC-OPEN-EPA-MOISTURE`), 2 paywall tercatat jujur. Disusun 49 klaim, 48 passages, 49 klaim aman penulis.
+  2. **Kelulusan Gerbang Integritas:**
+     - Topic Alignment Gate: `PASS` (`aligned: true`).
+     - Research Coverage Gate: `PASS` (`coverage_ratio: 1.0` pada 6 pertanyaan riset).
+     - Research Integrity Gate: `PASS` (`requires_provenance_failure: false`, 49 hubungan klaim-sumber terverifikasi).
+  3. **Generasi Draf Joko Sukses (Provider Resilience Proven):**
+     - Joko berhasil mengeksekusi pembuatan draf via SumoPod (`gpt-5.6-luna`) dalam 1 percobaan tanpa retry.
+     - Durasi eksekusi: 24.540 ms (attempt: 24.478 ms).
+     - Penggunaan token aktual: 6.627 prompt tokens, 4.592 completion tokens (total 11.219 tokens).
+     - Draf mentah diproduksi: 10.813 karakter asli Bahasa Indonesia.
+  4. **Pemeriksaan Grounding Deterministik (Grounding Gate Halt):**
+     - Joko memetakan 24 klaim ke `author_safe_claims` secara valid.
+     - Joko secara jujur mendeklarasikan 3 `unsupported_claim_candidates` di dalam amplop JSON (terkait insulasi foil dan ventilasi atap yang terbawa dari template pembuka lama di `joko-prompt-builder.ts`).
+     - Grounding Gate deterministik memblokir naskah dengan kode `EVIDENCE_GROUNDING_REVIEW_REQUIRED` (`RUNTIME4B_FINAL_GROUNDING_BLOCKED`).
+     - Rina QA dihentikan secara aman sesuai invarian (*fail-closed* sebelum grounding lolos).
+  5. **Pemeriksaan Kebocoran Generalisasi:** Nol kebocoran istilah historis terlarang (*radiant barrier*, *DOE radiant barrier*, *metal roof*, *CLM-001A*, *CLM-001B*, dll.) pada seluruh artefak pembuktian final.
+- **Artefak Pembuktian Final:** Tersimpan di `scripts/runtime-proof/runtime4b-final-*`.
+- **Klasifikasi Akhir:** **`RUNTIME4B_FINAL_GROUNDING_BLOCKED`** (Stop gate: `EDITORIAL_RUNTIME4B_FINAL_HUMAN_REVIEW_REQUIRED`).
+
+---
+
+### EDITORIAL-PROVIDER-RESILIENCE-1: Editorial LLM Provider Reliability Hardening 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengaudit dan menyelesaikan akar penyebab kegagalan eksekusi provider LLM (`RUNTIME4B_RERUN3_PROVIDER_BLOCKED`) yang menghentikan Joko sebelum naskah substantif terbentuk.
+  - Mengimplementasikan klasifikasi error granular, kebijakan bounded transient retry otomatis, proteksi empty response, telemetri anggaran prompt/karakter, peningkatan token budget output, serta probe terkendali 3 kelas payload.
+- **Akar Masalah (Root Cause Classification):**
+  - **Klasifikasi Utama:** `OUTPUT_TOKEN_CONFIGURATION_DEFECT`.
+  - Upstream provider (`gpt-5.6-luna` di SumoPod) merupakan reasoning model. Pada amplop prompt berukuran ~29.179 karakter, model membutuhkan token penalaran internal sebelum menghasilkan draf teks.
+  - Konfigurasi lama `max_tokens: 4000` terlampaui saat pembuatan draf lengkap (output aktual membutuhkan 4.592 completion tokens), menyebabkan provider mengembalikan `content: ""` dengan HTTP 200 yang ditolak sebagai empty response.
+  - Batas timeout lama (60.000 ms) juga berada di ambang batas waktu respons draf besar (~30–52 detik).
+- **Solusi Teknis yang Diterapkan (`src/lib/editorial/editorial-llm-provider.ts` & `src/lib/editorial/editorial-runtime.ts`):**
+  1. **Peningkatan Kuota Output Token:** `DEFAULT_EDITORIAL_MAX_TOKENS = 8000` (overrideable via `maxTokens`).
+  2. **Peningkatan Timeout:** `DEFAULT_EDITORIAL_TIMEOUT_MS = 120000` (120 detik).
+  3. **9 Klasifikasi Error Granular:** `PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMIT`, `PROVIDER_AUTH_ERROR`, `PROVIDER_HTTP_ERROR`, `PROVIDER_INVALID_JSON`, `PROVIDER_EMPTY_RESPONSE`, `PROVIDER_MISSING_CONTENT`, `PROVIDER_CONTEXT_LIMIT`, `PROVIDER_TRANSPORT_ERROR`.
+  4. **Bounded Transient Retry:** Maksimum 2 retry (total 3 attempts) dengan backoff eksponensial $1000 \text{ ms} \times 2^{(\text{attempt} - 1)}$. Hanya meretry kegagalan transien (429, timeout, network, invalid JSON, empty response, 5xx). Dilarang meretry 401/403, 400, atau context limit.
+  5. **Empty Response Contract:** Membedakan HTTP 200 tanpa choices (`PROVIDER_MISSING_CONTENT`) dan HTTP 200 dengan string kosong/whitespace (`PROVIDER_EMPTY_RESPONSE`) disertai pencatatan diagnostik aman.
+  6. **Telemetri Prompt & Diagnostik:** Menambahkan kalkulasi `PromptBudgetTelemetry` (karakter sistem, user, total, request bytes, estimasi token) dan riwayat `attemptsDiagnostics` per percobaan tanpa mencatat API key.
+- **Hasil Controlled Provider Probe (`scripts/runtime-proof/provider-probe-results.json`):**
+  - **SMALL (130 char):** 1.862 ms, HTTP 200, 45 output tokens, 171 char text, SUCCESS.
+  - **MEDIUM (711 char):** 6.402 ms, HTTP 200, 853 output tokens, 2.546 char text, SUCCESS.
+  - **FULL (29.179 char):** 29.754 ms, HTTP 200, 4.609 output tokens, 16.565 char text, SUCCESS.
+- **Validasi & Integritas:**
+  - `scripts/test-editorial-provider-resilience.js`: 11/11 PASS (mencakup seluruh 10 skenario error dan retry).
+  - Regresi runtime-1, 2, 3b, 4a, 4b-stabilize: 100% PASS.
+  - `npx tsc --noEmit`: 0 error (bersih).
+
+---
+
+### EDITORIAL-RUNTIME-4B-STABILIZE: Generic Research Integrity Contract & Claim Semantic Decoupling 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menghilangkan asumsi semantik bawaan pada nomor ID klaim (`CLAIM_ALLOWED_SEMANTIC_ROLES`) yang sebelumnya mengikat `CLM-002`, `CLM-003`, `CLM-004`, `CLM-005`, `CLM-006` secara permanen ke domain atap metal.
+  - Mengubah evaluasi keselarasan semantik menjadi murni berbasis peran semantik graf (`claim.semantic_role` vs `passage.semantic_role`), bukan nomor ID.
+  - Menegakkan kebijakan pembatasan bahasa mutlak pada rekomendasi editorial: melarang kata-kata mutlak (*harus*, *wajib*, *selalu*, *mutlak*, *pasti*, *diperlukan*, *prioritas utama*) secara default kecuali didukung bukti primer berbobot `VERY_HIGH`.
+  - Membedakan penghitungan metrik sumber unik yang diunduh (`unique_retrieved_sources_count`) dari relasi klaim-sumber (`claim_source_relationship_count`).
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/article/human-quality.ts`: Refaktor `CLAIM_ALLOWED_SEMANTIC_ROLES`, penambahan audit kata mutlak rekomendasi, perbaikan metrik sumber.
+  - `src/lib/editorial/irwan-research-runtime.ts`: Penyelarasan sintesis rekomendasi redaksional agar bebas dari kata mutlak tanpa bukti.
+  - `scripts/test-editorial-runtime-4b-stabilize.js`: 11 pengujian unit deterministik memvalidasi decoupling ID klaim dan kebijakan bahasa rekomendasi.
+- **Validasi:** Seluruh 11 tes lolos, `npx tsc --noEmit` bersih.
+
+---
+
+### EDITORIAL-RUNTIME-4A: Generalization Architecture Unblock & Matrix 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menghilangkan ketergantungan hardcoded atap metal dari arsitektur editorial agar alur `TOPIC` → `VISITOR PAIN` → `RESEARCH QUESTIONS` → `IRWAN RESEARCH` → `EVIDENCE PACK` → `RESEARCH GATE` dapat beroperasi pada topik editorial apa pun.
+  - Menggeneralisasikan pembentukan konteks masalah pengunjung (`generateDynamicVisitorPain`, `buildHumanVisitorPainSelectionPackage`).
+  - Membangun generator pertanyaan riset dinamis (`generateEditorialResearchQuestions`) yang mencakup 6 kategori jurnalistik (definisi/mekanisme, akar penyebab, intervensi/material, mitos/kesalahpahaman, kompromi/risiko, panduan diagnostik lapangan) dan validator cakupan pertanyaan (`validateResearchQuestionCoverage`).
+  - Menambahkan gerbang keselarasan topik-bukti (`auditTopicEvidenceAlignment`) yang menolak bukti tidak relevan (misal bukti atap metal pada topik dinding lembap).
+  - Menguji matriks generalisasi lintas 3 topik independen: Dinding Lembap, Kusen Jendela, dan Atap Metal.
+- **Validasi:** `scripts/test-editorial-runtime-4a-generalization.js`: 12/12 PASS.
+
+---
+
+### EDITORIAL-RUNTIME-3B: Passage-to-Claim Semantic Integrity & Entailment Boundaries 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan temuan batas semantik keterikatan (*entailment boundaries*) antara kutipan teks primer (*passages*) dan proposisi klaim.
+  - Menegakkan audit adversarial penolakan tautan passage tidak relevan (misal kutipan dinding untuk klaim massa termal metal atau kutipan debu untuk ventilasi atap).
+  - Memastikan batas kekuatan klaim aman penulis tidak melebihi kekuatan bukti (`AUTHOR_SAFE_STRENGTH <= EVIDENCE_STRENGTH`).
+  - Mengaudit ketiadaan ID klaim menggantung (*dangling claim references*) dan memblokir klaim tanpa rujukan fisik yang sah.
+- **Validasi:** `scripts/test-editorial-runtime-3b-stabilize.js`: 18/18 PASS.
+
+---
+
 ### D1-ROW-READ-HOTFIX-1: Mission Control Polling & Query Efficiency 2026-10-05
 
 - **Tujuan & Ruang Lingkup:**

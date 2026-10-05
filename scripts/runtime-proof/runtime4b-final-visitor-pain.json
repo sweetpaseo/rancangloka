@@ -1,0 +1,72 @@
+{
+  "topic": "Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?",
+  "content_family": "problem_solver",
+  "primary_context": {
+    "context_id": "CTX-02-DECISION-FORK",
+    "primary_problem": "Dilema komparasi atau pilihan intervensi dalam menentukan langkah tepat untuk \"Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?\".",
+    "pain_dimension": "DECISION_UNCERTAINTY",
+    "secondary_pain_dimensions": [
+      "INFORMATION_CONFLICT",
+      "FINANCIAL_RISK"
+    ],
+    "pain_state": "Bingung memilih antara dua material atau dua jalur penanganan dengan klaim performa yang saling bertentangan.",
+    "decision_state": "Membandingkan kelebihan, kekurangan, dan kecocokan iklim sebelum menetapkan anggaran belanja.",
+    "existing_condition": "Tahap perencanaan renovasi atau penanganan mendesak di mana anggaran terbatas dan keputusan harus diambil.",
+    "risk_or_concern": "Salah membeli material atau memilih solusi yang salah kaprah untuk kondisi lapangan spesifik.",
+    "desired_outcome": "Memiliki komparasi objektif berbasis perilaku material nyata dan batas fisik bangunan.",
+    "confidence": "HIGH",
+    "basis": [
+      "ARTICLE_TOPIC",
+      "SEARCH_INTENT",
+      "QUERY_LANGUAGE"
+    ],
+    "source_mode": "INFERRED_EDITORIAL_CONTEXT"
+  },
+  "secondary_contexts": [
+    {
+      "context_id": "CTX-01-FAILED-QUICK-FIX",
+      "primary_problem": "Solusi instan atau perbaikan dangkal pada topik \"Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?\" telah dicoba namun gejala terus berulang.",
+      "pain_dimension": "FAILED_SOLUTION",
+      "secondary_pain_dimensions": [
+        "FINANCIAL_RISK",
+        "PERFORMANCE_GAP"
+      ],
+      "pain_state": "Kecewa karena perbaikan permukaan atau penggantian komponen awal tidak menyelesaikan akar persoalan fisik.",
+      "decision_state": "Ragu apakah harus mengulang perbaikan yang sama atau mencari akar penyebab fisik di balik gejala tersebut.",
+      "existing_condition": "Kondisi bangunan eksisting menunjukkan gejala fisik berulang meski sudah dilapisi atau dipasang komponen baru.",
+      "failed_attempt": "Membeli produk populer atau memanggil tukang untuk perbaikan cepat tanpa diagnosis sistemik.",
+      "risk_or_concern": "Pemborosan biaya renovasi berulang kali tanpa memecahkan sumber kerusakan jangka panjang.",
+      "desired_outcome": "Menemukan penanganan definitif yang tahan bertahun-tahun di iklim tropis.",
+      "confidence": "HIGH",
+      "basis": [
+        "ARTICLE_TOPIC",
+        "SEARCH_INTENT",
+        "KNOWN_READER_SCENARIO"
+      ],
+      "source_mode": "INFERRED_EDITORIAL_CONTEXT"
+    },
+    {
+      "context_id": "CTX-03-DIAGNOSTIC-UNCERTAINTY",
+      "primary_problem": "Ketidakpastian diagnosis gejala vs akar penyebab fisik pada \"Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?\".",
+      "pain_dimension": "DIAGNOSTIC_UNCERTAINTY",
+      "secondary_pain_dimensions": [
+        "PHYSICAL_DISCOMFORT",
+        "INFORMATION_CONFLICT"
+      ],
+      "pain_state": "Melihat gejala visual atau fisik namun tidak tahu pasti sumber pemicu internalnya.",
+      "decision_state": "Membutuhkan daftar periksa diagnosa mandiri sebelum memanggil tukang atau membeli material.",
+      "existing_condition": "Gejala muncul musiman (misal: saat musim hujan atau terik siang) pada area tertentu di rumah.",
+      "risk_or_concern": "Mengobati gejala luar sementara kerusakan struktur atau material di dalam terus memburuk.",
+      "desired_outcome": "Memahami jalur fisik terjadinya masalah sehingga dapat mengawasi tukang secara tepat.",
+      "confidence": "HIGH",
+      "basis": [
+        "ARTICLE_TOPIC",
+        "SEARCH_INTENT"
+      ],
+      "source_mode": "INFERRED_EDITORIAL_CONTEXT"
+    }
+  ],
+  "decision_state": "Menentukan langkah atau material terbaik untuk Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki? dengan pertimbangan batas fisik dan efisiensi biaya.",
+  "opening_angle": "DECISION_FORK",
+  "narrative_signature": "DECISION > TRADEOFF > QUESTION"
+}

@@ -1,0 +1,80 @@
+{
+  "milestone": "EDITORIAL-RUNTIME-4B-FINAL",
+  "executed_at": "2026-10-05T09:14:25.320Z",
+  "topic": "Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?",
+  "content_family": "problem_solver",
+  "stage_reached": "GROUNDING_GATE",
+  "blocked_at": "GROUNDING_GATE",
+  "primary_classification": "RUNTIME4B_FINAL_GROUNDING_BLOCKED",
+  "stop_reason": "Joko mendeklarasikan klaim teknis di luar paket bukti: {\"topic\":\"Kinerja insulasi foil dan kebutuhan air gap\",\"reason\":\"Klaim spesifik mengenai mekanisme, ukuran, atau efektivitas foil tidak tercantum dalam Author Safe Claims dan perlu diverifikasi berdasarkan sistem atap serta detail pemasangan di lapangan.\"}; {\"topic\":\"Efektivitas ventilasi atap atau loteng untuk mengurangi panas\",\"reason\":\"Klaim kuantitatif atau kepastian performa ventilasi atap tidak tercantum dalam Author Safe Claims.\"}; {\"topic\":\"Risiko karat akibat ventilasi atau kondensasi\",\"reason\":\"Dampak korosi spesifik tidak tercantum dalam Author Safe Claims sehingga tidak ditegaskan sebagai klaim teknis.\"}",
+  "prompt_metrics": {
+    "system_prompt_characters": 6149,
+    "user_prompt_characters": 23030,
+    "total_prompt_characters": 29179,
+    "request_body_bytes": null,
+    "prompt_tokens": 6627,
+    "completion_tokens": 4592,
+    "total_tokens": 11219
+  },
+  "joko_timing": {
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "start": "2026-10-05T09:14:00.773Z",
+    "end": "2026-10-05T09:14:25.313Z",
+    "duration_ms": 24540
+  },
+  "provider_telemetry": {
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "attempts_count": 1,
+    "http_status": 200,
+    "finish_reason": "stop",
+    "raw_response_body_bytes": 18787,
+    "prompt_telemetry": {
+      "system_prompt_characters": 6149,
+      "user_prompt_characters": 23026,
+      "total_prompt_characters": 29175,
+      "request_body_bytes": 29646,
+      "estimated_input_tokens": 8336
+    },
+    "attempts_diagnostics": [
+      {
+        "attempt": 1,
+        "timestamp": "2026-10-05T09:14:25.265Z",
+        "elapsedMs": 24478,
+        "httpStatus": 200,
+        "responseBodyBytes": 18787,
+        "finishReason": "stop"
+      }
+    ]
+  },
+  "source_stats": {
+    "retrieved_documents_count": 2,
+    "unique_retrieved_sources_count": 2,
+    "unique_verified_source_ids": [
+      "SRC-OPEN-WIKI-DAMP",
+      "SRC-OPEN-EPA-MOISTURE"
+    ],
+    "claim_source_relationship_count": 49
+  },
+  "author_safe_metrics": {
+    "total_claims": 49,
+    "allowed_for_authoring_count": 49,
+    "blocked_count": 0,
+    "qualified_count": 1,
+    "recommendation_count": 1,
+    "research_required_count": 0
+  },
+  "provenance_audit": {
+    "requires_provenance_failure": false,
+    "total_claims": 49,
+    "unverified_claims_count": 0,
+    "failures": []
+  },
+  "joko_invoked": true,
+  "rina_invoked": false,
+  "qa_score": null,
+  "qa_decision": null,
+  "leaks_found": [],
+  "final_gate": "EDITORIAL_RUNTIME4B_FINAL_HUMAN_REVIEW_REQUIRED"
+}

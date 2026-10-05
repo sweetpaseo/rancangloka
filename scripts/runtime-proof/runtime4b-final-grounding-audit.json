@@ -1,0 +1,21 @@
+{
+  "status": "UNSUPPORTED_CLAIMS_DETECTED",
+  "isValid": false,
+  "requiresReview": true,
+  "declaredClaimsCount": 24,
+  "validClaimsCount": 24,
+  "unrecognizedClaimIds": [],
+  "prohibitedClaimIds": [],
+  "removedClaimsUsed": [],
+  "prohibitedElementsFound": [],
+  "unsupportedCandidatesFound": [
+    "{\"topic\":\"Kinerja insulasi foil dan kebutuhan air gap\",\"reason\":\"Klaim spesifik mengenai mekanisme, ukuran, atau efektivitas foil tidak tercantum dalam Author Safe Claims dan perlu diverifikasi berdasarkan sistem atap serta detail pemasangan di lapangan.\"}",
+    "{\"topic\":\"Efektivitas ventilasi atap atau loteng untuk mengurangi panas\",\"reason\":\"Klaim kuantitatif atau kepastian performa ventilasi atap tidak tercantum dalam Author Safe Claims.\"}",
+    "{\"topic\":\"Risiko karat akibat ventilasi atau kondensasi\",\"reason\":\"Dampak korosi spesifik tidak tercantum dalam Author Safe Claims sehingga tidak ditegaskan sebagai klaim teknis.\"}"
+  ],
+  "declarationProvenance": "AUTHOR_GROUNDING_DECLARATION",
+  "warnings": [],
+  "errors": [
+    "Joko mendeklarasikan klaim teknis di luar paket bukti: {\"topic\":\"Kinerja insulasi foil dan kebutuhan air gap\",\"reason\":\"Klaim spesifik mengenai mekanisme, ukuran, atau efektivitas foil tidak tercantum dalam Author Safe Claims dan perlu diverifikasi berdasarkan sistem atap serta detail pemasangan di lapangan.\"}; {\"topic\":\"Efektivitas ventilasi atap atau loteng untuk mengurangi panas\",\"reason\":\"Klaim kuantitatif atau kepastian performa ventilasi atap tidak tercantum dalam Author Safe Claims.\"}; {\"topic\":\"Risiko karat akibat ventilasi atau kondensasi\",\"reason\":\"Dampak korosi spesifik tidak tercantum dalam Author Safe Claims sehingga tidak ditegaskan sebagai klaim teknis.\"}"
+  ]
+}
