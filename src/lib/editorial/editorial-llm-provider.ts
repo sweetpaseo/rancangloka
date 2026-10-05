@@ -15,7 +15,19 @@
 
 export type EditorialLlmProviderName = 'openrouter' | 'sumopod' | 'custom';
 
+export type CanonicalProviderErrorCategory =
+  | 'PROVIDER_TIMEOUT'
+  | 'PROVIDER_RATE_LIMIT'
+  | 'PROVIDER_AUTH_ERROR'
+  | 'PROVIDER_HTTP_ERROR'
+  | 'PROVIDER_INVALID_JSON'
+  | 'PROVIDER_EMPTY_RESPONSE'
+  | 'PROVIDER_MISSING_CONTENT'
+  | 'PROVIDER_CONTEXT_LIMIT'
+  | 'PROVIDER_TRANSPORT_ERROR';
+
 export type EditorialLlmErrorCategory =
+  | CanonicalProviderErrorCategory
   | 'CONFIG_MISSING'
   | 'AUTH'
   | 'RATE_LIMIT'
@@ -45,6 +57,28 @@ export interface EditorialGenerationUsage {
   totalTokens: number;
 }
 
+export interface EditorialAttemptDiagnostic {
+  attempt: number;
+  timestamp: string;
+  elapsedMs: number;
+  httpStatus?: number;
+  responseBodyBytes?: number;
+  errorCategory?: EditorialLlmErrorCategory;
+  error?: string;
+  retryReason?: string;
+  finishReason?: string;
+  reasoningContentLength?: number;
+  rawSnippet?: string;
+}
+
+export interface PromptBudgetTelemetry {
+  system_prompt_characters: number;
+  user_prompt_characters: number;
+  total_prompt_characters: number;
+  request_body_bytes: number;
+  estimated_input_tokens: number;
+}
+
 export interface EditorialGenerationResult {
   success: boolean;
   content: string | null;
@@ -54,8 +88,14 @@ export interface EditorialGenerationResult {
   usage?: EditorialGenerationUsage;
   error?: string;
   errorCategory?: EditorialLlmErrorCategory;
+  canonicalCategory?: CanonicalProviderErrorCategory;
   attempts: number;
   requestId?: string;
+  finishReason?: string;
+  httpStatus?: number;
+  rawResponseBodyBytes?: number;
+  promptTelemetry?: PromptBudgetTelemetry;
+  attemptsDiagnostics?: EditorialAttemptDiagnostic[];
 }
 
 export interface EditorialLlmOptions {
@@ -72,10 +112,31 @@ export interface EditorialLlmOptions {
 
 export const DEFAULT_OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 export const DEFAULT_SUMOPOD_ENDPOINT = 'https://ai.sumopod.com/v1/chat/completions';
-export const DEFAULT_EDITORIAL_TIMEOUT_MS = 60000; // 60 seconds
-export const DEFAULT_EDITORIAL_MAX_TOKENS = 4000;
+export const DEFAULT_EDITORIAL_TIMEOUT_MS = 120000; // 120 seconds
+export const DEFAULT_EDITORIAL_MAX_TOKENS = 8000; // 8000 tokens completion headroom
 export const DEFAULT_EDITORIAL_TEMPERATURE = 0.6;
 export const DEFAULT_EDITORIAL_MODEL = 'google/gemini-2.0-flash-001';
+export const DEFAULT_EDITORIAL_MAX_RETRIES = 2; // Up to 3 total attempts for transient failures
+
+/**
+ * Checks if a provider failure is retryable under the bounded transient retry policy.
+ */
+export function isRetryableProviderError(errorCategory: EditorialLlmErrorCategory, httpStatus?: number): boolean {
+  if (errorCategory === 'PROVIDER_AUTH_ERROR' || errorCategory === 'AUTH') return false;
+  if (errorCategory === 'PROVIDER_CONTEXT_LIMIT') return false;
+  if (errorCategory === 'CONFIG_MISSING') return false;
+  if (errorCategory === 'PROVIDER_HTTP_ERROR' || errorCategory === 'SERVER_ERROR') {
+    // 4xx client errors (e.g. 400 bad request, 404 not found) are non-retryable
+    // 429 rate limit is retryable
+    // 5xx server errors (500, 502, 503, 504) are retryable
+    if (httpStatus && httpStatus >= 400 && httpStatus < 500 && httpStatus !== 429) {
+      return false;
+    }
+    return true;
+  }
+  // Transient failures: TIMEOUT, RATE_LIMIT, EMPTY_RESPONSE, MISSING_CONTENT, TRANSPORT_ERROR, INVALID_JSON
+  return true;
+}
 
 /**
  * Sanitizes headers to ensure secrets cannot leak to error messages or logs.
@@ -138,7 +199,7 @@ export class EditorialLlmProvider {
     this.timeoutMs = options.timeoutMs ?? (env.EDITORIAL_LLM_TIMEOUT_MS ? Number(env.EDITORIAL_LLM_TIMEOUT_MS) : DEFAULT_EDITORIAL_TIMEOUT_MS);
     this.maxTokens = options.maxTokens ?? (env.EDITORIAL_LLM_MAX_TOKENS ? Number(env.EDITORIAL_LLM_MAX_TOKENS) : DEFAULT_EDITORIAL_MAX_TOKENS);
     this.temperature = options.temperature ?? (env.EDITORIAL_LLM_TEMPERATURE ? Number(env.EDITORIAL_LLM_TEMPERATURE) : DEFAULT_EDITORIAL_TEMPERATURE);
-    this.maxRetries = options.maxRetries ?? (env.EDITORIAL_LLM_MAX_RETRIES ? Number(env.EDITORIAL_LLM_MAX_RETRIES) : 1);
+    this.maxRetries = options.maxRetries ?? (env.EDITORIAL_LLM_MAX_RETRIES ? Number(env.EDITORIAL_LLM_MAX_RETRIES) : DEFAULT_EDITORIAL_MAX_RETRIES);
 
     this.fetchFn = (input: RequestInfo | URL, init?: RequestInit) => {
       if (options.fetchFn) {
@@ -153,7 +214,8 @@ export class EditorialLlmProvider {
 
   /**
    * Generates a text response from the configured LLM provider.
-   * Enforces fail-closed semantics on missing credentials and malformed responses.
+   * Enforces fail-closed semantics on missing credentials, malformed responses,
+   * with bounded transient retry and granular error classification.
    */
   async generate(request: EditorialGenerationRequest): Promise<EditorialGenerationResult> {
     const startTime = Date.now();
@@ -169,6 +231,7 @@ export class EditorialLlmProvider {
         latencyMs: Date.now() - startTime,
         error: `Editorial LLM Provider API key is not configured for provider '${this.providerName}'. Set OPENROUTER_API_KEY or EDITORIAL_LLM_API_KEY.`,
         errorCategory: 'CONFIG_MISSING',
+        canonicalCategory: 'PROVIDER_AUTH_ERROR',
         attempts: 0
       };
     }
@@ -182,15 +245,17 @@ export class EditorialLlmProvider {
         model: effectiveModel,
         latencyMs: Date.now() - startTime,
         error: 'Generation request missing valid messages array',
-        errorCategory: 'MALFORMED',
+        errorCategory: 'PROVIDER_MISSING_CONTENT',
+        canonicalCategory: 'PROVIDER_MISSING_CONTENT',
         attempts: 0
       };
     }
 
+    const outputTokens = request.maxTokens ?? this.maxTokens;
     const payload: Record<string, any> = {
       model: effectiveModel,
       messages: request.messages,
-      max_tokens: request.maxTokens ?? this.maxTokens
+      max_tokens: outputTokens
     };
 
     // Temperature inclusion (omit if model does not support it or null)
@@ -199,14 +264,40 @@ export class EditorialLlmProvider {
       payload.temperature = effectiveTemp;
     }
 
+    // Prompt Budget Telemetry
+    const systemPromptChars = request.messages
+      .filter(m => m.role === 'system')
+      .reduce((acc, m) => acc + (m.content?.length || 0), 0);
+    const userPromptChars = request.messages
+      .filter(m => m.role !== 'system')
+      .reduce((acc, m) => acc + (m.content?.length || 0), 0);
+    const totalPromptChars = systemPromptChars + userPromptChars;
+    const requestBodyString = JSON.stringify(payload);
+    const requestBodyBytes = Buffer.byteLength(requestBodyString, 'utf8');
+    const estimatedInputTokens = Math.ceil(totalPromptChars / 3.5);
+
+    const promptTelemetry: PromptBudgetTelemetry = {
+      system_prompt_characters: systemPromptChars,
+      user_prompt_characters: userPromptChars,
+      total_prompt_characters: totalPromptChars,
+      request_body_bytes: requestBodyBytes,
+      estimated_input_tokens: estimatedInputTokens
+    };
+
     let lastError: string = '';
-    let lastErrorCategory: EditorialLlmErrorCategory = 'SERVER_ERROR';
+    let lastErrorCategory: EditorialLlmErrorCategory = 'PROVIDER_HTTP_ERROR';
+    let lastCanonicalCategory: CanonicalProviderErrorCategory = 'PROVIDER_HTTP_ERROR';
+    let lastHttpStatus: number | undefined;
+    let lastResponseBodyBytes: number | undefined;
     let attemptsCount = 0;
+    const attemptsDiagnostics: EditorialAttemptDiagnostic[] = [];
 
     for (let attempt = 1; attempt <= this.maxRetries + 1; attempt++) {
       attemptsCount = attempt;
+      const attemptStartTime = Date.now();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+      const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 3000);
 
       try {
         const headers: Record<string, string> = {
@@ -222,92 +313,207 @@ export class EditorialLlmProvider {
         const response = await this.fetchFn(this.endpoint, {
           method: 'POST',
           headers,
-          body: JSON.stringify(payload),
+          body: requestBodyString,
           signal: controller.signal
         });
 
         clearTimeout(timeoutId);
-        const latencyMs = Date.now() - startTime;
+        const attemptElapsedMs = Date.now() - attemptStartTime;
+        const httpStatus = response.status;
+        lastHttpStatus = httpStatus;
 
-        // Handle Non-200 HTTP responses
+        let rawText = '';
+        try {
+          rawText = await response.text();
+        } catch {
+          rawText = response.statusText;
+        }
+
+        const responseBodyBytes = Buffer.byteLength(rawText, 'utf8');
+        lastResponseBodyBytes = responseBodyBytes;
+
+        // 3. Handle Non-200 HTTP responses
         if (!response.ok) {
-          let errorCat: EditorialLlmErrorCategory = 'SERVER_ERROR';
-          if (response.status === 401 || response.status === 403) {
-            errorCat = 'AUTH';
-          } else if (response.status === 429) {
-            errorCat = 'RATE_LIMIT';
-          } else if (response.status >= 400 && response.status < 500) {
-            errorCat = 'MALFORMED';
+          let errorCat: EditorialLlmErrorCategory = 'PROVIDER_HTTP_ERROR';
+          let canonCat: CanonicalProviderErrorCategory = 'PROVIDER_HTTP_ERROR';
+
+          const isContextLimit = /\b(?:context_length_exceeded|maximum context length|too many tokens|prompt is too long|context window|exceeds.*token limit)\b/i.test(rawText);
+
+          if (httpStatus === 401 || httpStatus === 403) {
+            errorCat = 'PROVIDER_AUTH_ERROR';
+            canonCat = 'PROVIDER_AUTH_ERROR';
+          } else if (httpStatus === 429) {
+            errorCat = 'PROVIDER_RATE_LIMIT';
+            canonCat = 'PROVIDER_RATE_LIMIT';
+          } else if (isContextLimit) {
+            errorCat = 'PROVIDER_CONTEXT_LIMIT';
+            canonCat = 'PROVIDER_CONTEXT_LIMIT';
           }
 
-          let responseBodyText = '';
-          try {
-            const rawErr = await response.text();
-            responseBodyText = rawErr.slice(0, 300);
-          } catch {
-            responseBodyText = response.statusText;
+          let responseBodySnippet = rawText.slice(0, 300);
+          if (this.apiKey && responseBodySnippet.includes(this.apiKey)) {
+            responseBodySnippet = responseBodySnippet.replaceAll(this.apiKey, '[REDACTED_API_KEY]');
           }
 
-          // Redact any appearance of apiKey or auth headers
-          if (this.apiKey && responseBodyText.includes(this.apiKey)) {
-            responseBodyText = responseBodyText.replaceAll(this.apiKey, '[REDACTED_API_KEY]');
-          }
-
-          lastError = `HTTP ${response.status}: ${responseBodyText}`;
+          lastError = `HTTP ${httpStatus}: ${responseBodySnippet}`;
           if (this.apiKey && lastError.includes(this.apiKey)) {
             lastError = lastError.replaceAll(this.apiKey, '[REDACTED_API_KEY]');
           }
           lastErrorCategory = errorCat;
+          lastCanonicalCategory = canonCat;
 
-          // Non-retryable errors break immediately
-          if (errorCat === 'AUTH' || errorCat === 'MALFORMED') {
+          const retryable = isRetryableProviderError(errorCat, httpStatus);
+          attemptsDiagnostics.push({
+            attempt,
+            timestamp: new Date().toISOString(),
+            elapsedMs: attemptElapsedMs,
+            httpStatus,
+            responseBodyBytes,
+            errorCategory: errorCat,
+            error: lastError,
+            rawSnippet: responseBodySnippet,
+            retryReason: retryable && attempt <= this.maxRetries ? 'Transient HTTP response' : undefined
+          });
+
+          if (!retryable) {
             break;
           }
 
-          // Retryable errors continue if attempts remain
+          if (attempt <= this.maxRetries) {
+            await new Promise(r => setTimeout(r, backoffMs));
+          }
           continue;
         }
 
-        // Parse Response JSON
+        // 4. Parse Response JSON
         let data: any;
         try {
-          data = await response.json();
+          data = JSON.parse(rawText);
         } catch (jsonErr: any) {
           lastError = `Failed to parse LLM response JSON: ${jsonErr.message}`;
-          lastErrorCategory = 'MALFORMED';
+          lastErrorCategory = 'PROVIDER_INVALID_JSON';
+          lastCanonicalCategory = 'PROVIDER_INVALID_JSON';
+
+          attemptsDiagnostics.push({
+            attempt,
+            timestamp: new Date().toISOString(),
+            elapsedMs: attemptElapsedMs,
+            httpStatus,
+            responseBodyBytes,
+            errorCategory: 'PROVIDER_INVALID_JSON',
+            error: lastError,
+            rawSnippet: rawText.slice(0, 200),
+            retryReason: attempt <= this.maxRetries ? 'Invalid JSON response from endpoint' : undefined
+          });
+
+          if (attempt <= this.maxRetries) {
+            await new Promise(r => setTimeout(r, backoffMs));
+          }
           continue;
         }
 
-        // Validate response structure
+        // 5. Validate response structure
         if (!data || typeof data !== 'object') {
           lastError = 'Provider returned non-object response';
-          lastErrorCategory = 'MALFORMED';
+          lastErrorCategory = 'PROVIDER_MISSING_CONTENT';
+          lastCanonicalCategory = 'PROVIDER_MISSING_CONTENT';
+
+          attemptsDiagnostics.push({
+            attempt,
+            timestamp: new Date().toISOString(),
+            elapsedMs: attemptElapsedMs,
+            httpStatus,
+            responseBodyBytes,
+            errorCategory: 'PROVIDER_MISSING_CONTENT',
+            error: lastError,
+            retryReason: attempt <= this.maxRetries ? 'Missing data object' : undefined
+          });
+
+          if (attempt <= this.maxRetries) {
+            await new Promise(r => setTimeout(r, backoffMs));
+          }
           continue;
         }
 
         if (!Array.isArray(data.choices) || data.choices.length === 0) {
           lastError = 'Provider response missing choices array';
-          lastErrorCategory = 'MALFORMED';
+          lastErrorCategory = 'PROVIDER_MISSING_CONTENT';
+          lastCanonicalCategory = 'PROVIDER_MISSING_CONTENT';
+
+          attemptsDiagnostics.push({
+            attempt,
+            timestamp: new Date().toISOString(),
+            elapsedMs: attemptElapsedMs,
+            httpStatus,
+            responseBodyBytes,
+            errorCategory: 'PROVIDER_MISSING_CONTENT',
+            error: lastError,
+            retryReason: attempt <= this.maxRetries ? 'Missing choices array' : undefined
+          });
+
+          if (attempt <= this.maxRetries) {
+            await new Promise(r => setTimeout(r, backoffMs));
+          }
           continue;
         }
 
         const firstChoice = data.choices[0];
-        const content = firstChoice?.message?.content;
+        const finishReason = firstChoice?.finish_reason;
+        const msg = firstChoice?.message;
+        const content = msg?.content;
+        const reasoningContent = msg?.reasoning_content || msg?.reasoning;
+        const reasoningLen = typeof reasoningContent === 'string' ? reasoningContent.length : undefined;
 
-        if (typeof content !== 'string') {
-          lastError = 'First choice message content is not a string';
-          lastErrorCategory = 'MALFORMED';
+        if (content === null || content === undefined || typeof content !== 'string') {
+          lastError = 'First choice message content is missing or not a string';
+          lastErrorCategory = 'PROVIDER_MISSING_CONTENT';
+          lastCanonicalCategory = 'PROVIDER_MISSING_CONTENT';
+
+          attemptsDiagnostics.push({
+            attempt,
+            timestamp: new Date().toISOString(),
+            elapsedMs: attemptElapsedMs,
+            httpStatus,
+            responseBodyBytes,
+            errorCategory: 'PROVIDER_MISSING_CONTENT',
+            error: lastError,
+            finishReason,
+            reasoningContentLength: reasoningLen,
+            retryReason: attempt <= this.maxRetries ? 'Missing message content' : undefined
+          });
+
+          if (attempt <= this.maxRetries) {
+            await new Promise(r => setTimeout(r, backoffMs));
+          }
           continue;
         }
 
         const trimmedContent = content.trim();
         if (trimmedContent.length === 0) {
           lastError = 'Provider returned an empty response string';
-          lastErrorCategory = 'EMPTY_RESPONSE';
+          lastErrorCategory = 'PROVIDER_EMPTY_RESPONSE';
+          lastCanonicalCategory = 'PROVIDER_EMPTY_RESPONSE';
+
+          attemptsDiagnostics.push({
+            attempt,
+            timestamp: new Date().toISOString(),
+            elapsedMs: attemptElapsedMs,
+            httpStatus,
+            responseBodyBytes,
+            errorCategory: 'PROVIDER_EMPTY_RESPONSE',
+            error: lastError,
+            finishReason,
+            reasoningContentLength: reasoningLen,
+            retryReason: attempt <= this.maxRetries ? 'Empty response content' : undefined
+          });
+
+          if (attempt <= this.maxRetries) {
+            await new Promise(r => setTimeout(r, backoffMs));
+          }
           continue;
         }
 
-        // Extract usage tokens if available
+        // 6. Extract usage tokens if available
         let usage: EditorialGenerationUsage | undefined;
         if (data.usage && typeof data.usage === 'object') {
           usage = {
@@ -317,26 +523,56 @@ export class EditorialLlmProvider {
           };
         }
 
+        attemptsDiagnostics.push({
+          attempt,
+          timestamp: new Date().toISOString(),
+          elapsedMs: attemptElapsedMs,
+          httpStatus,
+          responseBodyBytes,
+          finishReason,
+          reasoningContentLength: reasoningLen
+        });
+
         return {
           success: true,
           content: trimmedContent,
           provider: this.providerName,
           model: data.model || effectiveModel,
-          latencyMs,
+          latencyMs: Date.now() - startTime,
           usage,
           attempts: attemptsCount,
-          requestId: data.id || undefined
+          requestId: data.id || undefined,
+          finishReason,
+          httpStatus,
+          rawResponseBodyBytes: responseBodyBytes,
+          promptTelemetry,
+          attemptsDiagnostics
         };
       } catch (err: any) {
         clearTimeout(timeoutId);
-        const latencyMs = Date.now() - startTime;
+        const attemptElapsedMs = Date.now() - attemptStartTime;
 
         if (err.name === 'AbortError') {
           lastError = `Request timed out after ${this.timeoutMs}ms`;
-          lastErrorCategory = 'TIMEOUT';
+          lastErrorCategory = 'PROVIDER_TIMEOUT';
+          lastCanonicalCategory = 'PROVIDER_TIMEOUT';
         } else {
           lastError = `Network error: ${err.message || String(err)}`;
-          lastErrorCategory = 'NETWORK';
+          lastErrorCategory = 'PROVIDER_TRANSPORT_ERROR';
+          lastCanonicalCategory = 'PROVIDER_TRANSPORT_ERROR';
+        }
+
+        attemptsDiagnostics.push({
+          attempt,
+          timestamp: new Date().toISOString(),
+          elapsedMs: attemptElapsedMs,
+          errorCategory: lastErrorCategory,
+          error: lastError,
+          retryReason: attempt <= this.maxRetries ? 'Transient transport error' : undefined
+        });
+
+        if (attempt <= this.maxRetries) {
+          await new Promise(r => setTimeout(r, backoffMs));
         }
       }
     }
@@ -349,7 +585,12 @@ export class EditorialLlmProvider {
       latencyMs: Date.now() - startTime,
       error: lastError,
       errorCategory: lastErrorCategory,
-      attempts: attemptsCount
+      canonicalCategory: lastCanonicalCategory,
+      httpStatus: lastHttpStatus,
+      rawResponseBodyBytes: lastResponseBodyBytes,
+      attempts: attemptsCount,
+      promptTelemetry,
+      attemptsDiagnostics
     };
   }
 }

@@ -128,7 +128,16 @@ export type FinalEditorialDecision =
   | 'EVIDENCE_GROUNDING_REVIEW_REQUIRED'
   | 'TOPIC_EVIDENCE_ALIGNMENT_FAIL'
   | 'RESEARCH_COVERAGE_INSUFFICIENT'
-  | 'PROVIDER_ERROR';
+  | 'PROVIDER_ERROR'
+  | 'PROVIDER_TIMEOUT'
+  | 'PROVIDER_RATE_LIMIT'
+  | 'PROVIDER_AUTH_ERROR'
+  | 'PROVIDER_HTTP_ERROR'
+  | 'PROVIDER_INVALID_JSON'
+  | 'PROVIDER_EMPTY_RESPONSE'
+  | 'PROVIDER_MISSING_CONTENT'
+  | 'PROVIDER_CONTEXT_LIMIT'
+  | 'PROVIDER_TRANSPORT_ERROR';
 
 export interface EditorialJobResult {
   jobId: string;
@@ -298,7 +307,9 @@ export async function executeEditorialDraftJob(
       );
 
       finalStatus = 'FAILED';
-      finalDecision = 'PROVIDER_ERROR';
+      finalDecision = (llmResult.canonicalCategory as FinalEditorialDecision) ||
+        (llmResult.errorCategory as FinalEditorialDecision) ||
+        'PROVIDER_ERROR';
       stopGateStatus = 'OPERATOR_INTERVENTION_REQUIRED';
       shouldContinue = false;
       break;

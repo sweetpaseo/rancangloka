@@ -1,0 +1,31 @@
+{
+  "milestone": "EDITORIAL-RUNTIME-4B-RERUN2",
+  "executed_at": "2026-10-05T07:04:18.251Z",
+  "topic": "Dinding Rumah Lembap dan Berjamur: Cat Waterproofing Cukup atau Sumber Air Harus Diperbaiki?",
+  "content_family": "problem_solver",
+  "stage_reached": "GROUNDING_GATE",
+  "blocked_at": "GROUNDING_GATE",
+  "primary_classification": "RUNTIME4B_RERUN2_GROUNDING_BLOCKED",
+  "stop_reason": "Grounding audit failed",
+  "source_stats": {
+    "retrieved_documents_count": 2,
+    "unique_retrieved_sources_count": 0,
+    "unique_verified_source_ids": [],
+    "claim_source_relationship_count": 0
+  },
+  "author_safe_metrics": {
+    "total_claims": 49,
+    "allowed_for_authoring_count": 49,
+    "blocked_count": 0,
+    "qualified_count": 1,
+    "recommendation_count": 1,
+    "research_required_count": 0
+  },
+  "provenance_audit": null,
+  "joko_invoked": true,
+  "rina_invoked": false,
+  "qa_score": null,
+  "qa_decision": null,
+  "leaks_found": [],
+  "final_gate": "EDITORIAL_RUNTIME4B_RERUN2_HUMAN_REVIEW_REQUIRED"
+}

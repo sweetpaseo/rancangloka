@@ -1,0 +1,490 @@
+[
+  {
+    "claim_id": "CLM-001",
+    "statement": "Structural dampness is the presence of unwanted moisture in the structure of a building, either the result of intrusion from outside or condensation from within the structure. A high proportion of damp problems in ʙ̩ are caused by ambient climate dependent factors of condensation and rain penetration. Capillary penetration of fluid from the ground up through concrete or masonry is known as \"rising damp\" and is governed by the shape and porosity of the construction materials through which this ev",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_1"
+    ]
+  },
+  {
+    "claim_id": "CLM-002",
+    "statement": "Dampness tends to cause secondary damage to a building. The unwanted moisture enables the growth of various fungi in wood, causing rot or mold health issues and may eventually lead to sick building syndrome. Plaster and paint deteriorate and wallpaper loosens. Stains, from the water, salts and from mold, mar surfaces. The highest airborne mold concentrations are found in buildings where significant mold infestation has occurred, usually as a result of severe water intrusion or flood damage. Mold",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_2"
+    ]
+  },
+  {
+    "claim_id": "CLM-003",
+    "statement": "A wide range of instruments and techniques can be used to investigate the presence of moisture in building materials. When used correctly, they can provide a valuable aid to investigation. The competence and experience of the person undertaking the damp investigations is often of greater importance than the kit he or she carries. Experience and qualified surveyors are the difference between a correct and incorrect diagnosis of damp. For example, it is sometimes found that condensation is misdiag",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_3"
+    ]
+  },
+  {
+    "claim_id": "CLM-004",
+    "statement": "Most forms of dampness can be prevented by thoughtful building design and careful construction. In the UK, well built modern houses include damp proofing in the form of a synthetic damp-proof course (DPC), about 15 cm (5.9 in) above ground level, to act as a barrier through which water cannot pass. Slate or \"engineering bricks\" with a low porosity were often used for the first few courses above ground level, and these can help minimise the problem. There are many approaches to the treatment of d",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_4"
+    ]
+  },
+  {
+    "claim_id": "CLM-005",
+    "statement": "Humidity occurs in indoor environments due to building related causes. Porous walls, rising damp, and leaks in the building are determinants for structural dampness due to elevated humidity levels. The construction of the building can also lead to humidity and unwanted moisture in the indoor environment. Wet materials, such as lumber stored unprotected outdoors before construction, can lead to increased humidity indoors for up to the second year of occupancy in the building. Most commonly in res",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_5"
+    ]
+  },
+  {
+    "claim_id": "CLM-006",
+    "statement": "There are strategies to prevent water infiltration due to humidity into structures, as well as ways to treat human occupancy practices regarding humidity. Vapor retarders are materials that can be used to restrain uncontrolled airflow and water vapor into an indoor space. Vapor retarders are used to decrease the rate and amount of water vapor diffusion through ceilings, walls, and floors caused by humidity. It is made of thin, flexible materials and its coatings can be installed by trowels or br",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_6"
+    ]
+  },
+  {
+    "claim_id": "CLM-007",
+    "statement": "Surface condensation occurs when air meets colder surfaces which are below the dew point, causing moisture held in the air drop out of suspension. This can occur on any surface such as ceilings, windows and walls, and the moisture settling on the surface is known as condensation. It is one of the causes of damp, which can lead to mold problems, including black mold. Condensation can be caused by insufficient heating and ventilation, if a property is too cold, by excessive moisture created by fac",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_7"
+    ]
+  },
+  {
+    "claim_id": "CLM-008",
+    "statement": "Humidity cards or data loggers that can measure air humidity, air temperature, and surface temperature can be used to diagnose a condensation problem.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_8"
+    ]
+  },
+  {
+    "claim_id": "CLM-009",
+    "statement": "Typical remedies for condensation include increasing heat and ventilation, improving the insulation of cold surfaces and reducing moisture generation.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_9"
+    ]
+  },
+  {
+    "claim_id": "CLM-010",
+    "statement": "Rain penetration (also known as \"penetrating damp\") is a common form of dampness in buildings. It can occur through walls, roofs, or through openings (e.g. window reveals). Water will often penetrate the outer envelope of a building and appear inside. Common defects include: Roof defects such as faulty flashing, cracked or missing slates or tiles.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_10"
+    ]
+  },
+  {
+    "claim_id": "CLM-011",
+    "statement": "Faults in the brickwork or masonry such as missing or cracked pointing. Porous bricks or stones. Missing or defective mastic around windows and doors. Blocked weep holes.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_11"
+    ]
+  },
+  {
+    "claim_id": "CLM-012",
+    "statement": "Rain penetration is most often associated with single-skin walls, but can also occur through cavity walls - e.g. by tracking across wall ties. Single-skin brick walls of standard thickness (9 inches) have been considered to provide inadequate resistance to rain penetration for many years, which is why cavity wall construction is now standard in the UK. The 1944 Housing Manual published by the Ministry of Works and the Ministry of Health stated that:\"The resistance to penetration of rain should n",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_12"
+    ]
+  },
+  {
+    "claim_id": "CLM-013",
+    "statement": "Porous masonry (i.e. under-fired bricks, porous stone, or porous mortar) Cracks Defective pointing",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_13"
+    ]
+  },
+  {
+    "claim_id": "CLM-014",
+    "statement": "Unfilled joints and perpends Defective seals around doors and windows Holes in walls – e.g. where cables or pipes protrude",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_14"
+    ]
+  },
+  {
+    "claim_id": "CLM-015",
+    "statement": "Where a wall suffers from one or more of the primary causes of rain penetration listed above, the problem can be made worse by one of the following exacerbators of rain penetration: Defective rainwater goods Moss growth on roof tiles (causing blockage of rainwater goods)",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_15"
+    ]
+  },
+  {
+    "claim_id": "CLM-016",
+    "statement": "Defective or missing window sills (causing high concentrations of rainwater to bear on section of wall below window) Non-breathable coatings such as acrylic masonry paints – especially where applied to a poorly prepared masonry substrate Location/aspect of wall – e.g. walls facing prevailing wind are more prone to rain penetration problems (see BS 8104)",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_16"
+    ]
+  },
+  {
+    "claim_id": "CLM-017",
+    "statement": "Periods of extreme rainfall – walls that are normally thick enough to prevent rainfall from reaching the inner face can be overwhelmed during periods of heavy, persistent rainfall Modifications to a building involving impermeable materials can also exacerbate the symptoms of rain penetration by trapping moisture. This can be a particular problem with regard to the installation of retrofit external wall insulation (EWI).",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_17"
+    ]
+  },
+  {
+    "claim_id": "CLM-018",
+    "statement": "Health concerns around mold include infections, allergenic or immunological illness, and nonallergic illness. Asthma is also triggered by the sensitization of dust mites accruing humid, wet regions of a structure. Damp increases the risk of upper and lower respiratory symptoms, hypersensitivity pneumonitis, allergic rhinitis, eczema, and bronchitis. Another health effect associated with structural dampness is the presence of bacteria in an indoor environment. Bacteria require water to grow and m",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_18"
+    ]
+  },
+  {
+    "claim_id": "CLM-019",
+    "statement": "In the UK, 5.2 of the Building Regulations 2010 Approved Document C, \"Site preparation and resistance to contaminants and moisture\" requires that buildings should be constructed to resist rising damp, penetrating damp, and condensation. Similar requirements are also made in reference to floors in Section 4 of the document. The Homes (Fitness for Human Habitation) Act 2018 requires private landlords in England and Wales to ensure that houses that they rent do not have damp. Awaab's law was introd",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_19"
+    ]
+  },
+  {
+    "claim_id": "CLM-020",
+    "statement": "Rising damp is the common term for the transport of water in the lower sections of walls and other ground-supported structures by capillary action in porous materials. Rising damp is a worldwide problem, that causes buildings to deteriorate. It is prevalent in old buildings. Although rising damp of up to 5 metres (16 ft) in height has been observed the height of rise is typically much lower and is rarely above 1.5 metres (4.9 ft). Rising damp has been a widely observed phenomenon for at least tw",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_20"
+    ]
+  },
+  {
+    "claim_id": "CLM-021",
+    "statement": "Rising damp is a phenomenon that is fully predicted by the laws of physics, has been researched on a worldwide scale, and has been documented since Roman times. Nevertheless, a small number of people have expressed the view that rising damp is a myth and that it is, in fact, impossible for moisture to rise from the ground into the wall structure through pores in the masonry. A former chairman of the construction arm of the Royal Institution of Chartered Surveyors (RICS), Stephen Boniface, has sa",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_21"
+    ]
+  },
+  {
+    "claim_id": "CLM-022",
+    "statement": "However, proponents of rising damp suggest that not all walls are capable of supporting rising damp, so merely observing that rising damp does not occur in a particular wall does not disprove its existence in other walls. Water intrusion into the indoor environment can be attributed from causes other than rising damp. Moisture penetration has been an ongoing problem for residences as evaporation occurs at the edge of the damp area, resulting in \"tide marks\" due to salt deposition. The \"tide mark",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_22"
+    ]
+  },
+  {
+    "claim_id": "CLM-023",
+    "statement": "According to Jurin's law the maximum height of rise is inversely proportional to the capillary radius. Taking a typical pore radius for building materials of 1 μm, Jurin's Law would give a maximum rise of about 15 metres (49 ft); however, due to the effects of evaporation, in practice the rise would be considerably lower. A physical model of rising damp was developed by Christopher Hall and William D Hoff in their paper \"Rising damp: capillary rise dynamics in walls\". The analysis is based on ex",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_23"
+    ]
+  },
+  {
+    "claim_id": "CLM-024",
+    "statement": "The first step in assessing damp is to check for standing water. Removing water with good drainage will remove any form of dampness. Once done, and dampness remains, the next step is to look for the presence of a damp-proof course. If a damp-proof course is present, it is likely to be functioning, as the materials from which damp proof courses are manufactured tend to have a long lifespan. However, it should be acknowledged that there are cases where existing damp proof courses fail for one reas",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_24"
+    ]
+  },
+  {
+    "claim_id": "CLM-025",
+    "statement": "Where a rising damp problem is caused by a lack of a damp-proof course (common in buildings over approximately 100 years old) or by a failed damp-proof course (comparatively rare) there are a wide range of possible solutions available. These include: Replacement physical damp proof course Injection of a liquid or cream chemical damp proof course (DPC Injection)",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_25"
+    ]
+  },
+  {
+    "claim_id": "CLM-026",
+    "statement": "Damp-proofing rods Porous tubes / other evaporative Land drainage",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_26"
+    ]
+  },
+  {
+    "claim_id": "CLM-027",
+    "statement": "A physical damp proof course made from plastic can be installed into an existing building by cutting into short sections of the mortar course, and installing short sections of the damp proof course material. This method can provide an extremely effective barrier to rising damp, but is not widely used as it requires experienced contractors to carry out if structural movement is to be avoided and takes considerably longer to install than other types of rising damp treatment. The cost is also sever",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_27"
+    ]
+  },
+  {
+    "claim_id": "CLM-028",
+    "statement": "Injection of a liquid or cream into bricks or mortar is the most common method of treating rising damp. Adolf Wilhelm Keim describes the use of a hot bitumen remedial damp-proof course that is injected into holes drilled into a wall in his 1902 publication \"The Prevention of Dampness in Buildings.\" The Berlin \"Bauhygiene\" Association... has obtained very satisfactory results by the following method of preventing the rise of ground moisture:",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_28"
+    ]
+  },
+  {
+    "claim_id": "CLM-029",
+    "statement": "\"As low down as possible in the wall of the building, or just above the floorboards when there are cellars below them, holes are bored into the wall 10 inches apart. If the wall is a thick one, the holes should extend quite through it. The fire boxes with air-blast, already described, are then set to work on both sides of the wall, at the level of the bore-holes, until the brickwork is thoroughly heated and dried. In the Charlottenburg Palace this result has been attained with walls 1 metre (39",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_29"
+    ]
+  },
+  {
+    "claim_id": "CLM-030",
+    "statement": "The results of these calculations for a range of bricks and one building stone suggest that when high pressure injection is used the time of injection is unlikely to be less than five minutes per hole and may exceed 20 minutes per hole even for relatively permeable and porous materials. The times calculated for low pressure infusion of repellents range from 8 hours to 44 hours.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_30"
+    ]
+  },
+  {
+    "claim_id": "CLM-031",
+    "statement": "Since the early 2000s, damp-proofing creams have taken over from liquid products due to improved ease of application. As with liquid products these are based on silane/siloxane active ingredients which line the pores of the mortar to repel damp. The effectiveness of liquid and cream based rising damp treatments varies considerably between products due to variations in product formulations. Independent test certifications such as British Board of Agreement (BBA) certificates are available for som",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_31"
+    ]
+  },
+  {
+    "claim_id": "CLM-032",
+    "statement": "Damp-proofing rods use similar active ingredients to those found in liquid or cream-based rising damp treatments, but contained in a solid rod. They are generally considered to be easier to use than other types of rising damp treatment as the method of installation is simply to insert them into the correct sized holes drilled into a mortar bed. Damp-proofing rods are available with BBA approval. The rods are placed into holes drilled in the mortar course and the active ingredients diffuse along",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_32"
+    ]
+  },
+  {
+    "claim_id": "CLM-033",
+    "statement": "A benefit of damp-proofing rods compared with damp-proofing creams and liquids is that it is possible to guarantee a consistent dose of active ingredient into each hole drilled in the mortar course – i.e. it is impossible to under-fill the holes.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_33"
+    ]
+  },
+  {
+    "claim_id": "CLM-034",
+    "statement": "Porous tubes are installed along a mortar course. In theory these encourage evaporation and reduce the rise of the damp. Independent test certification are available for this type of product and tests carried out by the Building Research Establishment suggest that they are effective at controlling rising damp. Porous ceramic tubes were an early technique to produce a method of combating rising damp; in the 1920s this technique was marketed by British Knapen. Tests were written up in the Building",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_34"
+    ]
+  },
+  {
+    "claim_id": "CLM-035",
+    "statement": "It has been suggested that improving drainage around walls affected by rising damp can help to reduce the height of rise by reducing the amount of water available to be absorbed into the capillaries of the wall. Typically a trench would be excavated around the affected wall into which a porous pipe would be laid. The trench would then be back-filled with a porous material such as a single-sized aggregate, forming a French drain. Such a system would obviously have the practical disadvantage of be",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_35"
+    ]
+  },
+  {
+    "claim_id": "CLM-036",
+    "statement": "These attempt to control rising damp through the phenomenon of electro-osmosis. While there is evidence to suggest that these systems can be useful in moving salts in walls there is little in the way of independent data to demonstrate effectiveness in treating rising damp. The BRE publication \"Understanding Dampness\" makes the following observations about electro osmotic systems for the treatment of rising damp: There are two types: active and passive; neither has been approved by a recognised l",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_36"
+    ]
+  },
+  {
+    "claim_id": "CLM-037",
+    "statement": "BRE Digest 245 suggests that with the exception of replacement physical DPCs, only methods of treatment with third party accreditation (e.g. British Board of Agrément Certificate) should be considered for the treatment of rising damp. It then goes on to state that the only method of currently satisfying this requirement is DPC injection (liquid or cream – although damp-proofing rods have subsequently been made available with BBA approval) and that \"this is the only method which BRE considers sui",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_37"
+    ]
+  },
+  {
+    "claim_id": "CLM-038",
+    "statement": "Creams are applied at much lower application rates than is typical for fluid injection and are designed to spread through masonry by diffusion without the assistance of pressure injection. Owing to the number of different mortar types and moisture contents, it is necessary to test these materials under a wider range of conditions. Research undertaken by the BBA has indicated that the performance of creams differs with varying test conditions, with not all products performing well under all test",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_38"
+    ]
+  },
+  {
+    "claim_id": "CLM-039",
+    "statement": "In Belgium, at the Centre Scientifique et Technique de la Construction (CTSC, 1985), research was carried out on the effectiveness of the main retrofit DPCs found in Europe. It was generally found that physical DPCs performed best, followed by the various chemical DPCs, with electro osmosis and atmospheric syphons being the least effective.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_39"
+    ]
+  },
+  {
+    "claim_id": "CLM-040",
+    "statement": "Replastering will often be carried out as part of a rising damp treatment. Where plaster has become severely damaged by ground salts there is little argument about the need to replaster. However, there is considerable debate about: The extent of replastering required The use of hard sand:cement renders to replaster as part of a rising damp treatment",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_40"
+    ]
+  },
+  {
+    "claim_id": "CLM-041",
+    "statement": "BS6576:2005 states that \"the function of the new plaster is to prevent hygroscopic salts that might be present in the wall from migrating through to its surface, while still allowing the wall to dry.\" However, writing in the RICS publication \"Remedying Damp\", Ralph Burkinshaw claims that, \"the plaster is really there for two main reasons.\" He accepts the need for replastering when significant amounts of ground salts have built up in the existing plaster, but he then goes on to say that replaster",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_41"
+    ]
+  },
+  {
+    "claim_id": "CLM-042",
+    "statement": "More recently, systems have become available that allow plasterboard or insulation board to be used to replaster walls affected by rising damp. After the existing plaster has been hacked off the wall, a salt and moisture retardant cream is applied to the wall. The plasterboard is then applied to the wall using a salt/moisture-proof adhesive. Such systems have the advantage that they can be decorated straight away, rather than having to wait several days or weeks (as would be the case with standa",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_42"
+    ]
+  },
+  {
+    "claim_id": "CLM-043",
+    "statement": "It is best practice to delay replastering and redecoration for as long as possible following rising damp treatment, but this obviously creates inconvenience to the occupants of the affected building. BRE Digest 245 states that \"While the wall should be allowed to dry for as long as possible, replastering can follow, providing porous decorations are selected. These are usually matt emulsions and water-based paints, both of which will allow the wall to breathe. Application of gloss and vinyl paint",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_WIKI_DAMP_43"
+    ]
+  },
+  {
+    "claim_id": "CLM-044",
+    "statement": "Moisture moves through building assemblies via liquid water flow, capillary suction through porous masonry materials, and air movement carrying water vapor. In wall assemblies, capillary action draws water from saturated ground or exterior masonry cracks upward and inward, causing rising damp and localized water staining.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_EPA_MOISTURE_44"
+    ]
+  },
+  {
+    "claim_id": "CLM-045",
+    "statement": "Surface efflorescence, blistered coatings, localized damp patches, and mold growth are visible symptoms of moisture presence. Differentiating between rain penetration through exterior wall fissures, rising damp from ground contact, and internal condensation is essential before applying corrective measures.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_EPA_MOISTURE_45"
+    ]
+  },
+  {
+    "claim_id": "CLM-046",
+    "statement": "Applying internal waterproofing paints or surface sealers over moisture-saturated masonry without fixing the external water source traps water inside the wall. Hydrostatic and vapor pressure build up behind impermeable coatings, causing debonding, blistering, and accelerated substrate deterioration.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_EPA_MOISTURE_46"
+    ]
+  },
+  {
+    "claim_id": "CLM-047",
+    "statement": "Effective remediation requires intercepting and eliminating the liquid water source prior to surface cosmetic repairs. Waterproofing coatings serve as protective barriers against future moisture only when applied to structurally sound, dried substrates after primary leak sources have been remediated.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_EPA_MOISTURE_47"
+    ]
+  },
+  {
+    "claim_id": "CLM-048",
+    "statement": "Mold spores germinate when relative humidity at surface interfaces exceeds threshold levels in the presence of organic nutrients. Covering active mold colonies with paint without addressing moisture accumulation results in recurrent microbial infestation and compromised indoor air quality.",
+    "support_level": "VERIFIED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "evidence_passage_ids": [
+      "psg_SRC_OPEN_EPA_MOISTURE_48"
+    ]
+  },
+  {
+    "claim_id": "CLM-049",
+    "statement": "Penanganan dinding lembap dapat dipertimbangkan setelah sumber masalah dikonfirmasi, dengan mendahulukan pelacakan dan penanganan sumber intrusi air sebelum mengevaluasi lapisan cat waterproofing.",
+    "support_level": "SUPPORTED",
+    "applicability": "UNIVERSAL_PHYSICS",
+    "allowed_for_authoring": true,
+    "qualification_required": "Sajikan sebagai panduan keputusan editorial berbasis kondisi lapangan."
+  }
+]

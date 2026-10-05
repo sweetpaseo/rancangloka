@@ -1,0 +1,89 @@
+[
+  {
+    "class": "SMALL",
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "payload_characters": 130,
+    "payload_bytes": 263,
+    "start_time": "2026-10-05T08:34:06.288Z",
+    "end_time": "2026-10-05T08:34:08.152Z",
+    "elapsed_ms": 1862,
+    "http_status": 200,
+    "result_classification": "SUCCESS",
+    "response_content_length": 171,
+    "usage": {
+      "promptTokens": 44,
+      "completionTokens": 45,
+      "totalTokens": 89
+    },
+    "finish_reason": "stop",
+    "diagnostics": [
+      {
+        "attempt": 1,
+        "timestamp": "2026-10-05T08:34:08.152Z",
+        "elapsedMs": 1860,
+        "httpStatus": 200,
+        "responseBodyBytes": 1138,
+        "finishReason": "stop"
+      }
+    ]
+  },
+  {
+    "class": "MEDIUM",
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "payload_characters": 711,
+    "payload_bytes": 859,
+    "start_time": "2026-10-05T08:34:08.152Z",
+    "end_time": "2026-10-05T08:34:14.554Z",
+    "elapsed_ms": 6402,
+    "http_status": 200,
+    "result_classification": "SUCCESS",
+    "response_content_length": 2546,
+    "usage": {
+      "promptTokens": 216,
+      "completionTokens": 853,
+      "totalTokens": 1069
+    },
+    "finish_reason": "stop",
+    "diagnostics": [
+      {
+        "attempt": 1,
+        "timestamp": "2026-10-05T08:34:14.554Z",
+        "elapsedMs": 6401,
+        "httpStatus": 200,
+        "responseBodyBytes": 3594,
+        "finishReason": "stop"
+      }
+    ]
+  },
+  {
+    "class": "FULL",
+    "provider": "sumopod",
+    "model": "gpt-5.6-luna",
+    "payload_characters": 29179,
+    "payload_bytes": 29650,
+    "start_time": "2026-10-05T08:34:14.555Z",
+    "end_time": "2026-10-05T08:34:44.309Z",
+    "elapsed_ms": 29754,
+    "http_status": 200,
+    "result_classification": "SUCCESS",
+    "response_content_length": 16565,
+    "usage": {
+      "promptTokens": 6629,
+      "completionTokens": 4609,
+      "totalTokens": 11238
+    },
+    "finish_reason": "stop",
+    "diagnostics": [
+      {
+        "attempt": 1,
+        "timestamp": "2026-10-05T08:34:44.308Z",
+        "elapsedMs": 29739,
+        "httpStatus": 200,
+        "responseBodyBytes": 18039,
+        "finishReason": "stop"
+      }
+    ]
+  }
+]
