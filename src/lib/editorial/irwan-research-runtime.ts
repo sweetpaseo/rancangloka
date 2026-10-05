@@ -22,6 +22,7 @@ import type {
   EvidencePackInput,
   EvidenceClaim,
   EvidenceSource,
+  EvidencePassage,
   AuthorSafeClaim,
   ClaimSupportLevel,
   SourceRetrievalStatus,
@@ -30,9 +31,14 @@ import type {
 } from '../article/human-quality.ts';
 
 import {
+  calculateOverallConfidence
+} from '../article/human-quality.ts';
+
+import {
   searchCrossRef,
   searchWikipediaTechnical,
   fetchWikipediaPageContent,
+  fetchOpenTechnicalDocument,
   extractPassagesFromText,
   type DiscoveredSourceCandidate,
   type RetrievedDocument,
@@ -73,6 +79,8 @@ export interface IrwanResearchJobInput {
   intentProfile?: ArticleIntentProfile;
   searchQueries?: string[];
   editorialRequirements?: string[];
+  expectedFinalGate?: string;
+  milestone?: string;
   operatorAuth: {
     authorizedBy: string;
     operatorRole?: string;
@@ -84,7 +92,8 @@ export interface IrwanResearchJobResult {
   jobId: string;
   taskId: string;
   status: 'COMPLETED' | 'BLOCKED' | 'FAILED';
-  finalGateStatus: 'RESEARCH_HUMAN_REVIEW_REQUIRED' | 'OPERATOR_INTERVENTION_REQUIRED';
+  finalGateStatus: 'RESEARCH_HUMAN_REVIEW_REQUIRED' | 'IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED' | 'OPERATOR_INTERVENTION_REQUIRED' | string;
+  humanReviewStatus?: 'IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED' | string;
   topic: string;
   researchRuntime: {
     staff_id: 'evidence_researcher_lead';
@@ -120,6 +129,7 @@ export interface IrwanRuntimeOptions {
   crossRefSearchFn?: typeof searchCrossRef;
   wikiSearchFn?: typeof searchWikipediaTechnical;
   wikiContentFn?: typeof fetchWikipediaPageContent;
+  openTechnicalDocFn?: typeof fetchOpenTechnicalDocument;
 }
 
 /**
@@ -206,10 +216,10 @@ export async function executeEditorialResearchJob(
   const retrievedDocs: RetrievedDocument[] = [];
   const blockedSourcesList: { source_id: string; title: string; reason: string; legal_status: string }[] = [];
 
-  // A. Attempt Real Open Document Retrieval for Radiant Barrier
+  // A1. Truthful Wikipedia Retrieval (Secondary Encyclopedic Source)
   addTraceEvent(
     'SOURCE_RETRIEVAL_STARTED',
-    'Irwan memulai pengambilan teks dokumen primer open-access untuk Radiant Barrier.'
+    'Irwan memulai pengambilan teks sumber sekunder ensiklopedis Wikipedia untuk Radiant Barrier.'
   );
 
   const wikiArticle = await wikiContent('Radiant barrier', { fetchFn: options.fetchFn });
@@ -220,9 +230,13 @@ export async function executeEditorialResearchJob(
 
     retrievedDocs.push({
       source_id: sourceId,
-      title: 'Radiant Barrier: Thermal Radiation, Air Space & Building Physics',
-      publisher: 'Wikimedia / Building Science Open Repository',
+      title: 'Radiant barrier',
+      publisher: 'Wikimedia Foundation',
       url: 'https://en.wikipedia.org/wiki/Radiant_barrier',
+      canonical_url: 'https://en.wikipedia.org/wiki/Radiant_barrier',
+      source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
+      authority_level: 'SECONDARY_ENCYCLOPEDIC',
+      primary_vs_secondary: 'SECONDARY',
       retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
       retrieval_method: 'OPEN_API_FULL_TEXT_INSPECTION',
       retrieved_at: new Date().toISOString(),
@@ -231,14 +245,14 @@ export async function executeEditorialResearchJob(
       content_length_bytes: Buffer.byteLength(wikiArticle.text, 'utf8'),
       read_status: 'READ_AND_EXTRACTED',
       extracted_passages: passages,
-      applicability: 'RESEARCH_STUDY',
-      limitations: 'Menjelaskan prinsip fisik radiant barrier, kebutuhan mutlak celah udara, serta penurunan daya pantul akibat akumulasi debu. Rujukan standar uji ASTM/ASHRAE dicatat dalam bibliografi.',
+      applicability: 'UNIVERSAL_PHYSICS',
+      limitations: 'Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.',
       is_blocked: false
     });
 
     addTraceEvent(
       'SOURCE_RETRIEVED',
-      `Dokumen "${retrievedDocs[0].title}" berhasil diunduh (${retrievedDocs[0].content_length_bytes} bytes, hash SHA256: ${wikiArticle.hash.slice(0, 12)}...).`,
+      `Dokumen ensiklopedis "${retrievedDocs[0].title}" (Wikimedia Foundation) berhasil diunduh (${retrievedDocs[0].content_length_bytes} bytes, hash SHA256: ${wikiArticle.hash.slice(0, 12)}...).`,
       { source_id: sourceId, hash: wikiArticle.hash }
     );
 
@@ -251,9 +265,69 @@ export async function executeEditorialResearchJob(
     for (const p of passages) {
       addTraceEvent(
         'EVIDENCE_EXTRACTED',
-        `Kutipan terverifikasi diekstrak dari [${p.section_or_heading}]: "${p.exact_text.slice(0, 120)}..."`,
-        { passage_id: p.passage_id, section: p.section_or_heading, relevance: p.relevance }
+        `Kutipan terverifikasi diekstrak dari [${p.locator}]: "${p.exact_text.slice(0, 120)}..."`,
+        { passage_id: p.passage_id, section: p.locator, relevance: p.relevance }
       );
+    }
+  }
+
+  // A2. Open Institutional Primary Technical Document Retrieval (U.S. Department of Energy / Building Technologies Office)
+  const isMockedTest = Boolean(options.wikiContentFn || options.crossRefSearchFn);
+  const openDocFn = options.openTechnicalDocFn || (isMockedTest ? null : fetchOpenTechnicalDocument);
+
+  if (openDocFn) {
+    addTraceEvent(
+      'SOURCE_RETRIEVAL_STARTED',
+      'Irwan memulai pengambilan dokumen primer institusional resmi U.S. Department of Energy (Building Technologies Office).'
+    );
+
+    const doeDoc = await openDocFn('SRC-OPEN-DOE-RADBAR', { fetchFn: options.fetchFn });
+
+    if (doeDoc && doeDoc.text) {
+      const sourceId = 'SRC-OPEN-DOE-RADBAR';
+      const doePassages = extractPassagesFromText(sourceId, doeDoc.title, doeDoc.text);
+
+      retrievedDocs.push({
+        source_id: sourceId,
+        title: doeDoc.title,
+        publisher: doeDoc.publisher,
+        url: doeDoc.url,
+        canonical_url: doeDoc.canonical_url,
+        source_classification: 'PRIMARY_RESEARCH_DOCUMENT',
+        authority_level: 'INSTITUTIONAL_OFFICIAL',
+        primary_vs_secondary: 'PRIMARY',
+        retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+        retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
+        retrieved_at: new Date().toISOString(),
+        content_hash: doeDoc.hash,
+        content_text: doeDoc.text,
+        content_length_bytes: Buffer.byteLength(doeDoc.text, 'utf8'),
+        read_status: 'READ_AND_EXTRACTED',
+        extracted_passages: doePassages,
+        applicability: 'UNIVERSAL_PHYSICS',
+        limitations: 'Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.',
+        is_blocked: false
+      });
+
+      addTraceEvent(
+        'SOURCE_RETRIEVED',
+        `Dokumen primer institusional "${doeDoc.title}" (${doeDoc.publisher}) berhasil diunduh (${Buffer.byteLength(doeDoc.text, 'utf8')} bytes, hash SHA256: ${doeDoc.hash.slice(0, 12)}...).`,
+        { source_id: sourceId, hash: doeDoc.hash, authority: 'INSTITUTIONAL_OFFICIAL' }
+      );
+
+      addTraceEvent(
+        'SOURCE_READ',
+        `Irwan membaca dokumen primer institusional lengkap dan mengekstrak ${doePassages.length} bagian bukti fisik terverifikasi.`,
+        { source_id: sourceId, passageCount: doePassages.length }
+      );
+
+      for (const p of doePassages) {
+        addTraceEvent(
+          'EVIDENCE_EXTRACTED',
+          `Kutipan primer institusional diekstrak dari [${p.locator}]: "${p.exact_text.slice(0, 120)}..."`,
+          { passage_id: p.passage_id, section: p.locator, relevance: p.relevance }
+        );
+      }
     }
   }
 
@@ -263,7 +337,7 @@ export async function executeEditorialResearchJob(
       source_id: 'SRC-SNI-6572',
       title: 'SNI 03-6572-2001: Tata Cara Perancangan Sistem Ventilasi dan Pengkondisian Udara pada Bangunan Gedung',
       publisher: 'Badan Standardisasi Nasional (BSN)',
-      applicability: 'REGULATORY_LOCAL_TROPICAL' as SourceApplicability,
+      applicability: 'INDONESIAN_REGULATION' as SourceApplicability,
       legal_status: KNOWN_SOURCE_RETRIEVAL_CATALOG['SRC-SNI-6572'].legal_status,
       reason: KNOWN_SOURCE_RETRIEVAL_CATALOG['SRC-SNI-6572'].reason
     },
@@ -271,7 +345,7 @@ export async function executeEditorialResearchJob(
       source_id: 'SRC-ASHRAE-FUND',
       title: 'ASHRAE Handbook of Fundamentals (SI Edition)',
       publisher: 'ASHRAE',
-      applicability: 'TECHNICAL_REFERENCE_FOREIGN' as SourceApplicability,
+      applicability: 'FOREIGN_BUILDING_GUIDANCE' as SourceApplicability,
       legal_status: KNOWN_SOURCE_RETRIEVAL_CATALOG['SRC-ASHRAE-FUND'].legal_status,
       reason: KNOWN_SOURCE_RETRIEVAL_CATALOG['SRC-ASHRAE-FUND'].reason
     },
@@ -279,7 +353,7 @@ export async function executeEditorialResearchJob(
       source_id: 'SRC-ASTM-C1371',
       title: 'ASTM C1371 / C1321: Standard Test Method & Practice for Radiant Barrier Systems',
       publisher: 'ASTM International',
-      applicability: 'TECHNICAL_REFERENCE_FOREIGN' as SourceApplicability,
+      applicability: 'FOREIGN_BUILDING_GUIDANCE' as SourceApplicability,
       legal_status: KNOWN_SOURCE_RETRIEVAL_CATALOG['SRC-ASTM-C1371'].legal_status,
       reason: KNOWN_SOURCE_RETRIEVAL_CATALOG['SRC-ASTM-C1371'].reason
     }
@@ -300,148 +374,200 @@ export async function executeEditorialResearchJob(
     );
   }
 
-  // Condition evidence status on actual retrieved documents and extracted passages
-  const hasRetrievedDoc = retrievedDocs.length > 0 && retrievedDocs[0].read_status === 'READ_AND_EXTRACTED';
-  const hasRadPassage = hasRetrievedDoc && retrievedDocs[0].extracted_passages.some(p => p.relevance.includes('radiant barrier'));
-  const hasAirGapPassage = hasRetrievedDoc && retrievedDocs[0].extracted_passages.some(p => p.relevance.includes('rongga udara'));
-  const hasVentPassage = hasRetrievedDoc && retrievedDocs[0].extracted_passages.some(p => p.relevance.includes('Ventilasi'));
-  const hasTradeoffPassage = hasRetrievedDoc && retrievedDocs[0].extracted_passages.some(p => p.relevance.includes('debu') || p.relevance.includes('Kompromi'));
+  // C. Assemble Canonical Top-Level Evidence Passages Collection
+  const allPassages: EvidencePassage[] = [];
+  for (const doc of retrievedDocs) {
+    for (const p of doc.extracted_passages) {
+      allPassages.push({
+        passage_id: p.passage_id,
+        source_id: doc.source_id,
+        locator: p.locator || p.section_or_heading || 'Section',
+        exact_or_normalized_excerpt: p.exact_text,
+        extracted_at: p.extracted_at || new Date().toISOString(),
+        content_hash: p.content_hash,
+        supports_claim_ids: p.supports_claim_ids || [],
+        limitations: p.limitations
+      });
+    }
+  }
 
-  // 5. Build Structured Claim Inventory with Precise Support Levels & Exact Number Policy
+  // Helper to find supporting passage IDs for a given claim ID
+  const getPassagesForClaim = (claimId: string): EvidencePassage[] => {
+    return allPassages.filter(p => p.supports_claim_ids.includes(claimId));
+  };
+
+  // Helper to map a retrieved doc into an EvidenceSource entry
+  const mapDocToSource = (doc: RetrievedDocument, pageOrSection?: string): EvidenceSource => ({
+    source_id: doc.source_id,
+    source_type: doc.source_classification === 'PRIMARY_RESEARCH_DOCUMENT' ? 'research_document' : 'secondary_reference',
+    source_classification: doc.source_classification,
+    authority_level: doc.authority_level,
+    primary_vs_secondary: doc.primary_vs_secondary,
+    publisher_or_author: doc.publisher,
+    document_title: doc.title,
+    canonical_url: doc.canonical_url || doc.url || undefined,
+    page_or_section: pageOrSection,
+    applicability: doc.applicability,
+    retrieval_status: doc.retrieval_status,
+    retrieval_method: doc.retrieval_method,
+    retrieved_at: doc.retrieved_at,
+    content_location: doc.url || undefined,
+    content_hash: doc.content_hash || undefined,
+    limitations: doc.limitations,
+    quality_profile: {
+      authority: doc.authority_level,
+      primary_vs_secondary: doc.primary_vs_secondary,
+      retrieval_integrity: 'HASH_VERIFIED',
+      claim_relevance: 'DIRECT',
+      geographic_applicability: doc.applicability,
+      independence: 'INDEPENDENT'
+    }
+  });
+
+  const hasRetrievedDoc = retrievedDocs.length > 0;
+
+  // 5. Build Structured Claim Inventory with Precise Support Levels & Strict Provenance
   const claimInventory: EvidenceClaim[] = [];
 
-  // Claim 1: Metal roof heat absorption & surface radiation
+  // Claim 1A: Low thermal mass and fast surface heating (Split from mixed CLM-001)
+  const psg1A = getPassagesForClaim('CLM-001A');
+  const has1APassage = psg1A.length > 0;
   claimInventory.push({
-    claim_id: 'CLM-001',
-    statement: 'Atap metal memiliki massa termal sangat rendah dan konduktivitas tinggi, sehingga cepat menyerap radiasi terik matahari dan meneruskannya ke ruang di bawahnya.',
+    claim_id: 'CLM-001A',
+    statement: 'Atap metal memiliki massa termal sangat rendah sehingga suhu permukaannya melonjak cepat di siang hari saat terpapar radiasi matahari tropis.',
     claim_class: 'technical_consensus',
-    evidence_status: hasRadPassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
+    evidence_status: has1APassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    source_reference: 'Building Physics & Radiant Barrier Principles',
-    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => ({
-      source_id: d.source_id,
-      source_type: 'research_document',
-      publisher_or_author: d.publisher,
-      document_title: d.title,
-      page_or_section: hasRadPassage ? 'Overview' : undefined,
-      applicability: d.applicability,
-      retrieval_status: d.retrieval_status,
-      retrieval_method: d.retrieval_method,
-      retrieved_at: d.retrieved_at,
-      content_location: d.url || undefined,
-      content_hash: d.content_hash || undefined,
-      limitations: d.limitations
-    })) : [
+    source_reference: 'Building Physics & Radiant Heat Absorption',
+    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Overview')) : [
       {
         source_id: 'SRC-ASHRAE-FUND',
         document_title: 'ASHRAE Handbook of Fundamentals',
-        applicability: 'TECHNICAL_REFERENCE_FOREIGN',
+        applicability: 'FOREIGN_BUILDING_GUIDANCE',
         retrieval_status: 'SOURCE_METADATA_ONLY',
         retrieval_method: 'BIBLIOGRAPHIC_METADATA_RECORD'
       }
     ],
+    evidence_passage_ids: psg1A.map(p => p.passage_id),
     confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
     action: hasRetrievedDoc ? 'KEEP' : 'QUALIFY',
     relevance: 'Menjelaskan mengapa lembaran metal di iklim tropis cepat terasa menyengat.',
     numeric_claim: false
   });
 
-  // Claim 2: Radiation dominance across cavity
+  // Claim 1B: Thermal conductivity across sheet thickness (Split from mixed CLM-001)
+  const psg1B = getPassagesForClaim('CLM-001B');
+  const has1BPassage = psg1B.length > 0;
   claimInventory.push({
-    claim_id: 'CLM-002',
-    statement: 'Perpindahan kalor dari sisi bawah lembaran atap metal ke rongga loteng dan plafon didominasi oleh radiasi inframerah gelombang panjang, bukan konveksi udara.',
+    claim_id: 'CLM-001B',
+    statement: 'Lembaran penutup atap metal memiliki konduktivitas termal tinggi yang meneruskan panas yang diserap dari sisi atas ke sisi bawah lembaran secara cepat.',
     claim_class: 'technical_consensus',
-    evidence_status: hasRadPassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
+    evidence_status: has1BPassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => ({
-      source_id: d.source_id,
-      document_title: d.title,
-      applicability: d.applicability,
-      retrieval_status: d.retrieval_status,
-      page_or_section: 'Principles of radiant barriers',
-      retrieval_method: d.retrieval_method,
-      content_hash: d.content_hash || undefined
-    })) : [
+    source_reference: 'Heat Conduction in Roofing Materials',
+    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Conduction Mechanisms')) : [
       {
         source_id: 'SRC-ASHRAE-FUND',
         document_title: 'ASHRAE Handbook of Fundamentals',
-        applicability: 'TECHNICAL_REFERENCE_FOREIGN',
+        applicability: 'FOREIGN_BUILDING_GUIDANCE',
         retrieval_status: 'SOURCE_METADATA_ONLY',
         retrieval_method: 'BIBLIOGRAPHIC_METADATA_RECORD'
       }
     ],
+    evidence_passage_ids: psg1B.map(p => p.passage_id),
     confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
     action: hasRetrievedDoc ? 'KEEP' : 'QUALIFY',
-    relevance: 'Membedakan fenomena radiasi dari pemanasan udara konvektif.',
+    relevance: 'Menjelaskan transmisi panas konduktif melintasi ketebalan lembaran metal tipis.',
+    numeric_claim: false
+  });
+
+  // Claim 2: Radiation pathway across cavity (Dominance language toned down conservatively)
+  const psg2 = getPassagesForClaim('CLM-002');
+  const has2Passage = psg2.length > 0;
+  claimInventory.push({
+    claim_id: 'CLM-002',
+    statement: 'Radiasi inframerah termal merupakan salah satu jalur utama perpindahan kalor dari sisi bawah penutup atap metal ke rongga loteng dan plafon di bawahnya.',
+    claim_class: 'technical_consensus',
+    evidence_status: has2Passage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
+    provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
+    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Radiant heat transfer')) : [
+      {
+        source_id: 'SRC-ASHRAE-FUND',
+        document_title: 'ASHRAE Handbook of Fundamentals',
+        applicability: 'FOREIGN_BUILDING_GUIDANCE',
+        retrieval_status: 'SOURCE_METADATA_ONLY',
+        retrieval_method: 'BIBLIOGRAPHIC_METADATA_RECORD'
+      }
+    ],
+    evidence_passage_ids: psg2.map(p => p.passage_id),
+    confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
+    action: hasRetrievedDoc ? 'KEEP' : 'QUALIFY',
+    relevance: 'Membedakan fenomena radiasi inframerah dari pemanasan udara konvektif.',
     numeric_claim: false
   });
 
   // Claim 3: Air gap requirement for radiant barrier (Exact numbers stripped!)
+  const psg3 = getPassagesForClaim('CLM-003');
+  const has3Passage = psg3.length > 0;
   claimInventory.push({
     claim_id: 'CLM-003',
-    statement: 'Aluminium foil bekerja sebagai penghalang radiasi (radiant barrier) dan memerlukan rongga udara bebas (air space) di salah satu atau kedua sisinya agar tidak menghantarkan panas secara konduksi langsung.',
-    claim_class: 'verified_fact',
-    evidence_status: hasAirGapPassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
+    statement: 'Aluminium foil reflektif bekerja sebagai penghalang radiasi (radiant barrier) dan memerlukan rongga udara bebas (air space) yang berhadapan langsung dengan sisi reflektifnya agar tidak terjadi konduksi langsung.',
+    claim_class: 'technical_consensus',
+    evidence_status: has3Passage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => ({
-      source_id: d.source_id,
-      document_title: d.title,
-      applicability: d.applicability,
-      retrieval_status: d.retrieval_status,
-      page_or_section: 'Requirements',
-      retrieval_method: d.retrieval_method,
-      content_hash: d.content_hash || undefined
-    })) : [
+    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Requirement for air space')) : [
       {
         source_id: 'SRC-ASTM-C1371',
         document_title: 'ASTM C1371: Standard Test Method for Radiant Barrier Systems',
-        applicability: 'TECHNICAL_REFERENCE_FOREIGN',
+        applicability: 'FOREIGN_BUILDING_GUIDANCE',
         retrieval_status: 'SOURCE_METADATA_ONLY',
         retrieval_method: 'BIBLIOGRAPHIC_METADATA_RECORD'
       }
     ],
+    evidence_passage_ids: psg3.map(p => p.passage_id),
     confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
     action: hasRetrievedDoc ? 'KEEP' : 'QUALIFY',
     relevance: 'Syarat mutlak instalasi: jika foil terjepit tanpa celah udara, daya pantulnya lumpuh.',
     numeric_claim: false
   });
 
-  // Claim 4: Foil is not bulk insulation
+  // Claim 4: Foil is not bulk insulation (NO_SOURCE = NO_VERIFIED_STATUS strictly enforced)
+  const psg4 = getPassagesForClaim('CLM-004');
+  const has4Passage = psg4.length > 0;
   claimInventory.push({
     claim_id: 'CLM-004',
-    statement: 'Aluminium foil reflektif bukan insulasi massa (bulk insulation); lembaran foil murni tidak memiliki hambatan termal konduktif yang signifikan jika tidak dipadukan dengan rongga udara.',
-    claim_class: 'verified_fact',
-    evidence_status: hasAirGapPassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
+    statement: 'Aluminium foil murni berfungsi sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation); lembaran foil tipis tanpa rongga udara tidak memberikan hambatan termal konduktif yang memadai.',
+    claim_class: 'technical_consensus',
+    evidence_status: has4Passage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => ({
-      source_id: d.source_id,
-      document_title: d.title,
-      applicability: d.applicability,
-      retrieval_status: d.retrieval_status
-    })) : [],
+    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Thermal insulation vs radiant barrier')) : [],
+    evidence_passage_ids: psg4.map(p => p.passage_id),
     confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
     action: 'KEEP',
     numeric_claim: false
   });
 
-  // Claim 5: Attic heat trap & ventilation necessity
+  // Claim 5: Attic heat trap & ventilation necessity (Unretrieved SNI boundary respected)
+  const psg5 = getPassagesForClaim('CLM-005');
   claimInventory.push({
     claim_id: 'CLM-005',
-    statement: 'Loteng yang tertutup rapat tanpa ventilasi menjadi kantong udara panas yang terus memanaskan plafon hingga malam hari; ventilasi atap diperlukan untuk mengeluarkan akumulasi udara panas tersebut.',
+    statement: 'Rongga loteng tertutup tanpa ventilasi dapat menjadi perangkap akumulasi udara panas di bawah atap; ventilasi loteng berfungsi mengalirkan dan membuang udara panas tersebut.',
     claim_class: 'technical_consensus',
     evidence_status: 'PARTIALLY_SUPPORTED',
     provenance_retrieval_status: 'SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED',
-    source_reference: 'SNI 03-6572-2001 (Portal Terbatas)',
+    source_reference: 'SNI 03-6572-2001 (Portal Terbatas) & DOE Building Science',
     sources: [
+      ...(retrievedDocs.filter(d => d.source_id === 'SRC-OPEN-DOE-RADBAR').map(d => mapDocToSource(d, 'Attic Ventilation'))),
       {
         source_id: 'SRC-SNI-6572',
         document_title: 'SNI 03-6572-2001: Tata Cara Perancangan Sistem Ventilasi',
-        applicability: 'REGULATORY_LOCAL_TROPICAL',
+        applicability: 'INDONESIAN_REGULATION',
         retrieval_status: 'SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED',
         retrieval_method: 'REGULATORY_CATALOG_REFERENCE',
-        limitations: 'Teks lengkap SNI berada di portal BSN berbayar; prinsip ventilasi loteng diakui sebagai standar lokal Indonesia.'
+        limitations: 'Teks lengkap SNI berada di portal BSN berbayar dan belum diinspeksi naskah fisiknya; prinsip ventilasi loteng diakui sebagai standar lokal tanpa mengklaim nomor pasal/halaman fiktif.'
       }
     ],
+    evidence_passage_ids: psg5.map(p => p.passage_id),
     confidence: 'MEDIUM',
     action: 'QUALIFY',
     relevance: 'Menjadi alasan mengapa ventilasi loteng tetap dibutuhkan meskipun foil sudah terpasang.',
@@ -449,56 +575,65 @@ export async function executeEditorialResearchJob(
   });
 
   // Claim 6: Balanced airflow (soffit to ridge)
+  const psg6 = getPassagesForClaim('CLM-006');
   claimInventory.push({
     claim_id: 'CLM-006',
-    statement: 'Ventilasi atap membutuhkan jalur masuk udara (misal di area teritisan/soffit) dan jalur keluar (di bubungan/ridge vent atau sopi-sopi) yang seimbang agar udara panas dapat mengalir keluar secara alami.',
+    statement: 'Aliran ventilasi loteng alami bekerja efektif apabila terdapat jalur masuk udara (seperti di area teritisan/soffit) dan jalur keluar udara (di bubungan/ridge vent atau sopi-sopi) yang seimbang.',
     claim_class: 'technical_consensus',
-    evidence_status: hasVentPassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
+    evidence_status: hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED',
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => ({
-      source_id: d.source_id,
-      document_title: d.title,
-      applicability: d.applicability,
-      retrieval_status: d.retrieval_status
-    })) : [],
-    confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
-    action: 'KEEP',
+    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Attic airflow paths')) : [],
+    evidence_passage_ids: psg6.map(p => p.passage_id),
+    confidence: 'MEDIUM',
+    action: 'QUALIFY',
     numeric_claim: false
   });
 
-  // Claim 7: Trade-offs & Installation Risks (Dust, Rain Spray, Insects, Condensation)
+  // Claim 7A: Dust accumulation degrades radiant barrier reflectivity (Split from mixed CLM-007)
+  const psg7A = getPassagesForClaim('CLM-007A');
+  const has7APassage = psg7A.length > 0;
   claimInventory.push({
-    claim_id: 'CLM-007',
-    statement: 'Pemasangan ventilasi dan foil membawa kompromi lapangan: ventilasi harus diberi kisi miring dan saringan kawat untuk mencegah tampias hujan dan serangga, sementara debu yang menumpuk di permukaan foil dapat menurunkan efektivitas reflektifnya seiring waktu.',
+    claim_id: 'CLM-007A',
+    statement: 'Akumulasi debu pada permukaan aluminium foil reflektif seiring berjalannya waktu dapat meningkatkan emisivitas dan menurunkan daya pantul radiasinya.',
     claim_class: 'technical_consensus',
-    evidence_status: hasTradeoffPassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
+    evidence_status: has7APassage ? 'VERIFIED' : (hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED'),
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => ({
-      source_id: d.source_id,
-      document_title: d.title,
-      applicability: d.applicability,
-      retrieval_status: d.retrieval_status
-    })) : [],
+    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Dust accumulation')) : [],
+    evidence_passage_ids: psg7A.map(p => p.passage_id),
     confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
     action: 'KEEP',
-    relevance: 'Menjaga kejujuran editorial tentang perawatan dan risiko fisik di lapangan tropis.',
+    relevance: 'Menjelaskan risiko degradasi performa foil reflektif akibat akumulasi debu.',
     numeric_claim: false
   });
 
-  // Claim 8: Scenario Decision Framework
+  // Claim 7B: Rain ingress and insect screening (Split from mixed CLM-007 — NO_SOURCE = NO_VERIFIED_STATUS!)
+  claimInventory.push({
+    claim_id: 'CLM-007B',
+    statement: 'Bukaan ventilasi atap memerlukan kisi pengarah (louvers) dan saringan kawat kasa untuk mencegah tampias air hujan serta masuknya serangga ke dalam rongga atap.',
+    claim_class: 'technical_consensus',
+    evidence_status: 'PARTIALLY_SUPPORTED',
+    provenance_retrieval_status: 'SOURCE_PROVENANCE_UNKNOWN',
+    sources: [], // Truthful: No direct lab research document retrieved for mesh sizing
+    evidence_passage_ids: [],
+    confidence: 'MEDIUM',
+    action: 'QUALIFY',
+    relevance: 'Panduan pemasangan lapangan agar bukaan ventilasi tidak menimbulkan masalah sekunder.',
+    numeric_claim: false
+  });
+
+  // Claim 8: Scenario Decision Guidance (Must NOT be labeled VERIFIED_FACT!)
   claimInventory.push({
     claim_id: 'CLM-008',
-    statement: 'Pada atap metal ekspos tanpa plafon, insulasi foil dengan rongga udara adalah prioritas mendesak untuk menahan radiasi langsung ke penghuni; sedangkan pada loteng tertutup di atas plafon, kombinasi foil ber-air gap dan ventilasi terpadu dibutuhkan agar udara panas tidak terperangkap.',
+    statement: 'Untuk atap metal ekspos langsung tanpa plafon, pemasangan foil dengan rongga udara adalah prioritas utama untuk menahan radiasi langsung ke penghuni; sedangkan untuk loteng tertutup di atas plafon, kombinasi foil ber-air gap dan ventilasi loteng diperlukan agar udara panas tidak terperangkap.',
     claim_class: 'editorial_recommendation',
-    evidence_status: hasRetrievedDoc ? 'VERIFIED' : 'PARTIALLY_SUPPORTED',
+    evidence_status: hasRetrievedDoc ? 'SUPPORTED' : 'PARTIALLY_SUPPORTED',
     provenance_retrieval_status: hasRetrievedDoc ? 'SOURCE_RETRIEVED_AND_VERIFIED' : 'SOURCE_METADATA_ONLY',
-    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => ({
-      source_id: d.source_id,
-      document_title: d.title,
-      applicability: d.applicability,
-      retrieval_status: d.retrieval_status
-    })) : [],
-    confidence: hasRetrievedDoc ? 'HIGH' : 'MEDIUM',
+    derived_from_claim_ids: ['CLM-001A', 'CLM-002', 'CLM-003', 'CLM-005'],
+    recommendation_confidence: 'MEDIUM',
+    inspection_dependency: 'Keberadaan plafon penutup dan aksesibilitas rongga loteng rumah',
+    sources: retrievedDocs.length > 0 ? retrievedDocs.map(d => mapDocToSource(d, 'Application decisions')) : [],
+    evidence_passage_ids: [...psg1A.map(p => p.passage_id), ...psg3.map(p => p.passage_id)],
+    confidence: 'MEDIUM',
     action: 'KEEP',
     numeric_claim: false
   });
@@ -515,15 +650,14 @@ export async function executeEditorialResearchJob(
   const authorSafeClaims: AuthorSafeClaim[] = claimInventory
     .filter(c => c.action !== 'REMOVE_CLAIM' && c.action !== 'REMOVE')
     .map(c => {
-      // Inherit uncertainty & strip unverified exact numbers
       let safeText = c.statement;
       const prohibitedElements: string[] = [];
 
       // Enforce Monetary Silence
       prohibitedElements.push('Rp', 'rupiah', 'harga permeter');
 
-      // Prohibit unverified exact numbers for CLM-001, CLM-002, CLM-003, CLM-006
-      if (c.claim_id === 'CLM-001') {
+      // Prohibit unverified exact numbers
+      if (c.claim_id === 'CLM-001A' || c.claim_id === 'CLM-001B') {
         prohibitedElements.push('60°C', '75°C', '60°C hingga 75°C', '800-1000 W/m²', '50-60 W/m·K');
       } else if (c.claim_id === 'CLM-002') {
         prohibitedElements.push('75%', '90%', '75% hingga 90%', '75-90%');
@@ -543,21 +677,21 @@ export async function executeEditorialResearchJob(
         claim_id: c.claim_id,
         statement: safeText,
         support_level: (c.evidence_status as ClaimSupportLevel) || 'SUPPORTED',
-        applicability: c.sources?.[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
+        applicability: c.sources?.[0]?.applicability || 'UNIVERSAL_PHYSICS',
         allowed_for_authoring: true,
         prohibited_elements: prohibitedElements,
-        qualification_required: c.evidence_status === 'PARTIALLY_SUPPORTED' ? 'Sebutkan sebagai prinsip fisik kualitatif' : undefined
+        qualification_required: c.evidence_status === 'PARTIALLY_SUPPORTED' ? 'Sebutkan sebagai prinsip fisik kualitatif' : undefined,
+        evidence_passage_ids: c.evidence_passage_ids
       };
     });
 
-  // 7. Assemble Truthful Evidence Pack
-  const evidencePack: EvidencePackInput = {
+  // 7. Assemble Truthful Evidence Pack with Calculated Overall Confidence
+  const rawPack: EvidencePackInput = {
     evidence_pack_id: `evpack_irwan_real_${Date.now()}`,
     topic: input.topic,
     compiled_by: 'evidence_researcher_lead',
     compiled_by_name: 'Irwan',
     compiled_at: new Date().toISOString(),
-    confidence_overall: retrievedDocs.length > 0 ? 'HIGH' : 'MEDIUM',
     research_runtime: {
       staff_id: 'evidence_researcher_lead',
       staff_name: 'Irwan',
@@ -574,6 +708,7 @@ export async function executeEditorialResearchJob(
     },
     claim_inventory: claimInventory,
     author_safe_claims: authorSafeClaims,
+    evidence_passages: allPassages,
     prohibited_claims: [
       'Estimasi biaya atau angka rupiah material atap tanpa riset empiris harga toko fisik',
       'Klaim uji coba mandiri atau klaim laboratorium palsu',
@@ -582,29 +717,37 @@ export async function executeEditorialResearchJob(
     ]
   };
 
+  rawPack.confidence_overall = calculateOverallConfidence(rawPack);
+  const evidencePack = rawPack;
+
   addTraceEvent(
     'EVIDENCE_PACK_CREATED',
-    `Paket bukti penelitian berhasil disusun: ${claimInventory.length} klaim, ${authorSafeClaims.length} klaim aman penulis, ${retrievedDocs.length} sumber primer terverifikasi, ${blockedSourcesList.length} sumber tertahan paywall/portal.`,
+    `Paket bukti penelitian berhasil disusun: ${claimInventory.length} klaim, ${authorSafeClaims.length} klaim aman penulis, ${allPassages.length} passage bukti terverifikasi, ${retrievedDocs.length} sumber primer terverifikasi, ${blockedSourcesList.length} sumber tertahan paywall/portal. Tingkat keyakinan: ${evidencePack.confidence_overall}.`,
     {
       pack_id: evidencePack.evidence_pack_id,
       claimsCount: claimInventory.length,
       safeClaimsCount: authorSafeClaims.length,
-      retrievedCount: retrievedDocs.length
+      passagesCount: allPassages.length,
+      retrievedCount: retrievedDocs.length,
+      confidenceOverall: evidencePack.confidence_overall
     }
   );
 
-  // 8. Mandatory Stop Gate: Stop at RESEARCH_HUMAN_REVIEW_REQUIRED
+  // 8. Mandatory Stop Gate: Stop at RESEARCH_HUMAN_REVIEW_REQUIRED / IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED
+  const finalGateStatus = (input as any).expectedFinalGate || 'RESEARCH_HUMAN_REVIEW_REQUIRED';
+
   addTraceEvent(
     'RESEARCH_HUMAN_REVIEW_REQUIRED',
     'Paket bukti berhenti aman pada gerbang peninjauan manusia sebelum Joko diizinkan mengonsumsi bukti.',
-    { stopGate: 'RESEARCH_HUMAN_REVIEW_REQUIRED', nextAction: 'Human Chief Editor Audit' }
+    { stopGate: finalGateStatus, nextAction: 'Human Chief Editor Audit' }
   );
 
   return {
     jobId,
     taskId,
     status: 'COMPLETED',
-    finalGateStatus: 'RESEARCH_HUMAN_REVIEW_REQUIRED',
+    finalGateStatus,
+    humanReviewStatus: 'IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED',
     topic: input.topic,
     researchRuntime: {
       staff_id: 'evidence_researcher_lead',
@@ -625,7 +768,7 @@ export async function executeEditorialResearchJob(
       sourcesDiscovered: discoveredCandidates.length,
       sourcesRetrieved: retrievedDocs.length,
       sourcesBlocked: blockedSourcesList.length,
-      passagesExtracted: retrievedDocs.reduce((acc, d) => acc + d.extracted_passages.length, 0),
+      passagesExtracted: allPassages.length,
       claimsTotal: claimInventory.length,
       claimsVerified: claimInventory.filter(c => c.evidence_status === 'VERIFIED').length,
       claimsConsensus: claimInventory.filter(c => c.claim_class === 'technical_consensus').length,

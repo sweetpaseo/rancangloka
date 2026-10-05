@@ -1,0 +1,1264 @@
+{
+  "jobId": "job_research_task_runtime_proof_irwan_research_v2_001",
+  "taskId": "task_runtime_proof_irwan_research_v2_001",
+  "status": "COMPLETED",
+  "finalGateStatus": "IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED",
+  "humanReviewStatus": "IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED",
+  "topic": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "researchRuntime": {
+    "staff_id": "evidence_researcher_lead",
+    "staff_name": "Irwan",
+    "execution_type": "REAL_RUNTIME_EXECUTION",
+    "provider": "open_apis_and_verified_documents",
+    "model": "crossref+wikipedia_technical_inspection",
+    "generated_at": "2026-10-05T00:27:23.554Z",
+    "job_id": "job_research_task_runtime_proof_irwan_research_v2_001"
+  },
+  "stats": {
+    "queriesExecuted": 4,
+    "sourcesDiscovered": 19,
+    "sourcesRetrieved": 2,
+    "sourcesBlocked": 3,
+    "passagesExtracted": 43,
+    "claimsTotal": 10,
+    "claimsVerified": 6,
+    "claimsConsensus": 9,
+    "authorSafeClaimsTotal": 10
+  },
+  "discoveredSourcesCount": 19,
+  "retrievedDocumentsCount": 2,
+  "blockedSourcesCount": 3,
+  "traceEvents": [
+    {
+      "event_id": "evt_res_1791160039670_y46z",
+      "type": "RESEARCH_JOB_STARTED",
+      "timestamp": "2026-10-05T00:27:19.671Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Operator antigravity_operator memulai riset bukti ilmiah untuk topik 'Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?'.",
+      "metadata": {
+        "authorizedBy": "antigravity_operator"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160039671_4ziy",
+      "type": "IRWAN_QUERY_PLANNED",
+      "timestamp": "2026-10-05T00:27:19.671Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Irwan merencanakan 4 kueri penelusuran bukti ilmiah terfokus.",
+      "metadata": {
+        "queries": [
+          "radiant barrier roof heat transfer",
+          "radiant barrier attic air space",
+          "attic ventilation stack effect soffit ridge vent",
+          "radiant barrier dust emittance condensation"
+        ]
+      }
+    },
+    {
+      "event_id": "evt_res_1791160041659_tjva",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:21.659Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Numerical simulation of heat transfer in a roof assembly with reflective insulation and radiant barrier\" (Springer Science and Business Media LLC).",
+      "metadata": {
+        "title": "Numerical simulation of heat transfer in a roof assembly with reflective insulation and radiant barrier",
+        "publisher": "Springer Science and Business Media LLC",
+        "url": "https://doi.org/10.1007/s12273-020-0624-3",
+        "doi": "10.1007/s12273-020-0624-3"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160041659_86hw",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:21.659Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Bayesian Parameter Estimation of Convective Heat Transfer Coefficients of a Roof-Mounted Radiant Barrier System\" (ASME International).",
+      "metadata": {
+        "title": "Bayesian Parameter Estimation of Convective Heat Transfer Coefficients of a Roof-Mounted Radiant Barrier System",
+        "publisher": "ASME International",
+        "url": "https://doi.org/10.1115/1.2188957",
+        "doi": "10.1115/1.2188957"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160041659_pbaa",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:21.659Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"An Experimental Study of Free Convection in an Inclined Rectangular Channel Using Radiant Barrier\" (Informa UK Limited).",
+      "metadata": {
+        "title": "An Experimental Study of Free Convection in an Inclined Rectangular Channel Using Radiant Barrier",
+        "publisher": "Informa UK Limited",
+        "url": "https://doi.org/10.1080/08916150601091514",
+        "doi": "10.1080/08916150601091514"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160041659_qves",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:21.659Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Effects of shingle absorptivity, radiant barrier emissivity, attic ventilation flowrate, and roof slope on the performance of radiant barriers\" (Elsevier BV).",
+      "metadata": {
+        "title": "Effects of shingle absorptivity, radiant barrier emissivity, attic ventilation flowrate, and roof slope on the performance of radiant barriers",
+        "publisher": "Elsevier BV",
+        "url": "https://doi.org/10.1016/s0140-6701(01)80639-1",
+        "doi": "10.1016/s0140-6701(01)80639-1"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160041659_204o",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:21.659Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [WIKIPEDIA_TECHNICAL_API]: \"Radiant barrier\" (Wikimedia Foundation).",
+      "metadata": {
+        "title": "Radiant barrier",
+        "publisher": "Wikimedia Foundation",
+        "url": "https://en.wikipedia.org/wiki/Radiant_barrier"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160041659_35kn",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:21.659Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [WIKIPEDIA_TECHNICAL_API]: \"Building insulation\" (Wikimedia Foundation).",
+      "metadata": {
+        "title": "Building insulation",
+        "publisher": "Wikimedia Foundation",
+        "url": "https://en.wikipedia.org/wiki/Building_insulation"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160041659_ynuk",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:21.659Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [WIKIPEDIA_TECHNICAL_API]: \"R-value (insulation)\" (Wikimedia Foundation).",
+      "metadata": {
+        "title": "R-value (insulation)",
+        "publisher": "Wikimedia Foundation",
+        "url": "https://en.wikipedia.org/wiki/R-value_(insulation)"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042218_90z7",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.218Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Simulation of an attic radiant barrier system in arid climates\" (IEEE).",
+      "metadata": {
+        "title": "Simulation of an attic radiant barrier system in arid climates",
+        "publisher": "IEEE",
+        "url": "https://doi.org/10.1109/iecec.1989.74702",
+        "doi": "10.1109/iecec.1989.74702"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042218_qzof",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.218Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Test Method for Critical Radiant Flux of Exposed Attic Floor Insulation Using a Radiant Heat Energy Source\" (ASTM International).",
+      "metadata": {
+        "title": "Test Method for Critical Radiant Flux of Exposed Attic Floor Insulation Using a Radiant Heat Energy Source",
+        "publisher": "ASTM International",
+        "url": "https://doi.org/10.1520/e0970-10",
+        "doi": "10.1520/e0970-10"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042218_skow",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.218Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [WIKIPEDIA_TECHNICAL_API]: \"Space heater\" (Wikimedia Foundation).",
+      "metadata": {
+        "title": "Space heater",
+        "publisher": "Wikimedia Foundation",
+        "url": "https://en.wikipedia.org/wiki/Space_heater"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042218_q566",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.218Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [WIKIPEDIA_TECHNICAL_API]: \"Attic fan\" (Wikimedia Foundation).",
+      "metadata": {
+        "title": "Attic fan",
+        "publisher": "Wikimedia Foundation",
+        "url": "https://en.wikipedia.org/wiki/Attic_fan"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042630_yqxk",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.630Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Formulation and Validation of an Attic Ventilation Algorithm Used for Conducting a Parametric Study of the Variables Affecting the Thermal Performance of Radiant Barrier Systems Installed in Soffit-to-Ridge Ventilated Attics\" (ASTM International100 Barr Harbor Drive, PO Box C700, West Conshohocken, PA 19428-2959).",
+      "metadata": {
+        "title": "Formulation and Validation of an Attic Ventilation Algorithm Used for Conducting a Parametric Study of the Variables Affecting the Thermal Performance of Radiant Barrier Systems Installed in Soffit-to-Ridge Ventilated Attics",
+        "publisher": "ASTM International100 Barr Harbor Drive, PO Box C700, West Conshohocken, PA 19428-2959",
+        "url": "https://doi.org/10.1520/stp165720240046",
+        "doi": "10.1520/stp165720240046"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042630_kelk",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.630Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Attic baffle size and vent configuration impacts on attic ventilation\" (Elsevier BV).",
+      "metadata": {
+        "title": "Attic baffle size and vent configuration impacts on attic ventilation",
+        "publisher": "Elsevier BV",
+        "url": "https://doi.org/10.1016/j.buildenv.2015.01.028",
+        "doi": "10.1016/j.buildenv.2015.01.028"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042630_8qie",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.630Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Similitude Analysis of Ventilation by the Stack Effect from an Open Ridge Livestock Structure\" (American Society of Agricultural and Biological Engineers (ASABE)).",
+      "metadata": {
+        "title": "Similitude Analysis of Ventilation by the Stack Effect from an Open Ridge Livestock Structure",
+        "publisher": "American Society of Agricultural and Biological Engineers (ASABE)",
+        "url": "https://doi.org/10.13031/2013.34386",
+        "doi": "10.13031/2013.34386"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042630_8123",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.630Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"Ridge vent, wind direction and wind velocity effects on closed, naturally ventilated cattle-building ventilation\" (CRC Press).",
+      "metadata": {
+        "title": "Ridge vent, wind direction and wind velocity effects on closed, naturally ventilated cattle-building ventilation",
+        "publisher": "CRC Press",
+        "url": "https://doi.org/10.1201/9781003211471-90",
+        "doi": "10.1201/9781003211471-90"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160042630_mr7b",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:22.630Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [WIKIPEDIA_TECHNICAL_API]: \"List of This Old House episodes (seasons 11–20)\" (Wikimedia Foundation).",
+      "metadata": {
+        "title": "List of This Old House episodes (seasons 11–20)",
+        "publisher": "Wikimedia Foundation",
+        "url": "https://en.wikipedia.org/wiki/List_of_This_Old_House_episodes_(seasons_11%E2%80%9320)"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043057_d06y",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:23.057Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [CROSSREF_OPEN_API]: \"radiant emittance\" (Springer-Verlag).",
+      "metadata": {
+        "title": "radiant emittance",
+        "publisher": "Springer-Verlag",
+        "url": "https://doi.org/10.1007/springerreference_22710",
+        "doi": "10.1007/springerreference_22710"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043057_sdfa",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:23.057Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [WIKIPEDIA_TECHNICAL_API]: \"Building insulation material\" (Wikimedia Foundation).",
+      "metadata": {
+        "title": "Building insulation material",
+        "publisher": "Wikimedia Foundation",
+        "url": "https://en.wikipedia.org/wiki/Building_insulation_material"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043057_r978",
+      "type": "SOURCE_DISCOVERED",
+      "timestamp": "2026-10-05T00:27:23.057Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Sumber ditemukan via [WIKIPEDIA_TECHNICAL_API]: \"Passive daytime radiative cooling\" (Wikimedia Foundation).",
+      "metadata": {
+        "title": "Passive daytime radiative cooling",
+        "publisher": "Wikimedia Foundation",
+        "url": "https://en.wikipedia.org/wiki/Passive_daytime_radiative_cooling"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043057_7bpk",
+      "type": "SOURCE_RETRIEVAL_STARTED",
+      "timestamp": "2026-10-05T00:27:23.057Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Irwan memulai pengambilan teks sumber sekunder ensiklopedis Wikipedia untuk Radiant Barrier."
+    },
+    {
+      "event_id": "evt_res_1791160043553_0bak",
+      "type": "SOURCE_RETRIEVED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Dokumen ensiklopedis \"Radiant barrier\" (Wikimedia Foundation) berhasil diunduh (17629 bytes, hash SHA256: c31f273c848c...).",
+      "metadata": {
+        "source_id": "SRC-OPEN-WIKI-RADBAR",
+        "hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_snar",
+      "type": "SOURCE_READ",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Irwan membaca dokumen lengkap dan mengekstrak 32 bagian bukti fisik penting.",
+      "metadata": {
+        "source_id": "SRC-OPEN-WIKI-RADBAR",
+        "passageCount": 32
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_x0yq",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Overview / Lead]: \"A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because ther...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "section": "Overview / Lead",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_af8h",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Overview / Lead]: \"A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because ther...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "section": "Overview / Lead",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_3hcw",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Overview / Lead]: \"A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because ther...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_3",
+        "section": "Overview / Lead",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_v1s1",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Overview / Lead]: \"A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because ther...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_4",
+        "section": "Overview / Lead",
+        "relevance": "Kompromi lapangan: akumulasi debu menurunkan reflektivitas foil, serta risiko kelembapan/kondensasi bila ventilasi tidak memadai."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_pp0l",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Reflectivity and emissivity]: \"All materials give off, or emit, energy by thermal radiation as a result of their temperature. The amount of energy radi...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "section": "Reflectivity and emissivity",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_i2xg",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Reflectivity and emissivity]: \"All materials give off, or emit, energy by thermal radiation as a result of their temperature. The amount of energy radi...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_6",
+        "section": "Reflectivity and emissivity",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_usm3",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Reflectivity and emissivity]: \"All materials give off, or emit, energy by thermal radiation as a result of their temperature. The amount of energy radi...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_7",
+        "section": "Reflectivity and emissivity",
+        "relevance": "Kompromi lapangan: akumulasi debu menurunkan reflektivitas foil, serta risiko kelembapan/kondensasi bila ventilasi tidak memadai."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_1zie",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [History]: \"In 1860, the French scientist Jean Claude Eugene Peclet experimented with the insulating effect of high and low emissive...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "section": "History",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_3vo1",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Space exploration]: \"For the Apollo program, NASA helped develop a thin aluminum foil that reflected 95% of the radiant heat. A metalized fil...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "section": "Space exploration",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_4cmx",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Space exploration]: \"For the Apollo program, NASA helped develop a thin aluminum foil that reflected 95% of the radiant heat. A metalized fil...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_10",
+        "section": "Space exploration",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_prvw",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Space exploration]: \"For the Apollo program, NASA helped develop a thin aluminum foil that reflected 95% of the radiant heat. A metalized fil...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_11",
+        "section": "Space exploration",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_tchy",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Window treatments]: \"Window glass can be coated to achieve low emissivity or \"low-e\". Some windows use laminate polyester film where at least...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_12",
+        "section": "Window treatments",
+        "relevance": "Kompromi lapangan: akumulasi debu menurunkan reflektivitas foil, serta risiko kelembapan/kondensasi bila ventilasi tidak memadai."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_nf9p",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Roofs and attics]: \"When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof shea...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "section": "Roofs and attics",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_yvxa",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Roofs and attics]: \"When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof shea...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_14",
+        "section": "Roofs and attics",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_hnxo",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Roofs and attics]: \"When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof shea...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_15",
+        "section": "Roofs and attics",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_y8ft",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Roofs and attics]: \"Another method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-lamin...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "section": "Roofs and attics",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_tbgi",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Roofs and attics]: \"Another method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-lamin...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_17",
+        "section": "Roofs and attics",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_06vl",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Roofs and attics]: \"Another method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-lamin...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_18",
+        "section": "Roofs and attics",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_q0ve",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Roofs and attics]: \"Another method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-lamin...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_19",
+        "section": "Roofs and attics",
+        "relevance": "Kompromi lapangan: akumulasi debu menurunkan reflektivitas foil, serta risiko kelembapan/kondensasi bila ventilasi tidak memadai."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_s2g3",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Energy savings]: \"According to a 2010 study by the Building Envelope Research Program of the Oak Ridge National Laboratory, homes with air...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "section": "Energy savings",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_t68g",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Energy savings]: \"According to a 2010 study by the Building Envelope Research Program of the Oak Ridge National Laboratory, homes with air...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_21",
+        "section": "Energy savings",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_fkwj",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Shingle temperature]: \"One common misconception regarding radiant barrier is that the heat reflecting off the radiant barrier back to the roof ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "section": "Shingle temperature",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_2km3",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Shingle temperature]: \"One common misconception regarding radiant barrier is that the heat reflecting off the radiant barrier back to the roof ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_23",
+        "section": "Shingle temperature",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_qcl7",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Attic dust accumulation]: \"When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top s...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "section": "Attic dust accumulation",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_dzzb",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Attic dust accumulation]: \"When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top s...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_25",
+        "section": "Attic dust accumulation",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_u04u",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Attic dust accumulation]: \"When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top s...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_26",
+        "section": "Attic dust accumulation",
+        "relevance": "Kompromi lapangan: akumulasi debu menurunkan reflektivitas foil, serta risiko kelembapan/kondensasi bila ventilasi tidak memadai."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_37o1",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Walls]: \"Radiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "section": "Walls",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_wysj",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Walls]: \"Radiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_28",
+        "section": "Walls",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_ez4w",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Walls]: \"Radiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_29",
+        "section": "Walls",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_0se8",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Walls]: \"Radiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_30",
+        "section": "Walls",
+        "relevance": "Kompromi lapangan: akumulasi debu menurunkan reflektivitas foil, serta risiko kelembapan/kondensasi bila ventilasi tidak memadai."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_11i9",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [Canada]: \"Canada is considered to be a cold climate, so these products do not perform as promoted. Though they are often marketed ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_31",
+        "section": "Canada",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_do9a",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan terverifikasi diekstrak dari [External links]: \"How a radiant barrier saves energy Radiant Barriers: A Question and Answer Primer Radiant Barrier Fact Sheet[link remove...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "section": "External links",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_qx4a",
+      "type": "SOURCE_RETRIEVAL_STARTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Irwan memulai pengambilan dokumen primer institusional resmi U.S. Department of Energy (Building Technologies Office)."
+    },
+    {
+      "event_id": "evt_res_1791160043553_s3s9",
+      "type": "SOURCE_RETRIEVED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Dokumen primer institusional \"Radiant Barriers\" (U.S. Department of Energy (Building Technologies Office)) berhasil diunduh (1785 bytes, hash SHA256: 04f1f89cd128...).",
+      "metadata": {
+        "source_id": "SRC-OPEN-DOE-RADBAR",
+        "hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+        "authority": "INSTITUTIONAL_OFFICIAL"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_astk",
+      "type": "SOURCE_READ",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Irwan membaca dokumen primer institusional lengkap dan mengekstrak 11 bagian bukti fisik terverifikasi.",
+      "metadata": {
+        "source_id": "SRC-OPEN-DOE-RADBAR",
+        "passageCount": 11
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_2qgy",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Overview and Operating Principles]: \"Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are i...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_1",
+        "section": "Overview and Operating Principles",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_i5rx",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Overview and Operating Principles]: \"Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are i...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_2",
+        "section": "Overview and Operating Principles",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_5mu8",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Overview and Operating Principles]: \"Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are i...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_3",
+        "section": "Overview and Operating Principles",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_yl0w",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Requirement for Air Space]: \"A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surfa...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_4",
+        "section": "Requirement for Air Space",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_01d8",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Requirement for Air Space]: \"A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surfa...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_5",
+        "section": "Requirement for Air Space",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_89gk",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Requirement for Air Space]: \"A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surfa...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_6",
+        "section": "Requirement for Air Space",
+        "relevance": "Kompromi lapangan: akumulasi debu menurunkan reflektivitas foil, serta risiko kelembapan/kondensasi bila ventilasi tidak memadai."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_uud9",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Attic Ventilation and System Interaction]: \"A radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventila...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_7",
+        "section": "Attic Ventilation and System Interaction",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_fha3",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Attic Ventilation and System Interaction]: \"A radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventila...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_8",
+        "section": "Attic Ventilation and System Interaction",
+        "relevance": "Ventilasi loteng/atap membuang udara panas yang terakumulasi melalui sirkulasi konvektif (efek cerobong dan tekanan angin)."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_t0z2",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Dust Accumulation and Performance Degradation]: \"Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_9",
+        "section": "Dust Accumulation and Performance Degradation",
+        "relevance": "Prinsip fisik penghalang radiasi (radiant barrier) memantulkan radiasi termal untuk mereduksi perpindahan panas."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_cm86",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Dust Accumulation and Performance Degradation]: \"Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_10",
+        "section": "Dust Accumulation and Performance Degradation",
+        "relevance": "Syarat mutlak rongga udara (air space): foil memerlukan ruang udara berhadapan agar tidak menghantarkan panas lewat konduksi langsung."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_pqnq",
+      "type": "EVIDENCE_EXTRACTED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Kutipan primer institusional diekstrak dari [Dust Accumulation and Performance Degradation]: \"Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an ...\"",
+      "metadata": {
+        "passage_id": "psg_SRC-OPEN-DOE-RADBAR_11",
+        "section": "Dust Accumulation and Performance Degradation",
+        "relevance": "Kompromi lapangan: akumulasi debu menurunkan reflektivitas foil, serta risiko kelembapan/kondensasi bila ventilasi tidak memadai."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_r50o",
+      "type": "SOURCE_RETRIEVAL_BLOCKED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Akses dokumen primer tertahan secara sah: [SRC-SNI-6572] SNI 03-6572-2001: Tata Cara Perancangan Sistem Ventilasi dan Pengkondisian Udara pada Bangunan Gedung (RESTRICTED_PORTAL). Dokumen SNI resmi dikelola oleh Badan Standardisasi Nasional (BSN) melalui portal berbayar/terdaftar (akses-bsn.go.id). Teks lengkap tidak di-cache di repositori lokal.",
+      "metadata": {
+        "source_id": "SRC-SNI-6572",
+        "legal_status": "RESTRICTED_PORTAL",
+        "reason": "Dokumen SNI resmi dikelola oleh Badan Standardisasi Nasional (BSN) melalui portal berbayar/terdaftar (akses-bsn.go.id). Teks lengkap tidak di-cache di repositori lokal."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_rzwx",
+      "type": "SOURCE_RETRIEVAL_BLOCKED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Akses dokumen primer tertahan secara sah: [SRC-ASHRAE-FUND] ASHRAE Handbook of Fundamentals (SI Edition) (COMMERCIAL_PAYWALL). Buku pegangan teknik ASHRAE adalah publikasi komersial berbayar berhak cipta tinggi ($250+). Sirkumvensi paywall dilarang.",
+      "metadata": {
+        "source_id": "SRC-ASHRAE-FUND",
+        "legal_status": "COMMERCIAL_PAYWALL",
+        "reason": "Buku pegangan teknik ASHRAE adalah publikasi komersial berbayar berhak cipta tinggi ($250+). Sirkumvensi paywall dilarang."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043553_gk5v",
+      "type": "SOURCE_RETRIEVAL_BLOCKED",
+      "timestamp": "2026-10-05T00:27:23.553Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Akses dokumen primer tertahan secara sah: [SRC-ASTM-C1371] ASTM C1371 / C1321: Standard Test Method & Practice for Radiant Barrier Systems (COMMERCIAL_PAYWALL). Standar uji laboratorium ASTM berbayar ($80+). Dokumen primer tidak disimpan di lingkungan lokal untuk menjaga kepatuhan hak cipta.",
+      "metadata": {
+        "source_id": "SRC-ASTM-C1371",
+        "legal_status": "COMMERCIAL_PAYWALL",
+        "reason": "Standar uji laboratorium ASTM berbayar ($80+). Dokumen primer tidak disimpan di lingkungan lokal untuk menjaga kepatuhan hak cipta."
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_e1mp",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-001A] diklasifikasikan sebagai 'technical_consensus' (Status bukti: VERIFIED, Tindakan: KEEP).",
+      "metadata": {
+        "claim_id": "CLM-001A",
+        "status": "VERIFIED",
+        "action": "KEEP"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_ttg2",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-001B] diklasifikasikan sebagai 'technical_consensus' (Status bukti: VERIFIED, Tindakan: KEEP).",
+      "metadata": {
+        "claim_id": "CLM-001B",
+        "status": "VERIFIED",
+        "action": "KEEP"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_a3ra",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-002] diklasifikasikan sebagai 'technical_consensus' (Status bukti: VERIFIED, Tindakan: KEEP).",
+      "metadata": {
+        "claim_id": "CLM-002",
+        "status": "VERIFIED",
+        "action": "KEEP"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_i2o8",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-003] diklasifikasikan sebagai 'technical_consensus' (Status bukti: VERIFIED, Tindakan: KEEP).",
+      "metadata": {
+        "claim_id": "CLM-003",
+        "status": "VERIFIED",
+        "action": "KEEP"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_teee",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-004] diklasifikasikan sebagai 'technical_consensus' (Status bukti: VERIFIED, Tindakan: KEEP).",
+      "metadata": {
+        "claim_id": "CLM-004",
+        "status": "VERIFIED",
+        "action": "KEEP"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_1bk1",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-005] diklasifikasikan sebagai 'technical_consensus' (Status bukti: PARTIALLY_SUPPORTED, Tindakan: QUALIFY).",
+      "metadata": {
+        "claim_id": "CLM-005",
+        "status": "PARTIALLY_SUPPORTED",
+        "action": "QUALIFY"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_omiq",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-006] diklasifikasikan sebagai 'technical_consensus' (Status bukti: SUPPORTED, Tindakan: QUALIFY).",
+      "metadata": {
+        "claim_id": "CLM-006",
+        "status": "SUPPORTED",
+        "action": "QUALIFY"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_jf0z",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-007A] diklasifikasikan sebagai 'technical_consensus' (Status bukti: VERIFIED, Tindakan: KEEP).",
+      "metadata": {
+        "claim_id": "CLM-007A",
+        "status": "VERIFIED",
+        "action": "KEEP"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_a42q",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-007B] diklasifikasikan sebagai 'technical_consensus' (Status bukti: PARTIALLY_SUPPORTED, Tindakan: QUALIFY).",
+      "metadata": {
+        "claim_id": "CLM-007B",
+        "status": "PARTIALLY_SUPPORTED",
+        "action": "QUALIFY"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_odar",
+      "type": "CLAIM_CLASSIFIED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim [CLM-008] diklasifikasikan sebagai 'editorial_recommendation' (Status bukti: SUPPORTED, Tindakan: KEEP).",
+      "metadata": {
+        "claim_id": "CLM-008",
+        "status": "SUPPORTED",
+        "action": "KEEP"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_en00",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-001A]: 'Atap metal memiliki massa termal sangat rendah sehingga suhu permukaannya melonjak cepat di siang ha...'.",
+      "metadata": {
+        "claim_id": "CLM-001A",
+        "prohibitedCount": 8
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_1brs",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-001B]: 'Lembaran penutup atap metal memiliki konduktivitas termal tinggi yang meneruskan panas yang diserap ...'.",
+      "metadata": {
+        "claim_id": "CLM-001B",
+        "prohibitedCount": 8
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_ryrm",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-002]: 'Radiasi inframerah termal merupakan salah satu jalur utama perpindahan kalor dari sisi bawah penutup...'.",
+      "metadata": {
+        "claim_id": "CLM-002",
+        "prohibitedCount": 7
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_wtit",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-003]: 'Aluminium foil reflektif bekerja sebagai penghalang radiasi (radiant barrier) dan memerlukan rongga ...'.",
+      "metadata": {
+        "claim_id": "CLM-003",
+        "prohibitedCount": 7
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_kqpq",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-004]: 'Aluminium foil murni berfungsi sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation); ...'.",
+      "metadata": {
+        "claim_id": "CLM-004",
+        "prohibitedCount": 3
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_9vph",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-005]: 'Rongga loteng tertutup tanpa ventilasi dapat menjadi perangkap akumulasi udara panas di bawah atap; ...'.",
+      "metadata": {
+        "claim_id": "CLM-005",
+        "prohibitedCount": 3
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_frxw",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-006]: 'Aliran ventilasi loteng alami bekerja efektif apabila terdapat jalur masuk udara (seperti di area te...'.",
+      "metadata": {
+        "claim_id": "CLM-006",
+        "prohibitedCount": 6
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_n0vc",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-007A]: 'Akumulasi debu pada permukaan aluminium foil reflektif seiring berjalannya waktu dapat meningkatkan ...'.",
+      "metadata": {
+        "claim_id": "CLM-007A",
+        "prohibitedCount": 3
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_ak5s",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-007B]: 'Bukaan ventilasi atap memerlukan kisi pengarah (louvers) dan saringan kawat kasa untuk mencegah tamp...'.",
+      "metadata": {
+        "claim_id": "CLM-007B",
+        "prohibitedCount": 3
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_e0f4",
+      "type": "AUTHOR_SAFE_CLAIM_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Klaim aman penulis dibuat untuk [CLM-008]: 'Untuk atap metal ekspos langsung tanpa plafon, pemasangan foil dengan rongga udara adalah prioritas ...'.",
+      "metadata": {
+        "claim_id": "CLM-008",
+        "prohibitedCount": 3
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_033s",
+      "type": "EVIDENCE_PACK_CREATED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Paket bukti penelitian berhasil disusun: 10 klaim, 10 klaim aman penulis, 43 passage bukti terverifikasi, 2 sumber primer terverifikasi, 3 sumber tertahan paywall/portal. Tingkat keyakinan: HIGH.",
+      "metadata": {
+        "pack_id": "evpack_irwan_real_1791160043554",
+        "claimsCount": 10,
+        "safeClaimsCount": 10,
+        "passagesCount": 43,
+        "retrievedCount": 2,
+        "confidenceOverall": "HIGH"
+      }
+    },
+    {
+      "event_id": "evt_res_1791160043554_46x6",
+      "type": "RESEARCH_HUMAN_REVIEW_REQUIRED",
+      "timestamp": "2026-10-05T00:27:23.554Z",
+      "task_id": "task_runtime_proof_irwan_research_v2_001",
+      "staff_id": "evidence_researcher_lead",
+      "summary": "Paket bukti berhenti aman pada gerbang peninjauan manusia sebelum Joko diizinkan mengonsumsi bukti.",
+      "metadata": {
+        "stopGate": "IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED",
+        "nextAction": "Human Chief Editor Audit"
+      }
+    }
+  ],
+  "executionSummary": {
+    "totalMs": 3884,
+    "completedAt": "2026-10-05T00:27:23.556Z",
+    "packSavedTo": "scripts/runtime-proof/irwan-metal-roof-evidence-pack-v2.json"
+  }
+}

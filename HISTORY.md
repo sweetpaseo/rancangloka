@@ -15,7 +15,43 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
-## 🛠️ 2. Log Masalah & Solusi (Problem & Resolution History)
+### EDITORIAL-RUNTIME-3A: Evidence Quality Hardening & Source Upgrade 2026-10-05
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan temuan kritis peninjauan manusia terhadap hasil riset Irwan V1 (`IRWAN_RESEARCH_QUALITY_HUMAN_REVIEW = REVISE`):
+    1. **Kejujuran Metadata Wikipedia:** Sumber Wikipedia `Radiant barrier` dikembalikan ke representasi faktual: judul kanonik `Radiant barrier`, penerbit `Wikimedia Foundation`, URL `https://en.wikipedia.org/wiki/Radiant_barrier`, klasifikasi `ENCYCLOPEDIC_SECONDARY_SOURCE` (otoritas `SECONDARY_ENCYCLOPEDIC`, tingkat `SECONDARY`). Gelar sintetis (*"Building Science Open Repository"*) dilarang keras.
+    2. **Upgrade Sumber Primer Institusional:** Menambahkan pengunduh dan dokumen primer institusional resmi dari U.S. Department of Energy (DOE / Building Technologies Office) bertajuk *"Radiant Barriers"* (`PRIMARY_RESEARCH_DOCUMENT`, `INSTITUTIONAL_OFFICIAL`, `PRIMARY`) dengan verifikasi SHA-256 hash.
+    3. **Aturan Mutlak NO_SOURCE = NO_VERIFIED_STATUS:** Klaim tanpa rujukan sumber fisik/digital yang diunduh (`sources.length === 0`, misal bukaan ventilasi `CLM-007B`) dilarang mendapatkan status `VERIFIED` atau `SUPPORTED` tanpa kualifikasi.
+    4. **Gerbang VERIFIED REQUIRES PASSAGE:** Klaim hanya dapat berstatus `VERIFIED` bila memiliki kutipan bukti fisik eksplisit yang tercatat dalam `evidence_passage_ids[]`.
+    5. **Persistensi Evidence Passages:** Koleksi `evidence_passages` dipersistensikan langsung di level teratas Evidence Pack untuk memungkinkan peninjau menelusuri rantai `klaim -> kutipan teks -> dokumen sumber` tanpa membuka log mentah.
+    6. **Pemisahan Klaim Atomik:** Klaim majemuk dipecah menjadi klaim tunggal: `CLM-001` dipecah menjadi `CLM-001A` (massa termal rendah & kenaikan suhu cepat) dan `CLM-001B` (konduktivitas termal melintasi lembaran metal). `CLM-007` dipecah menjadi `CLM-007A` (penurunan reflektivitas akibat debu) dan `CLM-007B` (kisi pengarah & saringan serangga ventilasi).
+    7. **Penyesuaian Bahasa Klaim Radiasi:** Klaim `CLM-002` disesuaikan secara konservatif menjadi *"salah satu jalur utama perpindahan kalor"*, tanpa klaim dominasi mutlak eksklusif (*"bukan konveksi"*) yang belum terbukti secara komparatif di lapangan.
+    8. **Status Rekomendasi Editorial:** `CLM-008` diklasifikasikan sebagai `editorial_recommendation` (bukan `VERIFIED_FACT`), dengan atribut turunan `derived_from_claim_ids`, `recommendation_confidence`, dan `inspection_dependency`.
+    9. **Ketegasan Batas SNI 03-6572-2001:** SNI tetap berstatus `SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED` tanpa mereka-reka pasal/halaman atau memaksakan rasio numerik luas bukaan loteng (1:300) yang belum terinspeksi.
+    10. **Kalkulasi Dinamis Overall Confidence:** `confidence_overall` dihitung secara deterministik dari kualitas sumber, cakupan passage, dan rasio klaim terverifikasi via `calculateOverallConfidence` (tidak pernah di-hardcode `HIGH`).
+- **Komponen Arsitektur yang Dibangun & Diperbarui:**
+  1. `src/lib/article/human-quality.ts`: Menambahkan `SourceQualityProfile`, memperluas `EvidenceSource`, `EvidencePassage`, `EvidenceClaim`, menambahkan validasi audit `NO_SOURCE = NO_VERIFIED_STATUS`, `VERIFIED REQUIRES PASSAGE`, larangan status fakta pada rekomendasi editorial, larangan klasifikasi primer palsu untuk Wikipedia, audit integritas passage, serta fungsi deterministik `calculateOverallConfidence(evidencePack)`.
+  2. `src/lib/editorial/source-discovery.ts`: Menambahkan repositori dokumen institusional terbuka `OPEN_INSTITUTIONAL_DOCUMENTS`, fungsi pengambil dokumen primer `fetchOpenTechnicalDocument`, memperbarui `extractPassagesFromText` untuk mengaitkan `supports_claim_ids` dan timestamp ekstraksi passage.
+  3. `src/lib/editorial/irwan-research-runtime.ts`: Memperbarui runtime Irwan untuk mengunduh dokumen primer DOE, merekam Wikipedia secara jujur, memecah klaim majemuk, menyematkan koleksi `evidence_passages`, menghasilkan klaim aman penulis dengan kualifikasi presisi, menghitung confidence dinamis, dan berhenti aman di `IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED`.
+  4. `scripts/test-editorial-runtime-3a.js`: Rangkaian 16 tes verifikasi ketat yang memvalidasi seluruh kriteria perbaikan bukti ilmiah.
+  5. `scripts/run-irwan-research-proof-v2.js`: Runner bukti riset V2 yang menghasilkan `scripts/runtime-proof/irwan-metal-roof-evidence-pack-v2.json` dan `scripts/runtime-proof/irwan-metal-roof-runtime-v2-meta.json` tanpa menimpa V1.
+- **Hasil Pembuktian Runtime Nyata V2:**
+  - **Topik:** *"Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?"*
+  - **Durasi Eksekusi:** 3.884 ms (3,8 detik).
+  - **Sumber Terverifikasi:** 2 dokumen terinspeksi (1 Sekunder Ensiklopedis Wikimedia Foundation [SHA-256 `c31f273c...`]; 1 Primer Institusional U.S. DOE [SHA-256 `04f1f89c...`]).
+  - **Kutipan Bukti Diekstrak:** 43 passage bukti dengan locator dan hash SHA-256 lengkap.
+  - **Inventaris Klaim:** 10 klaim (6 VERIFIED dengan tautan passage eksplisit, 3 SUPPORTED, 1 PARTIALLY_SUPPORTED).
+  - **Klaim Tanpa Sumber:** `CLM-007B` berstatus `PARTIALLY_SUPPORTED` (`sources: []`, `evidence_passage_ids: []`).
+  - **Tingkat Keyakinan Keseluruhan:** `HIGH` (karena didukung dokumen primer institusional resmi DOE + dokumen sekunder Wikipedia + 43 passage terverifikasi + 60% klaim terverifikasi).
+  - **Status Gerbang Akhir:** **`IRWAN_EVIDENCE_V2_HUMAN_REVIEW_REQUIRED`**.
+- **Validasi & Integritas:**
+  - `scripts/test-editorial-runtime-1.js`: 18/18 PASS.
+  - `scripts/test-editorial-runtime-2.js`: 13/13 PASS.
+  - `scripts/test-editorial-runtime-3.js`: 18/18 PASS.
+  - `scripts/test-editorial-runtime-3a.js`: 16/16 PASS.
+  - `npx tsc --noEmit`: 0 error (bersih).
+  - `npm run build`: 100% sukses (server bundle selesai dalam 6.01s).
+  - Invarian keselamatan: `automation_mode = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `mediaWorker = DISABLED`. Nol deploy, nol publikasi, Joko tidak dipanggil.
 
 ### EDITORIAL-RUNTIME-3: Real Irwan Research & Evidence Acquisition 2026-10-04
 

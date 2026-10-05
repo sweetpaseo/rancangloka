@@ -1,0 +1,1561 @@
+{
+  "evidence_pack_id": "evpack_irwan_real_1791160043554",
+  "topic": "Atap Metal Terasa Panas: Apakah Insulasi Foil Cukup atau Perlu Ventilasi Atap?",
+  "compiled_by": "evidence_researcher_lead",
+  "compiled_by_name": "Irwan",
+  "compiled_at": "2026-10-05T00:27:23.554Z",
+  "research_runtime": {
+    "staff_id": "evidence_researcher_lead",
+    "staff_name": "Irwan",
+    "execution_type": "REAL_RUNTIME_EXECUTION",
+    "provider": "open_apis_and_verified_documents",
+    "model": "crossref+wikipedia_technical_inspection",
+    "generated_at": "2026-10-05T00:27:23.554Z",
+    "job_id": "job_research_task_runtime_proof_irwan_research_v2_001"
+  },
+  "sources_summary": {
+    "total_discovered": 19,
+    "retrieved_and_verified": 2,
+    "blocked_or_restricted": 3
+  },
+  "claim_inventory": [
+    {
+      "claim_id": "CLM-001A",
+      "statement": "Atap metal memiliki massa termal sangat rendah sehingga suhu permukaannya melonjak cepat di siang hari saat terpapar radiasi matahari tropis.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "source_reference": "Building Physics & Radiant Heat Absorption",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Overview",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Overview",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "psg_SRC-OPEN-DOE-RADBAR_1",
+        "psg_SRC-OPEN-DOE-RADBAR_4",
+        "psg_SRC-OPEN-DOE-RADBAR_7",
+        "psg_SRC-OPEN-DOE-RADBAR_9"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Menjelaskan mengapa lembaran metal di iklim tropis cepat terasa menyengat.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-001B",
+      "statement": "Lembaran penutup atap metal memiliki konduktivitas termal tinggi yang meneruskan panas yang diserap dari sisi atas ke sisi bawah lembaran secara cepat.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "source_reference": "Heat Conduction in Roofing Materials",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Conduction Mechanisms",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Conduction Mechanisms",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "psg_SRC-OPEN-DOE-RADBAR_1",
+        "psg_SRC-OPEN-DOE-RADBAR_4",
+        "psg_SRC-OPEN-DOE-RADBAR_7",
+        "psg_SRC-OPEN-DOE-RADBAR_9"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Menjelaskan transmisi panas konduktif melintasi ketebalan lembaran metal tipis.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-002",
+      "statement": "Radiasi inframerah termal merupakan salah satu jalur utama perpindahan kalor dari sisi bawah penutup atap metal ke rongga loteng dan plafon di bawahnya.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Radiant heat transfer",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Radiant heat transfer",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "psg_SRC-OPEN-DOE-RADBAR_1",
+        "psg_SRC-OPEN-DOE-RADBAR_4",
+        "psg_SRC-OPEN-DOE-RADBAR_7",
+        "psg_SRC-OPEN-DOE-RADBAR_9"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Membedakan fenomena radiasi inframerah dari pemanasan udara konvektif.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-003",
+      "statement": "Aluminium foil reflektif bekerja sebagai penghalang radiasi (radiant barrier) dan memerlukan rongga udara bebas (air space) yang berhadapan langsung dengan sisi reflektifnya agar tidak terjadi konduksi langsung.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Requirement for air space",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Requirement for air space",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-WIKI-RADBAR_6",
+        "psg_SRC-OPEN-WIKI-RADBAR_10",
+        "psg_SRC-OPEN-WIKI-RADBAR_14",
+        "psg_SRC-OPEN-WIKI-RADBAR_17",
+        "psg_SRC-OPEN-WIKI-RADBAR_28",
+        "psg_SRC-OPEN-WIKI-RADBAR_31",
+        "psg_SRC-OPEN-DOE-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_5",
+        "psg_SRC-OPEN-DOE-RADBAR_10"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Syarat mutlak instalasi: jika foil terjepit tanpa celah udara, daya pantulnya lumpuh.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-004",
+      "statement": "Aluminium foil murni berfungsi sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation); lembaran foil tipis tanpa rongga udara tidak memberikan hambatan termal konduktif yang memadai.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Thermal insulation vs radiant barrier",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Thermal insulation vs radiant barrier",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-WIKI-RADBAR_6",
+        "psg_SRC-OPEN-WIKI-RADBAR_10",
+        "psg_SRC-OPEN-WIKI-RADBAR_14",
+        "psg_SRC-OPEN-WIKI-RADBAR_17",
+        "psg_SRC-OPEN-WIKI-RADBAR_28",
+        "psg_SRC-OPEN-WIKI-RADBAR_31",
+        "psg_SRC-OPEN-DOE-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_5",
+        "psg_SRC-OPEN-DOE-RADBAR_10"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-005",
+      "statement": "Rongga loteng tertutup tanpa ventilasi dapat menjadi perangkap akumulasi udara panas di bawah atap; ventilasi loteng berfungsi mengalirkan dan membuang udara panas tersebut.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "PARTIALLY_SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
+      "source_reference": "SNI 03-6572-2001 (Portal Terbatas) & DOE Building Science",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Attic Ventilation",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-SNI-6572",
+          "document_title": "SNI 03-6572-2001: Tata Cara Perancangan Sistem Ventilasi",
+          "applicability": "INDONESIAN_REGULATION",
+          "retrieval_status": "SOURCE_REFERENCE_KNOWN_NOT_RETRIEVED",
+          "retrieval_method": "REGULATORY_CATALOG_REFERENCE",
+          "limitations": "Teks lengkap SNI berada di portal BSN berbayar dan belum diinspeksi naskah fisiknya; prinsip ventilasi loteng diakui sebagai standar lokal tanpa mengklaim nomor pasal/halaman fiktif."
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_3",
+        "psg_SRC-OPEN-WIKI-RADBAR_11",
+        "psg_SRC-OPEN-WIKI-RADBAR_15",
+        "psg_SRC-OPEN-WIKI-RADBAR_18",
+        "psg_SRC-OPEN-WIKI-RADBAR_21",
+        "psg_SRC-OPEN-WIKI-RADBAR_23",
+        "psg_SRC-OPEN-WIKI-RADBAR_25",
+        "psg_SRC-OPEN-WIKI-RADBAR_29",
+        "psg_SRC-OPEN-DOE-RADBAR_3",
+        "psg_SRC-OPEN-DOE-RADBAR_8"
+      ],
+      "confidence": "MEDIUM",
+      "action": "QUALIFY",
+      "relevance": "Menjadi alasan mengapa ventilasi loteng tetap dibutuhkan meskipun foil sudah terpasang.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-006",
+      "statement": "Aliran ventilasi loteng alami bekerja efektif apabila terdapat jalur masuk udara (seperti di area teritisan/soffit) dan jalur keluar udara (di bubungan/ridge vent atau sopi-sopi) yang seimbang.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Attic airflow paths",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Attic airflow paths",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_3",
+        "psg_SRC-OPEN-WIKI-RADBAR_11",
+        "psg_SRC-OPEN-WIKI-RADBAR_15",
+        "psg_SRC-OPEN-WIKI-RADBAR_18",
+        "psg_SRC-OPEN-WIKI-RADBAR_21",
+        "psg_SRC-OPEN-WIKI-RADBAR_23",
+        "psg_SRC-OPEN-WIKI-RADBAR_25",
+        "psg_SRC-OPEN-WIKI-RADBAR_29",
+        "psg_SRC-OPEN-DOE-RADBAR_3",
+        "psg_SRC-OPEN-DOE-RADBAR_8"
+      ],
+      "confidence": "MEDIUM",
+      "action": "QUALIFY",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-007A",
+      "statement": "Akumulasi debu pada permukaan aluminium foil reflektif seiring berjalannya waktu dapat meningkatkan emisivitas dan menurunkan daya pantul radiasinya.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "VERIFIED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Dust accumulation",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Dust accumulation",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_4",
+        "psg_SRC-OPEN-WIKI-RADBAR_7",
+        "psg_SRC-OPEN-WIKI-RADBAR_12",
+        "psg_SRC-OPEN-WIKI-RADBAR_19",
+        "psg_SRC-OPEN-WIKI-RADBAR_26",
+        "psg_SRC-OPEN-WIKI-RADBAR_30",
+        "psg_SRC-OPEN-DOE-RADBAR_6",
+        "psg_SRC-OPEN-DOE-RADBAR_11"
+      ],
+      "confidence": "HIGH",
+      "action": "KEEP",
+      "relevance": "Menjelaskan risiko degradasi performa foil reflektif akibat akumulasi debu.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-007B",
+      "statement": "Bukaan ventilasi atap memerlukan kisi pengarah (louvers) dan saringan kawat kasa untuk mencegah tampias air hujan serta masuknya serangga ke dalam rongga atap.",
+      "claim_class": "technical_consensus",
+      "evidence_status": "PARTIALLY_SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_PROVENANCE_UNKNOWN",
+      "sources": [],
+      "evidence_passage_ids": [],
+      "confidence": "MEDIUM",
+      "action": "QUALIFY",
+      "relevance": "Panduan pemasangan lapangan agar bukaan ventilasi tidak menimbulkan masalah sekunder.",
+      "numeric_claim": false
+    },
+    {
+      "claim_id": "CLM-008",
+      "statement": "Untuk atap metal ekspos langsung tanpa plafon, pemasangan foil dengan rongga udara adalah prioritas utama untuk menahan radiasi langsung ke penghuni; sedangkan untuk loteng tertutup di atas plafon, kombinasi foil ber-air gap dan ventilasi loteng diperlukan agar udara panas tidak terperangkap.",
+      "claim_class": "editorial_recommendation",
+      "evidence_status": "SUPPORTED",
+      "provenance_retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+      "derived_from_claim_ids": [
+        "CLM-001A",
+        "CLM-002",
+        "CLM-003",
+        "CLM-005"
+      ],
+      "recommendation_confidence": "MEDIUM",
+      "inspection_dependency": "Keberadaan plafon penutup dan aksesibilitas rongga loteng rumah",
+      "sources": [
+        {
+          "source_id": "SRC-OPEN-WIKI-RADBAR",
+          "source_type": "secondary_reference",
+          "source_classification": "ENCYCLOPEDIC_SECONDARY_SOURCE",
+          "authority_level": "SECONDARY_ENCYCLOPEDIC",
+          "primary_vs_secondary": "SECONDARY",
+          "publisher_or_author": "Wikimedia Foundation",
+          "document_title": "Radiant barrier",
+          "canonical_url": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "page_or_section": "Application decisions",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_API_FULL_TEXT_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://en.wikipedia.org/wiki/Radiant_barrier",
+          "content_hash": "c31f273c848cfd43d91a35e8aec864ac1921bd8060f5ebf51fcc7d9bb37b6401",
+          "limitations": "Sumber sekunder ensiklopedis: merangkum prinsip fisik radiant barrier, kebutuhan rongga udara, dan penurunan daya pantul akibat debu. Bukan laporan uji lab primer mandiri.",
+          "quality_profile": {
+            "authority": "SECONDARY_ENCYCLOPEDIC",
+            "primary_vs_secondary": "SECONDARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        },
+        {
+          "source_id": "SRC-OPEN-DOE-RADBAR",
+          "source_type": "research_document",
+          "source_classification": "PRIMARY_RESEARCH_DOCUMENT",
+          "authority_level": "INSTITUTIONAL_OFFICIAL",
+          "primary_vs_secondary": "PRIMARY",
+          "publisher_or_author": "U.S. Department of Energy (Building Technologies Office)",
+          "document_title": "Radiant Barriers",
+          "canonical_url": "https://www.energy.gov/energysaver/radiant-barriers",
+          "page_or_section": "Application decisions",
+          "applicability": "UNIVERSAL_PHYSICS",
+          "retrieval_status": "SOURCE_RETRIEVED_AND_VERIFIED",
+          "retrieval_method": "OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION",
+          "retrieved_at": "2026-10-05T00:27:23.553Z",
+          "content_location": "https://www.energy.gov/energysaver/radiant-barriers",
+          "content_hash": "04f1f89cd1285014bf8f031021a07f7077ca9c5c26965c6c7792fe23688376aa",
+          "limitations": "Pedoman resmi fisika bangunan institusi pemerintah (U.S. Department of Energy). Menguraikan mekanisme radiasi, syarat mutlak rongga udara, dan interaksi dengan ventilasi loteng.",
+          "quality_profile": {
+            "authority": "INSTITUTIONAL_OFFICIAL",
+            "primary_vs_secondary": "PRIMARY",
+            "retrieval_integrity": "HASH_VERIFIED",
+            "claim_relevance": "DIRECT",
+            "geographic_applicability": "UNIVERSAL_PHYSICS",
+            "independence": "INDEPENDENT"
+          }
+        }
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "psg_SRC-OPEN-DOE-RADBAR_1",
+        "psg_SRC-OPEN-DOE-RADBAR_4",
+        "psg_SRC-OPEN-DOE-RADBAR_7",
+        "psg_SRC-OPEN-DOE-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-WIKI-RADBAR_6",
+        "psg_SRC-OPEN-WIKI-RADBAR_10",
+        "psg_SRC-OPEN-WIKI-RADBAR_14",
+        "psg_SRC-OPEN-WIKI-RADBAR_17",
+        "psg_SRC-OPEN-WIKI-RADBAR_28",
+        "psg_SRC-OPEN-WIKI-RADBAR_31",
+        "psg_SRC-OPEN-DOE-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_5",
+        "psg_SRC-OPEN-DOE-RADBAR_10"
+      ],
+      "confidence": "MEDIUM",
+      "action": "KEEP",
+      "numeric_claim": false
+    }
+  ],
+  "author_safe_claims": [
+    {
+      "claim_id": "CLM-001A",
+      "statement": "Atap metal memiliki massa termal sangat rendah sehingga suhu permukaannya melonjak cepat di siang hari saat terpapar radiasi matahari tropis.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "60°C",
+        "75°C",
+        "60°C hingga 75°C",
+        "800-1000 W/m²",
+        "50-60 W/m·K"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "psg_SRC-OPEN-DOE-RADBAR_1",
+        "psg_SRC-OPEN-DOE-RADBAR_4",
+        "psg_SRC-OPEN-DOE-RADBAR_7",
+        "psg_SRC-OPEN-DOE-RADBAR_9"
+      ]
+    },
+    {
+      "claim_id": "CLM-001B",
+      "statement": "Lembaran penutup atap metal memiliki konduktivitas termal tinggi yang meneruskan panas yang diserap dari sisi atas ke sisi bawah lembaran secara cepat.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "60°C",
+        "75°C",
+        "60°C hingga 75°C",
+        "800-1000 W/m²",
+        "50-60 W/m·K"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "psg_SRC-OPEN-DOE-RADBAR_1",
+        "psg_SRC-OPEN-DOE-RADBAR_4",
+        "psg_SRC-OPEN-DOE-RADBAR_7",
+        "psg_SRC-OPEN-DOE-RADBAR_9"
+      ]
+    },
+    {
+      "claim_id": "CLM-002",
+      "statement": "Radiasi inframerah termal merupakan salah satu jalur utama perpindahan kalor dari sisi bawah penutup atap metal ke rongga loteng dan plafon di bawahnya.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "75%",
+        "90%",
+        "75% hingga 90%",
+        "75-90%"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "psg_SRC-OPEN-DOE-RADBAR_1",
+        "psg_SRC-OPEN-DOE-RADBAR_4",
+        "psg_SRC-OPEN-DOE-RADBAR_7",
+        "psg_SRC-OPEN-DOE-RADBAR_9"
+      ]
+    },
+    {
+      "claim_id": "CLM-003",
+      "statement": "Aluminium foil reflektif bekerja sebagai penghalang radiasi (radiant barrier) dan memerlukan rongga udara bebas (air space) yang berhadapan langsung dengan sisi reflektifnya agar tidak terjadi konduksi langsung.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "20-25 mm",
+        "20 hingga 25 milimeter",
+        "ε ≤ 0.05",
+        "≥ 95%"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-WIKI-RADBAR_6",
+        "psg_SRC-OPEN-WIKI-RADBAR_10",
+        "psg_SRC-OPEN-WIKI-RADBAR_14",
+        "psg_SRC-OPEN-WIKI-RADBAR_17",
+        "psg_SRC-OPEN-WIKI-RADBAR_28",
+        "psg_SRC-OPEN-WIKI-RADBAR_31",
+        "psg_SRC-OPEN-DOE-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_5",
+        "psg_SRC-OPEN-DOE-RADBAR_10"
+      ]
+    },
+    {
+      "claim_id": "CLM-004",
+      "statement": "Aluminium foil murni berfungsi sebagai pemantul radiasi dan bukan insulasi massa (bulk insulation); lembaran foil tipis tanpa rongga udara tidak memberikan hambatan termal konduktif yang memadai.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-WIKI-RADBAR_6",
+        "psg_SRC-OPEN-WIKI-RADBAR_10",
+        "psg_SRC-OPEN-WIKI-RADBAR_14",
+        "psg_SRC-OPEN-WIKI-RADBAR_17",
+        "psg_SRC-OPEN-WIKI-RADBAR_28",
+        "psg_SRC-OPEN-WIKI-RADBAR_31",
+        "psg_SRC-OPEN-DOE-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_5",
+        "psg_SRC-OPEN-DOE-RADBAR_10"
+      ]
+    },
+    {
+      "claim_id": "CLM-005",
+      "statement": "Rongga loteng tertutup tanpa ventilasi dapat menjadi perangkap akumulasi udara panas di bawah atap; ventilasi loteng berfungsi mengalirkan dan membuang udara panas tersebut.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "qualification_required": "Sebutkan sebagai prinsip fisik kualitatif",
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_3",
+        "psg_SRC-OPEN-WIKI-RADBAR_11",
+        "psg_SRC-OPEN-WIKI-RADBAR_15",
+        "psg_SRC-OPEN-WIKI-RADBAR_18",
+        "psg_SRC-OPEN-WIKI-RADBAR_21",
+        "psg_SRC-OPEN-WIKI-RADBAR_23",
+        "psg_SRC-OPEN-WIKI-RADBAR_25",
+        "psg_SRC-OPEN-WIKI-RADBAR_29",
+        "psg_SRC-OPEN-DOE-RADBAR_3",
+        "psg_SRC-OPEN-DOE-RADBAR_8"
+      ]
+    },
+    {
+      "claim_id": "CLM-006",
+      "statement": "Aliran ventilasi loteng alami bekerja efektif apabila terdapat jalur masuk udara (seperti di area teritisan/soffit) dan jalur keluar udara (di bubungan/ridge vent atau sopi-sopi) yang seimbang.",
+      "support_level": "SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter",
+        "1:300",
+        "1:150",
+        "1:300 hingga 1:150"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_3",
+        "psg_SRC-OPEN-WIKI-RADBAR_11",
+        "psg_SRC-OPEN-WIKI-RADBAR_15",
+        "psg_SRC-OPEN-WIKI-RADBAR_18",
+        "psg_SRC-OPEN-WIKI-RADBAR_21",
+        "psg_SRC-OPEN-WIKI-RADBAR_23",
+        "psg_SRC-OPEN-WIKI-RADBAR_25",
+        "psg_SRC-OPEN-WIKI-RADBAR_29",
+        "psg_SRC-OPEN-DOE-RADBAR_3",
+        "psg_SRC-OPEN-DOE-RADBAR_8"
+      ]
+    },
+    {
+      "claim_id": "CLM-007A",
+      "statement": "Akumulasi debu pada permukaan aluminium foil reflektif seiring berjalannya waktu dapat meningkatkan emisivitas dan menurunkan daya pantul radiasinya.",
+      "support_level": "VERIFIED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_4",
+        "psg_SRC-OPEN-WIKI-RADBAR_7",
+        "psg_SRC-OPEN-WIKI-RADBAR_12",
+        "psg_SRC-OPEN-WIKI-RADBAR_19",
+        "psg_SRC-OPEN-WIKI-RADBAR_26",
+        "psg_SRC-OPEN-WIKI-RADBAR_30",
+        "psg_SRC-OPEN-DOE-RADBAR_6",
+        "psg_SRC-OPEN-DOE-RADBAR_11"
+      ]
+    },
+    {
+      "claim_id": "CLM-007B",
+      "statement": "Bukaan ventilasi atap memerlukan kisi pengarah (louvers) dan saringan kawat kasa untuk mencegah tampias air hujan serta masuknya serangga ke dalam rongga atap.",
+      "support_level": "PARTIALLY_SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "qualification_required": "Sebutkan sebagai prinsip fisik kualitatif",
+      "evidence_passage_ids": []
+    },
+    {
+      "claim_id": "CLM-008",
+      "statement": "Untuk atap metal ekspos langsung tanpa plafon, pemasangan foil dengan rongga udara adalah prioritas utama untuk menahan radiasi langsung ke penghuni; sedangkan untuk loteng tertutup di atas plafon, kombinasi foil ber-air gap dan ventilasi loteng diperlukan agar udara panas tidak terperangkap.",
+      "support_level": "SUPPORTED",
+      "applicability": "UNIVERSAL_PHYSICS",
+      "allowed_for_authoring": true,
+      "prohibited_elements": [
+        "Rp",
+        "rupiah",
+        "harga permeter"
+      ],
+      "evidence_passage_ids": [
+        "psg_SRC-OPEN-WIKI-RADBAR_1",
+        "psg_SRC-OPEN-WIKI-RADBAR_5",
+        "psg_SRC-OPEN-WIKI-RADBAR_8",
+        "psg_SRC-OPEN-WIKI-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_13",
+        "psg_SRC-OPEN-WIKI-RADBAR_16",
+        "psg_SRC-OPEN-WIKI-RADBAR_20",
+        "psg_SRC-OPEN-WIKI-RADBAR_22",
+        "psg_SRC-OPEN-WIKI-RADBAR_24",
+        "psg_SRC-OPEN-WIKI-RADBAR_27",
+        "psg_SRC-OPEN-WIKI-RADBAR_32",
+        "psg_SRC-OPEN-DOE-RADBAR_1",
+        "psg_SRC-OPEN-DOE-RADBAR_4",
+        "psg_SRC-OPEN-DOE-RADBAR_7",
+        "psg_SRC-OPEN-DOE-RADBAR_9",
+        "psg_SRC-OPEN-WIKI-RADBAR_2",
+        "psg_SRC-OPEN-WIKI-RADBAR_6",
+        "psg_SRC-OPEN-WIKI-RADBAR_10",
+        "psg_SRC-OPEN-WIKI-RADBAR_14",
+        "psg_SRC-OPEN-WIKI-RADBAR_17",
+        "psg_SRC-OPEN-WIKI-RADBAR_28",
+        "psg_SRC-OPEN-WIKI-RADBAR_31",
+        "psg_SRC-OPEN-DOE-RADBAR_2",
+        "psg_SRC-OPEN-DOE-RADBAR_5",
+        "psg_SRC-OPEN-DOE-RADBAR_10"
+      ]
+    }
+  ],
+  "evidence_passages": [
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_1",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Overview / Lead",
+      "exact_or_normalized_excerpt": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection. A radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In build",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "ac64f0aa5d63fba9b5c13c668807f204573775d1c98ed2d6a42459331329215e",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_2",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Overview / Lead",
+      "exact_or_normalized_excerpt": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection. A radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In build",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "ac64f0aa5d63fba9b5c13c668807f204573775d1c98ed2d6a42459331329215e",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_3",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Overview / Lead",
+      "exact_or_normalized_excerpt": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection. A radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In build",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "ac64f0aa5d63fba9b5c13c668807f204573775d1c98ed2d6a42459331329215e",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_4",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Overview / Lead",
+      "exact_or_normalized_excerpt": "A radiant barrier is a type of building material that reflects thermal radiation and reduces heat transfer. Because thermal energy is also transferred by conduction and convection, in addition to radiation, radiant barriers are often supplemented with thermal insulation that slows down heat transfer by conduction or convection. A radiant barrier reflects heat radiation (radiant heat), preventing transfer from one side of the barrier to another due to a reflective, low emittance surface. In build",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "ac64f0aa5d63fba9b5c13c668807f204573775d1c98ed2d6a42459331329215e",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_5",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Reflectivity and emissivity",
+      "exact_or_normalized_excerpt": "All materials give off, or emit, energy by thermal radiation as a result of their temperature. The amount of energy radiated depends on the surface temperature and a property called emissivity (also called \"emittance\"). Emissivity is expressed as a number between zero and one at a given wavelength. The higher the emissivity, the greater the emitted radiation at that wavelength. A related material property is reflectivity (also called \"reflectance\"). This is a measure of how much energy is reflec",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "f887a0d150cd1913dcd0d39e21dc0814e696dacd9ff67baafd7ba6ad985d5188",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_6",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Reflectivity and emissivity",
+      "exact_or_normalized_excerpt": "All materials give off, or emit, energy by thermal radiation as a result of their temperature. The amount of energy radiated depends on the surface temperature and a property called emissivity (also called \"emittance\"). Emissivity is expressed as a number between zero and one at a given wavelength. The higher the emissivity, the greater the emitted radiation at that wavelength. A related material property is reflectivity (also called \"reflectance\"). This is a measure of how much energy is reflec",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "f887a0d150cd1913dcd0d39e21dc0814e696dacd9ff67baafd7ba6ad985d5188",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_7",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Reflectivity and emissivity",
+      "exact_or_normalized_excerpt": "All materials give off, or emit, energy by thermal radiation as a result of their temperature. The amount of energy radiated depends on the surface temperature and a property called emissivity (also called \"emittance\"). Emissivity is expressed as a number between zero and one at a given wavelength. The higher the emissivity, the greater the emitted radiation at that wavelength. A related material property is reflectivity (also called \"reflectance\"). This is a measure of how much energy is reflec",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "f887a0d150cd1913dcd0d39e21dc0814e696dacd9ff67baafd7ba6ad985d5188",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_8",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "History",
+      "exact_or_normalized_excerpt": "In 1860, the French scientist Jean Claude Eugene Peclet experimented with the insulating effect of high and low emissive metals facing air spaces. Peclet experimented with a wide variety of metals ranging from tin to cast iron, and came to the conclusion that neither the color nor the visual reflectance were significant determining factors in the materials’ performance. Peclet calculated the reduction in BTUs for high and low emissive surfaces facing into various air spaces, discovering the bene",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "787fb22bca8f6d09af4c029b60f04b992ca8b565769f84776a8fbfa5d0d21445",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_9",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Space exploration",
+      "exact_or_normalized_excerpt": "For the Apollo program, NASA helped develop a thin aluminum foil that reflected 95% of the radiant heat. A metalized film was used to protect spacecraft, equipment, and astronauts from thermal radiation or to retain heat in the extreme temperature fluctuations of space. The aluminum was vacuum-coated to a thin film and applied to the base of the Apollo landing vehicles. It was also used in numerous other NASA projects like the James Webb Space Telescope and Skylab. In the vacuum of outer space, ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "793ab8aeb3c1d0378756ffdaa82dd95e88f7da3fd1459cd618abe2e5f608d8be",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_10",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Space exploration",
+      "exact_or_normalized_excerpt": "For the Apollo program, NASA helped develop a thin aluminum foil that reflected 95% of the radiant heat. A metalized film was used to protect spacecraft, equipment, and astronauts from thermal radiation or to retain heat in the extreme temperature fluctuations of space. The aluminum was vacuum-coated to a thin film and applied to the base of the Apollo landing vehicles. It was also used in numerous other NASA projects like the James Webb Space Telescope and Skylab. In the vacuum of outer space, ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "793ab8aeb3c1d0378756ffdaa82dd95e88f7da3fd1459cd618abe2e5f608d8be",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_11",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Space exploration",
+      "exact_or_normalized_excerpt": "For the Apollo program, NASA helped develop a thin aluminum foil that reflected 95% of the radiant heat. A metalized film was used to protect spacecraft, equipment, and astronauts from thermal radiation or to retain heat in the extreme temperature fluctuations of space. The aluminum was vacuum-coated to a thin film and applied to the base of the Apollo landing vehicles. It was also used in numerous other NASA projects like the James Webb Space Telescope and Skylab. In the vacuum of outer space, ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "793ab8aeb3c1d0378756ffdaa82dd95e88f7da3fd1459cd618abe2e5f608d8be",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_12",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Window treatments",
+      "exact_or_normalized_excerpt": "Window glass can be coated to achieve low emissivity or \"low-e\". Some windows use laminate polyester film where at least one layer has been metalized using a process called sputtering. Sputtering occurs when a metal, most often aluminum, is vaporized and the polyester film is passed through it. This process can be adjusted to control the amount of metal that ultimately coats the surface of the film. These metalized films are applied to one or more surfaces of the glass to resist the transfer of ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "a815ca20eb5e52c726ebd3cf6b56033ed65e32277134f120f42e3f8ee4ab8a6b",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_13",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Roofs and attics",
+      "exact_or_normalized_excerpt": "When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof sheathing by conduction, it causes the underside of the roof surface and the roof framing to radiate heat downward through the roof space (attic / ceiling cavity) toward the attic floor / upper ceiling surface. When a radiant barrier is placed between the roofing material and the insulation on the attic floor, much of the heat radiated from the hot roof is reflected back toward the",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "7542913df1609fcebde83da68ce9e971b62bd8ff66726c6405dee391af0d6a77",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_14",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Roofs and attics",
+      "exact_or_normalized_excerpt": "When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof sheathing by conduction, it causes the underside of the roof surface and the roof framing to radiate heat downward through the roof space (attic / ceiling cavity) toward the attic floor / upper ceiling surface. When a radiant barrier is placed between the roofing material and the insulation on the attic floor, much of the heat radiated from the hot roof is reflected back toward the",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "7542913df1609fcebde83da68ce9e971b62bd8ff66726c6405dee391af0d6a77",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_15",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Roofs and attics",
+      "exact_or_normalized_excerpt": "When radiant solar energy strikes a roof, heating the roofing material (shingles, tiles or roofing sheets) and roof sheathing by conduction, it causes the underside of the roof surface and the roof framing to radiate heat downward through the roof space (attic / ceiling cavity) toward the attic floor / upper ceiling surface. When a radiant barrier is placed between the roofing material and the insulation on the attic floor, much of the heat radiated from the hot roof is reflected back toward the",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "7542913df1609fcebde83da68ce9e971b62bd8ff66726c6405dee391af0d6a77",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_16",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Roofs and attics",
+      "exact_or_normalized_excerpt": "Another method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-laminated to OSB panels or roof sheathing. Manufacturers of this installation method often tout the savings in labor costs in using a product that serves as roof decking and radiant barrier in one. To apply a radiant barrier in an existing attic, it may be stapled to the underside of the roof rafters. This method offers the same benefits as the draped method in that dual air spaces ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "50dc1b66cc9be02c49d1d0b63bbfb3f2d58b390488bd7ce8efcc3031973532a4",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_17",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Roofs and attics",
+      "exact_or_normalized_excerpt": "Another method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-laminated to OSB panels or roof sheathing. Manufacturers of this installation method often tout the savings in labor costs in using a product that serves as roof decking and radiant barrier in one. To apply a radiant barrier in an existing attic, it may be stapled to the underside of the roof rafters. This method offers the same benefits as the draped method in that dual air spaces ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "50dc1b66cc9be02c49d1d0b63bbfb3f2d58b390488bd7ce8efcc3031973532a4",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_18",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Roofs and attics",
+      "exact_or_normalized_excerpt": "Another method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-laminated to OSB panels or roof sheathing. Manufacturers of this installation method often tout the savings in labor costs in using a product that serves as roof decking and radiant barrier in one. To apply a radiant barrier in an existing attic, it may be stapled to the underside of the roof rafters. This method offers the same benefits as the draped method in that dual air spaces ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "50dc1b66cc9be02c49d1d0b63bbfb3f2d58b390488bd7ce8efcc3031973532a4",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_19",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Roofs and attics",
+      "exact_or_normalized_excerpt": "Another method of applying a radiant barrier to a roof in new construction is to use a radiant barrier that is pre-laminated to OSB panels or roof sheathing. Manufacturers of this installation method often tout the savings in labor costs in using a product that serves as roof decking and radiant barrier in one. To apply a radiant barrier in an existing attic, it may be stapled to the underside of the roof rafters. This method offers the same benefits as the draped method in that dual air spaces ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "50dc1b66cc9be02c49d1d0b63bbfb3f2d58b390488bd7ce8efcc3031973532a4",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_20",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Energy savings",
+      "exact_or_normalized_excerpt": "According to a 2010 study by the Building Envelope Research Program of the Oak Ridge National Laboratory, homes with air-conditioning duct work in the attic in the hottest climate zones, such as in the US Deep South, could benefit the most from radiant barrier interventions, with annual utility bill savings up to $150, whereas homes in milder climates, e.g., Baltimore, could see savings about half those of their southern neighbors. On the other hand, if there are no ducts or air handlers in the ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "ac78843cc468e5b60804c1c9d4556657e6e7e10544695b8fdf23995c50655764",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_21",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Energy savings",
+      "exact_or_normalized_excerpt": "According to a 2010 study by the Building Envelope Research Program of the Oak Ridge National Laboratory, homes with air-conditioning duct work in the attic in the hottest climate zones, such as in the US Deep South, could benefit the most from radiant barrier interventions, with annual utility bill savings up to $150, whereas homes in milder climates, e.g., Baltimore, could see savings about half those of their southern neighbors. On the other hand, if there are no ducts or air handlers in the ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "ac78843cc468e5b60804c1c9d4556657e6e7e10544695b8fdf23995c50655764",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_22",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Shingle temperature",
+      "exact_or_normalized_excerpt": "One common misconception regarding radiant barrier is that the heat reflecting off the radiant barrier back to the roof has the potential to increase the roof temperature and possibly damage the shingles. Performance testing by Florida Solar Energy Center demonstrated that the increase in temperature at the hottest part of the day was no more than about 5 degrees F. In fact, this study showed that a radiant barrier has the potential to decrease the roof temperature once the sun goes down because",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "49ba3abb99b41017029503664763d1e4a63fd4329c237b6eaa0160157ec3ba1f",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_23",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Shingle temperature",
+      "exact_or_normalized_excerpt": "One common misconception regarding radiant barrier is that the heat reflecting off the radiant barrier back to the roof has the potential to increase the roof temperature and possibly damage the shingles. Performance testing by Florida Solar Energy Center demonstrated that the increase in temperature at the hottest part of the day was no more than about 5 degrees F. In fact, this study showed that a radiant barrier has the potential to decrease the roof temperature once the sun goes down because",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "49ba3abb99b41017029503664763d1e4a63fd4329c237b6eaa0160157ec3ba1f",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_24",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Attic dust accumulation",
+      "exact_or_normalized_excerpt": "When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top side. Many factors like dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates and thus the ultimate performance of a radiant barrier in an attic. A study by the Tennessee Valley Authority mechanically applied a small amount of dust over a radiant barrier and found no significant effect when testing for performance. However, T",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "e2880eb68e14a48b6341c6a621314b5eeb163dd5a374fb054ea0be47fda03125",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_25",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Attic dust accumulation",
+      "exact_or_normalized_excerpt": "When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top side. Many factors like dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates and thus the ultimate performance of a radiant barrier in an attic. A study by the Tennessee Valley Authority mechanically applied a small amount of dust over a radiant barrier and found no significant effect when testing for performance. However, T",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "e2880eb68e14a48b6341c6a621314b5eeb163dd5a374fb054ea0be47fda03125",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_26",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Attic dust accumulation",
+      "exact_or_normalized_excerpt": "When laying a radiant barrier over the insulation on the attic floor, it is possible for dust to accumulate on the top side. Many factors like dust particle size, dust composition and the amount of ventilation in the attic affect how dust accumulates and thus the ultimate performance of a radiant barrier in an attic. A study by the Tennessee Valley Authority mechanically applied a small amount of dust over a radiant barrier and found no significant effect when testing for performance. However, T",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "e2880eb68e14a48b6341c6a621314b5eeb163dd5a374fb054ea0be47fda03125",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_27",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Walls",
+      "exact_or_normalized_excerpt": "Radiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing to create a vented air space between the radiant barrier and the siding, and vents are used at the top and bottom to allow convective heat to rise naturally to the attic. If brick is being used on the exterior, then a vented air space may already be present, and furring strips are not necessary. Wrapping a house with radiant barrier can result in a 10% to 20% reduction in the t",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "f1af55815322540bb4ea52e9175989f555a28e986ae228ca50ccf4667c72304c",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_28",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Walls",
+      "exact_or_normalized_excerpt": "Radiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing to create a vented air space between the radiant barrier and the siding, and vents are used at the top and bottom to allow convective heat to rise naturally to the attic. If brick is being used on the exterior, then a vented air space may already be present, and furring strips are not necessary. Wrapping a house with radiant barrier can result in a 10% to 20% reduction in the t",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "f1af55815322540bb4ea52e9175989f555a28e986ae228ca50ccf4667c72304c",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_29",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Walls",
+      "exact_or_normalized_excerpt": "Radiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing to create a vented air space between the radiant barrier and the siding, and vents are used at the top and bottom to allow convective heat to rise naturally to the attic. If brick is being used on the exterior, then a vented air space may already be present, and furring strips are not necessary. Wrapping a house with radiant barrier can result in a 10% to 20% reduction in the t",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "f1af55815322540bb4ea52e9175989f555a28e986ae228ca50ccf4667c72304c",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_30",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Walls",
+      "exact_or_normalized_excerpt": "Radiant barrier may be used as a vented skin around the exterior of a wall. Furring strips are applied to the sheathing to create a vented air space between the radiant barrier and the siding, and vents are used at the top and bottom to allow convective heat to rise naturally to the attic. If brick is being used on the exterior, then a vented air space may already be present, and furring strips are not necessary. Wrapping a house with radiant barrier can result in a 10% to 20% reduction in the t",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "f1af55815322540bb4ea52e9175989f555a28e986ae228ca50ccf4667c72304c",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_31",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "Canada",
+      "exact_or_normalized_excerpt": "Canada is considered to be a cold climate, so these products do not perform as promoted. Though they are often marketed as offering very high insulating values, there is no specific standard for radiant insulation products, so be wary of posted testimonials and manufacturers’ thermal performance claims. Research has shown that the insulation value of reflective bubble foil insulations and radiant barriers can vary from RSI 0 (R-0) to RSI 0.62 (R-3.5) per thickness of material. A study conducted ",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "bdad8178d9e5a143a5ba133bf2a7717c0abf8542f309cf21803d9f65d0bea73a",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-WIKI-RADBAR_32",
+      "source_id": "SRC-OPEN-WIKI-RADBAR",
+      "locator": "External links",
+      "exact_or_normalized_excerpt": "How a radiant barrier saves energy Radiant Barriers: A Question and Answer Primer Radiant Barrier Fact Sheet[link removed] Department of Energy This entry incorporates public domain text originally from the Oak Ridge National Laboratory and the U.S. Department of Energy.",
+      "extracted_at": "2026-10-05T00:27:23.552Z",
+      "content_hash": "abe038204e72e31bd9d0b886519be307804d674701e542b4034296ce1e05dbe1",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_1",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Overview and Operating Principles",
+      "exact_or_normalized_excerpt": "Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain. When the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "1f7253b3e47fdd8f2d2897c7f348d39ddaa8e2b44d96603b513879d01fb41a6f",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_2",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Overview and Operating Principles",
+      "exact_or_normalized_excerpt": "Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain. When the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "1f7253b3e47fdd8f2d2897c7f348d39ddaa8e2b44d96603b513879d01fb41a6f",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_3",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Overview and Operating Principles",
+      "exact_or_normalized_excerpt": "Radiant barriers consist of a highly reflective material that reflects radiant heat rather than absorbing it. They are installed in homes -- usually in attics -- primarily to reduce summer heat gain. When the sun warms a roof, it is primarily the sun's radiant energy that makes the roof hot. Much of this heat travels by conduction through the roofing materials to the attic side of the roof. The hot roof material then radiates its gained heat energy onto the cooler attic surfaces below, including",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "1f7253b3e47fdd8f2d2897c7f348d39ddaa8e2b44d96603b513879d01fb41a6f",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_4",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Requirement for Air Space",
+      "exact_or_normalized_excerpt": "A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conduction rather than radiation, neutralizing the radiant barrier benefit.",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "dfac135b4ed0af872f5a8acaaae92e6053080feb4047fa382488299ec2582119",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_5",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Requirement for Air Space",
+      "exact_or_normalized_excerpt": "A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conduction rather than radiation, neutralizing the radiant barrier benefit.",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "dfac135b4ed0af872f5a8acaaae92e6053080feb4047fa382488299ec2582119",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_6",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Requirement for Air Space",
+      "exact_or_normalized_excerpt": "A radiant barrier works by reflecting thermal radiation and having very low emittance. To function, the reflective surface must face an open air space. If radiant barrier material is installed in direct contact with another building material, heat is transferred by direct conduction rather than radiation, neutralizing the radiant barrier benefit.",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "dfac135b4ed0af872f5a8acaaae92e6053080feb4047fa382488299ec2582119",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_7",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Attic Ventilation and System Interaction",
+      "exact_or_normalized_excerpt": "A radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventilation works synergistically with radiant barriers to exhaust warm attic air via soffit and ridge vents, while the foil barrier minimizes radiation downward toward ceilings and occupied spaces.",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "73875bb726d2932ae6a7c93df28026cc2c86d676c31b86e71a22d880bd04d78e",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_8",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Attic Ventilation and System Interaction",
+      "exact_or_normalized_excerpt": "A radiant barrier is not a substitute for proper attic ventilation or thermal insulation. In hot climates, attic ventilation works synergistically with radiant barriers to exhaust warm attic air via soffit and ridge vents, while the foil barrier minimizes radiation downward toward ceilings and occupied spaces.",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "73875bb726d2932ae6a7c93df28026cc2c86d676c31b86e71a22d880bd04d78e",
+      "supports_claim_ids": [
+        "CLM-005",
+        "CLM-006"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_9",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Dust Accumulation and Performance Degradation",
+      "exact_or_normalized_excerpt": "Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an upward-facing radiant barrier surface, emissivity increases, reducing reflective efficiency. Therefore, installing foil facing downward into an air space helps avoid dust accumulation.",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "a6f9cd0b2404844070b98e0e356438181ee88e74d6050cd133a0cd81a2519862",
+      "supports_claim_ids": [
+        "CLM-001A",
+        "CLM-001B",
+        "CLM-002"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_10",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Dust Accumulation and Performance Degradation",
+      "exact_or_normalized_excerpt": "Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an upward-facing radiant barrier surface, emissivity increases, reducing reflective efficiency. Therefore, installing foil facing downward into an air space helps avoid dust accumulation.",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "a6f9cd0b2404844070b98e0e356438181ee88e74d6050cd133a0cd81a2519862",
+      "supports_claim_ids": [
+        "CLM-003",
+        "CLM-004"
+      ]
+    },
+    {
+      "passage_id": "psg_SRC-OPEN-DOE-RADBAR_11",
+      "source_id": "SRC-OPEN-DOE-RADBAR",
+      "locator": "Dust Accumulation and Performance Degradation",
+      "exact_or_normalized_excerpt": "Dust accumulation on the reflective surface of radiant barriers degrades performance over time. When dust settles on an upward-facing radiant barrier surface, emissivity increases, reducing reflective efficiency. Therefore, installing foil facing downward into an air space helps avoid dust accumulation.",
+      "extracted_at": "2026-10-05T00:27:23.553Z",
+      "content_hash": "a6f9cd0b2404844070b98e0e356438181ee88e74d6050cd133a0cd81a2519862",
+      "supports_claim_ids": [
+        "CLM-007A"
+      ]
+    }
+  ],
+  "prohibited_claims": [
+    "Estimasi biaya atau angka rupiah material atap tanpa riset empiris harga toko fisik",
+    "Klaim uji coba mandiri atau klaim laboratorium palsu",
+    "Klaim penurunan suhu AC spesifik atau garansi suhu mutlak tanpa audit termal bangunan",
+    "Rujukan SNI tidak boleh mencantumkan nomor halaman fiktif karena teks fisik berbayar"
+  ],
+  "confidence_overall": "HIGH"
+}

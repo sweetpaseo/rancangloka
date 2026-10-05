@@ -378,18 +378,37 @@ export type ClaimSupportLevel =
   | 'CONFLICTING';
 
 export type SourceApplicability =
-  | 'REGULATORY_LOCAL_TROPICAL'
-  | 'TECHNICAL_GUIDANCE_LOCAL'
-  | 'TECHNICAL_REFERENCE_FOREIGN'
+  | 'UNIVERSAL_PHYSICS'
+  | 'FOREIGN_BUILDING_GUIDANCE'
+  | 'INDONESIAN_REGULATION'
+  | 'INDONESIAN_TECHNICAL_GUIDANCE'
+  | 'EDITORIAL_INFERENCE'
+  | 'ENCYCLOPEDIC_SECONDARY_SOURCE'
+  | 'REGULATORY_LOCAL_TROPICAL' // backward compatibility
+  | 'TECHNICAL_GUIDANCE_LOCAL'   // backward compatibility
+  | 'TECHNICAL_REFERENCE_FOREIGN' // backward compatibility
   | 'FOREIGN_BUILDING_CODE'
   | 'RESEARCH_STUDY'
   | 'MANUFACTURER_DOCUMENTATION';
 
+export interface SourceQualityProfile {
+  authority: 'INSTITUTIONAL_OFFICIAL' | 'PEER_REVIEWED_RESEARCH' | 'STANDARDS_BODY' | 'SECONDARY_ENCYCLOPEDIC' | 'COMMERCIAL_MANUFACTURER' | string;
+  primary_vs_secondary: 'PRIMARY' | 'SECONDARY' | 'TERTIARY';
+  retrieval_integrity: 'HASH_VERIFIED' | 'METADATA_ONLY' | 'UNVERIFIED';
+  claim_relevance: 'DIRECT' | 'SUPPORTING' | 'BACKGROUND';
+  geographic_applicability: 'UNIVERSAL_PHYSICS' | 'TROPICAL_LOCAL' | 'FOREIGN_TEMPERATE' | string;
+  independence: 'INDEPENDENT' | 'DERIVATIVE';
+}
+
 export interface EvidenceSource {
   source_id: string;
   source_type?: string;
+  source_classification?: 'PRIMARY_RESEARCH_DOCUMENT' | 'ENCYCLOPEDIC_SECONDARY_SOURCE' | 'STANDARDS_PUBLICATION' | 'INDUSTRY_REFERENCE';
+  authority_level?: 'INSTITUTIONAL_OFFICIAL' | 'INSTITUTIONAL_PEER_REVIEW' | 'SECONDARY_ENCYCLOPEDIC' | 'STANDARDS_BODY' | 'INDUSTRY_REFERENCE';
+  primary_vs_secondary?: 'PRIMARY' | 'SECONDARY' | 'TERTIARY';
   publisher_or_author?: string;
   document_title: string;
+  canonical_url?: string;
   publication_or_revision_date?: string;
   edition_or_revision?: string;
   page_or_section?: string;
@@ -401,16 +420,32 @@ export interface EvidenceSource {
   content_location?: string;
   content_hash?: string;
   limitations?: string;
+  quality_profile?: SourceQualityProfile;
+}
+
+export interface EvidencePassage {
+  passage_id: string;
+  source_id: string;
+  locator: string; // section, heading, or locator
+  exact_or_normalized_excerpt: string;
+  extracted_at: string;
+  content_hash?: string;
+  supports_claim_ids: string[];
+  limitations?: string;
 }
 
 export interface EvidenceClaim {
   claim_id: string;
   statement: string;
-  claim_class?: string;
+  claim_class?: 'VERIFIED_FACT' | 'TECHNICAL_CONSENSUS' | 'USER_EXPERIENCE_SIGNAL' | 'EDITORIAL_INFERENCE' | 'EDITORIAL_RECOMMENDATION' | 'technical_consensus' | 'verified_fact' | 'editorial_recommendation' | string;
   evidence_status: ClaimSupportLevel | string;
   provenance_retrieval_status?: SourceRetrievalStatus | string;
   source_reference?: string;
   sources?: EvidenceSource[];
+  evidence_passage_ids?: string[];
+  derived_from_claim_ids?: string[];
+  recommendation_confidence?: 'HIGH' | 'MEDIUM' | 'LOW';
+  inspection_dependency?: string;
   confidence?: string;
   action?: 'KEEP' | 'QUALIFY' | 'REMOVE_NUMBER' | 'REMOVE_CLAIM' | 'RESEARCH_REQUIRED' | string;
   relevance?: string;
@@ -425,14 +460,18 @@ export interface AuthorSafeClaim {
   allowed_for_authoring: boolean;
   prohibited_elements?: string[];
   qualification_required?: string;
+  evidence_passage_ids?: string[];
 }
 
 export interface EvidencePackInput {
   evidence_pack_id?: string;
   topic?: string;
   compiled_by?: string;
+  compiled_by_name?: string;
+  confidence_overall?: 'HIGH' | 'MEDIUM' | 'LOW' | string;
   claim_inventory?: EvidenceClaim[];
   author_safe_claims?: AuthorSafeClaim[];
+  evidence_passages?: EvidencePassage[];
   [key: string]: any;
 }
 
@@ -582,6 +621,99 @@ export function auditEvidencePackProvenance(
         `Klaim numerik ${claim.claim_id} tidak boleh beraksi KEEP tanpa sumber berstatus SOURCE_RETRIEVED_AND_VERIFIED.`
       );
     }
+
+    // Phase 11 (EDITORIAL-RUNTIME-3A): Strict Rule NO_SOURCE = NO_VERIFIED_STATUS
+    if (claimSources.length === 0 && (claim.evidence_status === 'VERIFIED' || claim.evidence_status === 'SUPPORTED')) {
+      summary.missing_provenance_claims.push(
+        `${claim.claim_id}: Status dinyatakan ${claim.evidence_status} namun tidak memiliki sumber (sources.length === 0)`
+      );
+      summary.requires_provenance_failure = true;
+      summary.audit_reasons.push(
+        `Klaim ${claim.claim_id} tidak boleh berstatus ${claim.evidence_status} tanpa rujukan sumber sama sekali.`
+      );
+    }
+
+    // Phase 12 (EDITORIAL-RUNTIME-3A): VERIFIED REQUIRES PASSAGE
+    if (claim.evidence_status === 'VERIFIED') {
+      if (Array.isArray(evidencePack.evidence_passages) || Array.isArray(claim.evidence_passage_ids)) {
+        if (!Array.isArray(claim.evidence_passage_ids) || claim.evidence_passage_ids.length === 0) {
+          summary.missing_provenance_claims.push(
+            `${claim.claim_id}: Status dinyatakan VERIFIED namun tidak mencantumkan evidence_passage_ids`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Klaim ${claim.claim_id} berstatus VERIFIED wajib mencantumkan minimal satu ID bagian bukti (evidence_passage_ids).`
+          );
+        }
+      }
+    }
+
+    // Phase 13 (EDITORIAL-RUNTIME-3A): Editorial Recommendation cannot be VERIFIED_FACT
+    const isRecommendation = claim.claim_class === 'editorial_recommendation' || claim.claim_class === 'EDITORIAL_RECOMMENDATION';
+    if (isRecommendation) {
+      if (claim.evidence_status === 'VERIFIED' || (claim.claim_class as string) === 'VERIFIED_FACT') {
+        summary.missing_provenance_claims.push(
+          `${claim.claim_id}: Rekomendasi editorial tidak boleh berstatus VERIFIED atau diklasifikasikan sebagai VERIFIED_FACT`
+        );
+        summary.requires_provenance_failure = true;
+        summary.audit_reasons.push(
+          `Rekomendasi editorial ${claim.claim_id} merupakan panduan keputusan terapan, bukan fakta empiris mandiri.`
+        );
+      }
+    }
+
+    // Phase 14 (EDITORIAL-RUNTIME-3A): Wikipedia cannot masquerade as Primary Research
+    for (const src of claimSources) {
+      const isWiki = (src.canonical_url?.includes('wikipedia.org') || src.content_location?.includes('wikipedia.org') || src.source_id.includes('WIKI'));
+      if (isWiki) {
+        if (src.source_classification === 'PRIMARY_RESEARCH_DOCUMENT') {
+          summary.unverified_claims.push(
+            `${src.source_id}: Sumber Wikipedia tidak boleh diklasifikasikan sebagai PRIMARY_RESEARCH_DOCUMENT`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(
+            `Sumber Wikipedia ${src.source_id} wajib diklasifikasikan sebagai ENCYCLOPEDIC_SECONDARY_SOURCE.`
+          );
+        }
+        if (src.publisher_or_author && src.publisher_or_author.includes('Building Science Open Repository')) {
+          summary.unverified_claims.push(
+            `${src.source_id}: Publisher sintetis ("${src.publisher_or_author}") dilarang untuk Wikipedia.`
+          );
+          summary.requires_provenance_failure = true;
+          summary.audit_reasons.push(`Penerbit Wikipedia harus jujur (Wikimedia Foundation).`);
+        }
+      }
+    }
+  }
+
+  // Phase 15 (EDITORIAL-RUNTIME-3A): Top-level evidence_passages collection verification
+  if (Array.isArray(evidencePack.evidence_passages)) {
+    const passageMap = new Map<string, EvidencePassage>();
+    for (const p of evidencePack.evidence_passages) {
+      passageMap.set(p.passage_id, p);
+    }
+
+    for (const claim of claims) {
+      if (Array.isArray(claim.evidence_passage_ids)) {
+        for (const pid of claim.evidence_passage_ids) {
+          const passage = passageMap.get(pid);
+          if (!passage) {
+            summary.missing_provenance_claims.push(
+              `${claim.claim_id}: ID passage '${pid}' tidak ditemukan di koleksi evidence_passages.`
+            );
+            summary.requires_provenance_failure = true;
+            summary.audit_reasons.push(`Passage ${pid} yang dirujuk oleh ${claim.claim_id} tidak ditemukan.`);
+          } else {
+            if (Array.isArray(passage.supports_claim_ids) && !passage.supports_claim_ids.includes(claim.claim_id)) {
+              summary.missing_provenance_claims.push(
+                `${claim.claim_id}: Passage '${pid}' tidak mencantumkan '${claim.claim_id}' dalam supports_claim_ids.`
+              );
+              summary.requires_provenance_failure = true;
+            }
+          }
+        }
+      }
+    }
   }
 
   // Phase 9 & 10 (EDITORIAL-SOURCE-ACQUISITION-1): Author-Safe Claims Audit
@@ -637,6 +769,51 @@ export function auditEvidencePackProvenance(
   }
 
   return summary;
+}
+
+/**
+ * Deterministically calculates overall evidence confidence from source quality and coverage.
+ * Milestone: EDITORIAL-RUNTIME-3A
+ */
+export function calculateOverallConfidence(evidencePack: EvidencePackInput): 'HIGH' | 'MEDIUM' | 'LOW' {
+  const claims = evidencePack.claim_inventory || [];
+  const passages = evidencePack.evidence_passages || [];
+
+  if (claims.length === 0) return 'LOW';
+
+  const retrievedSources: EvidenceSource[] = [];
+  const sourceMap = new Map<string, EvidenceSource>();
+  for (const c of claims) {
+    for (const s of c.sources || []) {
+      if (!sourceMap.has(s.source_id)) {
+        sourceMap.set(s.source_id, s);
+        if (s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED') {
+          retrievedSources.push(s);
+        }
+      }
+    }
+  }
+
+  const hasPrimaryRetrieved = retrievedSources.some(
+    s => s.source_classification === 'PRIMARY_RESEARCH_DOCUMENT' || s.source_classification === 'STANDARDS_PUBLICATION'
+  );
+  const onlySecondary = retrievedSources.length > 0 && retrievedSources.every(
+    s => s.source_classification === 'ENCYCLOPEDIC_SECONDARY_SOURCE'
+  );
+
+  // If only secondary sources or no primary retrieved, confidence cannot be HIGH
+  if (onlySecondary || retrievedSources.length <= 1 || !hasPrimaryRetrieved) {
+    return 'MEDIUM';
+  }
+
+  const verifiedCount = claims.filter(c => c.evidence_status === 'VERIFIED').length;
+  const verifiedCoverage = verifiedCount / claims.length;
+
+  if (hasPrimaryRetrieved && retrievedSources.length >= 2 && passages.length >= 4 && verifiedCoverage >= 0.5) {
+    return 'HIGH';
+  }
+
+  return 'MEDIUM';
 }
 
 /**
