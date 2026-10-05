@@ -34,6 +34,159 @@ export interface DiscoveredSourceCandidate {
   discovered_at: string;
 }
 
+export type CandidateLifecycleState =
+  | 'DISCOVERED'
+  | 'REJECTED_PRE_RETRIEVAL'
+  | 'SELECTED_FOR_RETRIEVAL'
+  | 'RETRIEVAL_ATTEMPTED'
+  | 'RETRIEVAL_HTTP_FAILED'
+  | 'RETRIEVAL_UNSUPPORTED_CONTENT'
+  | 'RETRIEVAL_SUCCEEDED'
+  | 'CONTENT_EXTRACTION_FAILED'
+  | 'AUTHENTICITY_FAILED'
+  | 'AUTHENTIC'
+  | 'PASSAGE_EXTRACTED'
+  | 'ADMISSIBLE';
+
+export interface CandidateLifecycleRecord {
+  candidate_id: string;
+  title: string;
+  url?: string;
+  doi?: string;
+  discovery_engine: string;
+  estimated_source_class?: string;
+  current_state: CandidateLifecycleState;
+  state_history: {
+    state: CandidateLifecycleState;
+    timestamp: string;
+    reason: string;
+  }[];
+  transition_reason: string;
+  metadata?: Record<string, any>;
+}
+
+export function estimateCandidateSourceClass(candidate: DiscoveredSourceCandidate): 'INSTITUTIONAL' | 'SCHOLARLY' | 'ENCYCLOPEDIC' | 'MANUFACTURER' | 'STANDARD' | 'UNKNOWN' {
+  const url = (candidate.url || '').toLowerCase();
+  const publisher = (candidate.publisher || '').toLowerCase();
+  const title = (candidate.title || '').toLowerCase();
+
+  if (candidate.discovery_engine === 'WIKIPEDIA_TECHNICAL_API' || url.includes('wikipedia.org')) {
+    return 'ENCYCLOPEDIC';
+  }
+  if (/\b(?:bsn|sni|astm|iso|din|ashrae)\b/i.test(publisher + ' ' + title)) {
+    return 'STANDARD';
+  }
+  if (/\b(?:\.gov|\.go\.id|\.edu|\.ac\.id|lbnl|ornl|doe|epa|pupr|brin)\b/i.test(url + ' ' + publisher)) {
+    return 'INSTITUTIONAL';
+  }
+  if (candidate.doi || candidate.discovery_engine === 'CROSSREF_OPEN_API' || /\b(?:journal|sciencedirect|springer|wiley|ieee|elsevier|researchgate)\b/i.test(url + ' ' + publisher)) {
+    return 'SCHOLARLY';
+  }
+  if (/\b(?:corporation|ltd|pt\b|inc|manufacturer|brand|products|commercial)\b/i.test(publisher + ' ' + url)) {
+    return 'MANUFACTURER';
+  }
+  return 'UNKNOWN';
+}
+
+export function isPreRejectedCandidate(candidate: DiscoveredSourceCandidate): { rejected: boolean; reason?: string } {
+  const url = (candidate.url || '').toLowerCase();
+  if (/\b(?:reddit\.com|quora\.com|kaskus\.co\.id|facebook\.com|twitter\.com|x\.com|instagram\.com|pinterest\.com|tiktok\.com)\b/i.test(url)) {
+    return { rejected: true, reason: 'PRE_RETRIEVAL_DISALLOWED_DOMAIN: Social/forum domain' };
+  }
+  if (/\b(?:expert-advice-blog\.xyz|content-farm|seo-article-directory)\b/i.test(url)) {
+    return { rejected: true, reason: 'PRE_RETRIEVAL_DISALLOWED_DOMAIN: Content farm' };
+  }
+  return { rejected: false };
+}
+
+export function scoreAndRankCandidates(
+  candidates: DiscoveredSourceCandidate[],
+  topic: string
+): { candidate: DiscoveredSourceCandidate; score: number; sourceClass: string; isPreRejected: boolean; rejectReason?: string }[] {
+  return candidates.map(c => {
+    const preReject = isPreRejectedCandidate(c);
+    const sClass = estimateCandidateSourceClass(c);
+    if (preReject.rejected) {
+      return { candidate: c, score: -1, sourceClass: sClass, isPreRejected: true, rejectReason: preReject.reason };
+    }
+
+    let baseScore = 30;
+    if (sClass === 'INSTITUTIONAL') baseScore = 100;
+    else if (sClass === 'SCHOLARLY') baseScore = 80;
+    else if (sClass === 'STANDARD') baseScore = 75;
+    else if (sClass === 'ENCYCLOPEDIC') baseScore = 60;
+    else if (sClass === 'MANUFACTURER') baseScore = 40;
+
+    if (c.url && (c.url.startsWith('http://') || c.url.startsWith('https://'))) {
+      baseScore += 10;
+    }
+    if (c.doi) {
+      baseScore += 5;
+    }
+
+    return { candidate: c, score: baseScore, sourceClass: sClass, isPreRejected: false };
+  }).sort((a, b) => b.score - a.score);
+}
+
+export class CandidateLifecycleTracker {
+  private records: Map<string, CandidateLifecycleRecord> = new Map();
+
+  registerCandidate(candidate: DiscoveredSourceCandidate, initialReason = 'Initial discovery query'): CandidateLifecycleRecord {
+    const existing = this.records.get(candidate.candidate_id);
+    if (existing) return existing;
+    const now = new Date().toISOString();
+    const record: CandidateLifecycleRecord = {
+      candidate_id: candidate.candidate_id,
+      title: candidate.title,
+      url: candidate.url,
+      doi: candidate.doi,
+      discovery_engine: candidate.discovery_engine,
+      estimated_source_class: estimateCandidateSourceClass(candidate),
+      current_state: 'DISCOVERED',
+      state_history: [{ state: 'DISCOVERED', timestamp: now, reason: initialReason }],
+      transition_reason: initialReason
+    };
+    this.records.set(candidate.candidate_id, record);
+    return record;
+  }
+
+  transition(candidateId: string, newState: CandidateLifecycleState, reason: string, metadata?: Record<string, any>) {
+    const record = this.records.get(candidateId);
+    if (!record) return;
+    const now = new Date().toISOString();
+    record.current_state = newState;
+    record.transition_reason = reason;
+    record.state_history.push({ state: newState, timestamp: now, reason });
+    if (metadata) {
+      record.metadata = { ...(record.metadata || {}), ...metadata };
+    }
+  }
+
+  getRecord(candidateId: string): CandidateLifecycleRecord | undefined {
+    return this.records.get(candidateId);
+  }
+
+  getAllRecords(): CandidateLifecycleRecord[] {
+    return Array.from(this.records.values());
+  }
+
+  getMetrics() {
+    const all = this.getAllRecords();
+    return {
+      discovered_candidates_count: all.length,
+      selected_for_retrieval_count: all.filter(r => r.state_history.some(h => h.state === 'SELECTED_FOR_RETRIEVAL')).length,
+      retrieval_attempt_count: all.filter(r => r.state_history.some(h => h.state === 'RETRIEVAL_ATTEMPTED')).length,
+      retrieval_success_count: all.filter(r => r.state_history.some(h => h.state === 'RETRIEVAL_SUCCEEDED')).length,
+      retrieval_failure_count: all.filter(r => r.state_history.some(h => h.state === 'RETRIEVAL_HTTP_FAILED')).length,
+      authentic_source_count: all.filter(r => r.state_history.some(h => h.state === 'AUTHENTIC' || h.state === 'ADMISSIBLE')).length,
+      content_extraction_failure_count: all.filter(r => r.state_history.some(h => h.state === 'CONTENT_EXTRACTION_FAILED')).length,
+      paywall_count: all.filter(r => r.transition_reason.includes('PAYWALL') || r.state_history.some(h => h.reason.includes('PAYWALL'))).length,
+      unsupported_content_type_count: all.filter(r => r.state_history.some(h => h.state === 'RETRIEVAL_UNSUPPORTED_CONTENT')).length,
+      rejected_pre_retrieval_count: all.filter(r => r.current_state === 'REJECTED_PRE_RETRIEVAL').length
+    };
+  }
+}
+
 export type SourceOrigin =
   | 'LIVE_RETRIEVAL'
   | 'VERIFIED_CACHED_SNAPSHOT'
@@ -125,6 +278,7 @@ export interface ExtractedPassage {
 export interface DiscoveryOptions {
   fetchFn?: typeof globalThis.fetch;
   timeoutMs?: number;
+  executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
 }
 
 /**
@@ -337,7 +491,7 @@ export async function fetchWikipediaPageContent(
   const fetchFn = options.fetchFn || globalThis.fetch;
   const timeoutMs = options.timeoutMs || 15000;
 
-  const url = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=true&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+  const url = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=true&redirects=1&titles=${encodeURIComponent(title)}&format=json&origin=*`;
 
   try {
     const controller = new AbortController();
@@ -373,6 +527,11 @@ export async function fetchWikipediaPageContent(
     }
   } catch {
     // network or timeout error; continue to fallback check below
+  }
+
+  // In REAL_RUNTIME_EXECUTION, live failure must NOT silently fall back to TEST_FIXTURE (Section 6)
+  if (options.executionType === 'REAL_RUNTIME_EXECUTION') {
+    return null;
   }
 
   // Fallback snapshot for offline and reproducible execution (Milestone 3B Requirement 10 & 12)
@@ -866,7 +1025,7 @@ export interface HttpDocumentRetrievalResult {
   raw_content_hash: string;
   clean_text?: string;
   source_origin: SourceOrigin;
-  retrieval_status: SourceRetrievalStatus;
+  retrieval_status: SourceRetrievalStatus | 'CONTENT_TYPE_NOT_SUPPORTED' | 'PAYWALL_OR_LOGIN_PAGE' | 'CONTENT_TOO_THIN' | 'CONTENT_EXTRACTION_EMPTY';
   is_blocked: boolean;
   blocked_reason?: string;
 }
@@ -927,7 +1086,7 @@ export async function fetchHttpDocument(
         retrieved_at,
         raw_content_hash: '',
         source_origin: 'LIVE_RETRIEVAL',
-        retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+        retrieval_status: 'CONTENT_TYPE_NOT_SUPPORTED',
         is_blocked: true,
         blocked_reason: 'CONTENT_TYPE_NOT_SUPPORTED: application/pdf'
       };
@@ -942,7 +1101,7 @@ export async function fetchHttpDocument(
         retrieved_at,
         raw_content_hash: '',
         source_origin: 'LIVE_RETRIEVAL',
-        retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+        retrieval_status: 'CONTENT_TYPE_NOT_SUPPORTED',
         is_blocked: true,
         blocked_reason: `CONTENT_TYPE_NOT_SUPPORTED: ${contentType}`
       };
@@ -956,6 +1115,74 @@ export async function fetchHttpDocument(
       cleanText = sanitizeHtmlToPlainText(rawBody);
     }
 
+    const trimmedText = cleanText.trim();
+    if (!trimmedText) {
+      return {
+        requested_url,
+        resolved_url,
+        http_status,
+        content_type: contentType,
+        retrieved_at,
+        raw_content_hash,
+        clean_text: '',
+        source_origin: 'LIVE_RETRIEVAL',
+        retrieval_status: 'CONTENT_EXTRACTION_EMPTY',
+        is_blocked: true,
+        blocked_reason: 'CONTENT_EXTRACTION_EMPTY'
+      };
+    }
+
+    const lowerCombined = (rawBody + ' ' + trimmedText).toLowerCase();
+    const isPaywallOrLogin = /\b(?:sign in to access|log in to your account|subscribe to continue reading|purchase this article|institutional login required|access restricted|subscription required|access to this page has been denied)\b/i.test(lowerCombined);
+    if (isPaywallOrLogin) {
+      return {
+        requested_url,
+        resolved_url,
+        http_status,
+        content_type: contentType,
+        retrieved_at,
+        raw_content_hash,
+        clean_text: trimmedText,
+        source_origin: 'LIVE_RETRIEVAL',
+        retrieval_status: 'PAYWALL_OR_LOGIN_PAGE',
+        is_blocked: true,
+        blocked_reason: 'PAYWALL_OR_LOGIN_PAGE'
+      };
+    }
+
+    const isJsRequired = /\b(?:enable javascript to run this app|javascript is required|please enable javascript to view this page)\b/i.test(lowerCombined);
+    if (isJsRequired && trimmedText.length < 250) {
+      return {
+        requested_url,
+        resolved_url,
+        http_status,
+        content_type: contentType,
+        retrieved_at,
+        raw_content_hash,
+        clean_text: trimmedText,
+        source_origin: 'LIVE_RETRIEVAL',
+        retrieval_status: 'CONTENT_EXTRACTION_EMPTY',
+        is_blocked: true,
+        blocked_reason: 'CONTENT_EXTRACTION_EMPTY'
+      };
+    }
+
+    if (trimmedText.length < 150) {
+      return {
+        requested_url,
+        resolved_url,
+        http_status,
+        content_type: contentType,
+        retrieved_at,
+        raw_content_hash,
+        clean_text: trimmedText,
+        source_origin: 'LIVE_RETRIEVAL',
+        retrieval_status: 'CONTENT_TOO_THIN',
+        is_blocked: true,
+        blocked_reason: 'CONTENT_TOO_THIN'
+      };
+    }
+
     return {
       requested_url,
       resolved_url,
@@ -963,7 +1190,7 @@ export async function fetchHttpDocument(
       content_type: contentType,
       retrieved_at,
       raw_content_hash,
-      clean_text: cleanText.trim(),
+      clean_text: trimmedText,
       source_origin: 'LIVE_RETRIEVAL',
       retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
       is_blocked: false
@@ -1004,10 +1231,16 @@ export function establishSourceIdentity(resolvedUrl: string, candidatePublisher?
     hostname = resolvedUrl.toLowerCase();
   }
 
-  // Institutional Government
-  if (hostname.endsWith('.gov') || hostname.endsWith('.mil') || hostname.includes('lbl.gov') || hostname.includes('energy.gov') || hostname.includes('epa.gov') || hostname.includes('ornl.gov') || hostname.includes('nist.gov')) {
+  // Institutional Government & Research Institutes
+  if (
+    hostname.endsWith('.gov') || hostname.endsWith('.mil') || hostname.endsWith('.go.id') ||
+    hostname.endsWith('.edu') || hostname.endsWith('.ac.id') ||
+    hostname.includes('lbl.gov') || hostname.includes('energy.gov') || hostname.includes('epa.gov') ||
+    hostname.includes('ornl.gov') || hostname.includes('nist.gov') || hostname.includes('pupr.go.id') ||
+    hostname.includes('brin.go.id')
+  ) {
     return {
-      publisher: candidatePublisher || (hostname.includes('lbl.gov') ? 'Lawrence Berkeley National Laboratory (LBNL)' : hostname.includes('epa.gov') ? 'U.S. EPA' : hostname.includes('energy.gov') ? 'U.S. Department of Energy' : 'Government Institution'),
+      publisher: candidatePublisher || (hostname.includes('lbl.gov') ? 'Lawrence Berkeley National Laboratory (LBNL)' : hostname.includes('epa.gov') ? 'U.S. EPA' : hostname.includes('energy.gov') ? 'U.S. Department of Energy' : 'Government/Academic Institution'),
       source_classification: 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
       authority_level: 'INSTITUTIONAL_OFFICIAL',
       primary_vs_secondary: 'SECONDARY',

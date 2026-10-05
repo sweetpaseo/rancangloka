@@ -47,13 +47,19 @@ import {
   calculateSourceDiversity,
   extractPassagesFromText,
   extractDynamicPassagesFromText,
+  scoreAndRankCandidates,
+  estimateCandidateSourceClass,
+  isPreRejectedCandidate,
+  CandidateLifecycleTracker,
   type DiscoveredSourceCandidate,
   type RetrievedDocument,
   type ExtractedPassage,
   type GeneralEvidenceRole,
   type SourceOrigin,
   type CachedSnapshotProvenance,
-  type SourceDiversityMetrics
+  type SourceDiversityMetrics,
+  type CandidateLifecycleRecord,
+  type CandidateLifecycleState
 } from './source-discovery.ts';
 
 import {
@@ -90,6 +96,11 @@ export type IrwanRuntimeEventType =
   | 'RESEARCH_GAP_DIRECTED_PASS_COMPLETED'
   | 'RESEARCH_HUMAN_REVIEW_REQUIRED';
 
+
+export const MAX_RESEARCH_PASSES = 2;
+export const MAX_RETRIEVAL_ATTEMPTS_PER_PASS = 6;
+export const MAX_TOTAL_RETRIEVAL_ATTEMPTS = 12;
+
 export interface IrwanRuntimeEvent {
   event_id: string;
   type: IrwanRuntimeEventType;
@@ -116,6 +127,17 @@ export interface IrwanResearchJobInput {
   };
 }
 
+
+export interface ResearchPassMetrics {
+  pass_number: number;
+  candidates_discovered: number;
+  candidates_selected: number;
+  retrieval_attempts: number;
+  authentic_sources_added: number;
+  admissible_categories_before: string[];
+  admissible_categories_after: string[];
+}
+
 export interface IrwanResearchJobResult {
   jobId: string;
   taskId: string;
@@ -137,6 +159,20 @@ export interface IrwanResearchJobResult {
   retrievedDocuments: RetrievedDocument[];
   blockedSources: { source_id: string; title: string; reason: string; legal_status: string }[];
   traceEvents: IrwanRuntimeEvent[];
+  candidateLifecycleRecords?: CandidateLifecycleRecord[];
+  lifecycleMetrics?: {
+    discovered_candidates_count: number;
+    selected_for_retrieval_count: number;
+    retrieval_attempt_count: number;
+    retrieval_success_count: number;
+    retrieval_failure_count: number;
+    authentic_source_count: number;
+    content_extraction_failure_count: number;
+    paywall_count: number;
+    unsupported_content_type_count: number;
+    rejected_pre_retrieval_count: number;
+  };
+  passMetrics?: ResearchPassMetrics[];
   stats: {
     queriesExecuted: number;
     sourcesDiscovered: number;
@@ -163,6 +199,15 @@ export interface IrwanResearchJobResult {
     concentration_risk?: string;
     raw_research_coverage_ratio?: number;
     admissible_evidence_coverage_ratio?: number;
+    discovered_candidates_count?: number;
+    selected_for_retrieval_count?: number;
+    retrieval_attempt_count?: number;
+    retrieval_success_count?: number;
+    retrieval_failure_count?: number;
+    content_extraction_failure_count?: number;
+    paywall_count?: number;
+    unsupported_content_type_count?: number;
+    rejected_pre_retrieval_count?: number;
   };
   error?: string;
   errorCategory?: string;
@@ -270,11 +315,29 @@ export async function executeGeneralizedResearchJob(
         `${input.topic} building science standard inspection`
       ];
 
-  // 3. Real Source Discovery
-  const crossRefSearch = options.crossRefSearchFn || searchCrossRef;
-  const wikiSearch = options.wikiSearchFn || searchWikipediaTechnical;
-  const wikiContent = options.wikiContentFn || fetchWikipediaPageContent;
+  // Execution environment and engines
+  const isMockedTest = Boolean(options.wikiContentFn || options.crossRefSearchFn);
+  const isTestExecution = isMockedTest ||
+    Boolean(options.dryRun) ||
+    Boolean(input.taskId && input.taskId.toLowerCase().includes('test')) ||
+    Boolean((input as any).runId && String((input as any).runId).toUpperCase().includes('TEST'));
 
+  const executionType: 'REAL_RUNTIME_EXECUTION' | 'TEST' =
+    input.execution_type ||
+    options.executionType ||
+    (isTestExecution ? 'TEST' : 'REAL_RUNTIME_EXECUTION');
+
+  const crossRefSearch = options.crossRefSearchFn || (isTestExecution ? async () => [] : searchCrossRef);
+  const wikiSearch = options.wikiSearchFn || (isTestExecution ? async () => [] : searchWikipediaTechnical);
+  const wikiContent = options.wikiContentFn || fetchWikipediaPageContent;
+  const httpDoc = options.httpDocFn || (options.fetchFn ? fetchHttpDocument : (isTestExecution ? null : fetchHttpDocument));
+
+  // Initialize lifecycle tracker and metrics
+  const lifecycleTracker = new CandidateLifecycleTracker();
+  const passMetrics: ResearchPassMetrics[] = [];
+  let totalRetrievalAttempts = 0;
+
+  // 3. Real Source Discovery (Pass 1)
   const discoveredCandidates: DiscoveredSourceCandidate[] = [];
 
   for (const q of queries) {
@@ -286,6 +349,11 @@ export async function executeGeneralizedResearchJob(
     for (const c of [...crResults, ...wikiResults]) {
       if (!discoveredCandidates.some(d => d.title.toLowerCase() === c.title.toLowerCase())) {
         discoveredCandidates.push(c);
+        lifecycleTracker.registerCandidate(c, 'Pass 1 initial discovery search query');
+        const pre = isPreRejectedCandidate(c);
+        if (pre.rejected) {
+          lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', pre.reason || 'Pre-retrieval policy rejection');
+        }
         addTraceEvent(
           'SOURCE_DISCOVERED',
           `Sumber ditemukan via [${c.discovery_engine}]: "${c.title}" (${c.publisher || 'Unknown'}).`,
@@ -295,10 +363,7 @@ export async function executeGeneralizedResearchJob(
     }
   }
 
-  // 4. Source Retrieval by domain
-  const retrievedDocs: RetrievedDocument[] = [];
-  const blockedSourcesList: { source_id: string; title: string; reason: string; legal_status: string }[] = [];
-
+  // Backward-compatible registry candidates for tests supplying specific doc mocks
   let openDocId = 'SRC-OPEN-EPA-MOISTURE';
   let wikiTitle = 'Damp (structural)';
   let wikiSourceId = 'SRC-OPEN-WIKI-DAMP';
@@ -317,158 +382,383 @@ export async function executeGeneralizedResearchJob(
     wikiSourceId = 'SRC-OPEN-WIKI-DAMP';
   }
 
-  const isMockedTest = Boolean(options.wikiContentFn || options.crossRefSearchFn);
-  const isTestExecution = isMockedTest ||
-    Boolean(options.dryRun) ||
-    Boolean(input.taskId && input.taskId.toLowerCase().includes('test')) ||
-    Boolean((input as any).runId && String((input as any).runId).toUpperCase().includes('TEST'));
+  if (options.openTechnicalDocFn || isTestExecution) {
+    const openCand: DiscoveredSourceCandidate = {
+      candidate_id: `cand_open_${openDocId}`,
+      query: input.topic,
+      title: `Pedoman Institusional [${openDocId}]`,
+      publisher: 'Institutional Authority',
+      url: `https://open.source/${openDocId}`,
+      discovery_engine: 'LOCAL_CATALOG',
+      discovered_at: new Date().toISOString()
+    };
+    if (!discoveredCandidates.some(c => c.candidate_id === openCand.candidate_id || c.title.toLowerCase() === openCand.title.toLowerCase())) {
+      discoveredCandidates.push(openCand);
+      lifecycleTracker.registerCandidate(openCand, 'Institutional technical registry document');
+    }
+  }
 
-  const executionType: 'REAL_RUNTIME_EXECUTION' | 'TEST' =
-    input.execution_type ||
-    options.executionType ||
-    (isTestExecution ? 'TEST' : 'REAL_RUNTIME_EXECUTION');
-
-  // A. Retrieve Wikipedia
-  addTraceEvent('SOURCE_RETRIEVAL_STARTED', `Irwan memulai pengambilan teks sumber sekunder Wikipedia untuk "${wikiTitle}".`);
-  const wikiArticle = await wikiContent(wikiTitle, { fetchFn: options.fetchFn });
-  if (wikiArticle && wikiArticle.text) {
-    const passages = extractDynamicPassagesFromText(wikiSourceId, wikiTitle, wikiArticle.text);
-    retrievedDocs.push({
-      source_id: wikiSourceId,
+  if ((options.wikiContentFn || isTestExecution) && !discoveredCandidates.some(c => c.title.toLowerCase() === wikiTitle.toLowerCase())) {
+    const wikiCand: DiscoveredSourceCandidate = {
+      candidate_id: `cand_wiki_${wikiSourceId}`,
+      query: input.topic,
       title: wikiTitle,
       publisher: 'Wikimedia Foundation',
       url: `https://en.wikipedia.org/wiki/${encodeURIComponent(wikiTitle.replace(/\s+/g, '_'))}`,
-      canonical_url: `https://en.wikipedia.org/wiki/${encodeURIComponent(wikiTitle.replace(/\s+/g, '_'))}`,
-      source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
-      authority_level: 'SECONDARY_ENCYCLOPEDIC',
-      primary_vs_secondary: 'SECONDARY',
-      retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
-      retrieval_method: 'OPEN_API_FULL_TEXT_INSPECTION',
-      retrieved_at: new Date().toISOString(),
-      content_hash: wikiArticle.hash,
-      content_text: wikiArticle.text,
-      content_length_bytes: Buffer.byteLength(wikiArticle.text, 'utf8'),
-      read_status: 'READ_AND_EXTRACTED',
-      extracted_passages: passages,
-      applicability: 'UNIVERSAL_PHYSICS',
-      source_origin: wikiArticle.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'LIVE_RETRIEVAL'),
-      requested_url: wikiArticle.requested_url,
-      resolved_url: wikiArticle.resolved_url,
-      limitations: `Sumber sekunder ensiklopedis: merangkum prinsip fisik dan sains bangunan untuk ${wikiTitle}.`,
-      is_blocked: false
-    });
-
-    addTraceEvent('SOURCE_RETRIEVED', `Dokumen ensiklopedis "${wikiTitle}" (Wikimedia Foundation) berhasil diunduh (${Buffer.byteLength(wikiArticle.text, 'utf8')} bytes).`, { source_id: wikiSourceId });
-    addTraceEvent('SOURCE_READ', `Irwan membaca dokumen lengkap dan mengekstrak ${passages.length} bagian bukti fisik penting.`, { source_id: wikiSourceId, count: passages.length });
+      discovery_engine: 'WIKIPEDIA_TECHNICAL_API',
+      discovered_at: new Date().toISOString()
+    };
+    discoveredCandidates.push(wikiCand);
+    lifecycleTracker.registerCandidate(wikiCand, 'Topic default encyclopedic candidate');
   }
 
-  // B. Retrieve Primary Institutional Document
-  const openDocFn = options.openTechnicalDocFn || (isMockedTest ? null : fetchOpenTechnicalDocument);
+  const retrievedDocs: RetrievedDocument[] = [];
+  const blockedSourcesList: { source_id: string; title: string; reason: string; legal_status: string }[] = [];
 
-  if (openDocFn) {
-    addTraceEvent('SOURCE_RETRIEVAL_STARTED', `Irwan memulai pengambilan dokumen institusional resmi [${openDocId}].`);
-    let doc: any = null;
-    try {
-      doc = await openDocFn(openDocId, { fetchFn: options.fetchFn });
-    } catch (err: any) {
-      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Pengambilan dokumen institusional [${openDocId}] gagal: ${err.message || String(err)}.`);
+  // Helper to attempt candidate retrieval through appropriate engine
+  async function attemptCandidateRetrieval(c: DiscoveredSourceCandidate, passNum: number): Promise<RetrievedDocument | null> {
+    if (totalRetrievalAttempts >= MAX_TOTAL_RETRIEVAL_ATTEMPTS) {
+      return null;
+    }
+    totalRetrievalAttempts++;
+    lifecycleTracker.transition(c.candidate_id, 'SELECTED_FOR_RETRIEVAL', `Selected for retrieval in Pass ${passNum}`);
+    lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_ATTEMPTED', `Retrieval attempted via engine ${c.discovery_engine}`);
+    addTraceEvent('SOURCE_RETRIEVAL_STARTED', `Irwan memulai pengambilan dokumen "${c.title}" via [${c.discovery_engine}].`, { candidate_id: c.candidate_id, title: c.title });
+
+    // Branch 1: Open Technical Doc via openDocHandler
+    if (c.candidate_id.startsWith('cand_open_')) {
+      const openDocHandler = options.openTechnicalDocFn || fetchOpenTechnicalDocument;
+      try {
+        const doc = await openDocHandler(openDocId, { fetchFn: options.fetchFn });
+        if (doc && doc.text) {
+          const docOrigin: SourceOrigin = doc.source_origin || ((doc as any).snapshot_provenance ? 'VERIFIED_CACHED_SNAPSHOT' : 'SYNTHETIC_FIXTURE');
+          if (executionType === 'REAL_RUNTIME_EXECUTION' && (docOrigin === 'TEST_FIXTURE' || docOrigin === 'SYNTHETIC_FIXTURE')) {
+            lifecycleTracker.transition(c.candidate_id, 'AUTHENTICITY_FAILED', `FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: ${docOrigin} rejected`);
+            const blockedDoc: RetrievedDocument = {
+              source_id: openDocId,
+              title: doc.title,
+              publisher: doc.publisher,
+              url: doc.url,
+              canonical_url: doc.canonical_url,
+              source_classification: doc.source_classification || 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
+              authority_level: doc.authority_level || 'INSTITUTIONAL_OFFICIAL',
+              primary_vs_secondary: doc.primary_vs_secondary || 'SECONDARY',
+              retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+              retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
+              retrieved_at: new Date().toISOString(),
+              content_hash: doc.hash,
+              content_text: '',
+              content_length_bytes: 0,
+              read_status: 'UNAVAILABLE',
+              extracted_passages: [],
+              applicability: 'UNIVERSAL_PHYSICS',
+              source_origin: docOrigin,
+              requested_url: doc.requested_url || doc.url,
+              resolved_url: doc.resolved_url || doc.canonical_url,
+              limitations: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: Fixture tidak diizinkan sebagai sumber bukti pada eksekusi produksi nyata.',
+              is_blocked: true,
+              blocked_reason: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME'
+            };
+            retrievedDocs.push(blockedDoc);
+            addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Dokumen institusional [${openDocId}] ditolak: FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME`, { source_id: openDocId, source_origin: docOrigin });
+            return null;
+          }
+
+          const docPassages = extractDynamicPassagesFromText(openDocId, doc.title, doc.text);
+          lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_SUCCEEDED', `Dokumen institusional berhasil diunduh (${Buffer.byteLength(doc.text, 'utf8')} bytes)`);
+          lifecycleTracker.transition(c.candidate_id, 'PASSAGE_EXTRACTED', `Diekstrak ${docPassages.length} passages bukti terverifikasi`);
+          lifecycleTracker.transition(c.candidate_id, 'AUTHENTIC', `Sumber autentik terverifikasi (${docOrigin})`);
+          lifecycleTracker.transition(c.candidate_id, 'ADMISSIBLE', 'Lolos verifikasi keaslian dan batas fisik');
+
+          const retDoc: RetrievedDocument = {
+            source_id: openDocId,
+            title: doc.title,
+            publisher: doc.publisher,
+            url: doc.url,
+            canonical_url: doc.canonical_url,
+            source_classification: doc.source_classification || 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
+            authority_level: doc.authority_level || 'INSTITUTIONAL_OFFICIAL',
+            primary_vs_secondary: doc.primary_vs_secondary || 'SECONDARY',
+            retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+            retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
+            retrieved_at: new Date().toISOString(),
+            content_hash: doc.hash,
+            content_text: doc.text,
+            content_length_bytes: Buffer.byteLength(doc.text, 'utf8'),
+            read_status: 'READ_AND_EXTRACTED',
+            extracted_passages: docPassages,
+            applicability: 'UNIVERSAL_PHYSICS',
+            source_origin: docOrigin,
+            requested_url: doc.requested_url || doc.url,
+            resolved_url: doc.resolved_url || doc.canonical_url,
+            snapshot_provenance: (doc as any).snapshot_provenance,
+            limitations: `Pedoman institusional sains bangunan resmi (${doc.publisher}).`,
+            is_blocked: false
+          };
+          retrievedDocs.push(retDoc);
+          addTraceEvent('SOURCE_RETRIEVED', `Dokumen resmi institusional "${doc.title}" (${doc.publisher}) berhasil diunduh.`, { source_id: openDocId });
+          addTraceEvent('SOURCE_READ', `Irwan membaca panduan institusional lengkap dan mengekstrak ${docPassages.length} bagian bukti terverifikasi.`, { source_id: openDocId, count: docPassages.length });
+          return retDoc;
+        } else {
+          lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', 'Dokumen institusional kosong atau tidak ditemukan');
+          return null;
+        }
+      } catch (err: any) {
+        lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', `Pengambilan institusional gagal: ${err.message || String(err)}`);
+        return null;
+      }
     }
 
-    if (doc && doc.text) {
-      const docOrigin: SourceOrigin = doc.source_origin || (doc.snapshot_provenance ? 'VERIFIED_CACHED_SNAPSHOT' : 'SYNTHETIC_FIXTURE');
+    // Branch 2: Wikipedia Technical Article
+    if (c.discovery_engine === 'WIKIPEDIA_TECHNICAL_API' || (c.url && c.url.includes('wikipedia.org'))) {
+      const wikiArticle = await wikiContent(c.title, { fetchFn: options.fetchFn, executionType });
+      if (!wikiArticle || !wikiArticle.text || !wikiArticle.text.trim()) {
+        lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', 'Wikipedia API retrieval returned null or empty text');
+        addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Pengambilan Wikipedia "${c.title}" gagal atau kosong.`);
+        return null;
+      }
 
-      // Real Runtime Authenticity Rule & No Silent Fixture Fallback
-      if (executionType === 'REAL_RUNTIME_EXECUTION' && (docOrigin === 'TEST_FIXTURE' || docOrigin === 'SYNTHETIC_FIXTURE')) {
+      const cleanText = wikiArticle.text.trim();
+      const wikiSrcId = `SRC-OPEN-WIKI-${c.title.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}`;
+      const passages = extractDynamicPassagesFromText(wikiSrcId, c.title, cleanText);
+
+      if (passages.length === 0) {
+        lifecycleTracker.transition(c.candidate_id, 'CONTENT_EXTRACTION_FAILED', 'CONTENT_TOO_THIN: Tidak ada passage valid yang diekstrak dari artikel Wikipedia');
+        return null;
+      }
+
+      lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_SUCCEEDED', `Wikipedia page retrieved (${Buffer.byteLength(cleanText, 'utf8')} bytes)`);
+      lifecycleTracker.transition(c.candidate_id, 'PASSAGE_EXTRACTED', `Diekstrak ${passages.length} passage bukti penting`);
+
+      const origin: SourceOrigin = wikiArticle.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'LIVE_RETRIEVAL');
+      const isAuthentic = origin === 'LIVE_RETRIEVAL' || origin === 'VERIFIED_CACHED_SNAPSHOT';
+
+      if (executionType === 'REAL_RUNTIME_EXECUTION' && !isAuthentic) {
+        lifecycleTracker.transition(c.candidate_id, 'AUTHENTICITY_FAILED', `FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: ${origin} tidak diizinkan pada eksekusi produksi nyata`);
         retrievedDocs.push({
-          source_id: openDocId,
-          title: doc.title,
-          publisher: doc.publisher,
-          url: doc.url,
-          canonical_url: doc.canonical_url,
-          source_classification: doc.source_classification || 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
-          authority_level: doc.authority_level || 'INSTITUTIONAL_OFFICIAL',
-          primary_vs_secondary: doc.primary_vs_secondary || 'SECONDARY',
+          source_id: wikiSrcId,
+          title: c.title,
+          publisher: 'Wikimedia Foundation',
+          url: c.url || `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/\s+/g, '_'))}`,
+          canonical_url: c.url || `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/\s+/g, '_'))}`,
+          source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
+          authority_level: 'SECONDARY_ENCYCLOPEDIC',
+          primary_vs_secondary: 'SECONDARY',
           retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
-          retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
+          retrieval_method: 'OPEN_API_FULL_TEXT_INSPECTION',
           retrieved_at: new Date().toISOString(),
-          content_hash: doc.hash,
+          content_hash: wikiArticle.hash,
           content_text: '',
           content_length_bytes: 0,
           read_status: 'UNAVAILABLE',
           extracted_passages: [],
           applicability: 'UNIVERSAL_PHYSICS',
-          source_origin: docOrigin,
-          requested_url: doc.requested_url || doc.url,
-          resolved_url: doc.resolved_url || doc.canonical_url,
-          limitations: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: Fixture tidak diizinkan sebagai sumber bukti pada eksekusi produksi nyata.',
+          source_origin: origin,
+          requested_url: wikiArticle.requested_url,
+          resolved_url: wikiArticle.resolved_url,
+          limitations: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: Fixture tidak diizinkan di eksekusi riil.',
           is_blocked: true,
           blocked_reason: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME'
         });
-
-        addTraceEvent(
-          'SOURCE_RETRIEVAL_BLOCKED',
-          `Dokumen institusional [${openDocId}] ditolak: FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME (${docOrigin} tidak diizinkan di eksekusi produksi riil).`,
-          { source_id: openDocId, source_origin: docOrigin }
-        );
-      } else {
-        const docPassages = extractDynamicPassagesFromText(openDocId, doc.title, doc.text);
-        retrievedDocs.push({
-          source_id: openDocId,
-          title: doc.title,
-          publisher: doc.publisher,
-          url: doc.url,
-          canonical_url: doc.canonical_url,
-          source_classification: doc.source_classification || 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
-          authority_level: doc.authority_level || 'INSTITUTIONAL_OFFICIAL',
-          primary_vs_secondary: doc.primary_vs_secondary || 'SECONDARY',
-          retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
-          retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
-          retrieved_at: new Date().toISOString(),
-          content_hash: doc.hash,
-          content_text: doc.text,
-          content_length_bytes: Buffer.byteLength(doc.text, 'utf8'),
-          read_status: 'READ_AND_EXTRACTED',
-          extracted_passages: docPassages,
-          applicability: 'UNIVERSAL_PHYSICS',
-          source_origin: docOrigin,
-          requested_url: doc.requested_url || doc.url,
-          resolved_url: doc.resolved_url || doc.canonical_url,
-          snapshot_provenance: doc.snapshot_provenance,
-          limitations: `Pedoman institusional sains bangunan resmi (${doc.publisher}).`,
-          is_blocked: false
-        });
-
-        addTraceEvent('SOURCE_RETRIEVED', `Dokumen resmi institusional "${doc.title}" (${doc.publisher}) berhasil diunduh.`, { source_id: openDocId });
-        addTraceEvent('SOURCE_READ', `Irwan membaca panduan institusional lengkap dan mengekstrak ${docPassages.length} bagian bukti terverifikasi.`, { source_id: openDocId, count: docPassages.length });
+        addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Dokumen ensiklopedis "${c.title}" ditolak: FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME (${origin}).`);
+        return null;
       }
-    } else {
-      retrievedDocs.push({
-        source_id: openDocId,
-        title: `Dokumen Resmi Institusional [${openDocId}]`,
-        publisher: 'Institutional Authority',
-        url: null,
-        source_classification: 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
-        authority_level: 'INSTITUTIONAL_OFFICIAL',
+
+      lifecycleTracker.transition(c.candidate_id, 'AUTHENTIC', `Sumber autentik terverifikasi (${origin})`);
+      lifecycleTracker.transition(c.candidate_id, 'ADMISSIBLE', 'Lolos semua verifikasi keaslian dan batas fisik');
+
+      const retDoc: RetrievedDocument = {
+        source_id: wikiSrcId,
+        title: c.title,
+        publisher: 'Wikimedia Foundation',
+        url: c.url || `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/\s+/g, '_'))}`,
+        canonical_url: c.url || `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/\s+/g, '_'))}`,
+        source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
+        authority_level: 'SECONDARY_ENCYCLOPEDIC',
         primary_vs_secondary: 'SECONDARY',
-        retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
-        retrieval_method: 'OPEN_INSTITUTIONAL_REPOSITORY_INSPECTION',
+        retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+        retrieval_method: 'OPEN_API_FULL_TEXT_INSPECTION',
         retrieved_at: new Date().toISOString(),
-        content_hash: null,
-        content_text: null,
+        content_hash: wikiArticle.hash,
+        content_text: cleanText,
+        content_length_bytes: Buffer.byteLength(cleanText, 'utf8'),
+        read_status: 'READ_AND_EXTRACTED',
+        extracted_passages: passages,
+        applicability: 'UNIVERSAL_PHYSICS',
+        source_origin: origin,
+        requested_url: wikiArticle.requested_url,
+        resolved_url: wikiArticle.resolved_url,
+        limitations: `Sumber sekunder ensiklopedis: merangkum prinsip fisik untuk ${c.title}.`,
+        is_blocked: false
+      };
+      retrievedDocs.push(retDoc);
+      addTraceEvent('SOURCE_RETRIEVED', `Dokumen ensiklopedis "${c.title}" berhasil diunduh (${Buffer.byteLength(cleanText, 'utf8')} bytes).`, { source_id: wikiSrcId });
+      addTraceEvent('SOURCE_READ', `Irwan membaca dokumen lengkap dan mengekstrak ${passages.length} bagian bukti fisik penting.`, { source_id: wikiSrcId, count: passages.length });
+      return retDoc;
+    }
+
+    // Branch 3: Generic HTTP / DOI Document
+    const targetUrl = c.url || (c.doi ? (c.doi.startsWith('http') ? c.doi : `https://doi.org/${c.doi}`) : null);
+    if (!targetUrl) {
+      lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', 'Candidate has no valid URL or DOI');
+      return null;
+    }
+
+    if (!httpDoc) {
+      lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', 'No HTTP document retriever configured');
+      return null;
+    }
+
+    let httpResult: any = null;
+    try {
+      httpResult = await httpDoc(targetUrl, { fetchFn: options.fetchFn, executionType });
+    } catch (err: any) {
+      lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', `HTTP fetch threw error: ${err.message || String(err)}`);
+      return null;
+    }
+
+    if (!httpResult) {
+      lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', 'HTTP retrieval returned null/empty');
+      return null;
+    }
+
+    if (httpResult.retrieval_status === 'PAYWALL_OR_LOGIN_PAGE') {
+      lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', 'PAYWALL_OR_LOGIN_PAGE: Destination paywalled or requires login', { http_status: httpResult.http_status });
+      blockedSourcesList.push({
+        source_id: `SRC-PAYWALL-${c.candidate_id}`,
+        title: c.title,
+        reason: 'PAYWALL_OR_LOGIN_PAGE: Konten di balik paywall penerbit komersial atau portal login.',
+        legal_status: 'COMMERCIAL_PAYWALL_REQUIRED'
+      });
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Pengambilan "${c.title}" terhalang paywall/login: PAYWALL_OR_LOGIN_PAGE.`);
+      return null;
+    }
+
+    if (httpResult.retrieval_status === 'CONTENT_TYPE_NOT_SUPPORTED') {
+      lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_UNSUPPORTED_CONTENT', `CONTENT_TYPE_NOT_SUPPORTED: MIME ${httpResult.content_type || 'application/pdf'}`);
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Format konten tidak didukung untuk "${c.title}": CONTENT_TYPE_NOT_SUPPORTED.`);
+      return null;
+    }
+
+    if (httpResult.retrieval_status === 'CONTENT_TOO_THIN') {
+      lifecycleTracker.transition(c.candidate_id, 'CONTENT_EXTRACTION_FAILED', 'CONTENT_TOO_THIN: HTML text below minimum threshold (100 chars)');
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Teks hasil ekstraksi terlalu tipis untuk "${c.title}": CONTENT_TOO_THIN.`);
+      return null;
+    }
+
+    if (httpResult.retrieval_status === 'CONTENT_EXTRACTION_EMPTY' || !httpResult.clean_text || !httpResult.clean_text.trim()) {
+      lifecycleTracker.transition(c.candidate_id, 'CONTENT_EXTRACTION_FAILED', 'CONTENT_EXTRACTION_EMPTY: No readable text extracted from HTML');
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Tidak ada teks yang dapat diekstrak untuk "${c.title}": CONTENT_EXTRACTION_EMPTY.`);
+      return null;
+    }
+
+    if (httpResult.retrieval_status !== 'SOURCE_RETRIEVED_AND_VERIFIED') {
+      lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', `HTTP retrieval status: ${httpResult.retrieval_status}`);
+      return null;
+    }
+
+    const cleanText = httpResult.clean_text.trim();
+    const resolvedUrl = httpResult.resolved_url || targetUrl;
+    const identity = establishSourceIdentity(resolvedUrl, c.publisher);
+    const srcId = `SRC-HTTP-${c.candidate_id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const passages = extractDynamicPassagesFromText(srcId, c.title, cleanText);
+
+    if (passages.length === 0) {
+      lifecycleTracker.transition(c.candidate_id, 'CONTENT_EXTRACTION_FAILED', 'CONTENT_TOO_THIN: No valid building science passages extracted');
+      return null;
+    }
+
+    lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_SUCCEEDED', `HTTP document retrieved from ${resolvedUrl} (${Buffer.byteLength(cleanText, 'utf8')} bytes)`);
+    lifecycleTracker.transition(c.candidate_id, 'PASSAGE_EXTRACTED', `Diekstrak ${passages.length} bagian bukti terverifikasi`);
+
+    const origin: SourceOrigin = httpResult.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'LIVE_RETRIEVAL');
+    const isAuthentic = origin === 'LIVE_RETRIEVAL' || origin === 'VERIFIED_CACHED_SNAPSHOT';
+
+    if (executionType === 'REAL_RUNTIME_EXECUTION' && !isAuthentic) {
+      lifecycleTracker.transition(c.candidate_id, 'AUTHENTICITY_FAILED', `FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: ${origin} tidak diizinkan pada eksekusi produksi nyata`);
+      retrievedDocs.push({
+        source_id: srcId,
+        title: c.title,
+        publisher: identity.publisher,
+        url: targetUrl,
+        canonical_url: resolvedUrl,
+        source_classification: identity.source_classification,
+        authority_level: identity.authority_level,
+        primary_vs_secondary: identity.primary_vs_secondary,
+        retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+        retrieval_method: 'GENERIC_HTTP_DOCUMENT_INSPECTION',
+        retrieved_at: httpResult.retrieved_at,
+        content_hash: httpResult.raw_content_hash,
+        content_text: '',
         content_length_bytes: 0,
         read_status: 'UNAVAILABLE',
         extracted_passages: [],
-        applicability: 'UNIVERSAL_PHYSICS',
-        source_origin: 'SYNTHETIC_FIXTURE',
-        limitations: 'SOURCE_RETRIEVAL_FAILED: Pengambilan dokumen institusional resmi gagal atau dokumen tidak ditemukan.',
+        applicability: identity.applicability,
+        source_origin: origin,
+        requested_url: httpResult.requested_url || targetUrl,
+        resolved_url: resolvedUrl,
+        limitations: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME: Fixture tidak diizinkan di eksekusi riil.',
         is_blocked: true,
-        blocked_reason: 'SOURCE_RETRIEVAL_FAILED'
+        blocked_reason: 'FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME'
       });
-      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Pengambilan dokumen institusional [${openDocId}] gagal: SOURCE_RETRIEVAL_FAILED.`);
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Dokumen web "${c.title}" ditolak: FIXTURE_SOURCE_NOT_ALLOWED_IN_REAL_RUNTIME (${origin}).`);
+      return null;
     }
+
+    lifecycleTracker.transition(c.candidate_id, 'AUTHENTIC', `Sumber autentik terverifikasi (${origin})`);
+    lifecycleTracker.transition(c.candidate_id, 'ADMISSIBLE', 'Lolos semua verifikasi keaslian dan batas fisik');
+
+    const retDoc: RetrievedDocument = {
+      source_id: srcId,
+      title: c.title,
+      publisher: identity.publisher,
+      url: targetUrl,
+      canonical_url: resolvedUrl,
+      source_classification: identity.source_classification,
+      authority_level: identity.authority_level,
+      primary_vs_secondary: identity.primary_vs_secondary,
+      retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+      retrieval_method: 'GENERIC_HTTP_DOCUMENT_INSPECTION',
+      retrieved_at: httpResult.retrieved_at,
+      content_hash: httpResult.raw_content_hash,
+      content_text: cleanText,
+      content_length_bytes: Buffer.byteLength(cleanText, 'utf8'),
+      read_status: 'READ_AND_EXTRACTED',
+      extracted_passages: passages,
+      applicability: identity.applicability,
+      source_origin: origin,
+      requested_url: httpResult.requested_url || targetUrl,
+      resolved_url: resolvedUrl,
+      http_status: httpResult.http_status,
+      limitations: `Dokumen web terverifikasi: ${c.title} (${identity.publisher}).`,
+      is_blocked: false
+    };
+    retrievedDocs.push(retDoc);
+    addTraceEvent('SOURCE_RETRIEVED', `Dokumen web "${c.title}" (${identity.publisher}) berhasil diunduh via HTTP.`, { source_id: srcId });
+    addTraceEvent('SOURCE_READ', `Irwan membaca dokumen web lengkap dan mengekstrak ${passages.length} bagian bukti terverifikasi.`, { source_id: srcId, count: passages.length });
+    return retDoc;
   }
 
-  // C. Record Blocked Standards
+  // Pass 1 Retrieval Loop
+  const rankedPass1 = scoreAndRankCandidates(discoveredCandidates, input.topic);
+  const eligiblePass1 = rankedPass1.filter(r =>
+    !r.isPreRejected &&
+    !retrievedDocs.some(d => (d.url && r.candidate.url && d.url === r.candidate.url) || d.title.toLowerCase() === r.candidate.title.toLowerCase())
+  );
+  const pass1Selected = eligiblePass1.slice(0, MAX_RETRIEVAL_ATTEMPTS_PER_PASS);
+
+  let pass1Attempts = 0;
+  let pass1AuthenticAdded = 0;
+
+  for (const sel of pass1Selected) {
+    pass1Attempts++;
+    const authBefore = retrievedDocs.filter(d => !d.is_blocked && (d.source_origin === 'LIVE_RETRIEVAL' || d.source_origin === 'VERIFIED_CACHED_SNAPSHOT')).length;
+    await attemptCandidateRetrieval(sel.candidate, 1);
+    const authAfter = retrievedDocs.filter(d => !d.is_blocked && (d.source_origin === 'LIVE_RETRIEVAL' || d.source_origin === 'VERIFIED_CACHED_SNAPSHOT')).length;
+    if (authAfter > authBefore) pass1AuthenticAdded++;
+  }
+
+  // Record Blocked Standards
   const domainBarriers = domain === 'MOISTURE_WALL_REMEDIATION'
     ? [
         {
@@ -640,22 +930,32 @@ export async function executeGeneralizedResearchJob(
   };
   const intermediateCoverage = validateResearchQuestionCoverage(researchQuestions, intermediatePack, { executionType });
 
-  // 5. Gap-Directed Research Loop (Milestone: RESEARCH-SOURCE-COVERAGE-1, Section 9)
-  const MAX_RESEARCH_PASSES = 2;
+  passMetrics.push({
+    pass_number: 1,
+    candidates_discovered: discoveredCandidates.length,
+    candidates_selected: pass1Selected.length,
+    retrieval_attempts: pass1Attempts,
+    authentic_sources_added: pass1AuthenticAdded,
+    admissible_categories_before: [],
+    admissible_categories_after: intermediateCoverage.covered_categories
+  });
+
+  // 5. Gap-Directed Research Loop (Pass 2)
   let currentPass = 1;
 
-  if (!intermediateCoverage.covered && currentPass < MAX_RESEARCH_PASSES) {
-    currentPass++;
+  if (!intermediateCoverage.covered && currentPass < MAX_RESEARCH_PASSES && totalRetrievalAttempts < MAX_TOTAL_RETRIEVAL_ATTEMPTS) {
+    currentPass = 2;
     const missingCategories = intermediateCoverage.missing_categories;
     addTraceEvent(
       'RESEARCH_GAP_DIRECTED_PASS_STARTED',
-      `Irwan memulai putaran riset terarah kedua (Pass ${currentPass}/${MAX_RESEARCH_PASSES}) untuk melengkapi kategori belum terpenuhi: [${missingCategories.join(', ')}].`,
+      `Irwan memulai putaran riset terarah kedua (Pass 2/${MAX_RESEARCH_PASSES}) untuk melengkapi kategori belum terpenuhi: [${missingCategories.join(', ')}].`,
       { missingCategories, pass: currentPass }
     );
 
     const gapQueries = generateQuestionSpecificQueries(input.topic, missingCategories, researchQuestions);
     queries.push(...gapQueries);
 
+    let pass2DiscoveredCount = 0;
     for (const gq of gapQueries) {
       const [crResults, wikiResults] = await Promise.all([
         crossRefSearch(gq, { fetchFn: options.fetchFn }),
@@ -665,79 +965,42 @@ export async function executeGeneralizedResearchJob(
       for (const c of [...crResults, ...wikiResults]) {
         if (!discoveredCandidates.some(d => d.title.toLowerCase() === c.title.toLowerCase())) {
           discoveredCandidates.push(c);
+          pass2DiscoveredCount++;
+          lifecycleTracker.registerCandidate(c, `Discovered via gap-directed query: ${gq}`);
+          const pre = isPreRejectedCandidate(c);
+          if (pre.rejected) {
+            lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', pre.reason || 'Pre-retrieval policy rejection');
+          }
           addTraceEvent(
             'SOURCE_DISCOVERED',
             `Sumber putaran 2 ditemukan via [${c.discovery_engine}]: "${c.title}" (${c.publisher || 'Unknown'}).`,
             { title: c.title, publisher: c.publisher, url: c.url, doi: c.doi, gapQuery: gq }
           );
-
-          if (c.discovery_engine === 'WIKIPEDIA_TECHNICAL_API' && !retrievedDocs.some(d => d.title.toLowerCase() === c.title.toLowerCase())) {
-            const article = await wikiContent(c.title, { fetchFn: options.fetchFn });
-            if (article && article.text) {
-              const srcId = `SRC-OPEN-WIKI-${c.title.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}`;
-              const p = extractDynamicPassagesFromText(srcId, c.title, article.text);
-              retrievedDocs.push({
-                source_id: srcId,
-                title: c.title,
-                publisher: 'Wikimedia Foundation',
-                url: c.url || `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/\s+/g, '_'))}`,
-                canonical_url: c.url || `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/\s+/g, '_'))}`,
-                source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
-                authority_level: 'SECONDARY_ENCYCLOPEDIC',
-                primary_vs_secondary: 'SECONDARY',
-                retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
-                retrieval_method: 'OPEN_API_FULL_TEXT_INSPECTION',
-                retrieved_at: new Date().toISOString(),
-                content_hash: article.hash,
-                content_text: article.text,
-                content_length_bytes: Buffer.byteLength(article.text, 'utf8'),
-                read_status: 'READ_AND_EXTRACTED',
-                extracted_passages: p,
-                applicability: 'UNIVERSAL_PHYSICS',
-                source_origin: article.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'LIVE_RETRIEVAL'),
-                requested_url: article.requested_url,
-                resolved_url: article.resolved_url,
-                limitations: `Sumber sekunder ensiklopedis: ${c.title}.`,
-                is_blocked: false
-              });
-              addTraceEvent('SOURCE_RETRIEVED', `Dokumen putaran 2 "${c.title}" berhasil diunduh.`, { source_id: srcId });
-            }
-          } else if (c.url && options.httpDocFn && !retrievedDocs.some(d => d.requested_url === c.url || d.resolved_url === c.url)) {
-            const httpDoc = await options.httpDocFn(c.url, { fetchFn: options.fetchFn });
-            if (httpDoc && httpDoc.clean_text && httpDoc.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED') {
-              const identity = establishSourceIdentity(httpDoc.resolved_url, c.publisher);
-              const srcId = `SRC-HTTP-${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-              const p = extractDynamicPassagesFromText(srcId, c.title, httpDoc.clean_text);
-              retrievedDocs.push({
-                source_id: srcId,
-                title: c.title,
-                publisher: identity.publisher,
-                url: c.url,
-                canonical_url: httpDoc.resolved_url,
-                source_classification: identity.source_classification,
-                authority_level: identity.authority_level,
-                primary_vs_secondary: identity.primary_vs_secondary,
-                retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
-                retrieval_method: 'GENERIC_HTTP_DOCUMENT_INSPECTION',
-                retrieved_at: httpDoc.retrieved_at,
-                content_hash: httpDoc.raw_content_hash,
-                content_text: httpDoc.clean_text,
-                content_length_bytes: Buffer.byteLength(httpDoc.clean_text, 'utf8'),
-                read_status: 'READ_AND_EXTRACTED',
-                extracted_passages: p,
-                applicability: identity.applicability,
-                source_origin: httpDoc.source_origin,
-                requested_url: httpDoc.requested_url,
-                resolved_url: httpDoc.resolved_url,
-                http_status: httpDoc.http_status,
-                limitations: `Dokumen web terverifikasi: ${c.title}.`,
-                is_blocked: false
-              });
-              addTraceEvent('SOURCE_RETRIEVED', `Dokumen web putaran 2 "${c.title}" berhasil diunduh via HTTP.`, { source_id: srcId });
-            }
-          }
         }
       }
+    }
+
+    const pass2Budget = Math.min(
+      MAX_RETRIEVAL_ATTEMPTS_PER_PASS,
+      MAX_TOTAL_RETRIEVAL_ATTEMPTS - totalRetrievalAttempts
+    );
+    const rankedPass2 = scoreAndRankCandidates(discoveredCandidates, input.topic);
+    const eligiblePass2 = rankedPass2.filter(r =>
+      !r.isPreRejected &&
+      !retrievedDocs.some(d => (d.url && r.candidate.url && d.url === r.candidate.url) || d.title.toLowerCase() === r.candidate.title.toLowerCase()) &&
+      lifecycleTracker.getRecord(r.candidate.candidate_id)?.current_state === 'DISCOVERED'
+    );
+    const pass2Selected = eligiblePass2.slice(0, pass2Budget);
+
+    let pass2Attempts = 0;
+    let pass2AuthenticAdded = 0;
+
+    for (const sel of pass2Selected) {
+      pass2Attempts++;
+      const authBefore = retrievedDocs.filter(d => !d.is_blocked && (d.source_origin === 'LIVE_RETRIEVAL' || d.source_origin === 'VERIFIED_CACHED_SNAPSHOT')).length;
+      await attemptCandidateRetrieval(sel.candidate, 2);
+      const authAfter = retrievedDocs.filter(d => !d.is_blocked && (d.source_origin === 'LIVE_RETRIEVAL' || d.source_origin === 'VERIFIED_CACHED_SNAPSHOT')).length;
+      if (authAfter > authBefore) pass2AuthenticAdded++;
     }
 
     // Rebuild evidence state with newly retrieved documents
@@ -746,6 +1009,24 @@ export async function executeGeneralizedResearchJob(
     claimInventory = rebuilt.claimInventory;
     authorSafeClaims = rebuilt.authorSafeClaims;
 
+    const finalPack: EvidencePackInput = {
+      claim_inventory: claimInventory,
+      evidence_passages: allPassages,
+      retrieved_documents: retrievedDocs,
+      execution_type: executionType
+    };
+    const finalCoverage = validateResearchQuestionCoverage(researchQuestions, finalPack, { executionType });
+
+    passMetrics.push({
+      pass_number: 2,
+      candidates_discovered: pass2DiscoveredCount,
+      candidates_selected: pass2Selected.length,
+      retrieval_attempts: pass2Attempts,
+      authentic_sources_added: pass2AuthenticAdded,
+      admissible_categories_before: intermediateCoverage.covered_categories,
+      admissible_categories_after: finalCoverage.covered_categories
+    });
+
     addTraceEvent(
       'RESEARCH_GAP_DIRECTED_PASS_COMPLETED',
       `Putaran riset terarah kedua selesai. Total dokumen: ${retrievedDocs.length}, total klaim: ${claimInventory.length}.`,
@@ -753,7 +1034,7 @@ export async function executeGeneralizedResearchJob(
     );
   }
 
-  // 6. Source Diversity Metrics (Milestone: RESEARCH-SOURCE-COVERAGE-1, Section 11)
+  // 6. Source Diversity Metrics
   const diversityMetrics = calculateSourceDiversity(retrievedDocs, claimInventory);
 
   const verifiedSourceIds = Array.from(new Set(
@@ -769,6 +1050,7 @@ export async function executeGeneralizedResearchJob(
   }, 0);
 
   const authorSafeMetrics = calculateAuthorSafeMetrics(claimInventory, authorSafeClaims);
+  const lifecycleMetrics = lifecycleTracker.getMetrics();
 
   const rawPack: EvidencePackInput = {
     evidence_pack_id: `pack_${taskId}`,
@@ -808,7 +1090,6 @@ export async function executeGeneralizedResearchJob(
 
   rawPack.confidence_overall = calculateOverallConfidence(rawPack);
 
-  // Concentration Risk Policy (Section 11): 1 authentic secondary source only cannot be HIGH confidence
   if (diversityMetrics.authentic_source_count === 1 && rawPack.confidence_overall === 'HIGH') {
     rawPack.confidence_overall = 'MEDIUM';
   }
@@ -870,6 +1151,9 @@ export async function executeGeneralizedResearchJob(
     retrievedDocuments: retrievedDocs,
     blockedSources: blockedSourcesList,
     traceEvents,
+    candidateLifecycleRecords: lifecycleTracker.getAllRecords(),
+    lifecycleMetrics,
+    passMetrics,
     stats: {
       queriesExecuted: queries.length,
       sourcesDiscovered: discoveredCandidates.length,
@@ -895,7 +1179,16 @@ export async function executeGeneralizedResearchJob(
       source_class_count: diversityMetrics.source_class_count,
       concentration_risk: diversityMetrics.concentration_risk,
       raw_research_coverage_ratio: alignmentResult.research_coverage?.raw_research_coverage_ratio ?? 0,
-      admissible_evidence_coverage_ratio: alignmentResult.research_coverage?.admissible_evidence_coverage_ratio ?? 0
+      admissible_evidence_coverage_ratio: alignmentResult.research_coverage?.admissible_evidence_coverage_ratio ?? 0,
+      discovered_candidates_count: lifecycleMetrics.discovered_candidates_count,
+      selected_for_retrieval_count: lifecycleMetrics.selected_for_retrieval_count,
+      retrieval_attempt_count: lifecycleMetrics.retrieval_attempt_count,
+      retrieval_success_count: lifecycleMetrics.retrieval_success_count,
+      retrieval_failure_count: lifecycleMetrics.retrieval_failure_count,
+      content_extraction_failure_count: lifecycleMetrics.content_extraction_failure_count,
+      paywall_count: lifecycleMetrics.paywall_count,
+      unsupported_content_type_count: lifecycleMetrics.unsupported_content_type_count,
+      rejected_pre_retrieval_count: lifecycleMetrics.rejected_pre_retrieval_count
     }
   };
 }
