@@ -39,7 +39,7 @@ export interface TopicAlignmentResult {
   entity_overlap_score: number;
   domain_match: boolean;
   research_coverage?: ResearchCoverageResult;
-  rejection_code?: 'TOPIC_EVIDENCE_ALIGNMENT_FAIL' | 'RESEARCH_COVERAGE_INSUFFICIENT';
+  rejection_code?: 'TOPIC_EVIDENCE_ALIGNMENT_FAIL' | 'RESEARCH_COVERAGE_INSUFFICIENT' | 'ADMISSIBLE_COVERAGE_AUTHORITY_MISMATCH';
   rejection_reason?: string;
 }
 
@@ -164,9 +164,13 @@ export function auditTopicEvidenceAlignment(
 
   // Validate Research Questions coverage
   const questions = options?.researchQuestions || generateEditorialResearchQuestions(topic);
-  const coverageResult = validateResearchQuestionCoverage(questions, evidencePack);
+  const coverageResult = validateResearchQuestionCoverage(questions, evidencePack, {
+    executionType: (evidencePack as any).execution_type || (options as any)?.executionType,
+    minCoverageRatio: options?.minOverlapScore
+  });
 
   if (!coverageResult.covered) {
+    const code = coverageResult.rejection_code || 'RESEARCH_COVERAGE_INSUFFICIENT';
     return {
       aligned: false,
       topic,
@@ -177,7 +181,7 @@ export function auditTopicEvidenceAlignment(
       entity_overlap_score: overlapScore,
       domain_match: true,
       research_coverage: coverageResult,
-      rejection_code: 'RESEARCH_COVERAGE_INSUFFICIENT',
+      rejection_code: code,
       rejection_reason: coverageResult.rejection_reason
     };
   }

@@ -17,7 +17,8 @@ import crypto from 'node:crypto';
 import type {
   SourceRetrievalStatus,
   SourceApplicability,
-  EvidenceSource
+  EvidenceSource,
+  EvidenceClaim
 } from '../article/human-quality.ts';
 
 export interface DiscoveredSourceCandidate {
@@ -812,5 +813,302 @@ export function createCachedSnapshotProvenance(params: {
     original_http_status: params.original_http_status,
     raw_snapshot_hash,
     snapshot_integrity_hash
+  };
+}
+
+/**
+ * Sanitizes raw HTML into readable, plain building science text.
+ * Milestone: RESEARCH-SOURCE-COVERAGE-1 (Section 7)
+ */
+export function sanitizeHtmlToPlainText(html: string): string {
+  let text = html;
+  // Remove script, style, noscript, svg, head
+  text = text.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ');
+  text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ');
+  text = text.replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, ' ');
+  text = text.replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, ' ');
+  text = text.replace(/<head\b[^<]*(?:(?!<\/head>)<[^<]*)*<\/head>/gi, ' ');
+
+  // Headings to Markdown format for passage extractor
+  text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n## $1\n\n');
+  text = text.replace(/<p[^>]*>(.*?)<\/p>/gi, '\n\n$1\n\n');
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '\n- $1');
+
+  // Strip remaining tags
+  text = text.replace(/<[^>]+>/g, ' ');
+
+  // Decode common HTML entities
+  text = text.replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&mdash;/g, '—')
+    .replace(/&ndash;/g, '–');
+
+  // Normalize whitespace
+  text = text.split('\n')
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n\n');
+
+  return text;
+}
+
+export interface HttpDocumentRetrievalResult {
+  requested_url: string;
+  resolved_url: string;
+  http_status: number;
+  content_type: string;
+  retrieved_at: string;
+  raw_content_hash: string;
+  clean_text?: string;
+  source_origin: SourceOrigin;
+  retrieval_status: SourceRetrievalStatus;
+  is_blocked: boolean;
+  blocked_reason?: string;
+}
+
+/**
+ * Controlled generic HTTP document retrieval layer for candidate URLs.
+ * Milestone: RESEARCH-SOURCE-COVERAGE-1 (Section 7)
+ */
+export async function fetchHttpDocument(
+  url: string,
+  options: DiscoveryOptions = {}
+): Promise<HttpDocumentRetrievalResult> {
+  const fetchFn = options.fetchFn || globalThis.fetch;
+  const timeoutMs = options.timeoutMs || 15000;
+  const requested_url = url;
+  const retrieved_at = new Date().toISOString();
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const res = await fetchFn(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'RancangLoka-Research-Runtime/1.0 (mailto:redaksi@rancangloka.com)',
+        'Accept': 'text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.8'
+      },
+      redirect: 'follow'
+    });
+    clearTimeout(timeoutId);
+
+    const resolved_url = res.url || url;
+    const http_status = res.status;
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+
+    if (!res.ok) {
+      return {
+        requested_url,
+        resolved_url,
+        http_status,
+        content_type: contentType,
+        retrieved_at,
+        raw_content_hash: '',
+        source_origin: 'LIVE_RETRIEVAL',
+        retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+        is_blocked: true,
+        blocked_reason: `HTTP_ERROR_${http_status}`
+      };
+    }
+
+    // Check supported content types
+    if (contentType.includes('application/pdf')) {
+      return {
+        requested_url,
+        resolved_url,
+        http_status,
+        content_type: contentType,
+        retrieved_at,
+        raw_content_hash: '',
+        source_origin: 'LIVE_RETRIEVAL',
+        retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+        is_blocked: true,
+        blocked_reason: 'CONTENT_TYPE_NOT_SUPPORTED: application/pdf'
+      };
+    }
+
+    if (!contentType.includes('text/html') && !contentType.includes('text/plain') && !contentType.includes('application/xhtml+xml')) {
+      return {
+        requested_url,
+        resolved_url,
+        http_status,
+        content_type: contentType,
+        retrieved_at,
+        raw_content_hash: '',
+        source_origin: 'LIVE_RETRIEVAL',
+        retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+        is_blocked: true,
+        blocked_reason: `CONTENT_TYPE_NOT_SUPPORTED: ${contentType}`
+      };
+    }
+
+    const rawBody = await res.text();
+    const raw_content_hash = crypto.createHash('sha256').update(rawBody, 'utf8').digest('hex');
+
+    let cleanText = rawBody;
+    if (contentType.includes('html') || contentType.includes('xhtml')) {
+      cleanText = sanitizeHtmlToPlainText(rawBody);
+    }
+
+    return {
+      requested_url,
+      resolved_url,
+      http_status,
+      content_type: contentType,
+      retrieved_at,
+      raw_content_hash,
+      clean_text: cleanText.trim(),
+      source_origin: 'LIVE_RETRIEVAL',
+      retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+      is_blocked: false
+    };
+  } catch (err: any) {
+    return {
+      requested_url,
+      resolved_url: requested_url,
+      http_status: 0,
+      content_type: '',
+      retrieved_at,
+      raw_content_hash: '',
+      source_origin: 'LIVE_RETRIEVAL',
+      retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+      is_blocked: true,
+      blocked_reason: `NETWORK_ERROR: ${err.message || String(err)}`
+    };
+  }
+}
+
+export interface SourceIdentity {
+  publisher: string;
+  source_classification: 'PRIMARY_RESEARCH_DOCUMENT' | 'OFFICIAL_INSTITUTIONAL_GUIDANCE' | 'ENCYCLOPEDIC_SECONDARY_SOURCE' | 'STANDARDS_PUBLICATION' | 'INDUSTRY_REFERENCE';
+  authority_level: 'INSTITUTIONAL_OFFICIAL' | 'INSTITUTIONAL_PEER_REVIEW' | 'SECONDARY_ENCYCLOPEDIC' | 'STANDARDS_BODY' | 'INDUSTRY_REFERENCE';
+  primary_vs_secondary: 'PRIMARY' | 'SECONDARY';
+  applicability: SourceApplicability;
+}
+
+/**
+ * Establishes publisher, classification, and authority level from URL and metadata.
+ * Milestone: RESEARCH-SOURCE-COVERAGE-1 (Section 8)
+ */
+export function establishSourceIdentity(resolvedUrl: string, candidatePublisher?: string): SourceIdentity {
+  let hostname = '';
+  try {
+    hostname = new URL(resolvedUrl).hostname.toLowerCase();
+  } catch {
+    hostname = resolvedUrl.toLowerCase();
+  }
+
+  // Institutional Government
+  if (hostname.endsWith('.gov') || hostname.endsWith('.mil') || hostname.includes('lbl.gov') || hostname.includes('energy.gov') || hostname.includes('epa.gov') || hostname.includes('ornl.gov') || hostname.includes('nist.gov')) {
+    return {
+      publisher: candidatePublisher || (hostname.includes('lbl.gov') ? 'Lawrence Berkeley National Laboratory (LBNL)' : hostname.includes('epa.gov') ? 'U.S. EPA' : hostname.includes('energy.gov') ? 'U.S. Department of Energy' : 'Government Institution'),
+      source_classification: 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
+      authority_level: 'INSTITUTIONAL_OFFICIAL',
+      primary_vs_secondary: 'SECONDARY',
+      applicability: 'UNIVERSAL_PHYSICS'
+    };
+  }
+
+  // Encyclopedic / Wikipedia
+  if (hostname.includes('wikipedia.org') || hostname.includes('wikimedia.org')) {
+    return {
+      publisher: 'Wikimedia Foundation',
+      source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
+      authority_level: 'SECONDARY_ENCYCLOPEDIC',
+      primary_vs_secondary: 'SECONDARY',
+      applicability: 'UNIVERSAL_PHYSICS'
+    };
+  }
+
+  // Academic / Peer-Reviewed
+  if (hostname.includes('doi.org') || hostname.includes('crossref.org') || hostname.includes('sciencedirect.com') || hostname.includes('springer.com') || hostname.includes('wiley.com') || hostname.includes('mdpi.com') || hostname.includes('arxiv.org')) {
+    return {
+      publisher: candidatePublisher || 'Peer-Reviewed Academic Publisher',
+      source_classification: 'PRIMARY_RESEARCH_DOCUMENT',
+      authority_level: 'INSTITUTIONAL_PEER_REVIEW',
+      primary_vs_secondary: 'PRIMARY',
+      applicability: 'UNIVERSAL_PHYSICS'
+    };
+  }
+
+  // Standards Body
+  if (hostname.includes('bsn.go.id') || hostname.includes('astm.org') || hostname.includes('iso.org') || hostname.includes('fgiaonline.org') || hostname.includes('ashrae.org')) {
+    return {
+      publisher: candidatePublisher || 'Standards Body',
+      source_classification: 'STANDARDS_PUBLICATION',
+      authority_level: 'STANDARDS_BODY',
+      primary_vs_secondary: 'PRIMARY',
+      applicability: 'UNIVERSAL_PHYSICS'
+    };
+  }
+
+  // Default Industry / Technical Reference
+  return {
+    publisher: candidatePublisher || hostname || 'Technical Reference Publisher',
+    source_classification: 'INDUSTRY_REFERENCE',
+    authority_level: 'INDUSTRY_REFERENCE',
+    primary_vs_secondary: 'SECONDARY',
+    applicability: 'UNIVERSAL_PHYSICS'
+  };
+}
+
+export interface SourceDiversityMetrics {
+  authentic_source_count: number;
+  independent_source_count: number;
+  source_class_count: number;
+  claim_source_relationship_count: number;
+  concentration_risk: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  unique_publishers: string[];
+  unique_classes: string[];
+}
+
+/**
+ * Computes source diversity metrics, distinguishing distinct authentic sources from claim-source relationships.
+ * Milestone: RESEARCH-SOURCE-COVERAGE-1 (Section 11)
+ */
+export function calculateSourceDiversity(
+  sources: (RetrievedDocument | EvidenceSource)[],
+  claims?: EvidenceClaim[]
+): SourceDiversityMetrics {
+  const authenticSources = sources.filter(s => {
+    const isAuthentic = s.source_origin === 'LIVE_RETRIEVAL' || s.source_origin === 'VERIFIED_CACHED_SNAPSHOT';
+    const isVerified = s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED';
+    const notBlocked = !(s as any).is_blocked;
+    return isAuthentic && isVerified && notBlocked;
+  });
+
+  const uniqueSourceIds = Array.from(new Set(authenticSources.map(s => s.source_id)));
+  const uniquePublishers = Array.from(new Set(authenticSources.map(s => (s as any).publisher || (s as any).publisher_or_author).filter((p): p is string => Boolean(p))));
+  const uniqueClasses = Array.from(new Set(authenticSources.map(s => String(s.source_classification || '')).filter(Boolean)));
+
+  const relCount = claims
+    ? claims.reduce((acc, c) => acc + (c.sources ? c.sources.filter((s: any) => s.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED' && (s.source_origin === 'LIVE_RETRIEVAL' || s.source_origin === 'VERIFIED_CACHED_SNAPSHOT')).length : 0), 0)
+    : uniqueSourceIds.length;
+
+  let concentration_risk: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL' = 'LOW';
+  if (uniqueSourceIds.length === 0) {
+    concentration_risk = 'CRITICAL';
+  } else if (uniqueSourceIds.length === 1) {
+    concentration_risk = 'HIGH';
+  } else if (uniqueClasses.length === 1) {
+    concentration_risk = 'MODERATE';
+  } else {
+    concentration_risk = 'LOW';
+  }
+
+  return {
+    authentic_source_count: uniqueSourceIds.length,
+    independent_source_count: uniquePublishers.length,
+    source_class_count: uniqueClasses.length,
+    claim_source_relationship_count: relCount,
+    concentration_risk,
+    unique_publishers: uniquePublishers,
+    unique_classes: uniqueClasses
   };
 }

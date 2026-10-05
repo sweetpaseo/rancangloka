@@ -42,6 +42,9 @@ import {
   searchWikipediaTechnical,
   fetchWikipediaPageContent,
   fetchOpenTechnicalDocument,
+  fetchHttpDocument,
+  establishSourceIdentity,
+  calculateSourceDiversity,
   extractPassagesFromText,
   extractDynamicPassagesFromText,
   type DiscoveredSourceCandidate,
@@ -49,13 +52,16 @@ import {
   type ExtractedPassage,
   type GeneralEvidenceRole,
   type SourceOrigin,
-  type CachedSnapshotProvenance
+  type CachedSnapshotProvenance,
+  type SourceDiversityMetrics
 } from './source-discovery.ts';
 
 import {
   generateEditorialResearchQuestions,
   validateResearchQuestionCoverage,
-  type EditorialResearchQuestion
+  generateQuestionSpecificQueries,
+  type EditorialResearchQuestion,
+  type ResearchCoverageResult
 } from './research-questions.ts';
 
 import {
@@ -80,6 +86,8 @@ export type IrwanRuntimeEventType =
   | 'CLAIM_CLASSIFIED'
   | 'AUTHOR_SAFE_CLAIM_CREATED'
   | 'EVIDENCE_PACK_CREATED'
+  | 'RESEARCH_GAP_DIRECTED_PASS_STARTED'
+  | 'RESEARCH_GAP_DIRECTED_PASS_COMPLETED'
   | 'RESEARCH_HUMAN_REVIEW_REQUIRED';
 
 export interface IrwanRuntimeEvent {
@@ -149,6 +157,12 @@ export interface IrwanResearchJobResult {
     authorSafeClaimsTotal: number;
     authorSafeClaimsAllowed?: number;
     author_safe_metrics?: any;
+    authentic_source_count?: number;
+    independent_source_count?: number;
+    source_class_count?: number;
+    concentration_risk?: string;
+    raw_research_coverage_ratio?: number;
+    admissible_evidence_coverage_ratio?: number;
   };
   error?: string;
   errorCategory?: string;
@@ -160,6 +174,7 @@ export interface IrwanRuntimeOptions {
   wikiSearchFn?: typeof searchWikipediaTechnical;
   wikiContentFn?: typeof fetchWikipediaPageContent;
   openTechnicalDocFn?: typeof fetchOpenTechnicalDocument;
+  httpDocFn?: typeof fetchHttpDocument;
   executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
   dryRun?: boolean;
 }
@@ -503,115 +518,243 @@ export async function executeGeneralizedResearchJob(
     addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Akses dokumen primer tertahan secara sah: [${b.source_id}] ${b.title}. ${b.reason}`, b);
   }
 
-  // D. Deduplicate and collect all canonical EvidencePassages
-  const passageMap = new Map<string, EvidencePassage>();
-  let passageSeq = 1;
+  // Helper to build canonical passages, claim inventory, and author-safe claims from retrieved docs
+  function buildEvidenceState(docs: RetrievedDocument[]) {
+    const passageMap = new Map<string, EvidencePassage>();
+    let passageSeq = 1;
 
-  for (const doc of retrievedDocs) {
-    for (const p of doc.extracted_passages) {
-      const dedupeKey = `${doc.source_id}::${p.locator}::${p.content_hash || p.exact_text}`;
-      if (!passageMap.has(dedupeKey)) {
-        const canonicalId = `psg_${doc.source_id.replace(/[^a-zA-Z0-9_]/g, '_')}_${passageSeq++}`;
-        p.passage_id = canonicalId;
-        p.supports_claim_ids = [];
-        passageMap.set(dedupeKey, {
-          passage_id: canonicalId,
-          source_id: doc.source_id,
-          locator: p.locator,
-          exact_or_normalized_excerpt: p.exact_text,
-          extracted_at: p.extracted_at || new Date().toISOString(),
-          content_hash: p.content_hash,
-          supports_claim_ids: [],
-          semantic_role: p.semantic_role,
-          limitations: p.limitations
-        });
-      }
-    }
-  }
-
-  const allPassages = Array.from(passageMap.values());
-
-  // E. Dynamic Claim Inventory Generation from Passages
-  const claimInventory: EvidenceClaim[] = [];
-  let claimSeq = 1;
-
-  for (const p of allPassages) {
-    const claimId = `CLM-${claimSeq.toString().padStart(3, '0')}`;
-    claimSeq++;
-
-    // Bidirectional link: passage supports claim
-    p.supports_claim_ids.push(claimId);
-
-    const doc = retrievedDocs.find(d => d.source_id === p.source_id);
-    const sourceEntry = doc ? mapDocToSource(doc, p.locator) : undefined;
-    const isJurisdiction = isJurisdictionSpecific(`${p.exact_or_normalized_excerpt || ''} ${p.locator || ''}`);
-
-    if (sourceEntry && isJurisdiction) {
-      sourceEntry.applicability = 'JURISDICTION_SPECIFIC';
-      if (sourceEntry.quality_profile) {
-        sourceEntry.quality_profile.geographic_applicability = 'JURISDICTION_SPECIFIC';
+    for (const doc of docs) {
+      for (const p of doc.extracted_passages) {
+        const dedupeKey = `${doc.source_id}::${p.locator}::${p.content_hash || p.exact_text}`;
+        if (!passageMap.has(dedupeKey)) {
+          const canonicalId = `psg_${doc.source_id.replace(/[^a-zA-Z0-9_]/g, '_')}_${passageSeq++}`;
+          p.passage_id = canonicalId;
+          p.supports_claim_ids = [];
+          passageMap.set(dedupeKey, {
+            passage_id: canonicalId,
+            source_id: doc.source_id,
+            locator: p.locator,
+            exact_or_normalized_excerpt: p.exact_text,
+            extracted_at: p.extracted_at || new Date().toISOString(),
+            content_hash: p.content_hash,
+            supports_claim_ids: [],
+            semantic_role: p.semantic_role,
+            limitations: p.limitations
+          });
+        }
       }
     }
 
-    claimInventory.push({
-      claim_id: claimId,
-      statement: p.exact_or_normalized_excerpt,
-      claim_class: 'technical_consensus',
-      evidence_status: 'VERIFIED',
-      provenance_retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
-      applicability: isJurisdiction ? 'JURISDICTION_SPECIFIC' : (sourceEntry?.applicability || 'UNIVERSAL_PHYSICS'),
-      sources: sourceEntry ? [sourceEntry] : [],
-      evidence_passage_ids: [p.passage_id],
-      confidence: 'HIGH',
-      action: isJurisdiction ? 'QUALIFY' : 'KEEP',
-      relevance: `${p.semantic_role || 'Bukti teknis'}: ${p.locator}`,
-      numeric_claim: false,
-      semantic_role: p.semantic_role
-    } as any);
+    const builtPassages = Array.from(passageMap.values());
+    const builtClaims: EvidenceClaim[] = [];
+    let claimSeq = 1;
 
-    if (doc) {
-      const matchP = doc.extracted_passages.find(ep => ep.passage_id === p.passage_id);
-      if (matchP) {
-        matchP.supports_claim_ids = [claimId];
+    for (const p of builtPassages) {
+      const claimId = `CLM-${claimSeq.toString().padStart(3, '0')}`;
+      claimSeq++;
+
+      p.supports_claim_ids.push(claimId);
+
+      const doc = docs.find(d => d.source_id === p.source_id);
+      const sourceEntry = doc ? mapDocToSource(doc, p.locator) : undefined;
+      const isJurisdiction = isJurisdictionSpecific(`${p.exact_or_normalized_excerpt || ''} ${p.locator || ''}`);
+
+      if (sourceEntry && isJurisdiction) {
+        sourceEntry.applicability = 'JURISDICTION_SPECIFIC';
+        if (sourceEntry.quality_profile) {
+          sourceEntry.quality_profile.geographic_applicability = 'JURISDICTION_SPECIFIC';
+        }
+      }
+
+      builtClaims.push({
+        claim_id: claimId,
+        statement: p.exact_or_normalized_excerpt,
+        claim_class: 'technical_consensus',
+        evidence_status: 'VERIFIED',
+        provenance_retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+        applicability: isJurisdiction ? 'JURISDICTION_SPECIFIC' : (sourceEntry?.applicability || 'UNIVERSAL_PHYSICS'),
+        sources: sourceEntry ? [sourceEntry] : [],
+        evidence_passage_ids: [p.passage_id],
+        confidence: 'HIGH',
+        action: isJurisdiction ? 'QUALIFY' : 'KEEP',
+        relevance: `${p.semantic_role || 'Bukti teknis'}: ${p.locator}`,
+        numeric_claim: false,
+        semantic_role: p.semantic_role
+      } as any);
+
+      if (doc) {
+        const matchP = doc.extracted_passages.find(ep => ep.passage_id === p.passage_id);
+        if (matchP) {
+          matchP.supports_claim_ids = [claimId];
+        }
       }
     }
+
+    // Add recommendation claim
+    if (builtClaims.length > 0) {
+      const recId = `CLM-${claimSeq.toString().padStart(3, '0')}`;
+      const derivedIds = builtClaims.slice(0, 3).map(c => c.claim_id);
+
+      const recStatement = domain === 'MOISTURE_WALL_REMEDIATION'
+        ? 'Penanganan dinding lembap dapat dipertimbangkan setelah sumber masalah dikonfirmasi, dengan mendahulukan pelacakan dan penanganan sumber intrusi air sebelum mengevaluasi lapisan cat waterproofing.'
+        : domain === 'FENESTRATION_WINDOW_DOOR'
+        ? 'Pemilihan profil kusen dapat membantu kenyamanan termal dan akustik jika disesuaikan dengan kebutuhan spesifik, serta perlu dievaluasi berdasarkan kompromi konduktivitas dan kekedapan suara.'
+        : 'Keputusan intervensi fisik lebih relevan ketika didasarkan pada diagnosis mekanisme fisik dan evaluasi batas material lapangan.';
+
+      builtClaims.push({
+        claim_id: recId,
+        statement: recStatement,
+        claim_class: 'editorial_recommendation',
+        evidence_status: 'SUPPORTED',
+        provenance_retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+        sources: builtClaims[0].sources,
+        evidence_passage_ids: [],
+        derived_from_claim_ids: derivedIds,
+        confidence: 'HIGH',
+        action: 'KEEP',
+        relevance: 'Rekomendasi tindakan editorial terapan berbasis bukti empiris.',
+        numeric_claim: false,
+        semantic_role: 'INTERVENTION_EFFECT',
+        absolute_language_allowed: false
+      } as any);
+    }
+
+    const builtAuthorSafe = generateAuthorSafeClaims(builtClaims, {
+      evidencePassages: builtPassages,
+      executionType,
+      retrievedDocuments: docs
+    });
+
+    return { allPassages: builtPassages, claimInventory: builtClaims, authorSafeClaims: builtAuthorSafe };
   }
 
-  // Add synthesis editorial recommendation derived from verified claims
-  if (claimInventory.length > 0) {
-    const recId = `CLM-${claimSeq.toString().padStart(3, '0')}`;
-    const derivedIds = claimInventory.slice(0, 3).map(c => c.claim_id);
+  // Initial evidence extraction (Pass 1)
+  let { allPassages, claimInventory, authorSafeClaims } = buildEvidenceState(retrievedDocs);
 
-    const recStatement = domain === 'MOISTURE_WALL_REMEDIATION'
-      ? 'Penanganan dinding lembap dapat dipertimbangkan setelah sumber masalah dikonfirmasi, dengan mendahulukan pelacakan dan penanganan sumber intrusi air sebelum mengevaluasi lapisan cat waterproofing.'
-      : domain === 'FENESTRATION_WINDOW_DOOR'
-      ? 'Pemilihan profil kusen dapat membantu kenyamanan termal dan akustik jika disesuaikan dengan kebutuhan spesifik, serta perlu dievaluasi berdasarkan kompromi konduktivitas dan kekedapan suara.'
-      : 'Keputusan intervensi fisik lebih relevan ketika didasarkan pada diagnosis mekanisme fisik dan evaluasi batas material lapangan.';
+  // Intermediate coverage evaluation
+  const intermediatePack: EvidencePackInput = {
+    claim_inventory: claimInventory,
+    evidence_passages: allPassages,
+    retrieved_documents: retrievedDocs,
+    execution_type: executionType
+  };
+  const intermediateCoverage = validateResearchQuestionCoverage(researchQuestions, intermediatePack, { executionType });
 
-    claimInventory.push({
-      claim_id: recId,
-      statement: recStatement,
-      claim_class: 'editorial_recommendation',
-      evidence_status: 'SUPPORTED',
-      provenance_retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
-      sources: claimInventory[0].sources,
-      evidence_passage_ids: [],
-      derived_from_claim_ids: derivedIds,
-      confidence: 'HIGH',
-      action: 'KEEP',
-      relevance: 'Rekomendasi tindakan editorial terapan berbasis bukti empiris.',
-      numeric_claim: false,
-      semantic_role: 'INTERVENTION_EFFECT',
-      absolute_language_allowed: false
-    } as any);
+  // 5. Gap-Directed Research Loop (Milestone: RESEARCH-SOURCE-COVERAGE-1, Section 9)
+  const MAX_RESEARCH_PASSES = 2;
+  let currentPass = 1;
+
+  if (!intermediateCoverage.covered && currentPass < MAX_RESEARCH_PASSES) {
+    currentPass++;
+    const missingCategories = intermediateCoverage.missing_categories;
+    addTraceEvent(
+      'RESEARCH_GAP_DIRECTED_PASS_STARTED',
+      `Irwan memulai putaran riset terarah kedua (Pass ${currentPass}/${MAX_RESEARCH_PASSES}) untuk melengkapi kategori belum terpenuhi: [${missingCategories.join(', ')}].`,
+      { missingCategories, pass: currentPass }
+    );
+
+    const gapQueries = generateQuestionSpecificQueries(input.topic, missingCategories, researchQuestions);
+    queries.push(...gapQueries);
+
+    for (const gq of gapQueries) {
+      const [crResults, wikiResults] = await Promise.all([
+        crossRefSearch(gq, { fetchFn: options.fetchFn }),
+        wikiSearch(gq, { fetchFn: options.fetchFn })
+      ]);
+
+      for (const c of [...crResults, ...wikiResults]) {
+        if (!discoveredCandidates.some(d => d.title.toLowerCase() === c.title.toLowerCase())) {
+          discoveredCandidates.push(c);
+          addTraceEvent(
+            'SOURCE_DISCOVERED',
+            `Sumber putaran 2 ditemukan via [${c.discovery_engine}]: "${c.title}" (${c.publisher || 'Unknown'}).`,
+            { title: c.title, publisher: c.publisher, url: c.url, doi: c.doi, gapQuery: gq }
+          );
+
+          if (c.discovery_engine === 'WIKIPEDIA_TECHNICAL_API' && !retrievedDocs.some(d => d.title.toLowerCase() === c.title.toLowerCase())) {
+            const article = await wikiContent(c.title, { fetchFn: options.fetchFn });
+            if (article && article.text) {
+              const srcId = `SRC-OPEN-WIKI-${c.title.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}`;
+              const p = extractDynamicPassagesFromText(srcId, c.title, article.text);
+              retrievedDocs.push({
+                source_id: srcId,
+                title: c.title,
+                publisher: 'Wikimedia Foundation',
+                url: c.url || `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/\s+/g, '_'))}`,
+                canonical_url: c.url || `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/\s+/g, '_'))}`,
+                source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
+                authority_level: 'SECONDARY_ENCYCLOPEDIC',
+                primary_vs_secondary: 'SECONDARY',
+                retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+                retrieval_method: 'OPEN_API_FULL_TEXT_INSPECTION',
+                retrieved_at: new Date().toISOString(),
+                content_hash: article.hash,
+                content_text: article.text,
+                content_length_bytes: Buffer.byteLength(article.text, 'utf8'),
+                read_status: 'READ_AND_EXTRACTED',
+                extracted_passages: p,
+                applicability: 'UNIVERSAL_PHYSICS',
+                source_origin: article.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'LIVE_RETRIEVAL'),
+                requested_url: article.requested_url,
+                resolved_url: article.resolved_url,
+                limitations: `Sumber sekunder ensiklopedis: ${c.title}.`,
+                is_blocked: false
+              });
+              addTraceEvent('SOURCE_RETRIEVED', `Dokumen putaran 2 "${c.title}" berhasil diunduh.`, { source_id: srcId });
+            }
+          } else if (c.url && options.httpDocFn && !retrievedDocs.some(d => d.requested_url === c.url || d.resolved_url === c.url)) {
+            const httpDoc = await options.httpDocFn(c.url, { fetchFn: options.fetchFn });
+            if (httpDoc && httpDoc.clean_text && httpDoc.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED') {
+              const identity = establishSourceIdentity(httpDoc.resolved_url, c.publisher);
+              const srcId = `SRC-HTTP-${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+              const p = extractDynamicPassagesFromText(srcId, c.title, httpDoc.clean_text);
+              retrievedDocs.push({
+                source_id: srcId,
+                title: c.title,
+                publisher: identity.publisher,
+                url: c.url,
+                canonical_url: httpDoc.resolved_url,
+                source_classification: identity.source_classification,
+                authority_level: identity.authority_level,
+                primary_vs_secondary: identity.primary_vs_secondary,
+                retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+                retrieval_method: 'GENERIC_HTTP_DOCUMENT_INSPECTION',
+                retrieved_at: httpDoc.retrieved_at,
+                content_hash: httpDoc.raw_content_hash,
+                content_text: httpDoc.clean_text,
+                content_length_bytes: Buffer.byteLength(httpDoc.clean_text, 'utf8'),
+                read_status: 'READ_AND_EXTRACTED',
+                extracted_passages: p,
+                applicability: identity.applicability,
+                source_origin: httpDoc.source_origin,
+                requested_url: httpDoc.requested_url,
+                resolved_url: httpDoc.resolved_url,
+                http_status: httpDoc.http_status,
+                limitations: `Dokumen web terverifikasi: ${c.title}.`,
+                is_blocked: false
+              });
+              addTraceEvent('SOURCE_RETRIEVED', `Dokumen web putaran 2 "${c.title}" berhasil diunduh via HTTP.`, { source_id: srcId });
+            }
+          }
+        }
+      }
+    }
+
+    // Rebuild evidence state with newly retrieved documents
+    const rebuilt = buildEvidenceState(retrievedDocs);
+    allPassages = rebuilt.allPassages;
+    claimInventory = rebuilt.claimInventory;
+    authorSafeClaims = rebuilt.authorSafeClaims;
+
+    addTraceEvent(
+      'RESEARCH_GAP_DIRECTED_PASS_COMPLETED',
+      `Putaran riset terarah kedua selesai. Total dokumen: ${retrievedDocs.length}, total klaim: ${claimInventory.length}.`,
+      { totalDocs: retrievedDocs.length, totalClaims: claimInventory.length }
+    );
   }
 
-  // F. Generate Author-Safe Claims
-  const authorSafeClaims = generateAuthorSafeClaims(claimInventory, {
-    evidencePassages: allPassages,
-    executionType,
-    retrievedDocuments: retrievedDocs
-  });
+  // 6. Source Diversity Metrics (Milestone: RESEARCH-SOURCE-COVERAGE-1, Section 11)
+  const diversityMetrics = calculateSourceDiversity(retrievedDocs, claimInventory);
 
   const verifiedSourceIds = Array.from(new Set(
     claimInventory.flatMap(c => (c.sources || [])
@@ -647,7 +790,11 @@ export async function executeGeneralizedResearchJob(
       total_passage_objects: allPassages.length,
       unique_excerpt_count: allPassages.length,
       duplicate_passages_removed: 0,
-      author_safe_metrics: authorSafeMetrics
+      author_safe_metrics: authorSafeMetrics,
+      authentic_source_count: diversityMetrics.authentic_source_count,
+      independent_source_count: diversityMetrics.independent_source_count,
+      source_class_count: diversityMetrics.source_class_count,
+      concentration_risk: diversityMetrics.concentration_risk
     },
     claim_inventory: claimInventory,
     author_safe_claims: authorSafeClaims,
@@ -660,19 +807,27 @@ export async function executeGeneralizedResearchJob(
   };
 
   rawPack.confidence_overall = calculateOverallConfidence(rawPack);
+
+  // Concentration Risk Policy (Section 11): 1 authentic secondary source only cannot be HIGH confidence
+  if (diversityMetrics.authentic_source_count === 1 && rawPack.confidence_overall === 'HIGH') {
+    rawPack.confidence_overall = 'MEDIUM';
+  }
+
   const evidencePack = rawPack;
 
   addTraceEvent(
     'EVIDENCE_PACK_CREATED',
-    `Paket bukti generalisasi berhasil disusun: ${claimInventory.length} klaim, ${authorSafeClaims.length} klaim aman, ${allPassages.length} kutipan passage terverifikasi dari ${retrievedDocs.length} dokumen.`,
+    `Paket bukti generalisasi berhasil disusun: ${claimInventory.length} klaim, ${authorSafeClaims.length} klaim aman, ${allPassages.length} kutipan passage terverifikasi dari ${retrievedDocs.length} dokumen (${diversityMetrics.authentic_source_count} sumber autentik).`,
     {
       claimsCount: claimInventory.length,
       passagesCount: allPassages.length,
-      retrievedCount: retrievedDocs.length
+      retrievedCount: retrievedDocs.length,
+      authenticSources: diversityMetrics.authentic_source_count,
+      concentrationRisk: diversityMetrics.concentration_risk
     }
   );
 
-  // G. Alignment & Research Coverage Pre-Writing Gate
+  // 7. Alignment & Research Coverage Pre-Writing Gate
   const alignmentResult = auditTopicEvidenceAlignment(input.topic, evidencePack, { researchQuestions });
 
   let finalGateStatus = 'IRWAN_EVIDENCE_V4_HUMAN_REVIEW_REQUIRED';
@@ -734,7 +889,13 @@ export async function executeGeneralizedResearchJob(
       claimsConsensus: claimInventory.filter(c => c.claim_class === 'technical_consensus').length,
       authorSafeClaimsTotal: authorSafeClaims.length,
       authorSafeClaimsAllowed: authorSafeClaims.filter(s => s.allowed_for_authoring).length,
-      author_safe_metrics: authorSafeMetrics
+      author_safe_metrics: authorSafeMetrics,
+      authentic_source_count: diversityMetrics.authentic_source_count,
+      independent_source_count: diversityMetrics.independent_source_count,
+      source_class_count: diversityMetrics.source_class_count,
+      concentration_risk: diversityMetrics.concentration_risk,
+      raw_research_coverage_ratio: alignmentResult.research_coverage?.raw_research_coverage_ratio ?? 0,
+      admissible_evidence_coverage_ratio: alignmentResult.research_coverage?.admissible_evidence_coverage_ratio ?? 0
     }
   };
 }
