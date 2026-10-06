@@ -45,6 +45,17 @@ import {
 } from './topic-alignment.ts';
 
 import {
+  decomposeTopicConcepts,
+  deriveEnglishConceptEquivalents
+} from './research-discovery-planner.ts';
+
+import {
+  buildResearchQuestionSemanticProfile,
+  evaluateResearchQuestionSemanticSupport,
+  CATEGORY_SEMANTIC_LEXICON
+} from './research-question-semantics.ts';
+
+import {
   resolveEvidenceScope,
   narrowestEvidenceScope,
   isJurisdictionSpecific,
@@ -424,7 +435,7 @@ export class DocumentTopicRelevanceEvaluator {
     const docTitle = document.title || '';
     const docPub = document.publisher || '';
     const docText = document.text || '';
-    const combinedDoc = `${docTitle} ${docPub} ${docText.slice(0, 3000)}`.toLowerCase();
+    const combinedDoc = `${docTitle} ${docPub} ${docText.slice(0, 20000)}`.toLowerCase();
 
     // 1. Dynamic Topic Domain & Concept Extraction
     const topicClassification = classifyBuildingDomain(topic);
@@ -437,9 +448,20 @@ export class DocumentTopicRelevanceEvaluator {
       .split(/\s+/)
       .filter(w => w.length >= 3 && !COMMON_STOP_WORDS.has(w));
 
+    const decomp = decomposeTopicConcepts(topic);
+    const enDecomp = deriveEnglishConceptEquivalents(decomp);
+    const bilingualTopicTerms = [
+      ...decomp.problem_entities, ...decomp.interventions, ...decomp.mechanisms, ...decomp.symptoms,
+      ...enDecomp.enEntities, ...enDecomp.enInterventions, ...enDecomp.enMechanisms, ...enDecomp.enSymptoms
+    ].flatMap(phrase => phrase.toLowerCase().split(/\s+/).filter(w => w.length >= 3 && !COMMON_STOP_WORDS.has(w)));
+
+    const allTopicWords = Array.from(new Set([...topicWords, ...bilingualTopicTerms]));
+
     // Specific core physical/material concepts from topic
-    const matchedConcepts = topicWords.filter(w => {
-      const pat = new RegExp(`\\b${w}\\b`, 'i');
+    const matchedConcepts = allTopicWords.filter(w => {
+      const cleanW = w.toLowerCase().trim();
+      if (!cleanW || cleanW.length < 3) return false;
+      const pat = new RegExp(`\\b${cleanW}\\b`, 'i');
       return pat.test(combinedDoc);
     });
 
@@ -530,7 +552,7 @@ export class DocumentTopicRelevanceEvaluator {
 
     // Direct condensation / dew point / fenestration physics
     const hasFenestrationPhysics = /\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|pemutus termal|konduktivitas|u-factor|conductivity|thermal\s*breaks?|condensation)\b/i.test(combinedDoc);
-    const hasFenestrationMaterials = /\b(?:kusen|jendela|aluminium|upvc|kaca|profil|window|frame|glazing)\b/i.test(combinedDoc);
+    const hasFenestrationMaterials = /\b(?:kusen|jendela|aluminium|upvc|kaca|profil|window|frame|glazing|glass|fenestration)\b/i.test(combinedDoc);
 
     if (hasFenestrationPhysics && hasFenestrationMaterials) {
       return {
@@ -705,30 +727,41 @@ export function evaluatePassageRelevance(
 
   // If document is PARTIALLY_RELEVANT (e.g. Batang aluminium frame case study)
   if (documentRelevance === 'PARTIALLY_RELEVANT') {
-    if (/\b(?:kusen|aluminium|profil|pintu|jendela|keawetan|rayap|daya tahan|presisi)\b/i.test(pText)) {
+    if (/\b(?:kusen|aluminium|profil|pintu|jendela|keawetan|rayap|daya tahan|presisi|window|glass|glazing|frame|door|profile|facade|thermal|moisture|condensation|dew point|u-factor)\b/i.test(pText)) {
       return {
         relevance_level: 'SUPPORTING_BACKGROUND',
-        allows_substantive_claims: false,
+        allows_substantive_claims: true,
         allows_context_only: true,
-        reason: 'SUPPORTING_BACKGROUND: Karakteristik material kusen aluminium dari studi kasus lapangan berstatus partially relevant.'
+        reason: 'SUPPORTING_BACKGROUND: Karakteristik material kusen aluminium atau bukaan dari dokumen pendukung berstatus partially relevant.'
       };
     }
     return {
       relevance_level: 'WEAKLY_RELATED',
       allows_substantive_claims: false,
       allows_context_only: false,
-      reason: 'WEAKLY_RELATED: Bagian studi kasus yang tidak secara langsung membahas karakteristik profil bukaan.'
+      reason: 'WEAKLY_RELATED: Bagian dokumen yang tidak secara langsung membahas karakteristik profil bukaan atau fisika termal.'
     };
   }
 
   // In HIGHLY_RELEVANT documents
   if (documentRelevance === 'HIGHLY_RELEVANT') {
-    if (/\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|pemutus termal|konduktivitas|u-factor|jembatan termal|kelembapan|suhu permukaan|conductivity|thermal\s*breaks?|thermal\s*conduct(?:ivity|ance)|condensation|dew\s*point|airtightness|acoustic|insulation|radiant\s*barrier)\b/i.test(pText)) {
+    const decomp = decomposeTopicConcepts(topic);
+    const enDecomp = deriveEnglishConceptEquivalents(decomp);
+    const allTopicTerms = [
+      ...decomp.problem_entities, ...decomp.mechanisms, ...decomp.interventions, ...decomp.symptoms,
+      ...enDecomp.enEntities, ...enDecomp.enMechanisms, ...enDecomp.enInterventions, ...enDecomp.enSymptoms
+    ];
+    const hasTopicConceptInPassage = allTopicTerms.some(term => {
+      const reg = new RegExp(`\\b${term}\\b`, 'i');
+      return reg.test(pText);
+    });
+
+    if (hasTopicConceptInPassage || /\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|pemutus termal|konduktivitas|u-factor|jembatan termal|kelembapan|suhu permukaan|conductivity|thermal\s*breaks?|thermal\s*conduct(?:ivity|ance)|condensation|dew\s*point|airtightness|acoustic|insulation|radiant\s*barrier|shading|overhang|louver|solar|heat transfer|facade|tile|popping|adhesion)\b/i.test(pText)) {
       return {
         relevance_level: 'DIRECTLY_RELEVANT',
         allows_substantive_claims: true,
         allows_context_only: true,
-        reason: 'DIRECTLY_RELEVANT: Membahas langsung fisika kondensasi, kusen, kaca, atau titik embun.'
+        reason: 'DIRECTLY_RELEVANT: Membahas langsung konsep substantif atau fisika ranah topik.'
       };
     }
     return {
@@ -818,7 +851,7 @@ export function evaluateAuthoritySufficiency(
 
     case 'DIAGNOSTIC_GUIDANCE':
     case 'SAFETY_RISK': {
-      if (sourceRole === 'OFFICIAL_GOVERNMENT_GUIDANCE' || sourceRole === 'OFFICIAL_INSTITUTIONAL_GUIDANCE' || sourceRole === 'SCHOLARLY_JOURNAL_ARTICLE' || sourceRole === 'TECHNICAL_STANDARD') {
+      if (sourceRole === 'OFFICIAL_GOVERNMENT_GUIDANCE' || sourceRole === 'OFFICIAL_INSTITUTIONAL_GUIDANCE' || sourceRole === 'SCHOLARLY_JOURNAL_ARTICLE' || sourceRole === 'SCHOLARLY_RESEARCH' || sourceRole === 'TECHNICAL_STANDARD') {
         return { sufficiency: 'SUFFICIENT', allows_authoring: true, reason: 'Authoritative diagnostic or safety benchmark.' };
       }
       return { sufficiency: 'CONTEXT_ONLY', allows_authoring: false, reason: `Diagnostic or risk advice requires institutional or scholarly authority, got ${sourceRole}.` };
@@ -986,12 +1019,34 @@ export function evaluateClaimQuality(
   const claimStmtLower = (claim.statement || '').toLowerCase();
   let topicRelevance: 'DIRECT' | 'SUPPORTING' | 'WEAK' | 'IRRELEVANT' | 'UNCERTAIN' = 'IRRELEVANT';
 
+  const decomp = decomposeTopicConcepts(topic);
+  const enDecomp = deriveEnglishConceptEquivalents(decomp);
+  const coreEntities = [
+    ...decomp.problem_entities, ...decomp.mechanisms,
+    ...enDecomp.enEntities, ...enDecomp.enMechanisms
+  ];
+  const supportingEntities = [
+    ...decomp.interventions, ...decomp.symptoms, ...decomp.measurements,
+    ...enDecomp.enInterventions, ...enDecomp.enSymptoms, ...enDecomp.enMeasurements
+  ];
+
+  const hasCoreMatch = coreEntities.some(ent => {
+    const reg = new RegExp(`\\b${ent}\\b`, 'i');
+    return reg.test(claimStmtLower);
+  });
+  const hasSupportingMatch = supportingEntities.some(ent => {
+    const reg = new RegExp(`\\b${ent}\\b`, 'i');
+    return reg.test(claimStmtLower);
+  });
+
   if (bestPassageRel === 'OFF_TOPIC') {
     topicRelevance = 'IRRELEVANT';
     rejection_reasons.push('CLAIM_TOPIC_RELEVANCE_OFF_TOPIC: Klaim merujuk passage yang berada di luar topik aktif.');
-  } else if (/\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|kusen|kaca|ventilasi|kelembapan)\b/i.test(claimStmtLower)) {
+  } else if (hasCoreMatch || /\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|kusen|kaca|ventilasi|kelembapan)\b/i.test(claimStmtLower)) {
     topicRelevance = 'DIRECT';
-  } else if (/\b(?:aluminium|upvc|material|performa termal|konduktivitas|bukaan)\b/i.test(claimStmtLower)) {
+  } else if (hasSupportingMatch || /\b(?:aluminium|upvc|material|performa termal|konduktivitas|bukaan|shading|overhang|louver|fasad|keramik|tile|roof|drainage)\b/i.test(claimStmtLower)) {
+    topicRelevance = 'SUPPORTING';
+  } else if (bestPassageRel === 'DIRECTLY_RELEVANT' || bestPassageRel === 'SUPPORTING_BACKGROUND') {
     topicRelevance = 'SUPPORTING';
   } else {
     topicRelevance = 'WEAK';
@@ -1002,8 +1057,23 @@ export function evaluateClaimQuality(
   let passageEntailment: 'DIRECTLY_ENTAILED' | 'SUPPORTED_WITH_QUALIFICATION' | 'OVERSTATED' | 'NOT_SUPPORTED' | 'UNCERTAIN' = 'DIRECTLY_ENTAILED';
   if (bestPassage) {
     const pText = (bestPassage.exact_or_normalized_excerpt || bestPassage.exact_text || '').toLowerCase();
-    // Check if statement proposition is actually reflected in passage
-    if (!claimStmtLower.split(/\s+/).some(word => word.length > 4 && pText.includes(word))) {
+    // Check if statement proposition is actually reflected in passage (lexical or bilingual concept entailment)
+    const hasLexicalOverlap = claimStmtLower.split(/\s+/).some(word => word.length > 4 && pText.includes(word));
+    let hasSemanticEntailment = hasLexicalOverlap;
+
+    if (!hasSemanticEntailment) {
+      for (const cat of Object.keys(CATEGORY_SEMANTIC_LEXICON) as ResearchQuestionCategory[]) {
+        const lex = CATEGORY_SEMANTIC_LEXICON[cat];
+        const claimMatches = [...lex.id, ...lex.en].filter(term => new RegExp(`\\b${term}\\b`, 'i').test(claimStmtLower));
+        const passageMatches = [...lex.id, ...lex.en].filter(term => new RegExp(`\\b${term}\\b`, 'i').test(pText));
+        if (claimMatches.length > 0 && passageMatches.length > 0) {
+          hasSemanticEntailment = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasSemanticEntailment) {
       passageEntailment = 'NOT_SUPPORTED';
       rejection_reasons.push('PASSAGE_NOT_ENTAILED: Proposisi klaim tidak didukung oleh teks bagian rujukan.');
     }
@@ -1072,7 +1142,8 @@ export function evaluateResearchQuestionSupport(
   claims: EvidenceClaim[],
   passages: EvidencePassage[],
   claimQualityMap: Map<string, ClaimQualityEvaluation>,
-  sourceRoleMap: Map<string, SourceRole>
+  sourceRoleMap: Map<string, SourceRole>,
+  topic: string = ''
 ): {
   evaluations: ResearchQuestionSupportEvaluation[];
   covered_categories: ResearchQuestionCategory[];
@@ -1083,46 +1154,41 @@ export function evaluateResearchQuestionSupport(
   const evaluations: ResearchQuestionSupportEvaluation[] = [];
   const covered_categories: ResearchQuestionCategory[] = [];
   const missing_categories: ResearchQuestionCategory[] = [];
+  const effectiveTopic = topic || (questions[0] ? questions[0].question_text : '');
 
   for (const q of questions) {
     const validClaims: EvidenceClaim[] = [];
     const validPassages = new Set<string>();
     const validSources = new Set<string>();
+    const profile = buildResearchQuestionSemanticProfile(q, effectiveTopic);
+    const semanticReasons: string[] = [];
+    let bestAuthSuff = false;
 
     for (const c of claims) {
       const qEval = claimQualityMap.get(c.claim_id);
       // ONLY author-safe claims count towards genuine coverage!
       if (!qEval || !qEval.author_safe_final) continue;
 
-      const stmt = (c.statement || '').toLowerCase();
-      let answersQuestion = false;
-      let reason = '';
+      const primarySourceId = (c.sources && c.sources.length > 0) ? c.sources[0].source_id : '';
+      const sRole = sourceRoleMap.get(primarySourceId);
 
-      if (q.category === 'PLAUSIBLE_CAUSES') {
-        answersQuestion = /\b(?:penyebab|memicu|radiasi|konduksi|titik embun|dew point|suhu dingin|kondensasi|kelembapan tinggi)\b/i.test(stmt);
-        reason = 'Proposisi menjelaskan mekanisme fisik penyebab embun/kondensasi';
-      } else if (q.category === 'DIFFERENTIAL_DIAGNOSIS') {
-        answersQuestion = /\b(?:membedakan|tanda|gejala|diagnosis|titik embun|perbedaan suhu|kelembapan ruangan|bocor vs embun)\b/i.test(stmt);
-        reason = 'Proposisi mendiferensiasi masalah kusen vs kelembapan vs ventilasi';
-      } else if (q.category === 'INTERVENTION_MAPPING') {
-        answersQuestion = /\b(?:thermal break|pemutus termal|exhaust fan|ventilasi|dehumidifier|insulasi|u-factor)\b/i.test(stmt);
-        reason = 'Proposisi memetakan intervensi teknis yang sesuai';
-      } else if (q.category === 'LIMITATIONS_AND_FALSE_FIXES') {
-        answersQuestion = /\b(?:bukan solusi|keterbatasan|menutup ventilasi|lap kaca|tidak menghilangkan|sumber kelembapan)\b/i.test(stmt);
-        reason = 'Proposisi mengidentifikasi kekeliruan umum / perbaikan semu';
-      } else if (q.category === 'ESCALATION_CONDITIONS') {
-        answersQuestion = /\b(?:korosi|jamur masif|drainase tersumbat|inspeksi|rembesan struktural|kebocoran perimeter)\b/i.test(stmt);
-        reason = 'Proposisi merinci kondisi yang menuntut inspeksi profesional';
-      } else if (q.category === 'EMPIRICAL_RECOMMENDATION_SUPPORT') {
-        answersQuestion = /\b(?:rekomendasi|prioritas|evaluasi ventilasi|ukur kelembapan|pertimbangkan profil berpenghalang)\b/i.test(stmt) ||
-          c.claim_class === 'editorial_recommendation' || c.claim_class === 'EDITORIAL_RECOMMENDATION';
-        reason = 'Proposisi mendukung panduan rekomendasi keputusan praktis';
-      }
+      const semResult = evaluateResearchQuestionSemanticSupport({
+        profile,
+        claim: c,
+        passages,
+        documentTopic: effectiveTopic,
+        sourceRole: sRole
+      });
 
-      if (answersQuestion) {
+      if (semResult.support_level === 'SUPPORTED' || semResult.support_level === 'PARTIAL') {
         validClaims.push(c);
+        for (const pid of semResult.supporting_passage_ids) validPassages.add(pid);
         for (const pid of c.evidence_passage_ids || []) validPassages.add(pid);
         for (const s of c.sources || []) validSources.add(s.source_id);
+        semanticReasons.push(semResult.support_reason);
+        if (semResult.authority_sufficient) {
+          bestAuthSuff = true;
+        }
       }
     }
 
@@ -1131,10 +1197,10 @@ export function evaluateResearchQuestionSupport(
 
     if (validClaims.length >= 2) {
       support_result = 'STRONGLY_COVERED';
-      authSuff = true;
+      authSuff = bestAuthSuff;
     } else if (validClaims.length === 1) {
       support_result = 'ADEQUATELY_COVERED';
-      authSuff = true;
+      authSuff = bestAuthSuff;
     } else {
       support_result = 'NOT_COVERED';
       authSuff = false;
@@ -1155,7 +1221,7 @@ export function evaluateResearchQuestionSupport(
       supporting_source_ids: Array.from(validSources),
       support_result,
       semantic_answer_reason: validClaims.length > 0
-        ? `Didukung ${validClaims.length} klaim author-safe yang menjawab substantif pertanyaan riset.`
+        ? semanticReasons[0] || `Didukung ${validClaims.length} klaim author-safe yang menjawab substantif pertanyaan riset.`
         : 'Tidak ada klaim author-safe yang relevan menjawab pertanyaan riset ini.',
       authority_sufficient: authSuff
     });
@@ -1405,7 +1471,8 @@ export function evaluateAuthorSafeEvidenceGate(
     claims,
     passages,
     claimEvaluations,
-    sourceRoleMap
+    sourceRoleMap,
+    topic
   );
 
   // 4. Validate Production Gate

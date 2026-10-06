@@ -159,8 +159,13 @@ export function scoreAndRankCandidates(
     if (sClass === 'INSTITUTIONAL') baseScore = 100;
     else if (sClass === 'SCHOLARLY') baseScore = 80;
     else if (sClass === 'STANDARD') baseScore = 75;
-    else if (sClass === 'ENCYCLOPEDIC') baseScore = 60;
+    else if (sClass === 'ENCYCLOPEDIC') baseScore = 75;
     else if (sClass === 'MANUFACTURER') baseScore = 40;
+
+    // Full-text accessibility bonus: prioritize sources known to have immediate open-access full text
+    if (c.discovery_engine === 'WIKIPEDIA_TECHNICAL_API' || (c.url && c.url.includes('wikipedia.org')) || (c as any).is_open_access) {
+      baseScore += 15;
+    }
 
     if (c.url && (c.url.startsWith('http://') || c.url.startsWith('https://'))) {
       baseScore += 10;

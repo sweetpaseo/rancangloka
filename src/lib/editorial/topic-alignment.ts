@@ -56,7 +56,9 @@ const DOMAIN_VOCABULARIES: Record<BuildingDomain, string[]> = {
   ],
   FENESTRATION_WINDOW_DOOR: [
     'kusen', 'jendela', 'pintu', 'aluminium', 'upvc', 'kaca', 'profil',
-    'frame', 'window', 'door', 'acoustic', 'kedap suara', 'seal'
+    'frame', 'window', 'door', 'acoustic', 'kedap suara', 'seal',
+    'glazing', 'glass', 'fenestration', 'thermal break', 'kondensasi', 'berkondensasi', 'embun',
+    'u-factor', 'u-value', 'shgc', 'low-e', 'emissivity', 'thermal', 'heat transfer', 'conduction'
   ],
   FLOORING_SURFACE: [
     'lantai', 'keramik', 'granit', 'popping', 'nat', 'screed', 'vinil', 'spc',
@@ -143,7 +145,8 @@ export function auditTopicEvidenceAlignment(
   const isDirectDomainMismatch =
     topicDomain !== 'GENERAL_BUILDING' &&
     evidenceDomain !== 'GENERAL_BUILDING' &&
-    topicDomain !== evidenceDomain;
+    topicDomain !== evidenceDomain &&
+    matchingEntitiesInEvidence.length < 2;
 
   const hasZeroTopicEntities = topicEntities.length > 0 && matchingEntitiesInEvidence.length === 0;
 

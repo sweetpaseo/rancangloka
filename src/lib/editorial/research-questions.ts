@@ -24,6 +24,7 @@ import {
 } from '../article/human-quality.ts';
 
 import type { GeneralEvidenceRole } from './source-discovery.ts';
+import { CATEGORY_SEMANTIC_LEXICON } from './research-question-semantics.ts';
 
 export type ResearchQuestionCategory =
   | 'PLAUSIBLE_CAUSES'
@@ -304,20 +305,16 @@ export function validateResearchQuestionCoverage(
       const role = (c as any).semantic_role as GeneralEvidenceRole | undefined;
       let roleMatch = role && q.expected_evidence_roles.includes(role);
 
-      let conceptMatch = false;
-      if (q.category === 'PLAUSIBLE_CAUSES') {
-        conceptMatch = /\b(?:penyebab|mekanisme|memicu|radiasi|konduksi|kapiler|rembes|sumber|merambat)\b/i.test(combined);
-      } else if (q.category === 'DIFFERENTIAL_DIAGNOSIS') {
-        conceptMatch = /\b(?:beda|membedakan|tanda|gejala|diagnosis|jalur|pola|deteksi|periksa)\b/i.test(combined);
-      } else if (q.category === 'INTERVENTION_MAPPING') {
-        conceptMatch = /\b(?:fungsi|bekerja|mengurangi|memantulkan|menahan|ventilasi|waterproofing|insulasi|efek)\b/i.test(combined);
-      } else if (q.category === 'LIMITATIONS_AND_FALSE_FIXES') {
-        conceptMatch = /\b(?:bukan|tidak|hambatan|keterbatasan|menempel|debu|degradasi|kelemahan|gagal|hanya)\b/i.test(combined);
-      } else if (q.category === 'ESCALATION_CONDITIONS') {
-        conceptMatch = /\b(?:syarat|kondisi|rongga|celah|inspeksi|kelembapan|karat|kondensasi|ahli|sumber air)\b/i.test(combined);
-      } else if (q.category === 'EMPIRICAL_RECOMMENDATION_SUPPORT') {
-        conceptMatch = /\b(?:rekomendasi|langkah|urutan|prioritas|standar|empiris|uji|bukti)\b/i.test(combined) ||
-          c.claim_class === 'editorial_recommendation' || c.claim_class === 'technical_consensus';
+      const cLex = CATEGORY_SEMANTIC_LEXICON[q.category];
+      const allCLexTerms = cLex ? [...cLex.id, ...cLex.en] : [];
+      let conceptMatch = allCLexTerms.some(term => {
+        const reg = new RegExp(`\\b${term}\\b`, 'i');
+        return reg.test(combined);
+      });
+      if (q.category === 'EMPIRICAL_RECOMMENDATION_SUPPORT') {
+        conceptMatch = conceptMatch ||
+          c.claim_class === 'editorial_recommendation' ||
+          c.claim_class === 'technical_consensus';
       }
 
       if (roleMatch || conceptMatch) {
@@ -337,20 +334,12 @@ export function validateResearchQuestionCoverage(
       const pRole = p.semantic_role as GeneralEvidenceRole | undefined;
       const roleMatch = pRole && q.expected_evidence_roles.includes(pRole);
 
-      let conceptMatch = false;
-      if (q.category === 'PLAUSIBLE_CAUSES') {
-        conceptMatch = /\b(?:heat travels|conduction|radiat|capillary|moisture source|water vapor|heat gain)\b/i.test(pText);
-      } else if (q.category === 'DIFFERENTIAL_DIAGNOSIS') {
-        conceptMatch = /\b(?:distinguish|differentiate|differential diagnosis|identifying difference|diagnostic signal|tide mark)\b/i.test(pText);
-      } else if (q.category === 'INTERVENTION_MAPPING') {
-        conceptMatch = /\b(?:radiant barrier|reflects|reduces|ventilation|coating|waterproofing|exhaust|barrier)\b/i.test(pText);
-      } else if (q.category === 'LIMITATIONS_AND_FALSE_FIXES') {
-        conceptMatch = /\b(?:not bulk insulation|degrades|increases emissivity|dust accumulation|neutralizing)\b/i.test(pText);
-      } else if (q.category === 'ESCALATION_CONDITIONS') {
-        conceptMatch = /\b(?:must face|air space|direct contact|synergistically|soffit|ridge|drainage)\b/i.test(pText);
-      } else if (q.category === 'EMPIRICAL_RECOMMENDATION_SUPPORT') {
-        conceptMatch = /\b(?:primarily|standard|practice|tested|effectiveness|proper)\b/i.test(pText);
-      }
+      const pLex = CATEGORY_SEMANTIC_LEXICON[q.category];
+      const allPLexTerms = pLex ? [...pLex.id, ...pLex.en] : [];
+      let conceptMatch = allPLexTerms.some(term => {
+        const reg = new RegExp(`\\b${term}\\b`, 'i');
+        return reg.test(pText);
+      });
 
       if (roleMatch || conceptMatch) {
         rawPassageIds.push(p.passage_id);

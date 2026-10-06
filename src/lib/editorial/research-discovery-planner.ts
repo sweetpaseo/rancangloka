@@ -335,7 +335,7 @@ export function decomposeTopicConcepts(topic: string): ConceptDecomposition {
 /**
  * Derives English technical equivalents for matched concepts.
  */
-function deriveEnglishConceptEquivalents(concepts: ConceptDecomposition): {
+export function deriveEnglishConceptEquivalents(concepts: ConceptDecomposition): {
   enEntities: string[];
   enSymptoms: string[];
   enMechanisms: string[];
