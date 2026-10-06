@@ -12,7 +12,7 @@
  * - Enforces strict network SSRF safety on all resolved OA URLs.
  */
 
-import { validateSafeUrl } from './discovery-network-safety.ts';
+import { validateSafeUrl, validateSafeUrlAndDns } from './discovery-network-safety.ts';
 import { normalizeDoi } from './discovery-providers.ts';
 import type { DiscoveryOptions } from './source-discovery.ts';
 
@@ -67,8 +67,11 @@ export async function resolveOpenAccessCandidate(
         };
       }
 
-      // Critical SSRF check on resolved OA URL
-      const safety = validateSafeUrl(res.oa_url);
+      // Critical SSRF + DNS check on resolved OA URL
+      const safety = await validateSafeUrlAndDns(res.oa_url, {
+        dnsLookupFn: options.dnsLookupFn,
+        fallbackOnDnsFailureIfMocked: Boolean(options.customOaResolverFn || options.fetchFn)
+      });
       if (!safety.isSafe) {
         return {
           original_doi: cleanDoi,
@@ -143,7 +146,10 @@ export async function resolveOpenAccessCandidate(
     }
 
     const candidateOaUrl = bestLocation.landing_page_url || bestLocation.pdf_url;
-    const safety = validateSafeUrl(candidateOaUrl);
+    const safety = await validateSafeUrlAndDns(candidateOaUrl, {
+      dnsLookupFn: options.dnsLookupFn,
+      fallbackOnDnsFailureIfMocked: Boolean(options.fetchFn && !options.dnsLookupFn)
+    });
     if (!safety.isSafe) {
       return {
         original_doi: cleanDoi,

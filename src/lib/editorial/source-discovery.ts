@@ -29,8 +29,14 @@ import {
   type SourceRole
 } from './evidence-quality-gate.ts';
 
-import { validateSafeUrl, isPrivateOrBlockedHost } from './discovery-network-safety.ts';
-export { validateSafeUrl, isPrivateOrBlockedHost };
+import {
+  validateSafeUrl,
+  isPrivateOrBlockedHost,
+  validateSafeUrlAndDns,
+  resolveHostAddresses,
+  type DnsLookupFn
+} from './discovery-network-safety.ts';
+export { validateSafeUrl, isPrivateOrBlockedHost, validateSafeUrlAndDns, resolveHostAddresses, type DnsLookupFn };
 
 export interface DiscoveredSourceCandidate {
   candidate_id: string;
@@ -293,6 +299,8 @@ export interface DiscoveryOptions {
   fetchFn?: typeof globalThis.fetch;
   timeoutMs?: number;
   executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
+  dnsLookupFn?: DnsLookupFn;
+  maxRedirects?: number;
 }
 
 /**
@@ -1065,58 +1073,119 @@ export async function fetchHttpDocument(
   const timeoutMs = options.timeoutMs || 15000;
   const requested_url = url;
   const retrieved_at = new Date().toISOString();
+  const maxRedirects = options.maxRedirects ?? 3;
+  const isMockFetch = Boolean(options.fetchFn && !options.dnsLookupFn);
 
-  const safeCheck = validateSafeUrl(url);
-  if (!safeCheck.isSafe) {
-    return {
-      requested_url,
-      resolved_url: requested_url,
-      http_status: 0,
-      content_type: '',
-      retrieved_at,
-      raw_content_hash: '',
-      source_origin: 'LIVE_RETRIEVAL',
-      retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
-      is_blocked: true,
-      blocked_reason: `SSRF_BLOCKED: ${safeCheck.reason}`
-    };
-  }
+  let currentUrl = url;
+  let redirectsRemaining = maxRedirects;
+  let res: any;
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    while (true) {
+      const safeCheck = await validateSafeUrlAndDns(currentUrl, {
+        dnsLookupFn: options.dnsLookupFn,
+        fallbackOnDnsFailureIfMocked: isMockFetch
+      });
 
-    const res = await fetchFn(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'RancangLoka-Research-Runtime/1.0 (mailto:redaksi@rancangloka.com)',
-        'Accept': 'text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.8'
-      },
-      redirect: 'follow'
-    });
-    clearTimeout(timeoutId);
-
-    const resolved_url = res.url || url;
-    if (resolved_url !== url) {
-      const resolvedCheck = validateSafeUrl(resolved_url);
-      if (!resolvedCheck.isSafe) {
+      if (!safeCheck.isSafe) {
         return {
           requested_url,
-          resolved_url,
-          http_status: res.status,
+          resolved_url: currentUrl,
+          http_status: 0,
           content_type: '',
           retrieved_at,
           raw_content_hash: '',
           source_origin: 'LIVE_RETRIEVAL',
           retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
           is_blocked: true,
-          blocked_reason: `SSRF_BLOCKED: Redirected to unsafe destination (${resolvedCheck.reason})`
+          blocked_reason: `SSRF_BLOCKED: ${safeCheck.reason}`
         };
       }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        res = await fetchFn(currentUrl, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'RancangLoka-Research-Runtime/1.0 (mailto:redaksi@rancangloka.com)',
+            'Accept': 'text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.8'
+          },
+          redirect: 'manual'
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // Check if fetch implementation automatically followed redirects or returned res.url
+      if (res.url && res.url !== currentUrl) {
+        const finalCheck = await validateSafeUrlAndDns(res.url, {
+          dnsLookupFn: options.dnsLookupFn,
+          fallbackOnDnsFailureIfMocked: isMockFetch
+        });
+        if (!finalCheck.isSafe) {
+          return {
+            requested_url,
+            resolved_url: res.url,
+            http_status: res.status || 0,
+            content_type: '',
+            retrieved_at,
+            raw_content_hash: '',
+            source_origin: 'LIVE_RETRIEVAL',
+            retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+            is_blocked: true,
+            blocked_reason: `SSRF_BLOCKED: Redirected to unsafe destination (${finalCheck.reason})`
+          };
+        }
+      }
+
+      // Check for HTTP redirect response (301, 302, 303, 307, 308)
+      const isRedirect = [301, 302, 303, 307, 308].includes(res.status);
+      const location = res.headers ? (typeof res.headers.get === 'function' ? res.headers.get('location') : res.headers['location']) : null;
+
+      if (isRedirect && location) {
+        if (redirectsRemaining <= 0) {
+          return {
+            requested_url,
+            resolved_url: currentUrl,
+            http_status: res.status,
+            content_type: '',
+            retrieved_at,
+            raw_content_hash: '',
+            source_origin: 'LIVE_RETRIEVAL',
+            retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+            is_blocked: true,
+            blocked_reason: 'SSRF_BLOCKED: Exceeded maximum redirect budget'
+          };
+        }
+
+        redirectsRemaining--;
+        try {
+          currentUrl = new URL(location, currentUrl).toString();
+        } catch {
+          return {
+            requested_url,
+            resolved_url: currentUrl,
+            http_status: res.status,
+            content_type: '',
+            retrieved_at,
+            raw_content_hash: '',
+            source_origin: 'LIVE_RETRIEVAL',
+            retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+            is_blocked: true,
+            blocked_reason: `SSRF_BLOCKED: Malformed redirect Location header: '${location}'`
+          };
+        }
+        continue; // Loop back to validate currentUrl and its DNS BEFORE fetching next hop!
+      }
+
+      break;
     }
 
+    const resolved_url = res.url || currentUrl;
     const http_status = res.status;
-    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    const contentType = (res.headers ? (typeof res.headers.get === 'function' ? (res.headers.get('content-type') || '') : (res.headers['content-type'] || '')) : '').toLowerCase();
 
     if (!res.ok) {
       return {
