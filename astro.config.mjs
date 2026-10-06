@@ -26,7 +26,20 @@ export default defineConfig({
   ],
   vite: {
     ssr: {
-      external: ['node:zlib', 'node:crypto']
+      external: [
+        'node:zlib', 'zlib',
+        'node:crypto', 'crypto',
+        'node:dns', 'dns',
+        'node:url', 'url',
+        'node:net', 'net',
+        'node:tls', 'tls',
+        'node:http', 'http',
+        'node:https', 'https',
+        'node:stream', 'stream',
+        'node:buffer', 'buffer',
+        'node:events', 'events',
+        'undici'
+      ]
     }
   }
 });
