@@ -1211,17 +1211,20 @@ export async function fetchHttpDocument(
   }
 }
 
+import { classifySourceRole, type SourceRole } from './evidence-quality-gate.ts';
+
 export interface SourceIdentity {
   publisher: string;
   source_classification: 'PRIMARY_RESEARCH_DOCUMENT' | 'OFFICIAL_INSTITUTIONAL_GUIDANCE' | 'ENCYCLOPEDIC_SECONDARY_SOURCE' | 'STANDARDS_PUBLICATION' | 'INDUSTRY_REFERENCE';
   authority_level: 'INSTITUTIONAL_OFFICIAL' | 'INSTITUTIONAL_PEER_REVIEW' | 'SECONDARY_ENCYCLOPEDIC' | 'STANDARDS_BODY' | 'INDUSTRY_REFERENCE';
   primary_vs_secondary: 'PRIMARY' | 'SECONDARY';
   applicability: SourceApplicability;
+  source_role?: SourceRole;
 }
 
 /**
  * Establishes publisher, classification, and authority level from URL and metadata.
- * Milestone: RESEARCH-SOURCE-COVERAGE-1 (Section 8)
+ * Milestone: RESEARCH-SOURCE-COVERAGE-1 & EVIDENCE-QUALITY-GATE-1
  */
 export function establishSourceIdentity(resolvedUrl: string, candidatePublisher?: string): SourceIdentity {
   let hostname = '';
@@ -1231,63 +1234,80 @@ export function establishSourceIdentity(resolvedUrl: string, candidatePublisher?
     hostname = resolvedUrl.toLowerCase();
   }
 
-  // Institutional Government & Research Institutes
-  if (
-    hostname.endsWith('.gov') || hostname.endsWith('.mil') || hostname.endsWith('.go.id') ||
-    hostname.endsWith('.edu') || hostname.endsWith('.ac.id') ||
-    hostname.includes('lbl.gov') || hostname.includes('energy.gov') || hostname.includes('epa.gov') ||
-    hostname.includes('ornl.gov') || hostname.includes('nist.gov') || hostname.includes('pupr.go.id') ||
-    hostname.includes('brin.go.id')
-  ) {
-    return {
-      publisher: candidatePublisher || (hostname.includes('lbl.gov') ? 'Lawrence Berkeley National Laboratory (LBNL)' : hostname.includes('epa.gov') ? 'U.S. EPA' : hostname.includes('energy.gov') ? 'U.S. Department of Energy' : 'Government/Academic Institution'),
-      source_classification: 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
-      authority_level: 'INSTITUTIONAL_OFFICIAL',
-      primary_vs_secondary: 'SECONDARY',
-      applicability: 'UNIVERSAL_PHYSICS'
-    };
-  }
-
-  // Encyclopedic / Wikipedia
-  if (hostname.includes('wikipedia.org') || hostname.includes('wikimedia.org')) {
-    return {
-      publisher: 'Wikimedia Foundation',
-      source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
-      authority_level: 'SECONDARY_ENCYCLOPEDIC',
-      primary_vs_secondary: 'SECONDARY',
-      applicability: 'UNIVERSAL_PHYSICS'
-    };
-  }
-
-  // Academic / Peer-Reviewed
-  if (hostname.includes('doi.org') || hostname.includes('crossref.org') || hostname.includes('sciencedirect.com') || hostname.includes('springer.com') || hostname.includes('wiley.com') || hostname.includes('mdpi.com') || hostname.includes('arxiv.org')) {
-    return {
-      publisher: candidatePublisher || 'Peer-Reviewed Academic Publisher',
-      source_classification: 'PRIMARY_RESEARCH_DOCUMENT',
-      authority_level: 'INSTITUTIONAL_PEER_REVIEW',
-      primary_vs_secondary: 'PRIMARY',
-      applicability: 'UNIVERSAL_PHYSICS'
-    };
-  }
+  const roleClass = classifySourceRole({
+    publisher: candidatePublisher,
+    resolvedUrl,
+    url: resolvedUrl
+  });
 
   // Standards Body
-  if (hostname.includes('bsn.go.id') || hostname.includes('astm.org') || hostname.includes('iso.org') || hostname.includes('fgiaonline.org') || hostname.includes('ashrae.org')) {
+  if (roleClass.source_role === 'TECHNICAL_STANDARD') {
     return {
       publisher: candidatePublisher || 'Standards Body',
       source_classification: 'STANDARDS_PUBLICATION',
       authority_level: 'STANDARDS_BODY',
       primary_vs_secondary: 'PRIMARY',
-      applicability: 'UNIVERSAL_PHYSICS'
+      applicability: 'UNIVERSAL_PHYSICS',
+      source_role: roleClass.source_role
     };
   }
 
-  // Default Industry / Technical Reference
+  // Institutional Government Guidelines & National Laboratories (LBNL, EPA, DOE, PUPR, BRIN)
+  if (roleClass.source_role === 'OFFICIAL_GOVERNMENT_GUIDANCE' || roleClass.source_role === 'OFFICIAL_INSTITUTIONAL_GUIDANCE') {
+    return {
+      publisher: candidatePublisher || (hostname.includes('lbl.gov') ? 'Lawrence Berkeley National Laboratory (LBNL)' : hostname.includes('epa.gov') ? 'U.S. EPA' : hostname.includes('energy.gov') ? 'U.S. Department of Energy' : 'Government/Academic Institution'),
+      source_classification: 'OFFICIAL_INSTITUTIONAL_GUIDANCE',
+      authority_level: 'INSTITUTIONAL_OFFICIAL',
+      primary_vs_secondary: 'SECONDARY',
+      applicability: 'UNIVERSAL_PHYSICS',
+      source_role: roleClass.source_role
+    };
+  }
+
+  // Scholarly Journals & Academic Papers (including university OJS journals on .ac.id / .edu)
+  if (roleClass.source_role === 'SCHOLARLY_JOURNAL_ARTICLE') {
+    return {
+      publisher: candidatePublisher || 'Peer-Reviewed Academic Publisher',
+      source_classification: 'PRIMARY_RESEARCH_DOCUMENT',
+      authority_level: 'INSTITUTIONAL_PEER_REVIEW',
+      primary_vs_secondary: 'PRIMARY',
+      applicability: 'UNIVERSAL_PHYSICS',
+      source_role: roleClass.source_role
+    };
+  }
+
+  // Encyclopedic / Wikipedia
+  if (hostname.includes('wikipedia.org') || hostname.includes('wikimedia.org') || (candidatePublisher && candidatePublisher.toLowerCase().includes('wikimedia'))) {
+    return {
+      publisher: 'Wikimedia Foundation',
+      source_classification: 'ENCYCLOPEDIC_SECONDARY_SOURCE',
+      authority_level: 'SECONDARY_ENCYCLOPEDIC',
+      primary_vs_secondary: 'SECONDARY',
+      applicability: 'UNIVERSAL_PHYSICS',
+      source_role: 'SCHOLARLY_RESEARCH'
+    };
+  }
+
+  // Other university/academic research without explicit OJS markers
+  if (hostname.endsWith('.edu') || hostname.endsWith('.ac.id')) {
+    return {
+      publisher: candidatePublisher || 'University Academic Institution',
+      source_classification: 'PRIMARY_RESEARCH_DOCUMENT',
+      authority_level: 'INSTITUTIONAL_PEER_REVIEW',
+      primary_vs_secondary: 'PRIMARY',
+      applicability: 'UNIVERSAL_PHYSICS',
+      source_role: 'SCHOLARLY_JOURNAL_ARTICLE'
+    };
+  }
+
+  // Default Industry / Technical Reference / General Media
   return {
     publisher: candidatePublisher || hostname || 'Technical Reference Publisher',
     source_classification: 'INDUSTRY_REFERENCE',
     authority_level: 'INDUSTRY_REFERENCE',
     primary_vs_secondary: 'SECONDARY',
-    applicability: 'UNIVERSAL_PHYSICS'
+    applicability: 'UNIVERSAL_PHYSICS',
+    source_role: roleClass.source_role
   };
 }
 

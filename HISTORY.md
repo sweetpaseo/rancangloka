@@ -16,6 +16,134 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 ---
 
+### EVIDENCE-QUALITY-GATE-1: Semantic Evidence Quality Gates & Relevance Enforcement 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengimplementasikan gerbang kualitas bukti semantik empat dimensi: **`AUTHENTIC + TOPIC_RELEVANT + CLAIM_RELEVANT + AUTHORITY_APPROPRIATE`**.
+  - Mengeliminasi *false positive* akuisisi di mana dokumen HTTP 200 dianggap sebagai bukti sah tanpa mempertimbangkan relevansi topik, kebersihan teks dari boilerplate/spam, ketercakupan substantif pertanyaan riset, dan kecukupan otoritas.
+- **Komponen yang Dimodifikasi & Ditambahkan:**
+  - `src/lib/editorial/evidence-quality-gate.ts`:
+    - `classifySourceRole()`: Membedakan 10 peran sumber (`OFFICIAL_GOVERNMENT_GUIDANCE`, `OFFICIAL_INSTITUTIONAL_GUIDANCE`, `SCHOLARLY_RESEARCH`, `SCHOLARLY_JOURNAL_ARTICLE`, `TECHNICAL_STANDARD`, `PROFESSIONAL_TECHNICAL_REFERENCE`, `EXPERT_EDITORIAL_MEDIA`, `MANUFACTURER_TECHNICAL_MATERIAL`, `GENERAL_EDITORIAL_MEDIA`, `OTHER`) berbasis URL, publisher, judul, DOI, dan penanda OJS jurnal ilmiah alih-alih akhiran domain `.ac.id` semata.
+    - `cleanBoilerplateAndSpam()`: Purge otomatis navigasi, breadcrumb, footer, menu OJS, form login, copyright, tag list, komentar, dan spam judi slot/SEO dengan pelacakan rasio konten substantif dan fail-closed `CONTENT_QUALITY_INSUFFICIENT`.
+    - `DocumentTopicRelevanceEvaluator`: Klasifikasi dokumen dinamis (`HIGHLY_RELEVANT`, `PARTIALLY_RELEVANT`, `INCIDENTALLY_RELEVANT`, `IRRELEVANT`, `UNCERTAIN`) yang menolak tabrakan leksikal off-topic (olahraga, pemilu, sarapan gizi sekolah, silat, kedokteran gigi).
+    - `evaluatePassageRelevance()`: Klasifikasi kutipan (`DIRECTLY_RELEVANT`, `SUPPORTING_BACKGROUND`, `WEAKLY_RELATED`, `OFF_TOPIC`, `UNCERTAIN`).
+    - `evaluateAuthoritySufficiency()`: Matriks otoritas per tipe proposisi (mekanisme fisik, panduan diagnostik, performa material, regulasi, rekomendasi empiris).
+    - `evaluateSynthesizedClaim()`: Penolakan klaim sintesis tanpa deklarasi klaim induk terverifikasi atau dengan fakta/metrik tak bertuan (`SYNTHESIS_SUPPORT_MISSING`, regresi CLM-112).
+    - `evaluateClaimQuality()` & `evaluateAuthorSafeEvidenceGate()`: Gerbang author-safe menyeluruh.
+    - `evaluateResearchQuestionSupport()`: Evaluasi substantif proposisi jawaban per pertanyaan riset (bukan label `semantic_role` sintaksis semata).
+    - `validateProblemSolverProductionGate()`: Penegakan ketat seluruh 6 kategori pertanyaan riset wajib mencapai minimal `ADEQUATELY_COVERED` dengan `authority_sufficient = true`.
+    - `calculateSourceDiversityQuality()`: Pemisahan metrik sumber mentah dari aliran bukti relevan independen, mempertahankan risiko konsentrasi `CRITICAL` bila sumber relevan $\le 1$.
+  - `src/lib/editorial/source-discovery.ts`:
+    - Integrasi `classifySourceRole()` ke dalam `establishSourceIdentity()`.
+  - `src/lib/editorial/index.ts`:
+    - Ekspor modul `evidence-quality-gate.ts`.
+  - `scripts/test-evidence-quality-gate.js`:
+    - Suite pengujian 15 skenario: 14 skenario adversarial komprehensif + 1 pengujian kanonikal Replay Forensik Final5 beku (zero live network).
+- **Hasil Pengujian & Verifikasi:**
+  - `scripts/test-evidence-quality-gate.js`: **15/15 PASS**.
+  - Seluruh 13 suite tes regresi editorial: **PASS**.
+  - `npx tsc --noEmit`: **0 errors (Kompilasi TypeScript Bersih)**.
+- **Status & Stop Gate:**
+  - Klasifikasi: **`EVIDENCE_QUALITY_GATE_1_PASS`**.
+  - Berhenti aman pada: **`EVIDENCE_QUALITY_GATE_1_HUMAN_REVIEW_REQUIRED`**.
+
+---
+
+### EVIDENCE-QUALITY-FORENSIC-1: Final5 Source Relevance, Authority & Claim Quality Audit 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan audit forensik mendalam (*read-only, no code changes, no network, no LLM provider*) terhadap artefak beku eksekusi kanonikal **EDITORIAL FINAL CLEAN PROOF #5**.
+  - Menguji apakah bukti Final5 tidak hanya autentik secara provenansi (`LIVE_RETRIEVAL`, 100% hash SHA-256 valid), tetapi juga:
+    - Benar-benar relevan dengan topik artikel (*genuine document-topic relevance*).
+    - Relevan secara semantik terhadap setiap klaim (*semantic claim relevance*).
+    - Terklasifikasi dengan benar menurut tipe dokumen (*document type classification*).
+    - Memiliki otoritas yang memadai untuk peran bukti yang ditetapkan (*authority sufficiency*).
+    - Menjawab pertanyaan riset kanonikal secara substantif (*real research-question coverage*).
+- **Temuan Forensik Kunci:**
+  - **Klasifikasi Sumber (`SOURCE_CLASSIFICATION_DEFECT`)**: Domain `.ac.id` secara keliru dinaikkan ke `OFFICIAL_INSTITUTIONAL_GUIDANCE` padahal merupakan jurnal OJS lokal (`SCHOLARLY_JOURNAL_ARTICLE`), dan *The Conversation* diklasifikasikan sebagai `INDUSTRY_REFERENCE` padahal merupakan `GENERAL_EDITORIAL_MEDIA`.
+  - **Relevansi Dokumen (`SOURCE_RELEVANCE_DEFECT`)**: Dari 6 sumber: 0 `HIGHLY_RELEVANT`, 1 `PARTIALLY_RELEVANT` (Univ. Selamat Sri - kusen di Batang), 1 `INCIDENTALLY_RELEVANT` (Bima Berilmu - buka jendela untuk TB), dan 4 `IRRELEVANT` (The Conversation - olahraga pagi vs malam; Univ. Wiraraja - sistem pemilu proporsional terbuka + spam judi slot; CV Jendela Edukasi - sarapan pagi anak SD; Univ. Sriwijaya - latihan fisik pesilat). Kebocoran kata kunci leksikal (*lexical leakage*) pada query CrossRef BM25 memicu penemuan dokumen di luar domain.
+  - **Relevansi Kutipan & Entailment Klaim (`CLAIM_ENTAILMENT_DEFECT`)**: Dari 111 passage, 100 (90,1%) adalah `OFF_TOPIC` (termasuk 9 komentar spam judi slot). Dari 112 klaim inventaris, 7 berstatus `OVERSTATED` (header navigasi/boilerplate yang dijadikan konsensus teknis `UNIVERSAL_PHYSICS`), dan 1 berstatus `NOT_SUPPORTED` (`CLM-112`, sintesis profil kusen dan akustik yang diatribusikan tanpa bukti ke artikel olahraga The Conversation).
+  - **Audit Gerbang Author-Safe 112/112**: Kelulusan 112/112 klaim merupakan *false positive* karena gerbang hanya memvalidasi hash kriptografis dan Monetary Silence tanpa filter relevansi semantik topik.
+  - **Ketercakupan Riset Substantif (`RESEARCH_COVERAGE_QUALITY_DEFECT`)**: Ketercakupan 6/6 kategori adalah ilusi sintaksis akibat penetapan peran default `MATERIAL_BEHAVIOR`. Ketercakupan substantif riil adalah **0 / 6 (NOT_COVERED)** (nol bukti fisika sains bangunan, titik embun, atau pemutus termal).
+  - **Keragaman Sumber Riil**: `actual_independent_evidence_streams` = 1, `actual_concentration_risk` = `CRITICAL/EXTREME` (100% bertumpu pada satu makalah lokal non-kondensasi).
+- **Audit Cakupan Commit `ffafb13`**:
+  - Perubahan pada `src/lib/editorial/irwan-research-runtime.ts` diklasifikasikan sebagai **`ASSERTION_MILESTONE_SCOPE_CLEAN`** (menambahkan isolasi mock `!hasExplicitMocks` dan memperketat routing `cand_open_` tanpa mengubah perilaku runtime produksi).
+- **Klasifikasi Forensik Primer**:
+  - **`MULTIPLE_EVIDENCE_QUALITY_DEFECTS`**.
+- **Status & Stop Gate**:
+  - Berhenti aman pada: **`EVIDENCE_QUALITY_FORENSIC_1_HUMAN_REVIEW_REQUIRED`**.
+
+---
+
+### ASSERTION-ACCOUNTABILITY-1: Post-Draft Assertion Reconciliation & Testing Isolation 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Menganalisis akar penyebab Joko memproduksi 66 kalimat proposisi substantif namun hanya 6 deklarasi klaim dalam `claim_usage`, yang memicu penolakan aman `ARTICLE_ASSERTION_UNACCOUNTED: 59 kalimat substantif tidak tercatat dalam claim_usage`.
+  - Mengisolasi harness pengujian agar eksekusi mock tidak menginjeksi kandidat dokumen terbuka sintetis ke dalam test runner verifikasi akuntabilitas asersi.
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/editorial/irwan-research-runtime.ts`:
+    - Penambahan `const hasExplicitMocks = Boolean(options.crossRefSearchFn || options.wikiSearchFn);` pada cabang fallback `cand_open_` dan `cand_wiki_` (baris 385, 401).
+    - Pengetatan pengecekan perutean kandidat dokumen teknis terbuka pada baris 429 (`c.candidate_id === cand_open_${openDocId} || c.candidate_id.startsWith('cand_open_SRC-')`).
+- **Hasil Pengujian & Verifikasi:**
+  - Isolasi unit test bersih tanpa polusi fixture sintetis.
+  - Penegakan fail-closed pada ArticleAssertionLedger tetap kokoh (zero weakening of safety gates).
+- **Status & Commit:**
+  - Commit: `ffafb13` (`fix(editorial): reconcile post-draft assertion accountability`).
+  - Klasifikasi: `ASSERTION_ACCOUNTABILITY_1_PASS`.
+
+---
+
+### EDITORIAL FINAL CLEAN PROOF #5: End-to-End Real Runtime Execution & Fail-Closed Assertion Ledger Gate 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan eksekusi kanonikal tunggal (*single canonical proof run*) pembuktian sistem editorial ujung-ke-ujung (End-to-End Editorial Proof) setelah penyelesaian orkestrasi akuisisi kandidat ke dokumen.
+  - Menjaga kebekuan naskah uji (*runner freeze*) dengan verifikasi `RUNNER_PRE_SHA256 == RUNNER_POST_SHA256` (`a62d888bc3450a171a5a73db9b6d8b3c57c220e9b09b9e1237b54e39e5c43330`).
+  - Menguji topik problem solver: *"Jendela Aluminium Sering Berembun di Pagi Hari: Masalah Kusen, Kaca, Ventilasi, atau Kelembapan Ruangan?"*.
+  - Melakukan pengunduhan publik nyata via CrossRef dan web publik tanpa fixture sintetis.
+- **Hasil Eksekusi & Evaluasi Gerbang:**
+  - **Akuisisi Dokumen**: 7 kandidat ditemukan, 6 dipilih dan berhasil diunduh via HTTP (100% respon 200). `real_authoritative_source_count = 6`, `fixture_count = 0` (The Conversation, Univ. Selamat Sri, Yayasan Bima Berilmu, Univ. Wiraraja, CV Jendela Edukasi, Univ. Sriwijaya).
+  - **Autentisitas & Ketercakupan**: `SOURCE_AUTHENTICITY_GATE` = **PASS**, `RAW_COVERAGE_GATE` = **PASS** (6/6), `ADMISSIBLE_COVERAGE_GATE` = **PASS** (6/6 kategori kanonikal terpenuhi 100% dari sumber live).
+  - **Integritas Bukti**: `RESEARCH_INTEGRITY_GATE` = **PASS** (112 klaim, 111 passage ber-hash substring eksak).
+  - **Author-Safe**: `AUTHOR_SAFE_GATE` = **PASS** (112/112 klaim aman authoring).
+  - **Prompt Domain Leak**: `WRITER_PROMPT_DOMAIN_LEAK_GATE` = **PASS** (0 domain leaks).
+  - **Penulisan Joko Real**: Joko memproduksi naskah 8.589 karakter via provider SumoPod (`gpt-5.6-luna`) dalam 17.910 ms.
+  - **Ledger Asersi Artikel**: Evaluasi `buildArticleAssertionLedger` mendeteksi 66 kalimat proposisi artikel: 6 didukung bukti dideklarasikan, 0 inferensi editorial, 1 prosa non-klaim, dan 59 proposisi tidak tercatat dalam `claim_usage`.
+  - **Penghentian Fail-Closed**: Pipeline berhenti secara aman pada `ASSERTION_LEDGER_AUDIT` dengan klasifikasi **`FINAL5_ASSERTION_LEDGER_BLOCKED`** (`ARTICLE_ASSERTION_UNACCOUNTED: 59 kalimat substantif tidak tercatat dalam claim_usage`).
+- **Artefak Kanonikal**:
+  - Seluruh 17 artefak tersimpan dan terverifikasi hash SHA-256 pada `scripts/runtime-proof/final5/` dan `final5-artifact-manifest.json`.
+- **Status & Stop Gate**:
+  - Berhenti aman pada: **`EDITORIAL_FINAL5_HUMAN_REVIEW_REQUIRED`**.
+
+---
+
+### RESEARCH-ACQUISITION-ORCHESTRATION-1: Candidate-to-Document Retrieval & Multi-Pass Control Flow 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan akar masalah `FINAL4_SOURCE_AUTHENTICITY_BLOCKED` di mana 34 kandidat CrossRef ditemukan namun tidak ada dokumen riil yang diunduh akibat ketiadaan pipa retrieval kandidat ke dokumen.
+  - Membangun pelacak siklus hidup kandidat (`CandidateLifecycleTracker`) yang mencatat riwayat transisi status setiap kandidat secara deterministik tanpa ada yang hilang diam-diam (*zero silent drops*): `DISCOVERED` $\to$ `SELECTED_FOR_RETRIEVAL` $\to$ `RETRIEVAL_ATTEMPTED` $\to$ `RETRIEVAL_SUCCEEDED` $\to$ `PASSAGE_EXTRACTED` $\to$ `AUTHENTIC` $\to$ `ADMISSIBLE`.
+  - Mengimplementasikan `fetchGenericPublicHtmlDocument` untuk pengambilan dan sanitasi HTML web publik dengan timeout 12s, batas ukuran 2MB, dan ekstraksi teks bersih.
+  - Mengimplementasikan `fetchCrossRefMetadataAndResolve` untuk meresolusi DOI, mengikuti rantai redirect, dan mengambil konten tujuan jika terbuka publik.
+  - Menerapkan arsitektur multi-pass terikat (*bounded multi-pass*): `MAX_RESEARCH_PASSES = 2`, `MAX_RETRIEVAL_ATTEMPTS_PER_PASS = 6`, `MAX_TOTAL_RETRIEVAL_ATTEMPTS = 12`. Pass 2 hanya dieksekusi jika Pass 1 menyisakan kategori yang belum tercakup.
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/editorial/source-discovery.ts`:
+    - Definisi tipe `CandidateLifecycleState`, antarmuka `CandidateLifecycleRecord`.
+    - Implementasi kelas `CandidateLifecycleTracker` dan metode `estimateCandidateSourceClass()`.
+    - Implementasi `fetchGenericPublicHtmlDocument()` dan `fetchCrossRefMetadataAndResolve()`.
+  - `src/lib/editorial/irwan-research-runtime.ts`:
+    - Integrasi `CandidateLifecycleTracker` pada alur Pass 1 dan Pass 2.
+    - Seleksi berbasis peringkat relevansi dan kelas sumber (`SCHOLARLY`, `INSTITUTIONAL`, `ENCYCLOPEDIC`).
+    - Pencatatan metrik putaran riset (`ResearchPassMetrics`) pada `passMetrics`.
+  - `scripts/test-research-acquisition-orchestration.js`:
+    - Suite pengujian 12 tes komprehensif (Test A s.d. L) yang memvalidasi siklus hidup kandidat, generic HTML retrieval, DOI resolution, HTTP failures, PDF unsupported handling, bounded pass control flow, dan ketiadaan fallback fixture.
+- **Hasil Pengujian & Verifikasi:**
+  - `scripts/test-research-acquisition-orchestration.js`: **12/12 PASS**.
+  - Seluruh 11 suite tes regresi editorial: **PASS**.
+  - `npx tsc --noEmit`: **0 errors (Kompilasi TypeScript Bersih)**.
+- **Status & Commit:**
+  - Commit: `69438de` (`fix(editorial): complete authentic research acquisition orchestration`).
+
+---
+
 ### RESEARCH-SOURCE-COVERAGE-1: Authentic Multi-Source Acquisition & Admissible Coverage Architecture 2026-10-05
 
 - **Tujuan & Ruang Lingkup:**
