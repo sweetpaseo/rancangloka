@@ -34,9 +34,17 @@ import {
   isPrivateOrBlockedHost,
   validateSafeUrlAndDns,
   resolveHostAddresses,
+  createPinnedDispatcher,
   type DnsLookupFn
 } from './discovery-network-safety.ts';
-export { validateSafeUrl, isPrivateOrBlockedHost, validateSafeUrlAndDns, resolveHostAddresses, type DnsLookupFn };
+export {
+  validateSafeUrl,
+  isPrivateOrBlockedHost,
+  validateSafeUrlAndDns,
+  resolveHostAddresses,
+  createPinnedDispatcher,
+  type DnsLookupFn
+};
 
 export interface DiscoveredSourceCandidate {
   candidate_id: string;
@@ -1102,18 +1110,32 @@ export async function fetchHttpDocument(
         };
       }
 
+      // Socket Pinning: Pin connection to approved destination IP (Node Undici)
+      let dispatcher: any = undefined;
+      const targetHost = safeCheck.parsedHost;
+      const approvedIp = safeCheck.resolvedIps?.[0];
+
+      if (targetHost && approvedIp) {
+        dispatcher = await createPinnedDispatcher(targetHost, approvedIp);
+      }
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
-        res = await fetchFn(currentUrl, {
+        const fetchOpts: any = {
           signal: controller.signal,
           headers: {
             'User-Agent': 'RancangLoka-Research-Runtime/1.0 (mailto:redaksi@rancangloka.com)',
             'Accept': 'text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.8'
           },
           redirect: 'manual'
-        });
+        };
+        if (dispatcher) {
+          fetchOpts.dispatcher = dispatcher;
+        }
+
+        res = await fetchFn(currentUrl, fetchOpts);
       } finally {
         clearTimeout(timeoutId);
       }

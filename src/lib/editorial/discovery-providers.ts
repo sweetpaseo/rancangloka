@@ -365,8 +365,24 @@ export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
     this.customSearchFn = customSearchFn;
   }
 
+  getProviderName(): 'BRAVE' | 'TAVILY' | 'SEARXNG' | 'CUSTOM' {
+    if (this.customSearchFn) return 'CUSTOM';
+    const explicit = (process.env.OPEN_WEB_SEARCH_PROVIDER || '').toUpperCase().trim();
+    if (explicit === 'BRAVE' || explicit === 'TAVILY' || explicit === 'SEARXNG' || explicit === 'CUSTOM') {
+      return explicit;
+    }
+    if (process.env.TAVILY_API_KEY && !process.env.BRAVE_SEARCH_API_KEY && !process.env.OPEN_WEB_SEARCH_API_KEY) {
+      return 'TAVILY';
+    }
+    return 'BRAVE';
+  }
+
   isConfigured(): boolean {
     if (this.customSearchFn) return true;
+    const provider = this.getProviderName();
+    if (provider === 'SEARXNG') {
+      return Boolean(process.env.OPEN_WEB_SEARCH_ENDPOINT);
+    }
     const providerKey = process.env.OPEN_WEB_SEARCH_API_KEY || process.env.BRAVE_SEARCH_API_KEY || process.env.TAVILY_API_KEY;
     return Boolean(providerKey);
   }
@@ -376,92 +392,126 @@ export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
 
     // 1. If custom mock or test search function supplied
     if (this.customSearchFn) {
-      try {
-        const rawResults = await this.customSearchFn(request.query, maxRows);
-        const candidates: NormalizedCandidateMetadata[] = [];
-
-        for (let i = 0; i < rawResults.length; i++) {
-          const item = rawResults[i];
-          // Critical SSRF check on untrusted search provider URL
-          const safeCheck = validateSafeUrl(item.url);
-          if (!safeCheck.isSafe) {
-            continue; // Safely discard private/unsafe URLs
-          }
-
-          candidates.push({
-            provider: 'OPEN_WEB',
-            candidate_id: `cand_web_${Date.now()}_${i}`,
-            title: item.title,
-            snippet_or_abstract: item.snippet,
-            url: safeCheck.normalizedUrl || item.url,
-            publisher: item.publisher || 'Open Web Source',
-            document_hint: estimateCandidateHint(item.title, item.publisher, item.url),
-            language: request.language,
-            discovered_at: new Date().toISOString(),
-            discovery_query_id: request.query_id
-          });
-        }
-        return candidates;
-      } catch {
-        return [];
-      }
-    }
-
-    // 2. If environment configured provider (e.g. Brave Search API)
-    const apiKey = process.env.OPEN_WEB_SEARCH_API_KEY || process.env.BRAVE_SEARCH_API_KEY;
-    if (!apiKey) {
-      // OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE: Return empty, do not pretend search occurred
-      return [];
-    }
-
-    const fetchFn = options.fetchFn || globalThis.fetch;
-    const timeoutMs = options.timeoutMs || 10000;
-    const endpoint = process.env.OPEN_WEB_SEARCH_ENDPOINT || 'https://api.search.brave.com/res/v1/web/search';
-    const queryUrl = `${endpoint}?q=${encodeURIComponent(request.query)}&count=${maxRows}`;
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      const res = await fetchFn(queryUrl, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'X-Subscription-Token': apiKey,
-          'User-Agent': 'RancangLoka-Research-Runtime/1.0'
-        }
-      });
-      clearTimeout(timeoutId);
-
-      if (!res.ok) return [];
-
-      const data: any = await res.json();
-      const webResults = data?.web?.results;
-      if (!Array.isArray(webResults)) return [];
-
+      const rawResults = await this.customSearchFn(request.query, maxRows);
       const candidates: NormalizedCandidateMetadata[] = [];
-      for (let i = 0; i < webResults.length; i++) {
-        const item = webResults[i];
+
+      for (let i = 0; i < rawResults.length; i++) {
+        const item = rawResults[i];
+        // Critical SSRF check on untrusted search provider URL
         const safeCheck = validateSafeUrl(item.url);
-        if (!safeCheck.isSafe) continue;
+        if (!safeCheck.isSafe) {
+          continue; // Safely discard private/unsafe URLs
+        }
 
         candidates.push({
           provider: 'OPEN_WEB',
           candidate_id: `cand_web_${Date.now()}_${i}`,
           title: item.title,
-          snippet_or_abstract: item.description,
+          snippet_or_abstract: item.snippet,
           url: safeCheck.normalizedUrl || item.url,
-          publisher: item.profile?.name || undefined,
-          document_hint: estimateCandidateHint(item.title, item.profile?.name, item.url),
+          publisher: item.publisher || 'Open Web Source',
+          document_hint: estimateCandidateHint(item.title, item.publisher, item.url),
           language: request.language,
           discovered_at: new Date().toISOString(),
           discovery_query_id: request.query_id
         });
       }
-
       return candidates;
-    } catch {
-      return [];
     }
+
+    // 2. Explicit failure if unconfigured
+    if (!this.isConfigured()) {
+      throw new Error('OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE: No open-web provider credentials or endpoint configured');
+    }
+
+    const providerType = this.getProviderName();
+    const fetchFn = options.fetchFn || globalThis.fetch;
+    const timeoutMs = options.timeoutMs || 10000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    let res: Response;
+
+    try {
+      if (providerType === 'TAVILY') {
+        const apiKey = process.env.OPEN_WEB_SEARCH_API_KEY || process.env.TAVILY_API_KEY;
+        const endpoint = process.env.OPEN_WEB_SEARCH_ENDPOINT || 'https://api.tavily.com/search';
+        res = await fetchFn(endpoint, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'RancangLoka-Research-Runtime/1.0'
+          },
+          body: JSON.stringify({
+            api_key: apiKey,
+            query: request.query,
+            max_results: maxRows
+          })
+        });
+      } else if (providerType === 'SEARXNG') {
+        const endpoint = process.env.OPEN_WEB_SEARCH_ENDPOINT || 'http://127.0.0.1:8888/search';
+        const queryUrl = `${endpoint}?q=${encodeURIComponent(request.query)}&format=json`;
+        res = await fetchFn(queryUrl, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'RancangLoka-Research-Runtime/1.0'
+          }
+        });
+      } else {
+        // Default: BRAVE
+        const apiKey = process.env.OPEN_WEB_SEARCH_API_KEY || process.env.BRAVE_SEARCH_API_KEY;
+        const endpoint = process.env.OPEN_WEB_SEARCH_ENDPOINT || 'https://api.search.brave.com/res/v1/web/search';
+        const queryUrl = `${endpoint}?q=${encodeURIComponent(request.query)}&count=${maxRows}`;
+        res = await fetchFn(queryUrl, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'X-Subscription-Token': apiKey || '',
+            'User-Agent': 'RancangLoka-Research-Runtime/1.0'
+          }
+        });
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!res.ok) {
+      throw new Error(`PROVIDER_API_ERROR_${res.status}`);
+    }
+
+    const data: any = await res.json();
+    let rawItems: any[] = [];
+
+    if (providerType === 'TAVILY' || providerType === 'SEARXNG') {
+      rawItems = Array.isArray(data?.results) ? data.results : [];
+    } else {
+      rawItems = Array.isArray(data?.web?.results) ? data.web.results : [];
+    }
+
+    const candidates: NormalizedCandidateMetadata[] = [];
+    for (let i = 0; i < rawItems.length; i++) {
+      const item = rawItems[i];
+      const safeCheck = validateSafeUrl(item.url);
+      if (!safeCheck.isSafe) continue;
+
+      candidates.push({
+        provider: 'OPEN_WEB',
+        candidate_id: `cand_web_${Date.now()}_${i}`,
+        title: item.title,
+        snippet_or_abstract: item.description || item.content || item.snippet,
+        url: safeCheck.normalizedUrl || item.url,
+        publisher: item.profile?.name || item.engine || undefined,
+        document_hint: estimateCandidateHint(item.title, item.profile?.name, item.url),
+        language: request.language,
+        discovered_at: new Date().toISOString(),
+        discovery_query_id: request.query_id
+      });
+    }
+
+    return candidates;
   }
 }
+

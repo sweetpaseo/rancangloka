@@ -490,7 +490,7 @@ export async function executeGeneralizedResearchJob(
         pass1ProviderCalls.push({ provider: 'WIKIPEDIA', query_id: pq.query_id, result_count: 0, error_status: err.message });
       }
 
-      // Open-Web search if configured
+      // Open-Web search if configured or default provider
       if (options.openWebSearchFn) {
         try {
           const openWebResults = await options.openWebSearchFn(q, 5);
@@ -513,6 +513,30 @@ export async function executeGeneralizedResearchJob(
           }
         } catch (err: any) {
           pass1ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: 0, error_status: err.message });
+        }
+      } else {
+        const defaultWebProvider = new OpenWebDiscoveryProvider();
+        if (!defaultWebProvider.isConfigured()) {
+          pass1ProviderCalls.push({
+            provider: 'OPEN_WEB',
+            query_id: pq.query_id,
+            result_count: 0,
+            error_status: 'OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE'
+          });
+        } else {
+          try {
+            const openWebResults = await defaultWebProvider.search(
+              { query: q, query_id: pq.query_id, language: v.language, max_results: 5 },
+              { fetchFn: options.fetchFn }
+            );
+            p1OpenWebCount += openWebResults.length;
+            pass1ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: openWebResults.length });
+            for (const cand of openWebResults) {
+              normalizedCandidatePool.push(cand);
+            }
+          } catch (err: any) {
+            pass1ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: 0, error_status: err.message });
+          }
         }
       }
     }
@@ -1394,6 +1418,30 @@ export async function executeGeneralizedResearchJob(
             }
           } catch (err: any) {
             pass2ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: 0, error_status: err.message });
+          }
+        } else {
+          const defaultWebProvider = new OpenWebDiscoveryProvider();
+          if (!defaultWebProvider.isConfigured()) {
+            pass2ProviderCalls.push({
+              provider: 'OPEN_WEB',
+              query_id: pq.query_id,
+              result_count: 0,
+              error_status: 'OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE'
+            });
+          } else {
+            try {
+              const openWebResults = await defaultWebProvider.search(
+                { query: gq, query_id: pq.query_id, language: v.language, max_results: 5 },
+                { fetchFn: options.fetchFn }
+              );
+              p2OpenWebCount += openWebResults.length;
+              pass2ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: openWebResults.length });
+              for (const cand of openWebResults) {
+                pass2CandidatePool.push(cand);
+              }
+            } catch (err: any) {
+              pass2ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: 0, error_status: err.message });
+            }
           }
         }
       }

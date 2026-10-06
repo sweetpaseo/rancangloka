@@ -326,3 +326,62 @@ export async function validateSafeUrlAndDns(
   };
 }
 
+let undiciModule: any = null;
+async function getUndici() {
+  if (undiciModule !== null) return undiciModule;
+  try {
+    undiciModule = await import('undici');
+  } catch {
+    undiciModule = false;
+  }
+  return undiciModule;
+}
+
+/**
+ * Creates an Undici Agent whose socket connector pins connections to the specified IP,
+ * while preserving the original hostname for TLS SNI and Host header validation.
+ *
+ * Invariants:
+ * - Reject unauthorized TLS certificates: rejectUnauthorized is never set to false.
+ * - Strict destination pinning: connector only connects to the approved IP.
+ * - Any unexpected hostname resolution attempt inside the connector is blocked fail-closed.
+ */
+export async function createPinnedDispatcher(
+  pinnedHost: string,
+  pinnedIp: string
+): Promise<any | null> {
+  const undici = await getUndici();
+  if (!undici || !undici.Agent || !undici.buildConnector) {
+    return null;
+  }
+
+  const normalizedPinnedHost = pinnedHost.trim().toLowerCase();
+  const normalizedPinnedIp = pinnedIp.trim();
+
+  const lookup = (hostname: string, options: any, callback: any) => {
+    if (typeof options === 'function') {
+      callback = options;
+      options = {};
+    }
+    const currentHost = hostname.trim().toLowerCase();
+    if (currentHost === normalizedPinnedHost) {
+      const family = normalizedPinnedIp.includes(':') ? 6 : 4;
+      if (options && options.all) {
+        callback(null, [{ address: normalizedPinnedIp, family }]);
+      } else {
+        callback(null, normalizedPinnedIp, family);
+      }
+    } else {
+      callback(
+        new Error(
+          `DNS_PIN_VIOLATION: Unexpected hostname lookup for '${hostname}' in pinned dispatcher for '${pinnedHost}'`
+        )
+      );
+    }
+  };
+
+  const connector = undici.buildConnector({ lookup });
+  return new undici.Agent({ connect: connector });
+}
+
+
