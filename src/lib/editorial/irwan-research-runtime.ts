@@ -382,7 +382,9 @@ export async function executeGeneralizedResearchJob(
     wikiSourceId = 'SRC-OPEN-WIKI-DAMP';
   }
 
-  if (options.openTechnicalDocFn || isTestExecution) {
+  const hasExplicitMocks = Boolean(options.crossRefSearchFn || options.wikiSearchFn);
+
+  if (options.openTechnicalDocFn || (isTestExecution && !hasExplicitMocks)) {
     const openCand: DiscoveredSourceCandidate = {
       candidate_id: `cand_open_${openDocId}`,
       query: input.topic,
@@ -398,7 +400,7 @@ export async function executeGeneralizedResearchJob(
     }
   }
 
-  if ((options.wikiContentFn || isTestExecution) && !discoveredCandidates.some(c => c.title.toLowerCase() === wikiTitle.toLowerCase())) {
+  if ((options.wikiContentFn || (isTestExecution && !hasExplicitMocks)) && !discoveredCandidates.some(c => c.title.toLowerCase() === wikiTitle.toLowerCase())) {
     const wikiCand: DiscoveredSourceCandidate = {
       candidate_id: `cand_wiki_${wikiSourceId}`,
       query: input.topic,
@@ -426,7 +428,7 @@ export async function executeGeneralizedResearchJob(
     addTraceEvent('SOURCE_RETRIEVAL_STARTED', `Irwan memulai pengambilan dokumen "${c.title}" via [${c.discovery_engine}].`, { candidate_id: c.candidate_id, title: c.title });
 
     // Branch 1: Open Technical Doc via openDocHandler
-    if (c.candidate_id.startsWith('cand_open_')) {
+    if (c.candidate_id === `cand_open_${openDocId}` || c.candidate_id.startsWith('cand_open_SRC-')) {
       const openDocHandler = options.openTechnicalDocFn || fetchOpenTechnicalDocument;
       try {
         const doc = await openDocHandler(openDocId, { fetchFn: options.fetchFn });

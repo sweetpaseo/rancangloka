@@ -14,7 +14,40 @@
  */
 
 import crypto from 'node:crypto';
-import { isHistoricalRoofPack, type EvidencePackInput, type AuthorSafeClaim, type EvidenceClaim } from '../article/human-quality.ts';
+import { isHistoricalRoofPack, generateAuthorSafeClaims, type EvidencePackInput, type AuthorSafeClaim, type EvidenceClaim } from '../article/human-quality.ts';
+import {
+  AssertionReconciliationEngine,
+  extractArticleSpansWithGranularity,
+  classifyNonClaimProse,
+  evaluateEditorialInference,
+  findCandidateClaimsForAssertion,
+  type AssertionClassification,
+  type ResolutionSource,
+  type SemanticResult,
+  type ReconciledAssertionEntry,
+  type AssertionReconciliationMetrics,
+  type AssertionReconciliationInput,
+  type AssertionReconciliationResult,
+  type NonClaimProseClassification,
+  type EditorialInferenceEvaluation
+} from './assertion-reconciliation.ts';
+
+export {
+  AssertionReconciliationEngine,
+  extractArticleSpansWithGranularity,
+  classifyNonClaimProse,
+  evaluateEditorialInference,
+  findCandidateClaimsForAssertion,
+  type AssertionClassification,
+  type ResolutionSource,
+  type SemanticResult,
+  type ReconciledAssertionEntry,
+  type AssertionReconciliationMetrics,
+  type AssertionReconciliationInput,
+  type AssertionReconciliationResult,
+  type NonClaimProseClassification,
+  type EditorialInferenceEvaluation
+};
 
 export type ClaimUsageType =
   | 'DIRECT_PARAPHRASE'
@@ -31,7 +64,7 @@ export interface AuthorClaimUsageDeclaration {
   entailment_status?: 'VALID' | 'CLAIM_USAGE_ENTAILMENT_MISMATCH' | 'CLAIM_USAGE_ARTICLE_SPAN_NOT_FOUND';
 }
 
-export type AssertionKind = 'EVIDENCE_BACKED' | 'EDITORIAL_INFERENCE' | 'NON_CLAIM_PROSE';
+export type AssertionKind = 'EVIDENCE_BACKED' | 'EDITORIAL_INFERENCE' | 'NON_CLAIM_PROSE' | 'UNRESOLVED';
 
 export interface ArticleAssertionEntry {
   assertion_id: string;
@@ -40,21 +73,37 @@ export interface ArticleAssertionEntry {
   char_end: number;
   span_hash: string;
   assertion_kind: AssertionKind;
+  classification?: AssertionClassification;
   claim_ids: string[];
+  supporting_claim_ids?: string[];
+  supporting_passage_ids?: string[];
   usage_type: 'DIRECT_PARAPHRASE' | 'SUPPORTED_SYNTHESIS' | 'EDITORIAL_INFERENCE' | null;
+  semantic_result?: SemanticResult;
+  resolution_source?: ResolutionSource;
   classification_reason: string;
+  reason?: string;
+  derived_from_claim_ids?: string[];
+  inference_reason?: string;
 }
 
 export interface ArticleAssertionLedger {
   entries: ArticleAssertionEntry[];
   total_spans_count: number;
+  substantive_assertion_count?: number;
   evidence_backed_count: number;
   editorial_inference_count: number;
   non_claim_prose_count: number;
   unaccounted_count: number;
+  unresolved_assertion_count?: number;
+  not_entailed_count?: number;
+  uncertain_count?: number;
+  joko_declared_mapping_count?: number;
+  auto_reconciled_mapping_count?: number;
+  semantic_verifier_mapping_count?: number;
   unaccounted_spans: string[];
   is_exhaustive: boolean;
   errors: string[];
+  reconciliation_report?: AssertionReconciliationResult;
 }
 
 export interface GroundedDraftEnvelope {
@@ -655,115 +704,113 @@ export function isNonClaimProse(span: string): { isExempt: boolean; reason: stri
   return { isExempt: false, reason: 'DECLARATIVE_PROSE: Memerlukan rujukan bukti' };
 }
 
+export interface BuildArticleAssertionLedgerOptions {
+  approvedClaims?: any[];
+  authorSafeClaims?: AuthorSafeClaim[];
+  evidencePack?: EvidencePackInput;
+  strictCompleteness?: boolean;
+  verifier?: SemanticEntailmentVerifier;
+}
+
 export function buildArticleAssertionLedger(
   articleMarkdown: string,
   claimUsages: AuthorClaimUsageDeclaration[] = [],
-  options?: {
-    approvedClaims?: any[];
-  }
+  options?: BuildArticleAssertionLedgerOptions
 ): ArticleAssertionLedger {
-  const spans = extractArticleSentenceSpans(articleMarkdown);
-  const entries: ArticleAssertionEntry[] = [];
-  const unaccounted_spans: string[] = [];
-  const errors: string[] = [];
-
-  let evidenceBackedCount = 0;
-  let editorialInferenceCount = 0;
-  let nonClaimProseCount = 0;
-
-  for (let i = 0; i < spans.length; i++) {
-    const s = spans[i];
-    const assertionId = `AST-${(i + 1).toString().padStart(3, '0')}`;
-    const normSpan = normalizeArticleText(s.span);
-
-    // 1. Look for matching claim_usage
-    const matchedUsage = claimUsages.find(u => {
-      const normEx = normalizeArticleText(u.article_excerpt || '');
-      if (!normEx) return false;
-      return normEx.includes(normSpan) || normSpan.includes(normEx) || (
-        normSpan.length > 25 && normEx.length > 25 && (
-          normSpan.slice(0, 30) === normEx.slice(0, 30) ||
-          normSpan.slice(-30) === normEx.slice(-30)
-        )
-      );
-    });
-
-    if (matchedUsage) {
-      const isInf = matchedUsage.usage_type === 'EDITORIAL_INFERENCE';
-      const kind: AssertionKind = isInf ? 'EDITORIAL_INFERENCE' : 'EVIDENCE_BACKED';
-      const claimIds = Array.isArray((matchedUsage as any).claim_ids)
-        ? (matchedUsage as any).claim_ids
-        : (matchedUsage.claim_id ? [matchedUsage.claim_id] : []);
-
-      if (isInf) {
-        editorialInferenceCount++;
-      } else {
-        evidenceBackedCount++;
-      }
-
-      entries.push({
-        assertion_id: assertionId,
-        article_span: s.span,
-        char_start: s.charStart,
-        char_end: s.charEnd,
-        span_hash: s.spanHash,
-        assertion_kind: kind,
-        claim_ids: claimIds,
-        usage_type: matchedUsage.usage_type,
-        classification_reason: `Tercakup dalam deklarasi klaim ${claimIds.join(', ')} (${matchedUsage.usage_type})`
-      });
-      continue;
+  let safeClaims = options?.authorSafeClaims || [];
+  if (safeClaims.length === 0 && options?.approvedClaims && options.approvedClaims.length > 0) {
+    if (options.approvedClaims[0] && typeof (options.approvedClaims[0] as any).allowed_for_authoring === 'boolean') {
+      safeClaims = options.approvedClaims as AuthorSafeClaim[];
+    } else {
+      safeClaims = (options.approvedClaims as any[]).map(c => ({
+        claim_id: c.claim_id,
+        statement: c.statement,
+        support_level: c.support_level || 'SUPPORTED',
+        applicability: c.applicability || 'UNIVERSAL_PHYSICS',
+        claim_class: c.claim_class || 'technical_consensus',
+        allowed_for_authoring: c.allowed_for_authoring ?? (c.action !== 'REMOVE' && c.action !== 'REMOVE_CLAIM' && c.evidence_status !== 'UNVERIFIED'),
+        evidence_status: c.evidence_status || 'VERIFIED',
+        evidence_passage_ids: c.evidence_passage_ids || []
+      }));
     }
-
-    // 2. Check if exempt non-claim prose
-    const proseCheck = isNonClaimProse(s.span);
-    if (proseCheck.isExempt) {
-      nonClaimProseCount++;
-      entries.push({
-        assertion_id: assertionId,
-        article_span: s.span,
-        char_start: s.charStart,
-        char_end: s.charEnd,
-        span_hash: s.spanHash,
-        assertion_kind: 'NON_CLAIM_PROSE',
-        claim_ids: [],
-        usage_type: null,
-        classification_reason: proseCheck.reason
-      });
-      continue;
-    }
-
-    // 3. Declarative factual statement NOT covered by claim_usage => ARTICLE_ASSERTION_UNACCOUNTED!
-    unaccounted_spans.push(s.span);
-    errors.push(
-      `ARTICLE_ASSERTION_UNACCOUNTED: Asersi deklaratif substansial di naskah belum tercakup dalam claim_usage atau bukti: "${s.span.slice(0, 90)}..."`
-    );
-
-    entries.push({
-      assertion_id: assertionId,
-      article_span: s.span,
-      char_start: s.charStart,
-      char_end: s.charEnd,
-      span_hash: s.spanHash,
-      assertion_kind: 'NON_CLAIM_PROSE',
-      claim_ids: [],
-      usage_type: null,
-      classification_reason: `UNACCOUNTED_DECLARATIVE: ${proseCheck.reason}`
-    });
   }
 
-  const is_exhaustive = unaccounted_spans.length === 0;
+  // If no safe claims or approved claims were passed, but claimUsages was provided,
+  // build candidate safe claims from claimUsages to maintain backwards compatibility
+  if (safeClaims.length === 0 && claimUsages.length > 0) {
+    safeClaims = claimUsages.map(u => ({
+      claim_id: u.claim_id,
+      statement: u.article_excerpt,
+      support_level: 'SUPPORTED' as const,
+      applicability: 'UNIVERSAL_PHYSICS' as const,
+      claim_class: 'technical_consensus',
+      allowed_for_authoring: true,
+      evidence_status: 'VERIFIED',
+      evidence_passage_ids: []
+    }));
+  }
+
+  const engine = new AssertionReconciliationEngine(options?.verifier);
+
+  const reconciliation = engine.reconcile({
+    article_markdown: articleMarkdown,
+    claim_usage: claimUsages,
+    authorSafeClaims: safeClaims,
+    evidencePack: options?.evidencePack,
+    options: {
+      strictCompleteness: options?.strictCompleteness
+    }
+  });
+
+  const entries: ArticleAssertionEntry[] = reconciliation.entries.map(e => ({
+    assertion_id: e.assertion_id,
+    article_span: e.article_span,
+    char_start: e.char_start,
+    char_end: e.char_end,
+    span_hash: e.span_hash,
+    assertion_kind: e.classification,
+    classification: e.classification,
+    claim_ids: e.supporting_claim_ids,
+    supporting_claim_ids: e.supporting_claim_ids,
+    supporting_passage_ids: e.supporting_passage_ids,
+    usage_type: e.classification === 'EDITORIAL_INFERENCE'
+      ? 'EDITORIAL_INFERENCE'
+      : (e.classification === 'EVIDENCE_BACKED' ? 'DIRECT_PARAPHRASE' : null),
+    semantic_result: e.semantic_result,
+    resolution_source: e.resolution_source,
+    classification_reason: e.reason,
+    reason: e.reason,
+    derived_from_claim_ids: e.derived_from_claim_ids,
+    inference_reason: e.inference_reason
+  }));
+
+  const unaccounted_spans = reconciliation.unresolved_spans;
+  const errors = [...reconciliation.errors];
+
+  for (const u of unaccounted_spans) {
+    errors.push(
+      `ARTICLE_ASSERTION_UNACCOUNTED: Asersi deklaratif substansial di naskah belum tercakup dalam claim_usage atau bukti: "${u.slice(0, 90)}..."`
+    );
+  }
 
   return {
     entries,
-    total_spans_count: spans.length,
-    evidence_backed_count: evidenceBackedCount,
-    editorial_inference_count: editorialInferenceCount,
-    non_claim_prose_count: nonClaimProseCount,
-    unaccounted_count: unaccounted_spans.length,
+    total_spans_count: reconciliation.metrics.total_article_spans,
+    substantive_assertion_count: reconciliation.metrics.substantive_assertion_count,
+    evidence_backed_count: reconciliation.metrics.evidence_backed_count,
+    editorial_inference_count: reconciliation.metrics.editorial_inference_count,
+    non_claim_prose_count: reconciliation.metrics.non_claim_prose_count,
+    unaccounted_count: reconciliation.metrics.unresolved_assertion_count,
+    unresolved_assertion_count: reconciliation.metrics.unresolved_assertion_count,
+    not_entailed_count: reconciliation.metrics.not_entailed_count,
+    uncertain_count: reconciliation.metrics.uncertain_count,
+    joko_declared_mapping_count: reconciliation.metrics.joko_declared_mapping_count,
+    auto_reconciled_mapping_count: reconciliation.metrics.auto_reconciled_mapping_count,
+    semantic_verifier_mapping_count: reconciliation.metrics.semantic_verifier_mapping_count,
     unaccounted_spans,
-    is_exhaustive,
-    errors
+    is_exhaustive: reconciliation.is_complete,
+    errors,
+    reconciliation_report: reconciliation
   };
 }
 
