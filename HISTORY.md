@@ -14,6 +14,114 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
 
+
+---
+
+### CONTENT-BOOTSTRAP-RECOVERY-1: Research Discovery Precision & Hermes Browser Free Web Fallback 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Memperbaiki presisi discovery riset bebas slop setelah kegagalan Wave 1 di mana 0/3 topik lolos karena query CrossRef tercemar kata editorial generik dan pencocokan kandidat tidak relevan (Earth shelter, biomedis/kelumpuhan motorik, intervensi HIV).
+  - Mengembangkan provider-specific query rendering dari dekomposisi konsep kanonikal umum tanpa hardcoding topik.
+  - Menambahkan lapisan pemeringkatan semantik kandidat dan penegakan konsistensi domain arsitektur/sains material.
+  - Mengaudit kapabilitas browser container Hermes dan mengintegrasikan fallback discovery browser yang aman dan bounded.
+- **Komponen yang Dimodifikasi & Ditambahkan:**
+  - `src/lib/editorial/research-discovery-planner.ts`:
+    - Pembersihan istilah intent editorial generik (`EDITORIAL_INTENT_TERMS`: *differential diagnosis, analysis, strategy, intervention, mitigation, causes physics*).
+    - `sanitizeBibliographicTerms()`: Purge kata non-spesifik dari query CrossRef.
+    - `renderProviderSpecificQuery()`: Varian query terpisah untuk CrossRef, Wikipedia, OpenWeb, dan Hermes Browser.
+  - `src/lib/editorial/discovery-providers.ts` & `src/lib/editorial/source-discovery.ts`:
+    - `evaluateCandidateDomainConsistency()`: Deteksi pola luar domain (`OUT_OF_DOMAIN_PATTERNS`) dengan penalti -200 poin untuk kandidat medis/software.
+    - `HermesBrowserDiscoveryProvider`: Adapter provider browser dengan deteksi blokade CAPTCHA/bot (`BROWSER_SEARCH_BLOCKED`), tanpa pemberian otoritas bukti pada snippet (*evidence authority = 0*).
+  - `src/lib/editorial/irwan-research-runtime.ts`:
+    - Kebijakan Free-First: CrossRef $\to$ Wikipedia $\to$ OA Metadata $\to$ Hermes Browser $\to$ Brave Search (hanya bila aktif).
+    - Strict guard Brave Search: request count tetap 0 saat toggle OFF.
+  - `scripts/test-content-bootstrap-discovery-recovery.js`:
+    - Suite pengujian 17/17 PASS mencakup forensik Wave 1, sanitasi query, konsistensi domain, penolakan kandidat off-topic, isolasi browser, dan zero hardcoding.
+  - `scripts/validate-discovery-recovery-live.js`:
+    - Validasi live satu topik (Kaca Tempered vs Laminated): 0 kandidat medis/software, 3 sumber Wikipedia live diunduh, berhenti aman pada `TOPIC_EVIDENCE_ALIGNMENT_FAIL` tanpa melonggarkan gerbang bukti.
+- **Status & Verifikasi:**
+  - Commit: `7020fe8` (`fix(editorial): improve free research discovery precision`).
+  - Klasifikasi: **`CONTENT_BOOTSTRAP_RECOVERY_PASS`**.
+  - Stop Gate: **`CONTENT_BOOTSTRAP_RECOVERY_1_HUMAN_REVIEW_REQUIRED`**.
+
+---
+
+### CONTENT-BOOTSTRAP-1 (WAVE 1): Foundational Content Production Sprint & Forensic Pause 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Memulai sprint produksi 10 artikel editorial publik RancangLoka dengan batas 15 topik percobaan.
+  - Menjalankan Wave 1 (3 topik: Keramik Popping, Kaca Tempered vs Laminated, Shading Matahari Eksterior).
+- **Hasil & Temuan:**
+  - 3 attempted, 0 passed research, 0 reached Joko, 0 ready for approval.
+  - Terjadi kebocoran semantik pada CrossRef & Wikipedia yang menarik makalah di luar domain sains bangunan.
+  - Sesuai prinsip *Quality > Forcing Output*, Wave 2 ditunda untuk investigasi forensik `CONTENT-BOOTSTRAP-RECOVERY-1`.
+- **Status:**
+  - Berhenti aman: **`CONTENT_BOOTSTRAP_WAVE1_FORENSIC_PAUSE`**.
+
+---
+
+### ADMIN-BRAVE-SEARCH-SETTINGS-1 & PRODUCTION ACTIVATION: Secure Admin Settings & Migration 0030 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyediakan kontrol administratif penuh untuk fitur Brave Search di Admin Dashboard (`/admin/settings`) tanpa memerlukan intervensi SSH atau hardcoded env di remote.
+  - Menerapkan enkripsi kunci simetris KEK AES-256-GCM pada database D1 untuk menyimpan API key secara aman (*at rest*).
+- **Komponen yang Dimodifikasi & Ditambahkan:**
+  - `src/lib/crypto/secret-vault.ts`: Enkripsi/dekripsi AES-256-GCM dengan derive key PBKDF2/SHA-256 berbasis `SETTINGS_ENCRYPTION_KEY` / `SESSION_SECRET`.
+  - `migrations/0030_research_discovery_settings.sql`: Tabel konfigurasi `site_settings` untuk provider discovery.
+  - `src/pages/admin/settings/index.astro` & API endpoint: UI manajemen status provider, input API key dengan masking aman, dan toggle status (OFF default).
+  - `scripts/test-admin-brave-search-settings.js`: 17/17 tes lolos verifikasi enkripsi, idempotensi, dan fallback.
+- **Status & Verifikasi:**
+  - Commit: `d602dfe` (`feat(admin): add secure Brave Search API settings`).
+  - Klasifikasi: **`ADMIN_BRAVE_SEARCH_SETTINGS_PASS`**.
+
+---
+
+### OPEN-WEB-DISCOVERY-ACTIVATION-1: Open-Web Research Discovery & Socket-Pinned Network Safety 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengaktifkan adapter provider open-web nyata (Brave Search API) dengan perlindungan keamanan jaringan tingkat tinggi (*defense-in-depth*).
+  - Mengeliminasi risiko DNS Rebinding / TOCTOU pada Node.js native `fetch` dengan mengimplementasikan socket-pinned dispatcher (`undici.Agent` kustom dengan `connect.lookup` terikat IP yang divalidasi).
+- **Komponen yang Dimodifikasi & Ditambahkan:**
+  - `src/lib/editorial/network-safety.ts`:
+    - `validateSafeUrlAndDns()`: Resolusi DNS pra-koneksi menolak IPv4 privat, loopback, link-local, multicast, dan reserved ranges.
+    - `createSafePinnedAgent()` / `safePinnedFetch()`: Pengikatan socket ke IP hasil validasi DNS untuk mencegah perubahan IP saat koneksi TCP.
+    - Evaluasi redirect aman langkah-demi-langkah dengan revalidasi IP di setiap hop HTTP 3xx.
+  - `src/lib/editorial/open-web-provider.ts`:
+    - Adapter Brave Search resmi (`api.search.brave.com/res/v1/web/search`) dengan header `X-Subscription-Token` berotentikasi.
+  - `scripts/test-open-web-discovery.js`: 15/15 tes keamanan jaringan dan simulasi adapter lolos.
+- **Status & Verifikasi:**
+  - Commit: `2ad7966` (`fix(editorial): activate safe open-web research discovery`).
+  - Klasifikasi: **`OPEN_WEB_DISCOVERY_ACTIVATION_PASS`**.
+
+---
+
+### RESEARCH-DISCOVERY-RUNTIME-READINESS-1 & CAPABILITY-1 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Membangun arsitektur penemuan multi-penyedia terikat batas (*bounded multi-provider discovery*).
+  - Memverifikasi kesiapan runtime Irwan tanpa membocorkan kredensial atau memicu query tak terkontrol.
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/editorial/research-discovery-planner.ts`: Perencanaan kueri berjenjang berdasarkan matriks peran semantik.
+  - `src/lib/editorial/discovery-providers.ts`: Standarisasi metadata kandidat `NormalizedCandidateMetadata`.
+  - `scripts/test-research-discovery-capability.js` (14/14 PASS) & `scripts/test-research-discovery-runtime-readiness.js` (14/14 PASS).
+- **Status:**
+  - Commit: `ab1290b` & `1b84b55`.
+
+---
+
+### EVIDENCE-QUALITY-RUNTIME-INTEGRATION-1: Real Runtime Evidence Filtering & Proposition Gate 2026-10-06
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengintegrasikan modul `evidence-quality-gate.ts` secara langsung ke dalam alur runtime `irwan-research-runtime.ts` dan pipeline orkestrasi editorial.
+  - Memastikan hanya dokumen yang terklasifikasi `HIGHLY_RELEVANT` atau `PARTIALLY_RELEVANT` dengan teks bersih bebas spam yang dapat menghasilkan kutipan (*passages*) untuk Joko.
+  - Menegakkan verifikasi proposisi naskah sebelum evaluasi lolos gate.
+- **Komponen yang Dimodifikasi:**
+  - `src/lib/editorial/irwan-research-runtime.ts`: Penyaringan live sumber berotoritas, pembersihan spam otomatis, dan pemblokiran dini sumber tak relevan.
+  - `scripts/test-evidence-quality-runtime-integration.js`: 14/14 tes lulus.
+- **Status & Verifikasi:**
+  - Commit: `5aee8ee` (`fix(editorial): integrate semantic evidence quality into runtime`).
+  - Klasifikasi: **`EVIDENCE_QUALITY_RUNTIME_INTEGRATION_PASS`**.
+
 ---
 
 ### EVIDENCE-QUALITY-GATE-1: Semantic Evidence Quality Gates & Relevance Enforcement 2026-10-06
