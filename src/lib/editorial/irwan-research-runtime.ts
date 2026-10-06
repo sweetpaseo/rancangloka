@@ -87,6 +87,36 @@ import {
   evaluateAuthorSafeEvidenceGate
 } from './evidence-quality-gate.ts';
 
+import {
+  ResearchDiscoveryQueryPlanner,
+  type ResearchDiscoveryQueryPlan,
+  type StructuredDiscoveryQuery,
+  MAX_QUERY_LENGTH,
+  MAX_CONCEPTS_PER_QUERY,
+  MAX_VARIANTS_PER_QUERY,
+  MAX_QUERIES_PER_PASS
+} from './research-discovery-planner.ts';
+
+import {
+  CrossRefDiscoveryProvider,
+  WikipediaDiscoveryProvider,
+  OpenWebDiscoveryProvider,
+  deduplicateCandidates,
+  rankCandidatesByDiscoveryRelevance,
+  normalizeDoi,
+  type NormalizedCandidateMetadata,
+  type ResearchDiscoveryProvider
+} from './discovery-providers.ts';
+
+import {
+  resolveOpenAccessCandidate,
+  type OpenAccessResolutionResult
+} from './open-access-resolver.ts';
+
+import {
+  validateSafeUrl
+} from './discovery-network-safety.ts';
+
 export type IrwanRuntimeEventType =
   | 'RESEARCH_JOB_STARTED'
   | 'IRWAN_QUERY_PLANNED'
@@ -103,10 +133,13 @@ export type IrwanRuntimeEventType =
   | 'RESEARCH_GAP_DIRECTED_PASS_COMPLETED'
   | 'RESEARCH_HUMAN_REVIEW_REQUIRED';
 
-
 export const MAX_RESEARCH_PASSES = 2;
 export const MAX_RETRIEVAL_ATTEMPTS_PER_PASS = 6;
 export const MAX_TOTAL_RETRIEVAL_ATTEMPTS = 12;
+
+export const MAX_DISCOVERY_QUERIES_PER_PASS = 8;
+export const MAX_RESULTS_PER_QUERY = 5;
+export const MAX_DISCOVERY_CANDIDATES_PER_PASS = 20;
 
 export interface IrwanRuntimeEvent {
   event_id: string;
@@ -134,7 +167,6 @@ export interface IrwanResearchJobInput {
   };
 }
 
-
 export interface ResearchPassMetrics {
   pass_number: number;
   candidates_discovered: number;
@@ -143,6 +175,26 @@ export interface ResearchPassMetrics {
   authentic_sources_added: number;
   admissible_categories_before: string[];
   admissible_categories_after: string[];
+  query_plan_count?: number;
+  id_query_count?: number;
+  en_query_count?: number;
+  provider_calls?: {
+    provider: string;
+    query_id: string;
+    result_count: number;
+    error_status?: string;
+  }[];
+  candidate_count_before_dedupe?: number;
+  candidate_count_after_dedupe?: number;
+  candidate_count_selected?: number;
+  crossref_candidates?: number;
+  wikipedia_candidates?: number;
+  open_web_candidates?: number;
+  oa_resolved_candidates?: number;
+  paywall_candidates?: number;
+  oa_resolution_attempts?: number;
+  oa_resolution_successes?: number;
+  retrieval_successes?: number;
 }
 
 export interface IrwanResearchJobResult {
@@ -227,6 +279,8 @@ export interface IrwanRuntimeOptions {
   wikiContentFn?: typeof fetchWikipediaPageContent;
   openTechnicalDocFn?: typeof fetchOpenTechnicalDocument;
   httpDocFn?: typeof fetchHttpDocument;
+  openWebSearchFn?: (query: string, maxResults: number) => Promise<{ title: string; url: string; snippet?: string; publisher?: string }[]>;
+  oaResolverFn?: (doi: string) => Promise<{ oa_url?: string; repository_type?: string; license?: string } | null>;
   executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
   dryRun?: boolean;
 }
@@ -314,14 +368,33 @@ export async function executeGeneralizedResearchJob(
 
   // 2. Classify domain & plan queries
   const { domain } = classifyBuildingDomain(input.topic);
-  const queries = input.searchQueries && input.searchQueries.length > 0
-    ? input.searchQueries
-    : [
-        `${input.topic} mekanisme penyebab fisika`,
-        `${input.topic} efektivitas intervensi material`,
-        `${input.topic} diagnosis perbedaan batas fisik`,
-        `${input.topic} building science standard inspection`
-      ];
+
+  const pass1QueryPlan = ResearchDiscoveryQueryPlanner.planQueries({
+    topic: input.topic,
+    contentFamily: input.editorialRequirements?.join(' '),
+    researchQuestions,
+    passNumber: 1,
+    intentProfile: input.intentProfile
+  });
+
+  addTraceEvent(
+    'IRWAN_QUERY_PLANNED',
+    `Irwan menyusun rencana kueri bilingual terstruktur (${pass1QueryPlan.planned_queries.length} kueri terencana).`,
+    { plan: pass1QueryPlan }
+  );
+
+  const queries: string[] = [];
+  if (input.searchQueries && input.searchQueries.length > 0) {
+    queries.push(...input.searchQueries);
+  } else {
+    for (const pq of pass1QueryPlan.planned_queries) {
+      for (const v of pq.variants) {
+        if (!queries.includes(v.query)) {
+          queries.push(v.query);
+        }
+      }
+    }
+  }
 
   // Execution environment and engines
   const isMockedTest = Boolean(options.wikiContentFn || options.crossRefSearchFn);
@@ -345,30 +418,162 @@ export async function executeGeneralizedResearchJob(
   const passMetrics: ResearchPassMetrics[] = [];
   let totalRetrievalAttempts = 0;
 
+  // Track OA and paywall stats
+  let pass1PaywallCount = 0;
+  let pass1OaAttemptCount = 0;
+  let pass1OaSuccessCount = 0;
+  let pass1OaResolvedCount = 0;
+  let pass2PaywallCount = 0;
+  let pass2OaAttemptCount = 0;
+  let pass2OaSuccessCount = 0;
+  let pass2OaResolvedCount = 0;
+
   // 3. Real Source Discovery (Pass 1)
   const discoveredCandidates: DiscoveredSourceCandidate[] = [];
+  const normalizedCandidatePool: NormalizedCandidateMetadata[] = [];
+  const pass1ProviderCalls: { provider: string; query_id: string; result_count: number; error_status?: string }[] = [];
 
-  for (const q of queries) {
-    const [crResults, wikiResults] = await Promise.all([
-      crossRefSearch(q, { fetchFn: options.fetchFn }),
-      wikiSearch(q, { fetchFn: options.fetchFn })
-    ]);
+  let p1CrossrefCount = 0;
+  let p1WikiCount = 0;
+  let p1OpenWebCount = 0;
 
-    for (const c of [...crResults, ...wikiResults]) {
-      if (!discoveredCandidates.some(d => d.title.toLowerCase() === c.title.toLowerCase())) {
-        discoveredCandidates.push(c);
-        lifecycleTracker.registerCandidate(c, 'Pass 1 initial discovery search query');
-        const pre = isPreRejectedCandidate(c);
-        if (pre.rejected) {
-          lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', pre.reason || 'Pre-retrieval policy rejection');
+  for (const pq of pass1QueryPlan.planned_queries) {
+    for (const v of pq.variants) {
+      const q = v.query;
+
+      // CrossRef: prefer EN variant or scholarly queries
+      if (v.language === 'en' || !pq.variants.some(v2 => v2.language === 'en')) {
+        try {
+          const crResults = await crossRefSearch(q, { fetchFn: options.fetchFn });
+          p1CrossrefCount += crResults.length;
+          pass1ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: crResults.length });
+          for (const c of crResults) {
+            normalizedCandidatePool.push({
+              provider: 'CROSSREF',
+              candidate_id: c.candidate_id,
+              title: c.title,
+              snippet_or_abstract: c.snippet,
+              url: c.url,
+              doi: c.doi,
+              publisher: c.publisher,
+              document_hint: 'SCHOLARLY',
+              language: v.language,
+              discovered_at: c.discovered_at,
+              discovery_query_id: pq.query_id
+            });
+          }
+        } catch (err: any) {
+          pass1ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: 0, error_status: err.message });
         }
-        addTraceEvent(
-          'SOURCE_DISCOVERED',
-          `Sumber ditemukan via [${c.discovery_engine}]: "${c.title}" (${c.publisher || 'Unknown'}).`,
-          { title: c.title, publisher: c.publisher, url: c.url, doi: c.doi }
-        );
+      }
+
+      // Wikipedia
+      try {
+        const wikiResults = await wikiSearch(q, { fetchFn: options.fetchFn });
+        p1WikiCount += wikiResults.length;
+        pass1ProviderCalls.push({ provider: v.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN', query_id: pq.query_id, result_count: wikiResults.length });
+        for (const c of wikiResults) {
+          normalizedCandidatePool.push({
+            provider: v.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN',
+            candidate_id: c.candidate_id,
+            title: c.title,
+            snippet_or_abstract: c.snippet,
+            url: c.url,
+            publisher: c.publisher || 'Wikimedia Foundation',
+            document_hint: 'ENCYCLOPEDIC',
+            language: v.language,
+            discovered_at: c.discovered_at,
+            discovery_query_id: pq.query_id
+          });
+        }
+      } catch (err: any) {
+        pass1ProviderCalls.push({ provider: 'WIKIPEDIA', query_id: pq.query_id, result_count: 0, error_status: err.message });
+      }
+
+      // Open-Web search if configured
+      if (options.openWebSearchFn) {
+        try {
+          const openWebResults = await options.openWebSearchFn(q, 5);
+          p1OpenWebCount += openWebResults.length;
+          pass1ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: openWebResults.length });
+          for (let idx = 0; idx < openWebResults.length; idx++) {
+            const ow = openWebResults[idx];
+            normalizedCandidatePool.push({
+              provider: 'OPEN_WEB',
+              candidate_id: `cand_web_${Date.now()}_${idx}`,
+              title: ow.title,
+              snippet_or_abstract: ow.snippet,
+              url: ow.url,
+              publisher: ow.publisher,
+              document_hint: 'INSTITUTIONAL',
+              language: v.language,
+              discovered_at: new Date().toISOString(),
+              discovery_query_id: pq.query_id
+            });
+          }
+        } catch (err: any) {
+          pass1ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: 0, error_status: err.message });
+        }
       }
     }
+  }
+
+  // Handle caller-supplied custom queries if any
+  if (input.searchQueries && input.searchQueries.length > 0) {
+    for (const q of input.searchQueries) {
+      const [crResults, wikiResults] = await Promise.all([
+        crossRefSearch(q, { fetchFn: options.fetchFn }),
+        wikiSearch(q, { fetchFn: options.fetchFn })
+      ]);
+      for (const c of [...crResults, ...wikiResults]) {
+        normalizedCandidatePool.push({
+          provider: c.discovery_engine === 'CROSSREF_OPEN_API' ? 'CROSSREF' : 'WIKIPEDIA',
+          candidate_id: c.candidate_id,
+          title: c.title,
+          snippet_or_abstract: c.snippet,
+          url: c.url,
+          doi: c.doi,
+          publisher: c.publisher,
+          discovered_at: c.discovered_at,
+          discovery_query_id: 'custom_input'
+        });
+      }
+    }
+  }
+
+  const p1CandidateCountBeforeDedupe = normalizedCandidatePool.length;
+  const p1DedupedCandidates = deduplicateCandidates(normalizedCandidatePool);
+  const p1CandidateCountAfterDedupe = p1DedupedCandidates.length;
+
+  for (const c of p1DedupedCandidates) {
+    if (c.url) {
+      const urlCheck = validateSafeUrl(c.url);
+      if (!urlCheck.isSafe) continue;
+    }
+
+    const discCand: DiscoveredSourceCandidate = {
+      candidate_id: c.candidate_id,
+      query: c.discovery_query_id,
+      discovery_engine: c.provider === 'CROSSREF' ? 'CROSSREF_OPEN_API' : (c.provider.startsWith('WIKIPEDIA') ? 'WIKIPEDIA_TECHNICAL_API' : 'DIRECT_URL'),
+      title: c.title,
+      publisher: c.publisher,
+      url: c.url,
+      doi: c.doi,
+      snippet: c.snippet_or_abstract,
+      discovered_at: c.discovered_at
+    };
+
+    discoveredCandidates.push(discCand);
+    lifecycleTracker.registerCandidate(discCand, `Pass 1 initial discovery search query (${c.provider})`);
+    const pre = isPreRejectedCandidate(discCand);
+    if (pre.rejected) {
+      lifecycleTracker.transition(discCand.candidate_id, 'REJECTED_PRE_RETRIEVAL', pre.reason || 'Pre-retrieval policy rejection');
+    }
+    addTraceEvent(
+      'SOURCE_DISCOVERED',
+      `Sumber ditemukan via [${c.provider}]: "${c.title}" (${c.publisher || 'Unknown'}).`,
+      { title: c.title, publisher: c.publisher, url: c.url, doi: c.doi, providers: c.discovered_by_providers }
+    );
   }
 
   // Backward-compatible registry candidates for tests supplying specific doc mocks
@@ -633,15 +838,115 @@ export async function executeGeneralizedResearchJob(
     }
 
     if (httpResult.retrieval_status === 'PAYWALL_OR_LOGIN_PAGE') {
-      lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', 'PAYWALL_OR_LOGIN_PAGE: Destination paywalled or requires login', { http_status: httpResult.http_status });
-      blockedSourcesList.push({
-        source_id: `SRC-PAYWALL-${c.candidate_id}`,
-        title: c.title,
-        reason: 'PAYWALL_OR_LOGIN_PAGE: Konten di balik paywall penerbit komersial atau portal login.',
-        legal_status: 'COMMERCIAL_PAYWALL_REQUIRED'
-      });
-      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Pengambilan "${c.title}" terhalang paywall/login: PAYWALL_OR_LOGIN_PAGE.`);
-      return null;
+      let resolvedViaOa = false;
+      const candidateDoi = c.doi || (targetUrl.includes('doi.org/') ? targetUrl.split('doi.org/')[1] : undefined);
+
+      if (passNum === 1) pass1PaywallCount++;
+      else pass2PaywallCount++;
+
+      if (candidateDoi) {
+        if (passNum === 1) pass1OaAttemptCount++;
+        else pass2OaAttemptCount++;
+
+        const oaResult = await resolveOpenAccessCandidate(candidateDoi, targetUrl, {
+          customOaResolverFn: options.oaResolverFn,
+          fetchFn: options.fetchFn,
+          executionType
+        });
+
+        if (oaResult.oa_status === 'OA_AVAILABLE' && oaResult.oa_url) {
+          if (passNum === 1) pass1OaSuccessCount++;
+          else pass2OaSuccessCount++;
+
+          addTraceEvent(
+            'SOURCE_DISCOVERED',
+            `Versi Open-Access sah ditemukan untuk "${c.title}" via [${oaResult.oa_provider || 'OPENALEX'}]: ${oaResult.oa_url}`,
+            { doi: candidateDoi, oa_url: oaResult.oa_url, provider: oaResult.oa_provider }
+          );
+
+          try {
+            const oaHttpResult = await httpDoc(oaResult.oa_url, { fetchFn: options.fetchFn, executionType });
+            if (oaHttpResult && oaHttpResult.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED' && oaHttpResult.clean_text) {
+              const oaCleaningResult = cleanBoilerplateAndSpam(oaHttpResult.clean_text);
+              if (oaCleaningResult.is_content_quality_sufficient && oaCleaningResult.cleaned_text) {
+                const cleanOaText = oaCleaningResult.cleaned_text.trim();
+                const resolvedOaUrl = oaHttpResult.resolved_url || oaResult.oa_url;
+                const oaIdentity = establishSourceIdentity(resolvedOaUrl, c.publisher);
+                const srcId = `SRC-OA-${c.candidate_id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const oaPassages = extractDynamicPassagesFromText(srcId, c.title, cleanOaText);
+
+                if (oaPassages.length > 0) {
+                  const topicEvaluator = new DocumentTopicRelevanceEvaluator();
+                  const topicRelResult = topicEvaluator.evaluate(input.topic, {
+                    title: c.title,
+                    publisher: oaIdentity.publisher,
+                    text: cleanOaText,
+                    url: resolvedOaUrl
+                  });
+
+                  lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_SUCCEEDED', `OA document retrieved from ${resolvedOaUrl} (${Buffer.byteLength(cleanOaText, 'utf8')} bytes)`);
+                  lifecycleTracker.transition(c.candidate_id, 'PASSAGE_EXTRACTED', `Diekstrak ${oaPassages.length} bagian bukti OA terverifikasi`);
+
+                  const origin: SourceOrigin = oaHttpResult.source_origin || (isMockedTest ? 'TEST_FIXTURE' : 'LIVE_RETRIEVAL');
+                  lifecycleTracker.transition(c.candidate_id, 'AUTHENTIC', `Sumber OA autentik terverifikasi (${origin})`);
+                  lifecycleTracker.transition(c.candidate_id, 'ADMISSIBLE', 'Lolos verifikasi OA resmi dan batas fisik');
+
+                  if (passNum === 1) pass1OaResolvedCount++;
+                  else pass2OaResolvedCount++;
+
+                  const retDoc: RetrievedDocument = {
+                    source_id: srcId,
+                    title: c.title,
+                    publisher: oaIdentity.publisher,
+                    url: targetUrl,
+                    canonical_url: resolvedOaUrl,
+                    source_classification: oaIdentity.source_classification,
+                    authority_level: oaIdentity.authority_level,
+                    primary_vs_secondary: oaIdentity.primary_vs_secondary,
+                    retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED',
+                    retrieval_method: `LEGITIMATE_OA_RESOLUTION_${oaResult.oa_provider || 'OPENALEX'}`,
+                    retrieved_at: oaHttpResult.retrieved_at,
+                    content_hash: oaHttpResult.raw_content_hash,
+                    content_text: cleanOaText,
+                    content_length_bytes: Buffer.byteLength(cleanOaText, 'utf8'),
+                    read_status: 'READ_AND_EXTRACTED',
+                    extracted_passages: oaPassages,
+                    applicability: oaIdentity.applicability,
+                    source_origin: origin,
+                    source_role: oaIdentity.source_role,
+                    topic_relevance: topicRelResult.relevance_level,
+                    cleaning_result: oaCleaningResult,
+                    requested_url: oaResult.oa_url,
+                    resolved_url: resolvedOaUrl,
+                    http_status: oaHttpResult.http_status,
+                    limitations: `Dokumen open-access sah (${oaResult.oa_repository_type || 'Repository Institusi'}).`,
+                    is_blocked: false
+                  };
+                  retrievedDocs.push(retDoc);
+                  addTraceEvent('SOURCE_RETRIEVED', `Dokumen OA sah "${c.title}" berhasil diunduh.`, { source_id: srcId, oa_url: oaResult.oa_url });
+                  addTraceEvent('SOURCE_READ', `Irwan membaca naskah OA lengkap dan mengekstrak ${oaPassages.length} bagian bukti terverifikasi.`, { source_id: srcId, count: oaPassages.length });
+                  resolvedViaOa = true;
+                  return retDoc;
+                }
+              }
+            }
+          } catch {
+            // OA retrieval failed; fall through to normal paywall blocking
+          }
+        }
+      }
+
+      if (!resolvedViaOa) {
+        lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_HTTP_FAILED', 'PAYWALL_OR_LOGIN_PAGE: Destination paywalled or requires login', { http_status: httpResult.http_status });
+        blockedSourcesList.push({
+          source_id: `SRC-PAYWALL-${c.candidate_id}`,
+          title: c.title,
+          reason: 'PAYWALL_OR_LOGIN_PAGE: Konten di balik paywall penerbit komersial atau portal login (tidak ditemukan salinan open-access sah).',
+          legal_status: 'COMMERCIAL_PAYWALL_REQUIRED'
+        });
+        addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Pengambilan "${c.title}" terhalang paywall/login: PAYWALL_OR_LOGIN_PAGE.`);
+        return null;
+      }
     }
 
     if (httpResult.retrieval_status === 'CONTENT_TYPE_NOT_SUPPORTED') {
@@ -967,7 +1272,22 @@ export async function executeGeneralizedResearchJob(
     retrieval_attempts: pass1Attempts,
     authentic_sources_added: pass1AuthenticAdded,
     admissible_categories_before: [],
-    admissible_categories_after: intermediateCoverage.covered_categories
+    admissible_categories_after: intermediateCoverage.covered_categories,
+    query_plan_count: pass1QueryPlan.planned_queries.length,
+    id_query_count: pass1QueryPlan.metrics.id_query_count,
+    en_query_count: pass1QueryPlan.metrics.en_query_count,
+    provider_calls: pass1ProviderCalls,
+    candidate_count_before_dedupe: p1CandidateCountBeforeDedupe,
+    candidate_count_after_dedupe: p1CandidateCountAfterDedupe,
+    candidate_count_selected: pass1Selected.length,
+    crossref_candidates: p1CrossrefCount,
+    wikipedia_candidates: p1WikiCount,
+    open_web_candidates: p1OpenWebCount,
+    oa_resolved_candidates: pass1OaResolvedCount,
+    paywall_candidates: pass1PaywallCount,
+    oa_resolution_attempts: pass1OaAttemptCount,
+    oa_resolution_successes: pass1OaSuccessCount,
+    retrieval_successes: pass1AuthenticAdded
   });
 
   // 5. Gap-Directed Research Loop (Pass 2)
@@ -982,31 +1302,137 @@ export async function executeGeneralizedResearchJob(
       { missingCategories, pass: currentPass }
     );
 
-    const gapQueries = generateQuestionSpecificQueries(input.topic, missingCategories, researchQuestions);
-    queries.push(...gapQueries);
+    const pass2QueryPlan = ResearchDiscoveryQueryPlanner.planQueries({
+      topic: input.topic,
+      contentFamily: input.editorialRequirements?.join(' '),
+      researchQuestions,
+      missingResearchCategories: missingCategories,
+      passNumber: 2,
+      intentProfile: input.intentProfile
+    });
+
+    const pass2CandidatePool: NormalizedCandidateMetadata[] = [];
+    const pass2ProviderCalls: { provider: string; query_id: string; result_count: number; error_status?: string }[] = [];
+    let p2CrossrefCount = 0;
+    let p2WikiCount = 0;
+    let p2OpenWebCount = 0;
+
+    for (const pq of pass2QueryPlan.planned_queries) {
+      for (const v of pq.variants) {
+        const gq = v.query;
+        if (!queries.includes(gq)) queries.push(gq);
+
+        // CrossRef
+        if (v.language === 'en' || !pq.variants.some(v2 => v2.language === 'en')) {
+          try {
+            const crResults = await crossRefSearch(gq, { fetchFn: options.fetchFn });
+            p2CrossrefCount += crResults.length;
+            pass2ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: crResults.length });
+            for (const c of crResults) {
+              pass2CandidatePool.push({
+                provider: 'CROSSREF',
+                candidate_id: c.candidate_id,
+                title: c.title,
+                snippet_or_abstract: c.snippet,
+                url: c.url,
+                doi: c.doi,
+                publisher: c.publisher,
+                document_hint: 'SCHOLARLY',
+                language: v.language,
+                discovered_at: c.discovered_at,
+                discovery_query_id: pq.query_id
+              });
+            }
+          } catch (err: any) {
+            pass2ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: 0, error_status: err.message });
+          }
+        }
+
+        // Wikipedia
+        try {
+          const wikiResults = await wikiSearch(gq, { fetchFn: options.fetchFn });
+          p2WikiCount += wikiResults.length;
+          pass2ProviderCalls.push({ provider: v.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN', query_id: pq.query_id, result_count: wikiResults.length });
+          for (const c of wikiResults) {
+            pass2CandidatePool.push({
+              provider: v.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN',
+              candidate_id: c.candidate_id,
+              title: c.title,
+              snippet_or_abstract: c.snippet,
+              url: c.url,
+              publisher: c.publisher || 'Wikimedia Foundation',
+              document_hint: 'ENCYCLOPEDIC',
+              language: v.language,
+              discovered_at: c.discovered_at,
+              discovery_query_id: pq.query_id
+            });
+          }
+        } catch (err: any) {
+          pass2ProviderCalls.push({ provider: 'WIKIPEDIA', query_id: pq.query_id, result_count: 0, error_status: err.message });
+        }
+
+        // Open-Web
+        if (options.openWebSearchFn) {
+          try {
+            const openWebResults = await options.openWebSearchFn(gq, 5);
+            p2OpenWebCount += openWebResults.length;
+            pass2ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: openWebResults.length });
+            for (let idx = 0; idx < openWebResults.length; idx++) {
+              const ow = openWebResults[idx];
+              pass2CandidatePool.push({
+                provider: 'OPEN_WEB',
+                candidate_id: `cand_web_p2_${Date.now()}_${idx}`,
+                title: ow.title,
+                snippet_or_abstract: ow.snippet,
+                url: ow.url,
+                publisher: ow.publisher,
+                document_hint: 'INSTITUTIONAL',
+                language: v.language,
+                discovered_at: new Date().toISOString(),
+                discovery_query_id: pq.query_id
+              });
+            }
+          } catch (err: any) {
+            pass2ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: 0, error_status: err.message });
+          }
+        }
+      }
+    }
+
+    const p2CandidateCountBefore = pass2CandidatePool.length;
+    const p2Deduped = deduplicateCandidates(pass2CandidatePool);
+    const p2CandidateCountAfter = p2Deduped.length;
 
     let pass2DiscoveredCount = 0;
-    for (const gq of gapQueries) {
-      const [crResults, wikiResults] = await Promise.all([
-        crossRefSearch(gq, { fetchFn: options.fetchFn }),
-        wikiSearch(gq, { fetchFn: options.fetchFn })
-      ]);
-
-      for (const c of [...crResults, ...wikiResults]) {
-        if (!discoveredCandidates.some(d => d.title.toLowerCase() === c.title.toLowerCase())) {
-          discoveredCandidates.push(c);
-          pass2DiscoveredCount++;
-          lifecycleTracker.registerCandidate(c, `Discovered via gap-directed query: ${gq}`);
-          const pre = isPreRejectedCandidate(c);
-          if (pre.rejected) {
-            lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', pre.reason || 'Pre-retrieval policy rejection');
-          }
-          addTraceEvent(
-            'SOURCE_DISCOVERED',
-            `Sumber putaran 2 ditemukan via [${c.discovery_engine}]: "${c.title}" (${c.publisher || 'Unknown'}).`,
-            { title: c.title, publisher: c.publisher, url: c.url, doi: c.doi, gapQuery: gq }
-          );
+    for (const c of p2Deduped) {
+      if (c.url) {
+        const urlCheck = validateSafeUrl(c.url);
+        if (!urlCheck.isSafe) continue;
+      }
+      if (!discoveredCandidates.some(d => d.title.toLowerCase() === c.title.toLowerCase())) {
+        const discCand: DiscoveredSourceCandidate = {
+          candidate_id: c.candidate_id,
+          query: c.discovery_query_id,
+          discovery_engine: c.provider === 'CROSSREF' ? 'CROSSREF_OPEN_API' : (c.provider.startsWith('WIKIPEDIA') ? 'WIKIPEDIA_TECHNICAL_API' : 'DIRECT_URL'),
+          title: c.title,
+          publisher: c.publisher,
+          url: c.url,
+          doi: c.doi,
+          snippet: c.snippet_or_abstract,
+          discovered_at: c.discovered_at
+        };
+        discoveredCandidates.push(discCand);
+        pass2DiscoveredCount++;
+        lifecycleTracker.registerCandidate(discCand, `Discovered via Pass 2 gap-directed query: ${c.discovery_query_id}`);
+        const pre = isPreRejectedCandidate(discCand);
+        if (pre.rejected) {
+          lifecycleTracker.transition(discCand.candidate_id, 'REJECTED_PRE_RETRIEVAL', pre.reason || 'Pre-retrieval policy rejection');
         }
+        addTraceEvent(
+          'SOURCE_DISCOVERED',
+          `Sumber putaran 2 ditemukan via [${c.provider}]: "${c.title}" (${c.publisher || 'Unknown'}).`,
+          { title: c.title, publisher: c.publisher, url: c.url, doi: c.doi, providers: c.discovered_by_providers }
+        );
       }
     }
 
@@ -1054,7 +1480,22 @@ export async function executeGeneralizedResearchJob(
       retrieval_attempts: pass2Attempts,
       authentic_sources_added: pass2AuthenticAdded,
       admissible_categories_before: intermediateCoverage.covered_categories,
-      admissible_categories_after: finalCoverage.covered_categories
+      admissible_categories_after: finalCoverage.covered_categories,
+      query_plan_count: pass2QueryPlan.planned_queries.length,
+      id_query_count: pass2QueryPlan.metrics.id_query_count,
+      en_query_count: pass2QueryPlan.metrics.en_query_count,
+      provider_calls: pass2ProviderCalls,
+      candidate_count_before_dedupe: p2CandidateCountBefore,
+      candidate_count_after_dedupe: p2CandidateCountAfter,
+      candidate_count_selected: pass2Selected.length,
+      crossref_candidates: p2CrossrefCount,
+      wikipedia_candidates: p2WikiCount,
+      open_web_candidates: p2OpenWebCount,
+      oa_resolved_candidates: pass2OaResolvedCount,
+      paywall_candidates: pass2PaywallCount,
+      oa_resolution_attempts: pass2OaAttemptCount,
+      oa_resolution_successes: pass2OaSuccessCount,
+      retrieval_successes: pass2AuthenticAdded
     });
 
     addTraceEvent(

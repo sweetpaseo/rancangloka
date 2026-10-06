@@ -29,6 +29,9 @@ import {
   type SourceRole
 } from './evidence-quality-gate.ts';
 
+import { validateSafeUrl, isPrivateOrBlockedHost } from './discovery-network-safety.ts';
+export { validateSafeUrl, isPrivateOrBlockedHost };
+
 export interface DiscoveredSourceCandidate {
   candidate_id: string;
   query: string;
@@ -1063,6 +1066,22 @@ export async function fetchHttpDocument(
   const requested_url = url;
   const retrieved_at = new Date().toISOString();
 
+  const safeCheck = validateSafeUrl(url);
+  if (!safeCheck.isSafe) {
+    return {
+      requested_url,
+      resolved_url: requested_url,
+      http_status: 0,
+      content_type: '',
+      retrieved_at,
+      raw_content_hash: '',
+      source_origin: 'LIVE_RETRIEVAL',
+      retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+      is_blocked: true,
+      blocked_reason: `SSRF_BLOCKED: ${safeCheck.reason}`
+    };
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -1078,6 +1097,24 @@ export async function fetchHttpDocument(
     clearTimeout(timeoutId);
 
     const resolved_url = res.url || url;
+    if (resolved_url !== url) {
+      const resolvedCheck = validateSafeUrl(resolved_url);
+      if (!resolvedCheck.isSafe) {
+        return {
+          requested_url,
+          resolved_url,
+          http_status: res.status,
+          content_type: '',
+          retrieved_at,
+          raw_content_hash: '',
+          source_origin: 'LIVE_RETRIEVAL',
+          retrieval_status: 'SOURCE_RETRIEVAL_FAILED',
+          is_blocked: true,
+          blocked_reason: `SSRF_BLOCKED: Redirected to unsafe destination (${resolvedCheck.reason})`
+        };
+      }
+    }
+
     const http_status = res.status;
     const contentType = (res.headers.get('content-type') || '').toLowerCase();
 
