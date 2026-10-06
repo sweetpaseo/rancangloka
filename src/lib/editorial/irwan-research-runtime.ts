@@ -105,8 +105,11 @@ import {
   rankCandidatesByDiscoveryRelevance,
   normalizeDoi,
   type NormalizedCandidateMetadata,
-  type ResearchDiscoveryProvider
+  type ResearchDiscoveryProvider,
+  type OpenWebDiscoveryRuntimeConfig
 } from './discovery-providers.ts';
+
+import { resolveEffectiveDiscoveryConfig } from './discovery-settings-vault.ts';
 
 import {
   resolveOpenAccessCandidate,
@@ -283,6 +286,9 @@ export interface IrwanRuntimeOptions {
   oaResolverFn?: (doi: string) => Promise<{ oa_url?: string; repository_type?: string; license?: string } | null>;
   executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
   dryRun?: boolean;
+  discoveryConfig?: OpenWebDiscoveryRuntimeConfig;
+  db?: any;
+  env?: any;
 }
 
 // Helper to map a retrieved doc into an EvidenceSource entry with lawful provenance & URL resilience
@@ -515,13 +521,38 @@ export async function executeGeneralizedResearchJob(
           pass1ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: 0, error_status: err.message });
         }
       } else {
-        const defaultWebProvider = new OpenWebDiscoveryProvider();
-        if (!defaultWebProvider.isConfigured()) {
+        let effectiveDisc = options.discoveryConfig;
+        if (!effectiveDisc && options.db) {
+          try {
+            const resolved = await resolveEffectiveDiscoveryConfig(options.db, 'brave', options.env);
+            effectiveDisc = {
+              enabled: resolved.enabled,
+              apiKey: resolved.apiKey,
+              endpoint: resolved.endpoint,
+              provider: resolved.provider === 'brave' ? 'BRAVE' : 'CUSTOM'
+            };
+          } catch {
+            // fallback
+          }
+        }
+        if (!effectiveDisc) {
+          effectiveDisc = {
+            enabled: process.env.BRAVE_SEARCH_ENABLED === 'true' || process.env.OPEN_WEB_SEARCH_ENABLED === 'true',
+            apiKey: process.env.OPEN_WEB_SEARCH_API_KEY || process.env.BRAVE_SEARCH_API_KEY,
+            endpoint: process.env.OPEN_WEB_SEARCH_ENDPOINT,
+            provider: 'BRAVE'
+          };
+        }
+
+        const defaultWebProvider = new OpenWebDiscoveryProvider(undefined, effectiveDisc);
+        if (!defaultWebProvider.isConfigured() || !defaultWebProvider.isEnabled()) {
           pass1ProviderCalls.push({
             provider: 'OPEN_WEB',
             query_id: pq.query_id,
             result_count: 0,
-            error_status: 'OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE'
+            error_status: !defaultWebProvider.isConfigured()
+              ? 'OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE'
+              : 'OPEN_WEB_DISCOVERY_PROVIDER_DISABLED'
           });
         } else {
           try {
@@ -1420,13 +1451,38 @@ export async function executeGeneralizedResearchJob(
             pass2ProviderCalls.push({ provider: 'OPEN_WEB', query_id: pq.query_id, result_count: 0, error_status: err.message });
           }
         } else {
-          const defaultWebProvider = new OpenWebDiscoveryProvider();
-          if (!defaultWebProvider.isConfigured()) {
+          let effectiveDisc = options.discoveryConfig;
+          if (!effectiveDisc && options.db) {
+            try {
+              const resolved = await resolveEffectiveDiscoveryConfig(options.db, 'brave', options.env);
+              effectiveDisc = {
+                enabled: resolved.enabled,
+                apiKey: resolved.apiKey,
+                endpoint: resolved.endpoint,
+                provider: resolved.provider === 'brave' ? 'BRAVE' : 'CUSTOM'
+              };
+            } catch {
+              // fallback
+            }
+          }
+          if (!effectiveDisc) {
+            effectiveDisc = {
+              enabled: process.env.BRAVE_SEARCH_ENABLED === 'true' || process.env.OPEN_WEB_SEARCH_ENABLED === 'true',
+              apiKey: process.env.OPEN_WEB_SEARCH_API_KEY || process.env.BRAVE_SEARCH_API_KEY,
+              endpoint: process.env.OPEN_WEB_SEARCH_ENDPOINT,
+              provider: 'BRAVE'
+            };
+          }
+
+          const defaultWebProvider = new OpenWebDiscoveryProvider(undefined, effectiveDisc);
+          if (!defaultWebProvider.isConfigured() || !defaultWebProvider.isEnabled()) {
             pass2ProviderCalls.push({
               provider: 'OPEN_WEB',
               query_id: pq.query_id,
               result_count: 0,
-              error_status: 'OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE'
+              error_status: !defaultWebProvider.isConfigured()
+                ? 'OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE'
+                : 'OPEN_WEB_DISCOVERY_PROVIDER_DISABLED'
             });
           } else {
             try {

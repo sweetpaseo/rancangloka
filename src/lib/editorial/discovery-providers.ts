@@ -357,16 +357,29 @@ export class WikipediaDiscoveryProvider implements ResearchDiscoveryProvider {
  * Integrates external web search APIs (e.g., Brave Search, Tavily, SearXNG) or mock handlers.
  * Enforces strict network boundaries: any URL with private/local IP is rejected before normalization.
  */
+export interface OpenWebDiscoveryRuntimeConfig {
+  enabled?: boolean;
+  apiKey?: string;
+  endpoint?: string;
+  provider?: 'BRAVE' | 'TAVILY' | 'SEARXNG' | 'CUSTOM';
+}
+
 export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
   provider_name = 'OPEN_WEB';
   private customSearchFn?: (query: string, maxResults: number) => Promise<{ title: string; url: string; snippet?: string; publisher?: string }[]>;
+  private runtimeConfig?: OpenWebDiscoveryRuntimeConfig;
 
-  constructor(customSearchFn?: (query: string, maxResults: number) => Promise<{ title: string; url: string; snippet?: string; publisher?: string }[]>) {
+  constructor(
+    customSearchFn?: (query: string, maxResults: number) => Promise<{ title: string; url: string; snippet?: string; publisher?: string }[]>,
+    runtimeConfig?: OpenWebDiscoveryRuntimeConfig
+  ) {
     this.customSearchFn = customSearchFn;
+    this.runtimeConfig = runtimeConfig;
   }
 
   getProviderName(): 'BRAVE' | 'TAVILY' | 'SEARXNG' | 'CUSTOM' {
     if (this.customSearchFn) return 'CUSTOM';
+    if (this.runtimeConfig?.provider) return this.runtimeConfig.provider;
     const explicit = (process.env.OPEN_WEB_SEARCH_PROVIDER || '').toUpperCase().trim();
     if (explicit === 'BRAVE' || explicit === 'TAVILY' || explicit === 'SEARXNG' || explicit === 'CUSTOM') {
       return explicit;
@@ -377,13 +390,33 @@ export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
     return 'BRAVE';
   }
 
+  isEnabled(): boolean {
+    if (this.customSearchFn) return true;
+    if (this.runtimeConfig && typeof this.runtimeConfig.enabled === 'boolean') {
+      return this.runtimeConfig.enabled;
+    }
+    if (process.env.BRAVE_SEARCH_ENABLED === 'false' || process.env.OPEN_WEB_SEARCH_ENABLED === 'false') {
+      return false;
+    }
+    if (process.env.BRAVE_SEARCH_ENABLED === 'true' || process.env.OPEN_WEB_SEARCH_ENABLED === 'true') {
+      return true;
+    }
+    // Default in standalone unit tests without runtimeConfig: allowed if configured
+    return Boolean(this.isConfigured());
+  }
+
   isConfigured(): boolean {
     if (this.customSearchFn) return true;
+    if (this.runtimeConfig?.apiKey) return true;
     const provider = this.getProviderName();
     if (provider === 'SEARXNG') {
-      return Boolean(process.env.OPEN_WEB_SEARCH_ENDPOINT);
+      return Boolean(this.runtimeConfig?.endpoint || process.env.OPEN_WEB_SEARCH_ENDPOINT);
     }
-    const providerKey = process.env.OPEN_WEB_SEARCH_API_KEY || process.env.BRAVE_SEARCH_API_KEY || process.env.TAVILY_API_KEY;
+    const providerKey =
+      this.runtimeConfig?.apiKey ||
+      process.env.OPEN_WEB_SEARCH_API_KEY ||
+      process.env.BRAVE_SEARCH_API_KEY ||
+      process.env.TAVILY_API_KEY;
     return Boolean(providerKey);
   }
 
@@ -419,9 +452,13 @@ export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
       return candidates;
     }
 
-    // 2. Explicit failure if unconfigured
+    // 2. Explicit failure if unconfigured or not enabled
     if (!this.isConfigured()) {
       throw new Error('OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE: No open-web provider credentials or endpoint configured');
+    }
+
+    if (!this.isEnabled()) {
+      throw new Error('OPEN_WEB_DISCOVERY_PROVIDER_UNAVAILABLE: Open-web search is disabled by administrator settings');
     }
 
     const providerType = this.getProviderName();
@@ -434,8 +471,8 @@ export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
 
     try {
       if (providerType === 'TAVILY') {
-        const apiKey = process.env.OPEN_WEB_SEARCH_API_KEY || process.env.TAVILY_API_KEY;
-        const endpoint = process.env.OPEN_WEB_SEARCH_ENDPOINT || 'https://api.tavily.com/search';
+        const apiKey = this.runtimeConfig?.apiKey || process.env.OPEN_WEB_SEARCH_API_KEY || process.env.TAVILY_API_KEY;
+        const endpoint = this.runtimeConfig?.endpoint || process.env.OPEN_WEB_SEARCH_ENDPOINT || 'https://api.tavily.com/search';
         res = await fetchFn(endpoint, {
           method: 'POST',
           signal: controller.signal,
@@ -451,7 +488,7 @@ export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
           })
         });
       } else if (providerType === 'SEARXNG') {
-        const endpoint = process.env.OPEN_WEB_SEARCH_ENDPOINT || 'http://127.0.0.1:8888/search';
+        const endpoint = this.runtimeConfig?.endpoint || process.env.OPEN_WEB_SEARCH_ENDPOINT || 'http://127.0.0.1:8888/search';
         const queryUrl = `${endpoint}?q=${encodeURIComponent(request.query)}&format=json`;
         res = await fetchFn(queryUrl, {
           signal: controller.signal,
@@ -462,8 +499,8 @@ export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
         });
       } else {
         // Default: BRAVE
-        const apiKey = process.env.OPEN_WEB_SEARCH_API_KEY || process.env.BRAVE_SEARCH_API_KEY;
-        const endpoint = process.env.OPEN_WEB_SEARCH_ENDPOINT || 'https://api.search.brave.com/res/v1/web/search';
+        const apiKey = this.runtimeConfig?.apiKey || process.env.OPEN_WEB_SEARCH_API_KEY || process.env.BRAVE_SEARCH_API_KEY;
+        const endpoint = this.runtimeConfig?.endpoint || process.env.OPEN_WEB_SEARCH_ENDPOINT || 'https://api.search.brave.com/res/v1/web/search';
         const queryUrl = `${endpoint}?q=${encodeURIComponent(request.query)}&count=${maxRows}`;
         res = await fetchFn(queryUrl, {
           signal: controller.signal,
