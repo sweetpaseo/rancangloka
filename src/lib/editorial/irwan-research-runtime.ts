@@ -91,6 +91,7 @@ import {
   ResearchDiscoveryQueryPlanner,
   type ResearchDiscoveryQueryPlan,
   type StructuredDiscoveryQuery,
+  type DiscoveryQueryVariant,
   MAX_QUERY_LENGTH,
   MAX_CONCEPTS_PER_QUERY,
   MAX_VARIANTS_PER_QUERY,
@@ -101,6 +102,7 @@ import {
   CrossRefDiscoveryProvider,
   WikipediaDiscoveryProvider,
   OpenWebDiscoveryProvider,
+  HermesBrowserDiscoveryProvider,
   deduplicateCandidates,
   rankCandidatesByDiscoveryRelevance,
   normalizeDoi,
@@ -283,6 +285,8 @@ export interface IrwanRuntimeOptions {
   openTechnicalDocFn?: typeof fetchOpenTechnicalDocument;
   httpDocFn?: typeof fetchHttpDocument;
   openWebSearchFn?: (query: string, maxResults: number) => Promise<{ title: string; url: string; snippet?: string; publisher?: string }[]>;
+  hermesBrowserSearchFn?: (query: string, maxResults: number) => Promise<{ title: string; url: string; snippet?: string; publisher?: string; isBlocked?: boolean; blockReason?: string }[]>;
+  browserSearchFn?: (query: string, maxResults: number) => Promise<{ title: string; url: string; snippet?: string; publisher?: string; isBlocked?: boolean; blockReason?: string }[]>;
   oaResolverFn?: (doi: string) => Promise<{ oa_url?: string; repository_type?: string; license?: string } | null>;
   executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
   dryRun?: boolean;
@@ -444,50 +448,61 @@ export async function executeGeneralizedResearchJob(
   let p1OpenWebCount = 0;
 
   for (const pq of pass1QueryPlan.planned_queries) {
-    for (const v of pq.variants) {
-      const q = v.query;
-
-      // CrossRef: prefer EN variant or scholarly queries
-      if (v.language === 'en' || !pq.variants.some(v2 => v2.language === 'en')) {
-        try {
-          const crResults = await crossRefSearch(q, { fetchFn: options.fetchFn });
-          p1CrossrefCount += crResults.length;
-          pass1ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: crResults.length });
-          for (const c of crResults) {
-            normalizedCandidatePool.push({
-              provider: 'CROSSREF',
-              candidate_id: c.candidate_id,
-              title: c.title,
-              snippet_or_abstract: c.snippet,
-              url: c.url,
-              doi: c.doi,
-              publisher: c.publisher,
-              document_hint: 'SCHOLARLY',
-              language: v.language,
-              discovered_at: c.discovered_at,
-              discovery_query_id: pq.query_id
-            });
-          }
-        } catch (err: any) {
-          pass1ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: 0, error_status: err.message });
+    // 1. CrossRef: dispatch concise scholarly query variant
+    const crVariant = pq.variants.find(v => v.target_provider === 'CROSSREF') ||
+                      pq.variants.find(v => v.language === 'en') ||
+                      pq.variants[0];
+    if (crVariant) {
+      const q = crVariant.query;
+      if (!queries.includes(q)) queries.push(q);
+      try {
+        const crResults = await crossRefSearch(q, { fetchFn: options.fetchFn });
+        p1CrossrefCount += crResults.length;
+        pass1ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: crResults.length });
+        for (const c of crResults) {
+          normalizedCandidatePool.push({
+            provider: 'CROSSREF',
+            candidate_id: c.candidate_id,
+            title: c.title,
+            snippet_or_abstract: c.snippet,
+            url: c.url,
+            doi: c.doi,
+            publisher: c.publisher,
+            document_hint: 'SCHOLARLY',
+            language: crVariant.language,
+            discovered_at: c.discovered_at,
+            discovery_query_id: pq.query_id
+          });
         }
+      } catch (err: any) {
+        pass1ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: 0, error_status: err.message });
       }
+    }
 
-      // Wikipedia
+    // 2. Wikipedia: dispatch canonical concept variants (EN & ID)
+    const wikiVariants = [
+      pq.variants.find(v => v.target_provider === 'WIKIPEDIA' && v.language === 'en') || pq.variants.find(v => v.language === 'en'),
+      pq.variants.find(v => v.target_provider === 'WIKIPEDIA' && v.language === 'id') || pq.variants.find(v => v.language === 'id')
+    ].filter(Boolean) as DiscoveryQueryVariant[];
+
+    const dedupedWikiVariants = Array.from(new Map(wikiVariants.map(v => [v.query, v])).values());
+    for (const wv of dedupedWikiVariants) {
+      const q = wv.query;
+      if (!queries.includes(q)) queries.push(q);
       try {
         const wikiResults = await wikiSearch(q, { fetchFn: options.fetchFn });
         p1WikiCount += wikiResults.length;
-        pass1ProviderCalls.push({ provider: v.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN', query_id: pq.query_id, result_count: wikiResults.length });
+        pass1ProviderCalls.push({ provider: wv.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN', query_id: pq.query_id, result_count: wikiResults.length });
         for (const c of wikiResults) {
           normalizedCandidatePool.push({
-            provider: v.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN',
+            provider: wv.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN',
             candidate_id: c.candidate_id,
             title: c.title,
             snippet_or_abstract: c.snippet,
             url: c.url,
             publisher: c.publisher || 'Wikimedia Foundation',
             document_hint: 'ENCYCLOPEDIC',
-            language: v.language,
+            language: wv.language,
             discovered_at: c.discovered_at,
             discovery_query_id: pq.query_id
           });
@@ -495,8 +510,40 @@ export async function executeGeneralizedResearchJob(
       } catch (err: any) {
         pass1ProviderCalls.push({ provider: 'WIKIPEDIA', query_id: pq.query_id, result_count: 0, error_status: err.message });
       }
+    }
 
-      // Open-Web search if configured or default provider
+    // 3. Open-Web / Free Fallback (Section 9: Free-First Policy)
+    const webVariant = pq.variants.find(v => v.target_provider === 'OPEN_WEB') ||
+                       pq.variants.find(v => v.language === 'en') ||
+                       pq.variants[0];
+
+    if (webVariant) {
+      const q = webVariant.query;
+      if (!queries.includes(q)) queries.push(q);
+
+      // 3a. Hermes Browser Discovery (Free open-web fallback)
+      if (options.hermesBrowserSearchFn || options.browserSearchFn) {
+        const hermesBrowserProvider = new HermesBrowserDiscoveryProvider({
+          browserSearchFn: options.hermesBrowserSearchFn || options.browserSearchFn
+        });
+        if (hermesBrowserProvider.isAvailable()) {
+          try {
+            const hbrResults = await hermesBrowserProvider.search(
+              { query: q, query_id: pq.query_id, language: webVariant.language, max_results: 5 },
+              { fetchFn: options.fetchFn }
+            );
+            p1OpenWebCount += hbrResults.length;
+            pass1ProviderCalls.push({ provider: 'HERMES_BROWSER', query_id: pq.query_id, result_count: hbrResults.length });
+            for (const cand of hbrResults) {
+              normalizedCandidatePool.push(cand);
+            }
+          } catch (err: any) {
+            pass1ProviderCalls.push({ provider: 'HERMES_BROWSER', query_id: pq.query_id, result_count: 0, error_status: err.message });
+          }
+        }
+      }
+
+      // 3b. External Open-Web (e.g. Brave Search) - ONLY if custom mock provided OR explicitly active in admin settings
       if (options.openWebSearchFn) {
         try {
           const openWebResults = await options.openWebSearchFn(q, 5);
@@ -512,7 +559,7 @@ export async function executeGeneralizedResearchJob(
               url: ow.url,
               publisher: ow.publisher,
               document_hint: 'INSTITUTIONAL',
-              language: v.language,
+              language: webVariant.language,
               discovered_at: new Date().toISOString(),
               discovery_query_id: pq.query_id
             });
@@ -557,7 +604,7 @@ export async function executeGeneralizedResearchJob(
         } else {
           try {
             const openWebResults = await defaultWebProvider.search(
-              { query: q, query_id: pq.query_id, language: v.language, max_results: 5 },
+              { query: q, query_id: pq.query_id, language: webVariant.language, max_results: 5 },
               { fetchFn: options.fetchFn }
             );
             p1OpenWebCount += openWebResults.length;
@@ -1373,51 +1420,61 @@ export async function executeGeneralizedResearchJob(
     let p2OpenWebCount = 0;
 
     for (const pq of pass2QueryPlan.planned_queries) {
-      for (const v of pq.variants) {
-        const gq = v.query;
+      // 1. CrossRef: dispatch concise scholarly query variant
+      const crVariant = pq.variants.find(v => v.target_provider === 'CROSSREF') ||
+                        pq.variants.find(v => v.language === 'en') ||
+                        pq.variants[0];
+      if (crVariant) {
+        const gq = crVariant.query;
         if (!queries.includes(gq)) queries.push(gq);
-
-        // CrossRef
-        if (v.language === 'en' || !pq.variants.some(v2 => v2.language === 'en')) {
-          try {
-            const crResults = await crossRefSearch(gq, { fetchFn: options.fetchFn });
-            p2CrossrefCount += crResults.length;
-            pass2ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: crResults.length });
-            for (const c of crResults) {
-              pass2CandidatePool.push({
-                provider: 'CROSSREF',
-                candidate_id: c.candidate_id,
-                title: c.title,
-                snippet_or_abstract: c.snippet,
-                url: c.url,
-                doi: c.doi,
-                publisher: c.publisher,
-                document_hint: 'SCHOLARLY',
-                language: v.language,
-                discovered_at: c.discovered_at,
-                discovery_query_id: pq.query_id
-              });
-            }
-          } catch (err: any) {
-            pass2ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: 0, error_status: err.message });
+        try {
+          const crResults = await crossRefSearch(gq, { fetchFn: options.fetchFn });
+          p2CrossrefCount += crResults.length;
+          pass2ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: crResults.length });
+          for (const c of crResults) {
+            pass2CandidatePool.push({
+              provider: 'CROSSREF',
+              candidate_id: c.candidate_id,
+              title: c.title,
+              snippet_or_abstract: c.snippet,
+              url: c.url,
+              doi: c.doi,
+              publisher: c.publisher,
+              document_hint: 'SCHOLARLY',
+              language: crVariant.language,
+              discovered_at: c.discovered_at,
+              discovery_query_id: pq.query_id
+            });
           }
+        } catch (err: any) {
+          pass2ProviderCalls.push({ provider: 'CROSSREF', query_id: pq.query_id, result_count: 0, error_status: err.message });
         }
+      }
 
-        // Wikipedia
+      // 2. Wikipedia: dispatch canonical concept variants (EN & ID)
+      const wikiVariants = [
+        pq.variants.find(v => v.target_provider === 'WIKIPEDIA' && v.language === 'en') || pq.variants.find(v => v.language === 'en'),
+        pq.variants.find(v => v.target_provider === 'WIKIPEDIA' && v.language === 'id') || pq.variants.find(v => v.language === 'id')
+      ].filter(Boolean) as DiscoveryQueryVariant[];
+
+      const dedupedWikiVariants = Array.from(new Map(wikiVariants.map(v => [v.query, v])).values());
+      for (const wv of dedupedWikiVariants) {
+        const gq = wv.query;
+        if (!queries.includes(gq)) queries.push(gq);
         try {
           const wikiResults = await wikiSearch(gq, { fetchFn: options.fetchFn });
           p2WikiCount += wikiResults.length;
-          pass2ProviderCalls.push({ provider: v.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN', query_id: pq.query_id, result_count: wikiResults.length });
+          pass2ProviderCalls.push({ provider: wv.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN', query_id: pq.query_id, result_count: wikiResults.length });
           for (const c of wikiResults) {
             pass2CandidatePool.push({
-              provider: v.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN',
+              provider: wv.language === 'id' ? 'WIKIPEDIA_ID' : 'WIKIPEDIA_EN',
               candidate_id: c.candidate_id,
               title: c.title,
               snippet_or_abstract: c.snippet,
               url: c.url,
               publisher: c.publisher || 'Wikimedia Foundation',
               document_hint: 'ENCYCLOPEDIC',
-              language: v.language,
+              language: wv.language,
               discovered_at: c.discovered_at,
               discovery_query_id: pq.query_id
             });
@@ -1425,8 +1482,40 @@ export async function executeGeneralizedResearchJob(
         } catch (err: any) {
           pass2ProviderCalls.push({ provider: 'WIKIPEDIA', query_id: pq.query_id, result_count: 0, error_status: err.message });
         }
+      }
 
-        // Open-Web
+      // 3. Open-Web / Free Fallback (Section 9: Free-First Policy)
+      const webVariant = pq.variants.find(v => v.target_provider === 'OPEN_WEB') ||
+                         pq.variants.find(v => v.language === 'en') ||
+                         pq.variants[0];
+
+      if (webVariant) {
+        const gq = webVariant.query;
+        if (!queries.includes(gq)) queries.push(gq);
+
+        // 3a. Hermes Browser Discovery (Free open-web fallback)
+        if (options.hermesBrowserSearchFn || options.browserSearchFn) {
+          const hermesBrowserProvider = new HermesBrowserDiscoveryProvider({
+            browserSearchFn: options.hermesBrowserSearchFn || options.browserSearchFn
+          });
+          if (hermesBrowserProvider.isAvailable()) {
+            try {
+              const hbrResults = await hermesBrowserProvider.search(
+                { query: gq, query_id: pq.query_id, language: webVariant.language, max_results: 5 },
+                { fetchFn: options.fetchFn }
+              );
+              p2OpenWebCount += hbrResults.length;
+              pass2ProviderCalls.push({ provider: 'HERMES_BROWSER', query_id: pq.query_id, result_count: hbrResults.length });
+              for (const cand of hbrResults) {
+                pass2CandidatePool.push(cand);
+              }
+            } catch (err: any) {
+              pass2ProviderCalls.push({ provider: 'HERMES_BROWSER', query_id: pq.query_id, result_count: 0, error_status: err.message });
+            }
+          }
+        }
+
+        // 3b. External Open-Web (e.g. Brave Search) - ONLY if custom mock provided OR explicitly active in admin settings
         if (options.openWebSearchFn) {
           try {
             const openWebResults = await options.openWebSearchFn(gq, 5);
@@ -1442,7 +1531,7 @@ export async function executeGeneralizedResearchJob(
                 url: ow.url,
                 publisher: ow.publisher,
                 document_hint: 'INSTITUTIONAL',
-                language: v.language,
+                language: webVariant.language,
                 discovered_at: new Date().toISOString(),
                 discovery_query_id: pq.query_id
               });
@@ -1487,7 +1576,7 @@ export async function executeGeneralizedResearchJob(
           } else {
             try {
               const openWebResults = await defaultWebProvider.search(
-                { query: gq, query_id: pq.query_id, language: v.language, max_results: 5 },
+                { query: gq, query_id: pq.query_id, language: webVariant.language, max_results: 5 },
                 { fetchFn: options.fetchFn }
               );
               p2OpenWebCount += openWebResults.length;

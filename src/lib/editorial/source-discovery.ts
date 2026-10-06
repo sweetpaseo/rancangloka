@@ -37,6 +37,7 @@ import {
   createPinnedDispatcher,
   type DnsLookupFn
 } from './discovery-network-safety.ts';
+import { evaluateCandidateDomainConsistency } from './discovery-providers.ts';
 export {
   validateSafeUrl,
   isPrivateOrBlockedHost,
@@ -128,11 +129,30 @@ export function scoreAndRankCandidates(
   candidates: DiscoveredSourceCandidate[],
   topic: string
 ): { candidate: DiscoveredSourceCandidate; score: number; sourceClass: string; isPreRejected: boolean; rejectReason?: string }[] {
+  const cleanTopicTerms = topic.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+
   return candidates.map(c => {
     const preReject = isPreRejectedCandidate(c);
     const sClass = estimateCandidateSourceClass(c);
     if (preReject.rejected) {
       return { candidate: c, score: -1, sourceClass: sClass, isPreRejected: true, rejectReason: preReject.reason };
+    }
+
+    // Evaluate domain consistency
+    const domainCheck = evaluateCandidateDomainConsistency({
+      title: c.title,
+      snippet_or_abstract: c.snippet,
+      publisher: c.publisher
+    }, topic);
+
+    if (!domainCheck.consistent) {
+      return {
+        candidate: c,
+        score: -1,
+        sourceClass: sClass,
+        isPreRejected: true,
+        rejectReason: domainCheck.reason || 'PRE_RETRIEVAL_DISALLOWED_DOMAIN: Negative domain marker'
+      };
     }
 
     let baseScore = 30;
@@ -148,6 +168,17 @@ export function scoreAndRankCandidates(
     if (c.doi) {
       baseScore += 5;
     }
+
+    // Domain consistency bonus
+    baseScore += domainCheck.scoreAdjustment;
+
+    // Topic concept match bonus
+    const textBlob = `${c.title} ${c.snippet || ''}`.toLowerCase();
+    let termMatches = 0;
+    for (const term of cleanTopicTerms) {
+      if (textBlob.includes(term)) termMatches++;
+    }
+    baseScore += Math.min(termMatches * 15, 60);
 
     return { candidate: c, score: baseScore, sourceClass: sClass, isPreRejected: false };
   }).sort((a, b) => b.score - a.score);

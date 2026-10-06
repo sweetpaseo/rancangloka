@@ -83,6 +83,19 @@ const CONVERSATIONAL_FILLERS = [
   /\bsolusi terbaik\b/gi,
   /\btips\b/gi,
   /\bcara mengatasi\b/gi,
+  /\bmemilih\b/gi,
+  /\bsistem\b/gi,
+  /\banalisis\b/gi,
+  /\bperbandingan\b/gi,
+  /\bkarakteristik\b/gi,
+  /\bperan\b/gi,
+  /\buntuk hunian\b/gi,
+  /\buntuk\b/gi,
+  /\bmengetahui\b/gi,
+  /\brekomendasi\b/gi,
+  /\bperbedaan\b/gi,
+  /\bpanduan\b/gi,
+  /\bcara\b/gi,
   /\bataukah\b/gi,
   /\batau\b/gi,
   /\bvs\.?\b/gi,
@@ -145,14 +158,39 @@ const TECHNICAL_VOCABULARY_MAP: Record<string, { en: string; id: string; categor
   'semen': { en: 'thinset mortar adhesive', id: 'mortar semen perekat', category: 'interventions' },
   'adhesi': { en: 'bonding adhesion shear stress', id: 'daya lekat adhesi', category: 'mechanisms' },
   'muai': { en: 'thermal expansion moisture expansion', id: 'muai susut termal', category: 'mechanisms' },
+  'pemuaian': { en: 'thermal expansion moisture expansion', id: 'pemuaian muai susut', category: 'mechanisms' },
+  'perekat': { en: 'thinset mortar adhesive bond', id: 'mortar semen perekat', category: 'interventions' },
+  'movement joint': { en: 'movement expansion joint dilatasi', id: 'sambungan movement joint', category: 'interventions' },
+  'delaminasi': { en: 'debonding delamination shear failure', id: 'lepas delaminasi adhesi', category: 'symptoms' },
 
-  // Fenestration & Openings
+  // Fenestration, Glazing & Architectural Glass
+  'kaca': { en: 'architectural glass glazing', id: 'kaca bangunan', category: 'problem_entities' },
+  'laminated': { en: 'laminated safety glass PVB', id: 'kaca laminated interlayer', category: 'problem_entities' },
+  'tempered': { en: 'tempered toughened glass', id: 'kaca tempered', category: 'problem_entities' },
+  'keamanan': { en: 'safety impact breakage', id: 'keamanan benturan', category: 'mechanisms' },
+  'kekuatan': { en: 'mechanical structural strength', id: 'kekuatan mekanis', category: 'measurements' },
+  'benturan': { en: 'impact resistance fracture', id: 'ketahanan benturan', category: 'mechanisms' },
+  'isolasi suara': { en: 'acoustic sound transmission STC', id: 'isolasi suara akustik', category: 'measurements' },
+  'pvb': { en: 'polyvinyl butyral PVB interlayer', id: 'interlayer PVB', category: 'interventions' },
+  'pecah': { en: 'glass breakage shatter fracture', id: 'pecahan kaca', category: 'symptoms' },
   'kusen': { en: 'window frame fenestration', id: 'profil kusen', category: 'problem_entities' },
   'jendela': { en: 'window system opening', id: 'daun jendela', category: 'problem_entities' },
   'aluminium': { en: 'aluminium profile thermal conductivity', id: 'profil aluminium', category: 'interventions' },
   'upvc': { en: 'uPVC profile multi-chamber insulation', id: 'profil uPVC', category: 'interventions' },
   'kedap suara': { en: 'acoustic sound insulation STC', id: 'insulasi kedap suara', category: 'measurements' },
   'thermal break': { en: 'polyamide thermal break', id: 'penghambat panas thermal break', category: 'interventions' },
+
+  // Shading, Solar Radiation & Facade
+  'shading': { en: 'solar shading device facade', id: 'shading peneduh matahari', category: 'interventions' },
+  'overhang': { en: 'overhang solar shading projection', id: 'overhang teritisan', category: 'interventions' },
+  'louver': { en: 'louver louvre shading airflow', id: 'louver kisi-kisi', category: 'interventions' },
+  'awning': { en: 'exterior awning canopy shading', id: 'kanopi awning', category: 'interventions' },
+  'secondary skin': { en: 'double-skin facade secondary skin', id: 'secondary skin fasad ganda', category: 'interventions' },
+  'fasad': { en: 'building facade envelope', id: 'fasad bangunan', category: 'problem_entities' },
+  'tropis': { en: 'tropical climate building envelope', id: 'iklim tropis bangunan', category: 'mechanisms' },
+  'radiasi': { en: 'solar radiation heat gain SHGC', id: 'radiasi matahari', category: 'mechanisms' },
+  'shgc': { en: 'solar heat gain coefficient SHGC', id: 'koefisien panas matahari SHGC', category: 'measurements' },
+  'ventilasi alami': { en: 'natural cross ventilation airflow', id: 'ventilasi alami silang', category: 'interventions' },
 
   // Standards & Codes
   'ashrae': { en: 'ASHRAE standard ventilation guidance', id: 'standar ASHRAE ventilasi', category: 'standards_intent' },
@@ -161,6 +199,84 @@ const TECHNICAL_VOCABULARY_MAP: Record<string, { en: string; id: string; categor
   'astm': { en: 'ASTM standard testing specification', id: 'spesifikasi standar ASTM', category: 'standards_intent' },
   'pupr': { en: 'pedoman teknis PUPR bangunan', id: 'pedoman kementerian PUPR', category: 'standards_intent' }
 };
+
+// Generic editorial intent terms that must NOT dominate bibliographic/CrossRef search queries
+export const EDITORIAL_INTENT_TERMS = [
+  /\bdifferential diagnosis\b/gi,
+  /\bdiagnosis\b/gi,
+  /\binspection criteria\b/gi,
+  /\binspection\b/gi,
+  /\bcauses physics\b/gi,
+  /\bairflow mitigation\b/gi,
+  /\bmitigation\b/gi,
+  /\bremediation effectiveness\b/gi,
+  /\bremediation\b/gi,
+  /\beffectiveness\b/gi,
+  /\bfalse fixes\b/gi,
+  /\blimitations\b/gi,
+  /\bdiagnostic signs\b/gi,
+  /\bdifferentiation\b/gi,
+  /\bescalation risk\b/gi,
+  /\brisk assessment\b/gi,
+  /\bproblem\b/gi,
+  /\bproblems\b/gi,
+  /\bintervention\b/gi,
+  /\binterventions\b/gi,
+  /\bsolution\b/gi,
+  /\bsolutions\b/gi,
+  /\bunderlying physical cause\b/gi,
+  /\bphysical cause transport\b/gi,
+  /\btransport\b/gi,
+  /\bcauses\b/gi,
+  /\banalysis\b/gi,
+  /\bevaluation\b/gi,
+  /\bstrategy\b/gi,
+  /\bstrategies\b/gi,
+  /\bcomparison\b/gi,
+  /\bcomparative\b/gi
+];
+
+/**
+ * Strips generic editorial intent terms from bibliographic query strings.
+ */
+export function sanitizeBibliographicTerms(termString: string): string {
+  let cleaned = termString;
+  for (const pattern of EDITORIAL_INTENT_TERMS) {
+    cleaned = cleaned.replace(pattern, ' ');
+  }
+  return cleaned.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Renders provider-specific queries from decomposed concepts.
+ */
+export function renderProviderSpecificQuery(
+  rawTerms: string,
+  targetProvider: 'CROSSREF' | 'WIKIPEDIA' | 'OPEN_WEB' | 'HERMES_BROWSER' | 'ALL',
+  language: 'id' | 'en' = 'en',
+  domainContext?: string
+): string {
+  if (targetProvider === 'CROSSREF') {
+    let sanitized = sanitizeBibliographicTerms(rawTerms);
+    const words = sanitized.split(' ').filter(w => w.length > 2);
+    const dedupedWords = Array.from(new Set(words)).slice(0, 5);
+    let result = dedupedWords.join(' ').trim();
+    if (!result || result.length < 5) {
+      result = (domainContext ? `${domainContext} ` : '') + 'materials engineering';
+    }
+    return truncateAtWordBoundary(result, MAX_QUERY_LENGTH);
+  }
+
+  if (targetProvider === 'WIKIPEDIA') {
+    let sanitized = sanitizeBibliographicTerms(rawTerms);
+    const words = sanitized.split(' ').filter(w => w.length > 2);
+    const topWords = Array.from(new Set(words)).slice(0, 3);
+    const result = topWords.join(' ').trim();
+    return truncateAtWordBoundary(result || rawTerms, MAX_QUERY_LENGTH);
+  }
+
+  return truncateAtWordBoundary(rawTerms, MAX_QUERY_LENGTH);
+}
 
 /**
  * Truncates query string at word boundary up to maxLength.
@@ -284,26 +400,71 @@ export class ResearchDiscoveryQueryPlanner {
       if (isDuplicate) return;
 
       const qId = `Q-PLAN-P${passNum}-${queryIndex++}`;
+
+      // Build provider-tailored variants
+      const variants: DiscoveryQueryVariant[] = [
+        {
+          language: 'id',
+          query: finalIdQuery,
+          intent: `${params.intent} (Indonesian technical)`,
+          target_provider: params.targetProvider
+        },
+        {
+          language: 'en',
+          query: finalEnQuery,
+          intent: `${params.intent} (English technical)`,
+          target_provider: params.targetProvider
+        }
+      ];
+
+      // Add specialized variants for CrossRef, Wikipedia, and OpenWeb if targetProvider is ALL
+      if (params.targetProvider === 'ALL') {
+        const crQuery = renderProviderSpecificQuery(rawEnQuery, 'CROSSREF', 'en', primaryEntityEn);
+        const wikiQuery = renderProviderSpecificQuery(rawEnQuery, 'WIKIPEDIA', 'en');
+        const wikiIdQuery = renderProviderSpecificQuery(rawIdQuery, 'WIKIPEDIA', 'id');
+        const openWebQuery = renderProviderSpecificQuery(rawEnQuery, 'OPEN_WEB', 'en');
+
+        if (crQuery && !variants.some(v => v.query === crQuery && v.target_provider === 'CROSSREF')) {
+          variants.push({
+            language: 'en',
+            query: crQuery,
+            intent: `${params.intent} (CrossRef scholarly concepts)`,
+            target_provider: 'CROSSREF'
+          });
+        }
+        if (wikiQuery && !variants.some(v => v.query === wikiQuery && v.target_provider === 'WIKIPEDIA')) {
+          variants.push({
+            language: 'en',
+            query: wikiQuery,
+            intent: `${params.intent} (Wikipedia encyclopedic concept EN)`,
+            target_provider: 'WIKIPEDIA'
+          });
+        }
+        if (wikiIdQuery && !variants.some(v => v.query === wikiIdQuery && v.target_provider === 'WIKIPEDIA')) {
+          variants.push({
+            language: 'id',
+            query: wikiIdQuery,
+            intent: `${params.intent} (Wikipedia encyclopedic concept ID)`,
+            target_provider: 'WIKIPEDIA'
+          });
+        }
+        if (openWebQuery && !variants.some(v => v.query === openWebQuery && v.target_provider === 'OPEN_WEB')) {
+          variants.push({
+            language: 'en',
+            query: openWebQuery,
+            intent: `${params.intent} (Open-web technical query)`,
+            target_provider: 'OPEN_WEB'
+          });
+        }
+      }
+
       const queryItem: StructuredDiscoveryQuery = {
         query_id: qId,
         research_question_id: params.rqId,
         category: params.category,
         target_provider: params.targetProvider,
         concepts: decomposition,
-        variants: [
-          {
-            language: 'id',
-            query: finalIdQuery,
-            intent: `${params.intent} (Indonesian technical)`,
-            target_provider: params.targetProvider
-          },
-          {
-            language: 'en',
-            query: finalEnQuery,
-            intent: `${params.intent} (English technical)`,
-            target_provider: params.targetProvider
-          }
-        ],
+        variants,
         derived_from_concepts: [...cleanIdWords]
       };
 
@@ -313,14 +474,14 @@ export class ResearchDiscoveryQueryPlanner {
     const primaryEntityId = decomposition.problem_entities.slice(0, 2).join(' ') || 'bangunan';
     const primaryEntityEn = enConcepts.enEntities.slice(0, 2).join(' ') || 'building';
 
-    const primarySymptomId = decomposition.symptoms[0] || 'masalah fisik';
-    const primarySymptomEn = enConcepts.enSymptoms[0] || 'problem';
+    const primarySymptomId = decomposition.symptoms[0] || 'kerusakan';
+    const primarySymptomEn = enConcepts.enSymptoms[0] || 'failure';
 
     const primaryMechId = decomposition.mechanisms[0] || 'mekanisme';
     const primaryMechEn = enConcepts.enMechanisms[0] || 'mechanism';
 
     const primaryInterventionId = decomposition.interventions[0] || 'solusi teknis';
-    const primaryInterventionEn = enConcepts.enInterventions[0] || 'intervention';
+    const primaryInterventionEn = enConcepts.enInterventions[0] || 'mitigation';
 
     if (passNum === 1 || missingCats.length === 0) {
       // Pass 1: Balanced foundational discovery across categories
@@ -330,9 +491,9 @@ export class ResearchDiscoveryQueryPlanner {
         category: 'PLAUSIBLE_CAUSES',
         rqId: 'RQ-001',
         targetProvider: 'ALL',
-        idKeywords: [primaryEntityId, primarySymptomId, primaryMechId, 'mekanisme fisika'],
-        enKeywords: [primaryEntityEn, primarySymptomEn, primaryMechEn, 'causes physics'],
-        intent: 'Investigate physical causes and transport mechanisms'
+        idKeywords: [primaryEntityId, primarySymptomId, primaryMechId, 'mekanisme kerusakan fisika'],
+        enKeywords: [primaryEntityEn, primarySymptomEn, primaryMechEn, 'failure mechanism physics'],
+        intent: 'Investigate physical causes and failure mechanisms'
       });
 
       // 2. Differential Diagnosis / Distinction
@@ -340,8 +501,8 @@ export class ResearchDiscoveryQueryPlanner {
         category: 'DIFFERENTIAL_DIAGNOSIS',
         rqId: 'RQ-002',
         targetProvider: 'ALL',
-        idKeywords: [primaryEntityId, primarySymptomId, 'diagnosis membedakan'],
-        enKeywords: [primaryEntityEn, primarySymptomEn, 'differential diagnosis inspection'],
+        idKeywords: [primaryEntityId, primarySymptomId, 'perbedaan komparasi spesifikasi'],
+        enKeywords: [primaryEntityEn, primarySymptomEn, 'comparative performance distinction'],
         intent: 'Distinguish symptomatic causes and boundary indicators'
       });
 
@@ -350,9 +511,9 @@ export class ResearchDiscoveryQueryPlanner {
         category: 'INTERVENTION_MAPPING',
         rqId: 'RQ-003',
         targetProvider: 'ALL',
-        idKeywords: [primaryEntityId, primaryInterventionId, 'efektivitas solusi'],
-        enKeywords: [primaryEntityEn, primaryInterventionEn, 'effectiveness airflow mitigation'],
-        intent: 'Evaluate technical intervention effectiveness'
+        idKeywords: [primaryEntityId, primaryInterventionId, 'mitigasi perbaikan pemasangan'],
+        enKeywords: [primaryEntityEn, primaryInterventionEn, 'remediation installation mitigation'],
+        intent: 'Evaluate technical intervention and installation effectiveness'
       });
 
       // 4. Standards & Guidance
@@ -361,7 +522,7 @@ export class ResearchDiscoveryQueryPlanner {
         rqId: 'RQ-006',
         targetProvider: 'ALL',
         idKeywords: [primaryEntityId, 'standar teknis SNI pedoman'],
-        enKeywords: [primaryEntityEn, 'building science standards ASHRAE code'],
+        enKeywords: [primaryEntityEn, 'building science standards testing specification'],
         intent: 'Retrieve institutional and empirical building standards'
       });
     } else {
@@ -373,7 +534,7 @@ export class ResearchDiscoveryQueryPlanner {
             rqId: 'RQ-001',
             targetProvider: 'ALL',
             idKeywords: [primaryEntityId, primarySymptomId, 'mekanisme penyebab sumber'],
-            enKeywords: [primaryEntityEn, primarySymptomEn, 'underlying physical cause transport'],
+            enKeywords: [primaryEntityEn, primarySymptomEn, 'underlying failure mechanism physical'],
             intent: 'Gap-directed physical cause investigation'
           });
         } else if (cat === 'DIFFERENTIAL_DIAGNOSIS') {
@@ -381,8 +542,8 @@ export class ResearchDiscoveryQueryPlanner {
             category: 'DIFFERENTIAL_DIAGNOSIS',
             rqId: 'RQ-002',
             targetProvider: 'ALL',
-            idKeywords: [primaryEntityId, primarySymptomId, 'tanda diagnosis perbedaan'],
-            enKeywords: [primaryEntityEn, primarySymptomEn, 'diagnostic signs differentiation'],
+            idKeywords: [primaryEntityId, primarySymptomId, 'tanda pembeda komparasi'],
+            enKeywords: [primaryEntityEn, primarySymptomEn, 'comparative distinction boundary'],
             intent: 'Gap-directed diagnostic differentiation'
           });
         } else if (cat === 'INTERVENTION_MAPPING') {
@@ -391,7 +552,7 @@ export class ResearchDiscoveryQueryPlanner {
             rqId: 'RQ-003',
             targetProvider: 'ALL',
             idKeywords: [primaryEntityId, primaryInterventionId, 'efektivitas perbaikan'],
-            enKeywords: [primaryEntityEn, primaryInterventionEn, 'remediation effectiveness performance'],
+            enKeywords: [primaryEntityEn, primaryInterventionEn, 'remediation installation performance'],
             intent: 'Gap-directed intervention mapping'
           });
         } else if (cat === 'LIMITATIONS_AND_FALSE_FIXES') {
@@ -399,8 +560,8 @@ export class ResearchDiscoveryQueryPlanner {
             category: 'LIMITATIONS_AND_FALSE_FIXES',
             rqId: 'RQ-004',
             targetProvider: 'ALL',
-            idKeywords: [primaryEntityId, primaryInterventionId, 'keterbatasan kegagalan batas fisik'],
-            enKeywords: [primaryEntityEn, primaryInterventionEn, 'limitations false fixes failure modes'],
+            idKeywords: [primaryEntityId, primaryInterventionId, 'keterbatasan batas fisik kegagalan'],
+            enKeywords: [primaryEntityEn, primaryInterventionEn, 'failure modes boundary conditions'],
             intent: 'Gap-directed limitations and failure boundary investigation'
           });
         } else if (cat === 'ESCALATION_CONDITIONS') {
@@ -408,8 +569,8 @@ export class ResearchDiscoveryQueryPlanner {
             category: 'ESCALATION_CONDITIONS',
             rqId: 'RQ-005',
             targetProvider: 'ALL',
-            idKeywords: [primaryEntityId, primarySymptomId, 'kondisi inspeksi ahli risiko'],
-            enKeywords: [primaryEntityEn, primarySymptomEn, 'inspection criteria escalation risk assessment'],
+            idKeywords: [primaryEntityId, primarySymptomId, 'kondisi inspeksi risiko struktural'],
+            enKeywords: [primaryEntityEn, primarySymptomEn, 'inspection assessment risk criteria'],
             intent: 'Gap-directed escalation criteria'
           });
         } else if (cat === 'EMPIRICAL_RECOMMENDATION_SUPPORT') {

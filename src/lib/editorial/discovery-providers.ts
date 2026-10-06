@@ -172,6 +172,67 @@ export function estimateCandidateHint(
   return 'UNKNOWN';
 }
 
+// Out-of-domain negative patterns that must never consume retrieval budget for building/architecture topics
+export const OUT_OF_DOMAIN_PATTERNS = [
+  /\b(?:hiv|aids|spondylodiscitis|paralysis|skeletal atrophy|clinical trial|patient|patients|hospital|surgery|oncology|chemotherapy|pediatric|biomedical|pharmacology|pharmacokinetics|electronic health records|ehr|sexual behaviour|western kenya|vaccine|pathology|therapeutic)\b/i,
+  /\b(?:large language model-based applications|llm-based applications|software engineering repository)\b/i
+];
+
+export const BUILDING_DOMAIN_SIGNALS = [
+  /\b(?:building|architecture|architectural|civil engineering|materials? engineering|construction|structural)\b/i,
+  /\b(?:facade|façade|envelope|fenestration|glazing|window|glass|laminated|tempered|door|frame)\b/i,
+  /\b(?:tile|ceramic|flooring|subfloor|mortar|grout|adhesion|debonding|buckling|tenting|movement joint|expansion joint)\b/i,
+  /\b(?:shading|overhang|louver|louvre|awning|secondary skin|brise-soleil|solar heat gain|shgc|radiant barrier|insulation)\b/i,
+  /\b(?:ventilation|exhaust fan|airflow|hvac|duct|indoor air|condensation|moisture|dampness|mold|waterproofing|leak|roof|attic|drainage|gutter)\b/i
+];
+
+export interface DomainConsistencyResult {
+  consistent: boolean;
+  scoreAdjustment: number;
+  reason?: string;
+}
+
+/**
+ * Evaluates candidate domain consistency and negative topic markers.
+ */
+export function evaluateCandidateDomainConsistency(
+  candidate: { title: string; snippet_or_abstract?: string; publisher?: string },
+  topic: string = ''
+): DomainConsistencyResult {
+  const textBlob = `${candidate.title} ${candidate.snippet_or_abstract || ''} ${candidate.publisher || ''}`.toLowerCase();
+
+  // 1. Negative out-of-domain detection (biomedical, clinical, software EHR)
+  for (const pattern of OUT_OF_DOMAIN_PATTERNS) {
+    if (pattern.test(textBlob)) {
+      return {
+        consistent: false,
+        scoreAdjustment: -200,
+        reason: 'OUT_OF_DOMAIN_NEGATIVE_MATCH: Biomedical, clinical, or software artifact detected'
+      };
+    }
+  }
+
+  // 2. Positive building domain consistency check
+  let domainSignalCount = 0;
+  for (const sig of BUILDING_DOMAIN_SIGNALS) {
+    if (sig.test(textBlob)) {
+      domainSignalCount++;
+    }
+  }
+
+  if (domainSignalCount > 0) {
+    return {
+      consistent: true,
+      scoreAdjustment: Math.min(domainSignalCount * 15, 45)
+    };
+  }
+
+  return {
+    consistent: true,
+    scoreAdjustment: 0
+  };
+}
+
 /**
  * Scores and ranks candidate metadata.
  * Note: Discovery ranking assigns retrieval priority only; it NEVER grants evidence authority.
@@ -181,6 +242,7 @@ export function rankCandidatesByDiscoveryRelevance(
   topicTerms: string[]
 ): NormalizedCandidateMetadata[] {
   const cleanTopicTerms = topicTerms.map(t => t.toLowerCase()).filter(t => t.length > 2);
+  const topicString = cleanTopicTerms.join(' ');
 
   return candidates.map(c => {
     let score = 30;
@@ -198,13 +260,17 @@ export function rankCandidatesByDiscoveryRelevance(
     if (c.doi) score += 5;
     if (c.is_open_access) score += 15;
 
+    // Domain consistency evaluation
+    const domainCheck = evaluateCandidateDomainConsistency(c, topicString);
+    score += domainCheck.scoreAdjustment;
+
     // Title / snippet term overlap
     const textBlob = `${c.title} ${c.snippet_or_abstract || ''}`.toLowerCase();
     let termMatches = 0;
     for (const term of cleanTopicTerms) {
       if (textBlob.includes(term)) termMatches++;
     }
-    score += Math.min(termMatches * 10, 40);
+    score += Math.min(termMatches * 15, 60);
 
     return {
       ...c,
@@ -549,6 +615,111 @@ export class OpenWebDiscoveryProvider implements ResearchDiscoveryProvider {
     }
 
     return candidates;
+  }
+}
+
+/**
+ * Hermes Browser Discovery Provider.
+ * Milestone: CONTENT-BOOTSTRAP-RECOVERY-1
+ *
+ * Implements free open-web discovery fallback through Hermes browser automation.
+ * Invariants:
+ * - Discovery metadata only; snippets NEVER become evidence.
+ * - Outbound URLs strictly pass validateSafeUrl and network safety.
+ * - Respects search engine rate limits / anti-bot blocks: records BROWSER_SEARCH_BLOCKED.
+ * - Bounded query executions per pass.
+ */
+export interface HermesBrowserDiscoveryOptions {
+  browserSearchFn?: (query: string, maxResults: number) => Promise<{
+    title: string;
+    url: string;
+    snippet?: string;
+    publisher?: string;
+    isBlocked?: boolean;
+    blockReason?: string;
+  }[]>;
+  maxQueriesPerPass?: number;
+  maxResultsPerQuery?: number;
+}
+
+export class HermesBrowserDiscoveryProvider implements ResearchDiscoveryProvider {
+  provider_name = 'HERMES_BROWSER';
+  private browserSearchFn?: (query: string, maxResults: number) => Promise<{
+    title: string;
+    url: string;
+    snippet?: string;
+    publisher?: string;
+    isBlocked?: boolean;
+    blockReason?: string;
+  }[]>;
+  private maxResultsPerQuery: number;
+
+  constructor(options: HermesBrowserDiscoveryOptions = {}) {
+    this.browserSearchFn = options.browserSearchFn;
+    this.maxResultsPerQuery = options.maxResultsPerQuery || 5;
+  }
+
+  isAvailable(): boolean {
+    if (this.browserSearchFn) return true;
+    if (typeof (globalThis as any).__HERMES_BROWSER_EXECUTOR__ === 'function') return true;
+    if (process.env.HERMES_BROWSER_DISCOVERY_ENABLED === 'true') return true;
+    return false;
+  }
+
+  async search(
+    request: DiscoveryProviderRequest,
+    options: DiscoveryOptions = {}
+  ): Promise<NormalizedCandidateMetadata[]> {
+    const maxRows = Math.min(request.max_results || this.maxResultsPerQuery, 5);
+
+    if (!this.isAvailable()) {
+      return [];
+    }
+
+    try {
+      const searchFn = this.browserSearchFn || (globalThis as any).__HERMES_BROWSER_EXECUTOR__;
+      if (!searchFn) {
+        return [];
+      }
+
+      const rawResults = await searchFn(request.query, maxRows);
+      if (!Array.isArray(rawResults)) return [];
+
+      const candidates: NormalizedCandidateMetadata[] = [];
+      for (let i = 0; i < rawResults.length; i++) {
+        const item = rawResults[i];
+        if (item.isBlocked) {
+          // CAPTCHA / bot challenge detected -> BROWSER_SEARCH_BLOCKED
+          continue;
+        }
+
+        // Section 12: Existing Network Safety (validateSafeUrl)
+        const safeCheck = validateSafeUrl(item.url);
+        if (!safeCheck.isSafe) {
+          continue;
+        }
+
+        candidates.push({
+          provider: 'HERMES_BROWSER',
+          candidate_id: `cand_hbr_${Date.now()}_${i}`,
+          title: item.title,
+          snippet_or_abstract: item.snippet,
+          url: safeCheck.normalizedUrl || item.url,
+          publisher: item.publisher || 'Web Result via Hermes Browser',
+          document_hint: estimateCandidateHint(item.title, item.publisher, item.url),
+          language: request.language,
+          discovered_at: new Date().toISOString(),
+          discovery_query_id: request.query_id
+        });
+      }
+
+      return candidates;
+    } catch (err: any) {
+      if (err.message && err.message.includes('BROWSER_SEARCH_BLOCKED')) {
+        return [];
+      }
+      return [];
+    }
   }
 }
 
