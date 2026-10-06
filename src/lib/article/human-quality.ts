@@ -38,6 +38,12 @@ import {
   createCachedSnapshotProvenance
 } from '../editorial/source-discovery.ts';
 
+import {
+  evaluateClaimQuality,
+  DocumentTopicRelevanceEvaluator,
+  classifySourceRole
+} from '../editorial/evidence-quality-gate.ts';
+
 export type { SourceOrigin, CachedSnapshotProvenance };
 export { verifyCachedSnapshotProvenance, createCachedSnapshotProvenance };
 
@@ -777,6 +783,7 @@ export interface EvidenceSource {
   snapshot_created_at?: string;
   snapshot_source_hash?: string;
   snapshot_verification_status?: 'VERIFIED_AUTHENTIC' | 'UNVERIFIED' | 'FAILED_INTEGRITY';
+  source_role?: string;
 }
 
 export type GeneralEvidenceRole =
@@ -914,6 +921,8 @@ export interface AuthorSafeClaim {
   jurisdiction_blocked?: boolean;
   source_provenance_blocked?: boolean;
   semantic_support_blocked?: boolean;
+  topic_relevance_blocked?: boolean;
+  quality_gate_blocked?: boolean;
 }
 
 export interface EvidencePackInput {
@@ -1977,6 +1986,8 @@ export function generateAuthorSafeClaims(
     articleContext?: string;
     executionType?: 'REAL_RUNTIME_EXECUTION' | 'TEST';
     retrievedDocuments?: any[];
+    topic?: string;
+    researchQuestions?: any[];
   }
 ): AuthorSafeClaim[] {
   const result: AuthorSafeClaim[] = [];
@@ -2197,6 +2208,59 @@ export function generateAuthorSafeClaims(
     const isStandard = scope.applicability_kind === 'STANDARD_SPECIFIC';
 
     if (hasRetrieved && hasPassages) {
+      // Quality-aware semantic gate integration (Milestone: EVIDENCE-QUALITY-RUNTIME-INTEGRATION-1)
+      if (options?.topic && isRealExecution) {
+        const allSources = options.retrievedDocuments || Array.from(docsMap.values());
+        const passagesList = options.evidencePassages || Array.from(passagesById.values());
+        const docRelMap = new Map<string, any>();
+        const sourceRoleMap = new Map<string, any>();
+        const topicEval = new DocumentTopicRelevanceEvaluator();
+
+        for (const s of allSources) {
+          if (!s || !s.source_id) continue;
+          const role = classifySourceRole({
+            title: s.title || s.document_title,
+            publisher: s.publisher || s.publisher_or_author,
+            url: s.url || s.canonical_url,
+            resolvedUrl: s.resolved_url || s.canonical_url,
+            doi: s.doi,
+            textSample: s.content_text
+          });
+          sourceRoleMap.set(s.source_id, role.source_role);
+          const rel = topicEval.evaluate(options.topic, {
+            title: s.title || s.document_title,
+            publisher: s.publisher || s.publisher_or_author,
+            text: s.content_text,
+            url: s.url || s.canonical_url
+          });
+          docRelMap.set(s.source_id, rel.relevance_level);
+        }
+
+        const qEval = evaluateClaimQuality(
+          claim,
+          passagesList,
+          allSources,
+          options.topic,
+          docRelMap,
+          sourceRoleMap,
+          result
+        );
+
+        if (!qEval.author_safe_final) {
+          result.push({
+            claim_id: claim.claim_id,
+            statement: claim.statement,
+            support_level: 'PARTIALLY_SUPPORTED',
+            applicability: claimSources[0]?.applicability || 'TECHNICAL_GUIDANCE_LOCAL',
+            allowed_for_authoring: false,
+            topic_relevance_blocked: true,
+            qualification_required: `QUALITY_GATE_REJECTED: ${qEval.rejection_reasons.join('; ')}`,
+            evidence_passage_ids: isRealExecution ? authenticPassageIds : claim.evidence_passage_ids
+          });
+          continue;
+        }
+      }
+
       result.push({
         claim_id: claim.claim_id,
         statement: claim.statement,

@@ -80,6 +80,13 @@ import {
   KNOWN_SOURCE_RETRIEVAL_CATALOG
 } from '../article/source-cache.ts';
 
+import {
+  cleanBoilerplateAndSpam,
+  DocumentTopicRelevanceEvaluator,
+  calculateSourceDiversityQuality,
+  evaluateAuthorSafeEvidenceGate
+} from './evidence-quality-gate.ts';
+
 export type IrwanRuntimeEventType =
   | 'RESEARCH_JOB_STARTED'
   | 'IRWAN_QUERY_PLANNED'
@@ -240,6 +247,7 @@ export const mapDocToSource = (doc: RetrievedDocument, pageOrSection?: string): 
     retrieved_url: doc.url || doc.canonical_url || undefined,
     page_or_section: pageOrSection,
     applicability: doc.applicability,
+    source_role: (doc as any).source_role || (doc.source_classification === 'PRIMARY_RESEARCH_DOCUMENT' ? 'SCHOLARLY_JOURNAL_ARTICLE' : undefined),
     retrieval_status: doc.retrieval_status,
     retrieval_method: doc.retrieval_method,
     retrieved_at: doc.retrieved_at,
@@ -659,7 +667,14 @@ export async function executeGeneralizedResearchJob(
       return null;
     }
 
-    const cleanText = httpResult.clean_text.trim();
+    const cleaningResult = cleanBoilerplateAndSpam(httpResult.clean_text);
+    if (!cleaningResult.is_content_quality_sufficient || !cleaningResult.cleaned_text) {
+      lifecycleTracker.transition(c.candidate_id, 'CONTENT_EXTRACTION_FAILED', `CONTENT_CLEANING_FAILED: ${cleaningResult.rejection_reason || 'Content too thin after boilerplate/spam cleaning'}`);
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Konten "${c.title}" tidak memadai setelah pembersihan boilerplate/spam: CONTENT_QUALITY_INSUFFICIENT.`);
+      return null;
+    }
+
+    const cleanText = cleaningResult.cleaned_text.trim();
     const resolvedUrl = httpResult.resolved_url || targetUrl;
     const identity = establishSourceIdentity(resolvedUrl, c.publisher);
     const srcId = `SRC-HTTP-${c.candidate_id.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -669,6 +684,14 @@ export async function executeGeneralizedResearchJob(
       lifecycleTracker.transition(c.candidate_id, 'CONTENT_EXTRACTION_FAILED', 'CONTENT_TOO_THIN: No valid building science passages extracted');
       return null;
     }
+
+    const topicEvaluator = new DocumentTopicRelevanceEvaluator();
+    const topicRelResult = topicEvaluator.evaluate(input.topic, {
+      title: c.title,
+      publisher: identity.publisher,
+      text: cleanText,
+      url: resolvedUrl
+    });
 
     lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_SUCCEEDED', `HTTP document retrieved from ${resolvedUrl} (${Buffer.byteLength(cleanText, 'utf8')} bytes)`);
     lifecycleTracker.transition(c.candidate_id, 'PASSAGE_EXTRACTED', `Diekstrak ${passages.length} bagian bukti terverifikasi`);
@@ -729,6 +752,9 @@ export async function executeGeneralizedResearchJob(
       extracted_passages: passages,
       applicability: identity.applicability,
       source_origin: origin,
+      source_role: identity.source_role,
+      topic_relevance: topicRelResult.relevance_level,
+      cleaning_result: cleaningResult,
       requested_url: httpResult.requested_url || targetUrl,
       resolved_url: resolvedUrl,
       http_status: httpResult.http_status,
@@ -914,7 +940,9 @@ export async function executeGeneralizedResearchJob(
     const builtAuthorSafe = generateAuthorSafeClaims(builtClaims, {
       evidencePassages: builtPassages,
       executionType,
-      retrievedDocuments: docs
+      retrievedDocuments: docs,
+      topic: input.topic,
+      researchQuestions
     });
 
     return { allPassages: builtPassages, claimInventory: builtClaims, authorSafeClaims: builtAuthorSafe };
@@ -1038,6 +1066,13 @@ export async function executeGeneralizedResearchJob(
 
   // 6. Source Diversity Metrics
   const diversityMetrics = calculateSourceDiversity(retrievedDocs, claimInventory);
+  const docRelMapForDiv = new Map(retrievedDocs.map(d => [d.source_id, (d as any).topic_relevance || 'UNCERTAIN']));
+  const sourceRoleMapForDiv = new Map(retrievedDocs.map(d => [d.source_id, (d as any).source_role || 'OTHER']));
+  const qualityDiversityMetrics = calculateSourceDiversityQuality(retrievedDocs, docRelMapForDiv, sourceRoleMapForDiv);
+
+  const effectiveConcentrationRisk = qualityDiversityMetrics.independent_relevant_evidence_stream_count <= 1
+    ? 'CRITICAL'
+    : (diversityMetrics.concentration_risk === 'CRITICAL' ? 'CRITICAL' : qualityDiversityMetrics.topic_concentration_risk);
 
   const verifiedSourceIds = Array.from(new Set(
     claimInventory.flatMap(c => (c.sources || [])
@@ -1078,7 +1113,10 @@ export async function executeGeneralizedResearchJob(
       authentic_source_count: diversityMetrics.authentic_source_count,
       independent_source_count: diversityMetrics.independent_source_count,
       source_class_count: diversityMetrics.source_class_count,
-      concentration_risk: diversityMetrics.concentration_risk
+      concentration_risk: effectiveConcentrationRisk,
+      raw_concentration_risk: diversityMetrics.concentration_risk,
+      topic_concentration_risk: qualityDiversityMetrics.topic_concentration_risk,
+      quality_diversity_metrics: qualityDiversityMetrics
     },
     claim_inventory: claimInventory,
     author_safe_claims: authorSafeClaims,
@@ -1106,12 +1144,14 @@ export async function executeGeneralizedResearchJob(
       passagesCount: allPassages.length,
       retrievedCount: retrievedDocs.length,
       authenticSources: diversityMetrics.authentic_source_count,
-      concentrationRisk: diversityMetrics.concentration_risk
+      concentrationRisk: effectiveConcentrationRisk
     }
   );
 
   // 7. Alignment & Research Coverage Pre-Writing Gate
   const alignmentResult = auditTopicEvidenceAlignment(input.topic, evidencePack, { researchQuestions });
+  const qualityGateResult = evaluateAuthorSafeEvidenceGate(evidencePack, input.topic, researchQuestions);
+  (evidencePack as any).quality_gate_result = qualityGateResult;
 
   let finalGateStatus = 'IRWAN_EVIDENCE_V4_HUMAN_REVIEW_REQUIRED';
   let status: 'COMPLETED' | 'BLOCKED' = 'COMPLETED';
@@ -1123,6 +1163,14 @@ export async function executeGeneralizedResearchJob(
       'RESEARCH_HUMAN_REVIEW_REQUIRED',
       `Paket bukti tertahan pada gerbang alignment: [${finalGateStatus}] ${alignmentResult.rejection_reason}`,
       { stopGate: finalGateStatus, reason: alignmentResult.rejection_reason }
+    );
+  } else if (!qualityGateResult.passed || qualityGateResult.production_gate?.passed === false) {
+    status = 'BLOCKED';
+    finalGateStatus = qualityGateResult.production_gate?.gate_status || 'RESEARCH_COVERAGE_QUALITY_INSUFFICIENT';
+    addTraceEvent(
+      'RESEARCH_HUMAN_REVIEW_REQUIRED',
+      `Paket bukti tertahan pada gerbang kualitas bukti & cakupan pertanyaan riset: [${finalGateStatus}] ${qualityGateResult.production_gate?.reason}`,
+      { stopGate: finalGateStatus, reason: qualityGateResult.production_gate?.reason }
     );
   } else {
     addTraceEvent(

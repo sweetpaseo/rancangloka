@@ -33,9 +33,10 @@ import type {
   GeneralEvidenceRole
 } from './source-discovery.ts';
 
-import type {
-  EditorialResearchQuestion,
-  ResearchQuestionCategory
+import {
+  generateEditorialResearchQuestions,
+  type EditorialResearchQuestion,
+  type ResearchQuestionCategory
 } from './research-questions.ts';
 
 import {
@@ -258,12 +259,12 @@ export interface ContentCleaningResult {
   rejection_reason?: string;
 }
 
-const GAMBLING_SPAM_PATTERNS = [
+export const GAMBLING_SPAM_PATTERNS = [
   /\b(?:slot\s*gacor|judi\s*online|togel\s*online|slot\s*online|daftar\s*slot|situs\s*slot|bocoran\s*slot|rtp\s*slot|sbobet|pragmatic\s*play|maxwin|jackpot\s*slot|bandar\s*togel|taruhan\s*bola|poker\s*online|casino\s*online)\b/i,
   /\b(?:depo\s*\d+|bonus\s*new\s*member|freebet|gacor\s*hari\s*ini|zeus\s*slot|sweet\s*bonanza|gates\s*of\s*olympus)\b/i
 ];
 
-const BOILERPLATE_LINE_PATTERNS = [
+export const BOILERPLATE_LINE_PATTERNS = [
   // Navigation & Menus
   /^(?:home|beranda|menu|navigation|breadcrumbs|cari|search|daftar isi)\b/i,
   /^(?:cari analisis|penelitian|akademisi|dapatkan nawala|disiplin ilmiah)\b/i,
@@ -1342,19 +1343,20 @@ export function evaluateAuthorSafeEvidenceGate(
   // 1. Evaluate Documents
   for (const s of sources) {
     const roleClass = classifySourceRole({
-      title: s.title,
+      title: s.title || s.document_title,
       publisher: s.publisher || s.publisher_or_author,
-      url: s.url,
-      resolvedUrl: s.resolved_url,
+      url: s.url || s.canonical_url || s.retrieved_url,
+      resolvedUrl: s.resolved_url || s.retrieved_url || s.canonical_url,
       doi: s.doi,
       textSample: s.content_text || s.raw_content_preview
     });
     sourceRoleMap.set(s.source_id, roleClass.source_role);
 
     const relRes = sourceEvaluator.evaluate(topic, {
-      title: s.title,
+      title: s.title || s.document_title,
       publisher: s.publisher || s.publisher_or_author,
-      text: s.content_text || s.raw_content_preview
+      text: s.content_text || s.raw_content_preview,
+      url: s.url || s.canonical_url || s.retrieved_url
     }, { researchQuestions });
     docRelevanceMap.set(s.source_id, relRes.relevance_level);
 
@@ -1395,7 +1397,9 @@ export function evaluateAuthorSafeEvidenceGate(
   }
 
   // 3. Evaluate Research Questions
-  const qs = researchQuestions || [];
+  const qs = (researchQuestions && researchQuestions.length > 0)
+    ? researchQuestions
+    : generateEditorialResearchQuestions(topic);
   const rqSupport = evaluateResearchQuestionSupport(
     qs,
     claims,

@@ -32,6 +32,7 @@ import {
   evaluateHumanWritingQuality,
   generateAuthorSafeClaims,
   detectArticleIntentProfile,
+  isHistoricalRoofPack,
   type HumanWritingQualityResult,
   type EvidencePackInput,
   type ArticleIntentProfile,
@@ -47,6 +48,14 @@ import {
   type GroundingAuditResult,
   type EditorialRefinementAudit
 } from './claim-grounding.ts';
+
+import {
+  evaluateAuthorSafeEvidenceGate
+} from './evidence-quality-gate.ts';
+
+import {
+  generateEditorialResearchQuestions
+} from './research-questions.ts';
 
 export type EditorialRuntimeEventType =
   | 'EDITORIAL_JOB_STARTED'
@@ -130,6 +139,7 @@ export type FinalEditorialDecision =
   | 'EVIDENCE_GROUNDING_REVIEW_REQUIRED'
   | 'TOPIC_EVIDENCE_ALIGNMENT_FAIL'
   | 'RESEARCH_COVERAGE_INSUFFICIENT'
+  | 'RESEARCH_COVERAGE_QUALITY_INSUFFICIENT'
   | 'PROVIDER_ERROR'
   | 'PROVIDER_TIMEOUT'
   | 'PROVIDER_RATE_LIMIT'
@@ -225,7 +235,9 @@ export async function executeEditorialDraftJob(
       jobId: `job_${taskId}`,
       taskId,
       status: 'BLOCKED',
-      finalDecision: alignmentResult.rejection_code as FinalEditorialDecision,
+      finalDecision: alignmentResult.rejection_code === 'RESEARCH_COVERAGE_INSUFFICIENT'
+        ? 'RESEARCH_COVERAGE_QUALITY_INSUFFICIENT'
+        : (alignmentResult.rejection_code as FinalEditorialDecision),
       publicationStatus: 'DRAFT',
       humanStopGateStatus: 'OPERATOR_INTERVENTION_REQUIRED',
       finalDraft: null,
@@ -238,15 +250,85 @@ export async function executeEditorialDraftJob(
     };
   }
 
+  // 1c. Pre-writing Semantic Evidence Quality & Research Question Coverage Gate
+  const intent = input.intentProfile || detectArticleIntentProfile(input.requestedTitle || input.topic);
+  const researchQs = (input.evidencePack as any).research_questions || generateEditorialResearchQuestions(input.topic, intent);
+  let qualityGateResult: any = (input.evidencePack as any).quality_gate_result;
+
+  const isHistoricalTestPack = isHistoricalRoofPack(input.evidencePack) && (input as any).executionType !== 'REAL_RUNTIME_EXECUTION';
+  if (!isHistoricalTestPack) {
+    if (!qualityGateResult) {
+      qualityGateResult = evaluateAuthorSafeEvidenceGate(
+        input.evidencePack,
+        input.topic,
+        researchQs
+      );
+    }
+
+    if (!qualityGateResult.passed || qualityGateResult.production_gate?.passed === false) {
+      const gateStatus = qualityGateResult.production_gate?.gate_status || 'RESEARCH_COVERAGE_QUALITY_INSUFFICIENT';
+      const reason = qualityGateResult.production_gate?.reason || 'Paket bukti tidak memenuhi ambang batas kualitas atau cakupan pertanyaan riset kanonikal.';
+      addTraceEvent(
+        'RESEARCH_REQUIRED_HALT',
+        'editorial_qa_primary',
+        `Penulisan dibatalkan sebelum Joko: [${gateStatus}] ${reason}`,
+        { rejection_code: gateStatus, reason, production_gate: qualityGateResult.production_gate }
+      );
+
+      return {
+        jobId: `job_${taskId}`,
+        taskId,
+        status: 'BLOCKED',
+        finalDecision: gateStatus as FinalEditorialDecision,
+        publicationStatus: 'DRAFT',
+        humanStopGateStatus: 'OPERATOR_INTERVENTION_REQUIRED',
+        finalDraft: null,
+        totalAttempts: 0,
+        authorProvenance: null,
+        qaResult: null,
+        attempts: [],
+        traceEvents,
+        error: reason
+      };
+    }
+  }
+
   // 2. Prepare Provider
   const provider = options.providerInstance || new EditorialLlmProvider(options.llmOptions);
 
-  // 3. Resolve Intent and Author Safe Claims
-  const intent = input.intentProfile || detectArticleIntentProfile(input.requestedTitle || input.topic);
+  // 3. Resolve Author Safe Claims from Quality Gate
   const rawClaims = Array.isArray(input.evidencePack.claim_inventory) ? input.evidencePack.claim_inventory : [];
-  const authorSafeClaims = Array.isArray((input.evidencePack as any).author_safe_claims) && (input.evidencePack as any).author_safe_claims.length > 0
-    ? (input.evidencePack as any).author_safe_claims
-    : generateAuthorSafeClaims(rawClaims);
+  const authorSafeClaims = qualityGateResult?.author_safe_claims && qualityGateResult.author_safe_claims.length > 0
+    ? qualityGateResult.author_safe_claims.filter((c: any) => c.allowed_for_authoring !== false)
+    : (Array.isArray((input.evidencePack as any).author_safe_claims) && (input.evidencePack as any).author_safe_claims.length > 0
+      ? (input.evidencePack as any).author_safe_claims.filter((c: any) => c.allowed_for_authoring !== false)
+      : generateAuthorSafeClaims(rawClaims, { topic: input.topic, researchQuestions: researchQs }).filter((c: any) => c.allowed_for_authoring !== false));
+
+  if (authorSafeClaims.length === 0) {
+    const reason = 'Nol klaim berstatus author-safe yang diizinkan untuk penulisan setelah evaluasi kualitas semantik.';
+    addTraceEvent(
+      'RESEARCH_REQUIRED_HALT',
+      'editorial_qa_primary',
+      `Penulisan dibatalkan sebelum Joko: [RESEARCH_COVERAGE_QUALITY_INSUFFICIENT] ${reason}`,
+      { rejection_code: 'RESEARCH_COVERAGE_QUALITY_INSUFFICIENT', reason }
+    );
+
+    return {
+      jobId: `job_${taskId}`,
+      taskId,
+      status: 'BLOCKED',
+      finalDecision: 'RESEARCH_COVERAGE_QUALITY_INSUFFICIENT',
+      publicationStatus: 'DRAFT',
+      humanStopGateStatus: 'OPERATOR_INTERVENTION_REQUIRED',
+      finalDraft: null,
+      totalAttempts: 0,
+      authorProvenance: null,
+      qaResult: null,
+      attempts: [],
+      traceEvents,
+      error: reason
+    };
+  }
 
   const basePromptContext: JokoPromptContext = {
     topic: input.topic,

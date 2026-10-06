@@ -21,6 +21,14 @@ import type {
   EvidenceClaim
 } from '../article/human-quality.ts';
 
+import {
+  classifySourceRole,
+  cleanBoilerplateAndSpam,
+  GAMBLING_SPAM_PATTERNS,
+  BOILERPLATE_LINE_PATTERNS,
+  type SourceRole
+} from './evidence-quality-gate.ts';
+
 export interface DiscoveredSourceCandidate {
   candidate_id: string;
   query: string;
@@ -234,6 +242,9 @@ export interface RetrievedDocument {
   snapshot_source_hash?: string;
   snapshot_verification_status?: 'VERIFIED_AUTHENTIC' | 'UNVERIFIED' | 'FAILED_INTEGRITY';
   snapshot_provenance?: CachedSnapshotProvenance;
+  source_role?: SourceRole;
+  topic_relevance?: string;
+  cleaning_result?: any;
 }
 
 export type GeneralEvidenceRole =
@@ -626,7 +637,11 @@ export function extractDynamicPassagesFromText(
   text: string
 ): ExtractedPassage[] {
   const passageByHash = new Map<string, ExtractedPassage>();
-  const lines = text.split('\n');
+  const cleaned = cleanBoilerplateAndSpam(text, 50);
+  const textToProcess = cleaned.cleaned_text || '';
+  if (!textToProcess) return [];
+
+  const lines = textToProcess.split('\n');
 
   let currentHeading = 'Overview / Lead';
   let buffer: string[] = [];
@@ -637,6 +652,11 @@ export function extractDynamicPassagesFromText(
     buffer = [];
 
     if (chunk.length < 50) return;
+
+    // Ignore spam or boilerplate chunks
+    if (GAMBLING_SPAM_PATTERNS.some(p => p.test(chunk)) || BOILERPLATE_LINE_PATTERNS.some(p => p.test(chunk))) {
+      return;
+    }
 
     // Ignore non-substantive sections
     if (/\b(?:External links|References|See also|Further reading|History)\b/i.test(heading)) {
@@ -1210,8 +1230,6 @@ export async function fetchHttpDocument(
     };
   }
 }
-
-import { classifySourceRole, type SourceRole } from './evidence-quality-gate.ts';
 
 export interface SourceIdentity {
   publisher: string;
