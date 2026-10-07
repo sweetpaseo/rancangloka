@@ -2488,6 +2488,121 @@ export const CANONICAL_HUMAN_QUALITY_THRESHOLDS = {
   REWRITE: 0
 } as const;
 
+export interface PublicBodyCleanlinessViolation {
+  type: 'RAW_CLAIM_MARKER' | 'PASSAGE_ID' | 'SOURCE_ID' | 'INTERNAL_METADATA' | 'SOURCE_LANGUAGE_ECHO';
+  detail: string;
+  snippet: string;
+}
+
+export interface PublicBodyCleanlinessReport {
+  passed: boolean;
+  violations: PublicBodyCleanlinessViolation[];
+}
+
+const COMMON_ORG_ACRONYMS = new Set([
+  'epa', 'us epa', 'lbnl', 'sni', 'bmkg', 'pupr', 'ac', 'iso', 'en', 'astm', 'din', 'ashrae',
+  'lawrence berkeley national laboratory', 'environmental protection agency', 'who', 'pu'
+]);
+
+export function detectSourceLanguageEchoes(markdown: string): string[] {
+  const matches: string[] = [];
+  const parenRegex = /\(([^)\n]+)\)/g;
+  let m: RegExpExecArray | null;
+
+  while ((m = parenRegex.exec(markdown)) !== null) {
+    const rawInner = m[1].trim();
+    const lower = rawInner.toLowerCase();
+
+    // 1. Skip short or empty
+    if (lower.length <= 3) continue;
+
+    // 2. Skip pure numbers, units, ranges, citations like (2025), (30%), (hal. 12), (10–15 tahun)
+    if (/^[\d\s.,\-–—/%°Cwkm²]+$/i.test(lower)) continue;
+    if (/^(?:halaman|hal\.?|vol\.?|no\.?|gambar|tabel)\s*\d+/i.test(lower)) continue;
+
+    // 3. Skip org acronyms / well-known names
+    if (COMMON_ORG_ACRONYMS.has(lower)) continue;
+
+    // 4. Skip allowed technical English terms
+    const isAllowedTechnical = TECHNICAL_ENGLISH_ALLOWLIST.some((term: string) => {
+      const t = term.toLowerCase();
+      return lower === t || lower === `istilah: ${t}` || lower === `atau ${t}` || lower.startsWith(`${t},`);
+    });
+    if (isAllowedTechnical) continue;
+
+    // 5. English clause indicators / source-language evidence echoes
+    const englishClauseWordPattern = /\b(?:if|you|see|allow|exclude|use|when|needed|has|than|with|through|compliant|modeling|nearing|collecting|moisture|transfer|window|windows|heat|higher|significantly|effects|loss|losses|correctly)\b/i;
+    const englishWordMatches = lower.match(/\b(?:if|you|see|allow|exclude|use|when|needed|has|than|with|through|compliant|modeling|nearing|collecting|moisture|transfer|window|windows|heat|higher|significantly|effects|loss|losses|correctly|the|and|for|from|into|over|under|between|against|during|without|before|after|above|below|to|of|in|on|at|by|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|should|would|may|might|must|air|conditioners|de-humidifiers|thermal|bridge|bridges|losses)\b/g);
+
+    if (englishClauseWordPattern.test(lower) && (englishWordMatches && englishWordMatches.length >= 2)) {
+      matches.push(m[0]);
+    } else if (englishWordMatches && englishWordMatches.length >= 3) {
+      matches.push(m[0]);
+    }
+  }
+
+  return matches;
+}
+
+export function auditPublicBodyCleanliness(markdown: string): PublicBodyCleanlinessReport {
+  const violations: PublicBodyCleanlinessViolation[] = [];
+
+  // 1. Raw [CLM-*] or [ASSERTION-*] or [EVID-*]
+  const clmMatches = markdown.match(/\[(?:CLM|ASSERTION|EVID)-[^\]]+\]/gi) || [];
+  for (const match of clmMatches) {
+    violations.push({
+      type: 'RAW_CLAIM_MARKER',
+      detail: `Raw claim marker leaked into public body: ${match}`,
+      snippet: match
+    });
+  }
+
+  // 2. Passage IDs (e.g., PSG-..., pas_..., psg_...)
+  const psgMatches = markdown.match(/\b(?:PSG[-_][a-zA-Z0-9_-]+|pas(?:sage)?[-_][a-zA-Z0-9_-]+)\b/gi) || [];
+  for (const match of psgMatches) {
+    violations.push({
+      type: 'PASSAGE_ID',
+      detail: `Passage ID leaked into public body: ${match}`,
+      snippet: match
+    });
+  }
+
+  // 3. Source IDs (e.g., SRC-..., DOC-...)
+  const srcMatches = markdown.match(/\b(?:SRC[-_][a-zA-Z0-9_-]+|DOC[-_][a-zA-Z0-9_-]+)\b/gi) || [];
+  for (const match of srcMatches) {
+    violations.push({
+      type: 'SOURCE_ID',
+      detail: `Source ID leaked into public body: ${match}`,
+      snippet: match
+    });
+  }
+
+  // 4. Internal evidence metadata keywords
+  const metaMatches = markdown.match(/\b(?:author_safe_claims|claim_inventory|assertion_ledger|semantic_entailment)\b/gi) || [];
+  for (const match of metaMatches) {
+    violations.push({
+      type: 'INTERNAL_METADATA',
+      detail: `Internal metadata identifier leaked into public body: ${match}`,
+      snippet: match
+    });
+  }
+
+  // 5. Source-language evidence echoes copied into parentheses
+  const echoes = detectSourceLanguageEchoes(markdown);
+  for (const echo of echoes) {
+    violations.push({
+      type: 'SOURCE_LANGUAGE_ECHO',
+      detail: `Parenthesized English source echo leaked into public body: ${echo}`,
+      snippet: echo
+    });
+  }
+
+  return {
+    passed: violations.length === 0,
+    violations
+  };
+}
+
 /**
  * Deterministically evaluates an article's Markdown body against RancangLoka's Human Writing Quality rubric.
  */
@@ -2845,6 +2960,23 @@ export function evaluateHumanWritingQuality(
     dimReader = Math.max(0, dimReader - 6);
   } else {
     strongAreas.push('Bahasa mengalir asli dalam bahasa Indonesia tanpa struktur terjemahan kaku');
+  }
+
+  // --------------------------------------------------------------------------
+  // Source-Language Evidence Echo & Scaffolding Hygiene (CONTENT-PUBLICATION-POLISH-1)
+  // --------------------------------------------------------------------------
+  const sourceEchoes = detectSourceLanguageEchoes(cleanMd);
+  if (sourceEchoes.length > 0) {
+    issues.push({
+      code: 'SOURCE_LANGUAGE_ECHO_DETECTED',
+      category: 'TRANSLATIONESE',
+      severity: sourceEchoes.length >= 3 ? 'CRITICAL' : 'WARNING',
+      description: `Ditemukan cuplikan bukti berbahasa Inggris dalam tanda kurung (${sourceEchoes.slice(0, 3).join(', ')}). Seluruh teks publik harus ditulis murni dalam bahasa Indonesia alami; bukti sumber dipetakan di metadata internal.`,
+      penalty: Math.min(25, sourceEchoes.length * 5),
+      occurrences: sourceEchoes
+    });
+    dimVoice = Math.max(0, dimVoice - Math.min(10, sourceEchoes.length * 3));
+    dimRhythm = Math.max(0, dimRhythm - Math.min(10, sourceEchoes.length * 3));
   }
 
   // --------------------------------------------------------------------------

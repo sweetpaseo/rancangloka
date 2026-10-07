@@ -119,8 +119,13 @@ export interface NativeIndonesianAuthoringRule {
 
 export const TECHNICAL_ENGLISH_ALLOWLIST = [
   'thermal break',
+  'thermal bridge',
   'u-value',
   'low-e',
+  'insulating glass',
+  'double glazing',
+  'air infiltration',
+  'fenestration',
   'firmware',
   'mortise',
   'bitrate',
