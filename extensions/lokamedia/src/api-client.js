@@ -103,6 +103,10 @@ export class ApiClient {
     form.set('idempotency_key', job.idempotency_key);
     form.set('client_sha256', blobRecord.sha256);
     form.set('alt_text', job.alt_text ?? '');
+    const approval = job.approval_record || blobRecord.approval_record;
+    if (approval) {
+      form.set('approval_record', typeof approval === 'string' ? approval : JSON.stringify(approval));
+    }
     form.set('file', new Blob([blobRecord.bytes], { type: blobRecord.mime }), 'lokamedia.png');
 
     const response = await this.fetchImpl(`${this.baseUrl}/api/internal/v1/media/upload`, {

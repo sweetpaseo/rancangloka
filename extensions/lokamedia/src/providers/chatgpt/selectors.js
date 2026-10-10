@@ -5,22 +5,36 @@ export const CHATGPT_SELECTORS = Object.freeze({
     '[data-testid="login-button"]'
   ],
   composer: [
+    '#prompt-textarea',
+    'div#prompt-textarea',
     '#prompt-textarea[contenteditable="true"]',
     'div[contenteditable="true"]#prompt-textarea',
-    'div[contenteditable="true"].ProseMirror',
-    'div[contenteditable="true"][data-testid*="prompt"]',
+    'div[contenteditable].ProseMirror',
+    'div[contenteditable][role="textbox"]',
+    'div[contenteditable][data-testid*="prompt"]',
+    'div[contenteditable][aria-label*="Message" i]',
+    'div[contenteditable][aria-label*="ChatGPT" i]',
+    'div[contenteditable][aria-label*="Prompt" i]',
+    '[data-testid="prompt-textarea"]',
     'textarea[data-testid*="prompt"]',
-    'main form div[contenteditable="true"]',
-    'form div[contenteditable="true"]',
+    'textarea#prompt-textarea',
+    'main form div[contenteditable]',
+    'form div[contenteditable]',
+    'main form textarea',
     'form textarea'
   ],
   sendControl: [
     'button[data-testid="send-button"]',
-    'button[aria-label*="Send"]',
+    'button[data-testid="composer-send-button"]',
+    'button[data-testid*="send-button"]',
+    'button[aria-label*="Send" i]',
     'button#composer-submit-button',
     'button.composer-submit-button-color',
     'form button[class*="composer-submit-button"]',
-    'form button[type="submit"]'
+    'form button[type="submit"]',
+    'button[data-testid="composer-speech-button"]',
+    'button[aria-label*="Voice" i]',
+    'button[aria-label*="Dictate" i]'
   ],
   conversationSurface: ['main', '[role="main"]'],
   responseBoundary: [

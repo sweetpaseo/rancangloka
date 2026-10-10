@@ -15,6 +15,7 @@ export const JOB_STATUS_GENERATING = 'GENERATING';
 export const JOB_STATUS_IMAGE_DETECTED = 'IMAGE_DETECTED';
 export const JOB_STATUS_CAPTURING = 'CAPTURING';
 export const JOB_STATUS_CAPTURED = 'CAPTURED';
+export const JOB_STATUS_AWAITING_REVIEW = 'AWAITING_REVIEW';
 export const JOB_STATUS_UPLOAD_QUEUED = 'UPLOAD_QUEUED';
 export const JOB_STATUS_UPLOADING = 'UPLOADING';
 export const JOB_STATUS_UPLOAD_RECEIVED = 'UPLOAD_RECEIVED';
@@ -77,6 +78,7 @@ export const CANONICAL_JOB_STATUSES = new Set([
   JOB_STATUS_IMAGE_DETECTED,
   JOB_STATUS_CAPTURING,
   JOB_STATUS_CAPTURED,
+  JOB_STATUS_AWAITING_REVIEW,
   JOB_STATUS_UPLOAD_QUEUED,
   JOB_STATUS_UPLOADING,
   JOB_STATUS_UPLOAD_RECEIVED,
@@ -117,8 +119,9 @@ export const LEGAL_TRANSITIONS: Record<string, Set<string>> = {
   [JOB_STATUS_PROMPT_ACKNOWLEDGED]: new Set([JOB_STATUS_GENERATING, JOB_STATUS_RECOVERING, JOB_STATUS_WAITING_RETRY]),
   [JOB_STATUS_GENERATING]: new Set([JOB_STATUS_IMAGE_DETECTED, JOB_STATUS_AUTH_REQUIRED, JOB_STATUS_PROVIDER_BLOCKED, JOB_STATUS_WAITING_RETRY, JOB_STATUS_FAILED_TERMINAL]),
   [JOB_STATUS_IMAGE_DETECTED]: new Set([JOB_STATUS_CAPTURING, JOB_STATUS_RECOVERING, JOB_STATUS_WAITING_RETRY]),
-  [JOB_STATUS_CAPTURING]: new Set([JOB_STATUS_CAPTURED, JOB_STATUS_WAITING_RETRY, JOB_STATUS_FAILED_TERMINAL]),
-  [JOB_STATUS_CAPTURED]: new Set([JOB_STATUS_UPLOAD_QUEUED, JOB_STATUS_RECOVERING]),
+  [JOB_STATUS_CAPTURING]: new Set([JOB_STATUS_CAPTURED, JOB_STATUS_AWAITING_REVIEW, JOB_STATUS_WAITING_RETRY, JOB_STATUS_FAILED_TERMINAL]),
+  [JOB_STATUS_CAPTURED]: new Set([JOB_STATUS_AWAITING_REVIEW, JOB_STATUS_UPLOAD_QUEUED, JOB_STATUS_RECOVERING]),
+  [JOB_STATUS_AWAITING_REVIEW]: new Set([JOB_STATUS_UPLOAD_QUEUED, JOB_STATUS_UPLOADING, JOB_STATUS_RECOVERING, JOB_STATUS_CANCELLED]),
   [JOB_STATUS_UPLOAD_QUEUED]: new Set([JOB_STATUS_UPLOADING, JOB_STATUS_WAITING_RETRY, JOB_STATUS_CANCELLED]),
   [JOB_STATUS_UPLOADING]: new Set([JOB_STATUS_UPLOAD_RECEIVED, JOB_STATUS_RECOVERING, JOB_STATUS_WAITING_RETRY, JOB_STATUS_FAILED_TERMINAL]),
   [JOB_STATUS_UPLOAD_RECEIVED]: new Set([JOB_STATUS_ATTACHING, JOB_STATUS_RECOVERING]),
@@ -151,6 +154,11 @@ export const EVENT_TYPES = new Set([
   'IMAGE_DETECTED',
   'CAPTURE_STARTED',
   'CAPTURED',
+  'RESULT_READY',
+  'HUMAN_APPROVAL_RECORDED',
+  'HUMAN_REJECTION_RECORDED',
+  'UPLOAD_APPROVAL_GATE_PASS',
+  'UPLOAD_APPROVAL_GATE_FAIL',
   'UPLOAD_STARTED',
   'UPLOAD_PROGRESS',
   'UPLOAD_RECEIVED',
@@ -476,7 +484,7 @@ export async function createMediaRequirement(db: any, params: CreateMediaRequire
     .bind(params.article_id)
     .first();
   if (!article) throw new Error(`Article ${params.article_id} tidak ditemukan.`);
-  if (article.status !== 'draft') throw new Error(`Article ${params.article_id} harus berstatus draft untuk membuat media requirement.`);
+  if (!['draft', 'published'].includes(article.status)) throw new Error(`Article ${params.article_id} harus berstatus draft atau published untuk membuat media requirement.`);
 
   if (await hasActiveJobForSlot(db, params.article_id, params.slot_key)) {
     throw new Error(`Active media job untuk article_id=${params.article_id} slot_key='${params.slot_key}' sudah ada.`);
@@ -765,7 +773,7 @@ export async function evaluateMediaJobEligibility(db: any, job: MediaJobRecord, 
     .bind(job.article_id)
     .first();
   if (!article) return { eligible: false, reason: 'ARTICLE_NOT_FOUND' };
-  if (article.status !== 'draft') return { eligible: false, reason: 'ARTICLE_NOT_DRAFT' };
+  if (!['draft', 'published'].includes(article.status)) return { eligible: false, reason: 'ARTICLE_NOT_DRAFT' };
 
   const replacement = await db
     .prepare(

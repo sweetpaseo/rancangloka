@@ -16,9 +16,12 @@ export function detectChatGptCapabilities(root = document) {
     composer.element &&
       (composer.element.matches?.('textarea') ||
         composer.element.getAttribute?.('contenteditable') === 'true' ||
+        composer.element.getAttribute?.('contenteditable') === '' ||
+        composer.element.getAttribute?.('contenteditable') === 'plaintext-only' ||
+        composer.element.isContentEditable ||
         !composer.element.hasAttribute?.('disabled'))
   );
-  const domSupported = Boolean(authControl.element || (conversationSurface.element && composer.element));
+  const domSupported = Boolean(authControl.element || (conversationSurface.element && composer.element && composerEditable));
 
   return {
     adapter_version: CHATGPT_DOM_ADAPTER_VERSION,

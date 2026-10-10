@@ -18,7 +18,7 @@ export const GET: APIRoute = async ({ request, params, locals, url }) => {
   if (!auth.authenticated) return json(auth.statusCode || 401, { status: 'error', code: 'AUTH_REQUIRED', message: auth.error });
 
   try {
-    validateProtocolVersion(url.searchParams.get('protocol_version') || request.headers.get('x-lokamedia-protocol-version'));
+    validateProtocolVersion(url.searchParams.get('protocol_version') || request.headers.get('x-lokamedia-protocol-version') || request.headers.get('x-lokamedia-protocol'));
     const reconciliation = await reconcileMediaJob(db, params.job_id!, auth.deviceId || 'media_device');
     return json(200, { status: 'success', reconciliation });
   } catch (err: any) {

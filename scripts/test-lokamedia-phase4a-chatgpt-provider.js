@@ -260,6 +260,7 @@ async function testHandshakeAndTabRecovery() {
     }
   };
   const tabs = new ChatGptTabController({ chromeApi, storage });
+  await tabs.bindActiveTab(42);
   assert.equal((await tabs.locateTab()).tab_id, 42);
   const handshake = new ChatGptHandshakeManager({ storage, tabController: tabs });
   const message = {

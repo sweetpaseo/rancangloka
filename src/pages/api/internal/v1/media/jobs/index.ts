@@ -11,6 +11,7 @@ import {
   listMediaJobs,
   createMediaJob
 } from '../../../../../../lib/media/jobs-service.ts';
+import { EXPECTED_LOKAMEDIA_EXTENSION_VERSION } from '../../../../../../lib/media/version.ts';
 
 function errorResponse(status: number, code: string, message: string): Response {
   return new Response(
@@ -62,6 +63,7 @@ export const GET: APIRoute = async ({ request, url, locals }) => {
 
     return successResponse({
       status: 'success',
+      expected_extension_version: EXPECTED_LOKAMEDIA_EXTENSION_VERSION,
       count: jobs.length,
       jobs
     });

@@ -228,7 +228,7 @@ async function testPhase4bPreconditions() {
   assert.equal((await notReady.controller.runOnce()).error, 'PROVIDER_NOT_READY');
   assert.equal(notReady.api.jobs.length, 1);
 
-  const wrong = await makeController(new MockApi({ jobs: [makeJob('wrong-job', { article_title: 'Other', slot_key: 'featured', role: 'featured' })] }));
+  const wrong = await makeController(new MockApi({ jobs: [makeJob('wrong-job', { article_title: 'Other', slot_key: 'body_inline', role: 'body_inline' })] }));
   assert.equal((await wrong.controller.runOnce()).error, 'WRONG_PHASE_4B_JOB');
 
   const pressure = await makeController(new MockApi({ jobs: [phaseJob] }));

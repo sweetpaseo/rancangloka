@@ -115,6 +115,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let promptHash: string | undefined;
   let idempotencyKey: string | undefined;
   let clientSha256: string | undefined;
+  let approvalRecordRaw: string | undefined;
   let imageBuffer: ArrayBuffer;
 
   const contentType = request.headers.get('content-type') || '';
@@ -164,6 +165,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
       promptHash = String(formData.get('prompt_hash') || '').trim() || undefined;
       idempotencyKey = String(formData.get('idempotency_key') || '').trim() || undefined;
       clientSha256 = String(formData.get('client_sha256') || '').trim() || undefined;
+      const rawApproval = formData.get('approval_record') || formData.get('human_approval');
+      if (rawApproval) approvalRecordRaw = String(rawApproval).trim();
 
       imageBuffer = await file.arrayBuffer();
     } else {
@@ -201,6 +204,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       promptHash = url.searchParams.get('prompt_hash') || undefined;
       idempotencyKey = url.searchParams.get('idempotency_key') || undefined;
       clientSha256 = url.searchParams.get('client_sha256') || undefined;
+      approvalRecordRaw = url.searchParams.get('approval_record') || request.headers.get('x-human-approval') || undefined;
 
       imageBuffer = await request.arrayBuffer();
     }
@@ -211,6 +215,50 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // 5. Check Alt Text for Featured Images
   if (role === 'featured' && !altText) {
     return errorResponse(422, 'ALT_TEXT_REQUIRED', 'Parameter alt_text wajib diisi untuk featured image.');
+  }
+
+  // 5.1 Enforce Human Approval Boundary for LokaMedia Extension
+  let validatedApproval: {
+    job_id: string;
+    candidate_sha256: string;
+    approved_at: string;
+    approval_source: string;
+  } | null = null;
+
+  if (sourceType === 'lokamedia_extension' && jobId) {
+    if (!approvalRecordRaw) {
+      return errorResponse(403, 'HUMAN_APPROVAL_REQUIRED', 'Upload dari ekstensi LokaMedia memerlukan bukti persetujuan manusia eksplisit (Human Approval Record).');
+    }
+
+    try {
+      validatedApproval = JSON.parse(approvalRecordRaw);
+    } catch {
+      return errorResponse(400, 'APPROVAL_RECORD_INVALID', 'Format approval_record tidak valid JSON.');
+    }
+
+    if (!validatedApproval || typeof validatedApproval !== 'object') {
+      return errorResponse(400, 'APPROVAL_RECORD_INVALID', 'approval_record harus berupa object.');
+    }
+
+    if (validatedApproval.job_id !== jobId) {
+      return errorResponse(422, 'APPROVAL_JOB_MISMATCH', 'Approval record job_id tidak cocok dengan target job_id.');
+    }
+
+    if (validatedApproval.approval_source !== 'operator_side_panel') {
+      return errorResponse(403, 'APPROVAL_SOURCE_INVALID', 'Approval source harus operator_side_panel.');
+    }
+
+    if (!validatedApproval.approved_at || isNaN(Date.parse(validatedApproval.approved_at))) {
+      return errorResponse(422, 'APPROVAL_TIMESTAMP_INVALID', 'Approval timestamp tidak valid.');
+    }
+
+    if (!validatedApproval.candidate_sha256) {
+      return errorResponse(422, 'APPROVAL_SHA_MISSING', 'Approval record wajib menyertakan candidate_sha256.');
+    }
+
+    if (clientSha256 && validatedApproval.candidate_sha256.toLowerCase() !== clientSha256.toLowerCase()) {
+      return errorResponse(422, 'APPROVAL_SHA_MISMATCH', 'Candidate SHA pada approval record tidak cocok dengan client_sha256.');
+    }
   }
 
   // 6. Execute Safe Upload
@@ -233,6 +281,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
         promptHash,
         idempotencyKey,
         clientSha256,
+        approvalRecord: validatedApproval || undefined,
         deviceId: auth.deviceId || null
       },
       db,

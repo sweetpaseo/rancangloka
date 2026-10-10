@@ -91,6 +91,7 @@ function settle() {
 }
 
 const ids = [
+  'extension-version',
   'connection-chatgpt',
   'connection-rancangloka',
   'current-article',
@@ -103,6 +104,10 @@ const ids = [
   'queue-complete',
   'transfers',
   'provider-tab',
+  'provider-target',
+  'provider-bound-tab',
+  'provider-bound-url',
+  'bind-tab',
   'provider-auth',
   'provider-dom',
   'provider-composer',
@@ -116,6 +121,9 @@ const ids = [
   'token',
   'enabled',
   'run-once',
+  'run-once-reason',
+  'runtime-version-display',
+  'runtime-boot-id',
   'save',
   'diagnostic',
   'panel-status',
@@ -125,7 +133,33 @@ const ids = [
   'audit-copy',
   'audit-export',
   'audit-clear',
-  'audit-log'
+  'audit-log',
+  'workflow-stage',
+  'workflow-guidance',
+  'prompt-article-title',
+  'prompt-slot',
+  'prompt-dimensions',
+  'prompt-text',
+  'copy-prompt',
+  'send-to-chatgpt',
+  'capture-latest',
+  'approve-upload',
+  'reject-result',
+  'result-preview-image',
+  'preview-placeholder',
+  'result-dimensions',
+  'result-mime',
+  'result-size',
+  'result-sha256',
+  'btn-select-file',
+  'local-file-input',
+  'assign-featured',
+  'generating-card',
+  'generating-job-id',
+  'generating-run-id',
+  'generating-provider-tab',
+  'generating-elapsed',
+  'result-preview-card'
 ];
 
 function state(patch = {}) {
@@ -145,6 +179,10 @@ function state(patch = {}) {
     },
     provider: {
       chatgpt: {
+        provider_tab_id: 42,
+        target_state: 'LOCKED',
+        bound_tab_id: 42,
+        bound_url: 'https://chatgpt.com/c/test',
         tab_status: 'connected',
         auth_state: 'AUTHENTICATED',
         dom_status: 'SUPPORTED',
@@ -159,6 +197,7 @@ function state(patch = {}) {
 
 function waitingState(patch = {}) {
   return state({
+    status: { connection: 'online', transfers: [], last_error: null },
     config: { serverBaseUrl: 'http://localhost:4321', enabled: true },
     counters: { totalJobs: 1, active: 0, waiting: 1, complete: 0 },
     jobs: {

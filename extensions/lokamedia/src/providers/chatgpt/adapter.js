@@ -51,6 +51,7 @@ export class ChatGptProviderAdapter {
       if (!response?.ok) {
         const error = new Error(response?.error || 'PROVIDER_SUBMIT_FAILED');
         error.code = response?.error || 'PROVIDER_SUBMIT_FAILED';
+        error.submission_escaped = response?.submission_escaped ?? false;
         throw error;
       }
       const providerResult = {
@@ -158,6 +159,71 @@ export class ChatGptProviderAdapter {
         provenance: response.provenance || 'PROVIDER_BINARY',
         is_canonical_original: response.is_canonical_original ?? (response.provenance !== 'CANVAS_REENCODED')
       };
+  }
+
+  async captureLatest(job = {}) {
+    if (!this.tabController?.locateTab) {
+      const error = new Error('CAPTURE_DISABLED');
+      error.code = 'CAPTURE_DISABLED';
+      throw error;
+    }
+    const tab = await this.tabController.locateTab();
+    if (!tab?.ok) {
+      const error = new Error(tab?.status || CHATGPT_ERROR_CODES.PROVIDER_TARGET_UNAVAILABLE);
+      error.code = tab?.status || CHATGPT_ERROR_CODES.PROVIDER_TARGET_UNAVAILABLE;
+      throw error;
+    }
+    let response;
+    try {
+      response = await this.tabController.chrome.tabs.sendMessage(tab.tab_id, {
+        id: crypto.randomUUID(),
+        provider: 'chatgpt',
+        type: 'CHATGPT_PROVIDER_CAPTURE_LATEST',
+        version: CHATGPT_DOM_ADAPTER_VERSION,
+        job_id: job.job_id,
+        run_id: job.run_id,
+        prompt_version: job.prompt_version,
+        prompt_hash: job.prompt_hash,
+        slot_key: job.slot_key
+      });
+    } catch (sendErr) {
+      const connErr = new Error(CHATGPT_ERROR_CODES.CONTENT_SCRIPT_UNAVAILABLE);
+      connErr.code = CHATGPT_ERROR_CODES.CONTENT_SCRIPT_UNAVAILABLE;
+      connErr.cause = sendErr;
+      throw connErr;
+    }
+    if (!response?.ok) {
+      const error = new Error(response?.error || 'CAPTURE_FAILED');
+      error.code = response?.error || 'CAPTURE_FAILED';
+      throw error;
+    }
+    const dataUrl = response.data_url || '';
+    let bytes;
+    if (dataUrl.startsWith('data:')) {
+      const base64 = dataUrl.split(',')[1] || '';
+      const binaryStr = atob(base64);
+      const len = binaryStr.length;
+      const u8 = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        u8[i] = binaryStr.charCodeAt(i);
+      }
+      bytes = u8.buffer;
+    } else {
+      const binErr = new Error('CAPTURE_BINARY_MISSING');
+      binErr.code = 'CAPTURE_BINARY_MISSING';
+      throw binErr;
+    }
+    return {
+      bytes,
+      size: response.byte_size || bytes.byteLength,
+      mime: response.mime || 'image/png',
+      width: response.width || 1024,
+      height: response.height || 768,
+      sha256: response.sha256 || `sha256-${job.job_id}`,
+      blobKey: `${job.job_id}:${job.prompt_version ?? 1}`,
+      provenance: response.provenance || 'PROVIDER_BINARY',
+      is_canonical_original: response.is_canonical_original ?? (response.provenance !== 'CANVAS_REENCODED')
+    };
   }
 
   async reconcile(job) {

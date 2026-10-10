@@ -79,10 +79,31 @@ export class LokaMediaController {
       await this.audit.info('RUN_GATE_CHECK_START', { run_id: runId });
 
       const state = await this.storage.readState();
-      const gate = state.phase4bSingleRun;
-      if (gate?.outcome === 'complete') {
-        await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: gate.job_id } });
-        return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
+      const targetJobId = options?.jobId ||
+        Object.values(state.jobs ?? {}).find((j) => (j.local_state ?? j.status) === 'QUEUED' || (j.local_state ?? j.status) === 'WAITING_RETRY')?.job_id ||
+        (state.phase4bSingleRun?.job_id && state.jobs?.[state.phase4bSingleRun.job_id] ? state.phase4bSingleRun.job_id : null) ||
+        Object.values(state.jobs ?? {}).find((j) => j.status === 'COMPLETE')?.job_id ||
+        null;
+
+      if (targetJobId) {
+        const targetGate = state.phase4bJobGates?.[targetJobId] ||
+          (state.phase4bSingleRun?.job_id === targetJobId ? state.phase4bSingleRun : null);
+        if (targetGate && (targetGate.submission_consumed || targetGate.generation_consumed || (targetGate.completed_at && targetGate.outcome === 'complete'))) {
+          const hasUnconsumedQueuedJob = Object.values(state.jobs ?? {}).some((j) => {
+            if (j.job_id === targetJobId) return false;
+            if ((j.local_state ?? j.status) !== 'QUEUED' && (j.local_state ?? j.status) !== 'WAITING_RETRY') return false;
+            const jGate = state.phase4bJobGates?.[j.job_id] || (state.phase4bSingleRun?.job_id === j.job_id ? state.phase4bSingleRun : null);
+            return !jGate || (!jGate.submission_consumed && !jGate.generation_consumed && jGate.outcome !== 'complete');
+          });
+
+          if (options?.jobId || !hasUnconsumedQueuedJob) {
+            await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: targetJobId } });
+            await this.storage.update((st) => {
+              st.status.last_error = 'PHASE_4B_RUN_CONSUMED';
+            });
+            return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
+          }
+        }
       }
 
       // Check for recovery mode trigger or recoverable checkpoint
@@ -99,7 +120,8 @@ export class LokaMediaController {
           return this.failGate(runId, 'RESULT_CHECKPOINT_MISSING');
         }
         if (!state.config.enabled) return this.failGate(runId, 'EXTENSION_DISABLED');
-        if (!state.config.deviceToken || !state.config.deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
+        const deviceId = state.config.deviceId || 'dev_chr_local';
+        if (!state.config.deviceToken || !deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
         if (state.status.connection === 'backpressure') return this.failGate(runId, 'BACKPRESSURE');
         if (state.locks.providerLane) return this.failGate(runId, 'PROVIDER_LANE_BUSY');
 
@@ -126,13 +148,9 @@ export class LokaMediaController {
           ...options
         });
       }
-
-      if (gate?.submission_consumed || gate?.generation_consumed || gate?.completed_at) {
-        await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: gate.job_id } });
-        return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
-      }
       if (!state.config.enabled) return this.failGate(runId, 'EXTENSION_DISABLED');
-      if (!state.config.deviceToken || !state.config.deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
+      const deviceId = state.config.deviceId || 'dev_chr_local';
+      if (!state.config.deviceToken || !deviceId) return this.failGate(runId, 'DEVICE_CREDENTIAL_REQUIRED');
       if (state.status.connection === 'backpressure') return this.failGate(runId, 'BACKPRESSURE');
       if (state.locks.providerLane) return this.failGate(runId, 'PROVIDER_LANE_BUSY');
 
@@ -154,7 +172,16 @@ export class LokaMediaController {
       }
 
       await this.audit.info('JOB_ACQUIRE_START', { run_id: runId });
-      const response = await this.apiClient.nextJob(state.config.deviceId);
+      let response;
+      try {
+        response = await this.apiClient.nextJob(deviceId);
+      } catch (acquireError) {
+        await this.audit.error('JOB_ACQUIRE_FAIL', {
+          run_id: runId,
+          error_code: String(acquireError?.message || acquireError).slice(0, 80)
+        });
+        throw acquireError;
+      }
       if (response.protocol_version && response.protocol_version !== LOKAMEDIA_PROTOCOL_VERSION) {
         await this.audit.error('JOB_ACQUIRE_FAIL', { run_id: runId, error_code: 'PROTOCOL_MISMATCH' });
         return { ok: false, error: 'PROTOCOL_MISMATCH' };
@@ -166,11 +193,12 @@ export class LokaMediaController {
       }
 
       const job = response.job;
-      if (job.article_title !== 'LokaMedia Phase 4B Controlled Generation Test' || job.slot_key !== 'featured') {
+      if (job.slot_key !== 'featured') {
         await this.audit.warn('JOB_ACQUIRE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'WRONG_PHASE_4B_JOB' });
         return { ok: false, error: 'WRONG_PHASE_4B_JOB', job_id: job.job_id };
       }
       await this.audit.info('JOB_ACQUIRED', { run_id: runId, job_id: job.job_id, article_id: job.article_id, slot_key: job.slot_key, server_job_status: job.status });
+      await this.storage.update((s) => { s.currentJobId = job.job_id; });
 
       const acquisitionProbe = Boolean(
         (typeof options === 'object' && options !== null && options.acquisitionProbe !== undefined)
@@ -226,18 +254,23 @@ export class LokaMediaController {
       const armed = await this.storage.armPhase4bSingleRun({ jobId: job.job_id, runId });
       if (!armed.armed) return { ok: false, error: armed.reason };
       await this.audit.info('SUBMISSION_GATE_ARMED', { run_id: runId, job_id: job.job_id, details: { boundary: 'before_provider_submit_intent' } });
-      const consumed = await this.storage.consumePhase4bSubmission({ jobId: job.job_id });
-      if (!consumed.consumed) return { ok: false, error: consumed.reason };
 
       try {
         const result = await this.runJob(job, { runId, controlledRunOnce: true, providerResultProbe, captureBlobProbe });
-        await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
         if (result?.status === 'PROVIDER_RESULT_PROBE_STOPPED' || result?.status === 'CAPTURE_BLOB_PROBE_STOPPED') {
           return result;
         }
+        if (result?.status === 'RESULT_READY') {
+          return { ok: true, ...result };
+        }
+        await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
         await this.audit.info('RUN_COMPLETE', { run_id: runId, job_id: job.job_id });
         return { ok: true, ...result };
       } catch (error) {
+        const submissionEscaped = error?.submission_escaped ?? (error?.code !== 'DOM_CONTRACT_UNSUPPORTED' && error?.code !== 'PROMPT_INSERTION_VERIFICATION_FAILED' && error?.code !== 'SEND_CONTROL_UNAVAILABLE' && error?.code !== 'SEND_CONTROL_DISABLED' && error?.code !== 'AUTH_REQUIRED' && error?.code !== 'PROVIDER_PRECHECK_FAIL');
+        if (!submissionEscaped) {
+          await this.storage.disarmPhase4bSubmission({ jobId: job.job_id });
+        }
         await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: false, error: String(error?.message || error) });
         await this.audit.error('RUN_FAILED', { run_id: runId, job_id: job.job_id, error });
         throw error;
@@ -511,9 +544,26 @@ export class LokaMediaController {
         throw err;
       }
       await this.audit.info('PROVIDER_PRECHECK_START', { run_id: runId, job_id: job.job_id });
+      if (typeof this.provider?.prepare === 'function') {
+        const precheck = await this.provider.prepare(job);
+        if (precheck && precheck.dom_status !== 'SUPPORTED') {
+          const precheckErr = new Error(precheck.error_code || 'DOM_CONTRACT_UNSUPPORTED');
+          precheckErr.code = precheck.error_code || 'DOM_CONTRACT_UNSUPPORTED';
+          precheckErr.submission_escaped = false;
+          await this.audit.warn('PROVIDER_PRECHECK_FAIL', { run_id: runId, job_id: job.job_id, error_code: precheckErr.code });
+          throw precheckErr;
+        }
+      }
       await this.audit.info('PROVIDER_PRECHECK_PASS', { run_id: runId, job_id: job.job_id });
       await this.audit.info('PROVIDER_PREPARE_START', { run_id: runId, job_id: job.job_id });
       await this.audit.info('PROVIDER_PREPARE_PASS', { run_id: runId, job_id: job.job_id });
+
+      if (controlledRunOnce) {
+        const consumed = await this.storage.consumePhase4bSubmission({ jobId: job.job_id });
+        if (!consumed.consumed) return { ok: false, error: consumed.reason };
+        await this.audit.info('SUBMISSION_GATE_CONSUMED', { run_id: runId, job_id: job.job_id });
+      }
+
       await this.audit.info('PROVIDER_SUBMIT_START', { run_id: runId, job_id: job.job_id, provider_stage: 'submit' });
       const providerResult = await this.provider.generate({ ...job, controlled_run_once: controlledRunOnce, run_id: runId });
       await this.audit.info('PROVIDER_SUBMIT_ACCEPTED', { run_id: runId, job_id: job.job_id, provider_stage: 'submit' });
@@ -726,14 +776,31 @@ export class LokaMediaController {
         };
       }
 
+      await this.audit.info('RESULT_READY', {
+        run_id: runId,
+        job_id: job.job_id,
+        details: {
+          sha256: captured.sha256,
+          mime: captured.mime,
+          width: captured.width,
+          height: captured.height,
+          size: captured.size ?? byteLength
+        }
+      });
       await this.providerLane.release(job.job_id);
-      await this.storage.enqueueUpload(job.job_id);
-      await this.audit.info('UPLOAD_START', { run_id: runId, job_id: job.job_id });
-      await this.uploads.drain();
-      await this.audit.info('UPLOAD_RECEIVED', { run_id: runId, job_id: job.job_id });
-      await this.audit.info('ATTACHMENT_CONFIRMED', { run_id: runId, job_id: job.job_id });
-      await this.audit.info('JOB_COMPLETE', { run_id: runId, job_id: job.job_id });
-      return { acquired: true, job_id: job.job_id };
+      await this.storage.update((s) => { s.currentJobId = job.job_id; });
+      return {
+        ok: true,
+        acquired: true,
+        status: 'RESULT_READY',
+        job_id: job.job_id,
+        blob_key: captured.blobKey,
+        sha256: captured.sha256,
+        width: captured.width,
+        height: captured.height,
+        mime: captured.mime,
+        size: captured.size ?? byteLength
+      };
     } catch (error) {
       await this.audit.error('PROVIDER_SUBMIT_FAIL', { run_id: runId, job_id: job.job_id, error });
       await this.storage.upsertJob(job.job_id, {
@@ -932,23 +999,32 @@ export class LokaMediaController {
         };
       }
 
+      await this.audit.info('RESULT_READY', {
+        run_id: recoveryRunId,
+        origin_run_id: originRunId,
+        job_id: job.job_id,
+        details: {
+          sha256: captured.sha256,
+          mime: captured.mime,
+          width: captured.width,
+          height: captured.height,
+          size: captured.size ?? byteLength
+        }
+      });
       await this.providerLane.release(job.job_id);
-      await this.storage.enqueueUpload(job.job_id);
-      await this.audit.info('UPLOAD_START', { run_id: recoveryRunId, job_id: job.job_id });
-      await this.uploads.drain();
-      await this.audit.info('UPLOAD_RECEIVED', { run_id: recoveryRunId, job_id: job.job_id });
-      await this.audit.info('ATTACHMENT_CONFIRMED', { run_id: recoveryRunId, job_id: job.job_id });
-      await this.audit.info('JOB_COMPLETE', { run_id: recoveryRunId, job_id: job.job_id });
       return {
         ok: true,
         acquired: true,
+        status: 'RESULT_READY',
         execution_mode: 'checkpoint_capture_recovery',
         checkpoint_recovery_used: true,
         acquire_result: acquireResult,
         origin_run_id: originRunId,
         recovery_run_id: recoveryRunId,
         run_id: recoveryRunId,
-        job_id: job.job_id
+        job_id: job.job_id,
+        blob_key: captured.blobKey,
+        sha256: captured.sha256
       };
     } catch (error) {
       await this.audit.error('CHECKPOINT_RECOVERY_FAIL', {
@@ -967,5 +1043,472 @@ export class LokaMediaController {
     } finally {
       await this.providerLane.release(job.job_id);
     }
+  }
+
+  async sendToChatGpt(options = {}) {
+    const runId = options?.runId || `run_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    await this.audit.info('PANEL_SEND_CLICK', { run_id: runId, component: 'side-panel', action: 'SEND_TO_CHATGPT' });
+
+    const lockResult = await this.storage.acquireActiveRunLock({ runId });
+    if (!lockResult.acquired) {
+      await this.audit.warn('RUN_REENTRY_REJECTED', { run_id: runId, details: { active_run_id: lockResult.lock?.run_id } });
+      return { ok: false, error: 'RUN_ALREADY_ACTIVE', run_id: runId };
+    }
+
+    try {
+      const state = await this.storage.readState();
+      if (!state.config.enabled) return this.failGate(runId, 'EXTENSION_DISABLED');
+
+      const provider = state.provider?.chatgpt ?? {};
+      if (provider.target_state !== 'LOCKED' || !provider.provider_tab_id) {
+        return this.failGate(runId, 'PROVIDER_TARGET_NOT_LOCKED');
+      }
+      if (
+        provider.tab_status !== 'connected' ||
+        provider.auth_state !== 'AUTHENTICATED' ||
+        provider.dom_status !== 'SUPPORTED' ||
+        provider.composer_status !== 'ready'
+      ) {
+        return this.failGate(runId, 'PROVIDER_NOT_READY');
+      }
+
+      const deviceId = state.config.deviceId || 'dev_chr_local';
+      let targetJob = null;
+      if (options?.jobId) {
+        targetJob = state.jobs?.[options.jobId];
+      }
+      if (!targetJob) {
+        const waitingJob = Object.values(state.jobs ?? {}).find((j) => (j.local_state ?? j.status) === 'QUEUED' || (j.local_state ?? j.status) === 'WAITING_RETRY');
+        if (waitingJob) targetJob = waitingJob;
+      }
+      if (!targetJob) {
+        try {
+          const acquireResp = await this.apiClient.nextJob(deviceId);
+          if (acquireResp?.job) targetJob = acquireResp.job;
+        } catch {}
+      }
+      if (!targetJob) {
+        return { ok: false, error: 'NO_ELIGIBLE_JOB' };
+      }
+
+      // Job-scoped phase4b gate check
+      const jobGate = state.phase4bJobGates?.[targetJob.job_id] || (state.phase4bSingleRun?.job_id === targetJob.job_id ? state.phase4bSingleRun : null);
+      if (jobGate && (jobGate.submission_consumed || jobGate.generation_consumed || (jobGate.completed_at && jobGate.outcome === 'complete'))) {
+        await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: targetJob.job_id } });
+        await this.storage.update((st) => {
+          st.status.last_error = 'PHASE_4B_RUN_CONSUMED';
+        });
+        return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
+      }
+
+      const armResult = await this.storage.armPhase4bSingleRun({ jobId: targetJob.job_id, runId });
+      if (armResult && armResult.armed === false) {
+        await this.audit.warn('RUN_GATE_CHECK_FAIL', { run_id: runId, error_code: 'PHASE_4B_RUN_CONSUMED', details: { job_id: targetJob.job_id } });
+        await this.storage.update((st) => {
+          st.status.last_error = 'PHASE_4B_RUN_CONSUMED';
+        });
+        return { ok: false, error: 'PHASE_4B_RUN_CONSUMED' };
+      }
+      await this.audit.info('SUBMISSION_GATE_ARMED', { run_id: runId, job_id: targetJob.job_id });
+
+      const acquiredLane = await this.providerLane.acquire(targetJob.job_id);
+      if (!acquiredLane) return { ok: false, error: 'PROVIDER_BUSY' };
+
+      try {
+        await this.storage.update((st) => {
+          st.currentJobId = targetJob.job_id;
+        });
+        await this.storage.upsertJob(targetJob.job_id, {
+          ...targetJob,
+          local_state: 'GENERATING',
+          run_id: runId
+        });
+        await this.provider.prepare(targetJob);
+        await this.storage.consumePhase4bSubmission({ jobId: targetJob.job_id });
+        await this.audit.info('PROVIDER_SUBMIT_START', { run_id: runId, job_id: targetJob.job_id });
+
+        const providerResult = await this.provider.generate({
+          ...targetJob,
+          controlled_run_once: true,
+          run_id: runId
+        });
+        await this.audit.info('PROVIDER_SUBMIT_ACCEPTED', { run_id: runId, job_id: targetJob.job_id });
+
+        const resultCheckpoint = {
+          schema_version: providerResult.schema_version || 2,
+          run_id: runId,
+          job_id: targetJob.job_id,
+          slot_key: targetJob.slot_key || 'featured',
+          prompt_version: targetJob.prompt_version || 1,
+          prompt_hash: targetJob.prompt_hash || '',
+          provider_conversation_id: providerResult.provider_conversation_id || null,
+          provider_response_id: providerResult.provider_response_id || null,
+          source_fingerprint: providerResult.source_fingerprint,
+          containerFingerprint: providerResult.containerFingerprint,
+          identified_at: providerResult.identified_at || new Date().toISOString()
+        };
+
+        await this.storage.upsertJob(targetJob.job_id, {
+          local_state: 'IMAGE_DETECTED',
+          provider_conversation_id: providerResult.provider_conversation_id,
+          provider_response_id: providerResult.provider_response_id,
+          submitted_at: providerResult.submitted_at || new Date().toISOString(),
+          result_checkpoint: resultCheckpoint
+        });
+        await this.audit.info('GENERATION_IMAGE_DETECTED', { run_id: runId, job_id: targetJob.job_id });
+
+        return {
+          ok: true,
+          status: 'GENERATING',
+          job_id: targetJob.job_id,
+          run_id: runId,
+          providerResult
+        };
+      } finally {
+        await this.providerLane.release(targetJob.job_id);
+      }
+    } finally {
+      await this.storage.releaseActiveRunLock({ runId });
+    }
+  }
+
+  async captureLatestImage(options = {}) {
+    const runId = options?.runId || `run_cap_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    await this.audit.info('PANEL_CAPTURE_CLICK', { run_id: runId, component: 'side-panel', action: 'CAPTURE_LATEST_IMAGE' });
+
+    const state = await this.storage.readState();
+    let job = options?.jobId ? state.jobs?.[options.jobId] : null;
+    if (!job) {
+      job = Object.values(state.jobs ?? {}).find((j) => j.local_state === 'IMAGE_DETECTED' || j.local_state === 'GENERATING' || j.local_state === 'CAPTURING' || j.result_checkpoint);
+    }
+    if (!job) {
+      return { ok: false, error: 'NO_CAPTURING_JOB' };
+    }
+
+    const provider = state.provider?.chatgpt ?? {};
+    if (provider.target_state !== 'LOCKED' || !provider.provider_tab_id) {
+      return { ok: false, error: 'PROVIDER_TARGET_NOT_LOCKED' };
+    }
+
+    await this.storage.update((st) => {
+      st.currentJobId = job.job_id;
+    });
+    await this.storage.upsertJob(job.job_id, { local_state: 'CAPTURING' });
+    const captured = await this.provider.captureLatest({ ...job, run_id: runId });
+    if (!captured?.bytes || (captured.bytes.byteLength ?? captured.size ?? 0) === 0) {
+      return { ok: false, error: 'CAPTURE_BINARY_EMPTY' };
+    }
+
+    await this.blobStore.put({
+      key: captured.blobKey,
+      job_id: job.job_id,
+      sha256: captured.sha256,
+      mime: captured.mime,
+      width: captured.width,
+      height: captured.height,
+      size: captured.size,
+      bytes: captured.bytes,
+      provenance: captured.provenance || 'PROVIDER_BINARY'
+    });
+
+    await this.storage.upsertJob(job.job_id, {
+      local_state: 'CAPTURED',
+      blob_key: captured.blobKey,
+      sha256: captured.sha256,
+      mime: captured.mime,
+      width: captured.width,
+      height: captured.height,
+      size: captured.size,
+      captured_at: new Date().toISOString()
+    });
+
+    await this.audit.info('RESULT_READY', {
+      run_id: runId,
+      job_id: job.job_id,
+      details: {
+        sha256: captured.sha256,
+        mime: captured.mime,
+        width: captured.width,
+        height: captured.height,
+        size: captured.size
+      }
+    });
+
+    return {
+      ok: true,
+      status: 'RESULT_READY',
+      job_id: job.job_id,
+      blob_key: captured.blobKey,
+      sha256: captured.sha256,
+      width: captured.width,
+      height: captured.height,
+      mime: captured.mime,
+      size: captured.size
+    };
+  }
+
+  async approveAndUpload(options = {}) {
+    const runId = options?.runId || `run_upl_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    await this.audit.info('PANEL_APPROVE_CLICK', { run_id: runId, component: 'side-panel', action: 'APPROVE_AND_UPLOAD' });
+
+    const state = await this.storage.readState();
+    let job = options?.jobId ? state.jobs?.[options.jobId] : null;
+    if (!job && state.currentJobId) {
+      job = state.jobs?.[state.currentJobId];
+    }
+    if (!job) {
+      job = Object.values(state.jobs ?? {}).find((j) => j.local_state === 'CAPTURED' && j.blob_key);
+    }
+    if (!job || !job.blob_key) {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', { run_id: runId, error_code: 'NO_CAPTURED_ASSET_TO_UPLOAD' });
+      return { ok: false, error: 'NO_CAPTURED_ASSET_TO_UPLOAD' };
+    }
+
+    // 1. Current job identity check
+    if (options?.jobId && options.jobId !== job.job_id) {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'JOB_IDENTITY_MISMATCH' });
+      return { ok: false, error: 'JOB_IDENTITY_MISMATCH' };
+    }
+
+    const opState = state.jobOperationalStates?.[job.job_id];
+    const candidate = opState?.candidate || {
+      job_id: job.job_id,
+      run_id: job.run_id || null,
+      sha256: job.sha256 || null,
+      blob_key: job.blob_key || null
+    };
+
+    // Duplicate approval consumption check (scoped by job_id + candidate_sha256)
+    const existingApproval = state.jobApprovals?.[job.job_id] || opState?.approval;
+    if (existingApproval && existingApproval.consumed) {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', {
+        run_id: runId,
+        job_id: job.job_id,
+        error_code: 'APPROVAL_ALREADY_CONSUMED',
+        details: { sha256: existingApproval.candidate_sha256 }
+      });
+      return { ok: false, error: 'APPROVAL_ALREADY_CONSUMED' };
+    }
+
+    if (candidate.is_uploaded || job.local_state === 'UPLOAD_COMPLETE' || job.status === 'COMPLETE') {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'CANDIDATE_ALREADY_UPLOADED' });
+      return { ok: false, error: 'CANDIDATE_ALREADY_UPLOADED' };
+    }
+
+    // 2. Stage check: must be RESULT READY (local_state === 'CAPTURED')
+    if (job.local_state !== 'CAPTURED') {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'STAGE_NOT_RESULT_READY' });
+      return { ok: false, error: 'STAGE_NOT_RESULT_READY' };
+    }
+
+    // 3. Candidate check
+    if (!candidate || !candidate.blob_key || !candidate.sha256) {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'CANDIDATE_MISSING' });
+      return { ok: false, error: 'CANDIDATE_MISSING' };
+    }
+
+    if (candidate.job_id && candidate.job_id !== job.job_id) {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'CANDIDATE_JOB_MISMATCH' });
+      return { ok: false, error: 'CANDIDATE_JOB_MISMATCH' };
+    }
+
+    // 4. SHA match check
+    const previewedSha = candidate.sha256;
+    if (options?.expectedSha256 && options.expectedSha256 !== previewedSha) {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', {
+        run_id: runId,
+        job_id: job.job_id,
+        error_code: 'APPROVAL_SHA_MISMATCH',
+        details: { expected_sha: options.expectedSha256, candidate_sha: previewedSha }
+      });
+      return { ok: false, error: 'UPLOAD_APPROVAL_GATE_FAIL' };
+    }
+
+    if (options?.approvalRecord?.candidate_sha256 && options.approvalRecord.candidate_sha256 !== previewedSha) {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', {
+        run_id: runId,
+        job_id: job.job_id,
+        error_code: 'APPROVAL_SHA_MISMATCH',
+        details: { approval_sha: options.approvalRecord.candidate_sha256, candidate_sha: previewedSha }
+      });
+      return { ok: false, error: 'UPLOAD_APPROVAL_GATE_FAIL' };
+    }
+
+    // 5. Blob data existence check
+    const blobRecord = await this.blobStore.get(candidate.blob_key);
+    if (!blobRecord || !blobRecord.bytes) {
+      await this.audit.warn('UPLOAD_APPROVAL_GATE_FAIL', { run_id: runId, job_id: job.job_id, error_code: 'BLOB_DATA_MISSING' });
+      return { ok: false, error: 'BLOB_DATA_MISSING' };
+    }
+
+    // 7. Record explicit human approval
+    const now = new Date().toISOString();
+    const approvalRecord = {
+      job_id: job.job_id,
+      run_id: candidate.run_id || job.run_id || runId,
+      candidate_sha256: previewedSha,
+      approved_at: now,
+      approval_source: options?.approvalSource || 'operator_side_panel',
+      consumed: true,
+      consumed_at: now
+    };
+
+    await this.storage.recordHumanApproval(approvalRecord);
+    await this.audit.info('HUMAN_APPROVAL_RECORDED', {
+      run_id: runId,
+      job_id: job.job_id,
+      details: {
+        approval_source: approvalRecord.approval_source,
+        candidate_sha256: previewedSha,
+        approved_at: now
+      }
+    });
+
+    // 8. Upload approval gate passes
+    await this.audit.info('UPLOAD_APPROVAL_GATE_PASS', {
+      run_id: runId,
+      job_id: job.job_id,
+      details: { candidate_sha256: previewedSha }
+    });
+
+    // 9. Transition to UPLOADING and dispatch upload
+    await this.storage.update((st) => {
+      st.currentJobId = job.job_id;
+    });
+    await this.storage.upsertJob(job.job_id, {
+      local_state: 'UPLOADING',
+      approval_record: approvalRecord
+    });
+    await this.storage.enqueueUpload(job.job_id);
+    await this.audit.info('UPLOAD_START', { run_id: runId, job_id: job.job_id });
+    await this.uploads.drain();
+
+    // 10. Complete state
+    await this.storage.upsertJob(job.job_id, { local_state: 'UPLOAD_COMPLETE', status: 'COMPLETE' });
+    await this.storage.completePhase4bSingleRun({ jobId: job.job_id, ok: true });
+    await this.audit.info('UPLOAD_RECEIVED', { run_id: runId, job_id: job.job_id });
+    await this.audit.info('ATTACHMENT_CONFIRMED', { run_id: runId, job_id: job.job_id });
+    await this.audit.info('JOB_COMPLETE', { run_id: runId, job_id: job.job_id });
+
+    return {
+      ok: true,
+      status: 'UPLOAD_COMPLETE',
+      job_id: job.job_id,
+      sha256: previewedSha,
+      approval: approvalRecord
+    };
+  }
+
+  async rejectResult(options = {}) {
+    const runId = options?.runId || `run_rej_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    await this.audit.info('PANEL_REJECT_CLICK', { run_id: runId, component: 'side-panel', action: 'REJECT_RESULT' });
+
+    const state = await this.storage.readState();
+    let job = options?.jobId ? state.jobs?.[options.jobId] : null;
+    if (!job && state.currentJobId) {
+      job = state.jobs?.[state.currentJobId];
+    }
+    if (!job) {
+      job = Object.values(state.jobs ?? {}).find((j) => j.local_state === 'CAPTURED' || j.local_state === 'IMAGE_DETECTED');
+    }
+    if (!job) {
+      return { ok: false, error: 'NO_RESULT_TO_REJECT' };
+    }
+
+    const discardedSha = job.sha256 || null;
+    if (job.blob_key) {
+      await this.blobStore.delete(job.blob_key);
+    }
+
+    const now = new Date().toISOString();
+    await this.storage.recordHumanRejection({
+      jobId: job.job_id,
+      runId,
+      candidateSha256: discardedSha,
+      rejectionSource: 'operator_side_panel',
+      now
+    });
+
+    await this.storage.upsertJob(job.job_id, {
+      local_state: 'RESULT_REJECTED',
+      blob_key: null,
+      sha256: null,
+      result_checkpoint: null,
+      rejected_at: now
+    });
+
+    await this.audit.info('HUMAN_REJECTION_RECORDED', {
+      run_id: runId,
+      job_id: job.job_id,
+      details: {
+        discarded_sha256: discardedSha,
+        rejection_source: 'operator_side_panel',
+        zero_upload: true,
+        zero_attachment: true,
+        zero_mutation: true
+      }
+    });
+
+    await this.audit.info('RESULT_REJECTED', {
+      run_id: runId,
+      job_id: job.job_id,
+      details: { discarded_sha256: discardedSha, zero_upload: true, zero_mutation: true }
+    });
+
+    return {
+      ok: true,
+      status: 'RESULT_REJECTED',
+      job_id: job.job_id,
+      discarded_sha256: discardedSha
+    };
+  }
+
+  async saveLocalFileCandidate(options = {}) {
+    const { jobId, bytes, mime, width, height, size, sha256 } = options;
+    if (!jobId || !bytes) return { ok: false, error: 'INVALID_PAYLOAD' };
+    const supportedMimes = new Set(['image/png', 'image/jpeg', 'image/webp']);
+    if (!supportedMimes.has(mime)) return { ok: false, error: 'UNSUPPORTED_MIME' };
+
+    const blobKey = `${jobId}:local_${Date.now()}`;
+    await this.blobStore.put({
+      key: blobKey,
+      job_id: jobId,
+      sha256,
+      mime,
+      width,
+      height,
+      size,
+      bytes,
+      provenance: 'LOCAL_FILE'
+    });
+
+    await this.storage.upsertJob(jobId, {
+      local_state: 'CAPTURED',
+      blob_key: blobKey,
+      sha256,
+      mime,
+      width,
+      height,
+      size,
+      provenance: 'LOCAL_FILE',
+      captured_at: new Date().toISOString()
+    });
+
+    await this.audit.info('LOCAL_FILE_ACCEPTED', {
+      job_id: jobId,
+      details: { sha256, mime, width, height, size }
+    });
+
+    return {
+      ok: true,
+      status: 'RESULT_READY',
+      job_id: jobId,
+      blob_key: blobKey,
+      sha256,
+      width,
+      height,
+      mime,
+      size
+    };
   }
 }

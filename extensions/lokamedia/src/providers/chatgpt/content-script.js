@@ -31,43 +31,84 @@
     return seen.size;
   }
 
-  function detect() {
-    const auth = first(['a[href*="/auth/login"]', 'button[data-testid="login-button"]', '[data-testid="login-button"]']);
-    const composer = first([
-      '#prompt-textarea[contenteditable="true"]',
-      'div[contenteditable="true"]#prompt-textarea',
-      'div[contenteditable="true"].ProseMirror',
-      'div[contenteditable="true"][data-testid*="prompt"]',
-      'textarea[data-testid*="prompt"]',
-      'main form div[contenteditable="true"]',
-      'form div[contenteditable="true"]',
-      'form textarea'
-    ]);
-    const send = first([
-      'button[data-testid="send-button"]',
-      'button[aria-label*="Send"]',
-      'button#composer-submit-button',
-      'button.composer-submit-button-color',
-      'form button[class*="composer-submit-button"]',
-      'form button[type="submit"]'
-    ]);
-    const surface = first(['main', '[role="main"]']);
-    const imageCount = count(['[data-message-author-role="assistant"] img', 'main img[src]', 'main picture img[src]']);
+  const COMPOSER_SELECTORS = [
+    '#prompt-textarea',
+    'div#prompt-textarea',
+    '#prompt-textarea[contenteditable="true"]',
+    'div[contenteditable="true"]#prompt-textarea',
+    'div[contenteditable].ProseMirror',
+    'div[contenteditable][role="textbox"]',
+    'div[contenteditable][data-testid*="prompt"]',
+    'div[contenteditable][aria-label*="Message" i]',
+    'div[contenteditable][aria-label*="ChatGPT" i]',
+    'div[contenteditable][aria-label*="Prompt" i]',
+    '[data-testid="prompt-textarea"]',
+    'textarea[data-testid*="prompt"]',
+    'textarea#prompt-textarea',
+    'main form div[contenteditable]',
+    'form div[contenteditable]',
+    'main form textarea',
+    'form textarea'
+  ];
+
+  const SEND_SELECTORS = [
+    'button[data-testid="send-button"]',
+    'button[data-testid="composer-send-button"]',
+    'button[data-testid*="send-button"]',
+    'button[aria-label*="Send" i]',
+    'button#composer-submit-button',
+    'button.composer-submit-button-color',
+    'form button[class*="composer-submit-button"]',
+    'form button[type="submit"]',
+    'button[data-testid="composer-speech-button"]',
+    'button[aria-label*="Voice" i]',
+    'button[aria-label*="Dictate" i]'
+  ];
+
+  function detect(root = (typeof document !== 'undefined' ? document : null)) {
+    if (!root) {
+      return {
+        adapter_version: CHATGPT_DOM_ADAPTER_VERSION,
+        auth_state: 'UNKNOWN',
+        dom_status: 'UNSUPPORTED',
+        capabilities: {
+          COMPOSER_PRESENT: false,
+          COMPOSER_EDITABLE: false,
+          SEND_CONTROL_PRESENT: false,
+          CONVERSATION_SURFACE_PRESENT: false,
+          RESPONSE_SURFACE_DISCOVERABLE: false,
+          IMAGE_RESULT_SURFACE_DISCOVERABLE: false,
+          DOWNLOAD_CAPABILITY_DISCOVERABLE: false,
+          AUTHENTICATED: false,
+          AUTH_REQUIRED: false
+        },
+        response_count: 0,
+        image_candidate_count: 0,
+        prompt_submission_enabled: false
+      };
+    }
+    const auth = first(['a[href*="/auth/login"]', 'button[data-testid="login-button"]', '[data-testid="login-button"]'], root);
+    const composer = first(COMPOSER_SELECTORS, root);
+    const send = first(SEND_SELECTORS, root);
+    const surface = first(['main', '[role="main"]'], root);
+    const imageCount = count(['[data-message-author-role="assistant"] img', 'main img[src]', 'main picture img[src]'], root);
     const responseCount = count([
       '[data-message-author-role="assistant"]',
       'article:has([data-message-author-role="assistant"])',
       '[data-testid*="conversation-turn"]'
-    ]);
-    const download = first(['a[download]', 'a[href*="download"]', 'button[aria-label*="Download"]']);
-    const domSupported = Boolean(auth.element || (surface.element && composer.element));
-    const authenticated = !auth.element && Boolean(surface.element || composer.element);
+    ], root);
+    const download = first(['a[download]', 'a[href*="download"]', 'button[aria-label*="Download"]'], root);
     const composerEditable = Boolean(
       composer.element &&
         (composer.element.matches?.('textarea') ||
           composer.element.getAttribute?.('contenteditable') === 'true' ||
+          composer.element.getAttribute?.('contenteditable') === '' ||
+          composer.element.getAttribute?.('contenteditable') === 'plaintext-only' ||
           composer.element.isContentEditable ||
           !composer.element.hasAttribute?.('disabled'))
     );
+    const domSupported = Boolean(auth.element || (surface.element && composer.element && composerEditable));
+    const authenticated = !auth.element && Boolean(surface.element || composer.element);
     return {
       adapter_version: CHATGPT_DOM_ADAPTER_VERSION,
       auth_state: auth.element ? 'AUTH_REQUIRED' : authenticated ? 'AUTHENTICATED' : 'UNKNOWN',
@@ -98,9 +139,10 @@
         element.value = value;
       }
       element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     }
-    if (element.isContentEditable || element.getAttribute?.('contenteditable') === 'true') {
+    if (element.isContentEditable || element.getAttribute?.('contenteditable') !== 'false') {
       element.focus?.();
       try {
         const sel = window.getSelection?.();
@@ -112,34 +154,61 @@
         }
         if (document.execCommand?.('insertText', false, value)) {
           element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: value }));
+          element.dispatchEvent(new Event('change', { bubbles: true }));
           return;
         }
       } catch {
         // Fallback below
       }
-      element.textContent = value;
+      const lines = String(value).split('\n');
+      if (lines.length > 1 && typeof document !== 'undefined' && document.createElement) {
+        element.innerHTML = '';
+        for (const line of lines) {
+          const p = document.createElement('p');
+          p.textContent = line || '';
+          element.appendChild(p);
+        }
+      } else {
+        element.textContent = value;
+      }
       element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: value }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     }
     element.textContent = value;
     element.dispatchEvent(new Event('input', { bubbles: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  async function waitForSendControl(container, timeoutMs = 2000) {
-    const form = container?.closest?.('form') || document;
+  function verifyComposerContent(element, expectedText) {
+    if (!element) return false;
+    const actual = (element.innerText || element.textContent || element.value || '').trim();
+    const expected = (expectedText || '').trim();
+    if (!actual || !expected) return false;
+    const normActual = actual.replace(/\r\n/g, '\n').replace(/\s+/g, ' ');
+    const normExpected = expected.replace(/\r\n/g, '\n').replace(/\s+/g, ' ');
+    return normActual.includes(normExpected) || normActual.slice(0, 80) === normExpected.slice(0, 80);
+  }
+
+  async function waitForSendControl(container, timeoutMs = 3000) {
+    const form = container?.closest?.('form') || (typeof document !== 'undefined' ? document : null);
+    if (!form) return null;
     const findSend = () => {
       const btn = first([
         'button[data-testid="send-button"]:not([disabled])',
-        'button[aria-label*="Send"]:not([disabled])',
-        '#composer-submit-button:not([aria-label*="Voice"]):not([disabled])',
+        'button[data-testid="composer-send-button"]:not([disabled])',
+        'button[data-testid*="send-button"]:not([disabled])',
+        'button[aria-label*="Send" i]:not([disabled])',
+        '#composer-submit-button:not([aria-label*="Voice" i]):not([disabled])',
         'form button[type="submit"]:not([disabled])',
         'button[data-testid="send-button"]',
-        'button[aria-label*="Send"]',
+        'button[data-testid="composer-send-button"]',
+        'button[aria-label*="Send" i]',
         '#composer-submit-button',
         'button.composer-submit-button-color'
       ], form).element;
       if (!btn) return null;
-      const isVoice = btn.getAttribute?.('aria-label')?.includes('Voice');
+      const isVoice = /voice|dictate|speech/i.test(btn.getAttribute?.('aria-label') || btn.getAttribute?.('data-testid') || '');
       const isDisabled = btn.disabled || btn.getAttribute?.('aria-disabled') === 'true';
       if (!isVoice && !isDisabled) return btn;
       return null;
@@ -223,26 +292,17 @@
   }
 
   async function controlledSubmit(message, root = (typeof document !== 'undefined' ? document : null)) {
-    const caps = detect();
-    if (caps.auth_state !== 'AUTHENTICATED') return { ok: false, error: 'AUTH_REQUIRED', capabilities: caps };
-    if (caps.dom_status !== 'SUPPORTED' || !caps.capabilities.COMPOSER_EDITABLE || !caps.capabilities.SEND_CONTROL_PRESENT) {
-      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
+    const caps = detect(root);
+    if (caps.auth_state !== 'AUTHENTICATED') return { ok: false, error: 'AUTH_REQUIRED', capabilities: caps, submission_escaped: false };
+    if (caps.dom_status !== 'SUPPORTED' || !caps.capabilities.COMPOSER_EDITABLE) {
+      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps, submission_escaped: false };
     }
-    const composer = first([
-      '#prompt-textarea[contenteditable="true"]',
-      'div[contenteditable="true"]#prompt-textarea',
-      'div[contenteditable="true"].ProseMirror',
-      'div[contenteditable="true"][data-testid*="prompt"]',
-      'textarea[data-testid*="prompt"]',
-      'main form div[contenteditable="true"]',
-      'form div[contenteditable="true"]',
-      'form textarea'
-    ]);
+    const composer = first(COMPOSER_SELECTORS, root);
     if (!composer.element) {
-      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps };
+      return { ok: false, error: 'DOM_CONTRACT_UNSUPPORTED', capabilities: caps, submission_escaped: false };
     }
     if (!message.controlled_run_once || !message.prompt || !message.prompt_hash || !message.job_id) {
-      return { ok: false, error: 'CONTROLLED_SUBMIT_CONTRACT_INVALID', capabilities: caps };
+      return { ok: false, error: 'CONTROLLED_SUBMIT_CONTRACT_INVALID', capabilities: caps, submission_escaped: false };
     }
 
     // Capture pre-submit image baseline
@@ -250,12 +310,35 @@
     const baselineFps = new Set(baselineImages.map((el) => fingerprintImg(el)));
 
     setComposerValue(composer.element, message.prompt);
-    const sendControl = await waitForSendControl(composer.element, 2000);
-    if (!sendControl) {
-      return { ok: false, error: 'SEND_CONTROL_UNAVAILABLE', capabilities: detect() };
+    if (!verifyComposerContent(composer.element, message.prompt)) {
+      return { ok: false, error: 'PROMPT_INSERTION_VERIFICATION_FAILED', capabilities: detect(root), submission_escaped: false };
     }
+
+    const sendControl = await waitForSendControl(composer.element, 3000);
+    if (!sendControl) {
+      return { ok: false, error: 'SEND_CONTROL_UNAVAILABLE', capabilities: detect(root), submission_escaped: false };
+    }
+    if (sendControl.disabled || sendControl.getAttribute?.('aria-disabled') === 'true') {
+      return { ok: false, error: 'SEND_CONTROL_DISABLED', capabilities: detect(root), submission_escaped: false };
+    }
+
+    const initialUserCount = count(['[data-message-author-role="user"]'], root);
     sendControl.click();
     const submittedAt = new Date().toISOString();
+
+    // Verify post-click evidence of submission
+    const submitConfirmStart = Date.now();
+    let submissionConfirmed = false;
+    while (Date.now() - submitConfirmStart < 5000) {
+      await new Promise((r) => setTimeout(r, 100));
+      const currentUserCount = count(['[data-message-author-role="user"]'], root);
+      const composerText = (composer.element.innerText || composer.element.value || '').trim();
+      const stopControl = first(['button[data-testid="stop-button"]', 'button[aria-label*="Stop" i]'], root).element;
+      if (currentUserCount > initialUserCount || composerText === '' || stopControl) {
+        submissionConfirmed = true;
+        break;
+      }
+    }
 
     // Await deterministic generation result
     const timeoutMs = message.timeout_ms || 120000;
@@ -676,6 +759,41 @@
     }
   }
 
+  async function controlledCaptureLatest(message = {}, root = (typeof document !== 'undefined' ? document : null)) {
+    if (!root) return { ok: false, error: 'ROOT_MISSING' };
+    const allImgs = getAllImages(root);
+    if (allImgs.length === 0) {
+      return { ok: false, error: 'NO_IMAGE_CANDIDATE_FOUND' };
+    }
+
+    // Filter to assistant container images and non-decorative images
+    const assistantImgs = allImgs.filter((el) => {
+      const container = el.closest?.('[data-message-author-role="assistant"], [data-testid*="conversation-turn"], article, [role="article"]');
+      const isAriaHidden = el.getAttribute?.('aria-hidden') === 'true' || el.closest?.('[aria-hidden="true"]') !== null;
+      const isBlur = (el.className?.includes?.('blur') || el.closest?.('[class*="blur"]') !== null);
+      const isOpacityZero = (el.className?.includes?.('opacity-0') || el.style?.opacity === '0');
+      return !isAriaHidden && !isBlur && !isOpacityZero && (container !== null || el.matches?.('main img[src], main picture img[src]'));
+    });
+
+    const candidateList = assistantImgs.length > 0 ? assistantImgs : allImgs;
+    const targetImg = candidateList[candidateList.length - 1];
+
+    try {
+      const capturedData = await imageToDataUrl(targetImg);
+      return {
+        ok: true,
+        ...capturedData,
+        source_fingerprint: fingerprintImg(targetImg),
+        containerFingerprint: getContainerFingerprint(targetImg),
+        job_id: message.job_id,
+        run_id: message.run_id,
+        slot_key: message.slot_key || 'featured'
+      };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err || 'CAPTURE_FAILED') };
+    }
+  }
+
   function send(type, payload = {}) {
     return chrome.runtime.sendMessage({
       id: crypto.randomUUID(),
@@ -705,6 +823,10 @@
       void controlledCapture(message).then(sendResponse).catch((error) => sendResponse({ ok: false, error: String(error?.message || error || 'CAPTURE_FAILED') }));
       return true;
     }
+    if (message.type === 'CHATGPT_PROVIDER_CAPTURE_LATEST') {
+      void controlledCaptureLatest(message).then(sendResponse).catch((error) => sendResponse({ ok: false, error: String(error?.message || error || 'CAPTURE_FAILED') }));
+      return true;
+    }
     return false;
   });
 
@@ -717,6 +839,7 @@
     getAllImages,
     controlledSubmit,
     controlledCapture,
+    controlledCaptureLatest,
     imageToDataUrl
   };
 

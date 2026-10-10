@@ -1,3 +1,5 @@
+import { EXTENSION_VERSION } from './constants.js';
+
 export const MAX_AUDIT_EVENTS = 1000;
 export const AUDIT_RETENTION_DAYS = 7;
 
@@ -87,9 +89,13 @@ export class AuditLogger {
 
 export function formatAuditText({ events = [], state = {}, generatedAt = new Date().toISOString() } = {}) {
   const run = state.phase4bSingleRun || {};
+  const activeVersion = (typeof chrome !== 'undefined' && chrome.runtime?.getManifest?.()?.version)
+    || state.runtime_extension_version
+    || state.extension_version
+    || EXTENSION_VERSION;
   const lines = [
     'LokaMedia Audit Log',
-    `Extension Version: ${state.extension_version || '0.1.0'}`,
+    `Extension Version: ${activeVersion}`,
     'Protocol Version: 1',
     'DOM Adapter Version: 1',
     `Generated At: ${generatedAt}`,

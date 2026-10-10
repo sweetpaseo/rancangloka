@@ -29,3 +29,6 @@ workspace/logs/*
 # Canary artifacts & local test outputs
 artifacts/
 
+# LokaMedia credentials
+/extensions/token.txt
+

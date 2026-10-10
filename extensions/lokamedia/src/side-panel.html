@@ -9,9 +9,66 @@
   <body>
     <main>
       <header class="topbar">
-        <strong>LokaMedia</strong>
+        <div>
+          <strong>LokaMedia</strong>
+          <span id="extension-version" class="version-badge">Extension v0.1.10 — CURRENT</span>
+        </div>
         <span id="panel-status" role="status" aria-live="polite">Starting...</span>
       </header>
+
+      <section class="workflow-stage-card">
+        <h2>Operator Workflow</h2>
+        <div class="stage-banner">
+          <span>Active Stage:</span>
+          <strong id="workflow-stage">WAITING</strong>
+        </div>
+        <div id="workflow-guidance" class="workflow-guidance">Waiting for eligible media job or provider connection.</div>
+      </section>
+
+      <section class="prompt-preview-card">
+        <h2>Prompt Preview</h2>
+        <div class="status-row"><span>Article</span><strong id="prompt-article-title">None</strong></div>
+        <div class="status-row"><span>Slot</span><strong id="prompt-slot">featured</strong></div>
+        <div class="status-row"><span>Target Dimensions</span><strong id="prompt-dimensions">1792 × 1024 (Featured)</strong></div>
+        <label for="prompt-text" style="margin-top: 8px;">Canonical Generation Prompt</label>
+        <textarea id="prompt-text" readonly placeholder="No prompt loaded..."></textarea>
+        <div class="workflow-actions" style="margin-top: 8px; display: flex; gap: 6px;">
+          <button id="copy-prompt" type="button" style="flex: 1;">Copy Prompt</button>
+          <button id="send-to-chatgpt" type="button" class="btn-primary" style="flex: 1;" disabled>Send to ChatGPT</button>
+        </div>
+      </section>
+
+      <section id="generating-card" class="generating-card" style="display: none;">
+        <h2>Generation Active</h2>
+        <div class="status-row"><span>Job ID</span><strong id="generating-job-id">--</strong></div>
+        <div class="status-row"><span>Run ID</span><strong id="generating-run-id">--</strong></div>
+        <div class="status-row"><span>Bound Tab</span><strong id="generating-provider-tab">--</strong></div>
+        <div class="status-row"><span>Elapsed</span><strong id="generating-elapsed">--</strong></div>
+      </section>
+
+      <section id="result-preview-card" class="result-preview-card">
+        <h2>Result Review</h2>
+        <div class="preview-box">
+          <img id="result-preview-image" alt="Candidate Preview" style="display: none; max-width: 100%; border-radius: 4px; border: 1px solid var(--line);">
+          <div id="preview-placeholder" class="preview-placeholder">No image candidate captured</div>
+        </div>
+        <div class="status-row"><span>Dimensions</span><strong id="result-dimensions">--</strong></div>
+        <div class="status-row"><span>MIME Type</span><strong id="result-mime">--</strong></div>
+        <div class="status-row"><span>File Size</span><strong id="result-size">--</strong></div>
+        <div class="status-row"><span>SHA-256</span><strong id="result-sha256">--</strong></div>
+        <div class="workflow-actions" style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; gap: 6px;">
+            <button id="capture-latest" type="button" style="flex: 1;" disabled>Capture Latest Image</button>
+            <button id="reject-result" type="button" class="btn-danger" style="flex: 1;" disabled>Reject Result</button>
+          </div>
+          <button id="approve-upload" type="button" class="btn-primary" style="width: 100%;" disabled>Approve &amp; Upload</button>
+          <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
+            <input type="file" id="local-file-input" accept="image/png,image/jpeg,image/webp" style="display: none;">
+            <button id="btn-select-file" type="button" style="width: 100%;">Select Image File (Fallback)</button>
+          </div>
+          <button id="assign-featured" type="button" style="width: 100%; margin-top: 4px;" disabled>Assign as Featured</button>
+        </div>
+      </section>
 
       <section>
         <h2>Connection</h2>
@@ -43,11 +100,15 @@
       <section>
         <h2>Provider</h2>
         <div class="status-row"><span>Tab</span><strong id="provider-tab">missing</strong></div>
+        <div class="status-row"><span>Target</span><strong id="provider-target">NOT BOUND</strong></div>
+        <div class="status-row"><span>Bound Tab</span><strong id="provider-bound-tab">none</strong></div>
+        <div class="status-row"><span>Bound URL</span><strong id="provider-bound-url">none</strong></div>
         <div class="status-row"><span>Auth</span><strong id="provider-auth">unknown</strong></div>
         <div class="status-row"><span>DOM</span><strong id="provider-dom">unknown</strong></div>
         <div class="status-row"><span>Composer</span><strong id="provider-composer">unavailable</strong></div>
         <div class="status-row"><span>Images</span><strong id="provider-images">0</strong></div>
         <div class="status-row"><span>Lane</span><strong id="provider-lane">idle</strong></div>
+        <button id="bind-tab" type="button" style="width: 100%; margin-top: 6px;">Bind Current ChatGPT Tab</button>
       </section>
 
       <section>
@@ -62,10 +123,15 @@
         <label class="toggle"><input id="enabled" type="checkbox"> Enabled</label>
         <button id="run-once" type="button">Run Once</button>
         <button id="diagnostic">Provider Check</button>
+        <div id="run-once-reason" class="run-once-reason" aria-live="polite"></div>
       </section>
 
       <details>
         <summary>Configuration</summary>
+        <div class="runtime-meta">
+          <span>Runtime: <strong id="runtime-version-display">v0.1.10</strong></span>
+          <span>Boot: <strong id="runtime-boot-id">--</strong></span>
+        </div>
         <label>Server <input id="server" type="url"></label>
         <label>Device token <input id="token" type="password" autocomplete="off"></label>
         <button id="save">Save</button>

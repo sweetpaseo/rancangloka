@@ -15,6 +15,230 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 
 
+### LOKAMEDIA-REAL-BROWSER-PHASE-B-SEAL-1: Real-Browser Human Approval E2E Attestation & Seal 2026-10-10
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan atestasi penuh secara end-to-end terhadap alur persetujuan manusia (*Human Approval*) dan upload di browser nyata (*Real Browser Proof, Not Simulation-Only*).
+  - Phase A membuktikan batas henti: eksekusi provider dan penangkapan gambar ChatGPT berhenti secara deterministik di status `RESULT READY` dengan nol mutasi upload, nol receipt, dan nol media asset di server D1.
+  - Phase B membuktikan otorisasi operator manusia: penekanan tombol `APPROVE & UPLOAD` di side panel memicu urutan audit yang strictly monotonic:
+    `HUMAN_APPROVAL_RECORDED` $\rightarrow$ `UPLOAD_APPROVAL_GATE_PASS` $\rightarrow$ `UPLOAD_START` $\rightarrow$ `UPLOAD_RECEIVED` $\rightarrow$ `ATTACHMENT_CONFIRMED` $\rightarrow$ `JOB_COMPLETE`.
+  - Verifikasi Invarian Exactly-Once:
+    - Receipt D1 lokal untuk canary (`mjob_0bc8a71e21f598f0272b11ce`): Tepat 1 `UPLOAD_RECEIVED` dan tepat 1 `ATTACHMENT_CONFIRMED` (total 2 receipts, nol duplikasi).
+    - Media Asset D1 lokal: Dibuat tepat 1 aset (`ast_KCsMDkykVzEw7nhNnjOdqFgg`), SHA `bad12f705a150e4181be108def8e2cab4fb059f6916c2403f028524d82597235`, dimensi $1672 \times 941$, MIME `image/png`, status `VALIDATED`.
+    - Relasi Artikel: Tepat 1 relasi aktif di `article_media` untuk artikel ID 9 dengan slot `featured` dan role `featured`.
+    - Approval terikat secara eksklusif ke `job_id` dan SHA kandidat, terkonsumsi tepat satu kali tanpa eksekusi upload ganda.
+  - Perbaikan Observabilitas UI Minor:
+    - Memperbaiki `lastAction` yang sempat tertinggal di teks `"Uploading"` setelah tahap `UPLOAD COMPLETE` akibat ketiadaan pemetaan event `ATTACHMENT_CONFIRMED` dan `JOB_COMPLETE` pada `appendAuditEvent`.
+    - Memetakan kedua event tersebut ke `lastAction = 'Upload complete & confirmed'`.
+    - Bump patch version ekstensi LokaMedia ke `v0.1.10` secara kanonikal di manifest, constants, background, side-panel HTML & JS, serta seluruh test suite.
+  - Pembersihan Fixture Canary Lokal:
+    - Membersihkan fixture pengujian lokal (Artikel 9, job `mjob_0bc8a71e21f598f0272b11ce`, receipts, article_media, dan media_assets) secara referensial aman setelah seluruh bukti forensik terekam lengkap dalam checkpoint.
+  - Pelestarian Invarian Produksi:
+    - Aset produksi Artikel A (`/media/images/b5cd50198632fecc2810b756554ce8ffe6df3129f5d828447064beee41845af4.webp`) 100% terjaga tanpa mutasi.
+    - Aset lokal historis Artikel B (`ast_U0qJsAPBnIga9ExfH385kNUp`, SHA `f87275adaf3df50eb3a27982e54cf1fc9f5d27107e62560beff20da263613903`) tetap berstatus `LEGACY_AUTO_UPLOAD_COMPLETE` tanpa regenerasi atau re-upload.
+  - Audit Git Scope & Debris:
+    - Mengidentifikasi dan menghapus skrip-skrip sementara (canary prep, attest-phase-a, parse-leveldb, dll).
+    - Memastikan zero secrets (API key, auth token, device credential) dalam working copy.
+- **Hasil & Status Keselamatan:**
+  - Seluruh 9 test suite regresi LokaMedia (87+ tes) lulus 100% hijau.
+  - TypeScript build (`npx tsc --noEmit`) 100% bersih tanpa error.
+  - Klasifikasi: **`LOKAMEDIA_HUMAN_APPROVAL_REAL_BROWSER_E2E_PROVEN`**.
+  - Stop Token: **`LOKAMEDIA_REAL_BROWSER_PHASE_B_SEAL_1_HUMAN_COMMIT_REVIEW_REQUIRED`**.
+
+---
+
+### LOKAMEDIA-OBSERVABILITY-CLEANUP-1: Stale Run Timeout Banner & Audit Version Metadata Fix 2026-10-10
+
+
+- **Tujuan & Ruang Lingkup:**
+  - Memperbaiki Defect A: Mengatasi banner status merah `RUN_ONCE_TIMEOUT` yang muncul dini karena batas tunggu side panel 15 detik lebih pendek dari durasi generasi ChatGPT sesungguhnya (~27–35 detik).
+  - Menetapkan batas tunggu operasi antarmuka provider yang panjang (`PROVIDER_OPERATION_TIMEOUT_MS = 120_000`) untuk `RUN_ONCE` dan `SEND_TO_CHATGPT`.
+  - Menerapkan rekonsiliasi banner status otomatis `reconcileStatusBanner`: saat status ter-refresh membuktikan tahap operator yang sehat (`PROMPT READY`, `RESULT READY`, `UPLOAD COMPLETE`) dengan `last_error == null` dan tanpa error sistem, banner transien lama (`RUN_ONCE_TIMEOUT`, `SEND_TO_CHATGPT_TIMEOUT`, `Failed to fetch`) otomatis dibersihkan ke status `Ready`.
+  - Memperbaiki Defect B: Menegakkan aturan version provenance di mana identitas runtime aktif dari manifes (`0.1.9`) / konstanta kanonikal `EXTENSION_VERSION` tidak boleh tertimpa oleh data penyimpanan riwayat lawas (`extension_version = "0.1.1"`).
+  - Memastikan `formatAuditText` mengekspor `Extension Version: 0.1.9` secara kanonikal dengan mempertahankan independensi Protocol Version (`1`) dan DOM Adapter Version (`1`).
+  - Menjaga integritas kandidat canary (`mjob_0bc8a71e21f598f0272b11ce`, run `run_1791645952427_44265789`, SHA `bad12f705a150e4181be108def8e2cab4fb059f6916c2403f028524d82597235`) tetap berada di status `CAPTURED / RESULT READY` tanpa regenerasi atau mutasi.
+  - Bump patch version ekstensi ke `v0.1.9` di manifest, constants, background fallback, side-panel HTML & JS, serta handshake server D1.
+  - Menulis test suite regresi baru `scripts/test-lokamedia-observability-cleanup.js` (7 tes).
+- **Hasil & Status Keselamatan:**
+  - Status canary di D1 lokal tetap `LEASED` (`completed_at = null`, 0 receipts, 0 media assets).
+  - Article A produksi dan Article B tetap 100% terlindungi.
+  - Seluruh pengujian (9 test suite, 71 tes) lulus 100% hijau.
+  - TypeScript build (`npx tsc --noEmit`) 100% bersih tanpa error.
+  - Klasifikasi: **`LOKAMEDIA_OBSERVABILITY_CLEANUP_PASS`**.
+  - Stop Token: **`LOKAMEDIA_OBSERVABILITY_CLEANUP_1_OPERATOR_RELOAD_REQUIRED`**.
+
+---
+
+### LOKAMEDIA-HUMAN-APPROVAL-BOUNDARY-1: Human Approval Boundary & Explicit Upload Gate 2026-10-10
+
+- **Tujuan & Ruang Lingkup:**
+  - Menghentikan upload otomatis pasca-generasi dan capture gambar ChatGPT (`CAPTURE_PERSISTED -> UPLOAD_START`), menegakkan batas persetujuan operator (*Human Approval Boundary*).
+  - Menegakkan pemisahan state: `GENERATED != CAPTURED != APPROVED != UPLOADED != FEATURED IN PRODUCTION`.
+  - Menghentikan alur `SEND TO CHATGPT` dan checkpoint recovery tepat di status `RESULT READY`, dengan tombol `APPROVE & UPLOAD` dan `REJECT RESULT`.
+  - Menerapkan catatan persetujuan eksplisit per-pekerjaan (*Job-Scoped Human Approval Record*): terikat unik pada kombinasi `job_id + candidate_sha256` beserta `approved_at`, `approval_source = 'operator_side_panel'`, dan status konsumsi.
+  - Menerapkan aksi `APPROVE & UPLOAD`: validasi kesesuaian `job_id`, tahap `RESULT READY`, eksistensi kandidat, verifikasi SHA kandidat preview, proteksi anti double-click via `APPROVAL_ALREADY_CONSUMED`, sebelum mengizinkan upload ke server.
+  - Menerapkan aksi `REJECT RESULT`: menghapus blob lokal yang ditolak, mencatat rejeksi manusia, status `RESULT_REJECTED`, dengan zero upload, zero mutasi server, dan gerbang submit ChatGPT tetap terkonsumsi tanpa regenerasi otomatis.
+  - Memperluas model status server D1 (`AWAITING_REVIEW`) pada `jobs-service.ts`, `service.ts`, dan `readiness-reconciler.ts` serta menambahkan event audit baru: `RESULT_READY`, `HUMAN_APPROVAL_RECORDED`, `HUMAN_REJECTION_RECORDED`, `UPLOAD_APPROVAL_GATE_PASS`, `UPLOAD_APPROVAL_GATE_FAIL`.
+  - Menerapkan server-side defense fail-closed pada endpoint `/api/internal/v1/media/upload`: unggahan dari `sourceType === 'lokamedia_extension'` wajib menyertakan `approval_record` valid dengan SHA-256 yang cocok dengan binary upload.
+  - Melindungi aset lokal Artikel B (`mjob_9a381066fb65ee5dcbadbd51`, `ast_U0qJsAPBnIga9ExfH385kNUp`) sebagai `LEGACY_AUTO_UPLOAD_COMPLETE` tanpa regenerasi atau re-upload, dan menjaga aset produksi Artikel A tetap murni.
+  - Bump patch version ekstensi kanonikal ke `v0.1.8` di manifest, constants, background, side panel HTML, dan version handshake.
+  - Menulis test suite regresi baru `scripts/test-lokamedia-human-approval-boundary.js` (8 tes).
+- **Hasil & Status Keselamatan:**
+  - Status Artikel A di produksi dan cover WebP tetap 100% terlindungi dan immutable.
+  - Status Artikel B di D1 lokal tetap `LEGACY_AUTO_UPLOAD_COMPLETE` staged tanpa promosi ke produksi.
+  - Seluruh pengujian (8 test suite, 64 tes) lulus hijau tanpa regresi.
+  - TypeScript build (`npx tsc --noEmit`) 100% bersih.
+  - Klasifikasi: **`LOKAMEDIA_HUMAN_APPROVAL_BOUNDARY_PASS`**.
+  - Stop Token: **`LOKAMEDIA_HUMAN_APPROVAL_BOUNDARY_1_OPERATOR_RELOAD_REQUIRED`**.
+
+---
+
+### LOKAMEDIA-JOB-SCOPED-RESULT-UI-FIX-1: Cross-Job Prompt / Result / Workflow State Leak Fix 2026-10-10
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan kebocoran state visual dan operasional lintas pekerjaan (*cross-job prompt preview, result review metadata, workflow stage leak*) di mana antarmuka ekstensi LokaMedia menampilkan metadata dan judul Artikel A saat memproses Artikel B.
+  - Melakukan forensik LevelDB Chrome extension dan Local D1: membuktikan bahwa prompt Artikel B (`5ea3cfb98af3801bc61445e80dda3d964b9126bf1c0f966876a95762785a98e3`) sukses disubmit dan diterima ChatGPT (`run_1791421093266_922c06a6`), 16 tahapan audit terlaksana lengkap, dan aset derivatif telah tersimpan utuh di local D1 (`COMPLETE`, `asset_id: ast_U0qJsAPBnIga9ExfH385kNUp`, SHA: `f87275adaf3df50eb3a27982e54cf1fc9f5d27107e62560beff20da263613903`, 1770 × 889 PNG).
+  - Mengidentifikasi akar masalah UI: bias sticky `currentJobId` dan short-circuit prioritas pada `resolveCurrentJob` yang terus mengembalikan Job A, serta pemisahan metadata text vs ketersediaan blob yang meninggalkan residu dimensi dan SHA Artikel A saat blob IndexedDB lama tidak ditemukan.
+  - Mengimplementasikan arsitektur generik `jobOperationalStates[job_id]` pada storage ekstensi dan migrasi otomatis state legasi saat boot / update.
+  - Memperbaiki prioritas resolusi job aktif di `resolveCurrentJob` (active in-flight > armed non-completed gate > queued > currentJobId > completed).
+  - Menegakkan invarian konsistensi Result Review: jika job aktif belum memiliki kandidat gambar, seluruh metadata (Dimensions, MIME, Size, SHA-256) wajib terisi tanda strip (`--`) dan placeholder murni menampilkan `No image candidate captured`.
+  - Mengisolasi error reporting ke tingkat pekerjaan (`job_error`), mencegah residu `PHASE_4B_RUN_CONSUMED` Job A muncul di Job B.
+  - Melakukan bump versi ekstensi kanonikal ke `v0.1.7` di manifest, constants, background, side panel HTML, dan version handshake.
+  - Menulis test suite regresi baru `scripts/test-lokamedia-job-scoped-ui-state.js` (4 tes).
+- **Hasil & Status Keselamatan:**
+  - Status Artikel A di produksi dan cover WebP tetap 100% terlindungi dan immutable.
+  - Status Artikel B di D1 lokal telah berstatus `COMPLETE` / `UPLOAD_COMPLETE` dengan aset `ast_U0qJsAPBnIga9ExfH385kNUp`. Tidak ada mutasi ke D1/R2 produksi.
+  - Seluruh pengujian (7 test suite, 56 tes) lulus hijau tanpa regresi.
+  - Klasifikasi: **`ARTICLE_B_ALREADY_UPLOADED_RECONCILED`**.
+  - Stop Token: **`LOKAMEDIA_JOB_SCOPED_RESULT_UI_FIX_1_OPERATOR_RELOAD_REQUIRED`**.
+
+---
+
+### LOKAMEDIA-JOB-SCOPED-RUN-GATE-FIX-1: Scoped Run Gate Isolation & Error Propagation Fix 2026-10-08
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan kebocoran gerbang eksekusi tunggal (*phase4bSingleRun leak*) dari Artikel A (`mjob_9654a1ff6c242ce49711a664`) ke Artikel B (`mjob_9a381066fb65ee5dcbadbd51`), di mana antarmuka ekstensi memblokir tombol `SEND TO CHATGPT` dan `RUN ONCE` dengan peringatan `PHASE_4B_RUN_CONSUMED` serta memunculkan `INTERNAL_ERROR`.
+  - Melakukan forensik LevelDB Chrome extension: membuktikan `phase4bSingleRun` tersimpan sebagai singleton objek Job A (`outcome: 'complete'`, `submission_consumed: true`), sementara Job B telah terdaftar di queue lokal/server (`QUEUED`, `attempt = 0`, `lease = null`).
+  - Menerapkan arsitektur gerbang berlingkup pekerjaan (*Job-Scoped Gate Isolation*): gerbang tunggal di-scope secara spesifik per `job_id` via `state.phase4bJobGates[job_id]` dengan fallback aman ke `phase4bSingleRun`.
+  - Memperbaiki rekonsiliasi transisi job di `background.js`: saat job baru berstatus aman server `QUEUED` tiba, riwayat eksekusi Artikel A dimigrasikan secara permanen ke `phase4bJobGates[jobA]`, pointer aktif direset untuk Job B, dan error sementara dibersihkan.
+  - Memperbaiki predikat gerbang pada `sendToChatGpt` dan `runOnce` di `controller.js`: mengevaluasi konsumsi spesifik pada `targetJob.job_id`, bukan secara global tanpa identitas pekerjaan.
+  - Memperbaiki propagasi error: error `PHASE_4B_RUN_CONSUMED` hanya disetel ke `status.last_error` jika pekerjaan yang bersangkutan memang sudah dikonsumsi; untuk Job B yang baru masuk, `status.last_error` kembali ke `null` (`none` di UI).
+  - Melakukan bump patch version ekstensi ke `v0.1.6` pada manifest, constants, background, side panel HTML, dan version handshake.
+  - Menulis suite regresi baru `scripts/test-lokamedia-job-scoped-gate.js` (4 tes) untuk membuktikan isolasi Job A -> Job B -> Job C tanpa hardcoding ID.
+- **Hasil & Status Keselamatan:**
+  - Status Artikel A di produksi dan cover WebP tetap 100% terlindungi dan immutable.
+  - Status Artikel B di D1 lokal tetap `QUEUED`, `attempt = 0`, belum digenerasi.
+  - Seluruh pengujian (6 test suite, 52 tes) lulus hijau tanpa regresi.
+  - Klasifikasi: **`LOKAMEDIA_JOB_SCOPED_GATE_FIX_PASS`**.
+  - Stop Token: **`LOKAMEDIA_JOB_SCOPED_RUN_GATE_FIX_1_OPERATOR_RELOAD_REQUIRED`**.
+
+---
+
+### FEATURED-MEDIA-PROMOTE-ARTICLE-A-3: Resume Production Media Promotion Post-Re-auth 2026-10-08
+
+- **Tujuan & Ruang Lingkup:**
+  - Melanjutkan promosi aset media cover Artikel A yang sempat tertahan pada fase Promote A-2 akibat sesi OAuth Cloudflare Wrangler kedaluwarsa.
+  - Memverifikasi otentikasi Cloudflare secara langsung via `npx wrangler whoami` (`chandrajoyko@gmail.com`, Account ID `a8e6d11d45dc2d14fe49fe3b84958ee8`).
+  - Mengatestasi ulang Artikel A di D1 produksi secara live: slug, title, content_hash (`00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298`), dan status published terbukti 100% cocok.
+  - Memverifikasi ulang integritas derivatif cover `artifacts/cover-1315x660.webp`: SHA-256 persis `b5cd50198632fecc2810b756554ce8ffe6df3129f5d828447064beee41845af4`, ukuran 197.762 bytes.
+  - Mengunggah derivatif ke Cloudflare R2 produksi bucket `rancangloka-media` dengan key `media/images/b5cd50198632fecc2810b756554ce8ffe6df3129f5d828447064beee41845af4.webp`.
+  - Memverifikasi unduhan ulang dan rute edge publik `https://rancangloka.com/media/images/...` menghasilkan `HTTP 200 OK` dengan byte dan hash identik.
+  - Mendaftarkan entitas `media_assets` (`ast_b5cd50198632fecc2810b756`) dengan data provenans lengkap ke D1 produksi.
+  - Melepaskan relasi `featured` lama pada `article_media` untuk placeholder bersama tanpa menghapus objek fisiknya, lalu mengikatkan aset baru sebagai relasi featured aktif Artikel A.
+  - Memperbarui `featured_image` dan `image_alt` pada tabel `articles` tanpa menyentuh naskah, content hash, maupun timestamp publikasi.
+- **Hasil & Verifikasi:**
+  - Halaman publik artikel (`/jendela-berkondensasi...`) dan beranda render cover baru dengan alt text yang benar.
+  - Nilai `og:image` otomatis mencerminkan cover baru.
+  - `content_hash` tetap `00dc804d...`, tanda terima tetap 1, Artikel B tidak tersentuh.
+  - Klasifikasi: **`FEATURED_MEDIA_ARTICLE_A_PROMOTION_PASS`**.
+  - Stop Token: **`FEATURED_MEDIA_PROMOTE_ARTICLE_A_3_HUMAN_REVIEW_REQUIRED`**.
+
+---
+
+### FEATURED-MEDIA-PROMOTE-ARTICLE-A-2: 1315x660 Derivative Generation & Cloudflare Ingestion Invariants 2026-10-07
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan promosi terkontrol satu kali (*one-off production media promotion*) untuk aset media Article A yang telah diverifikasi topic-nya dari run LokaMedia `run_1791380727041_abddb752` (Job: `mjob_9654a1ff6c242ce49711a664`).
+  - Memvalidasi integritas binary sumber lokal asli (1770 × 889 PNG, 2.623.727 bytes) dengan SHA-256 terbukti persis `cb5c343af17ef91b13e63c23a818604040512ad6a79282ffd3d1c2520c956144`.
+  - Membuat cover derivatif standar editorial 1315 × 660 WebP berkualitas tinggi via Python Pillow Lanczos resampling (`quality=90`, `method=6`).
+  - Meminimalkan pemotongan geometris: hanya 0.63px tinggi dipotong secara simetris tanpa distorsi (`artifacts/cover-1315x660.webp`, 197.762 bytes, SHA-256: `b5cd50198632fecc2810b756554ce8ffe6df3129f5d828447064beee41845af4`).
+  - Menerapkan atestasi pra-mutasi terhadap artikel target di lingkungan produksi: slug exact match, title exact match, status published, dan content hash exact match (`00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298`).
+  - Mengaudit sesi Cloudflare Wrangler: mendeteksi sesi OAuth kedaluwarsa sejak `2026-10-07T04:24:48.821Z` dan menolak fabrikasi sukses (*no fabricated success*).
+- **Hasil & Status Keselamatan:**
+  - Mutasi produksi D1/R2: Tepat 0 mutasi dilakukan (gerbang fail-closed bertahan).
+  - Klasifikasi: **`PRODUCTION_MEDIA_UPLOAD_BLOCKED`**.
+  - Stop Token: **`FEATURED_MEDIA_PROMOTE_ARTICLE_A_2_HUMAN_REVIEW_REQUIRED`**.
+
+---
+
+### LOKAMEDIA-ARTICLE-IDENTITY-ASSET-AUDIT-1: Article Target Resolution & Forensic Provenance Audit 2026-10-07
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan anomali identitas di mana laporan pengujian UX-2 sebelumnya menyebutkan Job `mjob_9654a1ff6c242ce49711a664` terasosiasi dengan judul *"Mengenal Bata Ringan AAC..."*.
+  - Menelusuri seluruh baris job, receipts, dan artikel di Local D1 serta membandingkannya dengan Production D1.
+  - Membuktikan bahwa judul Bata Ringan AAC murni berasal dari synthetic test fixture pada `scripts/test-lokamedia-operator-ux-2.js`, sementara database riil lokal dan produksi pada ID 7 secara konsisten mereferensikan *"Jendela Berkondensasi: Kelembapan Ruangan, Suhu Permukaan Kaca, Ventilasi, atau Thermal Bridge?"*.
+  - Memverifikasi kesesuaian semantik prompt dan visual hasil tangkapan: 100% jendela hunian berbingkai aluminium dengan butiran kondensasi pagi hari, nol konten bata ringan.
+  - Menetapkan aturan penargetan aman (*Safe Targeting Rule*): melarang penggunaan *naked numeric ID* lintas lingkungan dan mewajibkan resolusi berbasis slug kanonikal dengan atestasi 4 poin (slug, title, hash, status).
+- **Hasil & Status:**
+  - Klasifikasi: **`LOKAMEDIA_IDENTITY_AUDIT_PASS`**.
+  - Stop Token: **`LOKAMEDIA_ARTICLE_IDENTITY_ASSET_AUDIT_1_HUMAN_REVIEW_REQUIRED`**.
+
+---
+
+### LOKAMEDIA-OPERATOR-UX-2 & PROVIDER-TAB-BINDING-1: Extension v0.1.5, Prompt Preview & Result Review Cards 2026-10-07
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan masalah keterikatan tab provider (*Explicit Provider Tab Binding*) pada adapter ChatGPT ekstensi LokaMedia, mencegah otomasi menyuntikkan prompt ke sembarang sesi percakapan operator.
+  - Meningkatkan transparansi antarmuka operator dengan kartu Prompt Preview (`#prompt-preview-card`) dan Result Review (`#result-review-card`) dengan fallback tangkapan manual.
+  - Melakukan bump versi ekstensi kanonikal ke `v0.1.5` pada manifest, popup, background, dan konstanta.
+- **Hasil & Status:**
+  - Ekstensi: Berjalan stabil pada versi `0.1.5` di `extensions/lokamedia/`.
+  - Klasifikasi: **`LOKAMEDIA_OPERATOR_UX_PASS`**.
+
+---
+
+### LOKAMEDIA-DOM-CONTRACT-RECOVERY-1 & JOB-A RETRY STATE CLEANUP: ChatGPT DOM Recovery, v0.1.2 Bump & Retryable State 2026-10-07
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan investigasi forensik terhadap kegagalan run `run_1791360425560_0a89be9d` pada Job A (`mjob_9654a1ff6c242ce49711a664`) dengan error `DOM_CONTRACT_UNSUPPORTED`.
+  - Memastikan klasifikasi risiko duplikasi secara pasti: terbukti `PROVIDER_SUBMISSION_NOT_OCCURRED` (teks prompt belum pernah diinjeksi, tombol Send belum pernah diklik, attempt tetap 0).
+  - Menghilangkan cacat inkonsistensi precheck vs submit: precheck sebelumnya melaporkan pass tanpa memanggil `provider.prepare(job)`. Keduanya kini mengonsumsi evaluasi kontrak DOM dan preparasi yang sama.
+  - Memperbaiki adapter ChatGPT untuk mendukung DOM modern: penanganan selektor ProseMirror `#prompt-textarea`, deteksi tombol suara (`composer-speech-button`) yang beralih dinamis ke tombol kirim (`send-button`) setelah teks terisi, serta verifikasi konten sebelum klik kirim (`verifyComposerContent`).
+  - Menerapkan semantik gerbang submisi `ARMED != CONSUMED`: kegagalan kontrak DOM sebelum pengiriman prompt secara aman mendisarm gerbang sehingga retry operator tetap terbuka tanpa memicu duplicate-generation blocker.
+  - Melakukan bump patch version ekstensi dari `0.1.1` ke `0.1.2` di seluruh manifest, konstanta, side panel, dan handshake server `version.ts`.
+  - Memulihkan Job A di local D1 ke status bersih retryable (`QUEUED`, lease dilepas, `last_error_code = null`, `job_revision = 4`, `attempt = 0`) sambil mengabadikan kegagalan historis pada tabel `media_job_events`.
+  - Memvalidasi seluruh 13 predikat kelayakan `evaluateRunOnceEligibility()` hingga tombol Run Once berstatus `ENABLED`.
+- **Komponen yang Dimodifikasi & Ditambahkan:**
+  - `extensions/lokamedia/manifest.json`: Versi dinaikkan ke `0.1.2`.
+  - `extensions/lokamedia/src/constants.js` & `src/background.js`: Versi ekstensi dan fallback disesuaikan ke `0.1.2`.
+  - `extensions/lokamedia/src/providers/chatgpt/selectors.js`: Selektor fallback array yang resilien untuk composer dan kontrol pengiriman.
+  - `extensions/lokamedia/src/providers/chatgpt/capability-detector.js`: Verifikasi editor composer berkemampuan edit.
+  - `extensions/lokamedia/src/providers/chatgpt/content-script.js`: Injeksi multiline berbasis elemen `<p>` ProseMirror, verifikasi isi sebelum send, penanganan transisi tombol suara/kirim, dan flag `submission_escaped = false` saat abort pra-kirim.
+  - `extensions/lokamedia/src/providers/chatgpt/adapter.js`: Propagasi `submission_escaped`.
+  - `extensions/lokamedia/src/storage.js`: Metode `disarmPhase4bSubmission()` dan proteksi re-arm berbasis status `submission_consumed`.
+  - `extensions/lokamedia/src/controller.js`: Sinkronisasi precheck dengan live `provider.prepare(job)` dan disarm gerbang jika terjadi error sebelum submisi.
+  - `extensions/lokamedia/src/side-panel.html` & `src/side-panel.js`: Tampilan badge `Extension v0.1.2 — CURRENT` dan runtime meta.
+  - `scripts/test-lokamedia-dom-contract-recovery.js`: Suite regresi 9/9 tes membuktikan seluruh invarian pemulihan DOM.
+  - `state/LOKAMEDIA_DOM_CONTRACT_RECOVERY_1_CHECKPOINT.md`: Checkpoint forensik dan status pemulihan.
+- **Status & Verifikasi:**
+  - Pengujian: 9/9 test DOM recovery, 10/10 test runonce recovery, 10/10 test side panel, 22/22 test Phase 3 extension, 18/18 test media orchestrator, 17/17 test durable retry, 25/25 test retry policy lolos.
+  - TypeScript: `npx tsc --noEmit` lolos tanpa error.
+  - Klasifikasi: **`LOKAMEDIA_DOM_CONTRACT_RECOVERED`** & **`LOKAMEDIA_JOB_A_RETRY_READY`**.
+  - Side Panel: Run Once = **`ENABLED`**.
+
+---
+
+### CONTENT-PUBLISH-A-B-1 & LOKAMEDIA DEVICE TOKEN ROTATION: Manual Human Authorization & Local Credential Rotation 2026-10-07
+
+- **Tujuan & Ruang Lingkup:**
+  - Menerbitkan dua artikel rilis editorial yang telah disegel secara manual atas otorisasi Pemimpin Redaksi (Human Approval):
+    - **Artikel A**: *Jendela Berkondensasi: Kelembapan Ruangan, Suhu Permukaan Kaca, Ventilasi, atau Thermal Bridge?* (SHA-256: `00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298`).
+    - **Artikel B**: *Thermal Bridge Kusen Aluminium: Kondensasi Sudut, Jalur Kalor Struktur, dan Mitigasi Thermal Break* (SHA-256: `955d5bb25c1566113b28b78807d9bbda37215a7eaee797676c8c4ee2988f7236`).
+  - Melakukan rotasi token perangkat lokal pengembangan (`dev_chr_local`) di local D1 SQLite secara aman tanpa menyentuh database produksi D1 atau R2 remote.
+- **Status & Verifikasi:**
+  - Status Artikel: Kedua artikel berstatus aktif / published di edge database dengan integritas konten terverifikasi.
+  - Klasifikasi: **`CONTENT_PUBLISH_A_B_PASS`** & **`DEVICE_TOKEN_ROTATION_SUCCESS`**.
+
 ---
 
 ### CONTENT-BOOTSTRAP-RECOVERY-1: Research Discovery Precision & Hermes Browser Free Web Fallback 2026-10-06

@@ -81,6 +81,12 @@ export interface MediaUploadParams {
   idempotencyKey?: string;
   clientSha256?: string;
   deviceId?: string | null;
+  approvalRecord?: {
+    job_id?: string;
+    candidate_sha256?: string;
+    approved_at?: string;
+    approval_source?: string;
+  };
   failureInjectionPoint?: string;
 }
 
@@ -131,6 +137,7 @@ const MEDIA_JOB_IN_PROGRESS_STATES = new Set([
   'IMAGE_DETECTED',
   'CAPTURING',
   'CAPTURED',
+  'AWAITING_REVIEW',
   'UPLOAD_QUEUED',
   'UPLOADING',
   'UPLOAD_RECEIVED',
@@ -555,6 +562,9 @@ export async function processMediaUpload(
   meta.sha256 = await computeBufferSha256(params.imageBuffer);
   if (params.clientSha256 && params.clientSha256.toLowerCase() !== meta.sha256) {
     throw new MediaRuntimeError('CLIENT_SHA256_MISMATCH', 'client_sha256 tidak cocok dengan SHA-256 server.', 422);
+  }
+  if (params.approvalRecord?.candidate_sha256 && params.approvalRecord.candidate_sha256.toLowerCase() !== meta.sha256.toLowerCase()) {
+    throw new MediaRuntimeError('APPROVAL_SHA_MISMATCH', 'candidate_sha256 pada approval record tidak cocok dengan hash gambar server.', 422);
   }
   if (params.failureInjectionPoint === 'AFTER_SHA') throw new MediaRuntimeError('INJECTED_AFTER_SHA', 'Injected failure after SHA.', 500);
 

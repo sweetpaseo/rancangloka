@@ -1,7 +1,8 @@
-export const EXTENSION_VERSION = '0.1.0';
+export const EXTENSION_VERSION = '0.1.10';
 export const STORAGE_SCHEMA_VERSION = 1;
 export const LOKAMEDIA_PROTOCOL_VERSION = 1;
 
+export const PROVIDER_OPERATION_TIMEOUT_MS = 120_000;
 export const HEARTBEAT_INTERVAL_MS = 60_000;
 export const LEASE_SECONDS = 300;
 export const UPLOAD_CONCURRENCY = 2;
@@ -26,7 +27,7 @@ export const STOP_ACTIONS = new Set([
 export const DEFAULT_CONFIG = {
   serverBaseUrl: 'http://localhost:4321',
   deviceToken: '',
-  deviceId: '',
+  deviceId: 'dev_chr_local',
   enabled: false,
   acquisitionProbe: false,
   providerResultProbe: false,

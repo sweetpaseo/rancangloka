@@ -16,11 +16,18 @@ export class UploadWorkerPool {
       await this.storage.upsertJob(job.job_id, { local_state: 'BLOB_MISSING', status: 'RECOVERING' });
       return { ok: false, error: 'BLOB_MISSING' };
     }
+    const approval = job.approval_record || (await this.storage.getHumanApproval?.(job.job_id));
+    if (!approval || !approval.candidate_sha256) {
+      await this.storage.upsertJob(job.job_id, { local_state: 'NEEDS_APPROVAL', status: 'WAITING_APPROVAL' });
+      return { ok: false, error: 'HUMAN_APPROVAL_REQUIRED' };
+    }
+    const approvedJob = { ...job, approval_record: approval };
+
     this.active++;
     this.maxObservedConcurrency = Math.max(this.maxObservedConcurrency, this.active);
     try {
       await this.storage.upsertJob(job.job_id, { local_state: 'UPLOADING' });
-      const response = await this.apiClient.uploadBlob(job, blob, {
+      const response = await this.apiClient.uploadBlob(approvedJob, blob, {
         onProgress: (progress) => {
           void this.storage.upsertJob(job.job_id, {
             upload_progress: {

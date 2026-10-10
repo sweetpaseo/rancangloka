@@ -43,6 +43,37 @@ main {
   color: var(--danger);
 }
 
+.version-badge {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.version-badge[data-state="reload_required"] {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.run-once-reason {
+  font-size: 11px;
+  color: var(--muted);
+  width: 100%;
+  margin-top: 4px;
+}
+
+.run-once-reason[data-state="disabled"] {
+  color: var(--danger);
+}
+
+.runtime-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
 section,
 details {
   padding: 10px 0;
@@ -210,11 +241,73 @@ button {
   white-space: nowrap;
 }
 
+button.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+button.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
 button:disabled {
   border-color: var(--line);
   background: #d8d1c6;
   color: var(--muted);
   cursor: not-allowed;
+}
+
+.stage-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: #f0ebe1;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.stage-banner strong {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.workflow-guidance {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+#prompt-text {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  max-height: 140px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font: 11px/1.4 monospace;
+  padding: 6px;
+  resize: vertical;
+}
+
+.preview-box {
+  margin: 6px 0;
+  text-align: center;
+}
+
+.preview-placeholder {
+  padding: 24px 8px;
+  background: #f4efe6;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 @media (max-width: 290px) {
