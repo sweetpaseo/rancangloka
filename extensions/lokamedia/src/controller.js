@@ -4,8 +4,8 @@ import { MockProviderAdapter } from './mock-provider.js';
 import { ReconciliationManager, hasValidRecoveryLease } from './reconciliation-manager.js';
 import { UploadWorkerPool } from './upload-worker-pool.js';
 import { HeartbeatManager } from './heartbeat-manager.js';
-import { LOKAMEDIA_PROTOCOL_VERSION } from './constants.js';
 import { AuditLogger } from './audit-log.js';
+import { cloneBytes } from './blob-store.js';
 import { isCaptureReadyProviderResult, isRecoverableResultCheckpoint } from './providers/chatgpt/correlation.js';
 
 export class LokaMediaController {
@@ -1469,6 +1469,12 @@ export class LokaMediaController {
     const supportedMimes = new Set(['image/png', 'image/jpeg', 'image/webp']);
     if (!supportedMimes.has(mime)) return { ok: false, error: 'UNSUPPORTED_MIME' };
 
+    const state = await this.storage.readState();
+    const job = state.jobs?.[jobId];
+    if (job && (job.local_state === 'COMPLETE' || job.status === 'COMPLETE' || job.local_state === 'UPLOAD_COMPLETE')) {
+      return { ok: false, error: 'CANNOT_MUTATE_COMPLETED_JOB' };
+    }
+
     const blobKey = `${jobId}:local_${Date.now()}`;
     await this.blobStore.put({
       key: blobKey,
@@ -1510,5 +1516,527 @@ export class LokaMediaController {
       mime,
       size
     };
+  }
+
+  async manualResolveArticle({ slug }) {
+    if (!slug || typeof slug !== 'string') {
+      return { ok: false, error: 'SLUG_REQUIRED' };
+    }
+    const cleanSlug = slug.trim();
+    try {
+      const res = await this.apiClient.resolveArticle(cleanSlug);
+      if (!res.article) {
+        return { ok: false, error: res.error || 'ARTICLE_NOT_FOUND' };
+      }
+      const article = res.article;
+      await this.storage.updateManualPromotionState((current) => {
+        const next = { ...current };
+        next.targetArticle = article;
+        if (current.approval && current.approval.article_slug !== article.slug) {
+          next.approval = null;
+        }
+        if (current.candidate) {
+          next.stage = current.approval ? 'APPROVED' : 'CANDIDATE_READY';
+        } else {
+          next.stage = 'RESOLVED';
+        }
+        next.lastError = null;
+        return next;
+      });
+
+      await this.audit.info('MANUAL_PROMOTION_TARGET_RESOLVED', {
+        details: {
+          slug: article.slug,
+          article_id: article.id,
+          status: article.status,
+          content_hash: article.content_hash
+        }
+      });
+
+      return { ok: true, article };
+    } catch (err) {
+      await this.storage.updateManualPromotionState((current) => ({
+        ...current,
+        lastError: err.message
+      }));
+      return { ok: false, error: err.message };
+    }
+  }
+
+  async manualSetLocalFile(options = {}) {
+    const { filename, bytes, mime, width, height, size, sha256, alt_text, dataUrl } = options;
+    if (!bytes || !sha256) return { ok: false, error: 'INVALID_PAYLOAD' };
+    const supportedMimes = new Set(['image/png', 'image/jpeg', 'image/webp']);
+    if (!supportedMimes.has(mime)) return { ok: false, error: 'UNSUPPORTED_MIME' };
+    if (!width || !height || Number(width) <= 0 || Number(height) <= 0) {
+      return { ok: false, error: 'INVALID_DIMENSIONS' };
+    }
+    if (!size || Number(size) <= 0) {
+      return { ok: false, error: 'INVALID_SIZE' };
+    }
+
+    const blobKey = `manual_promo:${sha256}`;
+    try {
+      await this.blobStore.put({
+        key: blobKey,
+        sha256,
+        mime,
+        width: Number(width),
+        height: Number(height),
+        size: Number(size),
+        bytes,
+        provenance: 'MANUAL_LOCAL_FILE'
+      });
+    } catch (putErr) {
+      return { ok: false, error: `BLOB_STORE_FAILED: ${putErr.message}` };
+    }
+
+    const candidate = {
+      filename: filename || 'local_candidate',
+      blob_key: blobKey,
+      sha256,
+      mime,
+      width: Number(width),
+      height: Number(height),
+      size: Number(size),
+      alt_text: alt_text || '',
+      data_url: dataUrl || null
+    };
+
+    await this.storage.updateManualPromotionState((current) => {
+      const next = { ...current };
+      next.candidate = candidate;
+      if (current.approval && current.approval.candidate_sha256 !== sha256) {
+        next.approval = null;
+      }
+      next.stage = next.approval ? 'APPROVED' : 'CANDIDATE_READY';
+      next.uploadedAsset = null;
+      next.lastError = null;
+      return next;
+    });
+
+    await this.audit.info('MANUAL_PROMOTION_FILE_SELECTED', {
+      details: { filename: candidate.filename, sha256, mime, width: candidate.width, height: candidate.height, size: candidate.size }
+    });
+
+    await this.audit.info('MANUAL_PROMOTION_RESULT_READY', {
+      details: { filename: candidate.filename, sha256, mime, width: candidate.width, height: candidate.height, size: candidate.size }
+    });
+
+    return { ok: true, candidate };
+  }
+
+  async manualSetAltText(options = {}) {
+    const cleanAlt = (options?.alt_text || options?.altText || '').trim();
+    await this.storage.updateManualPromotionState((current) => {
+      const next = { ...current };
+      if (next.candidate) {
+        next.candidate = { ...next.candidate, alt_text: cleanAlt };
+      }
+      next.alt_text = cleanAlt;
+      // Changing alt text after request creation invalidates existing approval/request
+      if (current.approval || current.promotionRequest) {
+        const existingAlt = current.approval?.alt_text || current.promotionRequest?.alt_text || current.candidate?.alt_text || '';
+        if (existingAlt !== cleanAlt) {
+          next.approval = null;
+          next.promotionRequest = null;
+          next.stage = next.candidate ? 'CANDIDATE_READY' : 'ARTICLE_RESOLVED';
+          next.lastError = null;
+        }
+      }
+      return next;
+    });
+    return { ok: true, alt_text: cleanAlt };
+  }
+
+  async manualApprovePromotion({ expectedContentHash = null, alt_text = null } = {}) {
+    const state = await this.storage.getManualPromotionState();
+    if (!state?.targetArticle) {
+      return { ok: false, error: 'TARGET_ARTICLE_REQUIRED' };
+    }
+    if (!state?.candidate) {
+      return { ok: false, error: 'CANDIDATE_REQUIRED' };
+    }
+    const cleanAlt = (alt_text || state.candidate?.alt_text || state.alt_text || '').trim();
+    if (!cleanAlt) {
+      return { ok: false, error: 'ALT_TEXT_REQUIRED' };
+    }
+    if (expectedContentHash && expectedContentHash !== state.targetArticle.content_hash) {
+      return { ok: false, error: 'CONTENT_HASH_MISMATCH' };
+    }
+
+    let requestRes;
+    try {
+      requestRes = await this.apiClient.requestPromotionApproval({
+        article_slug: state.targetArticle.slug,
+        expected_content_hash: state.targetArticle.content_hash,
+        candidate_sha256: state.candidate.sha256,
+        slot_key: 'featured',
+        candidate_width: state.candidate.width,
+        candidate_height: state.candidate.height,
+        candidate_mime: state.candidate.mime,
+        candidate_byte_size: state.candidate.size,
+        alt_text: cleanAlt
+      });
+    } catch (err) {
+      await this.storage.updateManualPromotionState((current) => ({
+        ...current,
+        lastError: `Gagal meminta persetujuan server: ${err.message}`
+      }));
+      return { ok: false, error: err.message };
+    }
+
+    const promotionRequest = requestRes?.promotion_request || (requestRes?.request_id ? requestRes : null);
+    if (!promotionRequest || !promotionRequest.request_id) {
+      return { ok: false, error: 'PROMOTION_REQUEST_CREATION_FAILED' };
+    }
+
+    await this.storage.updateManualPromotionState((current) => ({
+      ...current,
+      promotionRequest,
+      approval: null,
+      alt_text: cleanAlt,
+      candidate: current.candidate ? { ...current.candidate, alt_text: cleanAlt } : null,
+      stage: 'WAITING_FOR_ADMIN_APPROVAL',
+      lastError: null
+    }));
+
+    await this.audit.info('MANUAL_PROMOTION_REQUESTED', {
+      details: {
+        request_id: promotionRequest.request_id,
+        article_slug: state.targetArticle.slug,
+        article_id: state.targetArticle.id,
+        candidate_sha256: state.candidate.sha256,
+        expected_content_hash: state.targetArticle.content_hash,
+        slot_key: 'featured',
+        expires_at: promotionRequest.expires_at
+      }
+    });
+
+    return { ok: true, stage: 'WAITING_FOR_ADMIN_APPROVAL', promotionRequest };
+  }
+
+  async checkPromotionApprovalStatus() {
+    const state = await this.storage.getManualPromotionState();
+    const requestId = state?.promotionRequest?.request_id || state?.approval?.approval_id || state?.promotionRequest?.approval_id;
+    if (!requestId) return { ok: false, error: 'NO_ACTIVE_PROMOTION_REQUEST' };
+
+    let res;
+    try {
+      res = await this.apiClient.getPromotionStatus(requestId);
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+
+    const isExpired = res?.record?.status === 'EXPIRED' ||
+      (res?.approval_receipt?.expires_at && Date.now() > new Date(res.approval_receipt.expires_at).getTime()) ||
+      (res?.record?.expires_at && Date.now() > new Date(res.record.expires_at).getTime());
+
+    if (isExpired) {
+      await this.storage.updateManualPromotionState((current) => ({
+        ...current,
+        stage: 'APPROVAL_EXPIRED',
+        lastError: 'Permintaan promosi telah kedaluwarsa'
+      }));
+      return { ok: false, status: 'EXPIRED', stage: 'APPROVAL_EXPIRED', error: 'APPROVAL_EXPIRED' };
+    }
+
+    const isApproved = (res?.record?.status === 'APPROVED' || res?.status === 'APPROVED') && res?.approval_receipt;
+    const isRejected = res?.record?.status === 'REJECTED' || res?.status === 'REJECTED';
+
+    if (isApproved) {
+      await this.storage.updateManualPromotionState((current) => ({
+        ...current,
+        approval: res.approval_receipt,
+        stage: 'APPROVED',
+        lastError: null
+      }));
+      await this.audit.info('MANUAL_PROMOTION_APPROVAL_CONFIRMED', {
+        details: {
+          approval_id: res.approval_receipt.approval_id,
+          status: 'APPROVED',
+          approved_at: res.approval_receipt.approved_at
+        }
+      });
+      return { ok: true, status: 'APPROVED', stage: 'APPROVED', approval: res.approval_receipt };
+    } else if (isRejected) {
+      await this.storage.updateManualPromotionState((current) => ({
+        ...current,
+        stage: 'REJECTED',
+        lastError: 'Permintaan promosi ditolak oleh admin operator'
+      }));
+      return { ok: false, status: 'REJECTED', stage: 'REJECTED', error: 'PROMOTION_REJECTED' };
+    }
+
+    return { ok: true, status: res?.record?.status || res?.status || 'REQUESTED', stage: 'WAITING_FOR_ADMIN_APPROVAL' };
+  }
+
+  async manualExecutePromotion() {
+    if (this.manualPromotionExecuting) {
+      return { ok: false, error: 'PROMOTION_EXECUTION_ALREADY_IN_FLIGHT' };
+    }
+    this.manualPromotionExecuting = true;
+    try {
+      return await this._manualExecutePromotionInternal();
+    } finally {
+      this.manualPromotionExecuting = false;
+    }
+  }
+
+  async _manualExecutePromotionInternal() {
+    let state = await this.storage.getManualPromotionState();
+
+    const failExecution = async (errorMsg, newStage = null) => {
+      await this.storage.updateManualPromotionState((cur) => ({
+        ...cur,
+        stage: newStage || cur.stage,
+        lastError: errorMsg
+      }));
+      await this.audit.warn('MANUAL_PROMOTION_EXECUTE_FAILED', {
+        details: { error: errorMsg, stage: newStage || state?.stage }
+      });
+      return { ok: false, error: errorMsg, stage: newStage || state?.stage };
+    };
+
+    if (!state?.targetArticle) return failExecution('TARGET_ARTICLE_REQUIRED');
+    if (!state?.candidate) return failExecution('CANDIDATE_REQUIRED');
+    if (state?.stage === 'WAITING_FOR_ADMIN_APPROVAL' || !state?.approval) {
+      return failExecution('HUMAN_ADMIN_APPROVAL_REQUIRED');
+    }
+
+    // Strict approval invariance
+    const { approval, targetArticle, candidate } = state;
+
+    // Check expiry
+    const nowMs = Date.now();
+    const expiresAtMs = approval.expires_at ? new Date(approval.expires_at).getTime() : 0;
+    if (expiresAtMs > 0 && nowMs > expiresAtMs) {
+      return failExecution('APPROVAL_EXPIRED', 'APPROVAL_EXPIRED');
+    }
+
+    // Check device binding
+    const globalState = await this.storage.readState();
+    const currentDeviceId = globalState.config?.deviceId || 'dev_local_human_operator_v3';
+    if (approval.device_id && approval.device_id !== currentDeviceId) {
+      return failExecution(`PROMOTION_DEVICE_MISMATCH: Approval bound to '${approval.device_id}', current device is '${currentDeviceId}'`);
+    }
+
+    if (
+      approval.article_slug !== targetArticle.slug ||
+      approval.article_id !== targetArticle.id ||
+      (approval.expected_content_hash || approval.content_hash) !== targetArticle.content_hash ||
+      approval.candidate_sha256 !== candidate.sha256 ||
+      approval.slot_key !== 'featured'
+    ) {
+      return failExecution('APPROVAL_INVARIANT_VIOLATION');
+    }
+
+    if (approval.alt_text && candidate.alt_text && approval.alt_text.trim() !== candidate.alt_text.trim()) {
+      return failExecution(`APPROVAL_ALT_TEXT_MISMATCH: Approval bound to alt '${approval.alt_text}', candidate has '${candidate.alt_text}'`);
+    }
+
+    // Stage 1: Content-addressed R2 upload
+    if (!state.uploadedAsset?.storage_key) {
+      await this.audit.info('MANUAL_R2_UPLOAD_START', {
+        details: {
+          article_slug: targetArticle.slug,
+          candidate_sha256: candidate.sha256
+        }
+      });
+
+      let candidateBytes = null;
+      if (candidate.blob_key) {
+        try {
+          const blobRecord = await this.blobStore.get(candidate.blob_key);
+          if (blobRecord?.bytes) {
+            candidateBytes = cloneBytes(blobRecord.bytes);
+          }
+        } catch (_) {}
+      }
+      if (!candidateBytes && candidate.data_url) {
+        try {
+          candidateBytes = cloneBytes(candidate.data_url);
+        } catch (_) {}
+      }
+      if (!candidateBytes) {
+        return failExecution('LOCAL_CANDIDATE_BYTES_UNAVAILABLE');
+      }
+
+      // Verify SHA integrity of recovered bytes
+      try {
+        const rawBuf = candidateBytes instanceof ArrayBuffer ? candidateBytes : (candidateBytes.buffer || candidateBytes);
+        const digest = await crypto.subtle.digest('SHA-256', rawBuf);
+        const recoveredSha = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+        if (recoveredSha.toLowerCase() !== candidate.sha256.toLowerCase()) {
+          return failExecution(`LOCAL_CANDIDATE_BYTES_UNAVAILABLE: SHA mismatch (expected ${candidate.sha256}, got ${recoveredSha})`);
+        }
+      } catch (shaErr) {
+        return failExecution(`LOCAL_CANDIDATE_BYTES_UNAVAILABLE: ${shaErr.message}`);
+      }
+
+      const ext = candidate.mime === 'image/webp' ? 'webp' : candidate.mime === 'image/png' ? 'png' : 'jpg';
+      let uploadRes;
+      try {
+        uploadRes = await this.apiClient.uploadStandaloneMedia({
+          bytes: candidateBytes,
+          mime: candidate.mime,
+          filename: candidate.filename || `${candidate.sha256}.${ext}`,
+          expectedSha256: candidate.sha256,
+          humanApproval: approval
+        });
+      } catch (err) {
+        return failExecution(err.message, 'APPROVED');
+      }
+
+      await this.audit.info('MANUAL_R2_UPLOAD_CONFIRMED', {
+        details: {
+          storage_key: uploadRes.storage_key,
+          public_url: uploadRes.public_url,
+          sha256: uploadRes.sha256
+        }
+      });
+
+      state = await this.storage.updateManualPromotionState((cur) => ({
+        ...cur,
+        uploadedAsset: {
+          storage_key: uploadRes.storage_key,
+          public_url: uploadRes.public_url,
+          sha256: uploadRes.sha256,
+          upload_id: uploadRes.upload?.upload_id
+        },
+        stage: 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING',
+        lastError: null
+      }));
+    }
+
+    // Stage 2: Canonical asset registration
+    if (!state.uploadedAsset?.asset_id) {
+      let registerRes;
+      try {
+        registerRes = await this.apiClient.registerAsset({
+          upload_id: state.uploadedAsset.upload_id || `upl_standalone_${candidate.sha256.substring(0, 16)}`,
+          derivative_id: `der_manual_${candidate.sha256.substring(0, 16)}`,
+          transform_id: `trf_manual_${candidate.sha256.substring(0, 16)}`,
+          r2_key: state.uploadedAsset.storage_key,
+          storage_key: state.uploadedAsset.storage_key,
+          public_url: state.uploadedAsset.public_url,
+          sha256: candidate.sha256,
+          width: candidate.width,
+          height: candidate.height,
+          mime: candidate.mime,
+          byte_size: candidate.size,
+          file_size: candidate.size,
+          upload_state: 'UPLOADED',
+          status: 'VALIDATED',
+          alt_text: approval.alt_text || candidate.alt_text || ''
+        });
+      } catch (err) {
+        await this.storage.updateManualPromotionState((cur) => ({
+          ...cur,
+          stage: 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING',
+          lastError: err.message
+        }));
+        return { ok: false, error: err.message, stage: 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING' };
+      }
+
+      const assetId = registerRes.asset?.asset_id || registerRes.asset?.id || registerRes.asset_id || registerRes.id;
+      if (!assetId) {
+        const errMsg = 'INVALID_REGISTER_RESPONSE_NO_ASSET_ID';
+        await this.storage.updateManualPromotionState((cur) => ({
+          ...cur,
+          stage: 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING',
+          lastError: errMsg
+        }));
+        return { ok: false, error: errMsg, stage: 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING' };
+      }
+
+      await this.audit.info('MANUAL_ASSET_REGISTERED', {
+        details: {
+          asset_id: assetId,
+          storage_key: state.uploadedAsset.storage_key,
+          sha256: candidate.sha256
+        }
+      });
+
+      state = await this.storage.updateManualPromotionState((cur) => ({
+        ...cur,
+        uploadedAsset: {
+          ...cur.uploadedAsset,
+          asset_id: assetId
+        },
+        stage: 'ASSET_REGISTERED_ATTACHMENT_PENDING',
+        lastError: null
+      }));
+    }
+
+    // Stage 3: Canonical featured attachment
+    await this.audit.info('MANUAL_FEATURED_ATTACH_START', {
+      details: {
+        article_id: targetArticle.id,
+        asset_id: state.uploadedAsset.asset_id,
+        slot_key: 'featured'
+      }
+    });
+
+    let attachRes;
+    try {
+      attachRes = await this.apiClient.attachArticleMedia({
+        article_id: targetArticle.id,
+        asset_id: state.uploadedAsset.asset_id,
+        role: 'featured',
+        slot_key: 'featured',
+        alt_text: approval.alt_text || candidate.alt_text || '',
+        replace_active: true
+      });
+    } catch (err) {
+      await this.storage.updateManualPromotionState((cur) => ({
+        ...cur,
+        stage: 'ASSET_REGISTERED_ATTACHMENT_PENDING',
+        lastError: err.message
+      }));
+      return { ok: false, error: err.message, stage: 'ASSET_REGISTERED_ATTACHMENT_PENDING' };
+    }
+
+    await this.audit.info('MANUAL_FEATURED_ATTACH_CONFIRMED', {
+      details: {
+        article_id: targetArticle.id,
+        asset_id: state.uploadedAsset.asset_id,
+        slot_key: 'featured',
+        relation: attachRes.relation
+      }
+    });
+
+    await this.audit.info('MANUAL_PROMOTION_COMPLETE', {
+      details: {
+        article_id: targetArticle.id,
+        slug: targetArticle.slug,
+        asset_id: state.uploadedAsset.asset_id,
+        storage_key: state.uploadedAsset.storage_key,
+        sha256: candidate.sha256
+      }
+    });
+
+    state = await this.storage.updateManualPromotionState((cur) => ({
+      ...cur,
+      stage: 'COMPLETE',
+      targetArticle: {
+        ...cur.targetArticle,
+        featured_image: cur.uploadedAsset.public_url,
+        image_alt: candidate.alt_text || cur.targetArticle.image_alt
+      },
+      lastError: null
+    }));
+
+    return {
+      ok: true,
+      status: 'COMPLETE',
+      uploadedAsset: state.uploadedAsset,
+      targetArticle: state.targetArticle
+    };
+  }
+
+  async manualResetPromotion() {
+    await this.storage.clearManualPromotionState();
+    return { ok: true };
   }
 }

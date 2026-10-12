@@ -1,7 +1,28 @@
-function cloneBytes(bytes) {
+export function cloneBytes(bytes) {
+  if (!bytes) {
+    throw new Error('Unsupported blob bytes: empty or null');
+  }
   if (bytes instanceof ArrayBuffer) return bytes.slice(0);
   if (ArrayBuffer.isView(bytes)) return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  if (bytes?.arrayBuffer) return bytes.arrayBuffer();
+  if (typeof bytes.arrayBuffer === 'function') return bytes.arrayBuffer();
+  if (Array.isArray(bytes)) {
+    return new Uint8Array(bytes).buffer;
+  }
+  if (typeof bytes === 'string') {
+    const base64Data = bytes.includes(',') ? bytes.split(',')[1] : bytes;
+    if (typeof atob === 'function') {
+      const binaryString = atob(base64Data);
+      const len = binaryString.length;
+      const u8 = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        u8[i] = binaryString.charCodeAt(i);
+      }
+      return u8.buffer;
+    } else if (typeof Buffer !== 'undefined') {
+      const buf = Buffer.from(base64Data, 'base64');
+      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    }
+  }
   throw new Error('Unsupported blob bytes');
 }
 

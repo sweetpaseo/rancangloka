@@ -86,18 +86,20 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   // 4. Registration Params
+  const declaredSha = String(body.sha256 || '').trim();
   const registrationParams: MediaAssetRegistrationParams = {
-    upload_id: String(body.upload_id || body.uploadId || '').trim(),
-    derivative_id: String(body.derivative_id || body.derivativeId || '').trim(),
-    transform_id: String(body.transform_id || body.transformId || '').trim(),
-    r2_key: String(body.r2_key || body.r2Key || '').trim(),
-    sha256: String(body.sha256 || '').trim(),
+    upload_id: String(body.upload_id || body.uploadId || (declaredSha ? `upl_standalone_${declaredSha.substring(0, 16)}` : '')).trim(),
+    derivative_id: String(body.derivative_id || body.derivativeId || (declaredSha ? `der_manual_${declaredSha.substring(0, 16)}` : '')).trim(),
+    transform_id: String(body.transform_id || body.transformId || (declaredSha ? `trf_manual_${declaredSha.substring(0, 16)}` : '')).trim(),
+    r2_key: String(body.r2_key || body.r2Key || body.storage_key || body.storageKey || '').trim(),
+    sha256: declaredSha,
     mime: String(body.mime || body.mime_type || body.mimeType || '').trim(),
     width: Number(body.width),
     height: Number(body.height),
-    byte_size: Number(body.byte_size || body.size || body.byteSize),
+    byte_size: Number(body.byte_size || body.size || body.byteSize || body.file_size),
     role: body.role ? String(body.role).trim() : REGISTERED_MEDIA_ASSET_ROLE,
-    source_type: body.source_type || body.sourceType ? String(body.source_type || body.sourceType).trim() : undefined,
+    alt_text: body.alt_text ? String(body.alt_text).trim() : (body.altText ? String(body.altText).trim() : undefined),
+    source_type: body.source_type || body.sourceType ? String(body.source_type || body.sourceType).trim() : 'manual_upload',
     source_origin: body.source_origin || body.sourceOrigin ? String(body.source_origin || body.sourceOrigin).trim() : undefined,
     provenance: body.provenance && typeof body.provenance === 'object' ? body.provenance : undefined,
     watermark_settings_version: body.watermark_settings_version !== undefined ? Number(body.watermark_settings_version) : undefined,
@@ -107,7 +109,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     slot_key: body.slot_key ? String(body.slot_key).trim() : undefined,
     article_id: body.article_id !== undefined ? Number(body.article_id) : undefined,
     upload_receipt: body.upload_receipt || (body.receipt ? body.receipt : undefined),
-    upload_state: body.upload_state || (body.upload_receipt?.state ? body.upload_receipt.state : undefined)
+    upload_state: body.upload_state || (body.upload_receipt?.state ? body.upload_receipt.state : (body.status === 'VALIDATED' ? 'UPLOADED' : undefined))
   };
 
   // 5. Execute Canonical Media Asset Registration

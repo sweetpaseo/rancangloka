@@ -15,6 +15,28 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 
 
 
+### LOKAMEDIA-V0.1.18-PRODUCTION-READINESS-CLOSEOUT: Dual-Control Manual Published-Media Promotion & Cryptographic Alt-Text Binding 2026-10-12
+
+- **Tujuan & Ruang Lingkup:**
+  - Mencapai kesiapan produksi penuh (*Production Readiness*) untuk ekstensi LokaMedia dan backend promosi media pada versi **v0.1.18**.
+  - Menerapkan arsitektur kontrol ganda (*Dual-Control Authority Separation*): perangkat media terotentikasi hanya dapat mengajukan permohonan promosi (`REQUESTED`), Chief Editor / admin manusia memeriksa dan menyetujui secara kriptografis (`APPROVED`) di antarmuka `/admin/media-promotions`, dan eksekusi promosi dijalankan tepat satu kali (`CONSUMED`).
+  - Menutup defek perambatan deskripsi aksesibilitas (*alt-text propagation closeout*): mewajibkan input teks alt eksplisit di side panel ekstensi, mengikat teks alt ke dalam tanda tangan HMAC dan skema database D1 (`media_promotion_approvals.alt_text` via migrasi `0032`), menampilkan teks alt usulan pada portal admin, serta memperbarui cermin `articles.image_alt` secara kanonikal tanpa kebocoran teks placeholder lama.
+  - Menutup celah keamanan otentikasi perangkat (`DEVICE_AUTH_PREFIX_BYPASS`): menghapus seluruh bypass prefix `lkmd_`/`test_` pada runtime produksi, menegakkan verifikasi hash SHA-256 terhadap baris `media_devices` aktif di D1 lokal, dan memastikan token tidak terdaftar/revoked gagal secara fail-closed.
+  - Membuktikan ketetapan publikasi (*Publication Immutability*): promosi media hanya memodifikasi metadata media (`featured_image`, `image_alt`, `updated_at`), sementara naskah (`content_md`, `content_html`), fingerprint (`content_hash`), status (`PUBLISHED`), jadwal penerbitan (`published_at`), dan tanda terima penerbitan asli (`actual_published_at`) terbukti 100% tidak berubah (zero republishing).
+  - Pembuktian E2E Browser Nyata & Kesiapan Artikel B:
+    - Melanjutkan atestasi `LOKAMEDIA_V0_1_17_TRUE_HUMAN_BROWSER_E2E_PROVEN` pada browser Chromium nyata hingga konfirmasi kanonik di versi v0.1.18.
+    - Menyiapkan dan membuktikan kesiapan berkas cover Artikel B (`artifacts/article-b-cover-1315x660.webp`, SHA-256 `8ecd77ff40bb4d933e27e44980bcec9ebb040e0cb971de72e5387ff6b463247d`, alt: `"Detail sambungan kusen aluminium, kaca, dan dinding pada jendela rumah"`) melalui dry-run tanpa mutasi database produksi.
+- **Hasil & Status Keselamatan:**
+  - Seluruh 15 kasus pengujian pada `scripts/test-lokamedia-alt-text-closeout.js` (Kasus A s/d O) lulus 100% hijau (15/15 closeout cases PASS).
+  - Seluruh rangkaian test suite LokaMedia (15+ suite, >200 tes) lulus tanpa regresi.
+  - Typecheck TypeScript (`npx tsc --noEmit`) dan build Astro (`npm run build`) bersih tanpa error.
+  - Secret scan: Nol kredensial plaintext, token hash, session secret, atau signature yang bocor.
+  - Pembersihan canary lokal berhasil dilakukan tanpa mengorbankan fixture tes otomatis.
+  - Klasifikasi: **`LOKAMEDIA_V0_1_18_PRODUCTION_READY`**.
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`.
+
+---
+
 ### LOKAMEDIA-REAL-BROWSER-PHASE-B-SEAL-1: Real-Browser Human Approval E2E Attestation & Seal 2026-10-10
 
 - **Tujuan & Ruang Lingkup:**

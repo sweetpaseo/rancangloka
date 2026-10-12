@@ -1,0 +1,275 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db';
+import { listPendingPromotionRequests } from '../../lib/media/promotion-approval';
+
+const db = await getDb(Astro.locals);
+const requests = await listPendingPromotionRequests(db);
+
+const pendingRequests = requests.filter((r: any) => r.status === 'REQUESTED' && new Date(r.expires_at).getTime() > Date.now());
+const historyRequests = requests.filter((r: any) => r.status !== 'REQUESTED' || new Date(r.expires_at).getTime() <= Date.now());
+---
+
+<AdminLayout title="Media Promotion Dual-Control">
+  <div class="max-w-[1520px] mx-auto space-y-6">
+    <!-- Header Banner -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-md bg-[#0066ee]/10 text-[#0066ee] font-mono text-[10px] font-bold uppercase tracking-wider">
+            DUAL-CONTROL GATE
+          </span>
+          <span class="text-slate-300">•</span>
+          <span class="text-xs font-mono text-slate-500">Persetujuan Manusia Independen</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-outfit font-black text-slate-900 tracking-tight mt-1">
+          Promosi Media Manual Artikel Publikasi
+        </h1>
+        <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+          Setiap permintaan promosi gambar lokal ke artikel publikasi memerlukan persetujuan eksplisit operator admin. Kredensial media-device tidak dapat menyetujui dirinya sendiri.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <button
+          onclick="window.location.reload()"
+          class="rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-2 text-xs font-outfit font-bold text-slate-700 transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+        >
+          <span>🔄 Segarkan Daftar</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Pending Requests -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-base font-outfit font-bold text-slate-900">
+            Permintaan Menunggu Persetujuan
+          </h2>
+          <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono text-xs font-bold">
+            {pendingRequests.length}
+          </span>
+        </div>
+        <span class="text-xs font-mono text-slate-400">TTL: 15 menit per challenge</span>
+      </div>
+
+      {pendingRequests.length === 0 ? (
+        <div class="py-12 text-center text-slate-400 text-sm font-outfit">
+          <p class="text-2xl mb-2">🛡️</p>
+          <p class="font-semibold text-slate-600">Tidak ada permintaan promosi yang menunggu persetujuan.</p>
+          <p class="text-xs text-slate-400 mt-1">Gunakan ekstensi LokaMedia untuk mengajukan promosi gambar artikel.</p>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 gap-4">
+          {pendingRequests.map((req: any) => (
+            <div id={`card-${req.approval_id}`} class="border border-slate-200 rounded-xl p-5 hover:border-blue-300 transition bg-slate-50/50 space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                      {req.approval_id}
+                    </span>
+                    <span class="text-xs font-mono text-slate-400">Slot: <strong>{req.slot_key}</strong></span>
+                  </div>
+                  <h3 class="text-base font-outfit font-black text-slate-900 mt-1">
+                    {req.article_title || req.article_slug}
+                  </h3>
+                  <p class="text-xs font-mono text-slate-500">
+                    Slug: <code class="text-slate-700 font-bold">{req.article_slug}</code>
+                  </p>
+                </div>
+                <div class="text-right">
+                  <span class="inline-block px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-mono text-xs font-bold">
+                    MENUNGGU REVIEW
+                  </span>
+                  <div class="text-[11px] font-mono text-slate-400 mt-1">
+                    Expires: {new Date(req.expires_at).toLocaleTimeString('id-ID')}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Technical Fingerprints -->
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
+                <div class="bg-white p-2.5 rounded-lg border border-slate-200/80">
+                  <div class="text-[10px] text-slate-400 uppercase font-bold">Candidate SHA-256</div>
+                  <div class="text-slate-800 font-bold truncate mt-0.5" title={req.candidate_sha256}>
+                    {req.candidate_sha256.substring(0, 16)}...{req.candidate_sha256.substring(48)}
+                  </div>
+                </div>
+                <div class="bg-white p-2.5 rounded-lg border border-slate-200/80">
+                  <div class="text-[10px] text-slate-400 uppercase font-bold">Content Hash Artikel</div>
+                  <div class="text-slate-800 font-bold truncate mt-0.5" title={req.content_hash}>
+                    {req.content_hash.substring(0, 16)}...{req.content_hash.substring(48)}
+                  </div>
+                </div>
+                <div class="bg-white p-2.5 rounded-lg border border-slate-200/80">
+                  <div class="text-[10px] text-slate-400 uppercase font-bold">Dimensi & MIME</div>
+                  <div class="text-slate-800 font-bold mt-0.5">
+                    {req.candidate_width ? `${req.candidate_width}×${req.candidate_height}` : 'N/A'} • {req.candidate_mime || 'image/webp'}
+                  </div>
+                </div>
+                <div class="bg-white p-2.5 rounded-lg border border-slate-200/80">
+                  <div class="text-[10px] text-slate-400 uppercase font-bold">Requesting Device</div>
+                  <div class="text-slate-800 font-bold truncate mt-0.5" title={req.device_id}>
+                    {req.device_id}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Proposed Alt Text (Accessibility Review) -->
+              <div class="bg-white p-3 rounded-xl border border-slate-200/80 text-xs">
+                <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Proposed Alt Text (Aksesibilitas Gambar)</div>
+                <div class="text-slate-800 font-medium font-sans bg-slate-50 p-2.5 rounded-lg border border-slate-100" id={`alt-text-${req.approval_id}`}>
+                  {req.alt_text ? req.alt_text : <span class="text-slate-400 italic">Tidak ada alt text</span>}
+                </div>
+              </div>
+
+              <!-- Action Controls -->
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onclick={`rejectPromotion('${req.approval_id}')`}
+                  class="px-4 py-2 text-xs font-outfit font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition cursor-pointer"
+                >
+                  ✕ Tolak Permintaan
+                </button>
+                <button
+                  type="button"
+                  id={`btn-approve-${req.approval_id}`}
+                  onclick={`approvePromotion('${req.approval_id}')`}
+                  class="px-5 py-2 text-xs font-outfit font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  ✓ Setujui Promosi Media
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <!-- History / Recent Audits -->
+    {historyRequests.length > 0 && (
+      <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
+        <h2 class="text-base font-outfit font-bold text-slate-900 border-b border-slate-100 pb-3">
+          Riwayat Keputusan Promosi Terakhir
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs font-mono">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 text-[10px] uppercase">
+                <th class="py-2 px-3">Request ID</th>
+                <th class="py-2 px-3">Artikel</th>
+                <th class="py-2 px-3">Candidate SHA</th>
+                <th class="py-2 px-3">Status</th>
+                <th class="py-2 px-3">Approver</th>
+                <th class="py-2 px-3">Waktu</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-700">
+              {historyRequests.slice(0, 10).map((r: any) => (
+                <tr class="hover:bg-slate-50/50">
+                  <td class="py-2.5 px-3 font-bold text-slate-900">{r.approval_id}</td>
+                  <td class="py-2.5 px-3 truncate max-w-[200px]" title={r.article_slug}>{r.article_slug}</td>
+                  <td class="py-2.5 px-3 text-slate-500 truncate max-w-[140px]">{r.candidate_sha256.substring(0, 12)}...</td>
+                  <td class="py-2.5 px-3">
+                    <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      r.status === 'CONSUMED' ? 'bg-blue-100 text-blue-800' :
+                      r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+                      r.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      {r.status}
+                    </span>
+                  </td>
+                  <td class="py-2.5 px-3 text-slate-500">{r.approved_by || '-'}</td>
+                  <td class="py-2.5 px-3 text-slate-400">{new Date(r.requested_at).toLocaleString('id-ID')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+  </div>
+
+  <script is:inline>
+    async function approvePromotion(requestId) {
+      const btn = document.getElementById(`btn-approve-${requestId}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Memproses...';
+      }
+
+      try {
+        const res = await fetch(`/api/admin/media-promotions/${requestId}/approve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.status !== 'success') {
+          alert('Gagal menyetujui promosi: ' + (data.message || data.code || 'Error'));
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '✓ Setujui Promosi Media';
+          }
+          return;
+        }
+
+        const card = document.getElementById(`card-${requestId}`);
+        if (card) {
+          card.classList.add('bg-emerald-50', 'border-emerald-300');
+          card.innerHTML = `
+            <div class="text-center py-4 text-emerald-800 font-outfit">
+              <span class="text-2xl">✓</span>
+              <p class="font-bold text-sm mt-1">Promosi Berhasil Disetujui!</p>
+              <p class="text-xs font-mono text-emerald-600 mt-0.5">Signature terbit. Ekstensi LokaMedia sekarang dapat melakukan upload dan attachment.</p>
+            </div>
+          `;
+        }
+      } catch (err) {
+        alert('Kesalahan jaringan: ' + err.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '✓ Setujui Promosi Media';
+        }
+      }
+    }
+
+    async function rejectPromotion(requestId) {
+      const reason = prompt('Masukkan alasan penolakan promosi:');
+      if (reason === null) return;
+
+      try {
+        const res = await fetch(`/api/admin/media-promotions/${requestId}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: reason || 'Ditolak oleh admin operator' })
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.status !== 'success') {
+          alert('Gagal menolak promosi: ' + (data.message || data.code || 'Error'));
+          return;
+        }
+
+        const card = document.getElementById(`card-${requestId}`);
+        if (card) {
+          card.classList.add('bg-red-50', 'border-red-300');
+          card.innerHTML = `
+            <div class="text-center py-4 text-red-800 font-outfit">
+              <span class="text-2xl">✕</span>
+              <p class="font-bold text-sm mt-1">Permintaan Promosi Ditolak.</p>
+            </div>
+          `;
+        }
+      } catch (err) {
+        alert('Kesalahan jaringan: ' + err.message);
+      }
+    }
+  </script>
+</AdminLayout>

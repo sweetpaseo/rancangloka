@@ -552,18 +552,6 @@ export async function authenticateDeviceRequest(
     };
   }
 
-  // 3. Local staging / test environment bypass if no secret configured and valid scope declared
-  if (!expectedKey && ALLOWED_MEDIA_SCOPES.has(declaredScope)) {
-    // In local dev/staging harness without keys, allow test tokens with prefix 'test_' or 'lkmd_'
-    if (token.startsWith('lkmd_') || token.startsWith('test_') || token === 'staging-media-token') {
-      return {
-        authenticated: true,
-        deviceId: 'dev_test_harness',
-        scope: declaredScope
-      };
-    }
-  }
-
   return {
     authenticated: false,
     error: 'Token perangkat LokaMedia tidak valid atau telah dicabut.',

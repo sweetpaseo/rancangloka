@@ -244,7 +244,7 @@ test('Transient HTTP_500 error is cleared when connection returns online in refr
 
 test('1. Runtime version comes from manifest.version declaration', () => {
   assert.equal(typeof manifest.version, 'string');
-  assert.equal(manifest.version, '0.1.10', 'Manifest version must be bumped to 0.1.10');
+  assert.equal(manifest.version, '0.1.18', 'Manifest version must be bumped to 0.1.18');
 });
 
 test('2. Stale runtime version: Run Once disabled and reason = Reload required', () => {

@@ -691,10 +691,10 @@ test('11. No arbitrary ChatGPT tab fallback when bound tab is unavailable', asyn
 });
 
 // ---------------------------------------------------------------------------
-// TEST 12: Extension version is 0.1.10
+// TEST 12: Extension version is 0.1.18
 // ---------------------------------------------------------------------------
-test('12. Extension version bumped to 0.1.10 across constants and manifest', () => {
+test('12. Extension version bumped to 0.1.18 across constants and manifest', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
-  assert.equal(manifest.version, '0.1.10');
-  assert.equal(EXTENSION_VERSION, '0.1.10');
+  assert.equal(manifest.version, '0.1.18');
+  assert.equal(EXTENSION_VERSION, '0.1.18');
 });

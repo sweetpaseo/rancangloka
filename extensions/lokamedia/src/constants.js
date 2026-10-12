@@ -1,4 +1,4 @@
-export const EXTENSION_VERSION = '0.1.10';
+export const EXTENSION_VERSION = '0.1.18';
 export const STORAGE_SCHEMA_VERSION = 1;
 export const LOKAMEDIA_PROTOCOL_VERSION = 1;
 
@@ -27,7 +27,7 @@ export const STOP_ACTIONS = new Set([
 export const DEFAULT_CONFIG = {
   serverBaseUrl: 'http://localhost:4321',
   deviceToken: '',
-  deviceId: 'dev_chr_local',
+  deviceId: 'dev_local_human_operator_v3',
   enabled: false,
   acquisitionProbe: false,
   providerResultProbe: false,

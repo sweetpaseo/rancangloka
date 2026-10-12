@@ -66,6 +66,8 @@ export interface ArticleMediaAttachParams {
   caption?: string | null;
   sort_order?: number | null;
   job_id?: string | null;
+  replace_active?: boolean | null;
+  alt_text?: string | null;
 }
 
 export interface AttachedArticleMedia {
@@ -269,13 +271,43 @@ export async function attachArticleMedia(
       };
     }
 
-    // Different asset in same active slot: FAIL CLOSED
-    throw new MediaAttachmentError(
-      'SLOT_OCCUPIED_CONFLICT',
-      `Editorial slot '${slot_key}' pada artikel ${article_id} sudah ditempati oleh asset aktif '${existingActive.asset_id}'. ` +
-      `Penggantian asset memerlukan aksi replacement eksplisit.`,
-      409
-    );
+    if (params.replace_active) {
+      // Controlled replacement: deactivate current occupant
+      await db
+        .prepare('UPDATE article_media SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_active = 1')
+        .bind(Number(existingActive.id))
+        .run();
+
+      try {
+        const detachAuditId = `aud_det_${existingActive.asset_id.substring(4)}_${Date.now()}`;
+        await db
+          .prepare(
+            `INSERT INTO media_asset_audit (
+              audit_id, asset_id, action, role, upload_id, derivative_id, transform_id, sha256, r2_key, safe_metadata_json
+            ) VALUES (?, ?, 'DETACH', ?, NULL, NULL, NULL, '', '', ?)`
+          )
+          .bind(
+            detachAuditId,
+            existingActive.asset_id,
+            existingActive.role,
+            JSON.stringify({
+              article_id,
+              slot_key,
+              action: 'DETACH_REPLACED',
+              replaced_by_asset_id: cleanAssetId
+            })
+          )
+          .run();
+      } catch (_) {}
+    } else {
+      // Different asset in same active slot without replace_active: FAIL CLOSED
+      throw new MediaAttachmentError(
+        'SLOT_OCCUPIED_CONFLICT',
+        `Editorial slot '${slot_key}' pada artikel ${article_id} sudah ditempati oleh asset aktif '${existingActive.asset_id}'. ` +
+        `Penggantian asset memerlukan aksi replacement eksplisit.`,
+        409
+      );
+    }
   }
 
   // 6. Insert new canonical relation
@@ -374,6 +406,28 @@ export async function attachArticleMedia(
   } catch (auditErr: any) {
     // Non-blocking audit warning
     console.warn('Media attachment audit write warning:', auditErr.message);
+  }
+
+  // 8. Mirror to articles table if featured slot
+  if (editorialRole === 'featured' || slot_key === 'featured') {
+    const publicUrl = asset.storage_key.startsWith('/') ? asset.storage_key : `/${asset.storage_key}`;
+    const explicitAlt = params.alt_text && String(params.alt_text).trim().length > 0
+      ? String(params.alt_text).trim()
+      : (asset.alt_text && String(asset.alt_text).trim().length > 0 ? String(asset.alt_text).trim() : null);
+    try {
+      await db
+        .prepare(
+          `UPDATE articles
+           SET featured_image = ?,
+               image_alt = COALESCE(?, image_alt),
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        )
+        .bind(publicUrl, explicitAlt, article_id)
+        .run();
+    } catch (updateErr: any) {
+      console.warn('Media attachment articles mirror warning:', updateErr.message);
+    }
   }
 
   return {

@@ -398,7 +398,7 @@ test('6. Server-Side Defense: POST /api/internal/v1/media/upload fails closed wi
       };
     }
   };
-  const mockLocals = { db: mockDb, runtime: { env: { DB: mockDb, MEDIA_WRITE_KEY: 'test_token' } } };
+  const mockLocals = { db: mockDb, runtime: { env: { DB: mockDb, MEDIA_UPLOAD_KEY: 'test_token' } } };
 
   // 1. Buggy extension client sends upload without approval_record
   {

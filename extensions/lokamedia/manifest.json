@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "RancangLoka LokaMedia",
-  "version": "0.1.10",
+  "version": "0.1.18",
   "description": "Durable operator extension core for server-authoritative LokaMedia jobs.",
   "permissions": ["storage", "alarms", "tabs", "scripting", "sidePanel"],
   "host_permissions": ["http://localhost/*", "https://rancangloka.com/*", "https://chatgpt.com/*"],

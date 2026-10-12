@@ -159,7 +159,29 @@ const ids = [
   'generating-run-id',
   'generating-provider-tab',
   'generating-elapsed',
-  'result-preview-card'
+  'result-preview-card',
+  'manual-promotion-card',
+  'manual-article-slug',
+  'manual-btn-resolve',
+  'manual-article-attestation',
+  'manual-article-title',
+  'manual-article-status',
+  'manual-article-hash',
+  'manual-current-featured',
+  'manual-file-input',
+  'manual-btn-select-file',
+  'manual-candidate-preview-box',
+  'manual-preview-image',
+  'manual-candidate-filename',
+  'manual-candidate-dimensions',
+  'manual-candidate-mime',
+  'manual-candidate-size',
+  'manual-candidate-sha',
+  'manual-status-banner',
+  'manual-btn-approve',
+  'manual-btn-check-status',
+  'manual-btn-execute',
+  'manual-btn-reset'
 ];
 
 function state(patch = {}) {

@@ -131,7 +131,29 @@ export function validateSidePanelElements(doc) {
     'generating-run-id',
     'generating-provider-tab',
     'generating-elapsed',
-    'result-preview-card'
+    'result-preview-card',
+    'manual-promotion-card',
+    'manual-article-slug',
+    'manual-btn-resolve',
+    'manual-article-attestation',
+    'manual-article-title',
+    'manual-article-status',
+    'manual-article-hash',
+    'manual-current-featured',
+    'manual-file-input',
+    'manual-btn-select-file',
+    'manual-candidate-preview-box',
+    'manual-preview-image',
+    'manual-candidate-filename',
+    'manual-candidate-dimensions',
+    'manual-candidate-mime',
+    'manual-candidate-size',
+    'manual-candidate-sha',
+    'manual-status-banner',
+    'manual-btn-approve',
+    'manual-btn-check-status',
+    'manual-btn-execute',
+    'manual-btn-reset'
   ];
   const missing = ids.filter((id) => !doc.querySelector(`#${id}`));
   return { ok: missing.length === 0, missing };
@@ -360,6 +382,7 @@ export function getJobWorkflowDetails(state = {}, provider = {}, explicitJobId =
       can_approve_upload: false,
       can_reject: false,
       can_assign_featured: false,
+      can_select_fallback_file: false,
       generating: null,
       preview: null
     };
@@ -413,6 +436,11 @@ export function getJobWorkflowDetails(state = {}, provider = {}, explicitJobId =
   let canAssignFeatured = false;
 
   const localState = current.local_state || (current.status === 'COMPLETE' ? 'UPLOAD_COMPLETE' : current.status);
+  const canSelectFallbackFile = Boolean(
+    current &&
+    !['COMPLETE', 'UPLOAD_COMPLETE'].includes(localState) &&
+    !isConsumed
+  );
 
   if (isNeedsAttention) {
     stage = 'NEEDS ATTENTION';
@@ -536,6 +564,7 @@ export function getJobWorkflowDetails(state = {}, provider = {}, explicitJobId =
     can_approve_upload: canApproveUpload,
     can_reject: canReject,
     can_assign_featured: canAssignFeatured,
+    can_select_fallback_file: canSelectFallbackFile,
     is_consumed: isConsumed,
     job_error: current.last_error || opState?.last_error || (isGateForThisJob ? gate?.last_error : null) || null,
     generating,

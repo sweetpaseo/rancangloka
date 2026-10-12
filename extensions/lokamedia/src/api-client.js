@@ -246,5 +246,72 @@ export class ApiClient {
 
     return payload.receipt ?? null;
   }
+
+  async resolveArticle(slug) {
+    return this.request(`/api/internal/v1/media/articles/resolve?slug=${encodeURIComponent(slug)}`, {
+      method: 'GET',
+      headers: this.headers()
+    });
+  }
+
+
+  async uploadStandaloneMedia({ bytes, mime = 'image/webp', filename = 'manual_promotion.webp', expectedSha256, humanApproval, onProgress }) {
+    const total = bytes?.byteLength ?? bytes?.length ?? 0;
+    onProgress?.({ bytesSent: 0, bytesTotal: total });
+
+    const form = new FormData();
+    form.set('expected_sha256', expectedSha256);
+    form.set('human_approval', typeof humanApproval === 'string' ? humanApproval : JSON.stringify(humanApproval));
+    form.set('file', new Blob([bytes], { type: mime }), filename);
+
+    const response = await this.fetchImpl(`${this.baseUrl}/api/internal/v1/media/assets/upload`, {
+      method: 'POST',
+      headers: this.deviceToken ? { Authorization: `Bearer ${this.deviceToken}` } : {},
+      body: form
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.message ?? payload.code ?? payload.error ?? `HTTP_${response.status}`);
+      error.code = payload.code ?? payload.error ?? 'UPLOAD_FAILED';
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
+    }
+
+    onProgress?.({ bytesSent: total, bytesTotal: total });
+    return payload;
+  }
+
+  async registerAsset(payload) {
+    return this.request('/api/internal/v1/media/assets/register', {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async requestPromotionApproval(payload) {
+    return this.request('/api/internal/v1/media/promotions/request', {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async getPromotionStatus(requestId) {
+    return this.request(`/api/internal/v1/media/promotions/${requestId}`, {
+      method: 'GET',
+      headers: this.headers()
+    });
+  }
+
+  async attachArticleMedia(payload) {
+    return this.request('/api/internal/v1/media/article-media/attach', {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(payload)
+    });
+  }
 }
 

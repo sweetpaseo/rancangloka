@@ -11,7 +11,7 @@
       <header class="topbar">
         <div>
           <strong>LokaMedia</strong>
-          <span id="extension-version" class="version-badge">Extension v0.1.10 — CURRENT</span>
+          <span id="extension-version" class="version-badge">Extension v0.1.15 — CURRENT</span>
         </div>
         <span id="panel-status" role="status" aria-live="polite">Starting...</span>
       </header>
@@ -64,9 +64,61 @@
           <button id="approve-upload" type="button" class="btn-primary" style="width: 100%;" disabled>Approve &amp; Upload</button>
           <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
             <input type="file" id="local-file-input" accept="image/png,image/jpeg,image/webp" style="display: none;">
-            <button id="btn-select-file" type="button" style="width: 100%;">Select Image File (Fallback)</button>
+            <button id="btn-select-file" type="button" style="width: 100%;" disabled>Select Fallback for Active Job</button>
           </div>
           <button id="assign-featured" type="button" style="width: 100%; margin-top: 4px;" disabled>Assign as Featured</button>
+        </div>
+      </section>
+
+      <section id="manual-promotion-card" class="manual-promotion-card">
+        <h2>Manual Media Promotion</h2>
+        <div class="manual-guidance" style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">
+          Human-controlled local derivative promotion for published articles.
+          <br><strong>Step 1:</strong> Resolve article slug &bull; <strong>Step 2:</strong> Select local image &bull; <strong>Step 3:</strong> Request approval.
+        </div>
+
+        <label for="manual-article-slug">Article Slug</label>
+        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+          <input type="text" id="manual-article-slug" placeholder="canonical-article-slug" style="flex: 1; font-family: monospace; font-size: 11px;">
+          <button id="manual-btn-resolve" type="button">Resolve</button>
+        </div>
+
+        <div id="manual-article-attestation" style="background: var(--surface-2); padding: 8px; border-radius: 4px; border: 1px solid var(--line); margin-bottom: 8px; font-size: 11px; display: none;">
+          <div class="status-row"><span>Title</span><strong id="manual-article-title">--</strong></div>
+          <div class="status-row"><span>Status</span><strong id="manual-article-status">--</strong></div>
+          <div class="status-row"><span>Content Hash</span><strong id="manual-article-hash" style="font-family: monospace;">--</strong></div>
+          <div class="status-row"><span>Current Featured</span><strong id="manual-current-featured" style="word-break: break-all; font-family: monospace;">--</strong></div>
+        </div>
+
+        <div style="margin-bottom: 8px;">
+          <input type="file" id="manual-file-input" accept="image/png,image/jpeg,image/webp" style="display: none;">
+          <button id="manual-btn-select-file" type="button" class="btn-primary" style="width: 100%; font-weight: 600;">Select Local Candidate Image</button>
+        </div>
+
+        <div id="manual-candidate-preview-box" style="display: none; background: var(--surface-2); padding: 8px; border-radius: 4px; border: 1px solid var(--line); margin-bottom: 8px;">
+          <div style="text-align: center; margin-bottom: 6px;">
+            <img id="manual-preview-image" alt="Manual Candidate Preview" style="max-width: 100%; max-height: 160px; border-radius: 4px; border: 1px solid var(--line);">
+          </div>
+          <div class="status-row"><span>Filename</span><strong id="manual-candidate-filename" style="word-break: break-all;">--</strong></div>
+          <div class="status-row"><span>Target Slot</span><strong>featured</strong></div>
+          <div class="status-row"><span>Dimensions</span><strong id="manual-candidate-dimensions">--</strong></div>
+          <div class="status-row"><span>MIME Type</span><strong id="manual-candidate-mime">--</strong></div>
+          <div class="status-row"><span>File Size</span><strong id="manual-candidate-size">--</strong></div>
+          <div class="status-row"><span>SHA-256</span><strong id="manual-candidate-sha" style="font-family: monospace;">--</strong></div>
+        </div>
+
+        <div id="manual-alt-box" style="margin-bottom: 8px;">
+          <label for="manual-alt-text" style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px;">Alt Text (Required / Wajib)</label>
+          <textarea id="manual-alt-text" rows="2" placeholder="Deskripsi aksesibilitas gambar (wajib)..." style="width: 100%; font-size: 11px; padding: 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--line); resize: vertical;"></textarea>
+        </div>
+
+        <div id="manual-status-banner" style="margin-bottom: 8px; font-size: 11px; font-weight: 600; display: none;"></div>
+
+        <div class="workflow-actions" style="display: flex; flex-direction: column; gap: 6px;">
+          <button id="manual-btn-approve" type="button" class="btn-primary" style="width: 100%;" disabled>Request Promotion Approval</button>
+          <button id="manual-btn-check-status" type="button" style="width: 100%; display: none;">Check Admin Approval Status</button>
+          <button id="manual-btn-execute" type="button" class="btn-primary" style="width: 100%; display: none;" disabled>Promote to Featured</button>
+          <button id="manual-btn-reset" type="button" style="width: 100%;">Reset Manual Promotion</button>
         </div>
       </section>
 
@@ -129,11 +181,12 @@
       <details>
         <summary>Configuration</summary>
         <div class="runtime-meta">
-          <span>Runtime: <strong id="runtime-version-display">v0.1.10</strong></span>
+          <span>Runtime: <strong id="runtime-version-display">v0.1.18</strong></span>
           <span>Boot: <strong id="runtime-boot-id">--</strong></span>
         </div>
         <label>Server <input id="server" type="url"></label>
         <label>Device token <input id="token" type="password" autocomplete="off"></label>
+        <label>Device ID <input id="device-id" type="text" placeholder="dev_local_human_operator_v3"></label>
         <button id="save">Save</button>
       </details>
 

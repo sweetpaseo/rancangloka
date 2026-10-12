@@ -42,6 +42,7 @@ const DEFAULT_STATE = {
     transfers: []
   },
   currentJobId: null,
+  manualPromotionState: null,
   phase4bSingleRun: null,
   phase4bJobGates: {},
   jobOperationalStates: {},
@@ -543,8 +544,47 @@ export class ExtensionStorage {
         state.auditLog.lastAction = 'Uploading';
       } else if (record.event_code === 'ATTACHMENT_CONFIRMED' || record.event_code === 'JOB_COMPLETE') {
         state.auditLog.lastAction = 'Upload complete & confirmed';
+      } else if (record.event_code === 'MANUAL_PROMOTION_TARGET_RESOLVED') {
+        state.auditLog.lastAction = 'Target article resolved';
+      } else if (record.event_code === 'MANUAL_PROMOTION_FILE_SELECTED') {
+        state.auditLog.lastAction = 'Local file selected';
+      } else if (record.event_code === 'MANUAL_PROMOTION_APPROVAL_RECORDED') {
+        state.auditLog.lastAction = 'Manual promotion approved';
+      } else if (record.event_code === 'MANUAL_R2_UPLOAD_START') {
+        state.auditLog.lastAction = 'Uploading standalone media to R2';
+      } else if (record.event_code === 'MANUAL_ASSET_REGISTERED') {
+        state.auditLog.lastAction = 'Asset registered';
+      } else if (record.event_code === 'MANUAL_PROMOTION_COMPLETE') {
+        state.auditLog.lastAction = 'Manual promotion complete';
       }
       return record;
+    });
+  }
+
+  async getManualPromotionState() {
+    const state = await this.readState();
+    return clone(state.manualPromotionState ?? null);
+  }
+
+  async updateManualPromotionState(patchOrMutator) {
+    return this.update((state) => {
+      const current = state.manualPromotionState ?? {
+        targetArticle: null,
+        candidate: null,
+        approval: null,
+        stage: 'IDLE',
+        uploadedAsset: null,
+        lastError: null
+      };
+      const next = typeof patchOrMutator === 'function' ? patchOrMutator(current) : { ...current, ...clone(patchOrMutator) };
+      state.manualPromotionState = next;
+      return next;
+    });
+  }
+
+  async clearManualPromotionState() {
+    return this.update((state) => {
+      state.manualPromotionState = null;
     });
   }
 

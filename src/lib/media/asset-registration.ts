@@ -62,6 +62,7 @@ export interface MediaAssetRegistrationParams {
   height: number;
   byte_size: number;
   role?: string;
+  alt_text?: string;
   source_type?: 'manual_upload' | 'lokamedia_extension' | 'fal_generated' | string;
   source_origin?: string;
   provenance?: Record<string, any>;
@@ -383,16 +384,16 @@ export async function registerMediaAsset(
   const provenanceJson = JSON.stringify(provenancePayload);
   const publicUrl = `/${r2_key}`;
   const nowIso = new Date().toISOString();
+  const cleanAltText = params.alt_text ? params.alt_text.trim() : '';
 
   try {
-    // Try insert with additive columns (0016 schema)
     await db
       .prepare(
         `INSERT INTO media_assets (
           asset_id, media_type, source_type, storage_key, public_url,
           mime_type, width, height, file_size, sha256, alt_text, status,
           role, upload_id, derivative_id, transform_id, provenance_json
-        ) VALUES (?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         assetId,
@@ -404,6 +405,7 @@ export async function registerMediaAsset(
         height,
         byte_size,
         sha256,
+        cleanAltText,
         MEDIA_ASSET_REGISTERED_STATE,
         canonicalRole,
         upload_id,
@@ -456,7 +458,7 @@ export async function registerMediaAsset(
             `INSERT INTO media_assets (
               asset_id, media_type, source_type, storage_key, public_url,
               mime_type, width, height, file_size, sha256, alt_text, status
-            ) VALUES (?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, '', ?)`
+            ) VALUES (?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .bind(
             assetId,
@@ -468,6 +470,7 @@ export async function registerMediaAsset(
             height,
             byte_size,
             sha256,
+            cleanAltText,
             MEDIA_ASSET_REGISTERED_STATE
           )
           .run();

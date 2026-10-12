@@ -109,11 +109,11 @@ async function runTests() {
   // TEST 1: Version alignment across manifest, constants, and server handshake
   {
     const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
-    assert.equal(manifest.version, '0.1.10', 'manifest.json must be 0.1.10');
-    assert.equal(EXTENSION_VERSION, '0.1.10', 'constants.js EXTENSION_VERSION must be 0.1.10');
-    assert.equal(EXPECTED_LOKAMEDIA_EXTENSION_VERSION, '0.1.10', 'Server expected version must be 0.1.10');
+    assert.equal(manifest.version, '0.1.18', 'manifest.json must be 0.1.18');
+    assert.equal(EXTENSION_VERSION, '0.1.18', 'constants.js EXTENSION_VERSION must be 0.1.18');
+    assert.equal(EXPECTED_LOKAMEDIA_EXTENSION_VERSION, '0.1.18', 'Server expected version must be 0.1.18');
     assert.equal(PROVIDER_OPERATION_TIMEOUT_MS, 120000, 'PROVIDER_OPERATION_TIMEOUT_MS must be 120000');
-    pass('1. Canonical version 0.1.10 and PROVIDER_OPERATION_TIMEOUT_MS 120000 aligned across system');
+    pass('1. Canonical version 0.1.18 and PROVIDER_OPERATION_TIMEOUT_MS 120000 aligned across system');
   }
 
   // TEST 2: Provider operation exceeding old 15s boundary succeeds within 120s UI timeout
@@ -338,7 +338,7 @@ async function runTests() {
     const initializedState = await storage.initialize();
 
     // A: extension_version reconciled to runtime manifest/constant
-    assert.equal(initializedState.extension_version, '0.1.10', 'extension_version must be migrated to runtime 0.1.10');
+    assert.equal(initializedState.extension_version, '0.1.18', 'extension_version must be migrated to runtime 0.1.18');
 
     // E: expected_extension_version NOT manufactured, retains persisted server expectation 0.1.8
     assert.equal(initializedState.expected_extension_version, '0.1.8', 'expected_extension_version must NOT be overwritten with runtime version');
@@ -352,7 +352,7 @@ async function runTests() {
     assert(canaryJob, 'Canary job operational state must be preserved');
     assert.equal(canaryJob.candidate?.sha256, 'bad12f705a150e4181be108def8e2cab4fb059f6916c2403f028524d82597235');
 
-    pass('6. Scenario A & E: extension_version migrates to 0.1.10 while last-known expected_extension_version (0.1.8) is preserved');
+    pass('6. Scenario A & E: extension_version migrates to 0.1.18 while last-known expected_extension_version (0.1.8) is preserved');
   }
 
   // TEST 7 (Scenario D Storage): Fresh storage initialization with no prior handshake leaves expected_extension_version = null
@@ -360,42 +360,42 @@ async function runTests() {
     const storage = ExtensionStorage.memory();
     const initialized = await storage.initialize();
 
-    assert.equal(initialized.extension_version, '0.1.10');
+    assert.equal(initialized.extension_version, '0.1.18');
     assert.equal(initialized.expected_extension_version, null, 'Unconnected expected_extension_version must be null, not manufactured');
     pass('7. Scenario D Storage: Unconnected state leaves expected_extension_version null without fabricated compatibility');
   }
 
-  // TEST 8 (Scenario B UI): Runtime 0.1.9 vs server expected 0.1.8 detects mismatch (RELOAD REQUIRED, NOT CURRENT)
+  // TEST 8 (Scenario B UI): Runtime 0.1.18 vs server expected 0.1.8 detects mismatch (RELOAD REQUIRED, NOT CURRENT)
   {
     const doc = new FakeDocument(DOM_IDS);
     globalThis.document = doc;
 
     const testState = {
-      runtime_extension_version: '0.1.10',
+      runtime_extension_version: '0.1.18',
       expected_extension_version: '0.1.8',
       status: { connection: 'online' }
     };
 
     const header = renderVersionHeader(testState);
     assert.equal(header.isCurrent, false, 'isCurrent must be false on version mismatch');
-    assert.equal(header.runtimeVersion, '0.1.10');
+    assert.equal(header.runtimeVersion, '0.1.18');
     assert.equal(header.expectedVersion, '0.1.8');
 
     const badge = doc.querySelector('#extension-version');
     assert.equal(badge.dataset.state, 'reload_required');
     assert(badge.textContent.includes('RELOAD REQUIRED (Expected v0.1.8)'), `Badge text must report reload required, got: ${badge.textContent}`);
 
-    pass('8. Scenario B UI: Version mismatch (0.1.10 vs server 0.1.8) displays RELOAD REQUIRED and is NOT CURRENT');
+    pass('8. Scenario B UI: Version mismatch (0.1.18 vs server 0.1.8) displays RELOAD REQUIRED and is NOT CURRENT');
   }
 
-  // TEST 9 (Scenario C UI): Runtime 0.1.9 vs server expected 0.1.9 is CURRENT
+  // TEST 9 (Scenario C UI): Runtime 0.1.18 vs server expected 0.1.18 is CURRENT
   {
     const doc = new FakeDocument(DOM_IDS);
     globalThis.document = doc;
 
     const testState = {
-      runtime_extension_version: '0.1.10',
-      expected_extension_version: '0.1.10',
+      runtime_extension_version: '0.1.18',
+      expected_extension_version: '0.1.18',
       status: { connection: 'online' }
     };
 
@@ -404,9 +404,9 @@ async function runTests() {
 
     const badge = doc.querySelector('#extension-version');
     assert.equal(badge.dataset.state, 'current');
-    assert.equal(badge.textContent, 'Extension v0.1.10 — CURRENT');
+    assert.equal(badge.textContent, 'Extension v0.1.18 — CURRENT');
 
-    pass('9. Scenario C UI: Matching versions (0.1.10 vs 0.1.10) with online server displays CURRENT');
+    pass('9. Scenario C UI: Matching versions (0.1.18 vs 0.1.18) with online server displays CURRENT');
   }
 
   // TEST 10 (Scenario D & E UI): Offline server behavior preserves truth without false compatibility
@@ -417,7 +417,7 @@ async function runTests() {
 
     // Scenario D UI: Offline + no known server expectation (null)
     const stateOfflineUnknown = {
-      runtime_extension_version: '0.1.10',
+      runtime_extension_version: '0.1.18',
       expected_extension_version: null,
       status: { connection: 'offline' }
     };
@@ -428,7 +428,7 @@ async function runTests() {
 
     // Scenario E UI: Offline + last known expected = 0.1.8
     const stateOfflineKnownMismatch = {
-      runtime_extension_version: '0.1.10',
+      runtime_extension_version: '0.1.18',
       expected_extension_version: '0.1.8',
       status: { connection: 'offline' }
     };
@@ -437,23 +437,23 @@ async function runTests() {
     assert.equal(badge.dataset.state, 'reload_required');
     assert(badge.textContent.includes('Expected v0.1.8'));
 
-    // Offline + last known expected matching 0.1.10 explicitly marked as cached
+    // Offline + last known expected matching 0.1.18 explicitly marked as cached
     const stateOfflineCachedMatch = {
-      runtime_extension_version: '0.1.10',
-      expected_extension_version: '0.1.10',
+      runtime_extension_version: '0.1.18',
+      expected_extension_version: '0.1.18',
       status: { connection: 'offline' }
     };
     const headerCached = renderVersionHeader(stateOfflineCachedMatch);
     assert.equal(headerCached.isCurrent, true);
-    assert.equal(badge.textContent, 'Extension v0.1.10 — CURRENT (cached)');
+    assert.equal(badge.textContent, 'Extension v0.1.18 — CURRENT (cached)');
 
     pass('10. Scenario D & E UI: Offline states correctly distinguish UNVERIFIED, RELOAD REQUIRED, and CURRENT (cached)');
   }
 
-  // TEST 11 (Scenario F): Audit export canonically reports Extension Version: 0.1.9
+  // TEST 11 (Scenario F): Audit export canonically reports Extension Version: 0.1.18
   {
     const stateForAudit = {
-      extension_version: '0.1.10',
+      extension_version: '0.1.18',
       expected_extension_version: '0.1.8', // Server expectation mismatch should NOT alter runtime audit version
       phase4bSingleRun: {
         phase4b_single_run_id: 'run_1791645952427_44265789',
@@ -476,14 +476,14 @@ async function runTests() {
       generatedAt: '2026-10-10T15:30:00.000Z'
     });
 
-    assert(auditText.includes('Extension Version: 0.1.10'), `Audit text must contain 'Extension Version: 0.1.10', got:\n${auditText}`);
+    assert(auditText.includes('Extension Version: 0.1.18'), `Audit text must contain 'Extension Version: 0.1.18', got:\n${auditText}`);
     assert(auditText.includes('Protocol Version: 1'));
     assert(auditText.includes('DOM Adapter Version: 1'));
     assert(auditText.includes('Run ID: run_1791645952427_44265789'));
     assert(auditText.includes('Job ID: mjob_0bc8a71e21f598f0272b11ce'));
     assert(auditText.includes('RESULT_READY Candidate captured and ready for review'));
 
-    pass('11. Scenario F: formatAuditText canonically reports Extension Version: 0.1.10 independent of server expected version');
+    pass('11. Scenario F: formatAuditText canonically reports Extension Version: 0.1.18 independent of server expected version');
 
     // TEST 12: appendAuditEvent updates lastAction to 'Upload complete & confirmed' upon ATTACHMENT_CONFIRMED and JOB_COMPLETE
     const auditStorage = ExtensionStorage.memory();

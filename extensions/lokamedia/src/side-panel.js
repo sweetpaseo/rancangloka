@@ -174,6 +174,7 @@ function renderState(state) {
   element('#reject-result').disabled = !workflow.can_reject;
   element('#approve-upload').disabled = !workflow.can_approve_upload;
   element('#assign-featured').disabled = !workflow.can_assign_featured;
+  element('#btn-select-file').disabled = !workflow.can_select_fallback_file;
 
   if (workflow.preview?.available) {
     element('#result-dimensions').textContent = workflow.preview.dimensions || '--';
@@ -243,6 +244,7 @@ function renderState(state) {
   renderVersionHeader(state);
   renderRunOnce(state, current, provider, server, transfers);
   renderTransfers(transfers);
+  renderManualPromotion(state);
 }
 
 function renderAuditEvents(events = []) {
@@ -281,6 +283,8 @@ function renderConfigForm(state, { force = false } = {}) {
   element('#server').value = state.config.serverBaseUrl ?? '';
   element('#enabled').checked = Boolean(state.config.enabled);
   if (state.config.deviceToken) element('#token').value = state.config.deviceToken;
+  const devIdEl = document.querySelector('#device-id');
+  if (devIdEl) devIdEl.value = state.config.deviceId ?? 'dev_local_human_operator_v3';
   configInitialized = true;
 }
 
@@ -307,7 +311,7 @@ function getRuntimeVersion() {
 }
 
 export function renderVersionHeader(state) {
-  const runtimeVersion = getRuntimeVersion() || state.runtime_extension_version || '0.1.10';
+  const runtimeVersion = getRuntimeVersion() || state.runtime_extension_version || '0.1.12';
   const expectedVersion = state.expected_extension_version ?? null;
   const versionEl = element('#extension-version');
   const server = normalizeServerStatus(state);
@@ -359,7 +363,7 @@ function renderRunOnce(state, current, provider, server, transfers = []) {
     return;
   }
 
-  const runtimeVersion = getRuntimeVersion() || state.runtime_extension_version || '0.1.10';
+  const runtimeVersion = getRuntimeVersion() || state.runtime_extension_version || '0.1.12';
   const expectedVersion = state.expected_extension_version ?? null;
 
   const eligibility = evaluateRunOnceEligibility({
@@ -390,11 +394,15 @@ async function refresh({ quiet = false } = {}) {
 }
 
 async function saveConfig() {
+  const currentConfig = (await send('STATUS')).state?.config || {};
+  const devIdInput = document.querySelector('#device-id');
+  const deviceId = devIdInput?.value?.trim() || currentConfig.deviceId || 'dev_local_human_operator_v3';
   await send('SAVE_CONFIG', {
     config: {
+      ...currentConfig,
       serverBaseUrl: element('#server').value,
       deviceToken: element('#token').value,
-      deviceId: 'dev_chr_local',
+      deviceId,
       enabled: element('#enabled').checked
     }
   });
@@ -544,8 +552,8 @@ async function handleLocalFileChosen(event) {
 
     const statusRes = await send('STATUS');
     const workflow = getJobWorkflowDetails(statusRes.state || {}, statusRes.state?.provider?.chatgpt || {});
-    if (!workflow.job_id) {
-      throw new Error('NO_ACTIVE_JOB_FOR_LOCAL_FILE');
+    if (!workflow.job_id || !workflow.can_select_fallback_file) {
+      throw new Error('NO_ACTIVE_JOB_FOR_LOCAL_FILE: Fallback file requires an active incomplete generation job');
     }
 
     const response = await send('SAVE_LOCAL_FILE_CANDIDATE', {
@@ -606,6 +614,8 @@ function bindSidePanel() {
   });
   element('#server').addEventListener('input', markConfigDirty);
   element('#token').addEventListener('input', markConfigDirty);
+  const devIdInput = document.querySelector('#device-id');
+  if (devIdInput) devIdInput.addEventListener('input', markConfigDirty);
   element('#save').addEventListener('click', () => {
     void saveConfig().catch((error) => setStatus(boundedError(error), true));
   });
@@ -660,8 +670,380 @@ function bindSidePanel() {
   element('#audit-clear').addEventListener('click', () => {
     void clearAuditLog().catch((error) => setStatus(boundedError(error), true));
   });
+
+  const manualResolveBtn = document.querySelector('#manual-btn-resolve');
+  if (manualResolveBtn) {
+    manualResolveBtn.addEventListener('click', () => {
+      void resolveManualArticle().catch((err) => setStatus(boundedError(err), true));
+    });
+  }
+  const manualSelectBtn = document.querySelector('#manual-btn-select-file');
+  if (manualSelectBtn) {
+    manualSelectBtn.addEventListener('click', () => {
+      document.querySelector('#manual-file-input')?.click();
+    });
+  }
+  const manualFileInput = document.querySelector('#manual-file-input');
+  if (manualFileInput) {
+    manualFileInput.addEventListener('change', (e) => {
+      void handleManualFileChosen(e).catch((err) => setStatus(boundedError(err), true));
+    });
+  }
+  const manualAltInput = document.querySelector('#manual-alt-text');
+  if (manualAltInput) {
+    manualAltInput.addEventListener('input', (e) => {
+      const val = (e.target.value || '').trim();
+      void send('MANUAL_PROMOTION_SET_ALT_TEXT', { alt_text: val }).then((res) => {
+        if (res.state) {
+          renderState(res.state);
+          renderManualPromotion(res.state);
+        }
+      }).catch(() => {});
+    });
+  }
+  const manualApproveBtn = document.querySelector('#manual-btn-approve');
+  if (manualApproveBtn) {
+    manualApproveBtn.addEventListener('click', () => {
+      void approveManualPromotion().catch((err) => setStatus(boundedError(err), true));
+    });
+  }
+  const manualCheckStatusBtn = document.querySelector('#manual-btn-check-status');
+  if (manualCheckStatusBtn) {
+    manualCheckStatusBtn.addEventListener('click', () => {
+      void checkManualPromotionStatus().catch((err) => setStatus(boundedError(err), true));
+    });
+  }
+  const manualExecuteBtn = document.querySelector('#manual-btn-execute');
+  if (manualExecuteBtn) {
+    manualExecuteBtn.addEventListener('click', () => {
+      void executeManualPromotion().catch((err) => setStatus(boundedError(err), true));
+    });
+  }
+  const manualResetBtn = document.querySelector('#manual-btn-reset');
+  if (manualResetBtn) {
+    manualResetBtn.addEventListener('click', () => {
+      void resetManualPromotion().catch((err) => setStatus(boundedError(err), true));
+    });
+  }
+
   bound = true;
   boot.add(SIDE_PANEL_BOOT_FLAGS.DOM_BOUND);
+}
+
+export function renderManualPromotion(state) {
+  const promoCard = document.querySelector('#manual-promotion-card');
+  if (!promoCard) return;
+  const promo = state?.manualPromotionState;
+  const target = promo?.targetArticle;
+  const candidate = promo?.candidate;
+  const approval = promo?.approval;
+  const stage = promo?.stage || 'IDLE';
+
+  const attestationEl = document.querySelector('#manual-article-attestation');
+  if (attestationEl) {
+    if (target) {
+      attestationEl.style.display = 'block';
+      const slugInput = document.querySelector('#manual-article-slug');
+      if (slugInput && target.slug && !slugInput.value) {
+        slugInput.value = target.slug;
+      }
+      const titleEl = document.querySelector('#manual-article-title');
+      if (titleEl) titleEl.textContent = target.title || '--';
+      const statusEl = document.querySelector('#manual-article-status');
+      if (statusEl) statusEl.textContent = target.status || '--';
+      const hashEl = document.querySelector('#manual-article-hash');
+      if (hashEl) hashEl.textContent = target.content_hash ? `${target.content_hash.slice(0, 16)}...` : '--';
+      const featEl = document.querySelector('#manual-current-featured');
+      if (featEl) featEl.textContent = target.featured_image || 'None';
+    } else {
+      attestationEl.style.display = 'none';
+    }
+  }
+
+  const previewBox = document.querySelector('#manual-candidate-preview-box');
+  if (previewBox) {
+    if (candidate) {
+      previewBox.style.display = 'block';
+      const imgEl = document.querySelector('#manual-preview-image');
+      if (imgEl) {
+        if (candidate.data_url) {
+          imgEl.src = candidate.data_url;
+          imgEl.style.display = 'inline-block';
+        } else if (candidate.blob_key) {
+          void send('GET_BLOB_PREVIEW', { key: candidate.blob_key }).then((res) => {
+            if (res?.ok && res.dataUrl) {
+              imgEl.src = res.dataUrl;
+              imgEl.style.display = 'inline-block';
+            }
+          }).catch(() => {});
+        } else {
+          imgEl.style.display = 'none';
+        }
+      }
+      const filenameEl = document.querySelector('#manual-candidate-filename');
+      if (filenameEl) filenameEl.textContent = candidate.filename || '--';
+      const dimEl = document.querySelector('#manual-candidate-dimensions');
+      if (dimEl) dimEl.textContent = `${candidate.width} × ${candidate.height}`;
+      const mimeEl = document.querySelector('#manual-candidate-mime');
+      if (mimeEl) mimeEl.textContent = candidate.mime;
+      const sizeEl = document.querySelector('#manual-candidate-size');
+      if (sizeEl) sizeEl.textContent = `${Number(candidate.size).toLocaleString('en-US')} bytes`;
+      const shaEl = document.querySelector('#manual-candidate-sha');
+      if (shaEl) shaEl.textContent = candidate.sha256 ? `${candidate.sha256.slice(0, 16)}...` : '--';
+    } else {
+      previewBox.style.display = 'none';
+    }
+  }
+
+  const btnApprove = document.querySelector('#manual-btn-approve');
+  const btnCheckStatus = document.querySelector('#manual-btn-check-status');
+  const btnExecute = document.querySelector('#manual-btn-execute');
+  const bannerEl = document.querySelector('#manual-status-banner');
+
+  const altInput = document.querySelector('#manual-alt-text');
+  if (altInput && document.activeElement !== altInput) {
+    altInput.value = promo?.candidate?.alt_text || promo?.alt_text || '';
+  }
+  const currentAlt = (altInput?.value || promo?.candidate?.alt_text || promo?.alt_text || '').trim();
+  const isAltTextValid = currentAlt.length >= 3 && currentAlt.length <= 500;
+
+  const isArticleAttested = Boolean(target && target.slug && target.id && target.content_hash);
+  const isCandidateValid = Boolean(
+    candidate &&
+    typeof candidate.sha256 === 'string' &&
+    candidate.sha256.length === 64 &&
+    Number(candidate.width) > 0 &&
+    Number(candidate.height) > 0 &&
+    Number(candidate.size) > 0 &&
+    ['image/webp', 'image/png', 'image/jpeg'].includes(candidate.mime)
+  );
+  const isApproved = Boolean(approval);
+
+  const isExpired = Boolean(
+    approval?.expires_at && Date.now() > new Date(approval.expires_at).getTime()
+  );
+  const effectiveStage = isExpired && (stage === 'APPROVED' || stage === 'WAITING_FOR_ADMIN_APPROVAL')
+    ? 'APPROVAL_EXPIRED'
+    : stage;
+
+  if (bannerEl) {
+    if (promo?.lastError) {
+      bannerEl.style.display = 'block';
+      bannerEl.style.color = 'var(--danger)';
+      bannerEl.textContent = `Error: ${promo.lastError}`;
+    } else if (effectiveStage === 'APPROVAL_EXPIRED') {
+      bannerEl.style.display = 'block';
+      bannerEl.style.color = 'var(--danger)';
+      bannerEl.textContent = 'APPROVAL_EXPIRED — Persetujuan telah kedaluwarsa. Silakan ajukan persetujuan baru.';
+    } else if (stage === 'WAITING_FOR_ADMIN_APPROVAL') {
+      bannerEl.style.display = 'block';
+      bannerEl.style.color = '#eab308';
+      bannerEl.textContent = 'WAITING FOR HUMAN ADMIN APPROVAL — Buka /admin/media-promotions';
+    } else if (stage === 'APPROVED') {
+      bannerEl.style.display = 'block';
+      bannerEl.style.color = '#22c55e';
+      bannerEl.textContent = 'ADMIN APPROVED — Siap untuk dipromosikan ke Featured';
+    } else if (stage === 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING') {
+      bannerEl.style.display = 'block';
+      bannerEl.style.color = '#eab308';
+      bannerEl.textContent = 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING — Ready to register asset';
+    } else if (stage === 'ASSET_REGISTERED_ATTACHMENT_PENDING') {
+      bannerEl.style.display = 'block';
+      bannerEl.style.color = '#eab308';
+      bannerEl.textContent = 'ASSET_REGISTERED_ATTACHMENT_PENDING — Ready to attach featured media';
+    } else if (stage === 'COMPLETE') {
+      bannerEl.style.display = 'block';
+      bannerEl.style.color = '#22c55e';
+      bannerEl.textContent = 'Manual media promotion complete & confirmed';
+    } else {
+      bannerEl.style.display = 'none';
+    }
+  }
+
+  if (effectiveStage === 'APPROVAL_EXPIRED') {
+    if (btnExecute) btnExecute.style.display = 'none';
+    if (btnCheckStatus) btnCheckStatus.style.display = 'none';
+    if (btnApprove) {
+      btnApprove.style.display = 'block';
+      btnApprove.disabled = !(isArticleAttested && isCandidateValid && isAltTextValid);
+      btnApprove.textContent = 'Request Promotion Approval';
+    }
+  } else if (stage === 'WAITING_FOR_ADMIN_APPROVAL') {
+    if (btnApprove) btnApprove.style.display = 'none';
+    if (btnCheckStatus) {
+      btnCheckStatus.style.display = 'block';
+      btnCheckStatus.disabled = false;
+    }
+    if (btnExecute) btnExecute.style.display = 'none';
+  } else if (stage === 'APPROVED' || stage === 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING' || stage === 'ASSET_REGISTERED_ATTACHMENT_PENDING') {
+    if (btnApprove) btnApprove.style.display = 'none';
+    if (btnCheckStatus) btnCheckStatus.style.display = 'none';
+    if (btnExecute) {
+      btnExecute.style.display = 'block';
+      btnExecute.disabled = false;
+      btnExecute.textContent = stage === 'OBJECT_UPLOADED_ASSET_REGISTRATION_PENDING'
+        ? 'Retry Asset Registration'
+        : stage === 'ASSET_REGISTERED_ATTACHMENT_PENDING'
+          ? 'Retry Featured Attachment'
+          : 'Promote to Featured';
+    }
+  } else {
+    if (btnCheckStatus) btnCheckStatus.style.display = 'none';
+    if (btnExecute) btnExecute.style.display = 'none';
+    if (btnApprove) {
+      btnApprove.style.display = 'block';
+      btnApprove.disabled = !(isArticleAttested && isCandidateValid && isAltTextValid && !isApproved);
+      btnApprove.textContent = 'Request Promotion Approval';
+    }
+  }
+}
+
+async function resolveManualArticle() {
+  const slugInput = document.querySelector('#manual-article-slug');
+  const slug = slugInput?.value?.trim();
+  if (!slug) {
+    setStatus('Article slug required', true);
+    return;
+  }
+  setStatus('Resolving article...');
+  const res = await send('MANUAL_PROMOTION_RESOLVE_ARTICLE', { slug });
+  if (res.state) renderState(res.state);
+  setStatus(res.ok ? 'Article resolved' : boundedError(res.error), !res.ok);
+}
+
+async function handleManualFileChosen(event) {
+  const file = event.target?.files?.[0];
+  if (!file) return;
+
+  setStatus('Reading local image...');
+  try {
+    const supportedMimes = new Set(['image/webp', 'image/png', 'image/jpeg']);
+    if (!supportedMimes.has(file.type)) {
+      throw new Error(`LOCAL_FILE_UNSUPPORTED_MIME: File type "${file.type || 'unknown'}" is not supported (use WebP, PNG, or JPEG)`);
+    }
+    if (!file.size || file.size <= 0) {
+      throw new Error('LOCAL_FILE_EMPTY: Selected file is empty');
+    }
+
+    let arrayBuffer;
+    try {
+      arrayBuffer = await file.arrayBuffer();
+    } catch (readErr) {
+      throw new Error(`LOCAL_FILE_READ_FAILED: ${readErr?.message || 'Unable to read file'}`);
+    }
+
+    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+    const sha256 = Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('LOCAL_FILE_READ_FAILED: FileReader failed'));
+      reader.readAsDataURL(file);
+    });
+
+    const dimensions = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (w > 0 && h > 0) {
+          resolve({ width: w, height: h });
+        } else {
+          reject(new Error('LOCAL_FILE_INVALID_DIMENSIONS: Image dimensions must be greater than 0'));
+        }
+      };
+      img.onerror = () => reject(new Error('LOCAL_FILE_IMAGE_DECODE_FAILED: Could not decode image data'));
+      img.src = dataUrl;
+    });
+
+    const bytesArray = Array.from(new Uint8Array(arrayBuffer));
+    const res = await send('MANUAL_PROMOTION_SET_FILE', {
+      filename: file.name,
+      bytes: bytesArray,
+      mime: file.type,
+      width: dimensions.width,
+      height: dimensions.height,
+      size: file.size,
+      sha256,
+      dataUrl
+    });
+
+    if (res.state) {
+      renderState(res.state);
+      renderManualPromotion(res.state);
+    }
+    if (!res.ok) {
+      const errReason = res.error ? `LOCAL_FILE_INGEST_FAILED: ${res.error}` : 'LOCAL_FILE_INGEST_FAILED';
+      setStatus(errReason, true);
+    } else {
+      setStatus('Local candidate ready');
+    }
+  } catch (err) {
+    const message = err?.message || String(err);
+    const friendlyError = message.startsWith('LOCAL_FILE_') ? message : `LOCAL_FILE_READ_FAILED: ${message}`;
+    setStatus(friendlyError, true);
+  } finally {
+    event.target.value = '';
+    await refresh({ quiet: true });
+  }
+}
+
+async function approveManualPromotion() {
+  const altInput = document.querySelector('#manual-alt-text');
+  const altText = (altInput?.value || '').trim();
+  if (!altText) {
+    setStatus('Alt Text wajib diisi sebelum meminta persetujuan!', true);
+    return;
+  }
+  setStatus('Membuat permintaan promosi...');
+  const res = await send('MANUAL_PROMOTION_APPROVE', { alt_text: altText });
+  if (res.state) renderState(res.state);
+  setStatus(res.ok ? 'Menunggu persetujuan admin...' : boundedError(res.error), !res.ok);
+}
+
+async function checkManualPromotionStatus() {
+  setStatus('Memeriksa status persetujuan admin...');
+  const res = await send('MANUAL_PROMOTION_CHECK_STATUS');
+  if (res.state) renderState(res.state);
+  if (res.ok && res.status === 'APPROVED') {
+    setStatus('Persetujuan admin dikonfirmasi!');
+  } else if (res.ok) {
+    setStatus(`Status promosi: ${res.status}`);
+  } else {
+    setStatus(boundedError(res.error), true);
+  }
+}
+
+async function executeManualPromotion() {
+  const btnExecute = document.querySelector('#manual-btn-execute');
+  if (btnExecute) btnExecute.disabled = true;
+  setStatus('Executing promotion...');
+  try {
+    const res = await send('MANUAL_PROMOTION_EXECUTE', {}, { timeoutMs: 30000 });
+    if (res.state) {
+      renderState(res.state);
+      renderManualPromotion(res.state);
+    }
+    setStatus(res.ok ? 'Manual promotion complete' : boundedError(res.error), !res.ok);
+  } catch (err) {
+    setStatus(boundedError(err), true);
+    await refresh({ quiet: true });
+  } finally {
+    if (btnExecute) btnExecute.disabled = false;
+  }
+}
+
+async function resetManualPromotion() {
+  const res = await send('MANUAL_PROMOTION_RESET');
+  if (res.state) renderState(res.state);
+  const slugInput = document.querySelector('#manual-article-slug');
+  if (slugInput) slugInput.value = '';
+  const altInput = document.querySelector('#manual-alt-text');
+  if (altInput) altInput.value = '';
+  setStatus('Manual promotion reset');
 }
 
 if (typeof document !== 'undefined') {

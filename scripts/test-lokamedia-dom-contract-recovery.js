@@ -422,10 +422,10 @@ test('8. Arbitrary article title works without title hardcoding', () => {
 });
 
 // ---------------------------------------------------------------------------
-// TEST 9: Version bump / handshake = 0.1.10
+// TEST 9: Version bump / handshake = 0.1.18
 // ---------------------------------------------------------------------------
-test('9. Version bump and handshake are strictly aligned at 0.1.10', () => {
-  assert.equal(manifest.version, '0.1.10', 'manifest.json must be 0.1.10');
-  assert.equal(EXTENSION_VERSION, '0.1.10', 'Extension constants EXTENSION_VERSION must be 0.1.10');
+test('9. Version bump and handshake are strictly aligned at 0.1.18', () => {
+  assert.equal(manifest.version, '0.1.18', 'manifest.json must be 0.1.18');
+  assert.equal(EXTENSION_VERSION, '0.1.18', 'Extension constants EXTENSION_VERSION must be 0.1.18');
   assert.match(versionTsContent, /EXPECTED_LOKAMEDIA_EXTENSION_VERSION.*manifest\.version/);
 });

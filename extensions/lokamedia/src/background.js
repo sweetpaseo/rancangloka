@@ -22,7 +22,7 @@ const chatGptHandshake = new ChatGptHandshakeManager({ storage, tabController: c
 const ACTIVE_QUEUE_STATES = new Set(['LEASED', 'GENERATING', 'IMAGE_DETECTED', 'CAPTURING', 'CAPTURED', 'UPLOADING', 'RECOVERING']);
 const WAITING_QUEUE_STATES = new Set(['QUEUED', 'WAITING_RETRY']);
 
-const RUNTIME_EXTENSION_VERSION = chrome.runtime?.getManifest?.()?.version ?? '0.1.10';
+const RUNTIME_EXTENSION_VERSION = chrome.runtime?.getManifest?.()?.version ?? '0.1.18';
 const RUNTIME_BOOT_ID = `boot_${crypto.randomUUID().slice(0, 8)}`;
 const RUNTIME_STARTED_AT = new Date().toISOString();
 
@@ -105,7 +105,7 @@ async function refreshServerState() {
           nextState.auditLog.lastAction = 'Idle';
         }
         if (!nextState.config.deviceId && nextState.config.deviceToken) {
-          nextState.config.deviceId = 'dev_chr_local';
+          nextState.config.deviceId = 'dev_local_human_operator_v3';
         }
       for (const job of response.jobs ?? []) {
         const local = nextState.jobs[job.job_id] ?? {};
@@ -249,7 +249,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     SAVE_CONFIG: async (request) => {
       const config = { ...request.config };
       if (!config.deviceId && config.deviceToken) {
-        config.deviceId = 'dev_chr_local';
+        config.deviceId = 'dev_local_human_operator_v3';
       }
       await storage.saveConfig(config);
       return { ok: true };
@@ -472,6 +472,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         size: record.size,
         sha256: record.sha256
       };
+    },
+    MANUAL_PROMOTION_RESOLVE_ARTICLE: async (request) => {
+      try {
+        const instance = await ensureController();
+        const result = await instance.manualResolveArticle(request);
+        return { ...result, state: await storage.readState() };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error), state: await storage.readState() };
+      }
+    },
+    MANUAL_PROMOTION_SET_FILE: async (request) => {
+      try {
+        const instance = await ensureController();
+        const result = await instance.manualSetLocalFile(request);
+        return { ...result, state: await storage.readState() };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error), state: await storage.readState() };
+      }
+    },
+    MANUAL_PROMOTION_SET_ALT_TEXT: async (request) => {
+      try {
+        const instance = await ensureController();
+        const result = await instance.manualSetAltText(request);
+        return { ...result, state: await storage.readState() };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error), state: await storage.readState() };
+      }
+    },
+    MANUAL_PROMOTION_APPROVE: async (request) => {
+      try {
+        const instance = await ensureController();
+        const result = await instance.manualApprovePromotion(request);
+        return { ...result, state: await storage.readState() };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error), state: await storage.readState() };
+      }
+    },
+    MANUAL_PROMOTION_EXECUTE: async (request) => {
+      try {
+        const instance = await ensureController();
+        const result = await instance.manualExecutePromotion(request);
+        return { ...result, state: await storage.readState() };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error), state: await storage.readState() };
+      }
+    },
+    MANUAL_PROMOTION_RESET: async () => {
+      try {
+        const instance = await ensureController();
+        const result = await instance.manualResetPromotion();
+        return { ...result, state: await storage.readState() };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error), state: await storage.readState() };
+      }
+    },
+    MANUAL_PROMOTION_CHECK_STATUS: async () => {
+      try {
+        const instance = await ensureController();
+        const result = await instance.checkPromotionApprovalStatus();
+        return { ...result, state: await storage.readState() };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error), state: await storage.readState() };
+      }
     }
   }).then(sendResponse).catch((error) => {
     sendResponse({ ok: false, error: String(error?.message || error || 'SERVICE_WORKER_UNAVAILABLE') });
