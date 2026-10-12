@@ -13,7 +13,62 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### ARTICLE-B-PRODUCTION-PROMOTION-PROVEN: LokaMedia v0.1.18 Production Workflow Proven on Real Published Article B 2026-10-12
 
+- **Tujuan & Ruang Lingkup:**
+  - Membuktikan alur kerja penuh promosi media kontrol ganda (*Dual-Control Published Media Promotion*) LokaMedia v0.1.18 langsung pada artikel terbit nyata di lingkungan produksi (*Article B*).
+  - Melakukan *production human handshake* antara operator ekstensi LokaMedia (`lokamedia-prod-operator-02`, status `ACTIVE`) dan edge produksi RancangLoka via `https://rancangloka.com`.
+  - Menerapkan kontrol ganda (*Dual-Control*): permintaan promosi diajukan oleh ekstensi (`REQUESTED`), diperiksa dan disetujui secara kriptografis oleh administrator manusia di `/admin/media-promotions` (`APPROVED`), dan dikonsumsi saat eksekusi upload (`CONSUMED`).
+  - Mengunggah media kanonikal ke Cloudflare R2 secara aman dan sukses (`media/images/8ecd77ff40bb4d933e27e44980bcec9ebb040e0cb971de72e5387ff6b463247d.webp`, 149.764 bytes, WebP).
+  - Mendaftarkan media asset kanonikal di Cloudflare D1 (`ast_8e3c7059293ada90787ac4ab`, status `VALIDATED`).
+  - Mengganti cover unggulan secara kanonikal di `article_media`: relasi lama dideaktivasi (`is_active = 0`), relasi baru diaktifkan (`is_active = 1`), menjamin invarian tepat-satu (*exactly-one featured invariant*).
+  - Merambatkan teks alt secara presisi ke kolom `articles.image_alt` (`"Detail sambungan kusen aluminium, kaca, dan dinding pada jendela rumah"`) tanpa sisa teks placeholder lama.
+  - Membuktikan invarian eksekusi tepat satu kali (*exactly-once execution*) dengan tanda terima D1 tunggal dan nol duplikasi objek R2.
+  - Menjamin ketetapan publikasi (*publication immutability*): naskah (`content_md`, `content_html`), sidik jari (`content_hash`), status (`PUBLISHED`), jadwal (`published_at`), dan tanda terima rilis (`actual_published_at`) 100% tidak bermutasi (zero republishing).
+  - Memverifikasi pelestarian penuh baseline Artikel A (ID 7) dan integritas rendering publik Artikel B di edge produksi (HTTP 200).
+- **Hasil & Status Keselamatan:**
+  - Status Ekstensi & Operator: `lokamedia-prod-operator-02` ACTIVE, handshake PASS.
+  - Permintaan Promosi: `prom_req_mv4rw7jk_83635f64e45283fb` CONSUMED tepat satu kali.
+  - Verifikasi R2 & D1: Aset `ast_8e3c7059293ada90787ac4ab` aktif, cover Artikel B terbarui, teks alt terikat secara kriptografis.
+  - Verifikasi Edge: HTTP 200 pada gambar R2 dan halaman artikel publik SSR.
+  - Pelestarian Artikel A: 100% UTUH tanpa mutasi.
+  - Klasifikasi: **`ARTICLE_B_PRODUCTION_PROMOTION_PROVEN`**.
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`, `kill_switch_engaged = 0`.
+
+---
+
+### LOKAMEDIA-V0.1.18-PRODUCTION-ENABLEMENT-1: Production Migrations 0031/0032 & Worker Deployment eb46fc2a 2026-10-12
+
+- **Tujuan & Ruang Lingkup:**
+  - Melakukan aktivasi produksi (*Production Enablement*) untuk infrastruktur promosi media kontrol ganda (*Dual-Control Published Media Promotion*) pada versi kanonikal **v0.1.18**.
+  - Menerapkan migrasi database kanonikal ke Cloudflare D1 produksi (`rancangloka_db`, ID `3a86e9ad-410f-4440-884e-2eb813ec4cf7`):
+    - `0031_media_promotion_approvals.sql`: Pembuatan tabel persetujuan kontrol ganda `media_promotion_approvals` (status: `REQUESTED`, `APPROVED`, `REJECTED`, `CONSUMED`, `EXPIRED`).
+    - `0032_media_promotion_alt_text.sql`: Penambahan kolom `alt_text` untuk pengikatan deskripsi aksesibilitas secara kriptografis dan skema D1.
+    - Verifikasi skema D1 remote: tabel terbentuk lengkap dengan 22 kolom, kolom `alt_text` aktif, dan baris awal berjumlah 0 (zero stale entries).
+  - Melakukan deployment kode terkomit bersih (`0ab4589`: `feat(lokamedia): add dual-control published media promotion`) ke Cloudflare Workers produksi (`rancangloka`):
+    - Version ID kanonikal: `eb46fc2a-c5bc-4705-ab85-285f0802dc66`.
+    - Waktu inisialisasi edge: 13ms startup, 4 cron triggers aktif.
+  - Melakukan pengujian *live read-only smoke* dan pembuktian batas keamanan di edge produksi:
+    - Rute Admin `/admin/media-promotions`: Merespons HTTP 302 redirect ke `/admin/login` (gerbang sesi terverifikasi, nol galat Worker 1101).
+    - Endpoint API unauthenticated `/api/internal/v1/media/articles/resolve`: Merespons HTTP 401 `AUTHENTICATION_REQUIRED`.
+    - Endpoint API unauthenticated `/api/internal/v1/media/promotions/request`: Merespons HTTP 401 `AUTHENTICATION_REQUIRED`.
+    - Pembuktian Negatif Live Penutupan Celah `DEVICE_AUTH_PREFIX_BYPASS`: Pengujian dengan token acak ber-prefix `lkmd_...` terbukti gagal dengan HTTP 401 `AUTHENTICATION_REQUIRED`, membuktikan eliminasi celah bypass aktif di runtime produksi.
+  - Verifikasi Pelestarian Baseline Produksi:
+    - Artikel A (ID 7, slug `jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge`): Cover `/media/images/b5cd50198632fecc2810b756554ce8ffe6df3129f5d828447064beee41845af4.webp`, alt `"Kondensasi pada permukaan kaca jendela rumah dengan kusen aluminium"`, content_hash `00dc804d...`, actual_published_at `2026-10-07 01:24:49` 100% utuh.
+    - Artikel B (ID 8, slug `thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi`): Cover `/media/images/631baf7a25e9986b9f0d01073633cb434ae162b3df1241ddac56b977026276e9.webp`, alt `"Detail penampang kusen jendela aluminium pada fasad arsitektur modern"`, content_hash `66094cf5...`, actual_published_at `2026-10-07 01:28:26` 100% utuh tanpa mutasi.
+    - Perangkat `lokamedia-prod-operator-01` (`ACTIVE`) dan probe revoked `media-a57-p3a-probe-20260930` (`REVOKED`) 100% terjaga.
+    - Berkas kandidat cover Artikel B lokal (`artifacts/article-b-cover-1315x660.webp`, SHA-256 `8ecd77ff40bb4d933e27e44980bcec9ebb040e0cb971de72e5387ff6b463247d`, size 149.764 bytes) terbukti siap untuk eksekusi terkontrol.
+    - Zero direct SQL mutasi dan zero promosi prematur terhadap Artikel B di produksi.
+- **Hasil & Status Keselamatan:**
+  - Migrasi D1 remote 0031 & 0032: APPLIED.
+  - Deployment Worker: Version ID `eb46fc2a-c5bc-4705-ab85-285f0802dc66` ACTIVE.
+  - Live Edge Smoke: 100% PASS (Zero 5xx, Zero 1101 errors).
+  - Negative Security Hardening Proof: 100% PASS (Prefix bypass elimination live).
+  - Klasifikasi: **`LOKAMEDIA_V0_1_18_PRODUCTION_ENABLED`**.
+  - Stop Token Operasional: `LOKAMEDIA_V0_1_18_PRODUCTION_ENABLEMENT_1_HUMAN_HANDSHAKE_REQUIRED`.
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`, `kill_switch_engaged = 0`.
+
+---
 
 ### LOKAMEDIA-V0.1.18-PRODUCTION-READINESS-CLOSEOUT: Dual-Control Manual Published-Media Promotion & Cryptographic Alt-Text Binding 2026-10-12
 

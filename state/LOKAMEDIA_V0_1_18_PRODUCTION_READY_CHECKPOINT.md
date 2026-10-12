@@ -1,11 +1,14 @@
 # LOKAMEDIA V0.1.18 PRODUCTION-READY CHECKPOINT
 
-**Timestamp:** 2026-10-12T00:30:00+07:00
-**Milestone:** `RANCANGLOKA — LOKAMEDIA V0.1.18 PRODUCTION-READINESS CLOSEOUT-1`
-**Classification:** `LOKAMEDIA_V0_1_18_PRODUCTION_READY`
-**Accepted Milestone Provenance:** `LOKAMEDIA_V0_1_17_TRUE_HUMAN_BROWSER_E2E_PROVEN`
+**Timestamp:** 2026-10-12T12:00:00+07:00
+**Milestone:** `ARTICLE_B_PRODUCTION_PROMOTION_PROVEN`
+**Classification:** `ARTICLE_B_PRODUCTION_PROMOTION_PROVEN`
+**Accepted Milestone Provenance:** Commit `0ab4589` | `ARTICLE_B_PRODUCTION_PROMOTION_PROVEN` | `LOKAMEDIA_V0_1_18_PRODUCTION_READY` | `LOKAMEDIA_V0_1_17_TRUE_HUMAN_BROWSER_E2E_PROVEN`
 **Git Branch:** `feat/jev-lokamedia-integration`
-**Extension Baseline:** `v0.1.18` (bumped from `v0.1.17` following alt-text propagation & publication immutability closeout)
+**Deployed Worker Version:** `eb46fc2a-c5bc-4705-ab85-285f0802dc66`
+**Remote D1 Migrations:** `0031_media_promotion_approvals.sql` & `0032_media_promotion_alt_text.sql` applied to `rancangloka_db`
+**Extension Baseline:** `v0.1.18` (dual-control published media promotion active on production)
+**Stop Token:** `LOKAMEDIA_V0_1_18_OPERATIONAL_MILESTONE_COMPLETE`
 **Safety Status:** `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`
 
 ---
@@ -20,7 +23,7 @@ The LokaMedia browser extension and server-side media promotion infrastructure h
 4. **Publication Immutability Guaranteed:** Media promotions update only media-related state (`featured_image`, `image_alt`, `updated_at`). Original publication timestamps (`published_at`, `actual_published_at`), content body (`content_md`, `content_html`), content fingerprint (`content_hash`), status (`PUBLISHED`), and historical publication execution receipts remain strictly immutable (zero republishing).
 5. **Human Browser E2E Acceptance:** Full end-to-end operational proof verified in a live Chromium browser environment (`LOKAMEDIA_V0_1_17_TRUE_HUMAN_BROWSER_E2E_PROVEN`), followed by deterministic closeout of alt-text propagation in v0.1.18.
 
-**Final Classification:** `LOKAMEDIA_V0_1_18_PRODUCTION_READY`
+**Final Classification:** `ARTICLE_B_PRODUCTION_PROMOTION_PROVEN`
 
 ---
 
@@ -270,3 +273,99 @@ Manual controlled media promotion is completely decoupled from autonomous pipeli
    - `npx tsc --noEmit` $\rightarrow$ 0 errors.
    - `npm run build` $\rightarrow$ Clean build in 7.37s.
 4. **Local Canary Cleanup:** Disposable canary articles, media records, approval requests, and miniflare R2 objects purged cleanly from local storage.
+
+---
+
+## 11. Production Enablement & Live Edge Verification (Version eb46fc2a)
+
+### A. Pre-Deploy Attestation
+- **Committed Commit:** `0ab4589` (`feat(lokamedia): add dual-control published media promotion`)
+- **Git Branch:** `feat/jev-lokamedia-integration`
+- **Scope Verified:** Exactly 11 committed files (migration `0032`, extension UI/constants/manifest/background, admin UI, backend endpoints, test suite). Zero untracked scratch/bootstrap files committed.
+
+### B. Cloudflare D1 Remote Database Migrations
+Applied directly to remote production D1 `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`):
+1. `migrations/0031_media_promotion_approvals.sql`: Created `media_promotion_approvals` table with dual-control status constraints (`REQUESTED`, `APPROVED`, `REJECTED`, `CONSUMED`, `EXPIRED`).
+2. `migrations/0032_media_promotion_alt_text.sql`: Added `alt_text TEXT` column for cryptographic alt text binding.
+- **Verification:** Schema query confirmed 22 columns including `alt_text`. Remote table row count = 0 (clean baseline).
+
+### C. Cloudflare Workers Production Deployment
+- **Account ID:** `a8e6d11d45dc2d14fe49fe3b84958ee8`
+- **Worker Target:** `rancangloka`
+- **Version ID:** `eb46fc2a-c5bc-4705-ab85-285f0802dc66`
+- **Edge Performance:** 13ms startup latency.
+- **Active Cron Triggers:** 4 (`0 1 * * *`, `0 2 * * *`, `0 5 * * *`, `0 10 * * *`).
+
+### D. Live Edge Smoke & Security Attestation
+1. **Admin Promotion Interface:** `GET /admin/media-promotions` $\rightarrow$ HTTP 302 Redirect to `/admin/login` (Auth gate operational; zero Worker 1101 crashes).
+2. **Unauthenticated API Gate:**
+   - `GET /api/internal/v1/media/articles/resolve?slug=...` $\rightarrow$ HTTP 401 `AUTHENTICATION_REQUIRED`.
+   - `POST /api/internal/v1/media/promotions/request` $\rightarrow$ HTTP 401 `AUTHENTICATION_REQUIRED`.
+3. **Negative Security Proof (`DEVICE_AUTH_PREFIX_BYPASS` Elimination):**
+   - Probe with fake prefix token (`Authorization: Bearer lkmd_randomfake12345`) $\rightarrow$ HTTP 401 `AUTHENTICATION_REQUIRED`.
+   - Proves live elimination of prefix fallthrough on the production edge; zero unhashed bypasses permitted.
+
+### E. Production Entity Baseline Preservation
+- **Article A (`jendela-berkondensasi-...`, ID 7):**
+  - Cover: `/media/images/b5cd50198632fecc2810b756554ce8ffe6df3129f5d828447064beee41845af4.webp`
+  - Alt: `Kondensasi pada permukaan kaca jendela rumah dengan kusen aluminium`
+  - Content Hash: `00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298`
+  - Original Publication Receipt: `actual_published_at = '2026-10-07 01:24:49'` (Untouched).
+- **Article B (`thermal-bridge-kusen-...`, ID 8):**
+  - Cover: `/media/images/631baf7a25e9986b9f0d01073633cb434ae162b3df1241ddac56b977026276e9.webp`
+  - Alt: `Detail penampang kusen jendela aluminium pada fasad arsitektur modern`
+  - Content Hash: `66094cf52d2d10650b82141adace0cedc27fc9a3f63ae1f85e19a57c38d4e260`
+  - Original Publication Receipt: `actual_published_at = '2026-10-07 01:28:26'` (Untouched).
+- **Media Devices:** `lokamedia-prod-operator-01` (`ACTIVE`), `media-a57-p3a-probe-20260930` (`REVOKED`).
+- **Target Derivative:** `artifacts/article-b-cover-1315x660.webp` (149,764 bytes, SHA `8ecd77ff40bb4d933e27e44980bcec9ebb040e0cb971de72e5387ff6b463247d`) ready for controlled human execution.
+- **Production Safety:** Zero direct SQL mutation, zero premature Article B promotion.
+
+### F. Human Operator Handshake & Execution Lifecycle
+1. Unpacked Chrome Extension reloaded at `v0.1.18 CURRENT` on production domain `https://rancangloka.com`.
+2. Replacement production operator device `lokamedia-prod-operator-02` provisioned with secure standard input clipboard delivery.
+3. Dual-control promotion lifecycle completed end-to-end on real published Article B.
+
+---
+
+## 12. Article B Production Promotion Provenance & Final Attestation
+
+### A. Dual-Control Promotion Request & Lifecycle
+- **Approval Request ID:** `prom_req_mv4rw7jk_83635f64e45283fb`
+- **Requesting Device:** `lokamedia-prod-operator-02` (`ACTIVE`)
+- **Status Lifecycle:** `REQUESTED` (`2026-10-12T04:49:39.632Z`) $\rightarrow$ `APPROVED` (`2026-10-12T04:59:56.257Z` by `admin_operator`) $\rightarrow$ `CONSUMED` (`2026-10-12 05:01:01` via upload `upl_standalone_8ecd77ff40bb4d93`).
+- **Cryptographic Binding Invariants:**
+  - Target Article ID: `8` | Slug: `thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi`
+  - Content Hash: `66094cf52d2d10650b82141adace0cedc27fc9a3f63ae1f85e19a57c38d4e260`
+  - Candidate SHA-256: `8ecd77ff40bb4d933e27e44980bcec9ebb040e0cb971de72e5387ff6b463247d`
+  - Slot Key: `featured`
+  - Dimensions: `1315 × 660` | MIME: `image/webp` | Byte Size: `149764` bytes
+  - Alt Text: `Detail sambungan kusen aluminium, kaca, dan dinding pada jendela rumah`
+
+### B. Object Storage & Database Media Parity
+- **Cloudflare R2:** Stored at `media/images/8ecd77ff40bb4d933e27e44980bcec9ebb040e0cb971de72e5387ff6b463247d.webp` (149,764 bytes, `HTTP 200 OK`). Exactly 1 object (zero duplicate content-addressed blobs).
+- **Cloudflare D1 `media_assets`:** Asset `ast_8e3c7059293ada90787ac4ab` (`VALIDATED`, 149,764 bytes, 1315×660, WebP).
+- **Cloudflare D1 `article_media`:**
+  - Historical featured relation (`id = 14`, `ast_mfUpgVe99C_bq_p2d_O4Ge4L`): Deactivated (`is_active = 0`).
+  - New featured relation (`id = 16`, `ast_8e3c7059293ada90787ac4ab`): Activated (`is_active = 1`).
+  - Active Featured Slot Invariant: Exactly 1 active relation.
+- **Authoritative Mirror (`articles`):**
+  - `featured_image`: `/media/images/8ecd77ff40bb4d933e27e44980bcec9ebb040e0cb971de72e5387ff6b463247d.webp`
+  - `image_alt`: `Detail sambungan kusen aluminium, kaca, dan dinding pada jendela rumah`
+  - `updated_at`: `2026-10-12 05:01:04`
+
+### C. Publication Immutability Guaranteed
+- `content_hash`: `66094cf52d2d10650b82141adace0cedc27fc9a3f63ae1f85e19a57c38d4e260` (100% UNCHANGED).
+- `content_md`: 8,706 bytes | `content_html`: 9,094 bytes (100% UNCHANGED).
+- `status`: `published` (100% UNCHANGED).
+- `published_at`: `2026-10-07 01:28:26` (100% UNCHANGED).
+- `actual_published_at`: `2026-10-07 01:28:26` (in `article_publication_executions`, execution ID `pexec_artB_f2d4f24e01e0`) (100% UNCHANGED).
+- Execution & Receipt Counts: Exactly 1 (zero republishing events, zero duplicate publication receipts).
+
+### D. Live Edge Rendering Verification
+- `GET https://rancangloka.com/media/images/8ecd77ff...webp` $\rightarrow$ `HTTP 200 OK` (149,764 bytes).
+- `GET https://rancangloka.com/thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi` $\rightarrow$ `HTTP 200 OK`.
+- SSR HTML confirmed rendering the new cover image and alt text cleanly.
+
+### E. Baseline Preservation
+- **Article A (`jendela-berkondensasi-...`, ID 7):** Cover `/media/images/b5cd5019...webp`, alt `"Kondensasi pada permukaan kaca jendela rumah dengan kusen aluminium"`, `actual_published_at = '2026-10-07 01:24:49'`, content hash `00dc804d...` 100% untouched.
+- **Media Devices:** `lokamedia-prod-operator-02` (`ACTIVE`), `lokamedia-prod-operator-01` (`ACTIVE`), `media-a57-p3a-probe-20260930` (`REVOKED`).
