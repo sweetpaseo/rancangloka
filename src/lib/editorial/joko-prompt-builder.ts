@@ -266,6 +266,56 @@ Nama Staf: Joko (content_writer_primary)
 Peran: Senior Content Writer & Lead Architectural Editorial Desk RancangLoka
 Keahlian: Menjelaskan arsitektur, fisika bangunan tropis, dan problem solving hunian kepada pemilik rumah awam dengan bahasa yang jernih, lugas, bersahabat, dan berbobot teknis.
 
+# PRINSIP UTAMA SUARA RANCANGLOKA (CANONICAL RANCANGLOKA VOICE)
+"RancangLoka tidak menulis untuk membuat pembaca merasa penulisnya pintar. RancangLoka menulis supaya pembaca merasa dirinya sekarang mengerti."
+
+Target Suara Redaksi:
+Konsultan bangunan dan arsitektur Indonesia berpengalaman yang sedang menjelaskan masalah nyata kepada pemilik rumah awam di seberang meja kopi secara tenang, praktis, bersahabat, dan kredibel.
+
+Karakteristik Wajib:
+- Jernih, tenang, praktis, dan komunikatif (conversational)
+- Kredibel secara teknis tanpa beban jargon yang membingungkan
+- Mengutamakan kosakata bahasa Indonesia sehari-hari yang akrab
+- Enak dibaca dengan suara keras (easy to read aloud)
+- Nyaman dipindai di layar ponsel (mobile scanning friendly)
+
+Hal yang Wajib Dihindari:
+- Register akademis kaku (gaya makalah jurnal / skripsi)
+- Irama terjemahan bahasa Inggris (translationese cadence)
+- Frasa birokratis berbelit-belit
+- Drama pemasaran / marketing hiperbolis ("solusi ajaib", "wajib dimiliki")
+- Kosakata mentereng demi terdengar pintar
+- Istilah teknis berlebihan tanpa penjelasan sederhana
+
+# ATURAN PENULISAN WAJIB JOKO (AUTHORING STANDARDS)
+A. SATU GAGASAN PER PARAGRAF (PARAGRAPH BREATHING & DENSITY)
+   - Pola default: 1–3 kalimat per paragraf (rata-rata 30–70 kata).
+   - Jangan menumpuk masalah, mekanisme fisika, contoh, dan kesimpulan ke dalam satu blok paragraf panjang.
+   - Bila sebuah paragraf memuat lebih dari satu alur penalaran, PECAH menjadi paragraf terpisah.
+   - Jaga ritme visual membaca: pendek, sedang, pendek, sedang.
+
+B. KOSAKATA UMUM TERLEBIH DAHULU (COMMON WORD FIRST)
+   - Utamakan kosakata bahasa Indonesia biasa bila maknanya setara dan akurat:
+     * "leluasa membakar kaca" -> Ganti dengan: "langsung mengenai kaca"
+     * "membedah perbandingan teknis" -> Ganti dengan: "membandingkan"
+     * "membendung sinar matahari" -> Ganti dengan: "menghalangi sinar matahari"
+     * "orientasi hadap" -> Ganti dengan: "arah jendela" atau "arah hadap dinding"
+     * "geometri peneduh" -> Ganti dengan: "bentuk dan posisi peneduh"
+     * "akumulasi termal" -> Ganti dengan: "penumpukan hawa panas"
+     * "titik kulminasi harian" -> Ganti dengan: "posisi matahari tertinggi saat tengah hari"
+
+C. JANGAN MENULIS DEMI TERLIHAT PINTAR (DO NOT WRITE TO SOUND SMART)
+   - Bobot intelektual dan kecanggihan teknis naskah harus bersumber dari kualitas penalaran dan diagnosis, BUKAN dari kerumitan kosakata.
+
+D. KONSISTENSI REGISTER & ANTI-DRAMA (REGISTER CONSISTENCY)
+   - Jaga register bahasa tetap konsisten. Jangan melompat antara bahasa akademis kaku ke bahasa gaul/slang yang mendramatisasi.
+   - Hindari kata-kata hiperbolis seperti: "seperti oven", "gelap gulita", "siang bolong", "menyiksa", "terbakar habis", kecuali benar-benar alami dan tak terhindarkan dalam konteks.
+
+E. MARKDOWN BERSIH & KANONIKAL (CLEAN MARKDOWN ONLY)
+   - Output Markdown harus berupa Markdown kanonikal yang valid.
+   - DILARANG mencantumkan karakter sintaksis yang lolos/ter-escape (escaped markdown) seperti: *\\*, \\---, \\*, **\\**, \\(/path\\).
+   - Gunakan *kata* untuk miring, **kata** untuk tebal, --- untuk pemisah, dan * untuk butir daftar.
+
 # KONTRAK KEPENULISAN BAHASA INDONESIA ASLI (NATIVE INDONESIAN AUTHORING)
 - authoring_language = id-ID
 - source_language may vary
@@ -567,4 +617,157 @@ export function buildJokoRepairPrompt(
       rewriteBrief
     }
   });
+}
+
+/**
+ * Common Word Preference Dictionary for Joko
+ */
+export const JOKO_COMMON_WORD_PREFERENCE_MAP: Record<string, string> = {
+  'leluasa membakar kaca': 'langsung mengenai kaca',
+  'membedah perbandingan teknis': 'membandingkan',
+  'membendung sinar matahari': 'menghalangi sinar matahari',
+  'orientasi hadap': 'arah jendela',
+  'geometri peneduh': 'bentuk dan posisi peneduh',
+  'panduan ini membedah': 'panduan ini membahas / membandingkan',
+  'karakter praktis': 'kelebihan dan kekurangan',
+  'konsekuensi perawatan': 'perawatan yang perlu diperhatikan',
+  'intervensi': 'tindakan perbaikan / penanganan',
+  'optimalisasi': 'cara memaksimalkan',
+  'mekanisme': 'cara kerja',
+  'berdasarkan karakter masalah': 'sesuai masalah yang dihadapi'
+};
+
+/**
+ * Dramatic Register Patterns to Avoid in Joko Drafts
+ */
+export const JOKO_DRAMATIC_REGISTER_PATTERNS = [
+  /\bseperti oven\b/i,
+  /\bgelap gulita\b/i,
+  /\bsiang bolong\b/i,
+  /\bpanas menyiksa\b/i,
+  /\bterbakar habis\b/i
+];
+
+/**
+ * Literal Escaped Markdown Syntax Patterns (Forbidden in canonical drafts)
+ */
+export const JOKO_ESCAPED_MARKDOWN_PATTERNS = [
+  /\*\\\*/,         // *\*
+  /\\\*/,           // \*
+  /\\\---/,         // \---
+  /\*\*\\\*\*/,     // **\**
+  /\\\(\/[a-zA-Z0-9_-]+\\\)/ // \(/path\)
+];
+
+export interface JokoDraftReadabilityAuditResult {
+  passed: boolean;
+  issues: string[];
+  denseParagraphs: Array<{ index: number; wordCount: number; excerpt: string }>;
+  escapedMarkdownPatterns: string[];
+  unnaturalWordOccurrences: Array<{ word: string; preferred: string }>;
+  dramaticRegisterOccurrences: string[];
+  verboseTableCells: Array<{ line: number; wordCount: number; excerpt: string }>;
+}
+
+/**
+ * Audits a draft against Joko's authoring standards:
+ * - One idea per paragraph (flags paragraphs >= 90 words)
+ * - Common word first (detects unnecessarily fancy/academic phrases)
+ * - Register consistency (detects overly dramatic phrases)
+ * - Clean Markdown (detects escaped markdown patterns)
+ */
+export function auditJokoDraftReadability(markdown: string): JokoDraftReadabilityAuditResult {
+  const issues: string[] = [];
+  const text = String(markdown || '').trim();
+
+  // 1. Escaped markdown patterns
+  const foundEscaped: string[] = [];
+  for (const pat of JOKO_ESCAPED_MARKDOWN_PATTERNS) {
+    const match = text.match(pat);
+    if (match) {
+      foundEscaped.push(match[0]);
+    }
+  }
+  if (foundEscaped.length > 0) {
+    issues.push(`Ditemukan sintaks Markdown ter-escape (${foundEscaped.join(', ')}). Output harus berupa Markdown kanonikal bersih.`);
+  }
+
+  // 2. Paragraph density (ignore headings, tables, separators)
+  const paragraphs = text
+    .split(/\r?\n\r?\n/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0 && !p.startsWith('#') && !p.startsWith('---') && !p.startsWith('|'));
+
+  const denseParagraphs: Array<{ index: number; wordCount: number; excerpt: string }> = [];
+  paragraphs.forEach((p, idx) => {
+    // If it's a list item, count words in the item
+    const words = p.split(/\s+/).filter(Boolean).length;
+    if (words >= 90) {
+      denseParagraphs.push({
+        index: idx + 1,
+        wordCount: words,
+        excerpt: p.slice(0, 100) + '...'
+      });
+    }
+  });
+
+  if (denseParagraphs.length > 0) {
+    issues.push(`Ditemukan ${denseParagraphs.length} paragraf padat (>= 90 kata). Pecah menjadi 1-3 kalimat per paragraf untuk menjaga ritme visual membaca.`);
+  }
+
+  // 3. Common word preferences
+  const unnaturalWords: Array<{ word: string; preferred: string }> = [];
+  for (const [fancyWord, commonWord] of Object.entries(JOKO_COMMON_WORD_PREFERENCE_MAP)) {
+    const reg = new RegExp(`\\b${fancyWord}\\b`, 'i');
+    if (reg.test(text)) {
+      unnaturalWords.push({ word: fancyWord, preferred: commonWord });
+    }
+  }
+  if (unnaturalWords.length > 0) {
+    issues.push(`Utamakan kosakata umum: ${unnaturalWords.map(u => `"${u.word}" -> "${u.preferred}"`).join(', ')}.`);
+  }
+
+  // 4. Dramatic register patterns
+  const dramaticWords: string[] = [];
+  for (const pat of JOKO_DRAMATIC_REGISTER_PATTERNS) {
+    const m = text.match(pat);
+    if (m) {
+      dramaticWords.push(m[0]);
+    }
+  }
+  if (dramaticWords.length > 0) {
+    issues.push(`Hindari frasa drama/hiperbolis: ${dramaticWords.join(', ')}.`);
+  }
+
+  // 5. Comparison table cell verbosity check
+  // Comparison tables must contain concise summary statements, not mini-essays
+  const tableLines = text.split(/\r?\n/).filter((l) => l.trim().startsWith('|'));
+  const verboseTableCells: Array<{ line: number; wordCount: number; excerpt: string }> = [];
+  tableLines.forEach((line, idx) => {
+    if (/^\|[\s\-:|]+\|$/.test(line.trim())) return;
+    const cells = line.split('|').map((c) => c.trim()).filter(Boolean);
+    cells.forEach((cell) => {
+      const words = cell.split(/\s+/).filter(Boolean).length;
+      if (words > 20) {
+        verboseTableCells.push({
+          line: idx + 1,
+          wordCount: words,
+          excerpt: cell.slice(0, 60) + '...'
+        });
+      }
+    });
+  });
+  if (verboseTableCells.length > 0) {
+    issues.push(`Ditemukan ${verboseTableCells.length} sel tabel terlalu panjang (> 20 kata). Sel tabel perbandingan harus berupa rangkuman ringkas, bukan esai mini.`);
+  }
+
+  return {
+    passed: issues.length === 0,
+    issues,
+    denseParagraphs,
+    escapedMarkdownPatterns: foundEscaped,
+    unnaturalWordOccurrences: unnaturalWords,
+    dramaticRegisterOccurrences: dramaticWords,
+    verboseTableCells
+  };
 }

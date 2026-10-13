@@ -355,3 +355,24 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ==========================================================================
+   Editorial Comparison Matrix Breakout & Presentation
+   Reader Experience Principle:
+   "A comparison component should reduce the reader's thinking effort,
+   not merely display the same information in a grid."
+   ========================================================================== */
+
+.article-comparison-matrix {
+  position: relative;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .article-comparison-matrix {
+    /* Break out beyond .prose-magazine (~832px) to 1120px while staying centered on the page */
+    width: min(calc(100vw - 4rem), 1120px);
+    margin-inline: calc(50% - min(calc(50vw - 2rem), 560px));
+    max-width: none;
+  }
+}

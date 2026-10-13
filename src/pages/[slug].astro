@@ -260,7 +260,7 @@ if (article) {
   <!-- 🅱️ RENDER AS MAGAZINE ARTICLE -->
   {!isStaticPage && article && (
 
-  <article class="rl-mobile-grid max-w-4xl mx-auto py-6 overflow-hidden">
+  <article class="rl-mobile-grid max-w-4xl mx-auto py-6 overflow-x-clip lg:overflow-x-visible">
     <!-- 1. Breadcrumbs -->
     <div class="mb-6">
       <Breadcrumbs items={breadcrumbItems} />

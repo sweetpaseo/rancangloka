@@ -102,7 +102,8 @@ export interface EditorialPatternIssue {
     | 'EXPERT_CONSULTATION_GAP'
     | 'DECISION_SUPPORT_GAP'
     | 'ACADEMIC_DISTANCE'
-    | 'CONTENT_DEPTH_MISMATCH';
+    | 'CONTENT_DEPTH_MISMATCH'
+    | 'READER_VOICE_PREREQUISITE';
   severity: 'WARNING' | 'CRITICAL';
   description: string;
   penalty: number;
@@ -2334,6 +2335,10 @@ export interface EvaluationOptions {
   hasMissingClaimProvenance?: boolean;
   missingProvenanceClaims?: string[];
   evidencePack?: EvidencePackInput | null;
+  // Nadia Reader Voice Gate Integration (HOUSE-VOICE-CALIBRATION)
+  readerVoiceState?: 'READER_VOICE_PASS' | 'READER_VOICE_REVIEW_REQUIRED' | 'READER_VOICE_REVISION_REQUIRED' | 'READER_VOICE_BLOCKED';
+  readerVoiceResult?: any;
+  enforceReaderVoiceGate?: boolean;
 }
 
 /**
@@ -3508,9 +3513,30 @@ export function evaluateHumanWritingQuality(
            (i.code === 'UNSUPPORTED_NUMERICAL_CLAIM' && i.severity === 'CRITICAL')
   );
 
+  // Hard-Fail Invariant: Nadia Reader Voice Gate Prerequisite (HOUSE-VOICE-CALIBRATION)
+  // Rina requires READER_VOICE_PASS before final editorial QA.
+  // Rina may not overrule poor reader voice simply because evidence is strong.
+  // No 99/100-style human-writing score is possible when Nadia gate has failed.
+  const hasReaderVoiceFailure = Boolean(
+    options.readerVoiceState && options.readerVoiceState !== 'READER_VOICE_PASS'
+  );
+
+  if (hasReaderVoiceFailure) {
+    issues.push({
+      code: 'READER_VOICE_GATE_NOT_PASSED',
+      category: 'READER_VOICE_PREREQUISITE',
+      severity: 'CRITICAL',
+      description: `Naskah belum lulus evaluasi suara pembaca Nadia (status: ${options.readerVoiceState}). Rina mewajibkan READER_VOICE_PASS sebelum evaluasi editorial final dapat disetujui.`,
+      penalty: 40
+    });
+  }
+
   let totalScore = rawTotalScore;
   if (hasCriticalIntegrityViolation) {
     totalScore = Math.min(totalScore, 65);
+  }
+  if (hasReaderVoiceFailure) {
+    totalScore = Math.min(totalScore, 60);
   }
 
   let decision: HumanWritingDecision;
@@ -3715,6 +3741,7 @@ export const JOKO_HUMAN_AUTHORING_GUIDELINES = {
     'Tutup artikel dengan panduan aksi atau trade-off yang jelas bagi pembaca.',
     'MUTLAK: Dilarang mengarang klaim uji coba mandiri ("kami telah menguji") jika tidak ada bukti tangan pertama.',
     'NATIVE INDONESIAN AUTHORING: Tulis langsung dalam bahasa Indonesia alami sejak awal alur pemikiran; hindari pola wacana terjemahan bahasa Inggris (translationese).',
-    'TECHNICAL ENGLISH EXCEPTION: Pertahankan istilah teknis kanonikal dan istilah bahasa Inggris yang sah sesuai standar industri (seperti thermal break, U-value, low-e, mortise, firmware) lalu jelaskan maknanya secara alami dalam bahasa Indonesia.'
+    'TECHNICAL ENGLISH EXCEPTION: Pertahankan istilah teknis kanonikal dan istilah bahasa Inggris yang sah sesuai standar industri (seperti thermal break, U-value, low-e, mortise, firmware) lalu jelaskan maknanya secara alami dalam bahasa Indonesia.',
+    'RINGKASAN TABEL PERBANDINGAN: Tabel perbandingan adalah alat bantu rangkuman, bukan tempat menulis esai mini. Tulis pernyataan perbandingan yang ringkas (< 20 kata per sel) agar mudah discan, dan simpan elaborasi mendalam di paragraf pembahasan sekitarnya.'
   ]
 };

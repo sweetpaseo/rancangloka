@@ -17,6 +17,7 @@ interface Props {
   categories?: Category[];
   siteSettings?: Record<string, string>;
   isArticlePage?: boolean;
+  showMobileBottomNav?: boolean;
   jsonLdSchema?: any;
   noindex?: boolean;
   robotsDirective?: string;
@@ -35,6 +36,7 @@ const {
   categories = [],
   siteSettings = {},
   isArticlePage = false,
+  showMobileBottomNav = false,
   jsonLdSchema,
   noindex = false,
   robotsDirective,
@@ -206,8 +208,12 @@ const customHeadScripts = siteSettings.custom_head_scripts || '';
     <!-- V2 Footer -->
     <Footer siteTitle={siteTitle} copyright={siteSettings.footer_copyright} />
 
-    <!-- App-Like Mobile Bottom Nav only on article pages if needed -->
-    {isArticlePage && (
+    <!-- Long-Form Reader Experience Principle:
+         "On long-form editorial pages, navigation must not compete with or obscure the content being read."
+         Article content is the primary task; navigation is secondary.
+         Persistent bottom navigation dock is strictly suppressed on long-form article reading pages.
+         Normal site header, search modal, and footer provide complete, unencumbered navigation access. -->
+    {showMobileBottomNav && !isArticlePage && (
       <MobileBottomNav isArticlePage={isArticlePage} />
     )}
 

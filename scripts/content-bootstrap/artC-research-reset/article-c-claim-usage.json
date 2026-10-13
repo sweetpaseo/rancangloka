@@ -4,7 +4,7 @@
   "planned_slug": "memilih-sistem-shading-luar-rumah-tropis",
   "author": "joko_content_writer_primary",
   "created_at": "2026-10-12T15:18:00.000Z",
-  "sanitation_status": "HUMAN_VOICE_REWRITE_PASS",
+  "sanitation_status": "RANCANGLOKA_HOUSE_VOICE_CALIBRATED",
   "total_author_safe_claims_available": 13,
   "claims_utilized_count": 13,
   "coverage_percentage": "100%",
@@ -12,92 +12,92 @@
     {
       "claim_id": "CLM-C-SNI-001",
       "section": "Apa Kata Standar Bangunan (dan Mengapa Anda Tidak Perlu Pusing Menghitung Rumusnya)",
-      "line_number": 29,
+      "line_number": 35,
       "quoted_sentence": "Angka batas maksimum yang ditetapkan adalah 35 W/m². Batas 35 W/m² ini memperbarui standar lama SNI 03-6389-2000 yang sebelumnya mematok 45 W/m², sebuah penegasan bahwa bangunan di Indonesia kini dituntut semakin hemat energi.",
       "context_role": "Ambang batas efisiensi selubung bangunan nasional dan perbandingan historis pembaruan standar."
     },
     {
       "claim_id": "CLM-C-SNI-002",
       "section": "Apa Kata Standar Bangunan (dan Mengapa Anda Tidak Perlu Pusing Menghitung Rumusnya)",
-      "line_number": 31,
+      "line_number": 39,
       "quoted_sentence": "Dalam perhitungan teknis standar tersebut, panas matahari yang masuk lewat jendela sangat dipengaruhi oleh apa yang disebut koefisien peneduh efektif. Nilai ini dihitung dari seberapa jauh peneduh horizontal menjulur keluar dan seberapa lebar sirip peneduh vertikal menaungi jendela jika dibandingkan dengan ukuran jendela itu sendiri, lalu dipadukan dengan arah hadap dinding.",
       "context_role": "Metodologi koefisien peneduh efektif tanpa notasi rumus matematika rumit."
     },
     {
       "claim_id": "CLM-C-REG-001",
       "section": "Apa Kata Standar Bangunan (dan Mengapa Anda Tidak Perlu Pusing Menghitung Rumusnya)",
-      "line_number": 35,
+      "line_number": 45,
       "quoted_sentence": "Arah kebijakan ini sejalan dengan Peraturan Menteri PUPR No. 21/PRT/M/2021 tentang Penilaian Kinerja Bangunan Gedung Hijau. Regulasi ini secara khusus menganjurkan pemasangan peneduh luar pasif pada bukaan jendela yang menghadap ke timur dan barat.",
       "context_role": "Rekomendasi regulasi nasional bangunan hijau untuk proteksi pasif bukaan timur dan barat."
     },
     {
       "claim_id": "CLM-C-GEO-001",
       "section": "Dari Mana Sebenarnya Asal Panas yang Masuk ke Rumah Kita?",
-      "line_number": 17,
-      "quoted_sentence": "Terletak di sabuk khatulistiwa antara lintang 6° LU sampai 11° LS, Indonesia memiliki jalur pergerakan matahari yang khas. Pada tengah hari, posisi matahari berada sangat tinggi di langit, hampir tegak lurus di atas kepala. Namun pada pagi dan sore hari, posisi matahari berada rendah menyamping.",
+      "line_number": 21,
+      "quoted_sentence": "Terletak di sabuk khatulistiwa antara lintang 6° LU sampai 11° LS, Indonesia memiliki jalur pergerakan matahari yang khas.",
       "context_role": "Geometri surya khatulistiwa: elevasi tinggi di siang hari vs elevasi rendah menyamping di pagi/sore."
     },
     {
       "claim_id": "CLM-C-ORI-001",
       "section": "Mengapa Jendela Barat Membutuhkan Peneduh yang Berbeda dari Jendela Utara?",
-      "line_number": 43,
+      "line_number": 57,
       "quoted_sentence": "Pada jendela yang menghadap Utara dan Selatan, posisi matahari ekuator sebagian besar berada tinggi di atas bukaan. Sinar matahari jatuh dari arah atas. Karena itu, peneduh mendatar seperti tritisan atap atau dak beton bekerja sangat efektif di kedua sisi ini.",
       "context_role": "Kesesuaian fisik tritisan mendatar untuk orientasi utara dan selatan."
     },
     {
       "claim_id": "CLM-C-ORI-002",
       "section": "Mengapa Jendela Barat Membutuhkan Peneduh yang Berbeda dari Jendela Utara?",
-      "line_number": 45,
-      "quoted_sentence": "Sebaliknya, pada jendela yang menghadap Barat dan Timur, sinar matahari datang dari samping dengan sudut rendah. Saat sore hari menjelang matahari terbenam, sorotan sinar matahari meluncur miring dari sudut rendah. Sinar ini dengan mudah menyusup di bawah tritisan mendatar berukuran standar, langsung menghantam kaca jendela, dan memanaskan ruangan di dalamnya.",
+      "line_number": 59,
+      "quoted_sentence": "Sebaliknya, pada jendela yang menghadap Barat dan Timur, sinar matahari datang dari samping dengan sudut rendah. Saat sore hari menjelang matahari terbenam, sorotan sinar matahari meluncur miring dari sudut rendah. Sinar ini dengan mudah menyusup di bawah tritisan mendatar berukuran standar, langsung mengenai kaca jendela, dan memanaskan ruangan di dalamnya.",
       "context_role": "Keterbatasan fisik tritisan datar standar terhadap sudut datang matahari sore yang rendah di sisi barat."
     },
     {
       "claim_id": "CLM-C-LOU-001",
       "section": "2. Louver (Kisi-kisi Bilah Tegak dan Mendatar)",
-      "line_number": 77,
+      "line_number": 94,
       "quoted_sentence": "Sirip tegak dirancang khusus untuk memotong arah datangnya sinar matahari pagi atau sore yang masuk dari samping. Saat matahari sore bergerak miring di barat, sinar langsung dihadang oleh bilah-bilah tegak sebelum menyentuh kaca.",
       "context_role": "Keunggulan geometris sirip vertikal menahan sinar matahari menyamping di fasad barat."
     },
     {
       "claim_id": "CLM-C-SEC-001",
       "section": "4. Secondary Facade (Dinding Fasad Kedua)",
-      "line_number": 108,
-      "quoted_sentence": "Kunci utama keberhasilan fasad kedua adalah keberadaan rongga udara terbuka berventilasi di antara lapisan luar dan dinding dalam. Saat lapisan luar memanas karena terik matahari, udara di dalam rongga ikut menghangat dan bergerak naik ke atas secara alami. Gerakan udara ini memicu efek cerobong alami yang membuang udara panas ke atas dan menarik udara yang lebih sejuk dari bawah, sehingga rambatan panas berlebih ke dinding dalam rumah dapat diredam secara signifikan.",
+      "line_number": 135,
+      "quoted_sentence": "Kunci keberhasilan fasad kedua adalah keberadaan rongga udara terbuka berventilasi di antara lapisan luar dan dinding dalam. Saat lapisan luar memanas karena terik matahari, udara di dalam rongga ikut menghangat dan bergerak naik ke atas secara alami. Aliran cerobong alami ini membuang udara panas ke atas dan menarik udara yang lebih sejuk dari bawah, sehingga rambatan panas ke dinding dalam dapat diredam secara signifikan.",
       "context_role": "Syarat mutlak ventilasi konvektif rongga fasad ganda (efek cerobong alami)."
     },
     {
       "claim_id": "CLM-C-SEC-002",
       "section": "4. Secondary Facade (Dinding Fasad Kedua)",
-      "line_number": 115,
-      "quoted_sentence": "Terlalu berlebihan (over-engineered) jika keluhan panas di rumah Anda sebenarnya hanya berasal dari satu jendela kecil di sudut ruangan. Sulit Membersihkan Kaca Jendela: Jika celah antara dinding luar dan kaca dibuat terlalu sempit tanpa pintu servis, tangan Anda tidak akan bisa menjangkau kaca jendela untuk membersihkannya.",
+      "line_number": 145,
+      "quoted_sentence": "Bisa Berlebihan jika Masalahnya Sederhana: Terlalu berlebihan jika keluhan panas di rumah Anda sebenarnya hanya berasal dari satu jendela kecil di sudut ruangan. Akses Pembersihan Kaca: Jika celah antara dinding luar dan kaca dibuat terlalu sempit tanpa pintu servis, tangan Anda tidak akan bisa menjangkau kaca jendela untuk membersihkannya secara berkala.",
       "context_role": "Batasan kelayakan praktis, resiko over-engineering, dan kendala pembersihan kaca di balik fasad ganda."
     },
     {
       "claim_id": "CLM-C-RAIN-001",
       "section": "Dari Mana Sebenarnya Asal Panas yang Masuk ke Rumah Kita? & 1. Overhang",
-      "line_number": 23,
+      "line_number": 29,
       "quoted_sentence": "Karena itu, peneduh bukaan sejak dahulu memiliki fungsi ganda: menahan sengatan terik matahari sekaligus mencegah air tempias menyusup ke kusen dan celah jendela.",
       "context_role": "Fungsi ganda proteksi iklim nusantara: radiasi surya dan tempias hujan monsun."
     },
     {
       "claim_id": "CLM-C-CLIM-001",
       "section": "Dari Mana Sebenarnya Asal Panas yang Masuk ke Rumah Kita?",
-      "line_number": 21,
+      "line_number": 25,
       "quoted_sentence": "kelembapan udara yang tinggi serta tutupan awan sepanjang tahun membuat radiasi baur (diffuse sky radiation) merupakan komponen yang signifikan dari radiasi surya yang diterima. Artinya, hawa panas dan rasa silau di dalam rumah tropis tidak hanya datang dari sorotan langsung matahari, melainkan juga terpancar dari kubah langit yang terang dan beruap air.",
       "context_role": "Signifikansi radiasi baur dan kelembapan tinggi atmosfer ekuator menurut data BMKG."
     },
     {
       "claim_id": "CLM-C-AWN-001",
       "section": "3. Awning (Kanopi Peneduh Jendela)",
-      "line_number": 96,
-      "quoted_sentence": "Praktis Dipasang Kapan Saja: Paling mudah dipasang sebagai renovasi susulan. Anda bisa memasangnya di satu jendela kamar tidur tanpa perlu membongkar atap rumah atau merombak dinding utama.",
+      "line_number": 120,
+      "quoted_sentence": "Praktis Dipasang Kapan Saja: Paling mudah dipasang sebagai renovasi susulan. Anda bisa memasangnya di satu jendela kamar tidur tanpa membongkar atap rumah atau merombak dinding utama.",
       "context_role": "Kepraktisan kanopi peneduh modular untuk bukaan tunggal tanpa perombakan struktur utama."
     },
     {
       "claim_id": "CLM-C-REC-001",
       "section": "Urutan Tindakan Sebelum Anda Memanggil Tukang atau Aplikator",
-      "line_number": 169,
-      "quoted_sentence": "Sebelum Anda menghubungi aplikator fasad atau tukang bangunan, lakukan langkah pemeriksaan mandiri berikut: 1. Pastikan Arah Hadap dan Jam Munculnya Panas... 2. Cari Tahu dari Mana Panas Masuk... 3. Lakukan Uji Coba Sederhana dengan Penutup Sementara... 4. Periksa Jalur Udara dan Kemudahan Membersihkan Kaca.",
+      "line_number": 213,
+      "quoted_sentence": "Sebelum Anda menghubungi aplikator fasad atau tukang bangunan, lakukan langkah pemeriksaan mandiri berikut: 1. Pastikan Arah Jendela dan Jam Munculnya Panas... 2. Cari Tahu dari Mana Panas Masuk... 3. Lakukan Uji Coba Sederhana dengan Penutup Sementara... 4. Periksa Jalur Udara dan Kemudahan Membersihkan Kaca.",
       "context_role": "Prosedur evaluasi diagnostik mandiri pemilik rumah sebelum intervensi struktural berbiaya besar."
     }
   ],
@@ -111,5 +111,8 @@
     "theatrical_metaphors_purged": true,
     "fictional_sources_cited": false,
     "monetary_price_tags_invented": false
-  }
+  },
+  "draft_hash": "64a750b92c258647898e768e436de0d53fda8ba2227fd858acc6def5f73f6b0d",
+  "calibrated_at": "2026-10-13T06:33:01.457Z",
+  "article_draft_sha256": "85270eb8534331da54efe4bb2dbe471a25ec532bf75d55270758d18c375f15c5"
 }

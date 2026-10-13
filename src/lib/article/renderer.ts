@@ -11,6 +11,7 @@
 
 import { marked } from 'marked';
 import xss from 'xss';
+import { enhanceComparisonMatrices } from './comparison-matrix.ts';
 
 const safeAttrValue = (xss as any).safeAttrValue;
 
@@ -41,15 +42,15 @@ const ARTICLE_HTML_WHITELIST: Record<string, string[]> = {
   code: ['class'],
   a: ['href', 'title', 'target', 'rel', 'class', 'id'],
   img: ['src', 'alt', 'title', 'width', 'height', 'loading', 'class'],
-  table: ['class'],
+  table: ['class', 'role'],
   thead: ['class'],
   tbody: ['class'],
   tr: ['class'],
-  th: ['align', 'class'],
+  th: ['align', 'class', 'scope'],
   td: ['align', 'class'],
   hr: ['class'],
   br: [],
-  div: ['class', 'id'],
+  div: ['class', 'id', 'data-comparison-matrix'],
   span: ['class', 'id']
 };
 
@@ -121,11 +122,12 @@ export function sanitizeArticleHtml(rawHtml: string): string {
 }
 
 /**
- * Parses Markdown into safe, sanitized HTML.
+ * Parses Markdown into safe, sanitized HTML with responsive comparison matrix presentation.
  */
 export async function renderArticleMarkdownSafely(markdownBody: string): Promise<string> {
   if (!markdownBody || typeof markdownBody !== 'string') return '';
 
   const parsedHtml = await marked.parse(markdownBody);
-  return sanitizeArticleHtml(parsedHtml);
+  const enhancedHtml = enhanceComparisonMatrices(parsedHtml);
+  return sanitizeArticleHtml(enhancedHtml);
 }

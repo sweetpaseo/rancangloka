@@ -74,7 +74,11 @@ export interface ReaderVoiceEvaluationResult {
     headingClarity: RubricDimensionResult;
     homeownerComprehension: RubricDimensionResult;
     humanRhythm: RubricDimensionResult;
+    paragraphBreathing: RubricDimensionResult;
   };
+  paragraphDensityWarnings?: string[];
+  escapedMarkdownIssues?: string[];
+  visualDensitySignals?: string[];
   authorityCheck: {
     attemptedPublishAction: boolean;
     attemptedEvidenceMutation: boolean;
@@ -114,7 +118,7 @@ export const BANNED_GENERIC_OPENING_PATTERNS = [
 
 // Common translationese terms and natural conversational Indonesian alternatives
 export const TRANSLATIONESE_DICTIONARY: Record<string, string> = {
-  'orientasi hadap': 'arah hadap bangunan',
+  'orientasi hadap': 'arah jendela atau arah hadap bangunan',
   'geometri peneduh': 'bentuk dan posisi peneduh',
   'intervensi': 'tindakan perbaikan / penanganan',
   'perolehan panas radiasi': 'panas radiasi matahari yang masuk',
@@ -122,8 +126,43 @@ export const TRANSLATIONESE_DICTIONARY: Record<string, string> = {
   'titik kulminasi harian': 'posisi matahari tertinggi saat tengah hari',
   'akumulasi termal': 'penumpukan hawa panas',
   'selubung luar': 'dinding dan atap luar bangunan',
-  'perangkat peneduh': 'peneduh atau kanopi pelindung'
+  'perangkat peneduh': 'peneduh atau kanopi pelindung',
+  'leluasa membakar kaca': 'langsung mengenai kaca',
+  'membedah perbandingan teknis': 'membandingkan',
+  'membendung sinar matahari': 'menghalangi sinar matahari'
 };
+
+// Unnecessary heavy editorial/written constructions that feel unnatural when spoken
+export const HEAVY_EDITORIAL_PATTERNS = [
+  { pattern: /\bpanduan ini membedah\b/i, name: 'panduan ini membedah', suggestion: 'panduan ini membahas / membandingkan' },
+  { pattern: /\bkarakter praktis\b/i, name: 'karakter praktis', suggestion: 'kelebihan dan kekurangan / sifat praktis' },
+  { pattern: /\bkonsekuensi perawatan\b/i, name: 'konsekuensi perawatan', suggestion: 'perawatan yang perlu diperhatikan' },
+  { pattern: /\bintervensi\b/i, name: 'intervensi', suggestion: 'tindakan perbaikan / penanganan' },
+  { pattern: /\boptimalisasi\b/i, name: 'optimalisasi', suggestion: 'cara memaksimalkan / penyesuaian' },
+  { pattern: /\bmekanisme\b/i, name: 'mekanisme', suggestion: 'cara kerja / sistem' },
+  { pattern: /\bberdasarkan karakter masalah\b/i, name: 'berdasarkan karakter masalah', suggestion: 'sesuai masalah yang dihadapi' }
+];
+
+// Dramatic or sensational colloquial patterns that oscillate register
+export const DRAMATIC_REGISTER_PATTERNS = [
+  { pattern: /\bseperti oven\b/i, name: 'seperti oven', suggestion: 'sangat panas / suhu ruangan meningkat drastis' },
+  { pattern: /\bgelap gulita\b/i, name: 'gelap gulita', suggestion: 'ruangan menjadi gelap / minim cahaya alami' },
+  { pattern: /\bsiang bolong\b/i, name: 'siang bolong', suggestion: 'tengah hari / siang hari terik' },
+  { pattern: /\bpanas menyiksa\b/i, name: 'panas menyiksa', suggestion: 'membuat gerah / tidak nyaman' },
+  { pattern: /\bterbakar habis\b/i, name: 'terbakar habis', suggestion: 'terkena paparan panas terus-menerus' }
+];
+
+// Literal escaped Markdown syntax patterns that leak into reader prose
+export const ESCAPED_MARKDOWN_PATTERNS = [
+  { pattern: /\*\\\*/, name: 'mixed escaped asterisk (*\\*)' },
+  { pattern: /\\\*/, name: 'escaped asterisk (\\*)' },
+  { pattern: /\\---/, name: 'escaped thematic break (\\---)' },
+  { pattern: /\*\*\\\*\*/, name: 'quadruple mixed emphasis (**\\**)' },
+  { pattern: /\\\(|\s\\\//, name: 'escaped parenthesis/path (\\()' },
+  { pattern: /\\_/, name: 'escaped underscore (\\_)' }
+];
+
+export const DENSE_PARAGRAPH_WORD_THRESHOLD = 90;
 
 // Forbidden raw technical syntax in reader-facing prose
 export const RAW_TECHNICAL_SYNTAX_PATTERNS = [
@@ -397,6 +436,42 @@ export function evaluateReaderVoice(
     }
   }
 
+  // Check dramatic / sensational register patterns
+  for (const dram of DRAMATIC_REGISTER_PATTERNS) {
+    if (dram.pattern.test(text)) {
+      spokenScore -= 15;
+      spokenNotes.push(`Terdeteksi ungkapan drama/sensasional yang tidak sesuai tone konsultan: '${dram.name}'.`);
+      spokenFlags.push({
+        passage: dram.name,
+        issue: `Ungkapan drama/sensasional yang berlebihan: '${dram.name}'. Konsultan RancangLoka berbicara lugas, tenang, dan objektif.`,
+        suggestion: dram.suggestion
+      });
+      revisionRequests.push({
+        section: 'Konsistensi Register Bahasa',
+        currentPhrasing: dram.name,
+        requestedImprovement: `Ganti frasa drama '${dram.name}' dengan '${dram.suggestion}'.`
+      });
+    }
+  }
+
+  // Check heavy editorial phrases that feel overly academic/written instead of relaxed conversational
+  for (const heavy of HEAVY_EDITORIAL_PATTERNS) {
+    if (heavy.pattern.test(text)) {
+      spokenScore -= 15;
+      spokenNotes.push(`Terdeteksi konstruksi editorial kaku/tertulis: '${heavy.name}' -> disarankan '${heavy.suggestion}'.`);
+      spokenFlags.push({
+        passage: heavy.name,
+        issue: `Konstruksi editorial '${heavy.name}' terasa kaku/tertulis (written/editorial) dan tidak wajar diucapkan langsung ke pemilik rumah.`,
+        suggestion: heavy.suggestion
+      });
+      revisionRequests.push({
+        section: 'Gaya Bahasa Sehari-hari (Everyday Language Pass)',
+        currentPhrasing: heavy.name,
+        requestedImprovement: `Ganti frasa kaku '${heavy.name}' dengan ungkapan yang lebih alami '${heavy.suggestion}'.`
+      });
+    }
+  }
+
   const spokenIndonesian: RubricDimensionResult = {
     dimension: 'Spoken Indonesian Test',
     score: Math.max(0, spokenScore),
@@ -455,13 +530,14 @@ export function evaluateReaderVoice(
   ];
 
   for (const pattern of excessiveEnglishTerms) {
-    const matches = text.match(pattern);
-    if (matches && matches.length > 2) {
-      jargonScore -= 15;
-      jargonNotes.push(`Terminologi asing berulang tanpa penjelasan konsisten: '${matches[0]}'.`);
+    const globalPattern = new RegExp(pattern.source, 'gi');
+    const matches = text.match(globalPattern);
+    if (matches && matches.length >= 2) {
+      jargonScore -= 15 * (matches.length - 1);
+      jargonNotes.push(`Terminologi asing berulang tanpa penjelasan konsisten: '${matches[0]}' (${matches.length}x).`);
       jargonFlags.push({
         passage: matches[0],
-        issue: 'Terminologi asing dipakai berulang kali semata-mata agar terdengar teknis.',
+        issue: `Terminologi asing '${matches[0]}' dipakai berulang kali (${matches.length}x) tanpa penjelasan sederhana.`,
         suggestion: 'Berikan penjelasan sederhana pada kemunculan pertama, lalu gunakan padanan bahasa Indonesia yang konsisten.'
       });
     }
@@ -476,11 +552,31 @@ export function evaluateReaderVoice(
   };
 
   // --------------------------------------------------------------------------
-  // Rubric E: RAW TECHNICAL SYNTAX
+  // Rubric E: RAW TECHNICAL SYNTAX & MARKDOWN CLEANLINESS
   // --------------------------------------------------------------------------
   const syntaxNotes: string[] = [];
   const syntaxFlags: RubricDimensionResult['flaggedPassages'] = [];
   let syntaxScore = 100;
+  const escapedMarkdownIssues: string[] = [];
+
+  // Check for escaped markdown syntax leakage
+  for (const esc of ESCAPED_MARKDOWN_PATTERNS) {
+    if (esc.pattern.test(text)) {
+      escapedMarkdownIssues.push(esc.name);
+      syntaxScore -= 20;
+      syntaxNotes.push(`Terdeteksi kebocoran sintaks markdown escape: ${esc.name}.`);
+      syntaxFlags.push({
+        passage: esc.name,
+        issue: `Sintaks markdown ter-escape (${esc.name}) merusak tampilan naskah bagi pembaca.`,
+        suggestion: 'Hapus backslash escape dan gunakan markdown kanonikal murni.'
+      });
+      revisionRequests.push({
+        section: 'Kebersihan Format Markdown',
+        currentPhrasing: esc.name,
+        requestedImprovement: `Hapus backslash escape (${esc.name}) agar rendered output bersih.`
+      });
+    }
+  }
 
   if (!options.allowSyntaxException) {
     for (const pat of RAW_TECHNICAL_SYNTAX_PATTERNS) {
@@ -506,7 +602,7 @@ export function evaluateReaderVoice(
   const rawTechnicalSyntax: RubricDimensionResult = {
     dimension: 'Raw Technical Syntax',
     score: Math.max(0, syntaxScore),
-    passed: syntaxScore === 100,
+    passed: syntaxScore >= 75 && blockingIssues.length === 0,
     notes: syntaxNotes,
     flaggedPassages: syntaxFlags
   };
@@ -612,7 +708,65 @@ export function evaluateReaderVoice(
   };
 
   // --------------------------------------------------------------------------
-  // Aggregated Overall Score (Mean across 8 dimensions)
+  // Rubric I: PARAGRAPH BREATHING & DENSITY CHECK
+  // --------------------------------------------------------------------------
+  const paragraphDensityWarnings: string[] = [];
+  const denseParagraphFlags: RubricDimensionResult['flaggedPassages'] = [];
+  const denseParagraphNotes: string[] = [];
+  let breathingScore = 100;
+
+  paragraphs.forEach((p, idx) => {
+    // Skip headings, tables, or divider lines
+    if (p.startsWith('#') || p.startsWith('|') || p.startsWith('---')) return;
+
+    const words = p.split(/\s+/).filter(Boolean).length;
+    if (words >= DENSE_PARAGRAPH_WORD_THRESHOLD) {
+      breathingScore -= Math.min(30, Math.floor((words - 80) / 10) * 10);
+      const warningMsg = `PARAGRAPH_DENSITY_WARNING: Paragraf ke-${idx + 1} (${words} kata) melebihi batas kenyamanan baca 90 kata. Pecah menjadi 1-3 kalimat dengan satu ide pokok.`;
+      paragraphDensityWarnings.push(warningMsg);
+      denseParagraphNotes.push(warningMsg);
+      denseParagraphFlags.push({
+        passage: p.slice(0, 100) + '...',
+        issue: warningMsg,
+        suggestion: 'Pecah menjadi 2 atau 3 paragraf pendek-menengah (30-70 kata).'
+      });
+      revisionRequests.push({
+        section: `Paragraf ke-${idx + 1}`,
+        currentPhrasing: p.slice(0, 80) + '...',
+        requestedImprovement: warningMsg
+      });
+    }
+  });
+
+  // Visual Density Signal & Scannability for Tables / Comparison Matrices
+  const visualDensitySignals: string[] = [];
+  const tableLines = text.split('\n').filter((line) => line.trim().startsWith('|'));
+  tableLines.forEach((line, idx) => {
+    if (/^\|[\s\-:|]+\|$/.test(line.trim())) return;
+    const cells = line.split('|').map((c) => c.trim()).filter(Boolean);
+    cells.forEach((cell) => {
+      const words = cell.split(/\s+/).filter(Boolean).length;
+      if (words > 20) {
+        const signal = `VISUAL_DENSITY_SIGNAL: Sel tabel baris ${idx + 1} (${words} kata) melebihi batas ringkas 20 kata: "${cell.slice(0, 50)}...". Buat ringkas agar mudah discan di mobile dan desktop.`;
+        visualDensitySignals.push(signal);
+      }
+    });
+  });
+
+  if (visualDensitySignals.length > 0) {
+    denseParagraphNotes.push(...visualDensitySignals);
+  }
+
+  const paragraphBreathing: RubricDimensionResult = {
+    dimension: 'Paragraph Breathing',
+    score: Math.max(0, breathingScore),
+    passed: breathingScore >= 75 && paragraphDensityWarnings.length === 0,
+    notes: denseParagraphNotes,
+    flaggedPassages: denseParagraphFlags
+  };
+
+  // --------------------------------------------------------------------------
+  // Aggregated Overall Score (Mean across 9 dimensions)
   // --------------------------------------------------------------------------
   const allDimensionScores = [
     problemFirstOpening.score,
@@ -622,7 +776,8 @@ export function evaluateReaderVoice(
     rawTechnicalSyntax.score,
     headingClarity.score,
     homeownerComprehension.score,
-    humanRhythm.score
+    humanRhythm.score,
+    paragraphBreathing.score
   ];
 
   const overallScore = Math.round(
@@ -657,9 +812,11 @@ export function evaluateReaderVoice(
     !spokenIndonesian.passed ||
     !translationese.passed ||
     !jargonBudget.passed ||
+    !rawTechnicalSyntax.passed ||
     !headingClarity.passed ||
     !homeownerComprehension.passed ||
     !humanRhythm.passed ||
+    !paragraphBreathing.passed ||
     overallScore < 80
   ) {
     decision = 'READER_VOICE_REVISION_REQUIRED';
@@ -676,8 +833,12 @@ export function evaluateReaderVoice(
       rawTechnicalSyntax,
       headingClarity,
       homeownerComprehension,
-      humanRhythm
+      humanRhythm,
+      paragraphBreathing
     },
+    paragraphDensityWarnings,
+    escapedMarkdownIssues,
+    visualDensitySignals,
     authorityCheck,
     aiDetectorAdvisory,
     blockingIssues,
