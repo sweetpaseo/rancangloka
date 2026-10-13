@@ -13,6 +13,44 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-HOUSE-VOICE-READER-UX: House Voice Calibration, Conversational Indonesian, Responsive Comparison Matrix & Zero-Obstruction Reader Navigation 2026-10-13
+
+- **Tujuan & Ruang Lingkup:**
+  - Menetapkan standar suara rumah editorial (*House Voice*) RancangLoka yang alami, bersahaja, dan membumi ("bahasa orang rumah yang berpikir seperti konsultan teknis").
+  - Menegakkan prinsip penulisan Joko: 1 ide per paragraf, kata umum didahulukan, anti-slop, zero jargon tanpa penjelasan, ritme percakapan mengalir, dan pembukaan artikel bervariasi sesuai konteks masalah pembaca.
+  - Memperkuat gerbang bahasa pembaca Nadia (`audience_language_editor`) dengan kapabilitas `READER_VOICE_QA`: paragraph breathing, scannability, jargon budget, visual-density check, dan meaning preservation. Rina dilarang meloloskan artikel tanpa `READER_VOICE_PASS` dari Nadia.
+  - Menerapkan arsitektur tampilan matriks komparasi baru (`src/lib/article/comparison-matrix.ts`):
+    - Desktop: Kontainer editorial breakout (`full-bleed-breakout`, lebar ~1000–1150px) agar matriks 5-kolom leluasa dan nyaman dibaca tanpa menghimpit alur prosa normal.
+    - Tablet: Kartu komparasi responsif 2-kolom dengan sticky criteria badge.
+    - Mobile: Kartu keputusan responsif 1-kolom dengan penjabaran kriteria penuh tanpa pemotongan teks.
+    - Zero client JavaScript (100% semantic HTML + CSS).
+  - Menyelesaikan investigasi sistematis dan perbaikan navigasi mobile:
+    - Root cause: `BaseLayout.astro` keliru memasang `{isArticlePage && (<MobileBottomNav />)}`, sehingga dok navigasi bawah melayang dan menutupi teks pada halaman artikel panjang.
+    - Perbaikan arsitektural: Menegakkan prinsip pembaca long-form *"On long-form editorial pages, navigation must not compete with or obscure the content being read"*. Dok navigasi mobile disupresi penuh pada artikel (`!isArticlePage`), mengeliminasi 100% gangguan pembacaan.
+  - Perbaikan independen Mission Control Office (`src/pages/admin/mission-control/office.astro`): Menghapus deklarasi ganda fungsi klien untuk mencegah tabrakan dev-server.
+  - Mempertahankan integritas kriptografis Draf Artikel C: SHA-256 `85270eb8534331da54efe4bb2dbe471a25ec532bf75d55270758d18c375f15c5` dengan 13/13 pemetaan klaim terikat.
+  - Membersihkan helper dev-preview sementara di `src/middleware.ts` dan `src/pages/admin/preview/[slug].astro` kembali ke status kanonikal `HEAD`.
+- **Alur Editorial Kanonikal:**
+  `Irwan (Riset) -> Joko (Penulisan) -> Nadia (Suara Pembaca) -> Rina (QA Faktual) -> Human Approval (Chief Editor) -> Sari (Publikasi)`
+- **Hasil Pengujian & Verifikasi:**
+  - `node scripts/test-nadia-reader-voice.js`: **35/35 PASSED**
+  - `node scripts/test-editorial-human-quality.js`: **22/22 PASSED**
+  - `node scripts/test-native-indonesian-authoring.js`: **13/13 PASSED**
+  - `node scripts/test-article-render-integrity.js`: **6/6 PASSED**
+  - `node scripts/test-comparison-visual-calibration.js`: **9/9 PASSED**
+  - `node scripts/test-soak-safety.js`: **54/54 PASSED**
+  - TypeScript typecheck (`npx tsc --noEmit`): **0 errors**
+  - Production build (`npm run build`): **Sukses**
+- **Komit Git Bersih:**
+  - `9f1395e` `feat(editorial): establish RancangLoka house voice and reader UX` (13 berkas permanen)
+  - `f26685d` `fix(mission-control): avoid duplicate client declarations` (1 berkas)
+- **Status Akhir:**
+  - Klasifikasi: **`RANCANGLOKA_HOUSE_VOICE_AND_READER_UX_COMPLETE`**.
+  - Status Artikel C: Tersimpan lokal di `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md`, status **`UNPUBLISHED`** menunggu persetujuan akhir konten manusia (`ARTICLE_C_FINAL_CONTENT_APPROVAL_REQUIRED`).
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`. Zero production D1 mutations, zero deployment, zero push.
+
+---
+
 ### HERMES-SKILL-ADOPTION-M1: Adoption of Systematic Debugging for Dimas and Grounded Citations Provenance Pilot for Irwan 2026-10-13
 
 - **Tujuan & Ruang Lingkup:**
