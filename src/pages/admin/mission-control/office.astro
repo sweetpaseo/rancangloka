@@ -3647,7 +3647,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         }
       }
 
-      function triggerSnapshotRefetch(reason) {
+      triggerSnapshotRefetch = function (reason) {
         if (refetchDebounceTimer) clearTimeout(refetchDebounceTimer);
 
         refetchDebounceTimer = setTimeout(function () {
@@ -3715,7 +3715,7 @@ const getSpriteById = (agentId: string) => sprites.find((s) => s.agent_id === ag
         }, 120); // 120ms coalescing window
       }
 
-      function checkOperationalEvents() {
+      checkOperationalEvents = function () {
         if (subscriberTimeout) clearTimeout(subscriberTimeout);
         if (isCheckingEvents) return; // Prevent overlapping in-flight events poll
 
