@@ -160,6 +160,18 @@ export const OFFICE_ROUTE_NODES: Record<string, OfficeRouteNode> = {
     is_workstation: true,
     is_lounge_seat: false
   },
+  editorial_language_desk: {
+    id: 'editorial_language_desk',
+    label: 'Meja Bahasa Pembaca Nadia (Editorial)',
+    room_key: 'editorial_room',
+    level: 1,
+    wing: 'LEFT',
+    x: 22,
+    y: 16,
+    is_doorway: false,
+    is_workstation: true,
+    is_lounge_seat: false
+  },
   editorial_review_desk: {
     id: 'editorial_review_desk',
     label: 'Meja Review Rina (Editorial)',
@@ -362,6 +374,18 @@ export const OFFICE_ROUTE_NODES: Record<string, OfficeRouteNode> = {
     is_workstation: false,
     is_lounge_seat: true
   },
+  lounge_seat_7: {
+    id: 'lounge_seat_7',
+    label: 'Meja Kopi Tengah Lounge (Nadia)',
+    room_key: 'lounge',
+    level: 3,
+    wing: 'RIGHT',
+    x: 80,
+    y: 76,
+    is_doorway: false,
+    is_workstation: false,
+    is_lounge_seat: true
+  },
 
   // --- SOUTHERN ANNEX: ZONE S (SOCIAL DISTRIBUTION) ---
   social_door: {
@@ -421,8 +445,11 @@ export const OFFICE_ROUTE_EDGES: OfficeRouteEdge[] = [
   // 3. Room Interior Connections (Workstations <-> Room Doorways)
   // Editorial Room:
   { from: 'editorial_door', to: 'editorial_review_desk', weight: 1 },
+  { from: 'editorial_review_desk', to: 'editorial_language_desk', weight: 1 },
+  { from: 'editorial_language_desk', to: 'editorial_writer_desk', weight: 1 },
   { from: 'editorial_review_desk', to: 'editorial_writer_desk', weight: 1 },
   { from: 'editorial_door', to: 'editorial_writer_desk', weight: 1 },
+  { from: 'editorial_door', to: 'editorial_language_desk', weight: 1 },
 
   // LokaMedia Studio:
   { from: 'media_door', to: 'media_console', weight: 1 },
@@ -443,6 +470,7 @@ export const OFFICE_ROUTE_EDGES: OfficeRouteEdge[] = [
   { from: 'lounge_door', to: 'lounge_seat_4', weight: 1 },
   { from: 'lounge_door', to: 'lounge_seat_5', weight: 1 },
   { from: 'lounge_door', to: 'lounge_seat_6', weight: 1 },
+  { from: 'lounge_door', to: 'lounge_seat_7', weight: 1 },
 
   // Zone S Interior:
   { from: 'social_door', to: 'social_workstation', weight: 1 }

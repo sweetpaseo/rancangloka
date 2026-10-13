@@ -226,6 +226,35 @@ export const COMMAND_ALLOWLIST: Record<string, CommandDefinition> = {
     required_parameters: ['article_reference']
   },
 
+  // --- NADIA (Audience & Language Editor) ---
+  READER_VOICE_REVIEW_REQUEST: {
+    command_type: 'READER_VOICE_REVIEW_REQUEST',
+    label: 'Pemeriksaan Suara & Keterbacaan Pembaca',
+    description: 'Menugaskan peninjauan naskah untuk menguji keterbacaan pemilik rumah, eliminasi translationese, dan ritme bahasa Indonesia alami.',
+    target_agent_ids: ['audience_language_editor'],
+    department_id: 'editorial',
+    authority_level: 'OPERATOR_COMMAND',
+    required_parameters: ['article_reference']
+  },
+  LANGUAGE_SIMPLIFICATION_REQUEST: {
+    command_type: 'LANGUAGE_SIMPLIFICATION_REQUEST',
+    label: 'Penyederhanaan Bahasa & Jargon',
+    description: 'Menugaskan penyederhanaan terminologi teknis tanpa mengubah fakta dan batas keselamatan.',
+    target_agent_ids: ['audience_language_editor'],
+    department_id: 'editorial',
+    authority_level: 'OPERATOR_COMMAND',
+    required_parameters: ['article_reference']
+  },
+  HEADING_ACCESSIBILITY_REVIEW: {
+    command_type: 'HEADING_ACCESSIBILITY_REVIEW',
+    label: 'Peninjauan Tajuk Berorientasi Masalah',
+    description: 'Memeriksa tajuk dan subjudul agar fokus pada pertanyaan dan diagnosis pemilik rumah.',
+    target_agent_ids: ['audience_language_editor'],
+    department_id: 'editorial',
+    authority_level: 'OPERATOR_COMMAND',
+    required_parameters: ['article_reference']
+  },
+
   // --- BUDI (Media Operations) ---
   MEDIA_STATUS_QUERY: {
     command_type: 'MEDIA_STATUS_QUERY',

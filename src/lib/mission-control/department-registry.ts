@@ -169,7 +169,7 @@ export const CANONICAL_DEPARTMENTS: DepartmentCanonicalConfig[] = [
     description: 'Perencanaan topik, penulisan naskah arsitektur & hunian (anti-slop, human voice), serta kontrol mutu editorial.',
     availability: 'AVAILABLE',
     is_staffed: true,
-    capabilities: ['ARTICLE_WRITING', 'EDITORIAL_QA', 'FIRST_ARTICLE_GATE', 'DRAFT_REFINEMENT'],
+    capabilities: ['ARTICLE_WRITING', 'EDITORIAL_QA', 'FIRST_ARTICLE_GATE', 'DRAFT_REFINEMENT', 'READER_VOICE_QA', 'AUDIENCE_LANGUAGE_EDITOR'],
     source_systems: ['hermes_pipeline', 'hermes_qa', 'd1_articles'],
     room_key: 'editorial_room',
     workstation_zone: 'Zone E - Writing & Editorial QA Desks',
@@ -377,6 +377,15 @@ export function attributeTaskOwnership(task: TaskCard): TaskOwnershipInfo {
     };
   }
 
+  // 2B. Reader Voice Review Stage -> Editorial (Nadia)
+  if (stage === 'reader_voice_review') {
+    return {
+      department_id: 'editorial',
+      responsible_agent_id: 'audience_language_editor',
+      responsibility_confidence: 'EXACT'
+    };
+  }
+
   // 3. Validating / Editorial QA Stage -> Editorial (Rina)
   if (stage === 'validating' || stage === 'editorial_qa') {
     return {
@@ -540,6 +549,20 @@ export function attributeActivityToDepartment(event: ActivityEvent): DepartmentA
     return {
       attributedDepartmentId: 'research_evidence',
       attributedAgentId: 'evidence_researcher_lead',
+      confidence: 'EXACT'
+    };
+  }
+
+  // Reader Voice / Audience Language -> editorial / Nadia
+  if (
+    evType.includes('READER_VOICE') ||
+    evType.includes('LANGUAGE_REVIEW') ||
+    evType.includes('NATURALNESS_REVIEW') ||
+    (sub === 'editorial' && (evType.includes('VOICE_') || evType.includes('LANGUAGE_') || evType.includes('SIMPLIFICATION')))
+  ) {
+    return {
+      attributedDepartmentId: 'editorial',
+      attributedAgentId: 'audience_language_editor',
       confidence: 'EXACT'
     };
   }

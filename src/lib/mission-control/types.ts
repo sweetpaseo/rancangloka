@@ -61,6 +61,7 @@ export type TaskStage =
   | 'draft'
   | 'researching'
   | 'writing'
+  | 'reader_voice_review'
   | 'validating'
   | 'editorial_qa'
   | 'ready_for_ingest'

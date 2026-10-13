@@ -13,6 +13,110 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### HERMES-NADIA-READER-VOICE-FINALIZATION: Expansion to 20 Tests, Claim Strength Invariant, and Full Quality Pipeline Hardening 2026-10-13
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyempurnakan dan mengunci seluruh komponen peran redaksional Nadia (`audience_language_editor`) dan kapabilitas `READER_VOICE_QA`.
+  - Mengimplementasikan invarian durabel: `INVARIANT_LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH = 'LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH'`.
+  - Menegakkan pemisahan semantik state yang ketat: `READER_VOICE_BLOCKED` (untuk ambiguitas teknis/penguatan klaim sepihak tanpa bukti) vs `READER_VOICE_REVISION_REQUIRED` (untuk isu bahasa, pembukaan klise, atau keterbacaan).
+  - Mengimplementasikan deteksi kalimat pembuka berbasis keluarga konten (*content family aware*): `problem_solver`, `system_decision`, `comparison`, `material_index`, `reference`, `explainer`, `review` tanpa memaksakan bentuk kalimat tanya.
+  - Mengunci rute handoff deterministik saat BLOCKED: Nadia BLOCKED -> Irwan (`evidence_researcher_lead`) untuk `evidence_clarification` -> Joko (`native_indonesian_writer`) untuk revisi -> kembali ke Nadia untuk re-review. Transisi langsung Nadia -> Rina saat BLOCKED diblokir keras.
+  - Mengkalibrasi naskah Artikel C (`scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md`) dan penggunaan klaim (`article-c-claim-usage.json`): mitigasi penguatan klaim tidak berdasar pada baris 33 dan 108, menghasilkan SHA-256 terverifikasi `39c3c1f223af9e277c55dca85519f9f618a15deda3c821e924c82adad8d56e23`.
+  - Memperluas test suite `scripts/test-nadia-reader-voice.js` dari 14 menjadi 20 tes komprehensif, mencakup 7 pengujian staf asli, integrasi Mission Control roster/chat, dan spasial Pixel Office.
+- **Hasil & Status Pengujian:**
+  - `node scripts/test-nadia-reader-voice.js`: **20/20 PASSED (100% OK)**.
+  - Regresi Mission Control & Pixel Office: 100% PASSED (staff 16/16, departments 18/18, pixel-office 20/20, chat 20/20, job-animation 21/21, movement 33/33, handoff 26/26, expansion 12/12).
+  - TypeScript typecheck (`npx tsc --noEmit`): 0 errors.
+  - Astro build (`npm run build`): Sukses tanpa error.
+  - Klasifikasi: **`HERMES_NADIA_FINALIZED`**.
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`. Artikel C tersimpan lokal (`UNPUBLISHED`).
+
+---
+
+### HERMES-MCP-SKILL-SECURITY-HARDENING-V1: Hardening Hermes Skill Management in rancangloka_mcp.py with Fail-Closed Dual-Control Approval Gate 2026-10-13
+
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengaudit dan memperkuat keamanan eksekusi `hermes_skill_install` pada MCP Bridge (`rancangloka_mcp.py`) dalam mode `LOCAL PATCH + TEST ONLY / NO PRODUCTION DEPLOYMENT`.
+  - Mencegah vektor serangan instalasi sepihak (*single-agent rogue mutation*), penolakan opsi CLI tambahan (*argument injection*), manipulasi path (*path traversal*), instalasi paket dari sumber eksternal tanpa izin (*unallowlisted sources*), serta penimpaan tidak sah (*forced overwrite*).
+  - Mengimplementasikan validasi identifier skill deterministik berdasarkan format kanonikal aktual Hermes CLI: `^official/([a-z0-9]+(?:-[a-z0-9]+)*)/([a-z0-9]+(?:-[a-z0-9]+)*)$`.
+  - Membangun gerbang persetujuan sisi server (*Server-Side Fail-Closed Approval Gate*) berbasis model kontrol ganda (*Dual-Control*):
+    - Agen redaksi HANYA memiliki kapabilitas mengajukan permohonan melalui tool baru `request_skill_install(skill, reason)`. Tiket berstatus `PENDING_OPERATOR_APPROVAL`.
+    - Agen **dilarang keras** menyetujui permintaannya sendiri (`operator_id` agent alias diblokir dengan `SELF_APPROVAL_PROHIBITED`).
+    - Tiket persetujuan wajib diterbitkan oleh operator manusia (`create_operator_approval`) dan diverifikasi secara kriptografis menggunakan HMAC-SHA256 (`_compute_approval_signature`).
+    - Penegakan masa kedaluwarsa waktu nyata (`expires_at` via monotonic float timestamp) dan kekebalan serangan pemutaran ulang (*Replay Attack Prevention / One-Time Use* di mana tiket dikonsumsi atomik sebelum subprocess dijalankan).
+  - Menolak dan menonaktifkan parameter `force=True` untuk pemanggilan otomatis, kecuali operator manusia secara eksplisit memberikan izin `allow_force: True` dalam tiket.
+  - Mengisolasi dan mensanitasi environment subprocess: mengeliminasi kebocoran API key (`OPENAI_API_KEY`) dan bridge bearer token ke script instalasi skill pihak ketiga.
+  - Mengimplementasikan structured audit logging (`state/skill_install_audit.jsonl`) dengan sanitasi otomatis anti-bocor rahasia (`_sanitize_log_text`).
+  - Mempertahankan integritas dan perilaku seluruh 13 tool legacy MCP bridge lama (`project_context`, `workspace_tree`, `file_read`, `search_project`, `file_write`, `replace_text`, `py_compile`, `run_guard`, `outbox_status`, `write_handoff`, `run_dev_task`, `fasttrack_writer_preflight`, `run_prod_task`) serta `hermes_skills_list`.
+- **Hasil & Status Pengujian:**
+  - Test suite lengkap `work/hermes-mcp-skill-security-hardening-v1/test_hermes_skill_security.py`: **20/20 PASSED (100% OK)**.
+  - Meliputi tes negatif: invalid input, argument injection, path traversal, unallowlisted sources, unauthorized install, expired approval, replay attack, cryptographic tampering, force automated rejection, audit secret sanitization, dan regresi tool legacy.
+  - Verifikasi sintaks: `py_compile` exit code 0 tanpa peringatan.
+  - Seluruh artefak diisolasi secara aman di `work/hermes-mcp-skill-security-hardening-v1/`: berkas asli (`rancangloka_mcp.py.orig`, SHA-256 terverifikasi), berkas hardened (`rancangloka_mcp.py`), unified diff (`rancangloka_mcp_security_hardening.patch`), dan laporan audit (`AUDIT_AND_HARDENING_REPORT.md`).
+  - Status Keselamatan: 0 restart layanan, 0 deploy produksi, 0 skill dipasang di server, 0 token diubah, 0 panggilan installer produksi.
+  - Klasifikasi: **`READY FOR REVIEW`**.
+
+---
+
+### HERMES-MC-NADIA-INTEGRATION: Permanent Integration of Nadia as Audience & Language Editor in Hermes Mission Control & Pixel Office 2026-10-12
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengintegrasikan Nadia (`audience_language_editor`) sebagai staf permanen tingkat satu (*first-class permanent staff member*) di Hermes Mission Control dan Pixel Office.
+  - Membentuk gerbang kualitas redaksional permanen (*Human Voice Layer Gate*) guna melindungi kenyamanan dan kealamian bahasa bagi pembaca umum Indonesia (*"If the reader has to translate a sentence into everyday Indonesian inside their head, the sentence has failed"*).
+  - Memperbarui pipeline redaksional kanonikal menjadi:
+    `Irwan (Riset & Bukti) -> Joko (Penulisan Bahasa Indonesia Asli) -> NADIA (Penyunting Suara Pembaca & Bahasa) -> Rina (Kualitas Redaksional & QA Bukti) -> Human Approval (Chief Editor) -> Sari (Operasional Publikasi)`.
+  - Menerapkan rubrik evaluasi 8-dimensi (Rubrik A–H): Problem-First Opening, Spoken Indonesian, Translationese Check, Jargon Budget, Raw Technical Syntax, Heading Test, Comprehension Test, dan Human Rhythm.
+  - Menegakkan batas invariant dan fail-closed: transisi langsung Joko -> Rina tanpa melewati Nadia ditolak otomatis; skor AI detector berstatus **STRICTLY ADVISORY ONLY** (tidak menentukan kelulusan); otoritas penerbitan Nadia = 0.
+  - Mengintegrasikan Nadia ke dalam tata letak spasial Pixel Office: workstation `editorial_language_desk` (`x: 50, y: 55`, di antara Joko dan Rina) dan kursi idle `lounge_seat_7` (`x: 50, y: 75`, tanpa tabrakan di Executive Lounge).
+  - Mendaftarkan animasi pekerjaan (`READER_VOICE_READING`, `READER_VOICE_EDITING`) serta perintah chat operator (`READER_VOICE_REVIEW_REQUEST`, `LANGUAGE_SIMPLIFICATION_REQUEST`, `HEADING_ACCESSIBILITY_REVIEW`).
+- **Hasil & Status Pengujian:**
+  - Test suite Nadia `scripts/test-nadia-reader-voice.js`: 14/14 PASSED (termasuk verifikasi fixture Artikel C: BEFORE -> BLOCKED/REVISE, AFTER -> PASS).
+  - Seluruh rangkaian regresi Mission Control & Pixel Office: 100% PASSED (16/16 staff, 18/18 departments, 20/20 spatial, 20/20 chat, 21/21 job animation, 33/33 movement, 26/26 handoff, 12/12 expansion).
+  - Typecheck (`npx tsc --noEmit`): 0 errors.
+  - Production build (`npm run build`): Astro build SUCCEEDED.
+  - Klasifikasi: **`HERMES_NADIA_READER_VOICE_INTEGRATION_READY`**.
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `mediaWorker = DISABLED`, database produksi D1 unmutated, zero unapproved publishing.
+
+---
+
+### EDITORIAL-ARTICLE-C-HUMAN-VOICE-RESET: Article C Clean Authoring, Numeric & Claim Audit, and Indonesian Voice Refinement 2026-10-12
+
+- **Tujuan & Ruang Lingkup:**
+  - Melanjutkan produksi editorial Artikel C: *"Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?"*.
+  - Menggunakan bukti riset kanonikal eksklusif dari `scripts/content-bootstrap/artC-research-reset/` (`evidence-pack.json`, `claim-ledger.json`, `source-quality-report.json`, `research-summary.md`), tanpa menggunakan draf lama yang gagal.
+  - Joko menyusun draf bersih Bahasa Indonesia mengikuti struktur keputusan: Masalah -> Konteks -> Diagnosis -> Implikasi -> Opsi/Trade-off -> Kesesuaian Skenario -> Rekomendasi -> Tindakan Berikutnya.
+  - Menjalankan audit numerik ketat (*Pre-Rina Numeric Sanitation*): seluruh angka/persentase/sudut diverifikasi memiliki dukungan langsung dari klaim `authoring_allowed=true`.
+  - Melakukan tinjauan editorial Rina (*Rina Final Editorial QA*): verifikasi ketat struktur, logika, dan integritas klaim dengan skor 114/115 (normalisasi: ~99.1/100, `ARTICLE_C_HUMAN_WRITING_PASS`).
+  - Rekonsiliasi metadata jurnal: menyelaraskan sitasi artikel RISA (*Double Skin Facade Optimization*) ke rentang halaman kanonikal 127–143 (DOI: 10.26593/risa.v8i02.7868.127-143), mengeliminasi inkonsistensi 119–130.
+  - Pembersihan gaya bahasa dan eliminasi translationese: menyempurnakan naskah agar berbicara seperti konsultan bangunan berpengalaman di Jakarta yang berbicara lugas kepada pemilik rumah, menghapus sisa istilah kaku dan formula AI klise.
+  - Menjaga integritas klaim dan data: zero claim drift, zero perubahan arti fisik atau angka.
+- **Hasil & Status Keselamatan:**
+  - Naskah tersimpan di `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md`.
+  - Naskah siap untuk verifikasi akhir suara pembaca oleh Nadia dan persetujuan manual manusia (*Human Approval*) oleh Chief Editor.
+  - Status Publikasi: Belum terbit (*UNPUBLISHED*), tersimpan aman secara lokal, zero publikasi otomatis.
+
+---
+
+### ARTICLE-LIST-MARKER-PRODUCTION-FIX: Semantic List Marker Restoration in Article Typography CSS 2026-10-12
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan masalah visual pada Artikel A produksi di mana elemen daftar periksa (*checklist*) tidak menampilkan bullet/nomor penanda daftar.
+  - Menginspeksi HTML nyata artikel: markup semantik `<ul>`, `<ol>`, dan `<li>` terbukti telah dihasilkan dengan benar oleh markdown parser, namun penanda visual hilang akibat reset Tailwind CSS Preflight.
+  - Memperbaiki CSS tipografi artikel global (`src/styles/global.css`) tanpa mengubah konten naskah, database, atau tabel `articles`:
+    - Memulihkan penanda daftar terurut (`ol > li` menggunakan `list-decimal`).
+    - Memulihkan penanda daftar tidak terurut (`ul > li` menggunakan penanda bullet semantik yang elegan dan konsisten).
+    - Memastikan padding dan indentation yang proporsional pada tampilan desktop dan mobile.
+  - Membuat test suite deterministik `scripts/test-article-list-rendering.js` untuk memvalidasi aturan CSS penanda daftar.
+  - Berkomitmen secara bersih ke git: Commit `651669e` (`fix(article): restore semantic list markers`).
+- **Hasil & Status Keselamatan:**
+  - `node scripts/test-article-list-rendering.js`: PASSED.
+  - Astro build & TypeScript check: PASSED.
+  - Verifikasi Invarian: Nol mutasi pada tabel `articles`, `content_md`, `content_html`, `content_hash`, `published_at`, `actual_published_at`, maupun relasi media.
+  - Klasifikasi: **`ARTICLE_LIST_PRODUCTION_FIX_PROVEN`**.
+
+---
+
 ### ARTICLE-B-PRODUCTION-PROMOTION-PROVEN: LokaMedia v0.1.18 Production Workflow Proven on Real Published Article B 2026-10-12
 
 - **Tujuan & Ruang Lingkup:**

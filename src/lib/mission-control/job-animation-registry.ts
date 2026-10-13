@@ -49,7 +49,9 @@ export type JobAnimationKey =
   | 'ADVISOR_RECOMMEND_NO'
   | 'ADVISOR_HUMAN_REVIEW'
   | 'ADVISOR_DEGRADED'
-  | 'ADVISOR_UNKNOWN';
+  | 'ADVISOR_UNKNOWN'
+  | 'READER_VOICE_READING'
+  | 'READER_VOICE_EDITING';
 
 export type AnimationFreshness = 'REALTIME' | 'RECENT' | 'STALE' | 'UNKNOWN';
 
@@ -98,7 +100,8 @@ export const JOB_ANIMATION_REGISTRY: Record<JobAnimationKey, JobAnimationDefinit
       'evidence_researcher_lead',
       'publication_dispatcher_core',
       'telemetry_observer_jev',
-      'lokamedia_worker_primary'
+      'lokamedia_worker_primary',
+      'audience_language_editor'
     ],
     capabilities: [],
     workstation_key: 'lounge',
@@ -191,6 +194,34 @@ export const JOB_ANIMATION_REGISTRY: Record<JobAnimationKey, JobAnimationDefinit
     css_animation_class: 'animate-checklist-check',
     reduced_motion_class: 'motion-reduce:animate-none',
     prop_icon: '📋'
+  },
+
+  READER_VOICE_READING: {
+    animation_key: 'READER_VOICE_READING',
+    label: 'Penelaahan Bahasa Pembaca',
+    description: 'Nadia menelaah naskah untuk mendeteksi translationese, kalimat kaku, dan beban jargon berlebih.',
+    target_agent_ids: ['audience_language_editor'],
+    capabilities: ['READER_VOICE_QA', 'AUDIENCE_LANGUAGE_EDITOR'],
+    workstation_key: 'editorial_language_desk',
+    visual_detail: 'Meja telaah bahasa pembaca, pena penanda kalimat alami, lembar rubrik percakapan pemilik rumah.',
+    is_work_animation: true,
+    css_animation_class: 'animate-reading-scan',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '📖'
+  },
+
+  READER_VOICE_EDITING: {
+    animation_key: 'READER_VOICE_EDITING',
+    label: 'Penyelarasan Kalimat & Sudut Pandang Masalah',
+    description: 'Nadia menyelaraskan pembuka berorientasi masalah, struktur judul, dan ritme bahasa Indonesia alami.',
+    target_agent_ids: ['audience_language_editor'],
+    capabilities: ['READER_VOICE_QA', 'AUDIENCE_LANGUAGE_EDITOR'],
+    workstation_key: 'editorial_language_desk',
+    visual_detail: 'Penyuntingan kalimat santun, penyesuaian sudut pandang pemilik rumah, catatan perbaikan naskah.',
+    is_work_animation: true,
+    css_animation_class: 'animate-rewrite-pulse',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '✏️'
   },
 
   MEDIA_PROCESSING: {
@@ -532,6 +563,8 @@ export function getWorkstationKeyForAgent(agentId: string): string {
       return 'operations_console';
     case 'social_distribution_operator':
       return 'social_workstation';
+    case 'audience_language_editor':
+      return 'editorial_language_desk';
     default:
       return `${agentId}_workstation`;
   }
@@ -846,6 +879,17 @@ function resolveRunningCommandToVisualState(
       }
       break;
     }
+
+    case 'audience_language_editor': {
+      if (cmdType.includes('SIMPLIF') || cmdType.includes('JARGON') || cmdType.includes('REWRITE')) {
+        animKey = 'READER_VOICE_EDITING';
+        taskLabel = `Penyelarasan bahasa: ${cmdTitle}`;
+      } else {
+        animKey = 'READER_VOICE_READING';
+        taskLabel = `Telaah bahasa pembaca: ${cmdTitle}`;
+      }
+      break;
+    }
   }
 
   const animDef = getAnimationDefinition(animKey);
@@ -984,6 +1028,18 @@ function resolveTaskToVisualState(
       } else {
         animKey = 'ARTICLE_TYPING';
         taskLabel = `Penulisan Copy: ${taskTitle}`;
+      }
+      break;
+    }
+
+    case 'audience_language_editor': {
+      const lowerTitle = taskTitle.toLowerCase();
+      if (lowerTitle.includes('revisi') || lowerTitle.includes('selaras') || lowerTitle.includes('edit') || lowerTitle.includes('simplif')) {
+        animKey = 'READER_VOICE_EDITING';
+        taskLabel = `Penyelarasan kalimat: ${taskTitle}`;
+      } else {
+        animKey = 'READER_VOICE_READING';
+        taskLabel = `Evaluasi bahasa pembaca: ${taskTitle}`;
       }
       break;
     }

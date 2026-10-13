@@ -1,0 +1,82 @@
+{
+  "evaluation_id": "rina_qa_artC_clean_draft_final",
+  "evaluated_at": "2026-10-12T15:30:00.000Z",
+  "evaluator": "rina_editorial_qa_primary",
+  "target_draft": "scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md",
+  "claim_usage_ledger": "scripts/content-bootstrap/artC-research-reset/article-c-claim-usage.json",
+  "scoring": {
+    "sentence_rhythm": {
+      "score": 19,
+      "max_score": 20,
+      "assessment": "Irama kalimat mengalir dinamis, variasi panjang klausa terjaga, transisi alami ala Jakarta Editorial tanpa kekakuan bahasa terjemahan."
+    },
+    "specificity_detail": {
+      "score": 15,
+      "max_score": 15,
+      "assessment": "Detail teknis sangat kaya dan nyata: orientasi sudut matahari, perbedaan radiasi langsung vs baur, kompromi perawatan bilah dan kain kanvas, serta dinamika efek cerobong termal."
+    },
+    "contextual_relevance": {
+      "score": 15,
+      "max_score": 15,
+      "assessment": "Sangat kontekstual terhadap hunian Indonesia: curah hujan dan tempias angin monsun, iklim lembap, debu perkotaan, dan dilema renovasi rumah tapak."
+    },
+    "editorial_voice": {
+      "score": 15,
+      "max_score": 15,
+      "assessment": "Nada konsultan selubung bangunan yang tenang, jernih, dan empatik. Seluruh metafora sensasional telah dibersihkan secara tuntas."
+    },
+    "non_template_structure": {
+      "score": 10,
+      "max_score": 10,
+      "assessment": "Struktur naratif progresif non-templat: Masalah riil -> Fisika iklim & standar -> Logika orientasi -> Telaah 4 sistem -> Matriks komparasi -> Skenario praktis -> Checklist mandiri -> Rujukan standar."
+    },
+    "evidence_integration": {
+      "score": 25,
+      "max_score": 25,
+      "assessment": "Integrasi sempurna 13/13 klaim sah authoring_allowed=true. Pembedaan SNI 6389:2020 vs SNI 03-6389-2000 sangat presisi. Nol klaim numerik liar. Sitasi otoritatif terpetakan 1:1."
+    },
+    "reader_perspective": {
+      "score": 10,
+      "max_score": 10,
+      "assessment": "Berpihak penuh pada pemilik rumah: memandu prioritas solusi sederhana sebelum mengeluarkan biaya renovasi fasad masif, serta menyoroti kendala mencuci kaca di balik secondary skin."
+    },
+    "conclusion_originality": {
+      "score": 5,
+      "max_score": 5,
+      "assessment": "Kesimpulan orisinal dan bebas kata 'Verdict'. Menekankan prinsip bahwa peneduh paling sederhana yang menjawab akar masalah adalah pilihan terbaik."
+    },
+    "raw_dimensional_score": "114 / 115",
+    "raw_dimensional_sum": 114,
+    "raw_dimensional_max": 115,
+    "normalized_score": 99.1,
+    "total_score": 99.1,
+    "max_total": 100,
+    "normalization_formula": "(114 / 115) * 100 = 99.13% -> 99.1 / 100",
+    "pass_threshold": 90,
+    "verdict": "ARTICLE_C_HUMAN_WRITING_PASS"
+  },
+  "critical_issues": [],
+  "minor_observations": [
+    {
+      "location": "Paragraf 2 (baris 5)",
+      "observation": "Dua kalimat berurutan memiliki penutup klausa yang mirip ('sebagai panas konveksi di dalam ruangan'). Telah diselesaikan secara tuntas pada micro-polish pass: klausa berulang dihilangkan dengan tetap mempertahankan makna fisik rambatan panas.",
+      "severity": "LOW_STYLE_ONLY",
+      "resolution_status": "RESOLVED_IN_MICRO_POLISH"
+    }
+  ],
+  "public_cleanliness": {
+    "clm_tags_in_prose": 0,
+    "internal_agent_notes": 0,
+    "json_fragments": 0,
+    "research_instructions": 0,
+    "debug_text": 0,
+    "placeholder_text": 0,
+    "fake_citations": 0,
+    "broken_markdown": 0,
+    "unsupported_raw_urls": 0
+  },
+  "recommendations": {
+    "proceed_to_human_editorial_signoff": true,
+    "ready_for_production_ingest": false
+  }
+}

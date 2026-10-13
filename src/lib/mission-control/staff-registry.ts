@@ -29,6 +29,8 @@ export type StaffCapability =
   | 'EDITORIAL_QA'
   | 'HUMAN_WRITING_QA'
   | 'EDITORIAL_NATURALNESS_REVIEW'
+  | 'READER_VOICE_QA'
+  | 'AUDIENCE_LANGUAGE_EDITOR'
   | 'MEDIA_OPERATIONS'
   | 'PUBLICATION_OPERATIONS'
   | 'SYSTEM_TELEMETRY';
@@ -302,6 +304,36 @@ export const CANONICAL_SOCIAL_STAFF_DEFINITION: MissionControlStaffDefinition = 
   sort_order: 7
 };
 
+/**
+ * Canonical Audience & Language Editor Staff Member (Milestone: HERMES-NADIA-READER-VOICE)
+ * Nadia — Audience & Language Editor (Editorial Department)
+ */
+export const CANONICAL_NADIA_STAFF_DEFINITION: MissionControlStaffDefinition = {
+  agent_id: 'audience_language_editor',
+  display_name: 'Nadia',
+  role: 'Audience & Language Editor',
+  department_id: 'editorial',
+  description: 'Pemeriksaan gaya bahasa pembaca, pembersihan translationese, kurasi keterbacaan teknis untuk pemilik rumah, dan penegakan human voice RancangLoka.',
+  avatar_key: 'editorial_nadia_01',
+  capabilities: [
+    'READER_VOICE_QA',
+    'AUDIENCE_LANGUAGE_EDITOR',
+    'EDITORIAL_NATURALNESS_REVIEW'
+  ],
+  source_system: 'hermes_audience_editor',
+  active: true,
+  sort_order: 8
+};
+
+/**
+ * Register Nadia as a permanent staff member in Mission Control.
+ */
+export function registerNadiaStaffMember(): void {
+  if (!dynamicStaffStore.has(CANONICAL_NADIA_STAFF_DEFINITION.agent_id)) {
+    registerStaffMember(CANONICAL_NADIA_STAFF_DEFINITION);
+  }
+}
+
 
 // In-memory dynamic staff registry store initialized with defaults
 let dynamicStaffStore: Map<string, MissionControlStaffDefinition> = new Map(
@@ -374,7 +406,18 @@ export function getStaffDefinitions(): StaffDefinition[] {
  */
 export function getStaffDefinitionByAgentId(agentId: string): StaffDefinition | null {
   const definitions = getStaffDefinitions();
-  return definitions.find((d) => d.agent_id === agentId) || null;
+  const found = definitions.find((d) => d.agent_id === agentId);
+  if (found) return found;
+
+  // Canonical fallback for Nadia if not dynamically in store
+  if (agentId === 'audience_language_editor' || agentId === 'nadia') {
+    return {
+      ...CANONICAL_NADIA_STAFF_DEFINITION,
+      display_name: customDisplayNames[CANONICAL_NADIA_STAFF_DEFINITION.agent_id] || CANONICAL_NADIA_STAFF_DEFINITION.display_name
+    };
+  }
+
+  return null;
 }
 
 // ============================================================================
@@ -476,6 +519,20 @@ export function attributeActivityEvent(event: ActivityEvent): ActivityAttributio
     return {
       attributedAgentId: 'editorial_qa_primary',
       attributedStaffName: getStaffName('editorial_qa_primary'),
+      confidence: 'HIGH'
+    };
+  }
+
+  // 6B. Reader Voice & Audience Language Events -> Nadia (audience_language_editor)
+  if (
+    evType.includes('READER_VOICE') ||
+    evType.includes('LANGUAGE_REVIEW') ||
+    evType.includes('NATURALNESS_REVIEW') ||
+    (sub === 'editorial' && (evType.includes('VOICE_') || evType.includes('LANGUAGE_') || evType.includes('SIMPLIFICATION')))
+  ) {
+    return {
+      attributedAgentId: 'audience_language_editor',
+      attributedStaffName: getStaffName('audience_language_editor') || 'Nadia',
       confidence: 'HIGH'
     };
   }
@@ -813,6 +870,41 @@ export function deriveStaffCurrentTask(
       }
 
       // Strict Invariant: Pending approval, scheduled (with automation OFF), or completed do NOT generate active tasks.
+      return null;
+    }
+
+    case 'audience_language_editor': {
+      // 1. Active reader voice review task
+      const active = tasks.find(
+        (t) => t.stage === 'reader_voice_review' || (t as any).capability_id === 'READER_VOICE_QA'
+      );
+      if (active) {
+        return {
+          current_task_id: active.taskId,
+          current_task_title: active.title,
+          current_task_status: 'REVIEWING_LANGUAGE',
+          current_task_updated_at: active.lastUpdate
+        };
+      }
+
+      // 2. Blocked / Revision task
+      const blocked = tasks.find(
+        (t) =>
+          (t.stage === 'reader_voice_review' || t.subsystem === 'editorial') &&
+          (t.status === 'BLOCKED' || t.status === 'REVISION_REQUIRED' || t.status === 'FAILED') &&
+          (t.blockerOrError?.toLowerCase().includes('voice') ||
+            t.blockerOrError?.toLowerCase().includes('language') ||
+            t.blockerOrError?.toLowerCase().includes('jargon'))
+      );
+      if (blocked) {
+        return {
+          current_task_id: blocked.taskId,
+          current_task_title: blocked.title,
+          current_task_status: 'BLOCKED',
+          current_task_updated_at: blocked.lastUpdate
+        };
+      }
+
       return null;
     }
 
@@ -1236,6 +1328,52 @@ export function deriveStaffState(
       return {
         state: 'IDLE',
         evidence: 'Pipeline sosial siaga operasional dalam mode shadow; tidak ada materi posting yang sedang dipersiapkan.'
+      };
+    }
+
+    case 'audience_language_editor': {
+      // 1. Offline telemetry check
+      if (scheduler?.hermes?.status === 'offline') {
+        return {
+          state: 'OFFLINE',
+          evidence: 'Daemon editorial Hermes offline.'
+        };
+      }
+
+      // 2. Blocked check
+      const tasks = pipeline?.tasks || [];
+      const blockedTask = tasks.find(
+        (t) =>
+          (t.stage === 'reader_voice_review' || t.subsystem === 'editorial') &&
+          (t.status === 'BLOCKED' || t.status === 'READER_VOICE_BLOCKED' || t.status === 'REVISION_REQUIRED')
+      );
+      if (blockedTask) {
+        return {
+          state: 'BLOCKED',
+          evidence: `Peninjauan bahasa pembaca terhambat: ${blockedTask.blockerOrError || 'Perlu klarifikasi editorial/bukti'}.`
+        };
+      }
+
+      // 3. Reviewing check
+      const voiceTask = tasks.find((t) => t.stage === 'reader_voice_review');
+      if (voiceTask) {
+        return {
+          state: 'REVIEWING',
+          evidence: `Sedang mengevaluasi bahasa dan ritme pembaca untuk [${voiceTask.title}].`
+        };
+      }
+
+      // 4. Unknown telemetry check
+      if (!health || scheduler?.hermes?.status === 'unknown') {
+        return {
+          state: 'UNKNOWN',
+          evidence: 'Telemetri evaluasi bahasa pembaca belum tersedia.'
+        };
+      }
+
+      return {
+        state: 'IDLE',
+        evidence: 'Antrean peninjauan bahasa pembaca bersih; siap meninjau draf baru Joko.'
       };
     }
 

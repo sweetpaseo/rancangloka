@@ -24,7 +24,9 @@ import {
   getStaffRoster,
   registerStaffMember,
   unregisterStaffMember,
-  CANONICAL_SOCIAL_STAFF_DEFINITION
+  CANONICAL_SOCIAL_STAFF_DEFINITION,
+  CANONICAL_NADIA_STAFF_DEFINITION,
+  registerNadiaStaffMember
 } from './staff-registry.ts';
 import {
   getOrganizationSnapshot,
@@ -37,7 +39,8 @@ import { getRegisteredCapabilities,
   registerCapability,
   unregisterCapability,
   updateCapability,
-  CANONICAL_SOCIAL_CAPABILITIES
+  CANONICAL_SOCIAL_CAPABILITIES,
+  CANONICAL_NADIA_CAPABILITIES
 } from './capability-registry.ts';
 import { getLiveOperationsSnapshot } from './live-operations.ts';
 
@@ -65,6 +68,7 @@ export * from './actions.ts';
 export * from './events.ts';
 export * from '../article/human-quality.ts';
 export * from '../article/editorial-knowledge.ts';
+export * from '../editorial/nadia-reader-voice.ts';
 
 export interface MissionControlOrganization {
   generated_at: string;
@@ -160,6 +164,28 @@ export function activateSocialDepartmentShadow(): void {
     workstation_zone: 'Zone S - Social Operations & Distribution Hub',
     description: 'Departemen distribusi konten sosial, kurasi visual, dan pemantauan terjadwal dalam mode bayangan (SHADOW / Read-Only).'
   });
+}
+
+/**
+ * Activates Nadia as permanent Audience & Language Editor in Editorial department.
+ * Registers Nadia's capabilities and staff definition in Mission Control.
+ */
+export function activateNadiaReaderVoiceEditor(): void {
+  // 1. Register Capabilities
+  for (const cap of CANONICAL_NADIA_CAPABILITIES) {
+    try {
+      registerCapability(cap);
+    } catch {
+      updateCapability(cap.capability_id, cap);
+    }
+  }
+
+  // 2. Register Staff Member Nadia
+  try {
+    registerStaffMember(CANONICAL_NADIA_STAFF_DEFINITION);
+  } catch {
+    // Already registered
+  }
 }
 
 /**

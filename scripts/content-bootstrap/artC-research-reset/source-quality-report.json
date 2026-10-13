@@ -1,0 +1,65 @@
+{
+  "report_id": "sqr_artC_final_source_correction_v3",
+  "article_topic": "Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?",
+  "planned_slug": "memilih-sistem-shading-luar-rumah-tropis",
+  "audited_at": "2026-10-12T13:20:00.000Z",
+  "auditor": "irwan_evidence_researcher_lead",
+  "audit_verdict": "ARTICLE_C_FINAL_EVIDENCE_PASS",
+  "targeted_corrections": {
+    "arteks_source": {
+      "status": "CORRECTED_TO_EXACT_CANONICAL",
+      "canonical_title": "An evaluation of shading device in tropics utilising the sun-path diagram",
+      "canonical_authors": ["Laina Hilma Sari", "Era Nopera Rauzi"],
+      "journal": "ARTEKS: Jurnal Teknik Arsitektur",
+      "volume": 6,
+      "issue": 3,
+      "year": 2021,
+      "pages": "373–382",
+      "doi": "10.30822/arteks.v6i3.877",
+      "canonical_url": "https://journal.unwira.ac.id/ARTEKS/en/article/view/877",
+      "errata_purged": ["Mirza et al.", "pages 417-424"]
+    },
+    "sarga_source": {
+      "status": "REMOVED_ENTIRELY_FROM_AUTHOR_SAFE_EVIDENCE",
+      "reason": "Artikel SARGA nyata (Tazkiyatun Nufus, Dyah Hendrawati, Florino Piscal Akbar) diterbitkan tahun 2026 (bukan 2023) dengan DOI 10.56444/sarga.v20i2.3572. Untuk menghindari redundansi dan menjaga integritas bukti, SARGA dihapus sepenuhnya dan klaim fasad sekunder dialihkan secara eksklusif ke RISA 2024.",
+      "author_safe_claims_referencing_sarga": 0
+    },
+    "risa_source": {
+      "status": "RETAINED_AS_PRIMARY_SECONDARY_FACADE_SUPPORT",
+      "canonical_title": "DOUBLE SKIN FACADE OPTIMIZATION FOR THERMAL COMFORT IN LONG BUILDING",
+      "canonical_authors": ["Luke Sidharta Wirajaya", "Wulani Enggar Sari"],
+      "journal": "Riset Arsitektur (RISA)",
+      "volume": 8,
+      "issue": 2,
+      "year": 2024,
+      "pages": "127–143",
+      "doi": "10.26593/risa.v8i02.7868.127-143",
+      "canonical_url": "https://journal.unpar.ac.id/index.php/risa/article/view/7868",
+      "claims_supported": ["CLM-C-SEC-001", "CLM-C-SEC-002"]
+    },
+    "bmkg_rh_decision": {
+      "status": "CONVERTED_TO_QUALITATIVE_CONSENSUS",
+      "action": "Klaim angka '70–90% RH' dihapus dari klaim numerik terotorisasi untuk menghindari generalisasi tanpa dataset stasiun spesifik; diganti dengan rumusan kualitatif terverifikasi: 'kelembapan relatif yang tinggi merupakan karakter umum iklim tropis lembap Indonesia'.",
+      "affected_claim": "CLM-C-CLIM-001"
+    }
+  },
+  "verified_active_sources": [
+    "SRC-BSN-SNI-6389-2020",
+    "SRC-BSN-SNI-03-6389-2000",
+    "SRC-PUPR-PERMEN-21-2021",
+    "SRC-JRNL-ARTEKS-SARI-RAUZI-2021",
+    "SRC-JRNL-RISA-WIRAJAYA-SARI-2024",
+    "SRC-BOOK-KARYONO-2016",
+    "SRC-BOOK-SATWIKO-2009",
+    "SRC-BMKG-STASIUN-GAW-2022"
+  ],
+  "author_safe_claims_count": 13,
+  "negative_audits": {
+    "unverified_source_titles": 0,
+    "wrong_author_names": 0,
+    "wrong_publication_years": 0,
+    "wrong_page_ranges": 0,
+    "wrong_journal_urls": 0,
+    "unsupported_nationwide_numeric_generalizations": 0
+  }
+}

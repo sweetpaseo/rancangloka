@@ -352,3 +352,47 @@ export const CANONICAL_SOCIAL_CAPABILITIES: MissionControlCapabilityDefinition[]
   }
 ];
 
+/**
+ * Canonical Nadia Capabilities (Audience & Language Editor)
+ * Milestone: NADIA-READER-VOICE
+ */
+export const CANONICAL_NADIA_CAPABILITIES: MissionControlCapabilityDefinition[] = [
+  {
+    capability_id: 'READER_VOICE_QA',
+    display_name: 'Quality Assurance Suara Pembaca & Bahasa Alami',
+    description: 'Pemeriksaan naskah dari sudut pandang pembaca awam, eliminasi translationese, dan verifikasi bahasa Indonesia percakapan yang mengalir wajar.',
+    owning_department_id: 'editorial',
+    default_agent_id: 'audience_language_editor',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_reader_voice', 'editorial_human_voice'],
+    command_families: ['READER_VOICE_REVIEW_REQUEST', 'LANGUAGE_SIMPLIFICATION_REQUEST', 'EDITORIAL_NATURALNESS_REVIEW'],
+    read_models: ['pipeline.tasks', 'articles.reader_voice'],
+    anomaly_classes: ['READER_VOICE_BLOCKED', 'TRANSLATIONESE_DETECTED']
+  },
+  {
+    capability_id: 'AUDIENCE_LANGUAGE_EDITOR',
+    display_name: 'Penyuntingan Bahasa & Keterbacaan Pembaca',
+    description: 'Penyelarasan irama kalimat, judul berbasis masalah, pembatasan jargon teknis, dan keterbacaan untuk pemilik rumah biasa.',
+    owning_department_id: 'editorial',
+    default_agent_id: 'audience_language_editor',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_reader_voice', 'editorial_human_voice'],
+    command_families: ['LANGUAGE_SIMPLIFICATION_REQUEST', 'HEADING_ACCESSIBILITY_REVIEW'],
+    read_models: ['pipeline.tasks'],
+    anomaly_classes: ['READER_VOICE_BLOCKED']
+  }
+];
+
+/**
+ * Ensure Nadia's capabilities are registered in the active capability registry.
+ */
+export function ensureNadiaCapabilitiesRegistered(): void {
+  for (const cap of CANONICAL_NADIA_CAPABILITIES) {
+    if (!capabilityRegistry.has(cap.capability_id)) {
+      capabilityRegistry.set(cap.capability_id, { ...cap });
+    }
+  }
+}
+
+// Ensure registered on startup
+ensureNadiaCapabilitiesRegistered();

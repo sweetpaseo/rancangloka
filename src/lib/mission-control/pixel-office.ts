@@ -132,6 +132,7 @@ export interface PixelOfficeState {
 export const OFFICE_POSITIONS: OfficePosition[] = [
   // Editorial Room Positions
   { position_key: 'editorial_writer_desk', room_key: 'editorial_room', label: 'Meja Penulisan Joko', x: 30, y: 55 },
+  { position_key: 'editorial_language_desk', room_key: 'editorial_room', label: 'Meja Bahasa Pembaca Nadia', x: 50, y: 55 },
   { position_key: 'editorial_review_desk', room_key: 'editorial_room', label: 'Meja Review Rina', x: 70, y: 55 },
 
   // Research Lab Positions
@@ -153,6 +154,7 @@ export const OFFICE_POSITIONS: OfficePosition[] = [
   { position_key: 'lounge_seat_4', room_key: 'lounge', label: 'Sofa Santai 4', x: 66, y: 40 },
   { position_key: 'lounge_seat_5', room_key: 'lounge', label: 'Meja Kopi Timur', x: 30, y: 75 },
   { position_key: 'lounge_seat_6', room_key: 'lounge', label: 'Meja Kopi Barat', x: 70, y: 75 },
+  { position_key: 'lounge_seat_7', room_key: 'lounge', label: 'Meja Kopi Tengah (Nadia)', x: 50, y: 75 },
 
   // Social Bay
   { position_key: 'social_bay_empty', room_key: 'social_room', label: 'Area Distribusi Kosong', x: 50, y: 50 },
@@ -166,6 +168,7 @@ export const OFFICE_POSITIONS: OfficePosition[] = [
 export const STAFF_HOME_ROOMS: Record<string, string> = {
   content_writer_primary: 'editorial_room',
   editorial_qa_primary: 'editorial_room',
+  audience_language_editor: 'editorial_room',
   evidence_researcher_lead: 'research_lab',
   lokamedia_worker_primary: 'media_room',
   publication_dispatcher_core: 'publication_room',
@@ -178,6 +181,7 @@ export const STAFF_HOME_ROOMS: Record<string, string> = {
 export const STAFF_WORKSTATION_POSITIONS: Record<string, string> = {
   content_writer_primary: 'editorial_writer_desk',
   editorial_qa_primary: 'editorial_review_desk',
+  audience_language_editor: 'editorial_language_desk',
   evidence_researcher_lead: 'research_main_desk',
   lokamedia_worker_primary: 'media_console',
   publication_dispatcher_core: 'publication_console',
@@ -195,6 +199,7 @@ export const STAFF_CANONICAL_IDLE_SEATS: Record<string, string> = {
   evidence_researcher_lead: 'lounge_seat_4',    // Irwan (Armchair E)
   publication_dispatcher_core: 'lounge_seat_5', // Sari (Stool Barat / Coffee Table 1)
   lokamedia_worker_primary: 'lounge_seat_6',    // Budi (Stool Timur / Coffee Table 2 - if active)
+  audience_language_editor: 'lounge_seat_7',    // Nadia (Meja Kopi Tengah)
   social_distribution_operator: 'social_workstation', // Maya (Zone S)
   management_advisor_jefry: 'management_decision_console' // Jefry (Management Room — never uses Lounge)
 };

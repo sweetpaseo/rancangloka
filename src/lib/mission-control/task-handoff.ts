@@ -152,7 +152,59 @@ export function validateHandoffSafety(
     }
   }
 
+  // 4. Nadia Gate Enactment: Direct new Joko -> Rina transition is rejected once Nadia gate is active
+  // Naskah harus melalui Nadia (reader_voice_review) sebelum masuk ke Rina (editorial_qa)
+  const isEnforced = nadiaGateActiveState || Boolean((handoff as any).enforce_nadia_gate) || Boolean((handoff as any).is_new_editorial_job);
+  if (
+    isEnforced &&
+    handoff.from_agent_id === 'content_writer_primary' &&
+    handoff.to_agent_id === 'editorial_qa_primary' &&
+    handoff.from_stage === 'writing' &&
+    (handoff.to_stage === 'editorial_qa' || handoff.to_stage === 'validating')
+  ) {
+    const isReaderVoicePassed = Boolean(handoff.quality_metadata?.quality_decision === 'READER_VOICE_PASS');
+    if (!isReaderVoicePassed) {
+      return {
+        allowed: false,
+        reason: 'Direct transition from Joko (writing) to Rina (editorial_qa) is rejected. Draft must first pass Nadia (reader_voice_review).'
+      };
+    }
+  }
+
+  // 5. Nadia BLOCKED / REVISION Prohibition: BLOCKED content can NEVER jump directly to Rina
+  if (
+    handoff.from_agent_id === 'audience_language_editor' &&
+    handoff.to_agent_id === 'editorial_qa_primary'
+  ) {
+    if (handoff.quality_metadata?.quality_decision === 'READER_VOICE_BLOCKED') {
+      return {
+        allowed: false,
+        reason: 'Nadia BLOCKED content cannot advance to Rina. It must be routed to Irwan (research) for evidence clarification.'
+      };
+    }
+    if (handoff.quality_metadata?.quality_decision === 'READER_VOICE_REVISION_REQUIRED') {
+      return {
+        allowed: false,
+        reason: 'Nadia REVISION_REQUIRED content cannot advance to Rina. It must be routed back to Joko (writing).'
+      };
+    }
+  }
+
   return { allowed: true };
+}
+
+let nadiaGateActiveState = false;
+
+/**
+ * Activates or deactivates the Nadia Reader Voice gate for editorial handoffs.
+ * Once active, direct new Joko -> Rina transitions are rejected and must pass Nadia.
+ */
+export function setNadiaGateActive(active: boolean): void {
+  nadiaGateActiveState = active;
+}
+
+export function isNadiaGateActive(): boolean {
+  return nadiaGateActiveState;
 }
 
 /**
@@ -352,6 +404,187 @@ export function deriveCanonicalHandoffsFromPipeline(
       }
     }
 
+    // 5. Reader Voice Review Handoff: Joko -> Nadia (reader_voice_review)
+    else if (task.stage === 'reader_voice_review') {
+      const isBlocked = task.status === 'BLOCKED' || task.status === 'READER_VOICE_BLOCKED';
+      const observation: TaskHandoffObservation = {
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'writing',
+          'reader_voice_review',
+          'content_writer_primary',
+          'audience_language_editor',
+          timestamp
+        ),
+        workflow_id: task.taskId,
+        task_id: task.taskId,
+        artifact_id: artifactId,
+        task_title: taskTitle,
+        from_agent_id: 'content_writer_primary',
+        to_agent_id: 'audience_language_editor',
+        from_department_id: 'editorial',
+        to_department_id: 'editorial',
+        from_stage: 'writing',
+        to_stage: 'reader_voice_review',
+        handoff_state: isBlocked ? 'BLOCKED' : 'RUNNING',
+        transition_timestamp: timestamp,
+        evidence_source: 'reader_voice_review_intake',
+        evidence_id: `voice_${task.relatedArticleId || task.taskId}`,
+        confidence: 'EXACT',
+        requires_movement: !isBlocked
+      };
+
+      const safety = validateHandoffSafety(observation, snapshot);
+      if (safety.allowed) {
+        handoffs.push(observation);
+      }
+    }
+
+    // 6. Reader Voice Revision Handoff: Nadia -> Joko (revision_required)
+    else if ((task as any).readerVoiceReview?.decision === 'READER_VOICE_REVISION_REQUIRED' && task.stage === 'writing') {
+      const observation: TaskHandoffObservation = {
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'reader_voice_review',
+          'writing',
+          'audience_language_editor',
+          'content_writer_primary',
+          timestamp
+        ),
+        workflow_id: task.taskId,
+        task_id: task.taskId,
+        artifact_id: artifactId,
+        task_title: taskTitle,
+        from_agent_id: 'audience_language_editor',
+        to_agent_id: 'content_writer_primary',
+        from_department_id: 'editorial',
+        to_department_id: 'editorial',
+        from_stage: 'reader_voice_review',
+        to_stage: 'writing',
+        handoff_state: 'RUNNING',
+        transition_timestamp: timestamp,
+        evidence_source: 'reader_voice_revision_brief',
+        evidence_id: `voice_rev_${task.relatedArticleId || task.taskId}`,
+        confidence: 'EXACT',
+        requires_movement: true
+      };
+
+      const safety = validateHandoffSafety(observation, snapshot);
+      if (safety.allowed) {
+        handoffs.push(observation);
+      }
+    }
+
+    // 6b. Reader Voice Blocked Handoff: Nadia -> Irwan (evidence_clarification)
+    else if ((task as any).readerVoiceReview?.decision === 'READER_VOICE_BLOCKED' && (task.stage === 'researching' || (task as any).stage === 'evidence_clarification' || task.status === 'BLOCKED')) {
+      const observation: TaskHandoffObservation = {
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'reader_voice_review',
+          task.stage,
+          'audience_language_editor',
+          'evidence_researcher_lead',
+          timestamp
+        ),
+        workflow_id: task.taskId,
+        task_id: task.taskId,
+        artifact_id: artifactId,
+        task_title: taskTitle,
+        from_agent_id: 'audience_language_editor',
+        to_agent_id: 'evidence_researcher_lead',
+        from_department_id: 'editorial',
+        to_department_id: 'research',
+        from_stage: 'reader_voice_review',
+        to_stage: task.stage,
+        handoff_state: 'RUNNING',
+        transition_timestamp: timestamp,
+        evidence_source: 'reader_voice_blocked_clarification_brief',
+        evidence_id: `voice_block_${task.relatedArticleId || task.taskId}`,
+        confidence: 'EXACT',
+        requires_movement: true,
+        quality_metadata: {
+          quality_decision: 'READER_VOICE_BLOCKED',
+          primary_owner: 'evidence_researcher_lead',
+          revision_reason: (task as any).readerVoiceReview?.notes || 'Evidence clarification required before simplification'
+        }
+      };
+
+      const safety = validateHandoffSafety(observation, snapshot);
+      if (safety.allowed) {
+        handoffs.push(observation);
+      }
+    }
+
+    // 6c. Evidence Clarification Complete Handoff: Irwan -> Joko (writing revision)
+    else if ((task as any).evidenceClarification?.status === 'CLARIFIED' && task.stage === 'writing') {
+      const observation: TaskHandoffObservation = {
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'researching',
+          'writing',
+          'evidence_researcher_lead',
+          'content_writer_primary',
+          timestamp
+        ),
+        workflow_id: task.taskId,
+        task_id: task.taskId,
+        artifact_id: artifactId,
+        task_title: taskTitle,
+        from_agent_id: 'evidence_researcher_lead',
+        to_agent_id: 'content_writer_primary',
+        from_department_id: 'research',
+        to_department_id: 'editorial',
+        from_stage: 'researching',
+        to_stage: 'writing',
+        handoff_state: 'RUNNING',
+        transition_timestamp: timestamp,
+        evidence_source: 'evidence_clarification_completed',
+        evidence_id: `evidence_clarified_${task.relatedArticleId || task.taskId}`,
+        confidence: 'EXACT',
+        requires_movement: true
+      };
+
+      const safety = validateHandoffSafety(observation, snapshot);
+      if (safety.allowed) {
+        handoffs.push(observation);
+      }
+    }
+
+    // 7. Reader Voice Pass Handoff: Nadia -> Rina (editorial_qa)
+    else if ((task as any).readerVoiceReview?.decision === 'READER_VOICE_PASS' && (task.stage === 'editorial_qa' || task.stage === 'validating')) {
+      const observation: TaskHandoffObservation = {
+        handoff_id: deriveDeterministicHandoffId(
+          task.taskId,
+          'reader_voice_review',
+          task.stage,
+          'audience_language_editor',
+          'editorial_qa_primary',
+          timestamp
+        ),
+        workflow_id: task.taskId,
+        task_id: task.taskId,
+        artifact_id: artifactId,
+        task_title: taskTitle,
+        from_agent_id: 'audience_language_editor',
+        to_agent_id: 'editorial_qa_primary',
+        from_department_id: 'editorial',
+        to_department_id: 'editorial',
+        from_stage: 'reader_voice_review',
+        to_stage: task.stage,
+        handoff_state: 'RUNNING',
+        transition_timestamp: timestamp,
+        evidence_source: 'reader_voice_pass_certificate',
+        evidence_id: `voice_pass_${task.relatedArticleId || task.taskId}`,
+        confidence: 'EXACT',
+        requires_movement: true
+      };
+
+      const safety = validateHandoffSafety(observation, snapshot);
+      if (safety.allowed) {
+        handoffs.push(observation);
+      }
+    }
+
     // Strict invariant: Tasks without verifiable canonical transition evidence
     // (e.g. stage alone without approval or media job) CANNOT fabricate history. Fail closed!
   }
@@ -427,9 +660,10 @@ export function detectSnapshotDeltaHandoffs(
       handoffState = 'QUEUED';
     }
 
-    // Check for genuine workflow rollback (e.g. editorial_qa -> writing)
+    // Check for genuine workflow rollback (e.g. editorial_qa -> writing or reader_voice_review -> writing)
     const isRollback =
       (prevTask.stage === 'editorial_qa' && currTask.stage === 'writing') ||
+      (prevTask.stage === 'reader_voice_review' && currTask.stage === 'writing') ||
       (prevTask.stage === 'scheduled' && (currTask.stage === 'editorial_qa' || currTask.stage === 'writing'));
 
     const observation: TaskHandoffObservation = {
