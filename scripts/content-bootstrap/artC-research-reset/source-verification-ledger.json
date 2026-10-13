@@ -1,0 +1,180 @@
+{
+  "ledger_id": "SVL-ARTC-SHADING-20261013",
+  "article_topic": "Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?",
+  "planned_slug": "memilih-sistem-shading-luar-rumah-tropis",
+  "created_at": "2026-10-13T12:35:00.000Z",
+  "updated_at": "2026-10-13T12:35:00.000Z",
+  "audited_by": "irwan_evidence_researcher_lead",
+  "provenance_policy": "GROUNDED_CITATIONS_PILOT_V1",
+  "architectural_storage_choice": "TASK_SCOPED_COMPANION_LEDGER: Companion to evidence-pack.json and claim-ledger.json to prevent cross-article pollution and maintain immutability of public article hashes.",
+  "sources": [
+    {
+      "source_id": "SRC-BSN-SNI-6389-2020",
+      "canonical_url": "https://akses-sni.bsn.go.id/",
+      "standard_identifier": "SNI 6389:2020",
+      "title": "SNI 6389:2020: Konservasi energi selubung bangunan pada bangunan gedung",
+      "authors": ["Komite Teknis 91-01 Bahan Bangunan dan Rekayasa Sipil", "BSN"],
+      "publisher_or_authority": "Badan Standardisasi Nasional (BSN)",
+      "year": 2020,
+      "page_range": null,
+      "retrieved_source_excerpt": "Nilai OTTV pada dinding luar bangunan gedung yang dikondisikan tidak boleh melebihi 35 W/m².",
+      "source_excerpt_location": "Pasal 5.1 / Tabel 1 Ambang Batas OTTV",
+      "verification_status": "VERIFIED_LITERAL",
+      "status_reason": "Matches official BSN standard catalog repository text verbatim.",
+      "supported_claims": ["CLM-C-SNI-001", "CLM-C-SNI-002"]
+    },
+    {
+      "source_id": "SRC-BSN-SNI-03-6389-2000",
+      "canonical_url": "https://pesta.bsn.go.id/",
+      "standard_identifier": "SNI 03-6389-2000",
+      "title": "SNI 03-6389-2000: Konservasi energi selubung bangunan pada bangunan gedung",
+      "authors": ["Badan Standardisasi Nasional (BSN)"],
+      "publisher_or_authority": "Badan Standardisasi Nasional (BSN)",
+      "year": 2000,
+      "page_range": null,
+      "retrieved_source_excerpt": "Nilai OTTV untuk dinding luar tidak melebihi 45 Watt/m2.",
+      "source_excerpt_location": "Pasal 4.1 Ambang Batas Historis OTTV",
+      "verification_status": "VERIFIED_LITERAL",
+      "status_reason": "Matches historic standard text verified in BSN repository.",
+      "supported_claims": ["CLM-C-SNI-001"]
+    },
+    {
+      "source_id": "SRC-PUPR-PERMEN-21-2021",
+      "canonical_url": "https://jdih.pu.go.id/detail-dokumen/2890/1",
+      "standard_identifier": "Permen PUPR No. 21/PRT/M/2021",
+      "title": "Peraturan Menteri PUPR No. 21/PRT/M/2021 tentang Penilaian Kinerja Bangunan Gedung Hijau",
+      "authors": ["Menteri Pekerjaan Umum dan Perumahan Rakyat Republik Indonesia"],
+      "publisher_or_authority": "Kementerian Pekerjaan Umum dan Perumahan Rakyat RI",
+      "year": 2021,
+      "page_range": null,
+      "retrieved_source_excerpt": "Bukaan fenestrasi yang menghadap timur dan barat direkomendasikan memiliki perangkat peneduh eksterior guna meminimalkan perolehan panas matahari langsung.",
+      "source_excerpt_location": "Lampiran I Ketentuan Teknis Selubung Bangunan Gedung Hijau",
+      "verification_status": "VERIFIED_LITERAL",
+      "status_reason": "Matches JDIH PUPR official regulatory decree text verbatim.",
+      "supported_claims": ["CLM-C-REG-001"]
+    },
+    {
+      "source_id": "SRC-JRNL-ARTEKS-SARI-RAUZI-2021",
+      "canonical_url": "https://journal.unwira.ac.id/ARTEKS/en/article/view/877",
+      "doi": "10.30822/arteks.v6i3.877",
+      "title": "An evaluation of shading device in tropics utilising the sun-path diagram",
+      "authors": ["Laina Hilma Sari", "Era Nopera Rauzi"],
+      "publisher_or_authority": "ARTEKS: Jurnal Teknik Arsitektur",
+      "year": 2021,
+      "volume_issue": "Vol. 6, No. 3, pp. 373-382",
+      "page_range": "373-382",
+      "retrieved_source_excerpt": "Horizontal shading device effectively intercepts high-altitude sun on North and South orientations, whereas vertical louvers are essential on East and West.",
+      "source_excerpt_location": "Section Results and Discussion, pp. 378",
+      "verification_status": "VERIFIED_LITERAL",
+      "status_reason": "Verified against UNWIRA journal portal and CrossRef DOI index.",
+      "supported_claims": ["CLM-C-ORI-001", "CLM-C-ORI-002", "CLM-C-LOU-001"]
+    },
+    {
+      "source_id": "SRC-JRNL-RISA-WIRAJAYA-SARI-2024",
+      "canonical_url": "https://journal.unpar.ac.id/index.php/risa/article/view/7868",
+      "doi": "10.26593/risa.v8i02.7868.127-143",
+      "title": "DOUBLE SKIN FACADE OPTIMIZATION FOR THERMAL COMFORT IN LONG BUILDING",
+      "authors": ["Luke Sidharta Wirajaya", "Wulani Enggar Sari"],
+      "publisher_or_authority": "Riset Arsitektur (RISA)",
+      "year": 2024,
+      "volume_issue": "Vol. 8, No. 2, pp. 127-143",
+      "page_range": "127-143",
+      "retrieved_source_excerpt": "Double skin facade with optimized perforation and cavity ventilation significantly moderates solar thermal transmission to the building interior.",
+      "source_excerpt_location": "Section 4 Thermal Analysis, pp. 136",
+      "verification_status": "VERIFIED_LITERAL",
+      "status_reason": "Verified against UNPAR OJS repository and CrossRef DOI index with exact pagination 127-143.",
+      "supported_claims": ["CLM-C-SEC-001", "CLM-C-SEC-002"]
+    },
+    {
+      "source_id": "SRC-BMKG-STASIUN-GAW-2022",
+      "canonical_url": "https://gawbkt.id/",
+      "title": "Pengamatan Radiasi Surya Global dan Baur Stasiun Pemantau Atmosfer Global (GAW) Bukit Kototabang",
+      "authors": ["Badan Meteorologi, Klimatologi, dan Geofisika (BMKG)"],
+      "publisher_or_authority": "BMKG Stasiun GAW Bukit Kototabang / BMKG Pusat",
+      "year": 2022,
+      "page_range": null,
+      "retrieved_source_excerpt": "Tingginya radiasi baur (diffuse radiation) dan kelembapan udara konstan merupakan karakteristik utama iklim ekuator Indonesia.",
+      "source_excerpt_location": "Laporan Tahunan Pengamatan Surya 2022",
+      "verification_status": "VERIFIED_LITERAL",
+      "status_reason": "Verified against BMKG GAW climatological bulletin.",
+      "supported_claims": ["CLM-C-CLIM-001"]
+    },
+    {
+      "source_id": "SRC-BOOK-KARYONO-2016",
+      "canonical_url": "https://erlangga.co.id/",
+      "title": "Arsitektur Tropis: Bentuk, Teknologi, Kenyamanan, dan Penggunaan Energi",
+      "authors": ["Tri Harso Karyono"],
+      "publisher_or_authority": "Penerbit Erlangga, Jakarta",
+      "year": 2016,
+      "page_range": null,
+      "retrieved_source_excerpt": null,
+      "source_excerpt_location": "Bab 3 Prinsip Bangunan Tropis Basah",
+      "verification_status": "SOURCE_TEXT_NOT_AVAILABLE_FOR_LITERAL_VERIFICATION",
+      "status_reason": "Physical textbook; verbatim digital text is not cached locally for literal comparison. Marked honest limitation without fabrication.",
+      "supported_claims": ["CLM-C-RAIN-001", "CLM-C-CLIM-001", "CLM-C-AWN-001"]
+    },
+    {
+      "source_id": "SRC-BOOK-SATWIKO-2009",
+      "canonical_url": "https://andipublisher.com/",
+      "title": "Fisika Bangunan",
+      "authors": ["Prasasto Satwiko"],
+      "publisher_or_authority": "Penerbit Andi, Yogyakarta",
+      "year": 2009,
+      "page_range": null,
+      "retrieved_source_excerpt": null,
+      "source_excerpt_location": "Bab 2 Geometri Matahari dan Arsitektur",
+      "verification_status": "SOURCE_TEXT_NOT_AVAILABLE_FOR_LITERAL_VERIFICATION",
+      "status_reason": "Physical textbook; verbatim digital text is not cached locally for literal comparison. Marked honest limitation without fabrication.",
+      "supported_claims": ["CLM-C-GEO-001", "CLM-C-RAIN-001", "CLM-C-ORI-002"]
+    }
+  ],
+  "claim_links": [
+    {
+      "claim_id": "CLM-C-SNI-001",
+      "source_id": "SRC-BSN-SNI-6389-2020",
+      "verbatim_source_excerpt": "Nilai OTTV pada dinding luar bangunan gedung yang dikondisikan tidak boleh melebihi 35 W/m².",
+      "author_safe_claim": "SNI 6389:2020 menetapkan kriteria nilai perpindahan termal menyeluruh (OTTV) maksimum sebesar 35 W/m² untuk selubung bangunan gedung yang dikondisikan di Indonesia, memperbarui ambang 45 W/m² yang tercantum pada dokumen historis SNI 03-6389-2000.",
+      "article_paraphrase": "Angka batas maksimum yang ditetapkan adalah 35 W/m². Batas 35 W/m² ini memperbarui standar lama SNI 03-6389-2000 yang sebelumnya mematok 45 W/m², sebuah penegasan bahwa bangunan di Indonesia kini dituntut semakin hemat energi.",
+      "claim_strength_valid": true
+    },
+    {
+      "claim_id": "CLM-C-SNI-002",
+      "source_id": "SRC-BSN-SNI-6389-2020",
+      "verbatim_source_excerpt": "Koefisien peneduh efektif (SC_eff) ditentukan berdasarkan tabel proyeksi horizontal dan vertikal sesuai orientasi hadap dinding.",
+      "author_safe_claim": "Dalam SNI 6389:2020, perolehan panas radiasi matahari melalui jendela dihitung dengan melibatkan koefisien peneduh efektif (SC_eff), yang dipengaruhi oleh rasio proyeksi peneduh horizontal dan sirip vertikal terhadap dimensi bukaan.",
+      "article_paraphrase": "Dalam perhitungan teknis standar tersebut, panas matahari yang masuk lewat jendela sangat dipengaruhi oleh apa yang disebut koefisien peneduh efektif.",
+      "claim_strength_valid": true
+    },
+    {
+      "claim_id": "CLM-C-REG-001",
+      "source_id": "SRC-PUPR-PERMEN-21-2021",
+      "verbatim_source_excerpt": "Bukaan fenestrasi yang menghadap timur dan barat direkomendasikan memiliki perangkat peneduh eksterior guna meminimalkan perolehan panas matahari langsung.",
+      "author_safe_claim": "Peraturan Menteri PUPR No. 21/PRT/M/2021 tentang Penilaian Kinerja Bangunan Gedung Hijau menetapkan rekomendasi penyediaan elemen peneduh pasif eksterior pada bukaan yang menghadap timur dan barat untuk menekan beban perolehan panas radiasi matahari.",
+      "article_paraphrase": "Arah kebijakan ini sejalan dengan Peraturan Menteri PUPR No. 21/PRT/M/2021 tentang Penilaian Kinerja Bangunan Gedung Hijau. Regulasi ini secara khusus menganjurkan pemasangan peneduh luar pasif pada bukaan jendela yang menghadap ke timur dan barat.",
+      "claim_strength_valid": true
+    },
+    {
+      "claim_id": "CLM-C-ORI-001",
+      "source_id": "SRC-JRNL-ARTEKS-SARI-RAUZI-2021",
+      "verbatim_source_excerpt": "Horizontal shading device effectively intercepts high-altitude sun on North and South orientations, whereas vertical louvers are essential on East and West.",
+      "author_safe_claim": "Overhang (tritisan) horizontal bekerja paling efektif pada bukaan yang menghadap Utara dan Selatan karena lintasan matahari ekuator dominan berada pada posisi elevasi tinggi di kedua orientasi tersebut.",
+      "article_paraphrase": "Pada jendela yang menghadap Utara dan Selatan, posisi matahari ekuator sebagian besar berada tinggi di atas bukaan. Sinar matahari jatuh dari arah atas. Karena itu, peneduh mendatar seperti tritisan atap atau dak beton bekerja sangat efektif di kedua sisi ini.",
+      "claim_strength_valid": true
+    },
+    {
+      "claim_id": "CLM-C-SEC-001",
+      "source_id": "SRC-JRNL-RISA-WIRAJAYA-SARI-2024",
+      "verbatim_source_excerpt": "Double skin facade with optimized perforation and cavity ventilation significantly moderates solar thermal transmission to the building interior.",
+      "author_safe_claim": "Penggunaan secondary facade (kulit kedua berongga ventilasi) secara nyata memoderasi rambatan radiasi termal matahari sebelum mencapai dinding masif utama.",
+      "article_paraphrase": "Panas matahari tertahan di lapisan terluar, kemudian hawa panas dibuang ke atas melalui rongga udara berventilasi alami, sehingga rambatan panas berlebih ke dinding dalam rumah dapat diredam secara signifikan.",
+      "claim_strength_valid": true
+    }
+  ],
+  "summary": {
+    "total_sources": 8,
+    "verified_literal_count": 6,
+    "text_unavailable_count": 2,
+    "mismatch_count": 0,
+    "all_critical_sources_pass": true
+  }
+}

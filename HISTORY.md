@@ -13,7 +13,29 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### HERMES-SKILL-ADOPTION-M1: Adoption of Systematic Debugging for Dimas and Grounded Citations Provenance Pilot for Irwan 2026-10-13
+
+- **Tujuan & Ruang Lingkup:**
+  - Mengadopsi keterampilan teknik `systematic-debugging` sebagai Prosedur Operasi Standar Teknik Kanonikal (*Canonical Engineering SOP*) di bawah kepemilikan Dimas (`telemetry_observer_jev`).
+  - Menegakkan *The Iron Law: NO FIX BEFORE ROOT CAUSE INVESTIGATION* dengan 4 fase sistematis (Fase 1: Reproduksi & Investigasi Akar Masalah, Fase 2: Analisis Pola, Fase 3: Hipotesis & Uji Minimal, Fase 4: Perbaikan Terarah & Verifikasi).
+  - Mengimplementasikan modul `src/lib/mission-control/systematic-debugging.ts` dan dokumentasi kanonikal `docs/engineering/SYSTEMATIC_DEBUGGING_SOP.md`.
+  - Menjalankan uji coba percontohan (*PILOT ONLY*) `grounded-citations` untuk Irwan (`evidence_researcher_lead`) sebagai lapisan verifikasi asal-usul sumber (*source-provenance verification layer*), tanpa mengubah naskah markdown publik atau menambahkan blok `## Sources`.
+  - Menerapkan arsitektur pembatasan klaim 3-tahap: `Kutipan Sumber Literal -> Klaim Aman-Penulis (Parafrasa Teknis) -> Parafrasa Publik Artikel (Bahasa Orang Rumah)`.
+  - Menegakkan invarian durabel: `SOURCE_EXCERPT_IS_LITERAL`, `AUTHOR_SAFE_CLAIM_MAY_BE_PARAPHRASED`, `PUBLIC_ARTICLE_MAY_BE_NATURAL_LANGUAGE_PARAPHRASE`, dan `CLAIM_STRENGTH_MUST_NOT_EXCEED_SOURCE_EVIDENCE`.
+  - Mengimplementasikan penyimpanan terikat-tugas (*task-scoped companion ledger*) di `scripts/content-bootstrap/artC-research-reset/source-verification-ledger.json` untuk Artikel C tanpa memutasi naskah atau mengubah hash SHA-256.
+  - Memastikan sumber fisik/tanpa teks digital lokal ditandai jujur sebagai `SOURCE_TEXT_NOT_AVAILABLE_FOR_LITERAL_VERIFICATION` tanpa fabrikasi.
+- **Hasil & Status Pengujian:**
+  - Test suite lengkap `scripts/test-skill-adoption-m1.js`: **17/17 PASSED (100% OK)**.
+  - Seluruh rangkaian regresi Mission Control, Pixel Office, dan Nadia (9 test suite): 100% PASSED.
+  - TypeScript typecheck (`npx tsc --noEmit`): 0 errors.
+  - Production build (`npm run build`): Sukses tanpa error (6.37s).
+  - Klasifikasi: **`HERMES_SKILL_ADOPTION_M1_COMPLETE`**.
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`. Artikel C tersimpan lokal (`UNPUBLISHED`).
+
+---
+
 ### HERMES-NADIA-READER-VOICE-FINALIZATION: Expansion to 20 Tests, Claim Strength Invariant, and Full Quality Pipeline Hardening 2026-10-13
+
 
 - **Tujuan & Ruang Lingkup:**
   - Menyempurnakan dan mengunci seluruh komponen peran redaksional Nadia (`audience_language_editor`) dan kapabilitas `READER_VOICE_QA`.
