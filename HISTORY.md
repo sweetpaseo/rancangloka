@@ -13,6 +13,54 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-APPROVAL-INBOX-V1-COMPLETE: Scalable Human Approval Inbox, Isolated DEV Fixtures, Responsive Admin Shell & Task-First Decision Experience 2026-10-14
+
+- **Tujuan & Ruang Lingkup:**
+  - Menyelesaikan dan membekukan secara resmi milestone **`APPROVAL_INBOX_V1_COMPLETE`** untuk sistem antarmuka persetujuan redaksi RancangLoka.
+  - Kodifikasi Prinsip UX Kanonikal:
+    - *"If the system needs a human decision, the system surfaces that decision to the human."*
+    - *"The bell tells the administrator that work exists. The Approval Inbox organizes the work. The Approval Detail is where the decision happens."*
+    - *"Inbox = find the work. Detail = understand the context and make the decision."*
+    - *"Human approval queues may scale; human decisions remain deliberate and individual."*
+  - Arsitektur Shell Admin Responsif & Off-Canvas Drawer (`src/layouts/AdminLayout.astro`):
+    - Desktop (>= 1024px): Sidebar navigasi desktop permanen dipertahankan (`lg:w-60`).
+    - Mobile (< 1024px): Off-canvas drawer (`-translate-x-full` ke `translate-x-0`), backdrop gelap semi-transparan, tombol hamburger, tombol tutup, serta penutup otomatis saat navigasi atau tombol Escape.
+    - Header Mobile: Tata letak kompak `[ hamburger ] [ page identity ] [ approval bell ]`.
+    - Dropdown Lonceng Notifikasi: Penempatan adaptif (`fixed sm:absolute inset-x-3 sm:inset-x-auto top-16 sm:top-auto sm:right-0 mt-2 sm:w-96 max-w-[calc(100vw-1.5rem)]`) mencegah terpotong (zero horizontal clipping) pada layar sempit 375px.
+  - Penyederhanaan Operasional Antrean Persetujuan Desktop (`src/pages/admin/approvals/index.astro`):
+    - Melepaskan 3 kolom audit berat dari tabel antrean utama desktop: `Tahap Alur Kerja`, `Gerbang Sebelumnya`, dan `Aktor Wajib` dipindahkan secara eksklusif ke halaman detail (`/admin/preview/[slug]`).
+    - Tabel operasional desktop difokuskan tepat pada 5 kolom esensial: `Judul / Subjek`, `Tipe`, `Menunggu`, `Status`, `Tindakan`.
+    - Tombol aksi utama `[Tinjau →]` langsung terlihat tanpa horizontal scrolling pada resolusi 1024px maupun 1440px.
+  - Pengalaman Tugas Utama (*Task-First*) Mobile:
+    - Antrean mobile berbasis kartu tugas kompak (`#approval-mobile-list`, `md:hidden`) yang bersumber dari proyeksi data kanonikal yang sama dengan desktop.
+    - Kartu header dan statistik dipadatkan, catatan prinsip UX dikompresi menjadi disclosure `<details class="md:hidden">` ("Tentang alur persetujuan"), menghemat ~60px ruang vertikal.
+    - Keputusan persetujuan pertama tampak 100% *above-the-fold* pada layar sempit (375x812px) pada ketinggian ~258px dari atas layar.
+    - Tab filter status horisontal dilengkapi `.no-scrollbar` untuk menyembunyikan bilah gulir visual tanpa mengganggu swipe sentuh.
+  - Isolasi Modular Fixture DEV (`src/lib/approvals/dev-fixtures.ts`):
+    - Memindahkan 5 objek mock visual review ke modul fixture terisolasi (`dev-fixtures.ts`).
+    - Proyeksi kanonikal basis data (`projectRawApprovalItems`) 100% murni merefleksikan catatan SQLite/D1 riil tanpa kebocoran data demo ke produksi.
+    - Fixture hanya aktif secara eksplisit pada pengujian lokal DEV (`import.meta.env.DEV`), bersifat in-memory (zero D1 writes), dan secara otomatis mundur (*step aside*) saat ada catatan persetujuan riil.
+  - Kepatuhan Invarian Gerbang Manusia (*Human Gate Invariant*):
+    - Artikel hanya dapat memasuki antrean pending Chief Editor jika seluruh gerbang sebelumnya terbukti lulus: Irwan (Evidence) `PASS`, Joko (Authoring) `PASS`, Nadia (Reader Voice) `PASS`, dan Rina (Editorial QA) positif eksplisit `PASS`.
+    - Nilai `undefined`, `NOT_RUN`, `PENDING`, atau ketiadaan kegagalan dilarang keras dianggap lulus.
+    - Keputusan persetujuan manusia bersifat deliberate dan per-item (*NO BULK APPROVAL*).
+  - Integritas Draf Artikel C:
+    - Naskah lokal di `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md` terlindungi secara kriptografis (SHA-256: `85270eb8534331da54efe4bb2dbe471a25ec532bf75d55270758d18c375f15c5`).
+    - 13/13 klaim terverifikasi, status tetap **`UNPUBLISHED`** menunggu persetujuan akhir konten manusia (`ARTICLE_C_FINAL_CONTENT_APPROVAL_REQUIRED`).
+- **Hasil Pengujian & Verifikasi:**
+  - `node scripts/test-scalable-approval-inbox.js`: **14/14 PASSED (100%)**
+  - `node scripts/test-admin-responsive-ux.js`: **21/21 PASSED (100%)**
+  - TypeScript typecheck (`npx tsc --noEmit`): **0 errors**
+  - Production build (`npm run build`): **Sukses (Server built in 7.14s)**
+- **Komit Fungsional Git:**
+  - `04d48fb` `feat(admin): add scalable human approval inbox` (9 berkas)
+- **Status Akhir:**
+  - Klasifikasi: **`APPROVAL_INBOX_V1_COMPLETE`**.
+  - Status Artikel C: Tersimpan lokal di `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md`, status **`UNPUBLISHED`** (`ARTICLE_C_FINAL_CONTENT_APPROVAL_REQUIRED`).
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`. Zero production D1 mutations, zero deployment, zero push.
+
+---
+
 ### RANCANGLOKA-HOUSE-VOICE-READER-UX: House Voice Calibration, Conversational Indonesian, Responsive Comparison Matrix & Zero-Obstruction Reader Navigation 2026-10-13
 
 - **Tujuan & Ruang Lingkup:**
