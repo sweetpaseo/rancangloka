@@ -39,12 +39,25 @@ import {
   INVARIANT_COMPARISON_WARM_DECISION_HANDOFF
 } from './warm-advisory-guard.ts';
 
+import {
+  evaluateLocalCulturalGrounding,
+  type LocalCulturalChecklist,
+  type LocalCulturalReviewQuestions,
+  INVARIANT_LOCAL_CULTURAL_GROUNDING,
+  INVARIANT_ANTI_CULTURAL_STEREOTYPE,
+  INVARIANT_STANDARD_INDONESIAN_BASE
+} from './local-cultural-guard.ts';
+
 export {
   evaluateWarmAdvisoryTone,
   INVARIANT_WARM_ADVISORY_TONE,
-  INVARIANT_COMPARISON_WARM_DECISION_HANDOFF
+  INVARIANT_COMPARISON_WARM_DECISION_HANDOFF,
+  evaluateLocalCulturalGrounding,
+  INVARIANT_LOCAL_CULTURAL_GROUNDING,
+  INVARIANT_ANTI_CULTURAL_STEREOTYPE,
+  INVARIANT_STANDARD_INDONESIAN_BASE
 };
-export type { EditorialWarmthChecklist };
+export type { EditorialWarmthChecklist, LocalCulturalChecklist, LocalCulturalReviewQuestions };
 
 export const INVARIANT_LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH =
   'LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH';
@@ -90,8 +103,10 @@ export interface ReaderVoiceEvaluationResult {
     humanRhythm: RubricDimensionResult;
     paragraphBreathing: RubricDimensionResult;
     warmAdvisoryTone: RubricDimensionResult;
+    localCulturalGrounding: RubricDimensionResult;
   };
   warmthChecklist?: EditorialWarmthChecklist;
+  localCulturalChecklist?: LocalCulturalChecklist;
   paragraphDensityWarnings?: string[];
   escapedMarkdownIssues?: string[];
   visualDensitySignals?: string[];
@@ -828,7 +843,55 @@ export function evaluateReaderVoice(
   };
 
   // --------------------------------------------------------------------------
-  // Aggregated Overall Score (Mean across 10 dimensions)
+  // Rubric K: LOCAL CULTURAL GROUNDING (Dimas System Guard & Nadia Gate)
+  // Milestone: RANCANGLOKA_LOCAL_CULTURAL_GROUNDING_1
+  // Invariant: INVARIANT_LOCAL_CULTURAL_GROUNDING & INVARIANT_ANTI_CULTURAL_STEREOTYPE
+  // Canonical review questions:
+  // 1. Does this sound like an Indonesian expert speaking naturally to an Indonesian homeowner?
+  // 2. Are examples recognizable within Indonesian housing reality?
+  // 3. Does the article feel translated from an English source, even though the words are Indonesian?
+  // 4. Are technical terms expressed using vocabulary familiar in Indonesian construction / homeowner conversations?
+  // 5. Are local idioms natural rather than inserted performatively?
+  // 6. Does the article avoid unsupported stereotypes about Indonesian people?
+  // 7. Could this explanation plausibly occur in a real consultation between an Indonesian homeowner and an experienced building consultant?
+  // --------------------------------------------------------------------------
+  const localCulturalChecklist = evaluateLocalCulturalGrounding(content, {
+    contentFamily: options.contentFamily,
+    title: options.title
+  });
+
+  const localCulturalFlags: RubricDimensionResult['flaggedPassages'] = localCulturalChecklist.flags.map((f) => ({
+    passage: f.passage || '',
+    issue: f.description,
+    suggestion: f.type === 'CULTURAL_STEREOTYPE_OVERREACH' || f.type === 'UNSUPPORTED_LOCAL_GENERALIZATION'
+      ? 'Hapus generalisasi stereotip tentang orang/rumah Indonesia. Gunakan observasi berbasis konteks dan bukti.'
+      : f.type === 'TRANSLATIONESE_RESIDUAL'
+      ? 'Ganti struktur kalimat terjemahan kaku dengan ungkapan percakapan bahasa Indonesia yang alami.'
+      : 'Bumikan penjelasan teknis ke realitas fisik hunian tropis dan kebiasaan perawatan rumah di Indonesia.'
+  }));
+
+  if (localCulturalChecklist.local_cultural_grounding !== 'PASS') {
+    revisionRequests.push({
+      section: 'Pijakan Realitas & Budaya Lokal (Local Cultural Grounding)',
+      currentPhrasing: localCulturalChecklist.flags.map((f) => f.description).join('; ') || 'Pijakan konteks lokal perlu diperkuat',
+      requestedImprovement: 'Sesuaikan naskah agar berbicara dari realitas fisik hunian, iklim, dan perawatan rumah Indonesia tanpa generalisasi stereotip atau struktur terjemahan kaku.'
+    });
+  }
+
+  const localCulturalScore = localCulturalChecklist.local_cultural_grounding === 'PASS'
+    ? 100
+    : Math.max(50, 100 - localCulturalChecklist.flags.length * 25);
+
+  const localCulturalGrounding: RubricDimensionResult = {
+    dimension: 'Local Cultural Grounding',
+    score: localCulturalScore,
+    passed: localCulturalChecklist.local_cultural_grounding === 'PASS',
+    notes: localCulturalChecklist.evaluation_notes,
+    flaggedPassages: localCulturalFlags
+  };
+
+  // --------------------------------------------------------------------------
+  // Aggregated Overall Score (Mean across 11 dimensions)
   // --------------------------------------------------------------------------
   const allDimensionScores = [
     problemFirstOpening.score,
@@ -840,7 +903,8 @@ export function evaluateReaderVoice(
     homeownerComprehension.score,
     humanRhythm.score,
     paragraphBreathing.score,
-    warmAdvisoryTone.score
+    warmAdvisoryTone.score,
+    localCulturalGrounding.score
   ];
 
   const overallScore = Math.round(
@@ -881,6 +945,7 @@ export function evaluateReaderVoice(
     !humanRhythm.passed ||
     !paragraphBreathing.passed ||
     !warmAdvisoryTone.passed ||
+    !localCulturalGrounding.passed ||
     overallScore < 80
   ) {
     decision = 'READER_VOICE_REVISION_REQUIRED';
@@ -899,9 +964,11 @@ export function evaluateReaderVoice(
       homeownerComprehension,
       humanRhythm,
       paragraphBreathing,
-      warmAdvisoryTone
+      warmAdvisoryTone,
+      localCulturalGrounding
     },
     warmthChecklist,
+    localCulturalChecklist,
     paragraphDensityWarnings,
     escapedMarkdownIssues,
     visualDensitySignals,

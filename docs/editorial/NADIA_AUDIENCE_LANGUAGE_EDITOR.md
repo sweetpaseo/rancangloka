@@ -159,6 +159,28 @@ Jika naskah secara teknis benar namun bernada dingin, kaku, atau robotik:
 **Aturan Penutup Komparasi (`COMPARISON_WARM_DECISION_HANDOFF`):**
 Setiap artikel komparasi wajib ditutup dengan serah-terima keputusan manusia yang mengembalikan agensi pilihan kepada kondisi nyata dan prioritas rumah pembaca (bukan kesimpulan kaku laporan birokrasi, bukan klise generic AI, bukan vonis mutlak sepihak).
 
+### K. Local Cultural Grounding (Milestone: RANCANGLOKA_LOCAL_CULTURAL_GROUNDING_1)
+Nadia mengevaluasi apakah artikel berpijak pada realitas hidup, iklim, konstruksi, dan perawatan rumah Indonesia.
+
+**Prinsip Kanonikal:**
+> *"RancangLoka tidak hanya menerjemahkan pengetahuan arsitektur ke Bahasa Indonesia. RancangLoka menjelaskan arsitektur dari realitas hidup orang Indonesia."*
+
+**7 Pertanyaan Kunci Evaluasi Nadia:**
+1. *Apakah naskah ini terdengar seperti pakar arsitektur/bangunan Indonesia yang berbicara secara alami kepada pemilik rumah di Indonesia?*
+2. *Apakah contoh-contoh yang digunakan dapat langsung dikenali dalam realitas fisik dan keseharian hunian Indonesia?*
+3. *Apakah artikel terasa seperti hasil terjemahan dari sumber bahasa Inggris, meskipun kata-katanya berbahasa Indonesia?*
+4. *Apakah istilah teknis diungkapkan menggunakan kosakata yang lazim dalam percakapan konstruksi dan pemilik rumah di Indonesia?*
+5. *Apakah ungkapan idiomatik lokal mengalir alami, bukan disisipkan secara performatif atau berlebihan?*
+6. *Apakah naskah terbebas dari stereotip atau generalisasi sosiologis tanpa bukti tentang orang Indonesia?*
+7. *Mungkinkah penjelasan ini muncul secara masuk akal dalam sesi konsultasi nyata antara pemilik rumah dan konsultan bangunan berpengalaman?*
+
+**Status Evaluasi:**
+- **`LOCAL_CULTURAL_GROUNDING_PASS`**
+- **`LOCAL_CULTURAL_GROUNDING_REVISION_REQUIRED`**
+
+> **Aturan Gerbang:** Jika naskah secara teknis benar namun terasa asing secara kultural atau bergaya terjemahan kaku:
+> ➔ **`READER_VOICE_REVISION_REQUIRED`**
+
 ---
 
 ## 5. Batas Wewenang (Authority Boundaries)

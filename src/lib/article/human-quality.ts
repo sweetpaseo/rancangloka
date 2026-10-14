@@ -103,7 +103,11 @@ export interface EditorialPatternIssue {
     | 'DECISION_SUPPORT_GAP'
     | 'ACADEMIC_DISTANCE'
     | 'CONTENT_DEPTH_MISMATCH'
-    | 'READER_VOICE_PREREQUISITE';
+    | 'READER_VOICE_PREREQUISITE'
+    | 'UNSUPPORTED_LOCAL_GENERALIZATION'
+    | 'CULTURAL_STEREOTYPE_OVERREACH'
+    | 'LOCAL_CONTEXT_CLAIM_WITHOUT_SUPPORT'
+    | 'TRANSLATIONESE_RESIDUAL';
   severity: 'WARNING' | 'CRITICAL';
   description: string;
   penalty: number;
@@ -3564,6 +3568,60 @@ export function evaluateHumanWritingQuality(
     });
   }
 
+  // --------------------------------------------------------------------------
+  // Rina Final Editorial QA: Local Cultural Grounding & Truth Verification
+  // Milestone: RANCANGLOKA_LOCAL_CULTURAL_GROUNDING_1
+  // Invariants:
+  // - local context does not become unsupported fact
+  // - cultural references are not stereotypes
+  // - regional context is not falsely generalized nationally
+  // - recommendations remain evidence-based
+  // - warm/local phrasing does not soften technical warnings
+  // --------------------------------------------------------------------------
+  const stereotypeRegex = /\b(?:orang indonesia selalu|masyarakat kita pasti|semua orang indonesia|orang kita memang suka|orang indonesia malas)\b/i;
+  if (stereotypeRegex.test(contentMd)) {
+    issues.push({
+      code: 'CULTURAL_STEREOTYPE_OVERREACH',
+      category: 'CULTURAL_STEREOTYPE_OVERREACH',
+      severity: 'CRITICAL',
+      description: 'Ditemukan generalisasi stereotip sosiologis tentang masyarakat Indonesia tanpa dasar empiris. Rina mewajibkan grounding lokal berbasis observasi kontekstual dan bukti nyata.',
+      penalty: 20
+    });
+  }
+
+  const unsupportedLocalGenRegex = /\b(?:semua rumah di indonesia pasti mengalami|setiap tanah di indonesia selalu|semua tukang di indonesia pasti)\b/i;
+  if (unsupportedLocalGenRegex.test(contentMd)) {
+    issues.push({
+      code: 'UNSUPPORTED_LOCAL_GENERALIZATION',
+      category: 'UNSUPPORTED_LOCAL_GENERALIZATION',
+      severity: 'WARNING',
+      description: 'Ditemukan generalisasi kondisi lokal ke tingkat nasional tanpa bukti pendukung. Konteks lokal tidak boleh digeneralisasikan secara sepihak.',
+      penalty: 15
+    });
+  }
+
+  const localContextClaimRegex = /\bstandar indonesia mewajibkan bahwa\b/i;
+  if (localContextClaimRegex.test(contentMd) && !/\b(?:sni|permen|pupr)\b/i.test(contentMd)) {
+    issues.push({
+      code: 'LOCAL_CONTEXT_CLAIM_WITHOUT_SUPPORT',
+      category: 'LOCAL_CONTEXT_CLAIM_WITHOUT_SUPPORT',
+      severity: 'WARNING',
+      description: 'Klaim standar lokal diajukan tanpa mencantumkan rujukan regulasi resmi (SNI / Permen PUPR).',
+      penalty: 12
+    });
+  }
+
+  const translationeseResidualRegex = /\b(?:dalam rangka untuk|memainkan peran penting dalam|di akhir hari|masuk akal untuk mengatakan bahwa)\b/i;
+  if (translationeseResidualRegex.test(contentMd)) {
+    issues.push({
+      code: 'TRANSLATIONESE_RESIDUAL',
+      category: 'TRANSLATIONESE_RESIDUAL',
+      severity: 'WARNING',
+      description: 'Ditemukan sisa struktur kalimat terjemahan harfiah bahasa Inggris. Gunakan tata bahasa dan idiom Indonesia alami.',
+      penalty: 10
+    });
+  }
+
   let totalScore = rawTotalScore;
   if (hasCriticalIntegrityViolation) {
     totalScore = Math.min(totalScore, 65);
@@ -3703,6 +3761,18 @@ export function evaluateHumanWritingQuality(
       } else if (issue.category === 'CONTENT_DEPTH_MISMATCH') {
         requiredActions.push('Perdalam bahasan topik agar sepadan dengan keluasan cakupan yang dijanjikan, atau persempit fokus pembahasan.');
         failingSections.push('Kedalaman Konten');
+      } else if (issue.category === 'CULTURAL_STEREOTYPE_OVERREACH') {
+        requiredActions.push('Hapus generalisasi stereotip tentang masyarakat/kebiasaan orang Indonesia; gantikan dengan observasi konteks fisik dan pilihan teknis yang objektif.');
+        failingSections.push('Pijakan Budaya & Generalisasi');
+      } else if (issue.category === 'UNSUPPORTED_LOCAL_GENERALIZATION') {
+        requiredActions.push('Kualifikasikan kondisi regional/lapangan agar tidak digeneralisasi menjadi kondisi mutlak seluruh rumah di Indonesia.');
+        failingSections.push('Pijakan Budaya & Generalisasi');
+      } else if (issue.category === 'LOCAL_CONTEXT_CLAIM_WITHOUT_SUPPORT') {
+        requiredActions.push('Sertakan nomor standar resmi (SNI / Permen PUPR) atau kualifikasikan klaim standar lokal sebagai praktik lapangan umum.');
+        failingSections.push('Bukti & Fakta Teknis');
+      } else if (issue.category === 'TRANSLATIONESE_RESIDUAL') {
+        requiredActions.push('Tulis ulang kalimat terjemahan kaku menjadi susunan kalimat bahasa Indonesia alami yang nyaman dibaca.');
+        failingSections.push('Gaya Bahasa & Konstruksi Kalimat');
       }
     }
 

@@ -13,6 +13,60 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-LOCAL-CULTURAL-GROUNDING-1: Canonical Local Cultural Grounding, Editorial Identity Layer & Multi-Staff Gate Verification 2026-10-14
+
+- **Tujuan & Ruang Lingkup:**
+  - Menetapkan prinsip identitas editorial permanen baru: **LOCAL CULTURAL GROUNDING**.
+  - Melengkapi **WARM ADVISORY TONE** (Warm Advisory Tone = *bagaimana* RancangLoka berbicara; Local Cultural Grounding = *dari realitas mana* RancangLoka berbicara).
+  - Prinsip Kanonikal:
+    *"RancangLoka tidak hanya menerjemahkan pengetahuan arsitektur ke Bahasa Indonesia. RancangLoka menjelaskan arsitektur dari realitas hidup orang Indonesia."*
+  - Naskah terasa ditulis oleh seseorang yang memahami secara mendalam bagaimana rumah Indonesia dibangun, direnovasi bertahap, dihuni, dirawat, dan diperbincangkan sehari-hari.
+  - Membuka kemungkinan kontekstual (bukan checklist wajib): iklim tropis lembap, tempias hujan angin, panas sore matahari barat, rumah tumbuh, renovasi bertahap, rumah klaster, lahan sempit, gang/akses terbatas, dinding bersama, batas kavling, privasi tetangga, tukang lokal, aplikator, debu jalan, kusen, kanopi, dak beton, roster, tritisan, kebiasaan buka-tutup jendela, penggunaan AC, kebutuhan ruang keluarga, dan biaya renovasi bertahap.
+- **Penjagaan Ketat Anti-Stereotip (Strict Anti-Stereotype Guard):**
+  - DILARANG membuat pernyataan generalisasi sosiologis tanpa bukti (*"Orang Indonesia selalu..."*, *"Rumah Indonesia biasanya..."*, *"Masyarakat kita pasti..."*).
+  - Dilarang mengarang perilaku budaya fiktif atau mengubah asumsi anekdotal menjadi fakta nasional.
+  - Pijakan lokal tidak pernah melemahkan standar pembuktian (*evidence-first*).
+- **Bahasa Indonesia Standar Sebagai Basis Kanonikal:**
+  - Bahasa dasar adalah Bahasa Indonesia standar yang alami, jernih, profesional, dan percakapan wajar.
+  - Dilarang menggantungkan suara redaksi pada dialek Betawi, Jawa, Sunda, bahasa gaul daerah, atau slang internet.
+  - Nuansa lokal bersumber dari situasi fisik, konteks keputusan, realitas hunian, kosakata konstruksi, dan ungkapan wajar — bukan dialek yang dipaksakan.
+- **Aturan Idiom Alami (Natural Idioms Policy):**
+  - Ungkapan idiomatik dianjurkan bila meningkatkan kealamian prosa (*"jangan sampai salah langkah"*, *"ujung-ujungnya..."*, *"kalau kondisinya seperti ini..."*, *"lebih baik bereskan sumber masalahnya dulu"*).
+  - Kehadiran idiom TIDAK wajib, dilarang menjadi *boilerplate* monoton, dan dilarang disisipkan semata-mata demi membuktikan naskah berbahasa Indonesia.
+- **Matriks Tanggung Jawab Staf Redaksi:**
+  - **Irwan (Evidence Researcher Lead):**
+    - Mengidentifikasi standar nasional (SNI, Permen PUPR), data iklim tropis lembap, kondisi konstruksi lokal, terminologi material pasar Indonesia, dan kendala perawatan.
+    - Membedakan secara ketat: `VERIFIED LOCAL FACT` vs `EDITORIAL LOCAL CONTEXT` vs `UNSUPPORTED CULTURAL GENERALIZATION`.
+  - **Joko (Content Writer Primary):**
+    - Mengajukan pertanyaan panduan: *"Apa yang membuat masalah ini langsung dikenali oleh pemilik rumah di Indonesia?"*
+    - Mengontekstualisasikan naskah ke situasi nyata (mis. membersihkan kisi-kisi/kaca setelah musim hujan; renovasi rumah yang sudah dihuni vs bongkar dak).
+    - Dilarang keras mengarang anekdot fiktif, mengumbar kata "kita", menyisipkan slang/bahasa gaul, meniru caption medsos, atau membuat testimoni palsu.
+  - **Nadia (Audience & Language Editor):**
+    - Menambahkan Dimensi K: *Local Cultural Grounding* dengan 7 pertanyaan kunci.
+    - Menilai status: `LOCAL_CULTURAL_GROUNDING_PASS` / `LOCAL_CULTURAL_GROUNDING_REVISION_REQUIRED`.
+    - Jika secara teknis benar namun berbau terjemahan kaku / asing secara kultural: ➔ `READER_VOICE_REVISION_REQUIRED`.
+  - **Rina (Editorial QA Primary):**
+    - Memverifikasi kebenaran dan batas generalisasi naskah.
+    - Menegakkan isu: `UNSUPPORTED_LOCAL_GENERALIZATION`, `CULTURAL_STEREOTYPE_OVERREACH`, `LOCAL_CONTEXT_CLAIM_WITHOUT_SUPPORT`, `TRANSLATIONESE_RESIDUAL`.
+    - Memastikan frasa lokal/ramah tidak melunakkan peringatan keselamatan atau mengubah kepastian klaim ilmiah.
+  - **Dimas (System Guard):**
+    - Membangun guard semantik `src/lib/editorial/local-cultural-guard.ts` untuk mendukung checklist alur kerja: `local_cultural_grounding`, `indonesian_context_fit`, `translationese_risk`, dan `cultural_generalization_safety`.
+    - Tanpa penilaian kasar kata kunci (*zero crude keyword/slang scoring*).
+  - **Jefry (Management Decision Advisor):**
+    - Tetap berstatus SHADOW ONLY (0 wewenang publikasi/eksekusi). Memantau pergeseran strategis (terjemahan asing, contoh generik luar negeri, slang artifisial, stereotip berulang).
+- **Penerapan Famili Konten:**
+  - `COMPARISON`: Realitas keputusan hunian Indonesia, kompromi biaya/perawatan bertahap.
+  - `PROBLEM_SOLVER`: Gejala fisik yang dapat diamati pemilik rumah, alur diagnosis, realitas tukang lokal.
+  - `MATERIAL_GUIDE`: Ketahanan cuaca tropis (panas sore, hujan lebat), kemudahan perawatan, toko bangunan.
+  - `TECHNICAL_EXPLAINER`: Menerjemahkan rumus fisika bangunan ke fenomena yang dirasakan di rumah.
+  - `PRODUCT_DECISION`: Konteks pemasangan, ketersediaan servis/suku cadang di Indonesia.
+  - `NEWS / REGULATION`: Pijakan lokal proporsional dan terukur, pelaporan fakta tetap dominan.
+- **Evaluasi Artikel C:**
+  - Naskah `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md` berpijak kuat pada realitas Indonesia: orientasi khatulistiwa, matahari sore di fasad barat, tempias hujan angin tropis, debu jalan, standar SNI 6389:2020 & Permen PUPR 21/2021, serta kemudahan perawatan tukang/pemilik rumah.
+  - Bebas dari stereotip sosiologis tanpa bukti, bebas dari terjemahan kaku calque, menggunakan Bahasa Indonesia standar yang hangat dan lugas.
+  - Hash kanonikal tidak berubah: `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28`.
+  - Status Publikasi Artikel C: **`UNPUBLISHED`**.
+
 ### RANCANGLOKA-WARM-ADVISORY-TONE-1: Canonical Warm Advisory Tone, Staff Editorial Gate Integration & Article C Warm Decision Handoff 2026-10-14
 
 - **Tujuan & Ruang Lingkup:**
