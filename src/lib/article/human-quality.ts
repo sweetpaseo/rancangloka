@@ -2339,6 +2339,8 @@ export interface EvaluationOptions {
   readerVoiceState?: 'READER_VOICE_PASS' | 'READER_VOICE_REVIEW_REQUIRED' | 'READER_VOICE_REVISION_REQUIRED' | 'READER_VOICE_BLOCKED';
   readerVoiceResult?: any;
   enforceReaderVoiceGate?: boolean;
+  // Dimas Warm Advisory Tone & Decision Handoff Integration (RANCANGLOKA_WARM_ADVISORY_TONE_1)
+  warmthChecklist?: any;
 }
 
 /**
@@ -3531,6 +3533,37 @@ export function evaluateHumanWritingQuality(
     });
   }
 
+  // --------------------------------------------------------------------------
+  // Rina Final Editorial QA: Warm Advisory Tone Consistency & Truth Verification
+  // Invariant: Rina verifies editorial truth and consistency after Nadia PASS.
+  // - Warm tone does NOT distort evidence
+  // - Warm tone does NOT weaken warnings or limitations
+  // - Recommendations follow evidence
+  // - No universal recommendation is implied when context matters
+  // - Closing is consistent with the article's actual analysis
+  // --------------------------------------------------------------------------
+  const universalOverreachRegex = /\b(?:pilihan|solusi|opsi) terbaik untuk semua (?:orang|kondisi|rumah|keadaan)\b|\bsatu-satunya pilihan yang (?:benar|tepat)\b/i;
+  if (universalOverreachRegex.test(contentMd)) {
+    issues.push({
+      code: 'UNIVERSAL_RECOMMENDATION_OVERREACH',
+      category: 'DECISION_SUPPORT_GAP',
+      severity: 'WARNING',
+      description: 'Rekomendasi menyiratkan satu solusi mutlak untuk segala kondisi. Rina mewajibkan rekomendasi berbasis skenario dan konteks lapangan.',
+      penalty: 15
+    });
+  }
+
+  const softenedSafetyRiskRegex = /\b(?:tidak perlu khawatir sama sekali|pasti aman tanpa perlu dicek|abaikan saja risiko bocor)\b/i;
+  if (softenedSafetyRiskRegex.test(contentMd)) {
+    issues.push({
+      code: 'WARM_TONE_WARNING_WEAKENED',
+      category: 'INSUFFICIENT_CLAIM_SUPPORT',
+      severity: 'CRITICAL',
+      description: 'Nada ramah melunakkan peringatan struktural atau risiko keselamatan. Rina menegaskan kehangatan editorial tidak boleh melemahkan batasan teknis atau peringatan risiko.',
+      penalty: 25
+    });
+  }
+
   let totalScore = rawTotalScore;
   if (hasCriticalIntegrityViolation) {
     totalScore = Math.min(totalScore, 65);
@@ -3742,6 +3775,8 @@ export const JOKO_HUMAN_AUTHORING_GUIDELINES = {
     'MUTLAK: Dilarang mengarang klaim uji coba mandiri ("kami telah menguji") jika tidak ada bukti tangan pertama.',
     'NATIVE INDONESIAN AUTHORING: Tulis langsung dalam bahasa Indonesia alami sejak awal alur pemikiran; hindari pola wacana terjemahan bahasa Inggris (translationese).',
     'TECHNICAL ENGLISH EXCEPTION: Pertahankan istilah teknis kanonikal dan istilah bahasa Inggris yang sah sesuai standar industri (seperti thermal break, U-value, low-e, mortise, firmware) lalu jelaskan maknanya secara alami dalam bahasa Indonesia.',
-    'RINGKASAN TABEL PERBANDINGAN: Tabel perbandingan adalah alat bantu rangkuman, bukan tempat menulis esai mini. Tulis pernyataan perbandingan yang ringkas (< 20 kata per sel) agar mudah discan, dan simpan elaborasi mendalam di paragraf pembahasan sekitarnya.'
+    'RINGKASAN TABEL PERBANDINGAN: Tabel perbandingan adalah alat bantu rangkuman, bukan tempat menulis esai mini. Tulis pernyataan perbandingan yang ringkas (< 20 kata per sel) agar mudah discan, dan simpan elaborasi mendalam di paragraf pembahasan sekitarnya.',
+    'WARM ADVISORY TONE: RancangLoka menulis seperti konsultan arsitektur dan bangunan Indonesia berpengalaman yang memahami masalah teknis namun berbicara kepada pemilik rumah dengan kehangatan, kejelasan, ketenangan, dan rasa hormat.',
+    'COMPARISON_WARM_DECISION_HANDOFF: Setiap artikel komparasi wajib ditutup dengan serah-terima keputusan manusia yang hangat, mengembalikan agensi pilihan kepada kondisi nyata dan prioritas rumah pembaca (hindari penutup kaku laporan birokrasi, klise chatbot AI, atau vonis mutlak).'
   ]
 };

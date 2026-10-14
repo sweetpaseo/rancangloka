@@ -13,6 +13,58 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-WARM-ADVISORY-TONE-1: Canonical Warm Advisory Tone, Staff Editorial Gate Integration & Article C Warm Decision Handoff 2026-10-14
+
+- **Tujuan & Ruang Lingkup:**
+  - Menetapkan prinsip gaya editorial permanen baru: **WARM ADVISORY TONE** (*Konsultan Arsitektur Ramah & Tenang*).
+  - RancangLoka menulis layaknya seorang konsultan arsitektur dan bangunan berpengalaman yang memahami seluk-beluk teknis, namun berbicara kepada pemilik rumah dengan kehangatan (*warmth*), kejelasan (*clarity*), ketenangan (*calmness*), dan rasa hormat (*respect*).
+  - Pembaca harus merasakan:
+    - *"Saya sekarang paham masalahnya."*
+    - *"Saya tahu trade-off mana yang penting."*
+    - *"Saya bisa mengambil keputusan tanpa merasa digurui atau dihakimi."*
+  - Kodifikasi Prinsip Suara Redaksi Permanen:
+    - *"RancangLoka tidak menulis untuk membuat pembaca merasa penulisnya pintar. RancangLoka menulis supaya pembaca merasa dirinya sekarang mengerti."*
+    - *"RancangLoka menjelaskan dengan kehangatan seorang konsultan yang membantu, bukan dengan jarak seorang penguji yang menghakimi."*
+    - *"Setelah pembaca memahami fakta dan trade-off, RancangLoka membantu mereka percaya diri mengambil keputusan sendiri."*
+- **Tanggung Jawab Staf Redaksi:**
+  - **Joko (Content Writer):**
+    - Wajib menulis langsung dalam Bahasa Indonesia alami sehari-hari yang bersahaja, lugas, dan akurat secara teknis.
+    - Menjelaskan konsekuensi dalam istilah praktis pemilik rumah, menggunakan transisi hangat, menghindari kesimpulan kaku ala laporan birokrasi, dan menolak penutup generik ala AI chatbot.
+    - Mengadaptasi aturan penutup komparasi secara kontekstual: `COMPARISON_WARM_DECISION_HANDOFF`.
+  - **Nadia (Audience & Language Editor):**
+    - Memperluas evaluasi ke Dimensi J: *Warm Advisory Tone & Decision Handoff*.
+    - Menilai 6 pertanyaan kanonikal: kehangatan ahli, pendekatan bersahabat pasca-bagian teknis, rekomendasi mantap tanpa otoriter, perasaan dibimbing bukan dihakimi, penutup yang menenangkan, serta kelayakan diucapkan langsung di meja konsultasi nyata.
+    - Menegakkan status `READER_VOICE_REVISION_REQUIRED` jika draf akurat secara teknis namun bersuara dingin/kaku/robotik.
+    - Menjaga invarian abadi: `LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH`.
+  - **Rina (Editorial QA Lead):**
+    - Memverifikasi kebenaran dan konsistensi naskah setelah gerbang Nadia `PASS`.
+    - Memastikan kehangatan bahasa tidak mendistorsi bukti empiris, tidak melemahkan peringatan batas keamanan (`WARM_TONE_WARNING_WEAKENED`), tidak memaksakan rekomendasi mutlak universal (`UNIVERSAL_RECOMMENDATION_OVERREACH`), dan penutup selaras dengan analisis isi artikel.
+  - **Dimas (System Guard):**
+    - Mengintegrasikan guard semantik `src/lib/editorial/warm-advisory-guard.ts` untuk mendeteksi `warm_advisory_tone`, `human_reader_handoff`, dan `comparison_decision_handoff`.
+    - Menghindari penilaian berbasis regex atau skoring kata kunci rapuh; menghadirkan bukti eksplisit `PASS` / `REVISION_REQUIRED`.
+  - **Jefry (Management Decision Advisor):**
+    - Tetap berada dalam batas SHADOW / penasihat murni (otoritas penerbitan 0, dilarang mengubah teks atau menerbitkan secara otonom).
+- **Aturan Penutup Komparasi (COMPARISON_WARM_DECISION_HANDOFF):**
+  - Setiap artikel komparasi wajib mengembalikan agensi keputusan akhir kepada pembaca setelah membedah masalah, trade-off, dan skenario kecocokan.
+  - Kalimat acuan tonal kanonikal: *"Jadi, setelah semua pertimbangannya jelas, keputusan akhirnya tetap ada di tangan Anda—pilih solusi yang paling masuk akal untuk kondisi rumah Anda, bukan sekadar yang paling menarik dilihat."* (Diadaptasi secara luwes per topik, dilarang menjadi boilerplate kaku).
+- **Penerapan & Penyelarasan Artikel C:**
+  - Naskah `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md` diperbarui dengan penutup hangat yang kontekstual:
+    *"Setelah semua pertimbangannya jelas, keputusan akhirnya tetap kembali ke kondisi nyata rumah Anda. Tidak ada satu sistem yang sempurna untuk segala situasi—pilihlah solusi yang paling masuk akal sesuai arah datangnya sinar matahari, kesiapan struktur dinding, dan kemudahan perawatan yang sanggup Anda rawat dengan tenang dalam jangka panjang."*
+  - Hash lama (`85270eb8534331da54efe4bb2dbe471a25ec532bf75d55270758d18c375f15c5`) telah di-invalidasi secara bersih.
+  - Hash SHA-256 baru naskah: `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28`.
+  - Nadia Reader Voice: `READER_VOICE_PASS` (Skor Dimensi Kehangatan: 100/100, Total: 98/100).
+  - Rina Editorial QA: `HUMAN_WRITING_PASS` (Skor: 89/100, 0 overreach, 0 weakened warnings).
+  - Status Publikasi Artikel C: **`UNPUBLISHED`** (menunggu tinjauan baca akhir Chief Editor).
+- **Hasil Pengujian & Verifikasi:**
+  - `node scripts/test-warm-advisory-tone.js`: **13/13 PASSED (100%)**
+  - `node scripts/test-nadia-reader-voice.js`: **35/35 PASSED (100%)**
+  - TypeScript typecheck (`npx tsc --noEmit`): **0 errors**
+  - Production build (`npm run build`): **Sukses (Server built in 6.43s)**
+  - Git diff check (`git diff --check`): **0 whitespace errors**
+- **Status Akhir:**
+  - Klasifikasi: **`RANCANGLOKA_WARM_ADVISORY_TONE_ESTABLISHED`**.
+  - Status Keselamatan: `automation_mode = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`. Zero production mutations, zero deployment, zero push.
+
 ### RANCANGLOKA-APPROVAL-INBOX-V1-COMPLETE: Scalable Human Approval Inbox, Isolated DEV Fixtures, Responsive Admin Shell & Task-First Decision Experience 2026-10-14
 
 - **Tujuan & Ruang Lingkup:**

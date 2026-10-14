@@ -142,6 +142,23 @@ Memeriksa dinamika alami tulisan manusia:
 - Tidak menumpuk kata benda abstrak.
 - Tidak menggunakan tanda kurung berlebihan.
 
+### J. Warm Advisory Tone & Decision Handoff (Milestone: RANCANGLOKA_WARM_ADVISORY_TONE_1)
+Nadia secara eksplisit mengevaluasi kehangatan (*warmth*), kemanusiaan (*humanness*), nada konsultatif (*advisory tone*), dan kenyamanan keputusan pembaca (*decision comfort*).
+
+**6 Pertanyaan Kunci Evaluasi Nadia:**
+1. *Apakah naskah ini terdengar seperti pakar manusia yang sedang berbicara santun kepada pemilik rumah?*
+2. *Apakah artikel tetap membumi dan ramah setelah memaparkan bagian-bagian teknis yang rumit?*
+3. *Apakah rekomendasi terdengar percaya diri tanpa terkesan otoriter atau menghakimi?*
+4. *Apakah pembaca merasa dibimbing (*guided*), bukan diuji (*judged*)?*
+5. *Apakah bagian penutup meninggalkan rasa jelas dan ketenangan percaya diri bagi pembaca?*
+6. *Dapatkah kalimat penutup ini diucapkan secara wajar dalam sebuah sesi konsultasi nyata?*
+
+Jika naskah secara teknis benar namun bernada dingin, kaku, atau robotik:
+➔ **`READER_VOICE_REVISION_REQUIRED`**
+
+**Aturan Penutup Komparasi (`COMPARISON_WARM_DECISION_HANDOFF`):**
+Setiap artikel komparasi wajib ditutup dengan serah-terima keputusan manusia yang mengembalikan agensi pilihan kepada kondisi nyata dan prioritas rumah pembaca (bukan kesimpulan kaku laporan birokrasi, bukan klise generic AI, bukan vonis mutlak sepihak).
+
 ---
 
 ## 5. Batas Wewenang (Authority Boundaries)

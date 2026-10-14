@@ -32,6 +32,20 @@
  *    Nadia must never strengthen a technical statement while simplifying it.
  */
 
+import {
+  evaluateWarmAdvisoryTone,
+  type EditorialWarmthChecklist,
+  INVARIANT_WARM_ADVISORY_TONE,
+  INVARIANT_COMPARISON_WARM_DECISION_HANDOFF
+} from './warm-advisory-guard.ts';
+
+export {
+  evaluateWarmAdvisoryTone,
+  INVARIANT_WARM_ADVISORY_TONE,
+  INVARIANT_COMPARISON_WARM_DECISION_HANDOFF
+};
+export type { EditorialWarmthChecklist };
+
 export const INVARIANT_LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH =
   'LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH';
 
@@ -75,7 +89,9 @@ export interface ReaderVoiceEvaluationResult {
     homeownerComprehension: RubricDimensionResult;
     humanRhythm: RubricDimensionResult;
     paragraphBreathing: RubricDimensionResult;
+    warmAdvisoryTone: RubricDimensionResult;
   };
+  warmthChecklist?: EditorialWarmthChecklist;
   paragraphDensityWarnings?: string[];
   escapedMarkdownIssues?: string[];
   visualDensitySignals?: string[];
@@ -766,7 +782,53 @@ export function evaluateReaderVoice(
   };
 
   // --------------------------------------------------------------------------
-  // Aggregated Overall Score (Mean across 9 dimensions)
+  // Rubric J: WARM ADVISORY TONE & DECISION HANDOFF (Dimas System Guard)
+  // Invariant: INVARIANT_WARM_ADVISORY_TONE & INVARIANT_COMPARISON_WARM_DECISION_HANDOFF
+  // Canonical review questions:
+  // 1. Does this sound like a human expert speaking to a homeowner?
+  // 2. Does the article remain approachable after technical sections?
+  // 3. Are recommendations confident without sounding authoritarian?
+  // 4. Does the reader feel guided rather than judged?
+  // 5. Does the ending leave the reader with clarity and calm confidence?
+  // 6. Could this sentence be spoken naturally in a real consultation?
+  // --------------------------------------------------------------------------
+  const warmthChecklist = evaluateWarmAdvisoryTone(content, {
+    contentFamily: options.contentFamily,
+    title: options.title
+  });
+
+  const warmthFlags: RubricDimensionResult['flaggedPassages'] = warmthChecklist.flags.map((f) => ({
+    passage: f.passage || '',
+    issue: f.description,
+    suggestion: f.type === 'MISSING_COMPARISON_HANDOFF'
+      ? 'Tambahkan serah-terima keputusan hangat di akhir artikel (COMPARISON_WARM_DECISION_HANDOFF) yang mengembalikan agensi ke kondisi nyata dan prioritas rumah pembaca.'
+      : 'Gunakan nada bicara konsultan yang hangat, komunikatif, dan praktis. Hindari penutup kaku seperti laporan atau klise chatbot AI.'
+  }));
+
+  if (warmthChecklist.warm_advisory_tone !== 'PASS') {
+    revisionRequests.push({
+      section: 'Nada Konsultan & Serah-Terima Keputusan (Warm Advisory Tone)',
+      currentPhrasing: warmthChecklist.closing_passage.slice(0, 120),
+      requestedImprovement: warmthChecklist.is_comparison
+        ? 'Tambahkan serah-terima keputusan hangat di akhir artikel (COMPARISON_WARM_DECISION_HANDOFF) yang mengembalikan agensi ke kondisi nyata dan prioritas rumah pembaca.'
+        : 'Gunakan nada bicara konsultan yang hangat, komunikatif, dan praktis. Hindari penutup kaku seperti laporan atau klise chatbot AI.'
+    });
+  }
+
+  const warmAdvisoryScore = warmthChecklist.warm_advisory_tone === 'PASS'
+    ? 100
+    : Math.max(50, 100 - warmthChecklist.flags.length * 25);
+
+  const warmAdvisoryTone: RubricDimensionResult = {
+    dimension: 'Warm Advisory Tone',
+    score: warmAdvisoryScore,
+    passed: warmthChecklist.warm_advisory_tone === 'PASS',
+    notes: warmthChecklist.evaluation_notes,
+    flaggedPassages: warmthFlags
+  };
+
+  // --------------------------------------------------------------------------
+  // Aggregated Overall Score (Mean across 10 dimensions)
   // --------------------------------------------------------------------------
   const allDimensionScores = [
     problemFirstOpening.score,
@@ -777,7 +839,8 @@ export function evaluateReaderVoice(
     headingClarity.score,
     homeownerComprehension.score,
     humanRhythm.score,
-    paragraphBreathing.score
+    paragraphBreathing.score,
+    warmAdvisoryTone.score
   ];
 
   const overallScore = Math.round(
@@ -817,6 +880,7 @@ export function evaluateReaderVoice(
     !homeownerComprehension.passed ||
     !humanRhythm.passed ||
     !paragraphBreathing.passed ||
+    !warmAdvisoryTone.passed ||
     overallScore < 80
   ) {
     decision = 'READER_VOICE_REVISION_REQUIRED';
@@ -834,8 +898,10 @@ export function evaluateReaderVoice(
       headingClarity,
       homeownerComprehension,
       humanRhythm,
-      paragraphBreathing
+      paragraphBreathing,
+      warmAdvisoryTone
     },
+    warmthChecklist,
     paragraphDensityWarnings,
     escapedMarkdownIssues,
     visualDensitySignals,
