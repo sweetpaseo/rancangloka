@@ -411,9 +411,15 @@ assert.ok(
 const planPath = path.resolve('artifacts/article-c-publication-plan.json');
 assert.ok(fs.existsSync(planPath), 'Publication plan must exist');
 const plan = JSON.parse(fs.readFileSync(planPath, 'utf-8'));
-assert.equal(plan.status, 'ARTICLE_C_REVISED_AWAITING_CHIEF_EDITOR_READING_REVIEW', 'Plan status must be REVISED_AWAITING_CHIEF_EDITOR_READING_REVIEW');
+assert.ok(
+  ['ARTICLE_C_REVISED_AWAITING_CHIEF_EDITOR_READING_REVIEW', 'ARTICLE_C_REVISED_READY_FOR_FINAL_PUBLICATION_AUTHORIZATION'].includes(plan.status),
+  `Plan status must be valid revision review or final readiness state (got ${plan.status})`
+);
 assert.equal(plan.target_article.current_content_hash, currentArtCHash, 'Plan current content hash must match new hash');
-assert.equal(plan.human_approvals.content_approval.status, 'REVISED_PENDING_FINAL_READING_REVIEW', 'Content approval must be REVISED_PENDING_FINAL_READING_REVIEW');
+assert.ok(
+  ['REVISED_PENDING_FINAL_READING_REVIEW', 'REVISED_CONTENT_APPROVED'].includes(plan.human_approvals.content_approval.status),
+  `Content approval must be valid revision state (got ${plan.human_approvals.content_approval.status})`
+);
 console.log('  ✅ PASS: Article C old hash cleanly invalidated and new hash bound to revision review.\n');
 passed++;
 

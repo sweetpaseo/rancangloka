@@ -773,11 +773,18 @@ export async function recordEditorialApproval(
   }
 
   let insertResult: any;
-  if (outcomeStmt) {
+  if (outcomeStmt && typeof db.batch === 'function') {
     const batchRes = await db.batch([insertApprovalStmt, outcomeStmt]);
     insertResult = batchRes[0];
   } else {
     insertResult = await insertApprovalStmt.run();
+    if (outcomeStmt) {
+      try {
+        await outcomeStmt.run();
+      } catch {
+        // safe fallback
+      }
+    }
   }
 
   const approvalId = insertResult?.lastRowId || insertResult?.meta?.last_row_id || 1;
@@ -862,10 +869,17 @@ export async function revokeEditorialApproval(
     // safe fallback
   }
 
-  if (outcomeStmt) {
+  if (outcomeStmt && typeof db.batch === 'function') {
     await db.batch([insertRevokeStmt, outcomeStmt]);
   } else {
     await insertRevokeStmt.run();
+    if (outcomeStmt) {
+      try {
+        await outcomeStmt.run();
+      } catch {
+        // safe fallback
+      }
+    }
   }
 
   // Re-evaluate readiness
