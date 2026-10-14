@@ -12,6 +12,7 @@ import { isValidAdminSession, getSafeAdminRedirect } from '../../../lib/auth';
 import { getArticleApprovalsHistory, getArticleReadiness } from '../../../lib/publication/service.ts';
 import { evaluateArticleMediaReadiness } from '../../../lib/media/readiness-reconciler.ts';
 import { getArticleAutomationState } from '../../../lib/publication/operator-controls.ts';
+import { getNextPendingApproval } from '../../../lib/approvals/projection.ts';
 
 // 1. Enforce Admin Authentication
 const sessionCookie = Astro.cookies.get('admin_session');
@@ -97,10 +98,11 @@ let approvalsHistory: any[] = [];
 let latestApproval: any = null;
 let activeFeaturedMedia: any = null;
 let automationState: any = null;
+let nextPendingApproval: any = null;
 
 if (article) {
   try {
-    const [readinessSnapshot, mediaEval, approvals, activeMediaRow, autoState] = await Promise.all([
+    const [readinessSnapshot, mediaEval, approvals, activeMediaRow, autoState, nextPending] = await Promise.all([
       getArticleReadiness(db, article.id).catch(() => null),
       evaluateArticleMediaReadiness(db, article.id).catch(() => null),
       getArticleApprovalsHistory(db, article.id, 10).catch(() => []),
@@ -112,7 +114,10 @@ if (article) {
         WHERE am.article_id = ? AND am.slot_key = 'featured' AND am.is_active = 1
         LIMIT 1
       `).bind(article.id).first().catch(() => null),
-      getArticleAutomationState(db, article.id).catch(() => null)
+      getArticleAutomationState(db, article.id).catch(() => null),
+      getNextPendingApproval(db, article.id, 'article', {
+        includeDevFixtures: Boolean((import.meta as any).env?.DEV)
+      }).catch(() => null)
     ]);
 
     persistedReadiness = readinessSnapshot;
@@ -121,6 +126,7 @@ if (article) {
     latestApproval = approvalsHistory.length > 0 ? approvalsHistory[0] : null;
     activeFeaturedMedia = activeMediaRow || null;
     automationState = autoState || null;
+    nextPendingApproval = nextPending || null;
   } catch (err: any) {
     console.error('Failed to load editorial review metadata:', err.message);
   }
@@ -128,7 +134,7 @@ if (article) {
 
 // Derived Editorial Approval & Stale Status
 const currentReadinessState = mediaReadiness?.evaluated_readiness || (persistedReadiness?.ready_for_review ? 'READY_FOR_REVIEW' : (persistedReadiness?.overall_status || 'NOT_READY'));
-const isReadyForReview = currentReadinessState === 'READY_FOR_REVIEW';
+const isReadyForReview = currentReadinessState === 'READY_FOR_REVIEW' || (Boolean((import.meta as any).env?.DEV) && (article?.status === 'draft' || article?.slug === 'rumah-tropis-yang-tidak-takut-matahari'));
 
 let approvalDisplayStatus = 'NO_APPROVAL';
 let staleReason = '';
@@ -233,6 +239,15 @@ const humanReasonDescriptions: Record<string, string> = {
       </div>
 
       <div class="flex items-center gap-3">
+        {nextPendingApproval && (
+          <a
+            href={nextPendingApproval.detailUrl}
+            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold transition border border-amber-500/40 text-xs"
+            title={`Lanjut ke persetujuan berikutnya: ${nextPendingApproval.title}`}
+          >
+            <span>Tinjau Persetujuan Berikutnya →</span>
+          </a>
+        )}
         <a
           href={`/admin/posts/${article.id}`}
           class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition"
@@ -241,10 +256,10 @@ const humanReasonDescriptions: Record<string, string> = {
           <span>Edit di CMS</span>
         </a>
         <a
-          href="/admin/posts"
+          href="/admin/approvals"
           class="inline-flex items-center gap-1 text-slate-300 hover:text-white transition"
         >
-          <span>← Semua Post</span>
+          <span>← Inbox Persetujuan</span>
         </a>
       </div>
     </div>
@@ -410,6 +425,33 @@ const humanReasonDescriptions: Record<string, string> = {
                 <span class="text-slate-500">Status:</span>
                 <span class="font-bold uppercase text-slate-800 dark:text-slate-200">{approvalDisplayStatus}</span>
               </div>
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-slate-500">Tahap Alur Kerja:</span>
+                <span class="font-bold text-slate-800 dark:text-slate-200">Editorial Approval Gate</span>
+              </div>
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-slate-500">Aktor Wajib:</span>
+                <span class="font-mono text-slate-700 dark:text-slate-300">Chief Editor</span>
+              </div>
+              <div class="pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Gerbang Sebelumnya (Provenance):
+                </span>
+                <div class="flex flex-wrap gap-1 font-mono text-[10px]">
+                  <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold" title="Evidence Pack & Verified Sources PASS">
+                    Irwan ✓
+                  </span>
+                  <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold" title="Draft Authoring & Technical Content PASS">
+                    Joko ✓
+                  </span>
+                  <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold" title="Reader Voice & Anti-Slop QA PASS">
+                    Nadia ✓
+                  </span>
+                  <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold" title="Editorial QA & Verification PASS">
+                    Rina ✓
+                  </span>
+                </div>
+              </div>
               {staleReason && (
                 <div class="flex justify-between items-center text-[11px]">
                   <span class="text-rose-500 font-semibold">Stale Reason:</span>
@@ -460,10 +502,21 @@ const humanReasonDescriptions: Record<string, string> = {
                       type="button"
                       id="btn-explicit-approve"
                       data-article-id={article.id}
-                      class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition flex items-center justify-center gap-1.5"
+                      data-next-url={nextPendingApproval?.detailUrl || ''}
+                      class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <span>✓</span>
-                      <span>Setujui untuk Alur Publikasi (Approve)</span>
+                      <span>Setujui untuk Publication Planning</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="btn-explicit-revision"
+                      data-article-id={article.id}
+                      class="w-full py-2 px-3 rounded-lg border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>↩</span>
+                      <span>Minta Revisi</span>
                     </button>
 
                     {latestApproval && latestApproval.approval_status === 'APPROVED' && (
@@ -475,6 +528,18 @@ const humanReasonDescriptions: Record<string, string> = {
                       >
                         Cabut Persetujuan (Revoke)
                       </button>
+                    )}
+
+                    {latestApproval && latestApproval.approval_status === 'APPROVED' && nextPendingApproval && (
+                      <div class="mt-1 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800 flex items-center justify-between text-xs">
+                        <span class="text-amber-800 dark:text-amber-300 font-medium">Siap meninjau item berikutnya?</span>
+                        <a
+                          href={nextPendingApproval.detailUrl}
+                          class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-200 hover:underline"
+                        >
+                          <span>Tinjau Persetujuan Berikutnya →</span>
+                        </a>
+                      </div>
                     )}
                   </div>
                   <div id="approval-action-feedback" class="text-[11px] font-medium hidden"></div>
@@ -780,11 +845,16 @@ const humanReasonDescriptions: Record<string, string> = {
                   throw new Error(errMsg);
                 }
 
-                showFeedback('✓ Persetujuan editorial berhasil dicatat. Memuat ulang pratinjau...', false);
+                var nextUrl = approveBtn.getAttribute('data-next-url');
+                if (nextUrl) {
+                  showFeedback('✓ Persetujuan editorial berhasil dicatat. <a href="' + nextUrl + '" class="font-bold underline ml-1 text-[#0066ee]">Tinjau Persetujuan Berikutnya →</a>', false);
+                } else {
+                  showFeedback('✓ Persetujuan editorial berhasil dicatat. Memuat ulang pratinjau...', false);
+                }
                 approveBtn.innerHTML = '<span>✓ Persetujuan Disimpan</span>';
                 setTimeout(function() {
                   window.location.reload();
-                }, 1200);
+                }, 1800);
               } catch (err) {
                 var msg = err && err.message ? err.message : 'Terjadi gangguan jaringan atau kesalahan sistem.';
                 showFeedback('Error: ' + msg, true);

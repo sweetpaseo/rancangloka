@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { getDb, getSiteSettings } from '../lib/db';
+import { getApprovalInboxProjection } from '../lib/approvals/projection.ts';
 
 interface Props {
   title?: string;
@@ -15,10 +16,27 @@ const siteTitle = siteSettings.site_title || 'RancangLoka';
 const siteFavicon = siteSettings.site_favicon || '🏡';
 const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/admin';
 
+// Single source of truth for pending approvals (Header Bell & Sidebar use the EXACT same query)
+let pendingApprovalCount = 0;
+let bellPreviewItems: any[] = [];
+try {
+  const approvalProj = await getApprovalInboxProjection(db, {
+    limit: 5,
+    includeDevFixtures: Boolean(import.meta.env.DEV)
+  });
+  pendingApprovalCount = approvalProj.pendingCount;
+  bellPreviewItems = approvalProj.previewItems;
+} catch (err) {
+  console.error('Failed to load approval projection in AdminLayout:', err);
+}
+
 const isActive = (path: string) => {
   const cleanPath = path.replace(/\/$/, '');
   if (cleanPath === '/admin') {
     return currentPath === '/admin';
+  }
+  if (cleanPath === '/admin/approvals') {
+    return currentPath === '/admin/approvals' || currentPath.startsWith('/admin/approvals/');
   }
   if (cleanPath === '/admin/mission-control') {
     return currentPath === '/admin/mission-control';
@@ -45,6 +63,7 @@ const getIconClass = (path: string) => {
 
 const breadcrumbMap: Record<string, string[]> = {
   '/admin': ['Ringkasan'],
+  '/admin/approvals': ['Ringkasan & Kontrol', 'Persetujuan Redaksi'],
   '/admin/mission-control': ['Hermes Mission Control'],
   '/admin/mission-control/staff': ['Hermes Mission Control', 'Staff Registry'],
   '/admin/mission-control/departments': ['Hermes Mission Control', 'Departemen'],
@@ -77,6 +96,7 @@ const groups = [
     label: 'RINGKASAN & KONTROL',
     items: [
       { href: '/admin', label: 'Ringkasan', icon: 'grid' },
+      { href: '/admin/approvals', label: 'Persetujuan', icon: 'check-square', badge: pendingApprovalCount },
       { href: '/admin/mission-control', label: 'Mission Control', icon: 'command' },
       { href: '/admin/mission-control/staff', label: 'Staff Registry', icon: 'people' },
       { href: '/admin/mission-control/departments', label: 'Departemen', icon: 'page' },
@@ -135,7 +155,9 @@ const iconPath = (icon: string) => {
     monitor: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
     command: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
     people: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-    settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z'
+    settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+    'check-square': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+    bell: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'
   };
   return paths[icon] || paths.grid;
 };
@@ -158,21 +180,47 @@ const iconPath = (icon: string) => {
     />
   </head>
 
-  <body class="h-full text-slate-900 bg-[#fbfbfd] font-sans flex flex-col md:flex-row antialiased">
-    <aside class="w-full md:w-60 bg-white border-r border-slate-200/80 flex-shrink-0 flex flex-col justify-between shadow-2xs z-30">
+  <body class="h-full text-slate-900 bg-[#fbfbfd] font-sans flex flex-col lg:flex-row antialiased">
+    <!-- Mobile / Tablet Drawer Backdrop (< lg) -->
+    <div
+      id="admin-drawer-backdrop"
+      class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 hidden transition-opacity duration-200"
+      aria-hidden="true"
+    ></div>
+
+    <!-- Admin Navigation Sidebar (Desktop Persistent / Mobile Off-Canvas Drawer) -->
+    <aside
+      id="admin-sidebar"
+      class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out bg-white border-r border-slate-200/80 flex flex-col justify-between shadow-2xl lg:shadow-2xs lg:static lg:w-60 lg:flex-shrink-0 lg:z-30 h-full"
+      aria-label="Navigasi Utama Admin"
+    >
       <div class="flex flex-col flex-1 overflow-y-auto">
-        <a href="/admin" class="h-16 flex items-center px-5 border-b border-slate-100 gap-3 group focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25">
-          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900 text-white font-outfit font-black text-sm tracking-tight shadow-xs">
-            R
-          </span>
-          <div class="min-w-0">
-            <h1 class="font-outfit font-black text-xs text-slate-900 tracking-tight truncate group-hover:text-[#0066ee] transition uppercase">{siteTitle} CMS</h1>
-            <span class="text-[9px] font-mono text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-              Admin aktif
+        <div class="h-16 flex items-center justify-between px-5 border-b border-slate-100 gap-3">
+          <a href="/admin" class="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25">
+            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900 text-white font-outfit font-black text-sm tracking-tight shadow-xs">
+              R
             </span>
-          </div>
-        </a>
+            <div class="min-w-0">
+              <h1 class="font-outfit font-black text-xs text-slate-900 tracking-tight truncate group-hover:text-[#0066ee] transition uppercase">{siteTitle} CMS</h1>
+              <span class="text-[9px] font-mono text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                Admin aktif
+              </span>
+            </div>
+          </a>
+
+          <!-- Mobile Drawer Close Button -->
+          <button
+            type="button"
+            id="admin-drawer-close-btn"
+            class="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25"
+            aria-label="Tutup Menu Navigasi"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
         <div class="p-3 space-y-5 flex-1">
           {groups.map((group) => (
@@ -189,7 +237,12 @@ const iconPath = (icon: string) => {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       )}
                     </svg>
-                    {item.label}
+                    <span class="truncate">{item.label}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span class="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-mono font-bold text-white shadow-2xs">
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
                   </a>
                 ))}
               </nav>
@@ -199,6 +252,16 @@ const iconPath = (icon: string) => {
       </div>
 
       <div class="p-3.5 border-t border-slate-100 bg-slate-50/60">
+        <!-- Quick Action in Drawer on Mobile -->
+        <div class="sm:hidden mb-3">
+          <a
+            href="/admin/posts/new"
+            class="rounded-xl bg-[#0066ee] hover:bg-blue-600 text-white font-outfit font-bold px-3 py-2 text-xs transition shadow-xs flex items-center justify-center gap-1.5"
+          >
+            <span>+ Buat Artikel Baru</span>
+          </a>
+        </div>
+
         <div class="flex items-center justify-between text-[11px] mb-2">
           <div class="flex items-center gap-1.5">
             <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
@@ -217,19 +280,133 @@ const iconPath = (icon: string) => {
       </div>
     </aside>
 
-    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
-      <header class="min-h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 sm:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shadow-2xs sticky top-0 z-20">
-        <nav class="flex flex-wrap items-center gap-2" aria-label="Breadcrumb">
-          <span class="text-xs font-mono font-bold uppercase text-slate-400 tracking-wider">PANEL CMS</span>
-          {breadcrumbs.map((crumb) => (
-            <>
-              <span class="text-slate-300 font-mono" aria-hidden="true">/</span>
-              <span class="text-sm font-outfit font-bold text-slate-900">{crumb}</span>
-            </>
-          ))}
-        </nav>
+    <main class="flex-1 flex flex-col min-w-0 w-full overflow-y-auto">
+      <header class="min-h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 sm:px-8 flex items-center justify-between gap-3 shadow-2xs sticky top-0 z-20">
+        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <!-- Mobile / Tablet Hamburger -->
+          <button
+            type="button"
+            id="admin-hamburger-btn"
+            class="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25"
+            aria-label="Buka Menu Navigasi"
+            aria-controls="admin-sidebar"
+            aria-expanded="false"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
 
-        <div class="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+          <!-- Current Page Identity & Breadcrumbs -->
+          <div class="min-w-0">
+            <h2 class="font-outfit font-black text-sm sm:text-base text-slate-900 truncate tracking-tight">
+              {title}
+            </h2>
+            <nav class="hidden sm:flex flex-wrap items-center gap-1.5 text-[11px] font-mono text-slate-400" aria-label="Breadcrumb">
+              <span>PANEL CMS</span>
+              {breadcrumbs.map((crumb) => (
+                <>
+                  <span class="text-slate-300" aria-hidden="true">/</span>
+                  <span class="text-slate-600 font-bold truncate">{crumb}</span>
+                </>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+          <!-- Notification Bell (Summary, Not Workbench) -->
+          <div class="relative" id="admin-bell-container">
+            <button
+              type="button"
+              id="admin-bell-btn"
+              class="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25"
+              aria-label={`Pemberitahuan Persetujuan (${pendingApprovalCount} menunggu)`}
+              aria-expanded="false"
+            >
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPath('bell')} />
+              </svg>
+              {pendingApprovalCount > 0 && (
+                <span class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-mono font-bold text-white shadow-xs">
+                  {pendingApprovalCount > 99 ? '99+' : pendingApprovalCount}
+                </span>
+              )}
+            </button>
+
+            <!-- Bell Popover Menu -->
+            <div
+              id="admin-bell-dropdown"
+              class="hidden fixed sm:absolute inset-x-3 sm:inset-x-auto top-16 sm:top-auto sm:right-0 mt-2 sm:w-96 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-white border border-slate-200 shadow-xl z-50 overflow-hidden divide-y divide-slate-100"
+              role="dialog"
+              aria-label="Ringkasan Keputusan Menunggu"
+            >
+              <div class="px-4 py-3 bg-slate-50/80 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-mono font-bold uppercase tracking-wider text-slate-700">PERLU TINDAKAN</span>
+                  {pendingApprovalCount > 0 ? (
+                    <span class="flex h-5 px-1.5 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-mono text-[11px] font-bold">
+                      {pendingApprovalCount}
+                    </span>
+                  ) : (
+                    <span class="flex h-5 px-1.5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">
+                      0
+                    </span>
+                  )}
+                </div>
+                <a href="/admin/approvals" class="text-[11px] font-medium text-[#0066ee] hover:underline">
+                  Lihat Semua Persetujuan →
+                </a>
+              </div>
+
+              <div class="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                {pendingApprovalCount > 0 ? (
+                  bellPreviewItems.map((item: any) => (
+                    <div class="p-3 hover:bg-slate-50/60 transition flex items-start justify-between gap-3 text-xs">
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                          <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+                            {item.typeLabel}
+                          </span>
+                          <span class="text-[10px] font-mono text-slate-400">
+                            Menunggu {item.waitingAgeFormatted}
+                          </span>
+                        </div>
+                        <p class="font-medium text-slate-900 truncate" title={item.title}>
+                          {item.title}
+                        </p>
+                      </div>
+                      <a
+                        href={item.detailUrl}
+                        class="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-[#0066ee] hover:underline px-2 py-1 rounded-lg hover:bg-blue-50 transition"
+                      >
+                        <span>Tinjau</span>
+                        <span>→</span>
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <div class="py-8 px-4 text-center space-y-1 text-xs text-slate-500">
+                    <div class="text-lg">✨</div>
+                    <p class="font-medium text-slate-800">Semua keputusan sudah selesai.</p>
+                    <p class="text-[11px] text-slate-400">Tidak ada tindakan persetujuan yang tertunda saat ini.</p>
+                  </div>
+                )}
+              </div>
+
+              {pendingApprovalCount > 0 && (
+                <div class="p-2.5 bg-slate-50/50 text-center">
+                  <a
+                    href="/admin/approvals"
+                    class="inline-block text-xs font-bold text-[#0066ee] hover:underline py-1"
+                  >
+                    Lihat Semua Persetujuan →
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 text-[10px] font-mono font-bold text-emerald-800">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
             <span>Cloudflare D1: Connected</span>
@@ -237,7 +414,7 @@ const iconPath = (icon: string) => {
 
           <a
             href="/admin/posts/new"
-            class="rounded-xl bg-[#0066ee] hover:bg-blue-600 text-white font-outfit font-bold px-3.5 py-2 text-xs transition shadow-xs flex min-h-10 items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+            class="hidden sm:flex rounded-xl bg-[#0066ee] hover:bg-blue-600 text-white font-outfit font-bold px-3.5 py-2 text-xs transition shadow-xs min-h-10 items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
           >
             <span>+ Buat Artikel</span>
           </a>
@@ -248,5 +425,90 @@ const iconPath = (icon: string) => {
         <slot />
       </div>
     </main>
+
+    <script is:inline>
+      (function() {
+        // 1. Mobile & Tablet Drawer Control (< lg)
+        var hamburgerBtn = document.getElementById('admin-hamburger-btn');
+        var closeBtn = document.getElementById('admin-drawer-close-btn');
+        var drawer = document.getElementById('admin-sidebar');
+        var backdrop = document.getElementById('admin-drawer-backdrop');
+
+        function openDrawer() {
+          if (drawer && backdrop) {
+            drawer.classList.remove('-translate-x-full');
+            backdrop.classList.remove('hidden');
+            if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'true');
+            document.body.classList.add('overflow-hidden', 'lg:overflow-auto');
+          }
+        }
+
+        function closeDrawer() {
+          if (drawer && backdrop) {
+            drawer.classList.add('-translate-x-full');
+            backdrop.classList.add('hidden');
+            if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('overflow-hidden', 'lg:overflow-auto');
+          }
+        }
+
+        if (hamburgerBtn) {
+          hamburgerBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openDrawer();
+          });
+        }
+
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+        if (backdrop) backdrop.addEventListener('click', closeDrawer);
+
+        if (drawer) {
+          drawer.querySelectorAll('a').forEach(function(link) {
+            link.addEventListener('click', function() {
+              if (window.innerWidth < 1024) {
+                closeDrawer();
+              }
+            });
+          });
+        }
+
+        // 2. Bell Dropdown Control
+        var bellBtn = document.getElementById('admin-bell-btn');
+        var bellDropdown = document.getElementById('admin-bell-dropdown');
+        var bellContainer = document.getElementById('admin-bell-container');
+
+        if (bellBtn && bellDropdown) {
+          bellBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var isHidden = bellDropdown.classList.contains('hidden');
+            if (isHidden) {
+              bellDropdown.classList.remove('hidden');
+              bellBtn.setAttribute('aria-expanded', 'true');
+            } else {
+              bellDropdown.classList.add('hidden');
+              bellBtn.setAttribute('aria-expanded', 'false');
+            }
+          });
+
+          document.addEventListener('click', function(e) {
+            if (bellContainer && !bellContainer.contains(e.target)) {
+              bellDropdown.classList.add('hidden');
+              bellBtn.setAttribute('aria-expanded', 'false');
+            }
+          });
+        }
+
+        // 3. Global Escape Keyboard Listener
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') {
+            closeDrawer();
+            if (bellDropdown && bellBtn) {
+              bellDropdown.classList.add('hidden');
+              bellBtn.setAttribute('aria-expanded', 'false');
+            }
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

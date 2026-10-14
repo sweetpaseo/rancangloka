@@ -1,0 +1,436 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getDb } from '../../../lib/db';
+import { getApprovalInboxProjection } from '../../../lib/approvals/projection.ts';
+import type { ApprovalStatus, ApprovalType } from '../../../lib/approvals/types.ts';
+
+const db = await getDb(Astro.locals);
+
+// Parse Query Parameters
+const url = Astro.url;
+const statusParam = (url.searchParams.get('status') || 'pending').toLowerCase();
+const typeParam = (url.searchParams.get('type') || 'all').toLowerCase();
+const searchQuery = url.searchParams.get('q')?.trim() || '';
+const pageParam = parseInt(url.searchParams.get('page') || '1', 10);
+const page = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+
+// Map query params to Projection filter options
+let targetStatus: ApprovalStatus | 'ALL' = 'PENDING';
+if (statusParam === 'revision') {
+  targetStatus = 'REVISION_REQUESTED';
+} else if (statusParam === 'completed') {
+  targetStatus = 'APPROVED';
+} else if (statusParam === 'all') {
+  targetStatus = 'ALL';
+}
+
+let targetType: ApprovalType | 'ALL' = 'ALL';
+if (typeParam === 'article') {
+  targetType = 'article';
+} else if (typeParam === 'media') {
+  targetType = 'media';
+}
+
+const projection = await getApprovalInboxProjection(db, {
+  status: targetStatus,
+  type: targetType,
+  search: searchQuery,
+  page,
+  limit: 15,
+  includeDevFixtures: Boolean(import.meta.env.DEV)
+});
+
+const { items, totalCount, pendingCount, revisionCount, completedCount, pagination } = projection;
+
+// Build filter URL helper
+const getFilterUrl = (newParams: Record<string, string | number | undefined>) => {
+  const currentParams = new URLSearchParams(url.searchParams);
+  for (const [key, val] of Object.entries(newParams)) {
+    if (val === undefined || val === '') {
+      currentParams.delete(key);
+    } else {
+      currentParams.set(key, String(val));
+    }
+  }
+  return `/admin/approvals?${currentParams.toString()}`;
+};
+---
+
+<AdminLayout title="Antrean Persetujuan Redaksi">
+  <div class="space-y-3 sm:space-y-6 max-w-7xl mx-auto">
+    <!-- Top Header Banner & Principles -->
+    <div class="rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 p-3.5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
+      <div class="space-y-0.5 sm:space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-amber-500/10 text-amber-600 text-xs sm:text-sm">
+            ⚖️
+          </span>
+          <h1 class="font-outfit text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+            Antrean Persetujuan Manusia
+          </h1>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-500 max-w-2xl line-clamp-1 sm:line-clamp-none">
+          Pusat kendali keputusan redaksional dan visual. Setiap persetujuan diverifikasi per artikel secara ketat.
+        </p>
+      </div>
+
+      <!-- Live Canonical Stats Pill -->
+      <div class="flex items-center gap-1.5 sm:gap-3 bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200/60 self-start md:self-auto text-[11px] sm:text-xs font-mono">
+        <div class="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-amber-500 text-white font-bold flex items-center gap-1 sm:gap-1.5 shadow-2xs">
+          <span class="h-1.5 w-1.5 rounded-full bg-white animate-pulse"></span>
+          <span>{pendingCount} MENUNGGU</span>
+        </div>
+        <div class="px-1.5 py-0.5 sm:px-2 sm:py-1 text-slate-600 font-medium">
+          <span>{revisionCount} Revisi</span>
+        </div>
+        <div class="px-1.5 py-0.5 sm:px-2 sm:py-1 text-emerald-700 font-medium">
+          <span>{completedCount} Selesai</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Architectural Principle Note (Desktop: Full, Mobile: Expandable Disclosure) -->
+    <div class="hidden md:flex rounded-xl bg-blue-50/70 border border-blue-200/60 p-3.5 text-xs text-blue-900 items-start gap-2.5">
+      <span class="text-blue-600 shrink-0 mt-0.5">💡</span>
+      <div class="leading-relaxed">
+        <strong>Prinsip UX Persetujuan:</strong>
+        <span class="text-blue-800">
+          Notifikasi Bell memberi tahu adanya pekerjaan. Inbox Persetujuan mengorganisir antrean. Halaman Detail adalah tempat pengambilan keputusan. Dilarang melakukan bulk approve demi menjaga integritas keselamatan publikasi.
+        </span>
+      </div>
+    </div>
+
+    <details class="md:hidden group rounded-lg bg-blue-50/60 border border-blue-200/60 text-[11px] text-blue-900">
+      <summary class="px-3 py-1.5 font-medium cursor-pointer list-none flex items-center justify-between text-blue-800 hover:text-blue-950">
+        <span class="flex items-center gap-1.5">
+          <span>ℹ</span>
+          <span class="font-semibold">Tentang alur persetujuan</span>
+        </span>
+        <span class="text-[10px] text-blue-500 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div class="px-3 pb-2 pt-1 text-[11px] text-blue-800 border-t border-blue-100/80 leading-relaxed">
+        Notifikasi Bell memberi tahu adanya pekerjaan. Inbox mengorganisir antrean. Detail adalah tempat keputusan. Dilarang bulk approve demi keselamatan publikasi.
+      </div>
+    </details>
+
+    <!-- Filters, Tabs, & Search Bar -->
+    <div class="space-y-2 sm:space-y-3">
+      <!-- Status Tabs: Pending First UX -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 border-b border-slate-200/80 pb-2 sm:pb-3">
+        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 whitespace-nowrap no-scrollbar scrollbar-none">
+          <a
+            href={getFilterUrl({ status: 'pending', page: 1 })}
+            class={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25 shrink-0 ${
+              statusParam === 'pending'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span>Menunggu</span>
+            <span class={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
+              statusParam === 'pending' ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {pendingCount}
+            </span>
+          </a>
+
+          <a
+            href={getFilterUrl({ status: 'revision', page: 1 })}
+            class={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25 shrink-0 ${
+              statusParam === 'revision'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span>Minta Revisi</span>
+            <span class={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
+              statusParam === 'revision' ? 'bg-rose-400 text-slate-900' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {revisionCount}
+            </span>
+          </a>
+
+          <a
+            href={getFilterUrl({ status: 'completed', page: 1 })}
+            class={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25 shrink-0 ${
+              statusParam === 'completed'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span>Selesai Disetujui</span>
+            <span class={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
+              statusParam === 'completed' ? 'bg-emerald-400 text-slate-900' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {completedCount}
+            </span>
+          </a>
+
+          <a
+            href={getFilterUrl({ status: 'all', page: 1 })}
+            class={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-medium transition shrink-0 ${
+              statusParam === 'all'
+                ? 'bg-slate-900 text-white font-bold shadow-xs'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+          >
+            Semua Riwayat
+          </a>
+        </div>
+
+        <!-- Search & Type Dropdown Form: Single Compact Row on Mobile -->
+        <form method="GET" action="/admin/approvals" class="grid grid-cols-[auto_1fr_auto] sm:flex sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+          <input type="hidden" name="status" value={statusParam} />
+
+          <select
+            name="type"
+            onchange="this.form.submit()"
+            class="h-8 sm:h-9 px-2 sm:px-3 text-[11px] sm:text-xs rounded-lg sm:rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25"
+          >
+            <option value="all" selected={typeParam === 'all'}>Semua Tipe</option>
+            <option value="article" selected={typeParam === 'article'}>Artikel</option>
+            <option value="media" selected={typeParam === 'media'}>Media</option>
+          </select>
+
+          <div class="relative min-w-0 sm:w-60">
+            <input
+              type="text"
+              name="q"
+              value={searchQuery}
+              placeholder="Cari judul..."
+              class="h-8 sm:h-9 w-full pl-7 sm:pl-8 pr-2.5 text-[11px] sm:text-xs rounded-lg sm:rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/25 truncate"
+            />
+            <svg class="h-3.5 w-3.5 text-slate-400 absolute left-2 sm:left-2.5 top-2.5 sm:top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+
+          <button
+            type="submit"
+            class="h-8 sm:h-9 px-2.5 sm:px-3 rounded-lg sm:rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] sm:text-xs transition"
+          >
+            Cari
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Compact Task-Inbox Table Layout -->
+    <div class="rounded-2xl bg-white border border-slate-200/80 shadow-xs overflow-hidden">
+      {items.length === 0 ? (
+        <!-- Calm Reassuring Empty State -->
+        <div class="py-16 px-6 text-center space-y-3">
+          <div class="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 text-2xl shadow-2xs">
+            ✓
+          </div>
+          <div class="space-y-1">
+            <h2 class="font-outfit text-base font-bold text-slate-900">
+              Semua keputusan sudah selesai.
+            </h2>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto">
+              Tidak ada permintaan persetujuan aktif yang menunggu tindakan Anda saat ini.
+            </p>
+          </div>
+          {statusParam !== 'pending' && (
+            <div class="pt-2">
+              <a
+                href="/admin/approvals?status=pending"
+                class="inline-block text-xs font-bold text-[#0066ee] hover:underline"
+              >
+                ← Kembali ke Tab Menunggu
+              </a>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <!-- Mobile Compact Task Rows (< md / < 768px) -->
+          <div class="md:hidden divide-y divide-slate-100" id="approval-mobile-list">
+            {items.map((item) => (
+              <div class="p-4 space-y-2.5 hover:bg-slate-50/60 transition">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+                    {item.typeLabel}
+                  </span>
+                  <span class={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                    item.status === 'PENDING'
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      : item.status === 'REVISION_REQUESTED'
+                      ? 'bg-rose-50 text-rose-800 border-rose-200'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  }`}>
+                    <span class={`h-1.5 w-1.5 rounded-full ${
+                      item.status === 'PENDING'
+                        ? 'bg-amber-500 animate-pulse'
+                        : item.status === 'REVISION_REQUESTED'
+                        ? 'bg-rose-500'
+                        : 'bg-emerald-500'
+                    }`}></span>
+                    <span>{item.statusLabel}</span>
+                  </span>
+                </div>
+
+                <div>
+                  <a
+                    href={item.detailUrl}
+                    class="font-outfit font-bold text-sm text-slate-900 hover:text-[#0066ee] transition line-clamp-2"
+                    title={item.title}
+                  >
+                    {item.title}
+                  </a>
+                  {item.slug && (
+                    <span class="text-[10px] font-mono text-slate-400 block truncate mt-0.5">
+                      /{item.slug}
+                    </span>
+                  )}
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                  <div class="text-xs font-mono text-slate-500">
+                    Menunggu <strong class={item.waitingAgeFormatted.includes('hari') ? 'text-amber-700 font-bold' : 'text-slate-700 font-bold'}>{item.waitingAgeFormatted}</strong>
+                  </div>
+                  <a
+                    href={item.detailUrl}
+                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-[#0066ee] text-white font-outfit font-bold text-xs transition shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+                  >
+                    <span>Tinjau</span>
+                    <span>→</span>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <!-- Desktop Operational Table (>= md / >= 768px): Strictly 5 Essential Columns -->
+          <div class="hidden md:block overflow-x-auto" id="approval-desktop-table">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Judul / Subjek</th>
+                  <th class="py-3 px-3 whitespace-nowrap">Tipe</th>
+                  <th class="py-3 px-3 whitespace-nowrap">Menunggu</th>
+                  <th class="py-3 px-3 whitespace-nowrap">Status</th>
+                  <th class="py-3 px-4 text-right whitespace-nowrap">Tindakan</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-sans">
+                {items.map((item) => (
+                  <tr class="hover:bg-slate-50/70 transition group">
+                    <!-- Title & Slug -->
+                    <td class="py-3.5 px-4">
+                      <div class="space-y-0.5">
+                        <a
+                          href={item.detailUrl}
+                          class="font-outfit font-bold text-sm text-slate-900 group-hover:text-[#0066ee] transition line-clamp-1"
+                          title={item.title}
+                        >
+                          {item.title}
+                        </a>
+                        {item.slug && (
+                          <span class="text-[10px] font-mono text-slate-400 block truncate">
+                            /{item.slug}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    <!-- Type -->
+                    <td class="py-3.5 px-3 whitespace-nowrap">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+                        {item.typeLabel}
+                      </span>
+                    </td>
+
+                    <!-- Waiting Age -->
+                    <td class="py-3.5 px-3 whitespace-nowrap">
+                      <div class="space-y-0.5">
+                        <span class={`font-mono font-bold text-xs ${
+                          item.waitingAgeFormatted.includes('hari')
+                            ? 'text-amber-700'
+                            : 'text-slate-700'
+                        }`}>
+                          {item.waitingAgeFormatted}
+                        </span>
+                        <span class="text-[10px] font-mono text-slate-400 block" title={item.waitingSince}>
+                          {new Date(item.waitingSince).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </td>
+
+                    <!-- Status -->
+                    <td class="py-3.5 px-3 whitespace-nowrap">
+                      <span class={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                        item.status === 'PENDING'
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : item.status === 'REVISION_REQUESTED'
+                          ? 'bg-rose-50 text-rose-800 border-rose-200'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      }`}>
+                        <span class={`h-1.5 w-1.5 rounded-full ${
+                          item.status === 'PENDING'
+                            ? 'bg-amber-500 animate-pulse'
+                            : item.status === 'REVISION_REQUESTED'
+                            ? 'bg-rose-500'
+                            : 'bg-emerald-500'
+                        }`}></span>
+                        <span>{item.statusLabel}</span>
+                      </span>
+                    </td>
+
+                    <!-- Action: Tinjau → -->
+                    <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                      <a
+                        href={item.detailUrl}
+                        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-[#0066ee] text-white font-outfit font-bold text-xs transition shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+                      >
+                        <span>Tinjau</span>
+                        <span>→</span>
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <!-- Pagination Footer -->
+      {pagination.totalPages > 1 && (
+        <div class="px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 flex items-center justify-between text-xs">
+          <span class="text-slate-500">
+            Menampilkan halaman <strong class="text-slate-800">{pagination.page}</strong> dari <strong class="text-slate-800">{pagination.totalPages}</strong> ({totalCount} total)
+          </span>
+
+          <div class="flex items-center gap-1.5">
+            {pagination.page > 1 ? (
+              <a
+                href={getFilterUrl({ page: pagination.page - 1 })}
+                class="px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold transition"
+              >
+                ← Sebelumnya
+              </a>
+            ) : (
+              <span class="px-3 py-1 rounded-lg border border-slate-100 bg-slate-50 text-slate-300 font-bold cursor-not-allowed">
+                ← Sebelumnya
+              </span>
+            )}
+
+            {pagination.page < pagination.totalPages ? (
+              <a
+                href={getFilterUrl({ page: pagination.page + 1 })}
+                class="px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold transition"
+              >
+                Berikutnya →
+              </a>
+            ) : (
+              <span class="px-3 py-1 rounded-lg border border-slate-100 bg-slate-50 text-slate-300 font-bold cursor-not-allowed">
+                Berikutnya →
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+</AdminLayout>
