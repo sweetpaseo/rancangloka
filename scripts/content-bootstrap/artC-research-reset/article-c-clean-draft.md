@@ -232,6 +232,8 @@ Sebelum Anda menghubungi aplikator fasad atau tukang bangunan, lakukan langkah p
 
 Peneduh luar yang dirancang sesuai arah matahari bukan sekadar aksesori pemanis tampilan rumah di foto media sosial, melainkan investasi nyata untuk mengembalikan fungsi utama hunian: tempat berteduh yang adem, tenang, dan nyaman untuk ditinggali setiap hari.
 
+Setelah semua pertimbangannya jelas, keputusan akhirnya tetap kembali ke kondisi nyata rumah Anda. Tidak ada satu sistem yang sempurna untuk segala situasi—pilihlah solusi yang paling masuk akal sesuai arah datangnya sinar matahari, kesiapan struktur dinding, dan kemudahan perawatan yang sanggup Anda rawat dengan tenang dalam jangka panjang.
+
 ---
 
 ## Catatan Telaah Teknis dan Rujukan Standar
