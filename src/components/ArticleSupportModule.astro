@@ -11,6 +11,16 @@ if (!links || links.length === 0) {
   // If no meaningful active relationships exist: render nothing. No empty box.
   return null;
 }
+
+function getOptimizedThumbnail(url?: string): string | null {
+  if (!url || typeof url !== 'string' || !url.trim()) return null;
+  const cleanUrl = url.trim();
+  if (cleanUrl.includes('images.unsplash.com')) {
+    const base = cleanUrl.split('?')[0];
+    return `${base}?w=160&h=160&auto=format&fit=crop&q=80&fm=webp`;
+  }
+  return cleanUrl;
+}
 ---
 
 <section class="my-10 border border-stone/30 dark:border-stone/20 bg-[#faf9f6] dark:bg-[#18181b]/50 p-6 sm:p-8">
@@ -23,27 +33,52 @@ if (!links || links.length === 0) {
   </p>
 
   <div class="space-y-5">
-    {links.map((link) => (
-      <div class="border-b border-stone/20 dark:border-stone/10 pb-5 last:border-b-0 last:pb-0">
-        <p class="text-xs sm:text-sm text-ink/90 dark:text-paper/90 font-medium mb-1.5 leading-snug">
-          &ldquo;{link.reader_reason}&rdquo;
-        </p>
-        <div class="flex items-baseline gap-2">
-          <span class="text-accent text-sm leading-none select-none">➔</span>
-          <a
-            href={`/${link.target_slug}`}
-            class="text-sm sm:text-base font-semibold text-ink dark:text-paper hover:text-primary transition underline underline-offset-4 decoration-stone/40 hover:decoration-primary"
-          >
-            {link.target_title}
-          </a>
-        </div>
-        <div class="mt-1.5 flex items-center gap-3 text-[11px] font-mono text-muted dark:text-stone/60">
-          <span class="uppercase tracking-wider">{link.relationship_type.replace(/_/g, ' ')}</span>
-          {link.target_reading_time_minutes && (
-            <span>• {link.target_reading_time_minutes} min read</span>
-          )}
-        </div>
-      </div>
-    ))}
+    {links.map((link) => {
+      const thumbUrl = getOptimizedThumbnail(link.target_featured_image);
+      return (
+        <article class="border-b border-stone/20 dark:border-stone/10 pb-5 last:border-b-0 last:pb-0">
+          <div class="flex items-start gap-3.5 sm:gap-4">
+            {thumbUrl && (
+              <a
+                href={`/${link.target_slug}`}
+                tabindex="-1"
+                aria-hidden="true"
+                class="shrink-0 block w-14 h-14 sm:w-20 sm:h-20 aspect-square overflow-hidden rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60 transition opacity-95 hover:opacity-100 group"
+              >
+                <img
+                  src={thumbUrl}
+                  alt=""
+                  width="80"
+                  height="80"
+                  loading="lazy"
+                  decoding="async"
+                  class="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+                />
+              </a>
+            )}
+            <div class="flex-1 min-w-0">
+              <p class="text-xs sm:text-sm text-ink/90 dark:text-paper/90 font-medium mb-1.5 leading-snug">
+                &ldquo;{link.reader_reason}&rdquo;
+              </p>
+              <div class="flex items-baseline gap-2">
+                <span class="text-accent text-sm leading-none select-none">➔</span>
+                <a
+                  href={`/${link.target_slug}`}
+                  class="text-sm sm:text-base font-semibold text-ink dark:text-paper hover:text-primary transition underline underline-offset-4 decoration-stone/40 hover:decoration-primary"
+                >
+                  {link.target_title}
+                </a>
+              </div>
+              <div class="mt-1.5 flex items-center gap-3 text-[11px] font-mono text-muted dark:text-stone/60">
+                <span class="uppercase tracking-wider">{link.relationship_type.replace(/_/g, ' ')}</span>
+                {link.target_reading_time_minutes && (
+                  <span>• {link.target_reading_time_minutes} min read</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </article>
+      );
+    })}
   </div>
 </section>

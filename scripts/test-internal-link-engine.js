@@ -78,6 +78,8 @@ class InMemoryD1Mock {
       category_name: art.category_name || 'Arsitektur',
       reading_time_minutes: art.reading_time_minutes || 4,
       status: art.status || 'published',
+      featured_image: art.featured_image || '',
+      image_alt: art.image_alt || '',
       focus_keyword: art.focus_keyword || '',
       content_hash: art.content_hash || '',
       pillar_role: art.pillar_role || 'STANDALONE',
@@ -262,6 +264,7 @@ class InMemoryD1Mock {
                       target_status: target.status,
                       target_reading_time_minutes: target.reading_time_minutes,
                       target_featured_image: target.featured_image,
+                      target_image_alt: target.image_alt,
                       target_category_name: cat ? cat.name : target.category_name
                     });
                   }
@@ -1279,6 +1282,126 @@ async function runTestSuite() {
     recordPass('25. Public surface deduplication prevents redundant destinations across Plane A, BACA JUGA, and footer');
   } catch (err) {
     recordFail('25. Public surface deduplication', err);
+  }
+
+  // ----------------------------------------------------
+  // TEST 26: Support Module Featured Image Thumbnail UI Polish & Graph Shapes
+  // ----------------------------------------------------
+  try {
+    // 1. Verify component source invariants
+    const compPath = path.join(process.cwd(), 'src/components/ArticleSupportModule.astro');
+    const compSource = fs.readFileSync(compPath, 'utf8');
+
+    // Invariant: Zero client-side JS or hydration
+    assert.equal(compSource.includes('<script'), false, 'ArticleSupportModule must contain zero client-side scripts');
+    assert.equal(compSource.includes('client:load'), false, 'ArticleSupportModule must contain zero client hydration');
+    assert.equal(compSource.includes('client:visible'), false, 'ArticleSupportModule must contain zero client hydration');
+
+    // Invariant: Accessibility (tabindex="-1", aria-hidden="true", alt="")
+    assert.ok(compSource.includes('tabindex="-1"'), 'Thumbnail link must be excluded from tab stops to avoid duplicate navigation');
+    assert.ok(compSource.includes('aria-hidden="true"'), 'Thumbnail link must be aria-hidden for screen readers');
+    assert.ok(compSource.includes('alt=""'), 'Thumbnail image must have alt="" decorative tag beside title link');
+
+    // Invariant: Performance / CLS prevention
+    assert.ok(compSource.includes('width="80"'), 'Explicit width="80" required to prevent CLS');
+    assert.ok(compSource.includes('height="80"'), 'Explicit height="80" required to prevent CLS');
+    assert.ok(compSource.includes('aspect-square'), 'Stable aspect ratio required');
+    assert.ok(compSource.includes('loading="lazy"'), 'Lazy loading required');
+    assert.ok(compSource.includes('decoding="async"'), 'Async decoding required');
+
+    // Invariant: Compact horizontal editorial thumbnail (56x56 mobile, 80x80 desktop)
+    assert.ok(compSource.includes('w-14 h-14 sm:w-20 sm:h-20'), 'Responsive dimensions: 56px mobile, 80px desktop');
+
+    // Invariant: Missing image fallback (clean rendering without thumbnail, no broken image boxes)
+    assert.ok(compSource.includes('{thumbUrl &&'), 'Component must conditionally render thumbnail only when valid thumbUrl exists');
+
+    // 2. Verify across live graph shapes:
+    // Article 5 -> 8 (1 card)
+    // Article 6 -> 9 (1 card)
+    // Article 7 -> 8,9 (2 cards)
+    // Article 8 -> 9,7,5 (3 cards)
+    // Article 9 -> 8,6 (2 cards)
+    const liveGraphDb = new InMemoryD1Mock();
+    const liveArticles = [
+      { id: 5, slug: 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia', title: 'Kusen Aluminium vs UPVC', featured_image: 'https://images.unsplash.com/photo-5?w=1200', image_alt: 'Kusen aluminium' },
+      { id: 6, slug: 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman', title: 'Rekayasa Ventilasi Silang', featured_image: 'https://images.unsplash.com/photo-6?w=1200', image_alt: 'Ventilasi silang' },
+      { id: 7, slug: 'panduan-memilih-genteng-rumah-tropis', title: 'Panduan Memilih Genteng', featured_image: 'https://images.unsplash.com/photo-7?w=1200', image_alt: 'Genteng tanah liat' },
+      { id: 8, slug: 'insulasi-atap-peredam-panas-ruang-bawah-genteng', title: 'Insulasi Atap Peredam Panas', featured_image: 'https://images.unsplash.com/photo-8?w=1200', image_alt: 'Insulasi aluminium foil' },
+      { id: 9, slug: 'ventilasi-atap-solusi-loteng-panas', title: 'Ventilasi Atap Solusi Loteng Panas', featured_image: 'https://images.unsplash.com/photo-9?w=1200', image_alt: 'Turbine ventilator' },
+      { id: 99, slug: 'artikel-tanpa-gambar', title: 'Artikel Tanpa Gambar', featured_image: '', image_alt: '' }
+    ];
+
+    for (const a of liveArticles) {
+      liveGraphDb.seedArticle(a);
+    }
+
+    const liveEdges = [
+      // 5 -> 8
+      { source_article_id: 5, target_article_id: 8, relationship_type: 'RELATED_DECISION', reader_reason: 'Pertimbangkan insulasi sebelum memutuskan kusen' },
+      // 6 -> 9
+      { source_article_id: 6, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Ventilasi atap melengkapi ventilasi silang dinding' },
+      // 7 -> 8, 9
+      { source_article_id: 7, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Peredam panas bawah genteng' },
+      { source_article_id: 7, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Bukaan udara loteng pendukung genteng' },
+      // 8 -> 9, 7, 5
+      { source_article_id: 8, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Pelepasan panas loteng' },
+      { source_article_id: 8, target_article_id: 7, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Karakter konduksi material genteng' },
+      { source_article_id: 8, target_article_id: 5, relationship_type: 'RELATED_DECISION', reader_reason: 'Kusen penahan panas pada bukaan bawah' },
+      // 9 -> 8, 6
+      { source_article_id: 9, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Insulasi penahan radiasi atap' },
+      { source_article_id: 9, target_article_id: 6, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Sirkulasi udara silang penunjang atap' },
+      // Edge with target without image
+      { source_article_id: 99, target_article_id: 99, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Self-link test' },
+      { source_article_id: 5, target_article_id: 99, relationship_type: 'BACKGROUND_EXPLAINER', reader_reason: 'Target tanpa featured image' }
+    ];
+
+    for (const e of liveEdges) {
+      if (e.source_article_id === e.target_article_id) continue;
+      await createLinkCandidate(liveGraphDb, {
+        ...e,
+        placement_plane: 'PLANE_A_DYNAMIC',
+        confidence_score: 0.95,
+        status: 'ACTIVE'
+      });
+    }
+
+    // Verify 1 card shape (Article 6 -> 9)
+    const linksFor6 = await getActivePlaneALinks(liveGraphDb, 6);
+    assert.equal(linksFor6.length, 1);
+    assert.equal(linksFor6[0].target_article_id, 9);
+    assert.ok(linksFor6[0].target_featured_image);
+
+    // Verify 2 cards shape (Article 7 -> 8, 9)
+    const linksFor7 = await getActivePlaneALinks(liveGraphDb, 7);
+    assert.equal(linksFor7.length, 2);
+    assert.deepEqual(linksFor7.map(l => l.target_article_id), [8, 9]);
+
+    // Verify 2 cards shape (Article 9 -> 8, 6)
+    const linksFor9 = await getActivePlaneALinks(liveGraphDb, 9);
+    assert.equal(linksFor9.length, 2);
+    assert.deepEqual(linksFor9.map(l => l.target_article_id), [8, 6]);
+
+    // Verify 3 cards shape (Article 8 -> 9, 7, 5)
+    const linksFor8 = await getActivePlaneALinks(liveGraphDb, 8);
+    assert.equal(linksFor8.length, 3);
+    assert.deepEqual(linksFor8.map(l => l.target_article_id), [9, 7, 5]);
+    for (const l of linksFor8) {
+      assert.ok(l.target_featured_image);
+      assert.ok(l.target_image_alt);
+      assert.ok(l.target_title);
+      assert.ok(l.reader_reason);
+      assert.ok(l.relationship_type);
+    }
+
+    // Verify missing image fallback
+    const linksFor5 = await getActivePlaneALinks(liveGraphDb, 5);
+    const missingImgLink = linksFor5.find(l => l.target_article_id === 99);
+    assert.ok(missingImgLink);
+    assert.equal(Boolean(missingImgLink.target_featured_image), false);
+
+    recordPass('26. Support module UI polish: editorial thumbnails, live graph shapes (1, 2, 3 cards), zero-link empty rendering, fallback on missing image, accessible decorative alt, and zero-JS invariants verified');
+  } catch (err) {
+    recordFail('26. Support module thumbnail polish', err);
   }
 
   // ----------------------------------------------------

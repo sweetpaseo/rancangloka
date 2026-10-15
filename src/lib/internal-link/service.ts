@@ -474,6 +474,7 @@ export async function getActivePlaneALinks(
       a.status as target_status,
       a.reading_time_minutes as target_reading_time_minutes,
       a.featured_image as target_featured_image,
+      a.image_alt as target_image_alt,
       c.name as target_category_name
     FROM article_internal_links l
     INNER JOIN articles a ON l.target_article_id = a.id
@@ -510,7 +511,8 @@ export async function getActivePlaneALinks(
       target_slug: row.target_slug,
       target_category_name: row.target_category_name || undefined,
       target_reading_time_minutes: row.target_reading_time_minutes || 3,
-      target_featured_image: row.target_featured_image || undefined
+      target_featured_image: row.target_featured_image || undefined,
+      target_image_alt: row.target_image_alt || undefined
     });
   }
 

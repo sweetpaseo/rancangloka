@@ -66,6 +66,7 @@ export interface ResolvedPlaneALink {
   target_category_name?: string;
   target_reading_time_minutes?: number;
   target_featured_image?: string;
+  target_image_alt?: string;
 }
 
 export interface OrphanDiagnosticResult {
