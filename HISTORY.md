@@ -13,6 +13,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-ARTICLE-SUPPORT-MOBILE-BALANCE-PRODUCTION: Responsive Mobile Card Visual Balance Polish, Full-Width Excerpt Flow & Zero DOM Duplication 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T23:00:00+07:00
+- **Status Operasional:** `ARTICLE_SUPPORT_MOBILE_BALANCE_PRODUCTION_COMPLETE`
+- **Otorisasi:** Chief Editor Production Authorization (`AUTHORIZE ARTICLE_SUPPORT_MOBILE_BALANCE PRODUCTION DEPLOYMENT`)
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Worker Deployment:**
+  - Previous Worker ID: `2b3ab25b-5d05-4d8f-9f3f-b2c8190c1ec6`
+  - New Worker ID: `1ec3dfd1-60b9-493f-aa48-ea63ea1dde0f`
+- **Accepted Commit:**
+  - `1525d8a` `style(ui): polish mobile visual balance for article support cards`
+- **Pencapaian & Peningkatan Visual Mobile:**
+  1. *Penyempurnaan Komposisi Visual Mobile (375–390px):*
+     - **Baris 1:** Thumbnail kompak (56x56 px) berdampingan langsung dengan judul artikel tebal. Menghilangkan efek visual thumbnail yang tampak "gantung" atau void kosong canggung di bawah gambar.
+     - **Baris 2:** Ringkasan naskah pembuka (ekserp) merentang selebar kartu (*full card width*) memberikan ruang bernapas yang proporsional dan nyaman dibaca.
+     - **Baris 3:** Label relasi semantik dan estimasi waktu baca tampil di bawah ekserp selebar kartu.
+  2. *Pelestarian Layout Desktop (sm: min-width 640px / 1280–1366px):*
+     - Kolom kiri: Thumbnail 80x80 px.
+     - Kolom kanan: Alur vertikal konvensional (Judul -> Ekserp -> Metadata). Visual desktop 100% identik dengan baseline yang telah disetujui sebelumnya.
+  3. *Zero-JS & Zero DOM Duplication:*
+     - Ditata murni menggunakan CSS Grid responsif (`grid grid-cols-[auto_1fr] sm:grid-cols-[80px_1fr]`).
+     - Nol duplikasi elemen HTML, nol JavaScript di sisi klien (*zero client JS*).
+     - Jika artikel target tidak memiliki gambar unggulan, kolom otomatis meluruh ke `grid-cols-1` tanpa menyisakan gutter kosong.
+  4. *Integritas Naskah & Graf Semantik:*
+     - Zero graph mutation (Plane A ACTIVE = 9, Plane B = 0, orphan count = 0).
+     - Pemetaan relasi Artikel 8 (8->9, 8->7, 8->5) dan Artikel 9 (9->8, 9->6) tetap utuh.
+     - Zero article mutation, hash naskah kanonikal Artikel C terverifikasi stabil (`12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28`).
+     - Jalur thumbnail tetap mengonsumsi `/media/thumbnails/...` (WebP 160x160 px, `public, max-age=31536000, immutable`).
+  5. *Invarian Keselamatan:*
+     - `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, autonomous media worker = `DISABLED`.
+- **Hasil & Status Keselamatan:**
+  - Status Pengujian: `test-internal-link-engine.js` (29/29 PASS), `test-mission-control-liveops.js` (78/78 PASS), `npx tsc --noEmit` (0 errors), `npm run build` (sukses).
+  - Klasifikasi: **`ARTICLE_SUPPORT_MOBILE_BALANCE_PRODUCTION_COMPLETE`** (`ARTICLE_SUPPORT_UI_POLISH_CLOSED`).
+
 ### RANCANGLOKA-ARTICLE-SUPPORT-CARD-HIERARCHY-PRODUCTION: Content Hierarchy Inversion to Conventional Title -> Excerpt -> Meta, Opening Prose Extraction & Verified Target Binding 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T22:38:00+07:00
