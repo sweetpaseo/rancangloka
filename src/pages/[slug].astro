@@ -28,43 +28,6 @@ let [article, page, categories, siteSettings] = await Promise.all([
   getSiteSettings(db)
 ]);
 
-// DEV-only preview adapter for unpersisted Article C
-if (!article && import.meta.env.DEV && slug === 'memilih-sistem-shading-luar-rumah-tropis') {
-  const fs = await import('node:fs');
-  const path = await import('node:path');
-  const draftPath = path.resolve(process.cwd(), 'scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md');
-  const draftMd = fs.readFileSync(draftPath, 'utf-8');
-
-  article = {
-    id: 9999,
-    slug: 'memilih-sistem-shading-luar-rumah-tropis',
-    title: 'Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?',
-    description: 'Bukaan jendela kaca yang menghadap timur atau barat di iklim tropis dapat menyumbang beban panas radiasi yang signifikan jika tidak dilindungi peneduh eksterior yang tepat. Panduan ini mengulas perbandingan fisika bangunan dan efisiensi termal antara empat sistem peneduh luar: overhang, louver, awning, dan secondary facade.',
-    content_md: draftMd,
-    content_html: '',
-    featured_image: '/media/images/4ee0363758a41bd45aae735349028ab19ca6256964c20ec1d98af4e65c578bf4.webp',
-    image_alt: 'Detail sistem peneduh luar berupa overhang dan louver pada fasad rumah tropis modern yang melindungi bukaan kaca dari radiasi matahari langsung.',
-    category_id: 3,
-    category_name: 'Arsitektur & Renovasi',
-    category_slug: 'arsitektur-renovasi',
-    category_color: '#0284c7',
-    author_id: 3,
-    author_name: 'RancangLoka Editorial Desk',
-    author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    author_role: 'Dewan Redaksi Spasial',
-    author_slug: 'dewan-redaksi-spasial',
-    status: 'published',
-    reading_time_minutes: 7,
-    key_takeaways: JSON.stringify([
-      "Peneduh luar memblokir radiasi matahari sebelum menyentuh kaca, jauh lebih efektif daripada tirai atau gorden dalam ruangan.",
-      "Orientasi bukaan menentukan efektivitas: overhang horizontal optimal untuk bukaan utara-selatan, sedangkan kisi vertikal atau louver lebih efektif menghalau sudut matahari rendah di barat-timur.",
-      "Kombinasi material tahan cuaca tropis dan kemudahan perawatan berkala menjamin kinerja jangka panjang tanpa membebani penghuni."
-    ]),
-    is_sponsored: 0,
-    published_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  } as any;
-}
 
 let notFoundArticles: any[] = [];
 if (!article && !page) {
