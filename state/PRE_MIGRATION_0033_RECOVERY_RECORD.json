@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-10-15T14:22:30+07:00",
+  "d1_database": "rancangloka_db",
+  "database_id": "3a86e9ad-410f-4440-884e-2eb813ec4cf7",
+  "current_worker_version": "bc828313-97ca-4b6e-a0b7-630447b4e279",
+  "latest_applied_migration": {
+    "id": 33,
+    "name": "0032_media_promotion_alt_text.sql",
+    "applied_at": "2026-10-12 00:28:18"
+  },
+  "articles_baseline": [
+    {
+      "id": 7,
+      "slug": "jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge",
+      "status": "published",
+      "content_hash": "00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298"
+    },
+    {
+      "id": 8,
+      "slug": "thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi",
+      "status": "published",
+      "content_hash": "66094cf52d2d10650b82141adace0cedc27fc9a3f63ae1f85e19a57c38d4e260"
+    },
+    {
+      "id": 9,
+      "slug": "memilih-sistem-shading-luar-rumah-tropis",
+      "status": "published",
+      "content_hash": "12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28"
+    }
+  ],
+  "article_internal_links_exists_pre_migration": false,
+  "articles_pillar_role_exists_pre_migration": false,
+  "articles_parent_pillar_id_exists_pre_migration": false,
+  "pre_migration_internal_links_count": 0
+}

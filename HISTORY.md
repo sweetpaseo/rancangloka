@@ -13,6 +13,41 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-INTERNAL-LINK-ENGINE-1-PRODUCTION-ACCEPTED: Production Migration 0033, Worker Deployment d81c7b65 & Initial Approved Plane A Semantic Graph Seed 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T14:35:00+07:00
+- **Status Operasional:** `INTERNAL_LINK_ENGINE_1_PRODUCTION_ACCEPTED`
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Otorisasi Chief Editor:** `AUTHORIZE INTERNAL_LINK_ENGINE_1 PRODUCTION ACCEPTANCE`
+- **Pencapaian Kunci Akseptasi Produksi:**
+  1. *Penerapan Migrasi D1 0033:* Migrasi `0033_internal_link_engine.sql` berhasil diterapkan ke database Cloudflare D1 produksi (`rancangloka_db`, ID `3a86e9ad-410f-4440-884e-2eb813ec4cf7`). Terverifikasi 13 kolom tabel `article_internal_links`, 9 tipe relasi kanonikal, kontrak unik `UNIQUE(source_article_id, target_article_id, placement_plane)`, serta kolom `pillar_role` (default 'STANDALONE') dan `parent_pillar_id` (default NULL) pada tabel `articles`.
+  2. *Integritas Naskah Terbit:* Naskah `content_md`, `content_html`, dan `content_hash` Artikel A (ID 7), Artikel B (ID 8), dan Artikel C (ID 9) 100% utuh tanpa perubahan. Hash Artikel C terverifikasi tepat `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28`.
+  3. *Deployment Worker Edge:* Kode Internal Link Engine V1 berhasil dideploy ke Cloudflare Workers produksi (`rancangloka`):
+     - Version ID Sebelumnya: `bc828313-97ca-4b6e-a0b7-630447b4e279`
+     - Version ID Baru: `d81c7b65-eee6-468d-b517-36d6ac77dcf6`
+     - Startup Time: 12 ms, 4 cron triggers aktif.
+  4. *Penyemaian Graf Semantik Plane A yang Disetujui:* Menyemai tepat 5 hubungan `PLANE_A_DYNAMIC` berstatus `ACTIVE` yang disetujui Chief Editor:
+     - 9 (Artikel C) $\rightarrow$ 8 (Artikel B): `RELATED_MATERIAL`
+     - 8 (Artikel B) $\rightarrow$ 9 (Artikel C): `RELATED_DECISION`
+     - 8 (Artikel B) $\rightarrow$ 7 (Artikel A): `RELATED_PROBLEM`
+     - 7 (Artikel A) $\rightarrow$ 8 (Artikel B): `BACKGROUND_EXPLAINER`
+     - 7 (Artikel A) $\rightarrow$ 9 (Artikel C): `RELATED_SYSTEM`
+     - Zero relasi `PLANE_B_INLINE`, zero `PARENT_PILLAR`, zero `CHILD_SUPPORTING`.
+  5. *Verifikasi Modul Pendukung Publik (Live Smoke Test):*
+     - Artikel A: Merender 2 kartu tujuan (Artikel B & C) dengan alasan pembaca kontekstual.
+     - Artikel B: Merender 2 kartu tujuan (Artikel C & A) dengan alasan pembaca kontekstual.
+     - Artikel C: Merender 1 kartu tujuan (Artikel B) dengan alasan pembaca kontekstual.
+     - Seluruh tautan menggunakan `<a href>` native, crawlable, SSR, zero client JS.
+  6. *Deduplikasi Permukaan Publik:* Seluruh destinasi Plane A tidak muncul berulang di in-article BACA JUGA maupun grid footer RelatedArticles.
+  7. *Diagnostik Orphan Produksi:* Terdeteksi 2 artikel yatim terbit (`orphan_article_count: 2`, ID 5 dan 6). Tidak ada perbaikan mekanis otomatis (zero mechanical quotas).
+  8. *Kesiapan Rollback:* Terpelihara di `state/PRE_MIGRATION_0033_RECOVERY_RECORD.json` dan skrip pembatalan D1/deployment.
+- **Hasil & Status Keselamatan:**
+  - Status Produksi: HTTP 200 pada seluruh rute artikel.
+  - Performa Edge: Latensi rata-rata ~417–489 ms pada Cloudflare edge, D1 query timing ~0.55 ms.
+  - Lighthouse / Core Web Vitals: `NOT_MEASURED` (tidak tersedia tooling CLI lokal).
+  - Status Keselamatan: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, `autonomous media worker = DISABLED`.
+  - Klasifikasi: **`INTERNAL_LINK_ENGINE_1_PRODUCTION_ACCEPTED`**.
+
 ### RANCANGLOKA-INTERNAL-LINK-ENGINE-1-HARDENING: Pre-Production Hardening, DB-Level Invariant, Generic Semantic Discovery & Mission Control E2E Lifecycle 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T13:30:00+07:00
