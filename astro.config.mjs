@@ -38,7 +38,8 @@ export default defineConfig({
         'node:stream', 'stream',
         'node:buffer', 'buffer',
         'node:events', 'events',
-        'undici'
+        'undici',
+        'sharp'
       ]
     }
   }

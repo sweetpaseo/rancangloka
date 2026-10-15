@@ -3,11 +3,14 @@
  * Milestone: ARTICLE_SUPPORT_THUMBNAIL_FINAL_HARDENING
  *
  * Responsibilities:
- * 1. Automatic generation of 160x160 WebP (1:1 center-crop, Lanczos, quality=85)
- *    compact derivatives for featured article images upon acceptance.
- * 2. Idempotent Cloudflare R2 storage under canonical key: thumbnails/<canonical-filename>.
+ * 1. Automatic Cloudflare R2 persistence and registration of 160x160 WebP compact derivatives
+ *    under canonical key: thumbnails/<canonical-filename>.webp.
+ * 2. Idempotent Cloudflare R2 storage: Reuses existing objects without re-generation.
  * 3. Safe degradation: Derivative failure NEVER breaks or corrupts original asset or article.
- * 4. Zero runtime client JS and zero CLS overhead (image-induced CLS protection).
+ * 4. Runtime-Safe Boundary: Worker execution NEVER loads or runs native C++ binaries (sharp).
+ *    Transform execution is delegated to Node.js media preparation stage (node-thumbnail.ts).
+ * 5. Failure Observability: Records durable diagnostic records in media_asset_audit for Dimas/admin backfill.
+ * 6. Zero runtime client JS and zero CLS overhead (image-induced CLS protection).
  */
 
 import { computeBufferSha256 } from './service.ts';
@@ -33,6 +36,8 @@ export interface ThumbnailDerivativeResult {
 export interface EnsureThumbnailParams {
   canonicalFilename: string;
   sourceImageBuffer?: ArrayBuffer | Uint8Array;
+  thumbnailBuffer?: ArrayBuffer | Uint8Array;
+  transformExecutor?: (source: ArrayBuffer | Uint8Array) => Promise<Uint8Array>;
   bucket?: any;
   db?: any;
   articleId?: number;
@@ -57,57 +62,50 @@ export function extractCanonicalFilename(pathOrUrl: string): string {
 
 /**
  * Derives the canonical R2 storage key for a thumbnail derivative.
+ * Always normalizes extension to .webp so that derivative bytes and URLs are strictly image/webp.
  */
 export function computeThumbnailR2Key(pathOrUrl: string): string {
   const filename = extractCanonicalFilename(pathOrUrl);
-  return `${THUMBNAIL_R2_NAMESPACE}/${filename}`;
+  const webpFilename = filename.replace(/\.(jpe?g|png|webp)$/i, '') + '.webp';
+  return `${THUMBNAIL_R2_NAMESPACE}/${webpFilename}`;
 }
 
 /**
- * Generates a 160x160 1:1 center-cropped WebP buffer.
- * Uses dynamic import of sharp to preserve Cloudflare Workers build compatibility.
+ * Boundary Guard:
+ * Direct invocation of generateCompactThumbnailWebp in Cloudflare Worker runtime is blocked.
+ * Native image transforms belong strictly in the Node media preparation stage (node-thumbnail.ts).
  */
 export async function generateCompactThumbnailWebp(
-  sourceBuffer: ArrayBuffer | Uint8Array,
-  quality: number = THUMBNAIL_QUALITY
+  _sourceBuffer: ArrayBuffer | Uint8Array,
+  _quality: number = THUMBNAIL_QUALITY
 ): Promise<Uint8Array> {
-  const buffer = Buffer.isBuffer(sourceBuffer)
-    ? sourceBuffer
-    : Buffer.from(sourceBuffer instanceof Uint8Array ? sourceBuffer : new Uint8Array(sourceBuffer));
-
-  let sharp: any;
-  try {
-    // Dynamic import with string concatenation + @vite-ignore to prevent Vite SSR bundling issues
-    const sharpModName = 'sh' + 'arp';
-    const mod = await import(/* @vite-ignore */ sharpModName);
-    sharp = mod.default || mod;
-  } catch (err: any) {
-    throw new Error(`Sharp library unavailable for thumbnail generation: ${err.message}`);
-  }
-
-  const outputBuffer = await sharp(buffer)
-    .resize(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, {
-      fit: 'cover',
-      position: 'center'
-    })
-    .webp({ quality })
-    .toBuffer();
-
-  return new Uint8Array(outputBuffer);
+  throw new Error(
+    'Native image transform cannot execute in Cloudflare Worker runtime. Use prepareFeaturedThumbnail or generateCompactThumbnailWebp from src/lib/media/node-thumbnail.ts in Node.js media preparation stage.'
+  );
 }
 
 /**
- * Automatically prepares, generates, and persists the 160x160 compact thumbnail derivative
- * for a featured article image in R2.
+ * Automatically persists and registers the 160x160 compact thumbnail derivative
+ * for a featured article image in R2 and D1.
  *
  * Idempotent: If the derivative object already exists in R2, it is safely reused without re-generation.
- * Fail-Safe: If thumbnail generation fails, returns degraded = true without throwing, ensuring the
+ * Fail-Safe: If thumbnail buffer is not yet available, records durable diagnostic evidence in
+ * media_asset_audit for Dimas/admin backfill and returns degraded = true without throwing, ensuring the
  * canonical original image and article draft are never corrupted.
  */
 export async function ensureFeaturedThumbnailDerivative(
   params: EnsureThumbnailParams
 ): Promise<ThumbnailDerivativeResult> {
-  const { canonicalFilename, sourceImageBuffer, bucket, db, articleId, slotKey = 'featured' } = params;
+  const {
+    canonicalFilename,
+    sourceImageBuffer,
+    thumbnailBuffer,
+    transformExecutor,
+    bucket,
+    db,
+    articleId,
+    slotKey = 'featured'
+  } = params;
   const filename = extractCanonicalFilename(canonicalFilename);
 
   if (!filename) {
@@ -139,64 +137,98 @@ export async function ensureFeaturedThumbnailDerivative(
         };
       }
     } catch (_) {
-      // head check miss is normal; proceed to generation
+      // head check miss is normal; proceed to persistence
     }
   }
 
-  // 2. Resolve source image buffer
-  let inputBuffer = sourceImageBuffer;
-  if (!inputBuffer && bucket && typeof bucket.get === 'function') {
-    const candidates = [
-      `images/${filename}`,
-      `media/images/${filename}`,
-      filename,
-      `media/${filename}`
-    ];
-    for (const cand of candidates) {
+  // 2. Resolve thumbnail bytes (from pre-generated buffer or transform executor)
+  let thumbBytes: Uint8Array | null = null;
+  if (thumbnailBuffer && (thumbnailBuffer as ArrayBuffer).byteLength > 0) {
+    thumbBytes = thumbnailBuffer instanceof Uint8Array
+      ? thumbnailBuffer
+      : new Uint8Array(thumbnailBuffer);
+  } else if (transformExecutor) {
+    let inputBuffer = sourceImageBuffer;
+    if (!inputBuffer && bucket && typeof bucket.get === 'function') {
+      const rawBase = filename.replace(/\.(jpe?g|png|webp)$/i, '');
+      const candidateNames = Array.from(new Set([
+        filename,
+        `${rawBase}.webp`,
+        `${rawBase}.jpg`,
+        `${rawBase}.jpeg`,
+        `${rawBase}.png`
+      ]));
+      const candidates: string[] = [];
+      for (const name of candidateNames) {
+        candidates.push(`images/${name}`, `media/images/${name}`, name, `media/${name}`);
+      }
+      for (const cand of candidates) {
+        try {
+          const obj = await bucket.get(cand);
+          if (obj) {
+            inputBuffer = await obj.arrayBuffer();
+            break;
+          }
+        } catch (_) {}
+      }
+    }
+    if (inputBuffer) {
       try {
-        const obj = await bucket.get(cand);
-        if (obj) {
-          inputBuffer = await obj.arrayBuffer();
-          break;
-        }
-      } catch (_) {
-        // continue trying
+        thumbBytes = await transformExecutor(inputBuffer);
+      } catch (err: any) {
+        // Will record failure in audit log below
       }
     }
   }
 
-  if (!inputBuffer || (inputBuffer as ArrayBuffer).byteLength === 0) {
+  // 3. Fallback / Safe Degradation with Failure Observability
+  // If thumbnail bytes are unavailable in this execution context (e.g. Worker runtime):
+  if (!thumbBytes || thumbBytes.byteLength === 0) {
+    if (db && typeof db.prepare === 'function') {
+      try {
+        const auditId = `aud_thumb_pend_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        await db
+          .prepare(
+            `INSERT INTO media_asset_audit (
+              audit_id, asset_id, action, role, upload_id, derivative_id, transform_id, sha256, r2_key, safe_metadata_json
+            ) VALUES (?, ?, 'DERIVATIVE_PENDING_TRANSFORM', ?, NULL, ?, ?, NULL, ?, ?)`
+          )
+          .bind(
+            auditId,
+            `ast_pend_${filename}`,
+            THUMBNAIL_ROLE,
+            `der_thumb_${filename}`,
+            THUMBNAIL_PRESET_NAME,
+            thumbnailKey,
+            JSON.stringify({
+              reason: 'TRANSFORM_DELEGATED_TO_NODE_STAGE',
+              original_filename: filename,
+              thumbnail_key: thumbnailKey,
+              article_id: articleId || null,
+              slot_key: slotKey,
+              status: 'PENDING_NODE_PREPARATION'
+            })
+          )
+          .run();
+      } catch (_) {}
+    }
+
     return {
       success: false,
       thumbnailKey,
       thumbnailUrl,
       reusedExisting: false,
       degraded: true,
-      error: 'SOURCE_IMAGE_BUFFER_NOT_FOUND'
+      error: 'DERIVATIVE_TRANSFORM_DELEGATED_TO_NODE_STAGE'
     };
   }
 
-  // 3. Generate compact 160x160 WebP derivative
-  let thumbBytes: Uint8Array;
-  let thumbSha256: string;
-  try {
-    thumbBytes = await generateCompactThumbnailWebp(inputBuffer);
-    thumbSha256 = await computeBufferSha256(
-      thumbBytes.buffer.slice(thumbBytes.byteOffset, thumbBytes.byteOffset + thumbBytes.byteLength) as ArrayBuffer
-    );
-  } catch (genErr: any) {
-    // Fail-safe degradation: do not throw or corrupt original image
-    return {
-      success: false,
-      thumbnailKey,
-      thumbnailUrl,
-      reusedExisting: false,
-      degraded: true,
-      error: genErr.message || 'THUMBNAIL_GENERATION_FAILED'
-    };
-  }
+  // 4. Compute SHA-256 of the thumbnail bytes
+  const thumbSha256 = await computeBufferSha256(
+    thumbBytes.buffer.slice(thumbBytes.byteOffset, thumbBytes.byteOffset + thumbBytes.byteLength) as ArrayBuffer
+  );
 
-  // 4. Persist derivative in R2 with immutable 1-year caching
+  // 5. Persist derivative in R2 with immutable 1-year caching
   if (bucket && typeof bucket.put === 'function') {
     try {
       await bucket.put(thumbnailKey, thumbBytes, {
@@ -226,7 +258,7 @@ export async function ensureFeaturedThumbnailDerivative(
     }
   }
 
-  // 5. Audit / registration record (additive, fail-safe)
+  // 6. Audit / registration record (additive, fail-safe)
   if (db && typeof db.prepare === 'function') {
     try {
       const auditId = `aud_thumb_${thumbSha256.substring(0, 16)}_${Date.now()}`;

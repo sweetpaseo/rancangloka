@@ -60,10 +60,15 @@ import { getCanonicalThumbnailUrl } from '../src/lib/image.ts';
 import { GET as mediaGet } from '../src/pages/media/[...key].ts';
 import {
   ensureFeaturedThumbnailDerivative,
-  generateCompactThumbnailWebp,
   computeThumbnailR2Key,
   extractCanonicalFilename
 } from '../src/lib/media/thumbnail-derivative.ts';
+import {
+  generateCompactThumbnailWebp,
+  prepareFeaturedThumbnail,
+  ensureNodeThumbnailDerivative
+} from '../src/lib/media/node-thumbnail.ts';
+import sharp from 'sharp';
 
 // Lightweight in-memory D1 mock for testing
 class InMemoryD1Mock {
@@ -71,6 +76,7 @@ class InMemoryD1Mock {
     this.articles = new Map();
     this.links = new Map();
     this.categories = new Map();
+    this.audits = [];
     this.nextLinkId = 1;
   }
 
@@ -200,6 +206,21 @@ class InMemoryD1Mock {
               const [id] = params;
               const existed = self.links.delete(id);
               return { meta: { changes: existed ? 1 : 0 } };
+            }
+
+            if (/INSERT INTO media_asset_audit/i.test(trimmed)) {
+              const isPending = trimmed.includes('DERIVATIVE_PENDING_TRANSFORM');
+              const action = isPending ? 'DERIVATIVE_PENDING_TRANSFORM' : 'REGISTER_DERIVATIVE';
+              let audit_id, asset_id, role, derivative_id, transform_id, sha256, r2_key, safe_metadata_json;
+              if (isPending) {
+                [audit_id, asset_id, role, derivative_id, transform_id, r2_key, safe_metadata_json] = params;
+              } else {
+                [audit_id, asset_id, role, derivative_id, transform_id, sha256, r2_key, safe_metadata_json] = params;
+              }
+              self.audits.push({
+                audit_id, asset_id, action, role, derivative_id, transform_id, sha256, r2_key, safe_metadata_json
+              });
+              return { meta: { changes: 1 } };
             }
 
             return { meta: { changes: 0 } };
@@ -1542,11 +1563,16 @@ async function runTestSuite() {
 
   // ----------------------------------------------------
   // TEST 28: FUTURE ARTICLE FEATURED IMAGE AUTOMATIC DERIVATIVE LIFECYCLE
+  // (WebP, JPEG, PNG multi-format contract, Node transform stage, failure observability)
   // ----------------------------------------------------
   try {
     const fixturePath = path.join(process.cwd(), 'artifacts', 'article-b-cover-1315x660.webp');
     assert.ok(fs.existsSync(fixturePath), 'Test fixture article-b-cover-1315x660.webp exists');
-    const fixtureBytes = fs.readFileSync(fixturePath);
+    const webpFixtureBytes = fs.readFileSync(fixturePath);
+
+    // Prepare real JPEG and PNG fixtures from the base image via sharp
+    const jpegFixtureBytes = await sharp(webpFixtureBytes).jpeg({ quality: 90 }).toBuffer();
+    const pngFixtureBytes = await sharp(webpFixtureBytes).png().toBuffer();
 
     function createMockR2(initialMap = {}) {
       const storage = new Map(Object.entries(initialMap));
@@ -1594,57 +1620,168 @@ async function runTestSuite() {
     const pipelineBucket = createMockR2();
     const pipelineDb = new InMemoryD1Mock();
 
-    // 1. Automatic generation on simulated future featured image
-    const futureImageFilename = 'future-art-test-cover.webp';
-    const result1 = await ensureFeaturedThumbnailDerivative({
-      canonicalFilename: futureImageFilename,
-      sourceImageBuffer: fixtureBytes,
+    // ==========================================
+    // 1. WEBP FORMAT: Future Featured Image
+    // ==========================================
+    const webpFilename = 'future-art-test-cover.webp';
+    // Node media preparation stage produces compact WebP buffer
+    const webpPrepared = await prepareFeaturedThumbnail(webpFixtureBytes, webpFilename);
+    assert.equal(webpPrepared.mimeType, 'image/webp');
+    assert.equal(webpPrepared.width, 160);
+    assert.equal(webpPrepared.height, 160);
+    assert.equal(webpPrepared.thumbnailKey, 'thumbnails/future-art-test-cover.webp');
+
+    // Worker/R2 persistence
+    const resultWebp = await ensureFeaturedThumbnailDerivative({
+      canonicalFilename: webpFilename,
+      thumbnailBuffer: webpPrepared.thumbnailBytes,
+      sourceImageBuffer: webpFixtureBytes,
       bucket: pipelineBucket,
       db: pipelineDb,
       articleId: 42,
       slotKey: 'featured'
     });
 
-    assert.equal(result1.success, true);
-    assert.equal(result1.thumbnailKey, 'thumbnails/future-art-test-cover.webp');
-    assert.equal(result1.thumbnailUrl, '/media/thumbnails/future-art-test-cover.webp');
-    assert.equal(result1.reusedExisting, false);
-    assert.ok(result1.byteSize > 3000 && result1.byteSize < 25000, `Derivative byteSize (${result1.byteSize}) meets compact target`);
+    assert.equal(resultWebp.success, true);
+    assert.equal(resultWebp.thumbnailKey, 'thumbnails/future-art-test-cover.webp');
+    assert.equal(resultWebp.thumbnailUrl, '/media/thumbnails/future-art-test-cover.webp');
+    assert.equal(resultWebp.reusedExisting, false);
+    assert.ok(resultWebp.byteSize > 3000 && resultWebp.byteSize < 25000, `WebP derivative byteSize (${resultWebp.byteSize}) meets compact target`);
 
-    // 2. Verify physical object stored in R2
-    const storedThumb = await pipelineBucket.get('thumbnails/future-art-test-cover.webp');
-    assert.ok(storedThumb, 'Stored thumbnail exists in R2');
-    assert.equal(storedThumb.size, result1.byteSize);
+    // Verify canonical URL resolution
+    const resolvedWebpUrl = getCanonicalThumbnailUrl('/media/images/future-art-test-cover.webp');
+    assert.equal(resolvedWebpUrl, '/media/thumbnails/future-art-test-cover.webp');
 
-    // 3. Verify ArticleSupportModule resolves canonical thumbnail URL
-    const resolvedUrl = getCanonicalThumbnailUrl('/media/images/future-art-test-cover.webp');
-    assert.equal(resolvedUrl, '/media/thumbnails/future-art-test-cover.webp');
-
-    // 4. Idempotency: second run reuses existing without re-generation
-    const result2 = await ensureFeaturedThumbnailDerivative({
-      canonicalFilename: futureImageFilename,
-      sourceImageBuffer: fixtureBytes,
+    // Idempotency: second execution reuses existing without re-generation
+    const resultWebpReused = await ensureFeaturedThumbnailDerivative({
+      canonicalFilename: webpFilename,
+      thumbnailBuffer: webpPrepared.thumbnailBytes,
       bucket: pipelineBucket,
       db: pipelineDb,
       articleId: 42,
       slotKey: 'featured'
     });
+    assert.equal(resultWebpReused.success, true);
+    assert.equal(resultWebpReused.reusedExisting, true);
 
-    assert.equal(result2.success, true);
-    assert.equal(result2.reusedExisting, true);
-    assert.equal(result2.thumbnailKey, 'thumbnails/future-art-test-cover.webp');
+    // ==========================================
+    // 2. JPEG FORMAT: Future Featured Image
+    // ==========================================
+    const jpegFilename = 'future-art-test-photo.jpg';
+    // Pre-seed original JPEG in mock R2
+    await pipelineBucket.put(`images/${jpegFilename}`, jpegFixtureBytes, {
+      httpMetadata: { contentType: 'image/jpeg' }
+    });
 
-    // 5. Fail-safe degradation: invalid binary fails safely without throwing
+    // Verify canonical URL replaces .jpg with .webp
+    const resolvedJpegUrl = getCanonicalThumbnailUrl(`/media/images/${jpegFilename}`);
+    assert.equal(resolvedJpegUrl, '/media/thumbnails/future-art-test-photo.webp', 'Canonical thumbnail URL for JPEG original must use .webp extension');
+
+    // Before thumbnail derivative is generated: Verify fallback to original JPEG with safe cache
+    const resJpegFallback = await mediaGet({
+      params: { key: 'thumbnails/future-art-test-photo.webp' },
+      locals: { runtime: { env: { MEDIA_BUCKET: pipelineBucket } } }
+    });
+    assert.equal(resJpegFallback.status, 200);
+    assert.equal(resJpegFallback.headers.get('Cache-Control'), 'no-cache, must-revalidate', 'Fallback uses no-cache, must-revalidate');
+    assert.equal(resJpegFallback.headers.get('X-RL-Thumbnail-Fallback'), 'true');
+    assert.equal(resJpegFallback.headers.get('Content-Type'), 'image/jpeg', 'Fallback streams original image/jpeg');
+
+    // Node media preparation stage generates 160x160 WebP derivative from JPEG source
+    const resultJpeg = await ensureNodeThumbnailDerivative({
+      canonicalFilename: jpegFilename,
+      sourceImageBuffer: jpegFixtureBytes,
+      bucket: pipelineBucket,
+      db: pipelineDb,
+      articleId: 43,
+      slotKey: 'featured'
+    });
+    assert.equal(resultJpeg.success, true);
+    assert.equal(resultJpeg.thumbnailKey, 'thumbnails/future-art-test-photo.webp', 'Thumbnail key must use .webp extension');
+    assert.equal(resultJpeg.thumbnailUrl, '/media/thumbnails/future-art-test-photo.webp');
+    assert.ok(resultJpeg.byteSize > 3000 && resultJpeg.byteSize < 25000);
+
+    // After derivative is uploaded: Verify thumbnail hit serves 160x160 WebP with 1-year immutable cache
+    const resJpegHit = await mediaGet({
+      params: { key: 'thumbnails/future-art-test-photo.webp' },
+      locals: { runtime: { env: { MEDIA_BUCKET: pipelineBucket } } }
+    });
+    assert.equal(resJpegHit.status, 200);
+    assert.equal(resJpegHit.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+    assert.equal(resJpegHit.headers.get('X-RL-Thumbnail-Fallback'), null);
+    assert.equal(resJpegHit.headers.get('Content-Type'), 'image/webp', 'Derivative must serve image/webp');
+
+    // ==========================================
+    // 3. PNG FORMAT: Future Featured Image
+    // ==========================================
+    const pngFilename = 'future-art-test-diagram.png';
+    // Pre-seed original PNG in mock R2
+    await pipelineBucket.put(`images/${pngFilename}`, pngFixtureBytes, {
+      httpMetadata: { contentType: 'image/png' }
+    });
+
+    // Verify canonical URL replaces .png with .webp
+    const resolvedPngUrl = getCanonicalThumbnailUrl(`/media/images/${pngFilename}`);
+    assert.equal(resolvedPngUrl, '/media/thumbnails/future-art-test-diagram.webp', 'Canonical thumbnail URL for PNG original must use .webp extension');
+
+    // Before thumbnail derivative is generated: Verify fallback to original PNG with safe cache
+    const resPngFallback = await mediaGet({
+      params: { key: 'thumbnails/future-art-test-diagram.webp' },
+      locals: { runtime: { env: { MEDIA_BUCKET: pipelineBucket } } }
+    });
+    assert.equal(resPngFallback.status, 200);
+    assert.equal(resPngFallback.headers.get('Cache-Control'), 'no-cache, must-revalidate');
+    assert.equal(resPngFallback.headers.get('X-RL-Thumbnail-Fallback'), 'true');
+    assert.equal(resPngFallback.headers.get('Content-Type'), 'image/png', 'Fallback streams original image/png');
+
+    // Node media preparation stage generates 160x160 WebP derivative from PNG source
+    const resultPng = await ensureNodeThumbnailDerivative({
+      canonicalFilename: pngFilename,
+      sourceImageBuffer: pngFixtureBytes,
+      bucket: pipelineBucket,
+      db: pipelineDb,
+      articleId: 44,
+      slotKey: 'featured'
+    });
+    assert.equal(resultPng.success, true);
+    assert.equal(resultPng.thumbnailKey, 'thumbnails/future-art-test-diagram.webp', 'Thumbnail key must use .webp extension');
+    assert.equal(resultPng.thumbnailUrl, '/media/thumbnails/future-art-test-diagram.webp');
+
+    // After derivative is uploaded: Verify thumbnail hit serves 160x160 WebP with 1-year immutable cache
+    const resPngHit = await mediaGet({
+      params: { key: 'thumbnails/future-art-test-diagram.webp' },
+      locals: { runtime: { env: { MEDIA_BUCKET: pipelineBucket } } }
+    });
+    assert.equal(resPngHit.status, 200);
+    assert.equal(resPngHit.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+    assert.equal(resPngHit.headers.get('Content-Type'), 'image/webp');
+
+    // ==========================================
+    // 4. FAILURE OBSERVABILITY & SAFE DEGRADATION
+    // ==========================================
+    // When called in Worker context without pre-generated thumbnail buffer:
     const degradedResult = await ensureFeaturedThumbnailDerivative({
-      canonicalFilename: 'corrupt-image.webp',
-      sourceImageBuffer: Buffer.from('not an image binary'),
-      bucket: pipelineBucket
+      canonicalFilename: 'pending-unprocessed-photo.jpg',
+      bucket: pipelineBucket,
+      db: pipelineDb,
+      articleId: 45,
+      slotKey: 'featured'
     });
     assert.equal(degradedResult.success, false);
     assert.equal(degradedResult.degraded, true);
-    assert.ok(degradedResult.error);
+    assert.equal(degradedResult.thumbnailKey, 'thumbnails/pending-unprocessed-photo.webp');
+    assert.equal(degradedResult.error, 'DERIVATIVE_TRANSFORM_DELEGATED_TO_NODE_STAGE');
 
-    recordPass('28. Future article featured image automatic compact derivative lifecycle: 160x160 WebP Lanczos center-crop, idempotent R2 persistence, zero manual script requirement, fail-safe degradation, and canonical URL resolution verified');
+    // Verify durable failure observability in media_asset_audit
+    const pendingAudit = pipelineDb.audits.find(
+      a => a.action === 'DERIVATIVE_PENDING_TRANSFORM' && a.r2_key === 'thumbnails/pending-unprocessed-photo.webp'
+    );
+    assert.ok(pendingAudit, 'Durable diagnostic record must be created in media_asset_audit for Dimas/admin backfill');
+    const parsedAuditMeta = JSON.parse(pendingAudit.safe_metadata_json);
+    assert.equal(parsedAuditMeta.status, 'PENDING_NODE_PREPARATION');
+    assert.equal(parsedAuditMeta.article_id, 45);
+
+    recordPass('28. Future article featured image automatic compact derivative lifecycle: Multi-format (WebP, JPEG, PNG) 160x160 WebP Lanczos center-crop, canonical .webp contract (zero misleading extensions), idempotent R2 persistence, cross-format fallback cache safety, and durable failure observability verified');
   } catch (err) {
     recordFail('28. Future article automatic derivative lifecycle', err);
   }

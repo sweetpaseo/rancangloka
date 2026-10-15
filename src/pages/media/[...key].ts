@@ -72,12 +72,25 @@ export const GET: APIRoute = async ({ params, locals }) => {
     let isThumbnailFallback = false;
     if (!object && (exactKey.startsWith('thumbnails/') || exactKey.startsWith('media/thumbnails/'))) {
       const originalSubpath = exactKey.replace(/^(media\/)?thumbnails\//, '');
-      const candidates = [
-        `images/${originalSubpath}`,
-        `media/images/${originalSubpath}`,
+      const rawBase = originalSubpath.replace(/\.(jpe?g|png|webp)$/i, '');
+      const candidateNames = Array.from(new Set([
         originalSubpath,
-        `media/${originalSubpath}`
-      ];
+        `${rawBase}.webp`,
+        `${rawBase}.jpg`,
+        `${rawBase}.jpeg`,
+        `${rawBase}.png`
+      ]));
+
+      const candidates: string[] = [];
+      for (const name of candidateNames) {
+        candidates.push(
+          `images/${name}`,
+          `media/images/${name}`,
+          name,
+          `media/${name}`
+        );
+      }
+
       for (const cand of candidates) {
         object = await bucket.get(cand);
         if (object) {

@@ -60,12 +60,13 @@ export function getCanonicalThumbnailUrl(url?: string): string | null {
     return cleanUrl;
   }
 
-  // Map /media/images/<filename> or /media/<filename> to canonical /media/thumbnails/<filename>
+  // Map /media/images/<filename> or /media/<filename> to canonical /media/thumbnails/<basename>.webp
   const mediaMatch = cleanUrl.match(/^(https?:\/\/[^\/]+)?\/media\/(?:images\/)?([^\/\?#]+)$/);
   if (mediaMatch) {
     const origin = mediaMatch[1] || '';
     const filename = mediaMatch[2];
-    return `${origin}/media/thumbnails/${filename}`;
+    const canonicalThumbFilename = filename.replace(/\.(jpe?g|png|webp)$/i, '') + '.webp';
+    return `${origin}/media/thumbnails/${canonicalThumbFilename}`;
   }
 
   return cleanUrl;
