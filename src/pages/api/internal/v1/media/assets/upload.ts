@@ -8,6 +8,7 @@ import {
   MediaRuntimeError,
   MAX_MEDIA_BYTES
 } from '../../../../../../lib/media/service.ts';
+import { ensureFeaturedThumbnailDerivative } from '../../../../../../lib/media/thumbnail-derivative.ts';
 
 function errorResponse(status: number, code: string, message: string): Response {
   return new Response(
@@ -199,6 +200,22 @@ export const POST: APIRoute = async ({ request, locals }) => {
       } catch (putErr: any) {
         return errorResponse(500, 'R2_PUT_FAILED', `Gagal menyimpan objek ke R2: ${putErr.message}`);
       }
+    }
+  }
+
+  // Automatically prepare/persist 160x160 compact thumbnail derivative for featured promotions
+  if (approval.slot_key === 'featured' && bucket) {
+    try {
+      const canonicalFilename = `${computedSha256}.${meta.extension}`;
+      await ensureFeaturedThumbnailDerivative({
+        canonicalFilename,
+        sourceImageBuffer: imageBuffer,
+        bucket,
+        db,
+        slotKey: 'featured'
+      });
+    } catch {
+      // Safe degradation: derivative failure never corrupts original or promotion
     }
   }
 

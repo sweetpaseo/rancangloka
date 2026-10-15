@@ -48,6 +48,8 @@ export const BARRED_MEDIA_ASSET_ROLES = new Set([
   'WATERMARK_MASTER'
 ]);
 
+import { ensureFeaturedThumbnailDerivative } from './thumbnail-derivative.ts';
+
 export class MediaAttachmentError extends Error {
   code: string;
   statusCode: number;
@@ -68,6 +70,7 @@ export interface ArticleMediaAttachParams {
   job_id?: string | null;
   replace_active?: boolean | null;
   alt_text?: string | null;
+  bucket?: any;
 }
 
 export interface AttachedArticleMedia {
@@ -427,6 +430,21 @@ export async function attachArticleMedia(
         .run();
     } catch (updateErr: any) {
       console.warn('Media attachment articles mirror warning:', updateErr.message);
+    }
+
+    // Automatically prepare/persist 160x160 compact thumbnail derivative if bucket is provided
+    if (params.bucket) {
+      try {
+        await ensureFeaturedThumbnailDerivative({
+          canonicalFilename: asset.storage_key,
+          bucket: params.bucket,
+          db,
+          articleId: article_id,
+          slotKey: slot_key
+        });
+      } catch {
+        // Safe degradation: thumbnail failure never breaks article attachment
+      }
     }
   }
 

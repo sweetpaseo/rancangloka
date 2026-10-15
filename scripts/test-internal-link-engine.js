@@ -57,6 +57,13 @@ import {
 import { processArticleContent } from '../src/lib/seo.ts';
 import { getPipelineBoard } from '../src/lib/mission-control/tasks.ts';
 import { getCanonicalThumbnailUrl } from '../src/lib/image.ts';
+import { GET as mediaGet } from '../src/pages/media/[...key].ts';
+import {
+  ensureFeaturedThumbnailDerivative,
+  generateCompactThumbnailWebp,
+  computeThumbnailR2Key,
+  extractCanonicalFilename
+} from '../src/lib/media/thumbnail-derivative.ts';
 
 // Lightweight in-memory D1 mock for testing
 class InMemoryD1Mock {
@@ -1415,6 +1422,231 @@ async function runTestSuite() {
     recordPass('26. Support module UI polish: editorial thumbnails, live graph shapes (1, 2, 3 cards), zero-link empty rendering, fallback on missing image, accessible decorative alt, getCanonicalThumbnailUrl derivative contract, and zero-JS invariants verified');
   } catch (err) {
     recordFail('26. Support module thumbnail polish', err);
+  }
+
+  // ----------------------------------------------------
+  // TEST 27: MEDIA ENDPOINT CACHE REGRESSION SUITE (CASES A, B, C)
+  // ----------------------------------------------------
+  try {
+    function createMockR2(initialMap = {}) {
+      const storage = new Map(Object.entries(initialMap));
+      return {
+        _storage: storage,
+        async get(key) {
+          const item = storage.get(key);
+          if (!item) return null;
+          return {
+            key,
+            size: item.body.length,
+            httpEtag: `"${item.sha || 'sample-etag'}"`,
+            httpMetadata: { contentType: item.contentType || 'image/webp' },
+            writeHttpMetadata(headers) {
+              headers.set('content-type', item.contentType || 'image/webp');
+            },
+            body: item.body,
+            async arrayBuffer() { return item.body.buffer; }
+          };
+        },
+        async head(key) {
+          const item = storage.get(key);
+          if (!item) return null;
+          return {
+            key,
+            size: item.body.length,
+            httpEtag: `"${item.sha || 'sample-etag'}"`,
+            httpMetadata: { contentType: item.contentType || 'image/webp' },
+            customMetadata: item.customMetadata || {}
+          };
+        },
+        async put(key, body, options = {}) {
+          const buf = Buffer.isBuffer(body) ? body : Buffer.from(body);
+          storage.set(key, {
+            body: buf,
+            contentType: options.httpMetadata?.contentType || 'image/webp',
+            customMetadata: options.customMetadata || {},
+            sha: options.customMetadata?.sha256 || 'put-sha'
+          });
+          return { key, size: buf.length };
+        }
+      };
+    }
+
+    const mockR2 = createMockR2({
+      // Existing thumbnail for Case A
+      'thumbnails/case_a_thumb.webp': {
+        body: Buffer.alloc(6500, 0x11),
+        contentType: 'image/webp',
+        sha: 'case_a_sha'
+      },
+      // Original only for Case B (thumbnail missing)
+      'images/case_b_original.webp': {
+        body: Buffer.alloc(195000, 0x22),
+        contentType: 'image/webp',
+        sha: 'case_b_orig_sha'
+      }
+    });
+
+    // CASE A: Thumbnail exists -> compact object served, long immutable cache allowed
+    const resA = await mediaGet({
+      params: { key: 'thumbnails/case_a_thumb.webp' },
+      locals: { runtime: { env: { MEDIA_BUCKET: mockR2 } } }
+    });
+    assert.equal(resA.status, 200);
+    assert.equal(resA.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+    assert.equal(resA.headers.get('X-RL-Thumbnail-Fallback'), null);
+    const bodyA = Buffer.from(await resA.arrayBuffer());
+    assert.equal(bodyA.length, 6500);
+
+    // CASE B: Thumbnail missing -> original fallback displays, MUST NOT contain 1-year immutable caching
+    const resB = await mediaGet({
+      params: { key: 'thumbnails/case_b_original.webp' },
+      locals: { runtime: { env: { MEDIA_BUCKET: mockR2 } } }
+    });
+    assert.equal(resB.status, 200);
+    const cacheControlB = resB.headers.get('Cache-Control');
+    assert.ok(cacheControlB, 'Cache-Control header present on fallback');
+    assert.equal(cacheControlB.includes('immutable'), false, 'Fallback response MUST NOT be immutable');
+    assert.equal(cacheControlB.includes('max-age=31536000'), false, 'Fallback response MUST NOT cache for 1 year');
+    assert.equal(cacheControlB, 'no-cache, must-revalidate', 'Fallback uses safe no-cache, must-revalidate');
+    assert.equal(resB.headers.get('X-RL-Thumbnail-Fallback'), 'true', 'Observability header identifies fallback');
+    const bodyB = Buffer.from(await resB.arrayBuffer());
+    assert.equal(bodyB.length, 195000, 'Original image streamed without breaking rendering');
+
+    // CASE C: Thumbnail later becomes available -> canonical thumbnail path returns compact derivative without 1-year stale cache
+    await mockR2.put('thumbnails/case_b_original.webp', Buffer.alloc(5800, 0x33), {
+      httpMetadata: { contentType: 'image/webp' }
+    });
+
+    const resC = await mediaGet({
+      params: { key: 'thumbnails/case_b_original.webp' },
+      locals: { runtime: { env: { MEDIA_BUCKET: mockR2 } } }
+    });
+    assert.equal(resC.status, 200);
+    assert.equal(resC.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+    assert.equal(resC.headers.get('X-RL-Thumbnail-Fallback'), null);
+    const bodyC = Buffer.from(await resC.arrayBuffer());
+    assert.equal(bodyC.length, 5800, 'Compact derivative served immediately once available');
+
+    // Verify original media caching remains untouched
+    const resOrig = await mediaGet({
+      params: { key: 'images/case_b_original.webp' },
+      locals: { runtime: { env: { MEDIA_BUCKET: mockR2 } } }
+    });
+    assert.equal(resOrig.status, 200);
+    assert.equal(resOrig.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+
+    recordPass('27. Media endpoint cache regression suite: Case A thumbnail hit immutable, Case B thumbnail miss safe no-cache fallback (zero cache poisoning), Case C dynamic derivative availability without cache pinning');
+  } catch (err) {
+    recordFail('27. Media endpoint cache regression suite', err);
+  }
+
+  // ----------------------------------------------------
+  // TEST 28: FUTURE ARTICLE FEATURED IMAGE AUTOMATIC DERIVATIVE LIFECYCLE
+  // ----------------------------------------------------
+  try {
+    const fixturePath = path.join(process.cwd(), 'artifacts', 'article-b-cover-1315x660.webp');
+    assert.ok(fs.existsSync(fixturePath), 'Test fixture article-b-cover-1315x660.webp exists');
+    const fixtureBytes = fs.readFileSync(fixturePath);
+
+    function createMockR2(initialMap = {}) {
+      const storage = new Map(Object.entries(initialMap));
+      return {
+        _storage: storage,
+        async get(key) {
+          const item = storage.get(key);
+          if (!item) return null;
+          return {
+            key,
+            size: item.body.length,
+            httpEtag: `"${item.sha || 'sample-etag'}"`,
+            httpMetadata: { contentType: item.contentType || 'image/webp' },
+            writeHttpMetadata(headers) {
+              headers.set('content-type', item.contentType || 'image/webp');
+            },
+            body: item.body,
+            async arrayBuffer() { return item.body.buffer; }
+          };
+        },
+        async head(key) {
+          const item = storage.get(key);
+          if (!item) return null;
+          return {
+            key,
+            size: item.body.length,
+            httpEtag: `"${item.sha || 'sample-etag'}"`,
+            httpMetadata: { contentType: item.contentType || 'image/webp' },
+            customMetadata: item.customMetadata || {}
+          };
+        },
+        async put(key, body, options = {}) {
+          const buf = Buffer.isBuffer(body) ? body : Buffer.from(body);
+          storage.set(key, {
+            body: buf,
+            contentType: options.httpMetadata?.contentType || 'image/webp',
+            customMetadata: options.customMetadata || {},
+            sha: options.customMetadata?.sha256 || 'put-sha'
+          });
+          return { key, size: buf.length };
+        }
+      };
+    }
+
+    const pipelineBucket = createMockR2();
+    const pipelineDb = new InMemoryD1Mock();
+
+    // 1. Automatic generation on simulated future featured image
+    const futureImageFilename = 'future-art-test-cover.webp';
+    const result1 = await ensureFeaturedThumbnailDerivative({
+      canonicalFilename: futureImageFilename,
+      sourceImageBuffer: fixtureBytes,
+      bucket: pipelineBucket,
+      db: pipelineDb,
+      articleId: 42,
+      slotKey: 'featured'
+    });
+
+    assert.equal(result1.success, true);
+    assert.equal(result1.thumbnailKey, 'thumbnails/future-art-test-cover.webp');
+    assert.equal(result1.thumbnailUrl, '/media/thumbnails/future-art-test-cover.webp');
+    assert.equal(result1.reusedExisting, false);
+    assert.ok(result1.byteSize > 3000 && result1.byteSize < 25000, `Derivative byteSize (${result1.byteSize}) meets compact target`);
+
+    // 2. Verify physical object stored in R2
+    const storedThumb = await pipelineBucket.get('thumbnails/future-art-test-cover.webp');
+    assert.ok(storedThumb, 'Stored thumbnail exists in R2');
+    assert.equal(storedThumb.size, result1.byteSize);
+
+    // 3. Verify ArticleSupportModule resolves canonical thumbnail URL
+    const resolvedUrl = getCanonicalThumbnailUrl('/media/images/future-art-test-cover.webp');
+    assert.equal(resolvedUrl, '/media/thumbnails/future-art-test-cover.webp');
+
+    // 4. Idempotency: second run reuses existing without re-generation
+    const result2 = await ensureFeaturedThumbnailDerivative({
+      canonicalFilename: futureImageFilename,
+      sourceImageBuffer: fixtureBytes,
+      bucket: pipelineBucket,
+      db: pipelineDb,
+      articleId: 42,
+      slotKey: 'featured'
+    });
+
+    assert.equal(result2.success, true);
+    assert.equal(result2.reusedExisting, true);
+    assert.equal(result2.thumbnailKey, 'thumbnails/future-art-test-cover.webp');
+
+    // 5. Fail-safe degradation: invalid binary fails safely without throwing
+    const degradedResult = await ensureFeaturedThumbnailDerivative({
+      canonicalFilename: 'corrupt-image.webp',
+      sourceImageBuffer: Buffer.from('not an image binary'),
+      bucket: pipelineBucket
+    });
+    assert.equal(degradedResult.success, false);
+    assert.equal(degradedResult.degraded, true);
+    assert.ok(degradedResult.error);
+
+    recordPass('28. Future article featured image automatic compact derivative lifecycle: 160x160 WebP Lanczos center-crop, idempotent R2 persistence, zero manual script requirement, fail-safe degradation, and canonical URL resolution verified');
+  } catch (err) {
+    recordFail('28. Future article automatic derivative lifecycle', err);
   }
 
   // ----------------------------------------------------

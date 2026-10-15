@@ -20,6 +20,7 @@ import {
   buildCanonicalPublicationPreflightState,
   computeCanonicalPreflightHash
 } from '../decision/publication-preflight-state.ts';
+import { ensureFeaturedThumbnailDerivative } from './thumbnail-derivative.ts';
 
 export const MEDIA_TYPE_IMAGE = 'image';
 export const MEDIA_TYPE_VIDEO = 'video'; // Reserved
@@ -740,6 +741,23 @@ export async function processMediaUpload(
         ...ledgerStatements
       ]);
       articleMediaId = Number(batchResults[1]?.meta?.last_row_id ?? batchResults[1]?.lastInsertRowid ?? 0) || null;
+
+      // Automatically prepare/persist 160x160 compact thumbnail derivative for featured media
+      if (bucket) {
+        try {
+          const canonicalFilename = `${meta.sha256}.${meta.extension}`;
+          await ensureFeaturedThumbnailDerivative({
+            canonicalFilename,
+            sourceImageBuffer: params.imageBuffer,
+            bucket,
+            db,
+            articleId: params.articleId,
+            slotKey
+          });
+        } catch {
+          // Safe degradation: thumbnail derivative failure never corrupts original or article draft
+        }
+      }
     } else {
       // Inline media
       await db

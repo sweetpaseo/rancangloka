@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { ensureFeaturedThumbnailDerivative } from '../../../lib/media/thumbnail-derivative.ts';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
@@ -23,6 +24,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
           cacheControl: 'public, max-age=31536000, immutable'
         }
       });
+
+      // Automatically generate/persist compact 160x160 thumbnail derivative
+      try {
+        await ensureFeaturedThumbnailDerivative({
+          canonicalFilename: filename,
+          sourceImageBuffer: arrayBuffer,
+          bucket
+        });
+      } catch {
+        // Safe degradation: thumbnail failure never breaks original upload
+      }
 
       const imageUrl = `/media/${filename}`;
       return new Response(

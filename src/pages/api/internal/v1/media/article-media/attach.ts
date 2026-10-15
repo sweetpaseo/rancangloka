@@ -92,7 +92,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     sort_order: body.sort_order !== undefined ? Number(body.sort_order) : 0,
     job_id: body.job_id ? String(body.job_id).trim() : null,
     replace_active: Boolean(body.replace_active || body.replaceActive),
-    alt_text: body.alt_text ? String(body.alt_text).trim() : null
+    alt_text: body.alt_text ? String(body.alt_text).trim() : null,
+    bucket: env.MEDIA_BUCKET
   };
 
   // 5. Execute Canonical Article Media Attachment

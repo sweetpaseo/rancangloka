@@ -69,6 +69,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
 
     // Graceful fallback for thumbnail derivatives: if specific thumbnail asset is not yet in R2,
     // seamlessly fall back to looking up the original cover asset so images never break during transition.
+    let isThumbnailFallback = false;
     if (!object && (exactKey.startsWith('thumbnails/') || exactKey.startsWith('media/thumbnails/'))) {
       const originalSubpath = exactKey.replace(/^(media\/)?thumbnails\//, '');
       const candidates = [
@@ -81,6 +82,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
         object = await bucket.get(cand);
         if (object) {
           exactKey = cand;
+          isThumbnailFallback = true;
           break;
         }
       }
@@ -93,7 +95,15 @@ export const GET: APIRoute = async ({ params, locals }) => {
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
-    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    if (isThumbnailFallback) {
+      // THUMBNAIL MISS WITH ORIGINAL FALLBACK:
+      // MUST NOT use one-year immutable caching under thumbnail URL to prevent cache poisoning.
+      // Use no-cache, must-revalidate so clients revalidate once the derivative is uploaded.
+      headers.set('Cache-Control', 'no-cache, must-revalidate');
+      headers.set('X-RL-Thumbnail-Fallback', 'true');
+    } else {
+      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    }
 
     // Content-Type fallback based on key extension if metadata is missing
     let contentType = object.httpMetadata?.contentType;
