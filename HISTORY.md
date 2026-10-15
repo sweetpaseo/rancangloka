@@ -13,6 +13,42 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-ARTICLE-C-PRODUCTION-PUBLICATION: Explicit Chief Editor Authorization, Canonical Sari Publication Dispatch, Zero-Deploy Production Proof & Live Verification 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T10:35:00+07:00
+- **Status Operasional:** `ARTICLE_C_IS_LIVE`
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Otorisasi Publikasi Eksplisit:**
+  - Perintah Chief Editor: `AUTHORIZE ARTICLE C FINAL PUBLICATION`
+  - Wewenang publikasi diberikan secara terikat dan tunggal untuk naskah Artikel C dan media unggulan yang disetujui.
+  - Zero bypass: Pipeline redaksional `Irwan -> Joko -> Nadia -> Rina -> Human Approval -> Sari` ditegakkan penuh.
+- **Identitas & Kriptografi Artikel C:**
+  - Judul: *Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?*
+  - Slug: `memilih-sistem-shading-luar-rumah-tropis`
+  - URL Kanonikal Publik: `https://rancangloka.com/memilih-sistem-shading-luar-rumah-tropis`
+  - Status Publikasi: **`PUBLISHED`**
+  - Database Article ID: `9`
+  - Content Hash Kanonikal: `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28`
+  - Featured Asset ID: `ast_4ee0363758a41bd45aae7353` (SHA: `4ee0363758a41bd45aae735349028ab19ca6256964c20ec1d98af4e65c578bf4`, status: `VALIDATED`)
+  - Teks Alt Disetujui: *"Detail sistem peneduh luar berupa overhang dan louver pada fasad rumah tropis modern yang melindungi bukaan kaca dari radiasi matahari langsung."*
+  - Kategori: ID `3` (*Arsitektur & Renovasi*, `arsitektur-renovasi`)
+  - Penulis: ID `3` (*RancangLoka Editorial Desk*, `dewan-redaksi-spasial`)
+- **Tanda Terima & Audit Alur Publikasi Kanonikal:**
+  - Persetujuan Manusia: Lengkap (`REVISED_CONTENT_APPROVED` di `article_editorial_approvals` ID 12)
+  - Kesiapan Publikasi: `READY_TO_SCHEDULE` (0 blocker di `article_publication_readiness` ID 34)
+  - Publication Plan ID: `plan_artC_f0a74ec8a117` (ID 8)
+  - Publication Execution ID: `pexec_artC_ecf45a651b90` (ID 5, status: `PUBLISHED`)
+  - Publication Receipt ID: `rcpt_artC_8341d2fda3bc` (ID 5, outcome: `SUCCESS`)
+  - Waktu Terbit Aktual: `2026-10-15 03:32:49` (Waktu server basis data D1 UTC)
+- **Verifikasi Produksi Live Edge (Smoke Test):**
+  - Status HTTP: **200 OK**
+  - Elemen Fasad & Render: Judul artikel, kategori, penulis, gambar sampul R2, teks alt, matriks komparasi responsif (`data-comparison-matrix`), dan penutup serah-terima hangat terverifikasi utuh tanpa kebocoran sintaksis Markdown.
+  - Petunjuk Pengindeksan: `<meta name="robots" content="index, follow, max-image-preview:large">`
+  - Kebutuhan Deployment: `DEPLOYMENT_NOT_REQUIRED` (Arsitektur publikasi berbasis data/konten; Cloudflare Worker SSR runtime langsung menyajikan naskah dari D1).
+- **Pembersihan DEV Preview Adapter:**
+  - Blok adapter sementara di `src/pages/[slug].astro` telah dihapus secara aman (komit `d525adf`).
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF`, `SOCIAL_AUTOMATION = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`. Sari kembali `IDLE`.
+
 ### OFFLINE-MASTER-CHECKPOINT-2026-10-14: End-of-Day Production Safety, House Voice Integrity & Ready-for-Offline State
 
 - **Tanggal / Waktu:** 2026-10-14T17:15:00+07:00

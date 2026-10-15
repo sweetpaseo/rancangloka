@@ -59,13 +59,14 @@ Hari ini seluruh agenda rekayasa perangkat lunak, arsitektur suara redaksi (*Hou
 | **Slug Kanonikal** | `memilih-sistem-shading-luar-rumah-tropis` | Terkunci |
 | **Berkas Naskah** | `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md` | Utuh |
 | **SHA-256 Terkunci** | `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` | Terverifikasi |
-| **Status Publikasi** | **`UNPUBLISHED`** | **Terkunci Aman** |
+| **Status Publikasi** | **`PUBLISHED`** (Database Article ID: 9) | **Live di Edge** |
 | **Persetujuan Konten Revisi** | `REVISED_CONTENT_APPROVED` (Disetujui Chief Editor via perintah eksplisit) | Disetujui |
+| **Otorisasi Publikasi Final** | Disetujui Chief Editor (`AUTHORIZE ARTICLE C FINAL PUBLICATION`) | Diotorisasi |
 | **Evaluasi Nadia** | `READER_VOICE_PASS` (Skor: 98/100, Warmth: 100/100, Local Grounding: 100/100) | Lulus |
 | **Evaluasi Rina** | `HUMAN_WRITING_PASS` (Skor: 89/100, 0 overreach, 0 softened warnings) | Lulus |
 | **Evaluasi Dimas** | `local_cultural_grounding: PASS`, `indonesian_context_fit: PASS`, `translationese_risk: PASS`, `cultural_generalization_safety: PASS` | Lulus |
-| **Gerbang Alur Kerja** | `CHIEF_EDITOR_FINAL_PUBLICATION_AUTHORIZATION_REQUIRED` | Menunggu Otorisasi |
-| **Tindakan Lanjutan** | Naskah revisi telah dibaca & disetujui Chief Editor (`REVISED_CONTENT_APPROVED`). Tidak memerlukan pembacaan ulang kecuali naskah berubah. Artikel siap untuk otorisasi publikasi final; status tetap **`UNPUBLISHED`**. | Siap Otorisasi |
+| **Tanda Terima Publikasi** | `rcpt_artC_8341d2fda3bc` (Plan: `plan_artC_f0a74ec8a117`, Exec: `pexec_artC_ecf45a651b90`) | Sukses (200 OK) |
+| **URL Kanonikal Publik** | `https://rancangloka.com/memilih-sistem-shading-luar-rumah-tropis` | Terverifikasi Live |
 
 > [!CAUTION]
 > DILARANG mempublikasikan Artikel C secara otomatis. Dilarang memutasi D1 atau R2 produksi untuk Artikel C sebelum otorisasi eksplisit tertulis dari Chief Editor.
