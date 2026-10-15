@@ -13,6 +13,43 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-ARTICLE-SUPPORT-CARD-HIERARCHY-PRODUCTION: Content Hierarchy Inversion to Conventional Title -> Excerpt -> Meta, Opening Prose Extraction & Verified Target Binding 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T22:38:00+07:00
+- **Status Operasional:** `ARTICLE_SUPPORT_CARD_HIERARCHY_PRODUCTION_COMPLETE`
+- **Otorisasi:** Chief Editor Production Authorization (`AUTHORIZE ARTICLE_SUPPORT_CARD_HIERARCHY PRODUCTION DEPLOYMENT`)
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Worker Deployment:**
+  - Previous Worker ID: `8eab73f4-8533-441d-9c36-f3e23f6da455`
+  - New Worker ID: `2b3ab25b-5d05-4d8f-9f3f-b2c8190c1ec6`
+- **Accepted Commits:**
+  - `3346082` `fix(ui): prioritize title and excerpt in article support cards`
+  - `e80adfe` `fix(ui): use article opening prose in support card excerpts`
+  - `eddd3d6` `fix(ui): verify support card target metadata binding`
+- **Pencapaian & Peningkatan Hierarki Visual:**
+  1. *Pembalikan Hierarki Visual Kanonikal:* Mengubah susunan kartu modul pendukung (`ArticleSupportModule.astro`) dari sebelumnya `reader_reason quote -> title -> meta` menjadi hierarki konvensional artikel terkait yang jauh lebih mudah dipindai pembaca:
+     - **PRIMARY (JUDUL ARTIKEL):** Teks judul tebal (`text-sm sm:text-base font-semibold text-ink dark:text-paper`), tautan crawlable `<a>` dengan efek underline interaktif.
+     - **SECONDARY (EKSERP PEMBUKA):** Teks ringkasan pembuka (`text-xs sm:text-sm text-muted dark:text-stone/80 line-clamp-2 sm:line-clamp-3`), bersumber dari paragraf pembuka naskah artikel target.
+     - **TERTIARY (METADATA HUBUNGAN & WAKTU BACA):** Label relasi semantik (`font-mono text-[11px] uppercase tracking-wider`) dan estimasi waktu baca (`• X min read`).
+  2. *Prioritas Ekstraksi Ekserp Prosa Pembuka:*
+     - *Primary:* Kalimat/paragraf pembuka bermakna pertama dari `content_md` artikel target (melewati heading, blockquote, tabel, pemisah baris, gambar, dan definisi sitasi).
+     - *Secondary:* Tag `<p>` pembuka pertama dari `content_html` jika `content_md` kosong.
+     - *Fallback:* Kolom `articles.description` hanya jika naskah tubuh artikel tidak tersedia.
+     - *Pemotongan Rapi:* Memotong secara bersih pada batas kalimat lengkap (80–180 karakter) atau batas kata dengan elipsis `…`, tanpa memotong kata di tengah jalan.
+  3. *Perlindungan reader_reason:* Nilai `reader_reason` disembunyikan sepenuhnya dari antarmuka publik dan tetap tersimpan utuh di basis data D1 untuk analisis editorial internal.
+  4. *Verifikasi Pengikatan Target Nyata (Real Target Binding):* Memastikan `target_article_id`, `target_title`, `target_slug`, `target_excerpt`, dan `target_featured_image` semuanya berasal secara atomik dari baris artikel target yang sama (`articles a INNER JOIN article_internal_links l ON l.target_article_id = a.id`). Mismatch pada laporan sebelumnya terbukti hanya bersumber dari teks uji/paraphrase sintetis pada mock laporan dan telah diperbaiki.
+  5. *Uji Asap Produksi & Visual (Desktop & Mobile):*
+     - HTTP 200 terverifikasi pada Artikel 5, 6, 7, 8, dan 9.
+     - Artikel 8 merender 3 kartu dengan pengikatan target 100% konsisten (Target 9: Shading Luar, Target 7: Jendela Berkondensasi, Target 5: Kusen Aluminium vs uPVC).
+     - Artikel 9 merender 2 kartu (Target 8: Thermal Bridge Kusen, Target 6: Rekayasa Ventilasi Silang).
+     - Thumbnail tetap menggunakan derivatif ringkas `/media/thumbnails/...` (HTTP 200, WebP 160x160 px, `Cache-Control: public, max-age=31536000, immutable`).
+     - Tampilan visual desktop (1366x900) dan mobile (390x844) membuktikan hierarki judul dominan, ekserp proporsional, zero overflow, image-induced CLS protection, dan zero client-side JavaScript.
+  6. *Integritas Graf & Naskah:* Plane A ACTIVE = 9, Plane B = 0, orphan count = 0. Zero mutasi pada graf D1, naskah artikel, maupun hash Artikel C (`12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28`).
+  7. *Invarian Keselamatan:* `automation_mode = OFF`, `AUTO_PUBLISH = OFF`, `JEV_MODE = shadow`, `publishingAuthority = 0`, media worker = `DISABLED`.
+- **Hasil & Status Keselamatan:**
+  - Status Pengujian: `test-internal-link-engine.js` (29/29 PASS), `test-mission-control-liveops.js` (78/78 PASS), `npx tsc --noEmit` (0 errors), `npm run build` (sukses).
+  - Klasifikasi: **`ARTICLE_SUPPORT_CARD_HIERARCHY_PRODUCTION_COMPLETE`** (`ARTICLE_SUPPORT_CARD_HIERARCHY_CLOSED`).
+
 ### RANCANGLOKA-ARTICLE-SUPPORT-THUMBNAIL-PRODUCTION-DEPLOYMENT: Live Production Activation, 5 R2 Derivatives Backfilled, 96.6% Bandwidth Reduction & Zero CLS 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T21:25:00+07:00
