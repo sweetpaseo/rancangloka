@@ -107,7 +107,12 @@ export interface EditorialPatternIssue {
     | 'UNSUPPORTED_LOCAL_GENERALIZATION'
     | 'CULTURAL_STEREOTYPE_OVERREACH'
     | 'LOCAL_CONTEXT_CLAIM_WITHOUT_SUPPORT'
-    | 'TRANSLATIONESE_RESIDUAL';
+    | 'TRANSLATIONESE_RESIDUAL'
+    | 'UNSUPPORTED_FAILURE_SCENARIO'
+    | 'FAKE_FIRST_HAND_AUTHORITY'
+    | 'ILLUSTRATIVE_SCENARIO_PRESENTED_AS_REAL'
+    | 'METHOD_TRANSPARENCY_MISMATCH'
+    | 'DECISION_DEPTH_GAP';
   severity: 'WARNING' | 'CRITICAL';
   description: string;
   penalty: number;
@@ -3510,12 +3515,14 @@ export function evaluateHumanWritingQuality(
   );
 
   // Hard-Fail Invariant: Critical integrity violations must strictly force REWRITE (capped < 75)
-  const hasCriticalIntegrityViolation = issues.some(
+  let hasCriticalIntegrityViolation = issues.some(
     (i) => i.code === 'FABRICATED_EXPERIENCE' ||
            i.code === 'FABRICATED_EXPERIENCE_OR_SLOP' ||
            i.code === 'FABRICATED_HANDS_ON_TEST' ||
            i.code === 'COMMERCIAL_BIAS_RISK' ||
            i.code === 'CLAIM_SOURCE_PROVENANCE_MISSING' ||
+           i.code === 'FAKE_FIRST_HAND_AUTHORITY' ||
+           i.code === 'ILLUSTRATIVE_SCENARIO_PRESENTED_AS_REAL' ||
            (i.code === 'UNSUPPORTED_NUMERICAL_CLAIM' && i.severity === 'CRITICAL')
   );
 
@@ -3619,6 +3626,62 @@ export function evaluateHumanWritingQuality(
       severity: 'WARNING',
       description: 'Ditemukan sisa struktur kalimat terjemahan harfiah bahasa Inggris. Gunakan tata bahasa dan idiom Indonesia alami.',
       penalty: 10
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // Rina Final Editorial QA: Premium Editorial Depth System
+  // Milestone: RANCANGLOKA_PREMIUM_EDITORIAL_DEPTH_1
+  // Invariants:
+  // - NO_UNVERIFIED_FIRST_HAND_AUTHORITY: Prohibit fabricated field/inspection experience
+  // - ILLUSTRATIVE_SCENARIOS_ONLY: Scenarios must not be fabricated client testimonials
+  // - FAILURE_ANATOMY_JUSTIFIED: Failure scenarios must be technically grounded, not horror anecdotes
+  // - METHOD_TRANSPARENCY: References and standards must match real sources
+  // - DECISION_DEPTH_ADEQUACY: Comparison / problem solving must provide actionable guidance
+  // --------------------------------------------------------------------------
+  const fakeFirstHandRegex = /\b(?:berdasarkan pengalaman kami di lapangan|dari proyek yang kami tangani|hasil inspeksi kami|kami menguji secara langsung|tim kami menemukan di lapangan|menurut praktisi kami di lapangan|proyek renovasi klien kami|saat tim kami memeriksa lokasi|dari pengalaman lapangan kami bertahun-tahun|uji coba lab internal kami membuktikan)\b/i;
+  if (fakeFirstHandRegex.test(contentMd)) {
+    hasCriticalIntegrityViolation = true;
+    issues.push({
+      code: 'FAKE_FIRST_HAND_AUTHORITY',
+      category: 'FABRICATED_HANDS_ON',
+      severity: 'CRITICAL',
+      description: 'Klaim otoritas lapangan fiktif terdeteksi. RancangLoka saat ini belum memiliki operasi pengujian fisik lapangan langsung; otoritas redaksi bersumber dari riset empiris dan metodologi terbuka.',
+      penalty: 25
+    });
+  }
+
+  const fabricatedTestimonyRegex = /\b(?:klien kami,?\s+(?:bapak|ibu|pak|bu)\s+[a-z]+|menurut kesaksian klien kami|salah satu klien kami mengaku|testimoni pelanggan kami menunjukkan)\b/i;
+  if (fabricatedTestimonyRegex.test(contentMd)) {
+    hasCriticalIntegrityViolation = true;
+    issues.push({
+      code: 'ILLUSTRATIVE_SCENARIO_PRESENTED_AS_REAL',
+      category: 'FABRICATED_EXPERIENCE',
+      severity: 'CRITICAL',
+      description: 'Testimoni atau studi kasus klien fiktif terdeteksi. Skenario hunian wajib disajikan secara ilustratif murni, bukan menyamarkannya sebagai testimoni manusia nyata yang direkayasa.',
+      penalty: 20
+    });
+  }
+
+  const unsupportedFailureRegex = /\b(?:bencana fatal yang menghancurkan rumah|kejadian mengerikan di lapangan yang menelan korban)\b/i;
+  if (unsupportedFailureRegex.test(contentMd)) {
+    issues.push({
+      code: 'UNSUPPORTED_FAILURE_SCENARIO',
+      category: 'UNSUPPORTED_FAILURE_SCENARIO',
+      severity: 'WARNING',
+      description: 'Narasi kegagalan sensasional tanpa dasar fisik/teknis terdeteksi. Failure Anatomy wajib berakar pada konsensus teknis dan alasan fisik yang dapat dicegah.',
+      penalty: 15
+    });
+  }
+
+  const methodMismatchRegex = /\b(?:hasil pengujian laboratorium rahasia kami|uji beban independen tanpa standar)\b/i;
+  if (methodMismatchRegex.test(contentMd)) {
+    issues.push({
+      code: 'METHOD_TRANSPARENCY_MISMATCH',
+      category: 'METHOD_TRANSPARENCY_MISMATCH',
+      severity: 'WARNING',
+      description: 'Pernyataan metodologi atau pengujian tidak dapat diverifikasi atau bertentangan dengan rujukan resmi.',
+      penalty: 15
     });
   }
 
@@ -3773,6 +3836,12 @@ export function evaluateHumanWritingQuality(
       } else if (issue.category === 'TRANSLATIONESE_RESIDUAL') {
         requiredActions.push('Tulis ulang kalimat terjemahan kaku menjadi susunan kalimat bahasa Indonesia alami yang nyaman dibaca.');
         failingSections.push('Gaya Bahasa & Konstruksi Kalimat');
+      } else if (issue.category === 'UNSUPPORTED_FAILURE_SCENARIO') {
+        requiredActions.push('Jelaskan skenario kegagalan berbasis mekanisme fisik dan konsensus teknis; hindari cerita kegagalan sensasional/horor tanpa dasar.');
+        failingSections.push('Anatomi Kegagalan (Failure Anatomy)');
+      } else if (issue.category === 'METHOD_TRANSPARENCY_MISMATCH') {
+        requiredActions.push('Sesuaikan pernyataan metodologi/standar agar akurat dan dapat diverifikasi secara transparan.');
+        failingSections.push('Transparansi Metodologi & Rujukan');
       }
     }
 

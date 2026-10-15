@@ -16,3 +16,5 @@ export * from './proof-metadata-consistency.ts';
 export * from './nadia-reader-voice.ts';
 export * from './source-provenance-verifier.ts';
 export * from './warm-advisory-guard.ts';
+export * from './local-cultural-guard.ts';
+export * from './premium-editorial-depth-guard.ts';

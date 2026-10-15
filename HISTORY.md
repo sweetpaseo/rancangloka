@@ -13,6 +13,31 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PREMIUM-EDITORIAL-DEPTH-1: Decision Depth 7Q+Next, Failure Anatomy, Micro-Personas, Method Transparency, Visual Storytelling & No-First-Hand Authority 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T11:15:00+07:00
+- **Status Operasional:** `RANCANGLOKA_PREMIUM_EDITORIAL_DEPTH_ESTABLISHED`
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Tujuan Rekayasa & Redaksional:**
+  - Chief Editor menetapkan lapisan operasional kedalaman redaksi permanen: *Premium Editorial Depth System (PED-1)* untuk mendampingi *Warm Advisory Tone*, *Local Cultural Grounding*, dan *Evidence-First Invariants*.
+  - Menetapkan prinsip kanonikal: *"Artikel RancangLoka tidak dianggap mendalam hanya karena panjang. Artikel dianggap mendalam ketika pembaca memahami apa masalahnya (WHAT), mengapa terjadi (WHY), untuk siapa relevan (WHO), kapan dan di mana berlaku (WHEN & WHERE), bagaimana menanganinya (HOW), pilihan mana yang paling masuk akal (WHICH), dan apa yang harus dilakukan berikutnya (WHAT NEXT)."*
+- **Komponen Inti Framework Kedalaman:**
+  1. **Decision Depth (7Q + Next):** Evaluasi kedalaman semantik menyeluruh tanpa mewajibkan tujuh subjudul harfiah yang kaku. Dimensi non-aplikatif pada indeks referensi diklasifikasikan sebagai `NOT_RELEVANT`.
+  2. **Failure Anatomy (`FAILURE_ANATOMY`):** Menganalisis bagaimana pilihan, aplikasi, urutan, asumsi, dan perawatan dapat gagal secara fisik di lapangan, berakar pada konsensus ilmiah dan bebas dari cerita horor sensasional.
+  3. **Micro-Persona Scenarios (`MICRO_PERSONA_SCENARIOS`):** Komposisi skenario hunian ilustratif (tipe penghuni + kondisi bangunan + lingkungan + kendala + tujuan) agar pembaca mengenali situasi rumahnya. Disiplin ketat melarang rekayasa testimoni pelanggan, studi kasus klien, atau wawancara palsu.
+  4. **Evidence & Method Transparency (`EVIDENCE_METHOD_TRANSPARENCY`):** Transparansi ramah pembaca ("Dasar Artikel") mengomunikasikan rujukan SNI (mis. SNI 6389:2020), regulasi PUPR, data iklim BMKG, dan studi arsitektur tropis.
+  5. **Visual Storytelling (`VISUAL_STORYTELLING`):** Visual bertugas menjelaskan relasi spasial dan menurunkan beban kognitif (bukan sekadar dekorasi). Dilarang memberlakukan kuota gambar arbitrer (zero quota enforcement).
+  6. **Strict No-First-Hand Claim Policy (`NO_UNVERIFIED_FIRST_HAND_AUTHORITY`):** Dilarang mengklaim inspeksi/pengalaman lapangan langsung ("berdasarkan pengalaman kami di lapangan", "dari proyek yang kami tangani", "tim kami menemukan di lokasi"). Otoritas redaksi RancangLoka murni berakar pada riset bukti empiris dan metodologi terbuka.
+  7. **Tested by RancangLoka Policy (`TESTED_BY_RANCANGLOKA_RESERVED`):** Label diklasifikasikan sebagai `RESERVED / PRIMARY-EVIDENCE-ONLY`, terlarang untuk artikel kompilasi analitis AI/data biasa tanpa pengujian fisik primer.
+- **Implementasi Kode & Guard Semantik:**
+  - `src/lib/editorial/premium-editorial-depth-guard.ts`: Guard semantik Dimas dengan bukti terstruktur (`decision_depth`, `failure_anatomy`, `micro_persona_scenario`, `method_transparency`, `visual_storytelling_need`, `first_hand_claim_safety`).
+  - `src/lib/editorial/joko-prompt-builder.ts`: Integrasi instruksi sistem kepenulisan Joko untuk kedalaman 7Q+Next alami, failure anatomy, skenario ilustratif, transparansi metodologi, dan zero klaim tangan pertama palsu.
+  - `src/lib/editorial/nadia-reader-voice.ts`: Gerbang kebermanfaatan pembaca Nadia mengintegrasikan checklist kedalaman dan memicu `READER_VOICE_REVISION_REQUIRED` jika artikel kaya teknis tetapi minim panduan keputusan.
+  - `src/lib/article/human-quality.ts`: Penegakan QA Rina untuk isu `FAKE_FIRST_HAND_AUTHORITY` (kritis), `ILLUSTRATIVE_SCENARIO_PRESENTED_AS_REAL` (kritis), `UNSUPPORTED_FAILURE_SCENARIO` (warning), `METHOD_TRANSPARENCY_MISMATCH` (warning), dan `DECISION_DEPTH_GAP`.
+- **Evaluasi Rujukan Artikel C:**
+  - Artikel C yang telah LIVE dianalisis dan dibuktikan secara penuh memenuhi seluruh dimensi kedalaman tanpa modifikasi naskah (SHA-256: `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` strictly preserved).
+- **Pengujian:** 13 pengujian terfokus di `scripts/test-premium-editorial-depth.js` lulus 100% bersama 35 tes Nadia, 13 tes Warm Advisory Tone, dan 12 tes Local Cultural Grounding (Total 73/73 tes redaksional lulus).
+
 ### RANCANGLOKA-ARTICLE-C-PRODUCTION-PUBLICATION: Explicit Chief Editor Authorization, Canonical Sari Publication Dispatch, Zero-Deploy Production Proof & Live Verification 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T10:35:00+07:00

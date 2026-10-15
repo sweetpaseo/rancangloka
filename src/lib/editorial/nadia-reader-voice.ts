@@ -48,6 +48,18 @@ import {
   INVARIANT_STANDARD_INDONESIAN_BASE
 } from './local-cultural-guard.ts';
 
+import {
+  evaluatePremiumEditorialDepth,
+  type PremiumEditorialDepthChecklist,
+  INVARIANT_NO_UNVERIFIED_FIRST_HAND_AUTHORITY,
+  INVARIANT_DECISION_DEPTH_7Q_NEXT,
+  INVARIANT_FAILURE_ANATOMY,
+  INVARIANT_MICRO_PERSONA_SCENARIOS,
+  INVARIANT_EVIDENCE_METHOD_TRANSPARENCY,
+  INVARIANT_VISUAL_STORYTELLING,
+  INVARIANT_TESTED_BY_RANCANGLOKA_RESERVED
+} from './premium-editorial-depth-guard.ts';
+
 export {
   evaluateWarmAdvisoryTone,
   INVARIANT_WARM_ADVISORY_TONE,
@@ -55,9 +67,22 @@ export {
   evaluateLocalCulturalGrounding,
   INVARIANT_LOCAL_CULTURAL_GROUNDING,
   INVARIANT_ANTI_CULTURAL_STEREOTYPE,
-  INVARIANT_STANDARD_INDONESIAN_BASE
+  INVARIANT_STANDARD_INDONESIAN_BASE,
+  evaluatePremiumEditorialDepth,
+  INVARIANT_NO_UNVERIFIED_FIRST_HAND_AUTHORITY,
+  INVARIANT_DECISION_DEPTH_7Q_NEXT,
+  INVARIANT_FAILURE_ANATOMY,
+  INVARIANT_MICRO_PERSONA_SCENARIOS,
+  INVARIANT_EVIDENCE_METHOD_TRANSPARENCY,
+  INVARIANT_VISUAL_STORYTELLING,
+  INVARIANT_TESTED_BY_RANCANGLOKA_RESERVED
 };
-export type { EditorialWarmthChecklist, LocalCulturalChecklist, LocalCulturalReviewQuestions };
+export type {
+  EditorialWarmthChecklist,
+  LocalCulturalChecklist,
+  LocalCulturalReviewQuestions,
+  PremiumEditorialDepthChecklist
+};
 
 export const INVARIANT_LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH =
   'LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH';
@@ -107,6 +132,7 @@ export interface ReaderVoiceEvaluationResult {
   };
   warmthChecklist?: EditorialWarmthChecklist;
   localCulturalChecklist?: LocalCulturalChecklist;
+  premiumDepthChecklist?: PremiumEditorialDepthChecklist;
   paragraphDensityWarnings?: string[];
   escapedMarkdownIssues?: string[];
   visualDensitySignals?: string[];
@@ -925,6 +951,44 @@ export function evaluateReaderVoice(
   };
 
   // --------------------------------------------------------------------------
+  // Rubric L: PREMIUM EDITORIAL DEPTH (Dimas System Guard & Nadia Usefulness Gate)
+  // Milestone: RANCANGLOKA_PREMIUM_EDITORIAL_DEPTH_1
+  // Invariants:
+  // - INVARIANT_NO_UNVERIFIED_FIRST_HAND_AUTHORITY
+  // - INVARIANT_DECISION_DEPTH_7Q_NEXT
+  // - INVARIANT_FAILURE_ANATOMY
+  // - INVARIANT_MICRO_PERSONA_SCENARIOS
+  // --------------------------------------------------------------------------
+  const premiumDepthChecklist = evaluatePremiumEditorialDepth(content, {
+    contentFamily: options.contentFamily,
+    title: options.title
+  });
+
+  if (premiumDepthChecklist.first_hand_claim_safety === 'BLOCKED') {
+    blockingIssues.push({
+      reason: `[${INVARIANT_NO_UNVERIFIED_FIRST_HAND_AUTHORITY}] Klaim otoritas langsung/pengalaman lapangan fiktif atau testimoni rekaan terdeteksi tanpa bukti primer terverifikasi.`,
+      passage: premiumDepthChecklist.flags.map((f) => f.description).join('; '),
+      technicalAmbiguityRisk: true
+    });
+  }
+
+  if (premiumDepthChecklist.failure_anatomy === 'REVISION_REQUIRED') {
+    revisionRequests.push({
+      section: 'Anatomi Kegagalan (Failure Anatomy)',
+      currentPhrasing: 'Pembahasan belum mencakup bagaimana keputusan atau pemasangan dapat gagal',
+      requestedImprovement: 'Jelaskan bagaimana pilihan atau aplikasi dapat gagal (akibat salah orientasi, salah urutan, atau kendala perawatan) agar pembaca paham risiko teknisnya.'
+    });
+  }
+
+  if (premiumDepthChecklist.flags.some((f) => f.type === 'DECISION_DEPTH_GAP')) {
+    revisionRequests.push({
+      section: 'Kedalaman Keputusan (Decision Depth 7Q + Next)',
+      currentPhrasing: 'Informasi teknis belum sepenuhnya mendukung agensi keputusan pembaca',
+      requestedImprovement: 'Lengkapi dimensi kedalaman keputusan: untuk siapa relevan, skenario situasi hunian pembaca, dan langkah aksi nyata berikutnya.'
+    });
+  }
+
+  // --------------------------------------------------------------------------
   // Decision Resolution (Strict Fail Closed Hierarchy & State Semantics Separation)
   // Invariant:
   // READER_VOICE_BLOCKED: ONLY for technical ambiguity / meaning-preservation risk / claim strengthening / raw syntax leakage
@@ -946,6 +1010,8 @@ export function evaluateReaderVoice(
     !paragraphBreathing.passed ||
     !warmAdvisoryTone.passed ||
     !localCulturalGrounding.passed ||
+    premiumDepthChecklist.failure_anatomy === 'REVISION_REQUIRED' ||
+    premiumDepthChecklist.micro_persona_scenario === 'REVISION_REQUIRED' ||
     overallScore < 80
   ) {
     decision = 'READER_VOICE_REVISION_REQUIRED';
@@ -969,6 +1035,7 @@ export function evaluateReaderVoice(
     },
     warmthChecklist,
     localCulturalChecklist,
+    premiumDepthChecklist,
     paragraphDensityWarnings,
     escapedMarkdownIssues,
     visualDensitySignals,
