@@ -200,7 +200,7 @@ Menyimpan seluruh bita n-gram mentah (3-gram dan 5-gram) untuk ribuan artikel ak
 - **Pendekatan Kompak:** Menggunakan *selected hashed shingles*, *MinHash sketches* (64–128 integer hash per artikel), atau *SimHash* ringkas (~1 KB per artikel).
 - **Paragraph Hashes:** 10–20 baris hash paragraf per artikel (~500 B).
 - **Reproducibility on Demand:** Karena `content_md` asli tersimpan secara abadi di D1 dan tidak pernah bermutasi, sidik jari n-gram lengkap dapat dihitung ulang kapan saja (*rebuilt on demand*) jika dibutuhkan untuk analisis forensik mendalam, tanpa perlu disimpan permanen secara berlebihan di D1.
-- **Estimasi Beban D1:** Hanya ~1.5–2.5 KB per artikel; 1000 artikel hanya membutuhkan ~2.5 MB ruang D1.
+- **Estimasi Beban D1 (`DESIGN_ESTIMATE`):** Diperkirakan hanya ~1.5–2.5 KB per artikel (~2.5 MB per 1.000 artikel) sebagai perkiraan desain awal (*design estimate*), bukan fakta konsumsi penyimpanan terukur permanen.
 
 ### Bahasa & Status Deteksi Kloning (Clone Detection Language):
 Sistem analitik Dimas menggunakan status kandidat terukur:
@@ -230,14 +230,14 @@ Peninjauan manusia (*human review*) tetap wajib sebelum dilakukan eskalasi forma
 7. **Watermark kasat mata bersifat pencegah sekunder (secondary deterrence):** Mengutamakan estetika visual majalah arsitektur premium di atas paranoia pencurian.
 8. **Thumbnail derivatif tidak dipaksa memuat watermark kecil:** Derivatif 160x160 WebP tidak dipaksa memuat teks watermark yang dapat merusak keterbacaan thumbnail.
 9. **Aset turunan media sosial boleh menggunakan penanda visual lebih tegas:** Format media sosial dibaca di luar ekosistem web sehingga branding visual diperbolehkan lebih kuat.
-10. **Dokumentasi hands-on langsung boleh menggunakan watermark kepemilikan:** Foto fisik yang diambil langsung oleh tim RancangLoka adalah bukti primer orisinal dan berhak memuat watermark kepemilikan halus.
+10. **Dokumentasi hands-on langsung boleh menggunakan watermark kepemilikan:** Foto fisik yang diambil langsung oleh tim RancangLoka adalah bukti primer orisinal dan berhak memuat watermark kepemilikan halus. **Kebijakan Privasi Media (`PUBLIC_DERIVATIVES_STRIP_SENSITIVE_EXIF`):** Provenansi internal diizinkan menyimpan metadata penangkapan untuk keperluan audit, namun derivatif publik wajib membersihkan (*strip*) EXIF sensitif seperti koordinat GPS presisi dan metadata identitas perangkat/pengguna yang tidak perlu.
 
 ### Klasifikasi Kelas Sumber Aset (Asset Source Classes):
 
 | Kelas Sumber Aset | Hak Kepemilikan | Kewajiban Kredit Sumber | Kewajiban Provenansi | Kelayakan Watermark Kasat Mata | Perilaku Publication DNA |
 |---|---|---|---|---|---|
 | **`RANCANGLOKA_ORIGINAL`** | Milik RancangLoka | Internal Editorial Desk | WAJIB (`asset_id`, hash) | DIIZINKAN (Halus pada derivatif) | Cryptographic hash + pHash |
-| **`RANCANGLOKA_HANDS_ON`** | Milik RancangLoka (Bukti Primer) | Fotografer/Tim RancangLoka | WAJIB (Metadata alat/waktu) | DIIZINKAN (Halus pada derivatif) | Cryptographic hash + pHash + EXIF proof |
+| **`RANCANGLOKA_HANDS_ON`** | Milik RancangLoka (Bukti Primer) | Fotografer/Tim RancangLoka | WAJIB (Metadata alat/waktu internal, `PUBLIC_DERIVATIVES_STRIP_SENSITIVE_EXIF` pada publik) | DIIZINKAN (Halus pada derivatif) | Cryptographic hash + pHash + EXIF proof internal |
 | **`EDITORIAL_CONCEPT_VISUAL`** | Dihasilkan AI/Budi untuk RancangLoka | Label `EDITORIAL_CONCEPT_VISUAL` | WAJIB (Prompt/seed/Budi ID) | OPSIONAL / Kontekstual | Hash biner + lineage generator |
 | **`MANUFACTURER_SOURCE`** | Milik Manufaktur/Brand | WAJIB menyertakan nama brand | WAJIB (URL sumber katalog) | **DILARANG KERAS** | Hash biner + lisensi sumber |
 | **`OFFICIAL_SELLER_SOURCE`** | Milik Toko/Seller Resmi | WAJIB menyertakan nama toko | WAJIB (Listing source URL) | **DILARANG KERAS** | Hash biner + snapshot offer |
