@@ -29,7 +29,7 @@ Hari ini seluruh agenda rekayasa perangkat lunak, publikasi artikel produksi, ke
 
 ### 2. Milestone `INTERNAL-LINK-ENGINE-1` & Produksi Edge (Live)
 - **Migrasi D1 0033:** Tabel `article_internal_links` diterapkan di D1 produksi (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`).
-- **Worker Deployment:** Version ID `d81c7b65-eee6-468d-b517-36d6ac77dcf6` aktif di edge.
+- **Worker Deployment:** Version ID `8eab73f4-8533-441d-9c36-f3e23f6da455` aktif di edge (menggantikan `d81c7b65-eee6-468d-b517-36d6ac77dcf6`).
 - **Graf Semantik Plane A (9 Relasi Aktif, 0 Orphan):**
   - Artikel 5 $\leftrightarrow$ Artikel 8 (`RELATED_MATERIAL` / `RELATED_DECISION`)
   - Artikel 6 $\leftrightarrow$ Artikel 9 (`RELATED_SYSTEM` / `RELATED_SYSTEM`)
@@ -39,14 +39,15 @@ Hari ini seluruh agenda rekayasa perangkat lunak, publikasi artikel produksi, ke
 - **Corpus Orphan Count:** **0** (Zero isolated published articles).
 - **Integritas Naskah:** Naskah & hash kelima artikel terbit (5, 6, 7, 8, 9) 100% utuh tanpa mutasi.
 
-### 3. Optimasi Payload Thumbnail Modul Dukungan Artikel (`39078ef`)
-- **Masalah Teratasi:** Modul pendukung sebelumnya memuat sampul editorial penuh 1200–1315 px (146–218 KB per gambar, total 578 KB pada modul 3-kartu Artikel 8).
-- **Arsitektur Derivatif:** Standar derivatif 160x160 px WebP (`compactThumb`, Lanczos downsampling, quality=85) untuk layout CSS 80x80 px (desktop) dan 56x56 px (mobile).
-- **Resolusi & Edge Fallback:** `src/lib/image.ts` memetakan path ke `/media/thumbnails/<filename>`, dan `src/pages/media/[...key].ts` secara otomatis fallback ke gambar asli jika berkas derivatif belum ada di R2, menjamin **zero broken images**.
+### 3. Aktivasi Produksi Thumbnail Modul Dukungan Artikel (`ARTICLE_SUPPORT_THUMBNAIL_PRODUCTION_COMPLETE`)
+- **Otorisasi Chief Editor:** `AUTHORIZE ARTICLE_SUPPORT_THUMBNAIL PRODUCTION DEPLOYMENT` (Commits `76e03f7`, `39078ef`, `e180431`, `9461c9e`).
+- **Backfill Produksi R2 Selesai:** 5 derivatif WebP 160x160 px aktif di bucket `rancangloka-media` (`thumbnails/<filename>`). Total transfer 34.12 KB.
+- **Worker Deployment:** Version ID `8eab73f4-8533-441d-9c36-f3e23f6da455` live di edge Cloudflare (startup 32 ms).
 - **Hasil Pengurangan:**
   - Total 5 thumbnail: 872.1 KB $\rightarrow$ **33.32 KB** (96.2% overall reduction, rerata 6.66 KB per thumbnail).
   - Modul 3 kartu Artikel 8: 577.9 KB $\rightarrow$ **19.68 KB** (**96.6% bandwidth saving**).
-- **Status Backfill:** 5 berkas WebP derivatif telah dibangkitkan lokal di `artifacts/thumbnails/`, siap diunggah saat otorisasi produksi diberikan.
+- **Uji Asap Produksi & Visual:** PASS 100% pada Artikel 5–9 (HTTP 200, kartu 1, 1, 2, 3, 2). Inspeksi desktop (1366 px) & mobile (390 px) bebas broken images, zero CLS, teks dan judul dominan.
+- **Cache Safety:** `Cache-Control: public, max-age=31536000, immutable`, zero fallback header.
 
 ---
 

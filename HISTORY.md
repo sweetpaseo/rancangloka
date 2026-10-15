@@ -13,6 +13,35 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-ARTICLE-SUPPORT-THUMBNAIL-PRODUCTION-DEPLOYMENT: Live Production Activation, 5 R2 Derivatives Backfilled, 96.6% Bandwidth Reduction & Zero CLS 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T21:25:00+07:00
+- **Status Operasional:** `ARTICLE_SUPPORT_THUMBNAIL_PRODUCTION_COMPLETE`
+- **Otorisasi:** Chief Editor Production Authorization (`AUTHORIZE ARTICLE_SUPPORT_THUMBNAIL PRODUCTION DEPLOYMENT`)
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Accepted Commits:**
+  - `76e03f7` `feat(ui): add thumbnails to semantic article support module`
+  - `39078ef` `perf(media): add compact derivatives for article support thumbnails`
+  - `e180431` `fix(media): harden thumbnail derivative lifecycle and cache safety`
+  - `9461c9e` `fix(media): make thumbnail generation runtime-safe`
+- **Pencapaian Produksi:**
+  1. *Backfill Produksi R2 (5 Objek Derivatif):* Kelima berkas WebP derivatif 160x160 px berhasil diunggah ke bucket R2 produksi `rancangloka-media` di bawah kunci kanonikal `thumbnails/<filename>`. Verifikasi HTTP langsung mengonfirmasi status 200 OK, `Content-Type: image/webp`, dimensi 160x160, dengan total ukuran transfer R2 hanya 34.12 KB.
+  2. *Worker Deployment:* Versi Worker produksi diperbarui dari `d81c7b65-eee6-468d-b517-36d6ac77dcf6` ke `8eab73f4-8533-441d-9c36-f3e23f6da455`. Worker terbukti runtime-safe (zero native binary/sharp dependencies di edge runtime).
+  3. *Uji Asap Produksi Artikel 5–9 (HTTP 200 & Modul Dukungan):*
+     - Artikel 5: HTTP 200, 1 kartu dukungan (Artikel 8).
+     - Artikel 6: HTTP 200, 1 kartu dukungan (Artikel 9).
+     - Artikel 7: HTTP 200, 2 kartu dukungan (Artikel 8, 9).
+     - Artikel 8: HTTP 200, 3 kartu dukungan (Artikel 9, 7, 5).
+     - Artikel 9: HTTP 200, 2 kartu dukungan (Artikel 8, 6).
+  4. *Pengurangan Bandwidth Terverifikasi di Produksi:* Pada modul 3 kartu Artikel 8, payload thumbnail berhasil direduksi dari baseline ~577.9 KB menjadi tepat **19.68 KB (20,156 B)**, menghasilkan **96.6% bandwidth reduction**.
+  5. *Header & Cache Safety:* Header terverifikasi `Cache-Control: public, max-age=31536000, immutable`, dan header `X-RL-Thumbnail-Fallback` tidak ada (direct derivative hit).
+  6. *Uji Visual Produksi (Desktop & Mobile):* Inspeksi visual pada breakpoint desktop 1366 px dan mobile 390 px membuktikan thumbnail beresolusi tajam, crop 1:1 proporsional, teks dan judul tetap dominan, zero overflow, dan tampilan editorial premium tenang (*quiet premium editorial*).
+  7. *Integritas Graf & Naskah:* Plane A ACTIVE = 9, Plane B = 0, orphan count = 0. Seluruh naskah artikel utuh dan hash Artikel C `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` 100% terjaga.
+  8. *Invarian Keselamatan:* `automation_mode = OFF`, `AUTO_PUBLISH = OFF`, `JEV_MODE = shadow`, `publishingAuthority = 0`.
+- **Hasil & Status Keselamatan:**
+  - Status Pengujian: `test-internal-link-engine.js` (28/28 PASS), `test-mission-control-liveops.js` (78/78 PASS), `npx tsc --noEmit` (0 errors), `npm run build` (sukses).
+  - Klasifikasi: **`ARTICLE_SUPPORT_THUMBNAIL_PRODUCTION_COMPLETE`** (`ARTICLE_SUPPORT_THUMBNAIL_MILESTONE_CLOSED`).
+
 ### RANCANGLOKA-ARTICLE-SUPPORT-THUMBNAIL-PAYLOAD-OPTIMIZATION: Canonical 160x160 WebP Derivative Pipeline, 96.6% Transferred Byte Reduction & Edge Fallback 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T16:50:00+07:00
