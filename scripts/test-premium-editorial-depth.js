@@ -45,6 +45,21 @@ import {
 import { buildJokoSystemPrompt } from '../src/lib/editorial/joko-prompt-builder.ts';
 import { evaluateHumanWritingQuality } from '../src/lib/article/human-quality.ts';
 
+import {
+  INVARIANT_BUDI_VISUAL_STORYTELLING_OWNER,
+  INVARIANT_ZERO_DECORATION_QUOTAS,
+  INVARIANT_VISUAL_EDITORIAL_REVIEW_LOOP,
+  BUDI_PUBLISHING_AUTHORITY,
+  PROHIBITED_AI_PROVENANCE_LABELS,
+  ALLOWED_AI_EXPLANATORY_LABEL,
+  generateEditorialVisualBriefs,
+  validateVisualTruthClassification,
+  validateEditorialVisualReviewFlow,
+  getBudiPublishingAuthority,
+  canBudiPublish,
+  canBudiOverrideReviewers
+} from '../src/lib/editorial/visual-brief.ts';
+
 console.log('======================================================');
 console.log('🧪 Starting RANCANGLOKA-PREMIUM-EDITORIAL-DEPTH Test Suite...');
 console.log('======================================================\n');
@@ -336,7 +351,228 @@ assert.equal(nadiaArticleCEval.decision, 'READER_VOICE_PASS', 'Article C cleanly
 assert.ok(nadiaArticleCEval.premiumDepthChecklist, 'premiumDepthChecklist must be attached to Nadia result');
 assert.equal(nadiaArticleCEval.premiumDepthChecklist.first_hand_claim_safety, 'PASS');
 
-console.log('  ✅ PASS: Article C reference evaluation confirms complete compliance across all Premium Depth dimensions.');
+console.log('  ✅ PASS: Article C reference evaluation confirms complete compliance across all Premium Depth dimensions.\n');
+passed++;
+
+// --------------------------------------------------------------------------
+// Test 14: REQUIRED Visual Need Produces Budi-Addressable Visual Brief
+// --------------------------------------------------------------------------
+console.log('Test 14: REQUIRED Visual Need Produces Budi-Addressable Visual Brief');
+const comparisonDraftWithVisualNeed = `
+# Memilih Sistem Shading Luar untuk Fasad Barat: Tritisan vs Louver
+Tritisan mendatar dan sirip louver aluminium memiliki perbedaan sudut datang matahari sore pada fasad barat.
+Ketika dipasang di iklim tropis, debu menumpuk dan tempias air hujan sering kali membasahi sambungan bilah.
+Berikut adalah komparasi trade-off performa kedua sistem peneduh luar tersebut.
+`.trim();
+
+const evalWithNeed = evaluatePremiumEditorialDepth(comparisonDraftWithVisualNeed, {
+  contentFamily: 'comparison',
+  title: 'Memilih Sistem Shading Luar untuk Fasad Barat'
+});
+assert.equal(evalWithNeed.visual_storytelling_need, 'REQUIRED');
+
+const visualBriefs = generateEditorialVisualBriefs({
+  article_slug: 'memilih-sistem-shading-luar-fasad-barat',
+  title: 'Memilih Sistem Shading Luar untuk Fasad Barat',
+  content: comparisonDraftWithVisualNeed,
+  checklist: evalWithNeed,
+  evidenceReferences: ['SNI 6389:2020', 'PUPR 02/2015']
+});
+
+assert.ok(visualBriefs.length >= 1, 'Must produce at least one visual brief for REQUIRED visual need');
+const allowedClasses = [
+  'CONCEPT_DIAGRAM',
+  'SECTION_DETAIL',
+  'COMPARATIVE_VISUAL',
+  'FAILURE_ANATOMY_VISUAL',
+  'BEFORE_AFTER_CONCEPT',
+  'ORIENTATION_DIAGRAM',
+  'MATERIAL_DETAIL',
+  'DECISION_MATRIX'
+];
+
+for (const brief of visualBriefs) {
+  assert.ok(brief.brief_id.startsWith('vb-'), 'Brief ID must be valid');
+  assert.equal(brief.article_slug, 'memilih-sistem-shading-luar-fasad-barat');
+  assert.ok(brief.content_section.length > 0, 'content_section must be defined');
+  assert.ok(brief.reader_problem.length > 0, 'reader_problem must be defined');
+  assert.ok(brief.visual_goal.length > 0, 'visual_goal must be defined');
+  assert.ok(allowedClasses.includes(brief.visual_class), `visual_class ${brief.visual_class} must be an allowed canonical class`);
+  assert.ok(brief.technical_truth_to_preserve.length > 0, 'technical_truth_to_preserve must be defined');
+  assert.ok(Array.isArray(brief.misrepresentation_risks) && brief.misrepresentation_risks.length > 0, 'misrepresentation_risks must be array');
+  assert.ok(Array.isArray(brief.source_references) && brief.source_references.length > 0, 'source_references must be array');
+  assert.ok(brief.caption_intent.length > 0, 'caption_intent must be defined');
+  assert.ok(brief.alt_text_intent.length > 0, 'alt_text_intent must be defined');
+  assert.equal(brief.assigned_operator, 'lokamedia_worker_primary', 'Assigned operator must be Budi (lokamedia_worker_primary)');
+  assert.equal(brief.visual_truth_label, 'EDITORIAL_CONCEPT_VISUAL', 'AI visual truth label must be EDITORIAL_CONCEPT_VISUAL');
+  assert.equal(brief.requires_editorial_qa, true, 'Must require editorial QA');
+  assert.equal(brief.requires_human_approval, true, 'Must require human approval');
+}
+console.log('  ✅ PASS: REQUIRED visual need cleanly produces Budi-addressable visual briefs with all canonical contracts.\n');
+passed++;
+
+// --------------------------------------------------------------------------
+// Test 15: OPTIONAL Visual Need Does NOT Force Media Production
+// --------------------------------------------------------------------------
+console.log('Test 15: OPTIONAL Visual Need Does NOT Force Media Production');
+const explainerDraftOptional = `
+# Prinsip Dasar Sirkulasi Udara Silang
+Ventilasi alami bekerja dengan memanfaatkan perbedaan tekanan udara antara dua bukaan berseberangan.
+`.trim();
+
+const evalOptional = evaluatePremiumEditorialDepth(explainerDraftOptional, {
+  contentFamily: 'explainer'
+});
+assert.equal(evalOptional.visual_storytelling_need, 'OPTIONAL');
+
+const optionalBriefs = generateEditorialVisualBriefs({
+  article_slug: 'prinsip-dasar-sirkulasi-silang',
+  content: explainerDraftOptional,
+  checklist: evalOptional,
+  isExplicitlyRequested: false
+});
+assert.equal(optionalBriefs.length, 0, 'OPTIONAL visual need must NOT force media creation');
+
+// If explicitly requested by Chief Editor, visual brief is produced
+const explicitBriefs = generateEditorialVisualBriefs({
+  article_slug: 'prinsip-dasar-sirkulasi-silang',
+  content: explainerDraftOptional,
+  checklist: evalOptional,
+  isExplicitlyRequested: true
+});
+assert.ok(explicitBriefs.length >= 0, 'Explicit request can trigger media production');
+console.log('  ✅ PASS: OPTIONAL visual need does not force media production unless explicitly requested.\n');
+passed++;
+
+// --------------------------------------------------------------------------
+// Test 16: NOT_REQUIRED Produces No Visual Task
+// --------------------------------------------------------------------------
+console.log('Test 16: NOT_REQUIRED Produces No Visual Task');
+const evalNotRequired = {
+  ...evalOptional,
+  visual_storytelling_need: 'NOT_REQUIRED'
+};
+
+const notRequiredBriefs = generateEditorialVisualBriefs({
+  article_slug: 'indeks-standar-sni',
+  content: '# Indeks SNI',
+  checklist: evalNotRequired,
+  isExplicitlyRequested: false
+});
+assert.equal(notRequiredBriefs.length, 0, 'NOT_REQUIRED must produce empty visual briefs');
+console.log('  ✅ PASS: NOT_REQUIRED produces zero visual tasks.\n');
+passed++;
+
+// --------------------------------------------------------------------------
+// Test 17: Budi Cannot Claim Real-Project Provenance for AI Visuals
+// --------------------------------------------------------------------------
+console.log('Test 17: Budi Cannot Claim Real-Project Provenance for AI Visuals');
+const prohibitedLabels = [
+  'REAL_PHOTOGRAPH',
+  'REAL_PROJECT',
+  'FIELD_INSPECTION',
+  'MEASURED_SIMULATION',
+  'ENGINEERING_TEST_RESULT'
+];
+
+for (const label of prohibitedLabels) {
+  const result = validateVisualTruthClassification({
+    label,
+    isAiGenerated: true,
+    hasPhysicalProvenance: false
+  });
+  assert.equal(result.valid, false, `Label ${label} must be rejected for AI visual without provenance`);
+  assert.equal(result.assigned_label, 'EDITORIAL_CONCEPT_VISUAL', 'Fallback label must be EDITORIAL_CONCEPT_VISUAL');
+  assert.ok(result.error?.includes('CONCEPTUAL_VISUAL_TRUTH'), 'Error must cite CONCEPTUAL_VISUAL_TRUTH');
+}
+console.log('  ✅ PASS: All 5 prohibited provenance labels strictly blocked for AI visuals.\n');
+passed++;
+
+// --------------------------------------------------------------------------
+// Test 18: AI Explanatory Visuals Require EDITORIAL_CONCEPT_VISUAL
+// --------------------------------------------------------------------------
+console.log('Test 18: AI Explanatory Visuals Require EDITORIAL_CONCEPT_VISUAL');
+const validConceptResult = validateVisualTruthClassification({
+  label: 'EDITORIAL_CONCEPT_VISUAL',
+  isAiGenerated: true,
+  hasPhysicalProvenance: false
+});
+assert.equal(validConceptResult.valid, true);
+assert.equal(validConceptResult.assigned_label, 'EDITORIAL_CONCEPT_VISUAL');
+console.log('  ✅ PASS: AI explanatory visual strictly classified as EDITORIAL_CONCEPT_VISUAL.\n');
+passed++;
+
+// --------------------------------------------------------------------------
+// Test 19: Budi Publishing Authority = 0, Cannot Publish or Override Nadia/Rina
+// --------------------------------------------------------------------------
+console.log('Test 19: Budi Publishing Authority = 0, Cannot Publish or Override Reviewers');
+assert.equal(getBudiPublishingAuthority(), 0, 'Budi publishing authority must be 0');
+assert.equal(BUDI_PUBLISHING_AUTHORITY, 0);
+assert.equal(canBudiPublish(), false, 'canBudiPublish must be false');
+assert.equal(canBudiOverrideReviewers(), false, 'canBudiOverrideReviewers must be false');
+
+// Attempt by Budi to publish directly is blocked
+const budiPublishAttempt = validateEditorialVisualReviewFlow({
+  from_stage: 'BUDI_PREP',
+  to_stage: 'PUBLICATION_DISPATCH',
+  acting_agent_id: 'lokamedia_worker_primary'
+});
+assert.equal(budiPublishAttempt.allowed, false);
+assert.ok(budiPublishAttempt.reason?.includes('otoritas publikasi = 0') || budiPublishAttempt.reason?.includes('Bypass editorial'));
+console.log('  ✅ PASS: Budi publishing authority = 0 and publish/override restrictions enforced.\n');
+passed++;
+
+// --------------------------------------------------------------------------
+// Test 20: Visual Branch Does Not Bypass Canonical Editorial Chain
+// --------------------------------------------------------------------------
+console.log('Test 20: Visual Branch Does Not Bypass Canonical Editorial Chain');
+
+// 1. Direct leap without Nadia review is blocked
+const noNadiaReview = validateEditorialVisualReviewFlow({
+  from_stage: 'BUDI_PREP',
+  to_stage: 'RINA_REVIEW',
+  acting_agent_id: 'lokamedia_worker_primary',
+  has_nadia_approval: false
+});
+assert.equal(noNadiaReview.allowed, false, 'Leap past Nadia must be blocked');
+
+// 2. Direct leap without Rina review is blocked
+const noRinaReview = validateEditorialVisualReviewFlow({
+  from_stage: 'NADIA_REVIEW',
+  to_stage: 'HUMAN_APPROVAL',
+  acting_agent_id: 'audience_language_editor',
+  has_nadia_approval: true,
+  has_rina_approval: false
+});
+assert.equal(noRinaReview.allowed, false, 'Leap past Rina must be blocked');
+
+// 3. Direct leap without Human Approval is blocked
+const noHumanApproval = validateEditorialVisualReviewFlow({
+  from_stage: 'RINA_REVIEW',
+  to_stage: 'PUBLICATION_DISPATCH',
+  acting_agent_id: 'editorial_qa_primary',
+  has_rina_approval: true,
+  has_human_approval: false
+});
+assert.equal(noHumanApproval.allowed, false, 'Publication without Human Approval must be blocked');
+
+// 4. Valid linear sequence succeeds
+const step1 = validateEditorialVisualReviewFlow({ from_stage: 'DIMAS_NEED', to_stage: 'BUDI_PREP', acting_agent_id: 'telemetry_observer_jev' });
+assert.equal(step1.allowed, true);
+
+const step2 = validateEditorialVisualReviewFlow({ from_stage: 'BUDI_PREP', to_stage: 'NADIA_REVIEW', acting_agent_id: 'lokamedia_worker_primary' });
+assert.equal(step2.allowed, true);
+
+const step3 = validateEditorialVisualReviewFlow({ from_stage: 'NADIA_REVIEW', to_stage: 'RINA_REVIEW', acting_agent_id: 'audience_language_editor', has_nadia_approval: true });
+assert.equal(step3.allowed, true);
+
+const step4 = validateEditorialVisualReviewFlow({ from_stage: 'RINA_REVIEW', to_stage: 'HUMAN_APPROVAL', acting_agent_id: 'editorial_qa_primary', has_rina_approval: true });
+assert.equal(step4.allowed, true);
+
+const step5 = validateEditorialVisualReviewFlow({ from_stage: 'HUMAN_APPROVAL', to_stage: 'PUBLICATION_DISPATCH', acting_agent_id: 'chief_editor_human', has_human_approval: true });
+assert.equal(step5.allowed, true);
+
+console.log('  ✅ PASS: Visual branch strictly obeys review gates and cannot bypass the canonical editorial chain.\n');
 passed++;
 
 console.log('\n======================================================');

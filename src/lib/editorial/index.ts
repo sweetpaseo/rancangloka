@@ -18,3 +18,4 @@ export * from './source-provenance-verifier.ts';
 export * from './warm-advisory-guard.ts';
 export * from './local-cultural-guard.ts';
 export * from './premium-editorial-depth-guard.ts';
+export * from './visual-brief.ts';

@@ -32,6 +32,7 @@ export type StaffCapability =
   | 'READER_VOICE_QA'
   | 'AUDIENCE_LANGUAGE_EDITOR'
   | 'MEDIA_OPERATIONS'
+  | 'VISUAL_STORYTELLING'
   | 'PUBLICATION_OPERATIONS'
   | 'SYSTEM_TELEMETRY';
 
@@ -248,9 +249,9 @@ const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
     display_name: 'Budi',
     role: 'Media Operations',
     department_id: 'media',
-    description: 'Operator pekerja media LokaMedia, pipeline generasi visual, serta pengelolaan aset foto Cloudflare R2.',
+    description: 'Operator pekerja media LokaMedia, eksekusi brief visual editorial (PED-1), pipeline generasi visual, serta pengelolaan aset foto Cloudflare R2.',
     avatar_key: 'media_ops_01',
-    capabilities: ['MEDIA_OPERATIONS'],
+    capabilities: ['MEDIA_OPERATIONS', 'VISUAL_STORYTELLING'],
     source_system: 'lokamedia_worker',
     active: true,
     sort_order: 4

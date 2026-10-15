@@ -13,6 +13,34 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PREMIUM-EDITORIAL-DEPTH-STAFF-WIRING: Budi Visual Storytelling Ownership, Visual Brief Contract, Truth Rules & Staff Orchestration Completion 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T11:35:00+07:00
+- **Status Operasional:** `PREMIUM_EDITORIAL_DEPTH_STAFF_WIRING_COMPLETE`
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Tujuan Rekayasa & Redaksional:**
+  - Melengkapi orkestrasi staf untuk milestone *Premium Editorial Depth System (PED-1)* dengan menutup kesenjangan kepemilikan operasional dimensi *Visual Storytelling* kepada **Budi / LokaMedia** (`media_operations`).
+  - Menegakkan audit menyeluruh status wiring staf kanonikal (`DOCUMENTED_ONLY`, `PROMPT_WIRED`, `RUNTIME_WIRED`, `SEMANTIC_GUARD_WIRED`).
+- **Implementasi & Invarian Utama:**
+  1. **Budi — Pemilik Visual Storytelling (`BUDI_VISUAL_STORYTELLING_OWNER`):** Budi (`lokamedia_worker_primary`) mengeksekusi brief visual editorial ketika Dimas mendeteksi `visual_storytelling_need = REQUIRED` atau ketika diminta secara eksplisit oleh staf editorial / Chief Editor. Budi tidak memiliki otoritas faktual mandiri (masukan bersumber dari bukti Irwan, narasi Joko, semantik Dimas, dan batasan editorial Nadia/Rina).
+  2. **Kontrak Brief Visual Terstruktur (`VisualBrief`):** Diterbitkan otomatis ketika kebutuhan visual berstatus `REQUIRED`, memuat: `article_slug`, `content_section`, `reader_problem`, `visual_goal`, `visual_class` (8 kelas kanonikal), `technical_truth_to_preserve`, `misrepresentation_risks`, `source_references`, `caption_intent`, dan `alt_text_intent`.
+  3. **Integritas Kebenaran Visual Konseptual (`CONCEPTUAL_VISUAL_TRUTH`):** Visual AI dilarang keras dilabeli sebagai `REAL_PHOTOGRAPH`, `REAL_PROJECT`, `FIELD_INSPECTION`, `MEASURED_SIMULATION`, atau `ENGINEERING_TEST_RESULT` tanpa bukti fisik riil. Visual AI explanatory wajib dilabeli sebagai `EDITORIAL_CONCEPT_VISUAL`.
+  4. **Kebijakan Anti-Kuota Dekorasi (`ZERO_DECORATION_QUOTAS`):** Dilarang memaksakan kuota gambar arbitrer ("setiap artikel butuh N gambar"). Jika berstatus `OPTIONAL` atau `NOT_REQUIRED`, sistem tidak memaksakan produksi media.
+  5. **Alur Peninjauan Editorial Visual (`VISUAL_EDITORIAL_REVIEW_LOOP`):** Alur produksi visual kanonikal: `Dimas (kebutuhan visual) -> Budi (brief/persiapan visual) -> Nadia (keterbacaan pembaca) -> Rina (kebenaran faktual/representasi) -> Human Approval -> Sari (publikasi)`. Budi memiliki otoritas publikasi = 0 (`BUDI_PUBLISHING_AUTHORITY = 0`), dilarang mempublikasi langsung, dan dilarang melangkahi atau memveto Nadia/Rina.
+  6. **Rantai Redaksional Utama Terpelihara:** Rantai utama tetap abadi: `Irwan -> Joko -> Nadia -> Rina -> Human Approval -> Sari`. Budi bertindak sebagai cabang pendukung media (media support branch), bukan bypass editorial.
+  7. **Audit Wiring Staf Kanonikal:**
+     - **Irwan:** `RUNTIME_WIRED` + `DOCUMENTED_ONLY` (Riset bukti, penelusuran standar, author-safe claims; turunan dari kontrak kanonikal bersama, zero fabrikasi wawasan lapangan).
+     - **Joko:** `PROMPT_WIRED` + `RUNTIME_WIRED` (Instruksi sistem kepenulisan PED-1 di `joko-prompt-builder.ts` + eksekusi `editorial-runtime.ts`).
+     - **Nadia:** `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (Evaluasi suara pembaca, kebermanfaatan keputusan, revisi jika kaya teknis minim panduan di `nadia-reader-voice.ts`).
+     - **Rina:** `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (Penegakan kepatuhan kebenaran, blokir klaim tangan pertama palsu di `human-quality.ts`).
+     - **Budi:** `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (Eksekusi brief visual editorial terstruktur, penegakan truth rules, registry `VISUAL_STORYTELLING` di `visual-brief.ts`).
+     - **Dimas:** `SEMANTIC_GUARD_WIRED` + `RUNTIME_WIRED` (Checklist semantik PED di `premium-editorial-depth-guard.ts`).
+     - **Jefry:** `DOCUMENTED_ONLY` + `SEMANTIC_GUARD_WIRED` (Pengawasan bayangan strategis pasif via `typesafe-jev.ts`, non-blocking, zero authority).
+- **Pengujian & Validasi:**
+  - 20 pengujian di `scripts/test-premium-editorial-depth.js` lulus 100%.
+  - Seluruh pengujian registri staf (`scripts/test-staff-registry.js`), Nadia (`scripts/test-nadia-reader-voice.js`), mutu manusia (`scripts/test-editorial-human-quality.js`), dan batas persetujuan LokaMedia (`scripts/test-lokamedia-human-approval-boundary.js`) lulus 100%.
+  - Typecheck (`npx tsc --noEmit`) dan Astro build (`npm run build`) sukses tanpa error.
+
 ### RANCANGLOKA-PREMIUM-EDITORIAL-DEPTH-1: Decision Depth 7Q+Next, Failure Anatomy, Micro-Personas, Method Transparency, Visual Storytelling & No-First-Hand Authority 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T11:15:00+07:00

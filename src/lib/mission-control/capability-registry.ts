@@ -116,6 +116,18 @@ const CANONICAL_CAPABILITIES: MissionControlCapabilityDefinition[] = [
     anomaly_classes: ['MEDIA_WORKER_DISABLED', 'CIRCUIT_BREAKER_OPEN', 'MEDIA_RETRY_EXHAUSTED', 'MEDIA_STAGE_FAILURE']
   },
   {
+    capability_id: 'VISUAL_STORYTELLING',
+    display_name: 'Eksekusi Visual Storytelling Editorial',
+    description: 'Penerjemahan brief visual editorial (PED-1) menjadi diagram konsep, potongan detail, atau matriks komparasi tanpa klaim proyek fiktif (publishing authority = 0).',
+    owning_department_id: 'media',
+    default_agent_id: 'lokamedia_worker_primary',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['lokamedia_worker', 'editorial_visual_brief'],
+    command_families: ['VISUAL_BRIEF_EXECUTION_REQUEST', 'VISUAL_TRUTH_VALIDATION'],
+    read_models: ['media', 'articles.visual_briefs'],
+    anomaly_classes: ['VISUAL_TRUTH_MISREPRESENTATION', 'VISUAL_APPROVAL_BYPASS']
+  },
+  {
     capability_id: 'PUBLICATION_OPERATIONS',
     display_name: 'Orkestrasi Operasi Publikasi',
     description: 'Manajemen kuota tayang harian, penegakan safety envelope, atomic dispatch, audit receipt Cloudflare D1.',

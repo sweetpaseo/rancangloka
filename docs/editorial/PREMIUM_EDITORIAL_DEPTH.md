@@ -141,11 +141,33 @@ Otoritas RancangLoka hadir dari **kejernihan logika, kekuatan bukti primer, peng
 
 ---
 
-## 8. Visual Storytelling & Conceptual Visual Truth
+## 8. Visual Storytelling, Budi Ownership & Conceptual Visual Truth
 
 Visual pada RancangLoka bertugas **menjelaskan**, bukan sekadar menghias halaman (*explain, not decorate*).
 
-### Kelas Visual Kanonikal
+### A. Kepemilikan Operasional: Budi (LokaMedia)
+- **Pemilik Kanonikal:** Budi (`lokamedia_worker_primary`, departemen `media_operations`).
+- **Tanggung Jawab:** Budi mengeksekusi brief visual editorial ketika Dimas mendeteksi `visual_storytelling_need = REQUIRED` atau ketika diminta secara eksplisit oleh staf editorial / Chief Editor.
+- **Batasan Otoritas Faktual:** Budi **TIDAK** menentukan kebenaran faktual secara mandiri. Seluruh masukan bersumber dari:
+  1. Bukti teknis Irwan (`evidence_researcher_lead`)
+  2. Konteks narasi naskah Joko (`content_writer_primary`)
+  3. Kebutuhan semantik Dimas (`system_telemetry`)
+  4. Batasan editorial & keterbacaan Nadia & Rina
+
+### B. Kontrak Brief Visual Terstruktur (Visual Brief Contract)
+Ketika Dimas menetapkan `visual_storytelling_need = REQUIRED`, sistem menerbitkan kontrak brief visual terstruktur yang memuat:
+- `article_slug`: Slug artikel sasaran
+- `content_section`: Bagian naskah yang membutuhkan dukungan visual
+- `reader_problem`: Kesulitan atau beban kognitif pembaca
+- `visual_goal`: Tujuan edukatif visual dalam menurunkan beban pemikiran
+- `visual_class`: Kelas visual kanonikal yang diizinkan (lihat di bawah)
+- `technical_truth_to_preserve`: Fakta/prinsip fisik yang wajib dipertahankan
+- `misrepresentation_risks`: Risiko misrepresentasi yang harus dicegah
+- `source_references`: Rujukan standar atau data empiris dari Irwan
+- `caption_intent`: Maksud takarir (caption) penjelas
+- `alt_text_intent`: Maksud teks aksesibilitas (alt text)
+
+### C. Kelas Visual Kanonikal yang Diizinkan (`visual_class`)
 1. `CONCEPT_DIAGRAM`: Diagram penjelasan prinsip kerja sistem/elemen
 2. `SECTION_DETAIL`: Potongan detail fisik konstruksi atau sambungan material
 3. `COMPARATIVE_VISUAL`: Infografis komparasi berdampingan
@@ -155,31 +177,54 @@ Visual pada RancangLoka bertugas **menjelaskan**, bukan sekadar menghias halaman
 7. `MATERIAL_DETAIL`: Detail tekstur, perforasi, atau kerapatan kisi-kisi bilah
 8. `DECISION_MATRIX`: Matriks komparasi responsif resolusi tinggi
 
-### Kebijakan Kuota Visual
-- **DILARANG** memberlakukan kuota gambar arbitrer (misalnya aturan kaku "setiap artikel harus memuat 5 gambar").
-- Rekomendasi visual ke Budi / LokaMedia diberikan hanya ketika penjelasan tekstual menimbulkan beban kognitif berlebih atau relasi spasial/geometri fisik sulit dipahami lewat kata-kata.
+### D. Integritas Kebenaran Visual (Conceptual Visual Truth Rules)
+Budi wajib menegakkan prinsip `CONCEPTUAL_VISUAL_TRUTH`.
+Visual hasil generasi AI **DILARANG KERAS** dilabeli atau diimplikasikan sebagai:
+- `REAL_PHOTOGRAPH`
+- `REAL_PROJECT`
+- `FIELD_INSPECTION`
+- `MEASURED_SIMULATION`
+- `ENGINEERING_TEST_RESULT`
 
-### Integritas Kebenaran Visual (Conceptual Visual Truth)
-Klasifikasi visual wajib transparan:
-- `EDITORIAL_CONCEPT_VISUAL`: Ilustrasi konsep redaksional (termasuk visual AI)
-- `REAL_PHOTOGRAPH`: Foto dokumentasi nyata (hanya jika ada bukti riil)
-- `DATA_VISUALIZATION`: Grafik plot data pengukuran resmi
-- `TECHNICAL_DIAGRAM`: Gambar teknik terukur
+kecuali jika ada bukti fisik riil terverifikasi. Untuk visual penjelasan berbasis AI, wajib menggunakan klasifikasi:
+- `EDITORIAL_CONCEPT_VISUAL`
 
-*Dilarang keras menyajikan visual AI konsep seolah-olah foto proyek asli atau hasil simulasi rekayasa terukur.*
+### E. Kebijakan Anti-Kuota Dekorasi (Zero Decoration Quotas)
+- **DILARANG** memberlakukan aturan kuota gambar arbitrer (misalnya aturan kaku "setiap artikel harus memuat 5 gambar").
+- Produksi visual hanya dilakukan jika secara nyata meningkatkan:
+  1. Pemahaman konsep (*understanding*)
+  2. Penalaran spasial (*spatial reasoning*)
+  3. Perbandingan berimbang (*comparison*)
+  4. Penjelasan titik rawan/kegagalan (*failure explanation*)
+  5. Pengambilan keputusan hunian (*decision-making*)
+- Jika kebutuhan visual berstatus `OPTIONAL` atau `NOT_REQUIRED`, sistem tidak memaksakan produksi media.
+
+### F. Alur Peninjauan Editorial Visual (Editorial Review Loop)
+Alur produksi dan verifikasi visual berlangsung strictly linear tanpa jalan pintas:
+$$\text{Dimas (Kebutuhan Visual)} \longrightarrow \text{Budi (Brief \& Persiapan Visual)} \longrightarrow \text{Nadia (Keterbacaan Pembaca)} \longrightarrow \text{Rina (Kebenaran Faktual/Representasi)} \longrightarrow \text{Persetujuan Manusia (Chief Editor)} \longrightarrow \text{Sari (Publikasi)}$$
+
+- **Otoritas Publikasi Budi = 0:** Budi dilarang menerbitkan media secara mandiri.
+- **Tanpa Bypass:** Budi tidak dapat melompati review Nadia atau Rina.
+- **Tanpa Hak Veto:** Budi tidak dapat mengesampingkan penolakan Nadia atau Rina.
 
 ---
 
-## 9. Pembagian Tanggung Jawab Staf Redaksi
+## 9. Pembagian Tanggung Jawab Staf Redaksi & Audit Wiring
 
-| Anggota Staf | Peran Kanonikal | Tanggung Jawab dalam Sistem Kedalaman Premium |
-| :--- | :--- | :--- |
-| **Irwan** | Lead Evidence Researcher | Memverifikasi fakta 7Q (What, Why, When, Where), mekanisme fisik di balik Failure Anatomy, batasan teknis material, dan rujukan standar resmi (SNI/PUPR). **Dilarang memalsukan wawasan lapangan.** |
-| **Joko** | Senior Content Writer | Mengintegrasikan seluruh dimensi 7Q + Next ke dalam narasi bahasa Indonesia yang mengalir alami, memaparkan Failure Anatomy dan skenario hunian secara proporsional. **Dilarang membuat subjudul mekanis atau testimoni palsu.** |
-| **Nadia** | Audience & Language Editor | Menguji kebermanfaatan pembaca: apakah pembaca terbantu memutuskan? Apakah skenario mudah dikenali? Apakah Failure Anatomy mendidik dan menenangkan, bukan menakut-nakuti? **Jika artikel kaya teknis namun minim panduan keputusan, Nadia menerbitkan `READER_VOICE_REVISION_REQUIRED`.** |
-| **Rina** | Editorial QA Lead | Memverifikasi kebenaran klaim: memastikan skenario tidak disamarkan sebagai proyek riil, memblokir klaim tangan pertama palsu (`FAKE_FIRST_HAND_AUTHORITY`), memeriksa konsistensi metodologi, dan menjamin Failure Anatomy berdasar konsensus teknis. |
-| **Dimas** | System Guard & Telemetry | Menegakkan checklist semantik terstruktur: `decision_depth`, `failure_anatomy`, `micro_persona_scenario`, `method_transparency`, `visual_storytelling_need`, dan `first_hand_claim_safety`. **Bebas dari penilaian hitung kata kasar.** |
-| **Jefry** | Management Shadow | Mengawasi kesehatan editorial secara pasif (Shadow Only): menandai draf yang panjang namun dangkal, ketiadaan wawasan kegagalan, atau indikasi klaim tangan pertama tanpa bukti. **Nol otoritas mutasi.** |
+| Anggota Staf | Peran Kanonikal | Tanggung Jawab dalam Sistem Kedalaman Premium | Status Wiring Teknis |
+| :--- | :--- | :--- | :--- |
+| **Irwan** | Lead Evidence Researcher | Memverifikasi fakta 7Q (What, Why, When, Where), mekanisme fisik di balik Failure Anatomy, batasan teknis material, dan rujukan standar resmi (SNI/PUPR). **Dilarang memalsukan wawasan lapangan.** | `RUNTIME_WIRED` (penelusuran sumber & ekstraksi bukti) + `DOCUMENTED_ONLY` (tanggung jawab PED diturunkan dari kontrak kanonikal bersama tanpa duplikasi prompt) |
+| **Joko** | Senior Content Writer | Mengintegrasikan seluruh dimensi 7Q + Next ke dalam narasi bahasa Indonesia yang mengalir alami, memaparkan Failure Anatomy dan skenario hunian secara proporsional. **Dilarang membuat subjudul mekanis atau testimoni palsu.** | `PROMPT_WIRED` (`joko-prompt-builder.ts`) + `RUNTIME_WIRED` (`editorial-runtime.ts`) |
+| **Nadia** | Audience & Language Editor | Menguji kebermanfaatan pembaca: apakah pembaca terbantu memutuskan? Apakah skenario mudah dikenali? Apakah Failure Anatomy mendidik dan menenangkan, bukan menakut-nakuti? **Jika artikel kaya teknis namun minim panduan keputusan, Nadia menerbitkan `READER_VOICE_REVISION_REQUIRED`.** | `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (`nadia-reader-voice.ts`) |
+| **Rina** | Editorial QA Lead | Memverifikasi kebenaran klaim: memastikan skenario tidak disamarkan sebagai proyek riil, memblokir klaim tangan pertama palsu (`FAKE_FIRST_HAND_AUTHORITY`), memeriksa konsistensi metodologi, dan menjamin Failure Anatomy berdasar konsensus teknis. | `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (`human-quality.ts`) |
+| **Budi** | Media Operations & Visual Operator | Mengeksekusi brief visual editorial terstruktur saat `visual_storytelling_need = REQUIRED` atau diminta Chief Editor. Menjaga `CONCEPTUAL_VISUAL_TRUTH` (`EDITORIAL_CONCEPT_VISUAL`). Zero kuota dekorasi. | `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (`visual-brief.ts`, `staff-registry.ts`) |
+| **Dimas** | System Guard & Telemetry | Menegakkan checklist semantik terstruktur: `decision_depth`, `failure_anatomy`, `micro_persona_scenario`, `method_transparency`, `visual_storytelling_need`, dan `first_hand_claim_safety`. **Bebas dari penilaian hitung kata kasar.** | `SEMANTIC_GUARD_WIRED` + `RUNTIME_WIRED` (`premium-editorial-depth-guard.ts`) |
+| **Jefry** | Management Shadow | Mengawasi kesehatan editorial secara pasif (Shadow Only): menandai draf yang panjang namun dangkal, ketiadaan wawasan kegagalan, atau indikasi klaim tangan pertama tanpa bukti. **Nol otoritas mutasi.** | `DOCUMENTED_ONLY` + `SEMANTIC_GUARD_WIRED` (shadow telemetry only via `typesafe-jev.ts`, non-blocking, zero authority) |
+
+### Rantai Redaksional Utama Tetap Abadi:
+$$\text{Irwan} \longrightarrow \text{Joko} \longrightarrow \text{Nadia} \longrightarrow \text{Rina} \longrightarrow \text{Human Approval} \longrightarrow \text{Sari}$$
+
+*Budi berada pada cabang pendukung media (media support branch), BUKAN jalan pintas editorial (editorial bypass).*
 
 ---
 
