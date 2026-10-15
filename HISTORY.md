@@ -13,6 +13,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-MASTER-ROADMAP-SYNC-AND-PRODUCT-REVIEW-AFFILIATE-REGISTRATION: Article Support Module Final Closure, Canonical Reporting Rule, Content Protection & Product Review Affiliate Roadmap Registration 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T23:30:00+07:00
+- **Status Operasional:** `MASTER_CHECKPOINT_SYNC_PASS` | `ARTICLE_SUPPORT_MODULE_CLOSED` | `PRODUCT_REVIEW_AFFILIATE_ROADMAP_REGISTERED`
+- **Otorisasi:** Chief Editor Synchronization Instruction
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Active Production Worker:** `1ec3dfd1-60b9-493f-aa48-ea63ea1dde0f`
+- **Poin Kunci Sinkronisasi & Penutupan Modul:**
+  1. *Penutupan Penuh Modul Dukungan Artikel (`ARTICLE_SUPPORT_MODULE = CLOSED`):*
+     - Modul dukungan artikel (*Article Support Module / Related Articles*) dinyatakan ditutup resmi setelah seluruh pengujian fungsional, performa payload, hierarki konten judul-sentris, dan keseimbangan visual mobile (375–390px) terbukti stabil di edge tanpa regresi desktop.
+     - Internal Link Engine V1 berstatus permanen: `CLOSED / LIVE / STABILIZED`.
+     - Invarian data semantik: Plane A Dynamic Active = 9, Plane B Inline = 0, orphan count = 0.
+     - SHA-256 naskah Artikel C terlindungi: `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28`.
+  2. *Penegakan Aturan Pelaporan Entitas Kanonikal (`CANONICAL_ENTITY_REPORTING_RULE`):*
+     - Setiap laporan penerimaan Antigravity wajib menggunakan ID, judul, slug, dan tipe relasi yang dibaca langsung dari data sumber kanonikal (tabel D1 `articles` dan `article_internal_links`).
+     - Dilarang keras memparafrasekan, mengarang, atau menamai ulang judul artikel secara manual di dalam laporan penerimaan untuk mencegah timbulnya sinyal pengawakutuan palsu (*false debugging signal*). Wajib membedakan data produksi nyata dari data fixture pengujian.
+  3. *Penegasan Urutan Roadmap Rekayasa Utama:*
+     - Urutan rekayasa utama adalah: `INTERNAL_LINK_ENGINE` (CLOSED) $\rightarrow$ `ARTICLE_SUPPORT_MODULE` (CLOSED) $\rightarrow$ **`CONTENT_PROTECTION-1` (NEXT MAJOR MILESTONE)** $\rightarrow$ **`PRODUCT_DECISION_ENGINE`** $\rightarrow$ **`INTELLIGENCE_LAYER-1`**. Urutan ini tidak boleh diubah.
+  4. *Registrasi Milestone Masa Depan `PRODUCT_REVIEW_AFFILIATE-1`:*
+     - Berinduk di bawah `PRODUCT_DECISION_ENGINE` dengan status: `PLANNED` | `DESIGN INTENT CAPTURED` | `IMPLEMENTATION NOT STARTED`.
+     - Permukaan interaksi: *Product Review Desk* di dalam Mission Control (bukan aplikasi terpisah).
+     - Alur redaksi Chief Editor: Pemisahan tegas antara `PRODUCT SOURCE URL` (input riset redaksi & bukti) dan `AFFILIATE CTA URL` (tujuan transaksi pembaca).
+     - Model Data Multi-Penawaran: Anti-pola "1 URL = 1 produk abadi" dihindari dengan entitas konseptual terpisah (`PRODUCT`, `VARIANT`, `OFFER`, `AFFILIATE_DESTINATION`, `PRICE_SNAPSHOT`, `SPEC_SNAPSHOT`, `REVIEW_SNAPSHOT`, `EVIDENCE_SOURCE`, `ARTICLE_PRODUCT_BINDING`).
+     - Proteksi Pergeseran Identitas Listing (`PRODUCT_IDENTITY_DRIFT`, `LISTING_REPURPOSE_SUSPECTED`) untuk mendeteksi perubahan SKU/model/penjual pada listing marketplace.
+     - Kebijakan Redaksi Review Produk: Default tipe `ANALYTICAL_REVIEW`. Dilarang menggunakan klaim pengujian fisik jika tidak diuji langsung (`SPONSORED_OR_AFFILIATE_CONTENT_CANNOT_CLAIM_HANDS_ON_TESTING_WITHOUT_PRIMARY_EVIDENCE`).
+     - Agregasi Ulasan Konsumen: Diklasifikasikan sebagai `USER_EXPERIENCE_SIGNAL` dengan kewajiban menyajikan tema positif dan negatif secara berimbang tanpa *cherry-picking*.
+     - Arsitektur Harga Dinamis: `PRICE_IS_DYNAMIC_COMMERCE_DATA_NOT_ARTICLE_PROSE`. Naskah artikel terbebas dari harga pasar transien; status kesegaran (`PRICE_FRESH`, `PRICE_RECENT`, `PRICE_STALE`, `PRICE_UNAVAILABLE`) disajikan via SSR edge tanpa *synchronous scraping* saat ada request pembaca.
+     - Tombol CTA Afiliasi & Etika Komersial: `COMMERCIAL_DESTINATION_IS_SEPARATE_FROM_EDITORIAL_EVIDENCE` dan `AFFILIATE_REVENUE_CANNOT_MODIFY_EDITORIAL_RECOMMENDATION`. Komisi tidak boleh mempengaruhi penilaian redaksi. Tautan menggunakan `rel="sponsored nofollow noopener"` dengan bahasa tenang non-agresif.
+     - Filosofi Utama: *"THE PRODUCT IS NOT THE CENTER OF THE ARTICLE. THE READER'S DECISION IS."*
+
 ### RANCANGLOKA-ARTICLE-SUPPORT-MOBILE-BALANCE-PRODUCTION: Responsive Mobile Card Visual Balance Polish, Full-Width Excerpt Flow & Zero DOM Duplication 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T23:00:00+07:00
