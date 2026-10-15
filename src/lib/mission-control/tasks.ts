@@ -77,11 +77,20 @@ export async function getPipelineBoard(db: any): Promise<PipelineBoardData> {
       }
     }
 
-    // Index media jobs by article_id
+    // Index media jobs by article_id (prioritizing active jobs, then newest)
     const mediaJobByArticle = new Map<number, any>();
     if (Array.isArray(mediaJobRows)) {
       for (const mjob of mediaJobRows) {
-        mediaJobByArticle.set(Number(mjob.article_id), mjob);
+        const artId = Number(mjob.article_id);
+        const existing = mediaJobByArticle.get(artId);
+        const isActive = ['QUEUED', 'LEASED', 'GENERATING', 'PROMPT_PREPARING', 'PROMPT_READY', 'PROMPT_SENDING', 'PROMPT_ACKNOWLEDGED', 'CAPTURING', 'CAPTURED', 'UPLOAD_QUEUED', 'UPLOADING'].includes(mjob.status);
+        const existingIsActive = existing && ['QUEUED', 'LEASED', 'GENERATING', 'PROMPT_PREPARING', 'PROMPT_READY', 'PROMPT_SENDING', 'PROMPT_ACKNOWLEDGED', 'CAPTURING', 'CAPTURED', 'UPLOAD_QUEUED', 'UPLOADING'].includes(existing.status);
+
+        if (!existing) {
+          mediaJobByArticle.set(artId, mjob);
+        } else if (isActive && !existingIsActive) {
+          mediaJobByArticle.set(artId, mjob);
+        }
       }
     }
 
@@ -146,7 +155,7 @@ export async function getPipelineBoard(db: any): Promise<PipelineBoardData> {
     if (Array.isArray(mediaJobRows)) {
       for (const mjob of mediaJobRows) {
         const artId = Number(mjob.article_id);
-        const alreadyCovered = tasks.some((t) => t.relatedArticleId === artId);
+        const alreadyCovered = tasks.some((t) => t.relatedMediaJobId === mjob.job_id);
         if (!alreadyCovered) {
           const isFailed = mjob.status === 'FAILED' || mjob.status === 'FAILED_TERMINAL';
           const stage: TaskStage = isFailed ? 'failed' : 'waiting_media';

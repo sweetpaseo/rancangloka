@@ -13,6 +13,45 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-DIMAS-BUDI-E2E-VISUAL-HANDOFF: Closing Editorial-to-Media Dispatch Bridge, Canonical media_jobs Integration, Mission Control Visibility & Full Review Gate 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T12:15:00+07:00
+- **Status Operasional:** `DIMAS_BUDI_E2E_HANDOFF_COMPLETE`
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Tujuan Rekayasa & Redaksional:**
+  - Menutup mata rantai yang hilang pada *Editorial-to-Media Dispatch Bridge* (`DIMAS_BUDI_E2E_HANDOFF_PARTIAL` $\rightarrow$ `DIMAS_BUDI_E2E_HANDOFF_COMPLETE`).
+  - Mengimplementasikan alur runtime nyata yang menghubungkan evaluasi kedalaman editorial Dimas ke antrean tugas kanonikal Budi (`lokamedia_worker_primary`), visibilitas Mission Control, mitigasi duplikasi idempoten, dan penegakan gerbang kesiapan publikasi.
+- **Implementasi & Invarian Utama:**
+  1. **Runtime Dispatch Bridge (`INVARIANT_EDITORIAL_MEDIA_DISPATCH_BRIDGE`):**
+     - Setelah naskah draf Joko diproduksi, evaluasi Premium Editorial Depth dijalankan secara otomatis di `editorial-runtime.ts`.
+     - Jika `visual_storytelling_need = REQUIRED`, sistem memanggil `generateEditorialVisualBriefs(...)` dan mendispatch brief terstruktur ke tabel kanonikal `media_jobs` via `dispatchEditorialVisualBriefs(...)`.
+     - Jika `OPTIONAL`, brief tidak didispatch secara otomatis (hanya jika diminta eksplisit oleh Chief Editor).
+     - Jika `NOT_REQUIRED`, nol tiket kerja media dibuat.
+  2. **Model Persistensi Tugas Tanpa Skema Baru:**
+     - Menggunakan tabel kanonikal `media_jobs` dengan atribut `role: 'inline'`, `slot_key: 'inline_<visual_class>_<seq>'`, `media_type: 'image'`, dan status `QUEUED`.
+     - Nilai `required_for_readiness` bernilai `1` untuk visual berstatus `REQUIRED`, sehingga artikel terblokir dari status `READY_FOR_REVIEW` sampai aset terverifikasi terpasang.
+  3. **Preservasi Metadata Brief Terstruktur Lossless:**
+     - Seluruh kontrak `VisualBrief` (`reader_problem`, `visual_goal`, `technical_truth_to_preserve`, `misrepresentation_risks`, `source_references`, `caption_intent`, `alt_text_intent`, `assigned_operator`, `visual_truth_label`) disimpan dalam `prompt` dengan blok terstruktur `--- BRIEF_PAYLOAD_JSON ---`.
+     - Fungsi `extractVisualBriefFromMediaJob` memulihkan objek brief asli secara 100% lossless.
+  4. **Idempotensi Ketat Tanpa Duplikasi:**
+     - Identitas berbasis kombinasi `article_id`, `slot_key`, dan `prompt_hash`.
+     - Evaluasi berulang pada draf yang sama menghasilkan status idempotent NO-OP dengan nol pembuatan pekerjaan duplikat.
+     - Perubahan substansial pada draf naskah memicu mekanisme *supersede* (`supersedeMediaJob`) untuk menjaga integritas versi.
+  5. **Visibilitas Mission Control & Pixel Office:**
+     - Mission Control (`getPipelineBoard`) mengenali tugas artikel dalam status `waiting_media` yang terikat pada `relatedMediaJobId`.
+     - `deriveStaffCurrentTask` dan `attributeTaskOwnership` mengatribusikan pekerjaan media ke Budi (`lokamedia_worker_primary`, departemen `media_operations`).
+     - `deriveCanonicalHandoffsFromPipeline` mencerminkan serah-terima tugas nyata dari Joko (`content_writer_primary`) ke Budi (`lokamedia_worker_primary`).
+     - Pixel Office mencerminkan tugas aktual; saat tidak ada tugas, staf berada dalam status siaga tanpa dekorasi palsu.
+  6. **Keselamatan Eksekusi & Otoritas Redaksional:**
+     - Pembuatan tiket kerja Budi berstatus `QUEUED` dan **TIDAK** mengizinkan pembuatan gambar otonom (media worker tetap tunduk pada dual-gate dan persetujuan operator).
+     - Budi memiliki otoritas publikasi = 0 (`BUDI_PUBLISHING_AUTHORITY = 0`), tidak dapat mempublikasikan langsung, dan tidak dapat memotong rantai redaksi kanonikal: `Budi (persiapan) -> Nadia (keterbacaan) -> Rina (kebenaran) -> Persetujuan Manusia -> Sari (publikasi)`.
+  7. **Integritas Artikel C Terpelihara:**
+     - Artikel C berstatus LIVE sama sekali tidak dimodifikasi. Hash kanonikal `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` terbukti 100% utuh tanpa retrofit.
+- **Pengujian & Validasi:**
+  - 14 pengujian lokal E2E di `scripts/test-dimas-budi-visual-handoff-e2e.js` lulus 100%.
+  - Seluruh rangkaian regresi lulus: `test-premium-editorial-depth.js` (20/20), `test-staff-registry.js` (16/16), `test-mission-control-expansion.js` (12/12), `test-nadia-reader-voice.js` (35/35), `test-editorial-human-quality.js` (22/22), `test-lokamedia-human-approval-boundary.js` (8/8).
+  - Typecheck (`npx tsc --noEmit`), Astro build (`npm run build`), dan pemeriksaan git diff (`git diff --check`) lulus tanpa catatan error.
+
 ### RANCANGLOKA-PREMIUM-EDITORIAL-DEPTH-STAFF-WIRING: Budi Visual Storytelling Ownership, Visual Brief Contract, Truth Rules & Staff Orchestration Completion 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T11:35:00+07:00

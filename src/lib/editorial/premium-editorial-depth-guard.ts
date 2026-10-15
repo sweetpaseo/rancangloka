@@ -337,6 +337,8 @@ export function evaluatePremiumEditorialDepth(
   if (isComparison) {
     visualStorytellingNeed = 'REQUIRED';
     recommendedVisualClasses.push('DECISION_MATRIX', 'COMPARATIVE_VISUAL');
+  } else if (contentFamily === 'reference' || contentFamily === 'glossary') {
+    visualStorytellingNeed = 'NOT_REQUIRED';
   }
 
   if (/\b(?:overhang|sudut matahari|lintasan matahari|orientasi|fasad barat)\b/i.test(text)) {

@@ -57,6 +57,19 @@ import {
   generateEditorialResearchQuestions
 } from './research-questions.ts';
 
+import {
+  evaluatePremiumEditorialDepth,
+  type PremiumEditorialDepthChecklist
+} from './premium-editorial-depth-guard.ts';
+
+import {
+  generateEditorialVisualBriefs,
+  dispatchEditorialVisualBriefs,
+  type VisualBrief
+} from './visual-brief.ts';
+
+import type { MediaJobRecord } from '../media/jobs-service.ts';
+
 export type EditorialRuntimeEventType =
   | 'EDITORIAL_JOB_STARTED'
   | 'JOKO_PROMPT_BUILT'
@@ -72,6 +85,8 @@ export type EditorialRuntimeEventType =
   | 'RESEARCH_REQUIRED_HALT'
   | 'MAX_RETRIES_EXHAUSTED'
   | 'PROMPT_DOMAIN_LEAK_DETECTED'
+  | 'VISUAL_BRIEFS_GENERATED'
+  | 'VISUAL_BRIEFS_DISPATCHED'
   | 'HUMAN_REVIEW_REQUIRED';
 
 export interface EditorialRuntimeEvent {
@@ -108,6 +123,7 @@ export interface EditorialJobInput {
     authorizedBy: string;
     timestamp?: string;
   };
+  db?: any;
 }
 
 export interface EditorialAttemptRecord {
@@ -168,6 +184,9 @@ export interface EditorialJobResult {
   qaResult: HumanWritingQualityResult | null;
   attempts: EditorialAttemptRecord[];
   traceEvents: EditorialRuntimeEvent[];
+  premiumDepthCheck?: PremiumEditorialDepthChecklist | null;
+  visualBriefs?: VisualBrief[];
+  dispatchedMediaJobs?: MediaJobRecord[];
   error?: string;
   errorCategory?: string;
 }
@@ -603,6 +622,67 @@ export async function executeEditorialDraftJob(
   const lastAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : null;
   const refinementAudit = currentDraft ? auditEditorialRefinement(currentDraft) : null;
 
+  // 7b. Premium Editorial Depth Evaluation & Budi Visual Storytelling Dispatch Bridge
+  let premiumDepthCheck: PremiumEditorialDepthChecklist | null = null;
+  let visualBriefs: VisualBrief[] = [];
+  let dispatchedMediaJobs: MediaJobRecord[] = [];
+
+  if (currentDraft) {
+    const contentFamily = intent?.primary_intent === 'COMPARISON' ? 'comparison' : 'explainer';
+    premiumDepthCheck = evaluatePremiumEditorialDepth(currentDraft, {
+      contentFamily,
+      title: input.requestedTitle || input.topic,
+      hasGenuineHandsOnEvidence: Boolean((input.evidencePack as any)?.hasGenuineHandsOnEvidence),
+      hasVerifiedPrimaryEvidence: Boolean((input.evidencePack as any)?.hasVerifiedPrimaryEvidence)
+    });
+
+    if (premiumDepthCheck.visual_storytelling_need === 'REQUIRED') {
+      const slug = (input.evidencePack as any)?.article_slug || input.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      visualBriefs = generateEditorialVisualBriefs({
+        article_slug: slug,
+        content: currentDraft,
+        title: input.requestedTitle || input.topic,
+        checklist: premiumDepthCheck,
+        evidenceReferences: (input.evidencePack as any)?.primary_sources?.map((s: any) => s.name || s.title) || []
+      });
+
+      if (input.db && visualBriefs.length > 0) {
+        const rawId = input.articleId ? Number(String(input.articleId).replace(/\D/g, '')) : null;
+        if (rawId && !isNaN(rawId) && rawId > 0) {
+          const dispatchRes = await dispatchEditorialVisualBriefs(input.db, {
+            articleId: rawId,
+            articleSlug: slug,
+            articleTitle: input.requestedTitle || input.topic,
+            briefs: visualBriefs,
+            draftContentHash: (input.evidencePack as any)?.content_hash
+          });
+          dispatchedMediaJobs = dispatchRes.dispatched_jobs;
+          addTraceEvent(
+            'VISUAL_BRIEFS_DISPATCHED',
+            'content_writer_primary',
+            `Dimas menetapkan visual REQUIRED: ${visualBriefs.length} visual brief dikirim ke antrean Budi (lokamedia_worker_primary). Dispatched: ${dispatchRes.dispatched_jobs.length}, Existing: ${dispatchRes.existing_jobs.length}.`,
+            {
+              visualNeed: 'REQUIRED',
+              briefCount: visualBriefs.length,
+              dispatchedCount: dispatchRes.dispatched_jobs.length,
+              existingCount: dispatchRes.existing_jobs.length
+            }
+          );
+        }
+      } else if (visualBriefs.length > 0) {
+        addTraceEvent(
+          'VISUAL_BRIEFS_GENERATED',
+          'content_writer_primary',
+          `Dimas menetapkan visual REQUIRED: ${visualBriefs.length} visual brief disiapkan untuk operator Budi.`,
+          {
+            visualNeed: 'REQUIRED',
+            briefCount: visualBriefs.length
+          }
+        );
+      }
+    }
+  }
+
   return {
     jobId: `job_${taskId}`,
     taskId,
@@ -614,6 +694,9 @@ export async function executeEditorialDraftJob(
     draftEnvelope: lastAttempt?.draftEnvelope || null,
     groundingAudit: lastAttempt?.groundingAudit || null,
     refinementAudit,
+    premiumDepthCheck,
+    visualBriefs,
+    dispatchedMediaJobs,
     totalAttempts: attempts.length,
     authorProvenance,
     qaResult: lastQaResult,

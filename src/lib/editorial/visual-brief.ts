@@ -36,13 +36,26 @@ import {
   type VisualStorytellingClass,
   type VisualTruthType,
   type PremiumEditorialDepthChecklist,
-  INVARIANT_CONCEPTUAL_VISUAL_TRUTH
+  INVARIANT_CONCEPTUAL_VISUAL_TRUTH,
+  evaluatePremiumEditorialDepth
 } from './premium-editorial-depth-guard.ts';
+
+import {
+  assertValidSlotKey,
+  computePromptHash,
+  getMediaJobById,
+  supersedeMediaJob,
+  type MediaJobRecord,
+  PRIORITY_BY_NAME,
+  JOB_STATUS_QUEUED
+} from '../media/jobs-service.ts';
 
 export const INVARIANT_BUDI_VISUAL_STORYTELLING_OWNER = 'BUDI_VISUAL_STORYTELLING_OWNER';
 export const INVARIANT_ZERO_DECORATION_QUOTAS = 'ZERO_DECORATION_QUOTAS';
 export const INVARIANT_VISUAL_EDITORIAL_REVIEW_LOOP = 'VISUAL_EDITORIAL_REVIEW_LOOP';
+export const INVARIANT_EDITORIAL_MEDIA_DISPATCH_BRIDGE = 'EDITORIAL_MEDIA_DISPATCH_BRIDGE';
 export const BUDI_PUBLISHING_AUTHORITY = 0;
+export const BRIEF_PAYLOAD_MARKER = '--- BRIEF_PAYLOAD_JSON ---';
 
 export const PROHIBITED_AI_PROVENANCE_LABELS = [
   'REAL_PHOTOGRAPH',
@@ -387,4 +400,333 @@ export function canBudiPublish(): boolean {
  */
 export function canBudiOverrideReviewers(): boolean {
   return false;
+}
+
+/**
+ * Encodes a VisualBrief into a prompt string that preserves both human-readable instructions
+ * for the media worker operator (Budi) and the complete structured JSON payload for lossless traceability.
+ */
+export function formatVisualBriefToPrompt(brief: VisualBrief): string {
+  const header = `[EDITORIAL_VISUAL_BRIEF: ${brief.visual_class}]`;
+  const humanReadable = [
+    header,
+    `Section: ${brief.content_section}`,
+    `Goal: ${brief.visual_goal}`,
+    `Reader Problem: ${brief.reader_problem}`,
+    `Technical Truth: ${brief.technical_truth_to_preserve}`,
+    `Misrepresentation Risks: ${brief.misrepresentation_risks.join('; ')}`,
+    `Sources: ${brief.source_references.join(', ')}`,
+    `Caption Intent: ${brief.caption_intent}`,
+    `Alt Text Intent: ${brief.alt_text_intent}`,
+    `Assigned Operator: ${brief.assigned_operator}`,
+    `Visual Truth Label: ${brief.visual_truth_label}`,
+    `Editorial QA Required: ${brief.requires_editorial_qa ? 'YES' : 'NO'}`,
+    `Human Approval Required: ${brief.requires_human_approval ? 'YES' : 'NO'}`
+  ].join('\n');
+
+  return `${humanReadable}\n${BRIEF_PAYLOAD_MARKER}\n${JSON.stringify(brief)}`;
+}
+
+/**
+ * Reconstitutes the original VisualBrief from a MediaJobRecord's prompt losslessly.
+ */
+export function extractVisualBriefFromMediaJob(job: Partial<MediaJobRecord>): VisualBrief | null {
+  if (!job.prompt) return null;
+  const markerIdx = job.prompt.indexOf(BRIEF_PAYLOAD_MARKER);
+  if (markerIdx === -1) return null;
+  try {
+    const jsonStr = job.prompt.substring(markerIdx + BRIEF_PAYLOAD_MARKER.length).trim();
+    return JSON.parse(jsonStr) as VisualBrief;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deterministically derives a valid slot key for a visual brief.
+ * Conforms to pattern /^[a-z][a-z0-9_]{1,63}$/.
+ */
+export function deriveSlotKeyForBrief(brief: VisualBrief, index: number = 0): string {
+  const cleanClass = brief.visual_class.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const slotKey = `inline_${cleanClass}_${index + 1}`;
+  assertValidSlotKey(slotKey);
+  return slotKey;
+}
+
+export interface DispatchEditorialVisualBriefsParams {
+  articleId: number;
+  articleSlug: string;
+  articleTitle: string;
+  briefs: VisualBrief[];
+  draftContentHash?: string;
+  isExplicitlyRequested?: boolean;
+  priority?: keyof typeof PRIORITY_BY_NAME | number;
+}
+
+export interface EditorialVisualDispatchResult {
+  article_id: number;
+  article_slug: string;
+  total_briefs: number;
+  dispatched_jobs: MediaJobRecord[];
+  existing_jobs: MediaJobRecord[];
+  skipped_count: number;
+  idempotent_noops: number;
+}
+
+/**
+ * Dispatches structured editorial visual briefs to the canonical media_jobs queue.
+ *
+ * Invariants:
+ * 1. Safely reuses media_jobs queue (role = 'inline', slot_key = 'inline_...').
+ * 2. Idempotent: repeated evaluations of the same draft do NOT create duplicate jobs.
+ * 3. Traceability: VisualBrief contract fields are preserved losslessly.
+ * 4. Gated execution: Job status is 'QUEUED'; zero autonomous media generation is authorized.
+ * 5. Publication readiness: When visual_storytelling_need = REQUIRED, required_for_readiness = 1.
+ * 6. Zero bypass: Budi cannot publish; Nadia/Rina/Human Approval remain mandatory downstream gates.
+ */
+export async function dispatchEditorialVisualBriefs(
+  db: any,
+  params: DispatchEditorialVisualBriefsParams
+): Promise<EditorialVisualDispatchResult> {
+  const {
+    articleId,
+    articleSlug,
+    articleTitle,
+    briefs,
+    draftContentHash,
+    isExplicitlyRequested = false,
+    priority
+  } = params;
+
+  if (!articleId || articleId <= 0) {
+    throw new Error('dispatchEditorialVisualBriefs: articleId valid wajib disediakan.');
+  }
+
+  const result: EditorialVisualDispatchResult = {
+    article_id: articleId,
+    article_slug: articleSlug,
+    total_briefs: briefs ? briefs.length : 0,
+    dispatched_jobs: [],
+    existing_jobs: [],
+    skipped_count: 0,
+    idempotent_noops: 0
+  };
+
+  if (!briefs || briefs.length === 0) {
+    return result;
+  }
+
+  // Check article existence in database
+  const article = await db
+    .prepare('SELECT id, slug, title, status, content_hash FROM articles WHERE id = ? LIMIT 1')
+    .bind(articleId)
+    .first();
+
+  if (!article) {
+    throw new Error(`dispatchEditorialVisualBriefs: Article ID ${articleId} tidak ditemukan.`);
+  }
+
+  for (let i = 0; i < briefs.length; i++) {
+    const brief = briefs[i];
+    const slotKey = deriveSlotKeyForBrief(brief, i);
+    assertValidSlotKey(slotKey);
+
+    const formattedPrompt = formatVisualBriefToPrompt(brief);
+    const promptVersion = 1;
+    const promptHash = await computePromptHash(formattedPrompt, promptVersion);
+
+    // Query active media job for this slot
+    const activeJob = await db
+      .prepare(
+        `
+        SELECT job_id, article_id, article_slug, article_title, role, slot_key, sequence,
+               media_type, prompt, prompt_version, prompt_hash, alt_text, aspect_ratio,
+               target_width, target_height, required_for_readiness, priority, status,
+               lease_owner, lease_expires_at, heartbeat_at, attempt, max_attempts,
+               next_retry_at, last_error_code, last_error_message_safe, idempotency_key,
+               submitted_at, completed_at, job_revision, superseded_by_job_id, created_at, updated_at
+        FROM media_jobs
+        WHERE article_id = ?
+          AND slot_key = ?
+          AND status NOT IN ('COMPLETE', 'FAILED_TERMINAL', 'SUPERSEDED', 'CANCELLED')
+        LIMIT 1
+      `
+      )
+      .bind(articleId, slotKey)
+      .first();
+
+    if (activeJob) {
+      // If exact same prompt hash, this is an idempotent re-evaluation -> NO-OP!
+      if (activeJob.prompt_hash === promptHash) {
+        result.existing_jobs.push(activeJob as MediaJobRecord);
+        result.idempotent_noops++;
+        continue;
+      }
+
+      // If draft content changed materially and active job is still queued/waiting, supersede it
+      if (draftContentHash && article.content_hash && activeJob.prompt_hash !== promptHash) {
+        const newJobId = `mjob_evb_${articleId}_${slotKey}_v2`;
+        await supersedeMediaJob(db, activeJob.job_id, newJobId);
+        // Continue to insert updated job
+      } else {
+        // Active job already in progress by worker/operator, retain without duplicate
+        result.existing_jobs.push(activeJob as MediaJobRecord);
+        result.skipped_count++;
+        continue;
+      }
+    }
+
+    // Determine publication readiness requirement
+    // Invariant: REQUIRED visual storytelling need means genuinely required for publication readiness (1).
+    // Explicitly requested on OPTIONAL articles is NOT mandatory for readiness (0).
+    const isRequiredForReadiness = brief.requires_editorial_qa && brief.requires_human_approval && !isExplicitlyRequested ? 1 : 0;
+
+    const deterministicJobId = `mjob_evb_${articleId}_${slotKey}`;
+    const normalizedPriority = priority
+      ? (typeof priority === 'number' ? priority : PRIORITY_BY_NAME[priority] || 100)
+      : 100;
+
+    await db
+      .prepare(
+        `
+        INSERT INTO media_jobs (
+          job_id, article_id, article_slug, article_title,
+          role, slot_key, sequence, media_type, prompt, prompt_version, prompt_hash, alt_text,
+          aspect_ratio, target_width, target_height, required_for_readiness, priority,
+          status, attempt, max_attempts, job_revision
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+      )
+      .bind(
+        deterministicJobId,
+        articleId,
+        article.slug,
+        article.title,
+        'inline',
+        slotKey,
+        i + 1,
+        'image',
+        formattedPrompt,
+        promptVersion,
+        promptHash,
+        brief.alt_text_intent.trim(),
+        '16:9',
+        1200,
+        675,
+        isRequiredForReadiness,
+        normalizedPriority,
+        JOB_STATUS_QUEUED,
+        0,
+        3,
+        1
+      )
+      .run();
+
+    // Audit event in media_job_events
+    try {
+      const eventId = `mje_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      await db
+        .prepare(
+          `
+          INSERT INTO media_job_events (
+            event_id, job_id, event_type, stage, attempt, safe_payload_json
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `
+        )
+        .bind(
+          eventId,
+          deterministicJobId,
+          'JOB_PROGRESS',
+          'QUEUED',
+          0,
+          JSON.stringify({
+            brief_id: brief.brief_id,
+            visual_class: brief.visual_class,
+            assigned_operator: brief.assigned_operator,
+            required_for_readiness: isRequiredForReadiness,
+            source: 'EDITORIAL_DISPATCH_BRIDGE'
+          })
+        )
+        .run();
+    } catch {
+      // Safe fallback if events table is absent in mock contexts
+    }
+
+    const createdJob = await getMediaJobById(db, deterministicJobId);
+    if (createdJob) {
+      result.dispatched_jobs.push(createdJob);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * End-to-End helper: evaluates draft depth and, if visual need is REQUIRED,
+ * generates visual briefs and dispatches them to canonical media_jobs.
+ */
+export async function evaluateAndDispatchEditorialVisuals(params: {
+  db?: any;
+  articleId?: number;
+  content: string;
+  title: string;
+  slug: string;
+  contentFamily?: string;
+  evidencePack?: any;
+  isExplicitlyRequested?: boolean;
+  priority?: keyof typeof PRIORITY_BY_NAME | number;
+}): Promise<{
+  checklist: PremiumEditorialDepthChecklist;
+  briefs: VisualBrief[];
+  dispatchResult: EditorialVisualDispatchResult | null;
+}> {
+  const {
+    db,
+    articleId,
+    content,
+    title,
+    slug,
+    contentFamily = 'explainer',
+    evidencePack,
+    isExplicitlyRequested = false,
+    priority
+  } = params;
+
+  // 1. Evaluate Premium Editorial Depth
+  const checklist = evaluatePremiumEditorialDepth(content, {
+    contentFamily,
+    title,
+    hasGenuineHandsOnEvidence: Boolean(evidencePack?.hasGenuineHandsOnEvidence),
+    hasVerifiedPrimaryEvidence: Boolean(evidencePack?.hasVerifiedPrimaryEvidence)
+  });
+
+  // 2. Generate briefs based on checklist need
+  const evidenceRefs = evidencePack?.primary_sources?.map((s: any) => s.name || s.title) || [];
+  const briefs = generateEditorialVisualBriefs({
+    article_slug: slug,
+    content,
+    title,
+    checklist,
+    evidenceReferences: evidenceRefs,
+    isExplicitlyRequested
+  });
+
+  // 3. Dispatch only if DB and articleId provided and briefs exist
+  let dispatchResult: EditorialVisualDispatchResult | null = null;
+  if (db && articleId && briefs.length > 0) {
+    dispatchResult = await dispatchEditorialVisualBriefs(db, {
+      articleId,
+      articleSlug: slug,
+      articleTitle: title,
+      briefs,
+      isExplicitlyRequested,
+      priority
+    });
+  }
+
+  return {
+    checklist,
+    briefs,
+    dispatchResult
+  };
 }

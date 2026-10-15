@@ -207,6 +207,20 @@ $$\text{Dimas (Kebutuhan Visual)} \longrightarrow \text{Budi (Brief \& Persiapan
 - **Tanpa Bypass:** Budi tidak dapat melompati review Nadia atau Rina.
 - **Tanpa Hak Veto:** Budi tidak dapat mengesampingkan penolakan Nadia atau Rina.
 
+### G. Runtime Dispatch Bridge (Editorial-to-Media Handoff)
+- **Status:** `END_TO_END_RUNTIME_WIRED` (`dispatchEditorialVisualBriefs`, `evaluateAndDispatchEditorialVisuals`).
+- **Alur Eksekusi Nyata:**
+  1. Joko menyelesaikan draf naskah (`editorial-runtime.ts`).
+  2. Dimas mengevaluasi naskah dengan `evaluatePremiumEditorialDepth`.
+  3. Ketika `visual_storytelling_need = REQUIRED`, sistem memanggil `generateEditorialVisualBriefs(...)`.
+  4. Kontrak brief terstruktur didispatch ke antrean kanonikal `media_jobs` melalui `dispatchEditorialVisualBriefs(db, ...)` dengan status `QUEUED`, peran `inline`, dan `required_for_readiness = 1`.
+  5. Seluruh metadata brief (`reader_problem`, `visual_goal`, `technical_truth_to_preserve`, `misrepresentation_risks`, `source_references`, `caption_intent`, `alt_text_intent`, dll.) dipertahankan secara lengkap dan dapat dipulihkan secara lossless melalui `extractVisualBriefFromMediaJob`.
+  6. **Idempotensi Ketat:** Evaluasi berulang pada draf yang sama tidak menciptakan duplikasi pekerjaan media (idempotent NO-OP).
+  7. **Visibilitas Mission Control:** Tugas berstatus `waiting_media`, subsistem `media` (atau relasi `relatedMediaJobId`), diatribusikan ke Budi (`lokamedia_worker_primary`, departemen `media_operations`). `deriveStaffCurrentTask` dan `deriveCanonicalHandoffsFromPipeline` mencerminkan tugas nyata ini tanpa dekorasi palsu.
+  8. **Keselamatan Eksekusi Media:** Pembuatan tiket tugas Budi **TIDAK** mengizinkan pembuatan gambar otonom. Pekerjaan tetap berada dalam status antrean (`QUEUED`) menunggu tindakan manusia / dual-gate.
+  9. **Pencegahan Publikasi (Publication Readiness):** Visual yang berstatus `REQUIRED` secara sungguh-sungguh memblokir kesiapan penerbitan artikel (`required_for_readiness = 1`) hingga aset yang disetujui terpasang. Visual `OPTIONAL` tidak memblokir publikasi.
+  10. **Rantai Peninjauan:** Budi (`BUDI_PUBLISHING_AUTHORITY = 0`) menyiapkan aset $\longrightarrow$ Nadia memeriksa keterbacaan $\longrightarrow$ Rina memverifikasi kebenaran representasi $\longrightarrow$ Chief Editor memberikan persetujuan manusia $\longrightarrow$ Sari mempublikasikan.
+
 ---
 
 ## 9. Pembagian Tanggung Jawab Staf Redaksi & Audit Wiring
@@ -217,7 +231,7 @@ $$\text{Dimas (Kebutuhan Visual)} \longrightarrow \text{Budi (Brief \& Persiapan
 | **Joko** | Senior Content Writer | Mengintegrasikan seluruh dimensi 7Q + Next ke dalam narasi bahasa Indonesia yang mengalir alami, memaparkan Failure Anatomy dan skenario hunian secara proporsional. **Dilarang membuat subjudul mekanis atau testimoni palsu.** | `PROMPT_WIRED` (`joko-prompt-builder.ts`) + `RUNTIME_WIRED` (`editorial-runtime.ts`) |
 | **Nadia** | Audience & Language Editor | Menguji kebermanfaatan pembaca: apakah pembaca terbantu memutuskan? Apakah skenario mudah dikenali? Apakah Failure Anatomy mendidik dan menenangkan, bukan menakut-nakuti? **Jika artikel kaya teknis namun minim panduan keputusan, Nadia menerbitkan `READER_VOICE_REVISION_REQUIRED`.** | `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (`nadia-reader-voice.ts`) |
 | **Rina** | Editorial QA Lead | Memverifikasi kebenaran klaim: memastikan skenario tidak disamarkan sebagai proyek riil, memblokir klaim tangan pertama palsu (`FAKE_FIRST_HAND_AUTHORITY`), memeriksa konsistensi metodologi, dan menjamin Failure Anatomy berdasar konsensus teknis. | `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (`human-quality.ts`) |
-| **Budi** | Media Operations & Visual Operator | Mengeksekusi brief visual editorial terstruktur saat `visual_storytelling_need = REQUIRED` atau diminta Chief Editor. Menjaga `CONCEPTUAL_VISUAL_TRUTH` (`EDITORIAL_CONCEPT_VISUAL`). Zero kuota dekorasi. | `RUNTIME_WIRED` + `SEMANTIC_GUARD_WIRED` (`visual-brief.ts`, `staff-registry.ts`) |
+| **Budi** | Media Operations & Visual Operator | Mengeksekusi brief visual editorial terstruktur saat `visual_storytelling_need = REQUIRED` atau diminta Chief Editor. Menjaga `CONCEPTUAL_VISUAL_TRUTH` (`EDITORIAL_CONCEPT_VISUAL`). Zero kuota dekorasi. | `RUNTIME_WIRED` + `END_TO_END_DISPATCH_WIRED` (`visual-brief.ts`, `editorial-runtime.ts`, `media_jobs`, `tasks.ts`, `staff-registry.ts`) |
 | **Dimas** | System Guard & Telemetry | Menegakkan checklist semantik terstruktur: `decision_depth`, `failure_anatomy`, `micro_persona_scenario`, `method_transparency`, `visual_storytelling_need`, dan `first_hand_claim_safety`. **Bebas dari penilaian hitung kata kasar.** | `SEMANTIC_GUARD_WIRED` + `RUNTIME_WIRED` (`premium-editorial-depth-guard.ts`) |
 | **Jefry** | Management Shadow | Mengawasi kesehatan editorial secara pasif (Shadow Only): menandai draf yang panjang namun dangkal, ketiadaan wawasan kegagalan, atau indikasi klaim tangan pertama tanpa bukti. **Nol otoritas mutasi.** | `DOCUMENTED_ONLY` + `SEMANTIC_GUARD_WIRED` (shadow telemetry only via `typesafe-jev.ts`, non-blocking, zero authority) |
 
