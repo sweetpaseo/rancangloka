@@ -60,10 +60,12 @@ Hari ini seluruh agenda rekayasa perangkat lunak, arsitektur suara redaksi (*Hou
 | **Berkas Naskah** | `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md` | Utuh |
 | **SHA-256 Terkunci** | `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` | Terverifikasi |
 | **Status Publikasi** | **`UNPUBLISHED`** | **Terkunci Aman** |
+| **Persetujuan Konten Revisi** | `REVISED_CONTENT_APPROVED` (Disetujui Chief Editor via perintah eksplisit) | Disetujui |
 | **Evaluasi Nadia** | `READER_VOICE_PASS` (Skor: 98/100, Warmth: 100/100, Local Grounding: 100/100) | Lulus |
 | **Evaluasi Rina** | `HUMAN_WRITING_PASS` (Skor: 89/100, 0 overreach, 0 softened warnings) | Lulus |
 | **Evaluasi Dimas** | `local_cultural_grounding: PASS`, `indonesian_context_fit: PASS`, `translationese_risk: PASS`, `cultural_generalization_safety: PASS` | Lulus |
-| **Tindakan Lanjutan** | Menunggu tinjauan membaca manusia (*Human Reading Preview*) oleh Chief Editor | Pending |
+| **Gerbang Alur Kerja** | `CHIEF_EDITOR_FINAL_PUBLICATION_AUTHORIZATION_REQUIRED` | Menunggu Otorisasi |
+| **Tindakan Lanjutan** | Naskah revisi telah dibaca & disetujui Chief Editor (`REVISED_CONTENT_APPROVED`). Tidak memerlukan pembacaan ulang kecuali naskah berubah. Artikel siap untuk otorisasi publikasi final; status tetap **`UNPUBLISHED`**. | Siap Otorisasi |
 
 > [!CAUTION]
 > DILARANG mempublikasikan Artikel C secara otomatis. Dilarang memutasi D1 atau R2 produksi untuk Artikel C sebelum otorisasi eksplisit tertulis dari Chief Editor.
@@ -106,6 +108,6 @@ Hari ini seluruh agenda rekayasa perangkat lunak, arsitektur suara redaksi (*Hou
 
 ## 5. Rencana Tindakan Sesi Berikutnya
 
-1. **Human Reading Preview Artikel C:** Chief Editor membaca naskah Artikel C yang telah disempurnakan dengan Warm Advisory Tone dan Local Cultural Grounding melalui render lokal.
-2. **Keputusan Otorisasi Publikasi Artikel C:** Bila Chief Editor puas, lakukan alur penerbitan kanonikal melalui Human Approval Gate.
+1. **Otorisasi Publikasi Final Artikel C:** Menunggu perintah eksplisit tertulis dari Chief Editor (`AUTHORIZE ARTICLE C FINAL PUBLICATION`). Naskah revisi telah dibaca dan disetujui penuh (`REVISED_CONTENT_APPROVED`), tanpa perlu tinjauan membaca ulang kecuali konten mengalami modifikasi.
+2. **Eksekusi Publikasi Kanonikal:** Setelah otorisasi final terbit, jalankan alur publikasi kanonikal via Sari (ingest D1 artikel, tautkan media unggulan `ast_4ee0363758a41bd45aae7353`, dan catat cryptographic approval receipt).
 3. **Persiapan Rilis:** Bila diinstruksikan Chief Editor, persiapkan promosi branch `feat/jev-lokamedia-integration` ke branch utama untuk deployment produksi.
