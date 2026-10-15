@@ -1367,12 +1367,12 @@ async function runTestSuite() {
     // Article 9 -> 8,6 (2 cards)
     const liveGraphDb = new InMemoryD1Mock();
     const liveArticles = [
-      { id: 5, slug: 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia', title: 'Kusen Aluminium vs UPVC', description: 'Perbandingan kusen aluminium dan uPVC untuk rumah tropis.', featured_image: 'https://images.unsplash.com/photo-5?w=1200', image_alt: 'Kusen aluminium' },
-      { id: 6, slug: 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman', title: 'Rekayasa Ventilasi Silang', description: 'Cara membaca jalur udara dan batas ventilasi silang.', featured_image: 'https://images.unsplash.com/photo-6?w=1200', image_alt: 'Ventilasi silang' },
-      { id: 7, slug: 'panduan-memilih-genteng-rumah-tropis', title: 'Panduan Memilih Genteng', description: 'Panduan komparasi genteng tanah liat, beton, dan metal.', featured_image: 'https://images.unsplash.com/photo-7?w=1200', image_alt: 'Genteng tanah liat' },
-      { id: 8, slug: 'insulasi-atap-peredam-panas-ruang-bawah-genteng', title: 'Insulasi Atap Peredam Panas', description: 'Karakter konduksi panas dan aplikasi insulasi bawah genteng.', featured_image: 'https://images.unsplash.com/photo-8?w=1200', image_alt: 'Insulasi aluminium foil' },
-      { id: 9, slug: 'ventilasi-atap-solusi-loteng-panas', title: 'Ventilasi Atap Solusi Loteng Panas', description: 'Solusi bukaan loteng untuk melepas panas radiasi atap.', featured_image: 'https://images.unsplash.com/photo-9?w=1200', image_alt: 'Turbine ventilator' },
-      { id: 99, slug: 'artikel-tanpa-gambar', title: 'Artikel Tanpa Gambar', description: 'Deskripsi artikel tanpa gambar.', featured_image: '', image_alt: '' }
+      { id: 5, slug: 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia', title: 'Kusen Aluminium vs UPVC', description: 'Perbandingan kusen aluminium dan uPVC untuk rumah tropis.', content_md: '# Kusen Aluminium vs UPVC\n\nMemilih material bukaan jendela dan pintu untuk rumah di Indonesia sering kali menghadirkan dilema nyata.', featured_image: 'https://images.unsplash.com/photo-5?w=1200', image_alt: 'Kusen aluminium' },
+      { id: 6, slug: 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman', title: 'Rekayasa Ventilasi Silang', description: 'Cara membaca jalur udara dan batas ventilasi silang.', content_md: '# Rekayasa Ventilasi Silang\n\nAda kamar yang sudah memiliki jendela di dua sisi, tetapi tetap terasa pengap. Pada siang hari, daun jendela dibuka lebar.', featured_image: 'https://images.unsplash.com/photo-6?w=1200', image_alt: 'Ventilasi silang' },
+      { id: 7, slug: 'panduan-memilih-genteng-rumah-tropis', title: 'Panduan Memilih Genteng', description: 'Panduan komparasi genteng tanah liat, beton, dan metal.', content_md: '# Panduan Memilih Genteng\n\nSebelum memilih antara mengurangi kelembapan atau mengganti kaca, keluhan jendela yang basah berembun pada pagi hari sering dihadapi pemilik rumah tanpa diagnosis yang cukup kuat.', featured_image: 'https://images.unsplash.com/photo-7?w=1200', image_alt: 'Genteng tanah liat' },
+      { id: 8, slug: 'insulasi-atap-peredam-panas-ruang-bawah-genteng', title: 'Insulasi Atap Peredam Panas', description: 'Karakter konduksi panas dan aplikasi insulasi bawah genteng.', content_md: '# Insulasi Atap Peredam Panas\n\nSebelum memilih antara memasang peneduh matahari atau mengganti kusen, keluhan kusen aluminium yang terasa panas menyengat saat siang hari sering dihadapi pemilik rumah.', featured_image: 'https://images.unsplash.com/photo-8?w=1200', image_alt: 'Insulasi aluminium foil' },
+      { id: 9, slug: 'ventilasi-atap-solusi-loteng-panas', title: 'Ventilasi Atap Solusi Loteng Panas', description: 'Solusi bukaan loteng untuk melepas panas radiasi atap.', content_md: '# Ventilasi Atap Solusi Loteng Panas\n\nKamar tidur di lantai dua terasa panas dan pengap setiap sore meski AC sudah menyala dari siang?', featured_image: 'https://images.unsplash.com/photo-9?w=1200', image_alt: 'Turbine ventilator' },
+      { id: 99, slug: 'artikel-tanpa-gambar', title: 'Artikel Tanpa Gambar', description: 'Deskripsi artikel tanpa gambar.', content_md: '# Artikel Tanpa Gambar\n\nIni adalah naskah pembuka artikel tanpa gambar untuk pengujian.', featured_image: '', image_alt: '' }
     ];
 
     for (const a of liveArticles) {
@@ -1385,11 +1385,11 @@ async function runTestSuite() {
       // 6 -> 9
       { source_article_id: 6, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Ventilasi atap melengkapi ventilasi silang dinding' },
       // 7 -> 8, 9
-      { source_article_id: 7, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Peredam panas bawah genteng' },
+      { source_article_id: 7, target_article_id: 8, relationship_type: 'BACKGROUND_EXPLAINER', reader_reason: 'Peredam panas bawah genteng' },
       { source_article_id: 7, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Bukaan udara loteng pendukung genteng' },
-      // 8 -> 9, 7, 5
-      { source_article_id: 8, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Pelepasan panas loteng' },
-      { source_article_id: 8, target_article_id: 7, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Karakter konduksi material genteng' },
+      // 8 -> 9, 7, 5 (Canonical Production Graph)
+      { source_article_id: 8, target_article_id: 9, relationship_type: 'RELATED_DECISION', reader_reason: 'Pelepasan panas loteng' },
+      { source_article_id: 8, target_article_id: 7, relationship_type: 'RELATED_PROBLEM', reader_reason: 'Karakter konduksi material genteng' },
       { source_article_id: 8, target_article_id: 5, relationship_type: 'RELATED_DECISION', reader_reason: 'Kusen penahan panas pada bukaan bawah' },
       // 9 -> 8, 6
       { source_article_id: 9, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Insulasi penahan radiasi atap' },
@@ -1425,10 +1425,18 @@ async function runTestSuite() {
     assert.equal(linksFor9.length, 2);
     assert.deepEqual(linksFor9.map(l => l.target_article_id), [8, 6]);
 
-    // Verify 3 cards shape (Article 8 -> 9, 7, 5)
+    // Verify 3 cards shape (Article 8 -> 9, 7, 5) & canonical relationship types
     const linksFor8 = await getActivePlaneALinks(liveGraphDb, 8);
     assert.equal(linksFor8.length, 3);
     assert.deepEqual(linksFor8.map(l => l.target_article_id), [9, 7, 5]);
+
+    const card9 = linksFor8.find(l => l.target_article_id === 9);
+    const card7 = linksFor8.find(l => l.target_article_id === 7);
+    const card5 = linksFor8.find(l => l.target_article_id === 5);
+    assert.equal(card9.relationship_type, 'RELATED_DECISION', 'Card 9 must be RELATED_DECISION');
+    assert.equal(card7.relationship_type, 'RELATED_PROBLEM', 'Card 7 must be RELATED_PROBLEM');
+    assert.equal(card5.relationship_type, 'RELATED_DECISION', 'Card 5 must be RELATED_DECISION');
+
     for (const l of linksFor8) {
       assert.ok(l.target_featured_image);
       assert.ok(l.target_image_alt);
@@ -1806,9 +1814,10 @@ async function runTestSuite() {
   // TEST 29: ARTICLE SUPPORT CARD CONTENT HIERARCHY & EXCERPT EXTRACTION
   // ----------------------------------------------------
   try {
-    // 1. Excerpt extraction from canonical description
-    const descExcerpt = extractArticleExcerpt('Perbandingan mendalam kusen aluminium dan uPVC untuk rumah tropis di Indonesia, mulai dari ketahanan panas hingga perawatan.');
-    assert.equal(descExcerpt, 'Perbandingan mendalam kusen aluminium dan uPVC untuk rumah tropis di Indonesia, mulai dari ketahanan panas hingga perawatan.');
+    // 1. Excerpt extraction from target article opening prose (PRIMARY)
+    const proseMd = '# Judul Artikel\n\nMemilih material bukaan jendela dan pintu untuk rumah di Indonesia sering kali menghadirkan dilema nyata. Iklim tropis lembap memberi ujian berlapis.';
+    const proseExcerpt = extractArticleExcerpt('Fallback deskripsi metadata', proseMd, null);
+    assert.equal(proseExcerpt, 'Memilih material bukaan jendela dan pintu untuk rumah di Indonesia sering kali menghadirkan dilema nyata. Iklim tropis lembap memberi ujian berlapis.');
 
     // 2. Markdown, HTML, and citation stripping
     const dirtyMd = '## Subheading\n\nProfil aluminium **terasa panas** karena [konduksi](https://example.com) logam[^1]. <span class="tag">Uji lab</span> membuktikan.';
@@ -1820,7 +1829,7 @@ async function runTestSuite() {
     assert.equal(cleanExcerpt.includes('<span'), false, 'HTML tags must be stripped');
     assert.ok(cleanExcerpt.includes('Profil aluminium terasa panas karena konduksi logam. Uji lab membuktikan.'));
 
-    // 3. Clean word-boundary truncation with ellipsis
+    // 3. Clean word and sentence boundary truncation
     const veryLongText = 'Ini adalah kalimat yang sangat panjang yang dirancang untuk menguji apakah pemotongan teks pada batas kata berjalan dengan benar tanpa memotong kata di tengah jalan secara canggung dan selalu mengakhiri kalimat dengan elipsis yang rapi.';
     const truncated = truncateAtWordBoundary(veryLongText, 100);
     assert.ok(truncated.length <= 101);
@@ -1830,15 +1839,18 @@ async function runTestSuite() {
     const lastWord = words[words.length - 1];
     assert.ok(lastWord.length > 1, 'Last word should not be an awkward 1-char slice');
 
-    // 4. Fallback hierarchy: description > content_md > content_html > ''
-    const withDesc = extractArticleExcerpt('Deskripsi utama', 'Konten MD alternatif', '<p>Konten HTML</p>');
-    assert.equal(withDesc, 'Deskripsi utama');
+    // 4. Priority hierarchy: content_md (PRIMARY) > content_html (SECONDARY) > description (FALLBACK)
+    // When content_md is present, it MUST take precedence over description metadata
+    const withMdAndDesc = extractArticleExcerpt('Deskripsi metadata sekunder', 'Paragraf pembuka dari markdown artikel yang cukup panjang dan informatif.', '<p>HTML</p>');
+    assert.ok(withMdAndDesc.startsWith('Paragraf pembuka'));
 
-    const withMdOnly = extractArticleExcerpt('', 'Paragraf pembuka dari markdown artikel yang cukup panjang untuk memenuhi syarat minimum.', '<p>HTML</p>');
-    assert.ok(withMdOnly.startsWith('Paragraf pembuka'));
+    // When content_md is absent, content_html is used
+    const withHtmlAndDesc = extractArticleExcerpt('Deskripsi metadata sekunder', '', '<p>Paragraf pembuka dari konten HTML artikel yang representatif dan memadai.</p>');
+    assert.ok(withHtmlAndDesc.startsWith('Paragraf pembuka'));
 
-    const withHtmlOnly = extractArticleExcerpt('', '', '<p>Paragraf pembuka dari konten HTML artikel yang representatif dan memadai.</p>');
-    assert.ok(withHtmlOnly.startsWith('Paragraf pembuka'));
+    // When both content_md and content_html are absent, description is used as fallback
+    const withDescOnly = extractArticleExcerpt('Deskripsi metadata fallback yang valid dan informatif.', '', '');
+    assert.equal(withDescOnly, 'Deskripsi metadata fallback yang valid dan informatif.');
 
     // 5. Card Component Visual Hierarchy: Title -> Excerpt -> Meta
     const compPath = path.join(process.cwd(), 'src/components/ArticleSupportModule.astro');

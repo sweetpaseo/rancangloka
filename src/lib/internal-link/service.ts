@@ -476,29 +476,46 @@ export function stripFormatting(text: string): string {
 }
 
 /**
- * Truncates text cleanly at word boundaries up to maxChars, ending with an ellipsis.
+ * Truncates text cleanly at word or sentence boundaries up to maxChars, ending with an ellipsis if cut mid-sentence.
  */
 export function truncateAtWordBoundary(text: string, maxChars: number = 180): string {
   const cleaned = text.trim();
   if (cleaned.length <= maxChars) {
     return cleaned;
   }
-  const slice = cleaned.slice(0, maxChars);
-  const lastSpace = slice.lastIndexOf(' ');
-  if (lastSpace > maxChars * 0.6) {
-    return slice.slice(0, lastSpace).trim() + '…';
+
+  // Check if a complete sentence ends cleanly between 80 and maxChars
+  const sentenceSlice = cleaned.slice(0, maxChars);
+  const lastPunctuation = Math.max(
+    sentenceSlice.lastIndexOf('. '),
+    sentenceSlice.lastIndexOf('? '),
+    sentenceSlice.lastIndexOf('! ')
+  );
+
+  if (lastPunctuation >= 80) {
+    return sentenceSlice.slice(0, lastPunctuation + 1).trim();
   }
-  return slice.trim() + '…';
+
+  // Otherwise, cut cleanly at last whitespace word boundary
+  const lastSpace = sentenceSlice.lastIndexOf(' ');
+  if (lastSpace > maxChars * 0.6) {
+    return sentenceSlice.slice(0, lastSpace).trim() + '…';
+  }
+  return sentenceSlice.trim() + '…';
 }
 
 /**
- * Extracts a clean, concise excerpt (approx 100-180 chars) from canonical description or first prose paragraph.
+ * Extracts a clean, concise excerpt (approx 100-180 chars) from opening article prose.
+ * Priority:
+ * 1. PRIMARY: target article's first meaningful prose paragraph / opening sentence from content_md
+ * 2. SECONDARY: target article's first meaningful prose <p> from content_html
+ * 3. FALLBACK: target article's description metadata
  * Ensures:
  * - No headings
  * - Strips Markdown / HTML
  * - No citation markup leakage
  * - No raw HTML
- * - No reader_reason fallback unless unavoidable
+ * - Never uses reader_reason as public card fallback
  * - Deterministic SSR output
  */
 export function extractArticleExcerpt(
@@ -507,18 +524,12 @@ export function extractArticleExcerpt(
   contentHtml?: string | null,
   maxChars: number = 180
 ): string {
-  if (description && description.trim().length > 0) {
-    const stripped = stripFormatting(description);
-    if (stripped.length > 0) {
-      return truncateAtWordBoundary(stripped, maxChars);
-    }
-  }
-
-  // Fallback: extract first meaningful prose paragraph from content_md
+  // 1. PRIMARY: extract first meaningful prose paragraph from content_md
   if (contentMd && contentMd.trim().length > 0) {
     const paragraphs = contentMd.split(/\n\s*\n/);
     for (const rawPara of paragraphs) {
       const trimmed = rawPara.trim();
+      // Skip headings, blockquotes, tables, horizontal rules, images, citation definitions, HTML blocks
       if (
         trimmed.startsWith('#') ||
         trimmed.startsWith('>') ||
@@ -526,30 +537,39 @@ export function extractArticleExcerpt(
         trimmed.startsWith('---') ||
         trimmed.startsWith('***') ||
         trimmed.startsWith('![') ||
-        trimmed.startsWith('<')
+        trimmed.startsWith('<') ||
+        /^\[\^?[a-zA-Z0-9_-]+\]:/.test(trimmed)
       ) {
         continue;
       }
       const stripped = stripFormatting(trimmed);
-      if (stripped.length >= 20) {
+      if (stripped.length >= 30) {
         return truncateAtWordBoundary(stripped, maxChars);
       }
     }
   }
 
-  // Fallback: extract from contentHtml if contentMd is absent
+  // 2. SECONDARY: extract from contentHtml if contentMd is absent
   if (contentHtml && contentHtml.trim().length > 0) {
     const pMatches = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
     if (pMatches) {
       for (const p of pMatches) {
         const stripped = stripFormatting(p);
-        if (stripped.length >= 20) {
+        if (stripped.length >= 30) {
           return truncateAtWordBoundary(stripped, maxChars);
         }
       }
     }
     const stripped = stripFormatting(contentHtml);
-    if (stripped.length >= 20) {
+    if (stripped.length >= 30) {
+      return truncateAtWordBoundary(stripped, maxChars);
+    }
+  }
+
+  // 3. FALLBACK: use canonical description metadata
+  if (description && description.trim().length > 0) {
+    const stripped = stripFormatting(description);
+    if (stripped.length > 0) {
       return truncateAtWordBoundary(stripped, maxChars);
     }
   }
