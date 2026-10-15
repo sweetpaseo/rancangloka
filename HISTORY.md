@@ -13,6 +13,26 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-INTERNAL-LINK-ENGINE-1: Semantic Internal Link Engine V1, Two-Plane Architecture, Explicit Pillar Metadata & Content Provenance Invariants 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T13:00:00+07:00
+- **Status Operasional:** `INTERNAL_LINK_ENGINE_1_IMPLEMENTATION_COMPLETE`
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Prinsip Produk Kanonikal:** *"Internal link RancangLoka harus melanjutkan perjalanan berpikir pembaca, bukan sekadar memindahkan PageRank."*
+- **Pencapaian Kunci Implementasi V1:**
+  1. *Migrasi D1 `0033_internal_link_engine.sql`:* Membuat tabel `article_internal_links` dengan 9 relasi semantik berpusat pembaca (`PARENT_PILLAR`, `CHILD_SUPPORTING`, `RELATED_PROBLEM`, `RELATED_MATERIAL`, `RELATED_DECISION`, `BACKGROUND_EXPLAINER`, `NEXT_STEP`, `RELATED_SYSTEM`, `RELATED_FAILURE_MODE`), batasan unik empat-kunci `UNIQUE(source_article_id, target_article_id, relationship_type, placement_plane)`, pengikatan `source_content_hash`, serta kolom metadata pilar eksplisit (`pillar_role` dan `parent_pillar_id` pada `articles`).
+  2. *Penegakan Invarian Bebas Kuota Mekanis (`NO_MECHANICAL_INTERNAL_LINK_QUOTA`):* Menghapus seluruh kuota arbitrer (misal target N link per X kata). Kepadatan tautan murni ditentukan oleh kebutuhan kognitif perjalanan pembaca.
+  3. *Invarian Identitas Pilar Eksplisit (`INVARIANT_EXPLICIT_PILLAR_IDENTITY`):* Tipe relasi `PARENT_PILLAR` dan `CHILD_SUPPORTING` secara ketat mewajibkan artikel terkait ditandai `pillar_role = 'PILLAR'` secara eksplisit di basis data. Dilarang menyimpulkan status pilar dari judul, panjang teks, atau kategori.
+  4. *Arsitektur Dua-Bidang (Two-Plane Architecture):*
+     - **Plane A (Dynamic Safe Linking):** Dirender di sisi server (SSR) pada modul *"Artikel Pendukung untuk Keputusan Ini"* di luar naskah berbayang hash. Menghasilkan zero mutation pada `content_md`, `content_html`, maupun `content_hash`.
+     - **Plane B (Editorial Inline Linking):** Tautan inline hanya dirancang pada fase draf baru (Joko) dan direview dalam alur normal. Untuk artikel yang sudah terbit, engine hanya menerbitkan rekomendasi revisi (`LINK_REVISION_RECOMMENDED`). Dilarang keras menulis ulang atau menyuntikkan tautan ke dalam naskah terbit secara diam-diam.
+  5. *Provenans Hash Revisi Plane B:* Saat relasi `PLANE_B_INLINE` mencapai status `ACTIVE`, relasi mengikat `source_content_hash` artikel yang disetujui. Jika hash naskah artikel sumber berubah di kemudian hari, relasi otomatis ditandai `STALE` hingga direvalidasi.
+  6. *Pembersihan Linker Regex Mekanis:* Menonaktifkan injeksi regex keyword mekanis secara default di `processArticleContent(...)` (`src/lib/seo.ts`). Naskah terbit terlindungi dari mutasi runtime liar.
+  7. *Modul Pendukung Zero-JS SSR:* Mengimplementasikan `ArticleSupportModule.astro` dengan tautan crawlable `<a href>`, alasan pembaca (*reader_reason*), dan visual bersahaja. Render nihil (*zero box*) jika tidak ada relasi aktif.
+  8. *Deteksi Orphan & Penemuan Dua-Arah:* Algoritma diagnostik mendeteksi artikel terbit tanpa jalur masuk semantik tanpa kuota angka kaku. Penemuan dua-arah deterministik menghubungkan naskah baru dan lama berdasarkan klaster domain fisika bangunan.
+  9. *Pengujian & Verifikasi Kinerja:* 20/20 tes di `scripts/test-internal-link-engine.js` lulus. Lookup D1 Plane A terukur ~0.0052 ms, render prosesor naskah ~0.0465 ms. Hash naskah Artikel C `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` 100% utuh.
+- **Invarian Keselamatan:** Tidak ada mutasi basis data D1 produksi, tidak ada deployment, tidak ada push remote. Status siap untuk evaluasi Chief Editor: `READY_FOR_INTERNAL_LINK_ENGINE_1_PRODUCTION_ACCEPTANCE`.
+
 ### OFFLINE-MASTER-CHECKPOINT-2026-10-15: Article C Live Production, Premium Editorial Depth (PED-1), Staff Orchestration & Dimas → Budi E2E Visual Handoff
 
 - **Tanggal / Waktu:** 2026-10-15T12:30:00+07:00

@@ -1,0 +1,695 @@
+/**
+ * RancangLoka Semantic Internal Link Service (INTERNAL-LINK-ENGINE-1)
+ * 
+ * "Internal link RancangLoka harus melanjutkan perjalanan berpikir pembaca,
+ * bukan sekadar memindahkan PageRank."
+ * 
+ * Enforces:
+ * - NO_MECHANICAL_INTERNAL_LINK_QUOTA
+ * - INVARIANT_EXPLICIT_PILLAR_IDENTITY
+ * - Two-Plane Architecture (Plane A Dynamic Safe vs Plane B Editorial Inline)
+ * - Exact source_content_hash provenance for Plane B
+ * - One primary relationship per (source, target, placement_plane)
+ * - Zero published prose mutation
+ */
+
+import {
+  RELATIONSHIP_TYPES,
+  PLACEMENT_PLANES,
+  LINK_STATUSES,
+  type RelationshipType,
+  type PlacementPlane,
+  type LinkStatus,
+  type ArticleInternalLink,
+  type ResolvedPlaneALink,
+  type OrphanDiagnosticResult,
+  type DiscoveryCandidate,
+  type InternalLinkActionableState
+} from './types.ts';
+
+export interface LinkValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+/**
+ * Validates a candidate internal link relationship against core system invariants.
+ */
+export function validateLinkCandidate(
+  link: Partial<ArticleInternalLink>,
+  sourceArticle?: { id: number; pillar_role?: string; content_hash?: string; status?: string } | null,
+  targetArticle?: { id: number; pillar_role?: string; status?: string } | null
+): LinkValidationResult {
+  if (!link.source_article_id || !link.target_article_id) {
+    return { valid: false, error: 'source_article_id and target_article_id are required' };
+  }
+
+  // 1. Invariant: Prevent self-links
+  if (link.source_article_id === link.target_article_id) {
+    return { valid: false, error: 'Self-linking is strictly prohibited (source cannot equal target)' };
+  }
+
+  // 2. Validate relationship type
+  if (!link.relationship_type || !RELATIONSHIP_TYPES.includes(link.relationship_type as RelationshipType)) {
+    return { valid: false, error: `Invalid relationship_type: ${link.relationship_type}` };
+  }
+
+  // 3. Validate placement plane
+  if (!link.placement_plane || !PLACEMENT_PLANES.includes(link.placement_plane as PlacementPlane)) {
+    return { valid: false, error: `Invalid placement_plane: ${link.placement_plane}` };
+  }
+
+  // 4. Validate reader_reason
+  if (!link.reader_reason || typeof link.reader_reason !== 'string' || link.reader_reason.trim().length === 0) {
+    return { valid: false, error: 'reader_reason is required and cannot be empty' };
+  }
+
+  // 5. Invariant: Explicit Pillar Identity (INVARIANT_EXPLICIT_PILLAR_IDENTITY)
+  // PARENT_PILLAR and CHILD_SUPPORTING strictly require explicit pillar metadata
+  if (link.relationship_type === 'PARENT_PILLAR') {
+    if (!targetArticle || targetArticle.pillar_role !== 'PILLAR') {
+      return {
+        valid: false,
+        error: 'PARENT_PILLAR requires explicit pillar metadata (target article must have pillar_role="PILLAR")'
+      };
+    }
+  }
+
+  if (link.relationship_type === 'CHILD_SUPPORTING') {
+    if (!sourceArticle || sourceArticle.pillar_role !== 'PILLAR') {
+      return {
+        valid: false,
+        error: 'CHILD_SUPPORTING requires explicit pillar metadata (source article must have pillar_role="PILLAR")'
+      };
+    }
+  }
+
+  // 6. Invariant: Plane B source_content_hash binding
+  if (link.placement_plane === 'PLANE_B_INLINE' && link.status === 'ACTIVE') {
+    if (!link.source_content_hash || link.source_content_hash.trim().length === 0) {
+      return {
+        valid: false,
+        error: 'source_content_hash is required for ACTIVE PLANE_B_INLINE links'
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Creates a link candidate in the database.
+ */
+export async function createLinkCandidate(
+  db: any,
+  link: ArticleInternalLink,
+  sourceArticle?: any,
+  targetArticle?: any
+): Promise<{ success: boolean; id?: number; error?: string }> {
+  const validation = validateLinkCandidate(link, sourceArticle, targetArticle);
+  if (!validation.valid) {
+    return { success: false, error: validation.error };
+  }
+
+  const query = `
+    INSERT INTO article_internal_links (
+      source_article_id,
+      target_article_id,
+      relationship_type,
+      reader_reason,
+      placement_plane,
+      anchor_text,
+      confidence_score,
+      status,
+      source_content_hash,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `;
+
+  try {
+    const res = await db.prepare(query).bind(
+      link.source_article_id,
+      link.target_article_id,
+      link.relationship_type,
+      link.reader_reason.trim(),
+      link.placement_plane,
+      link.anchor_text || null,
+      link.confidence_score !== undefined ? link.confidence_score : 1.0,
+      link.status || 'CANDIDATE',
+      link.source_content_hash || null
+    ).run();
+
+    return {
+      success: true,
+      id: res.meta?.last_row_id || res.lastRowId || res.meta?.changes
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || String(err) };
+  }
+}
+
+/**
+ * Approves a candidate relationship.
+ */
+export async function approveLink(
+  db: any,
+  linkId: number,
+  reviewedBy: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db.prepare(`
+      UPDATE article_internal_links
+      SET status = 'APPROVED',
+          reviewed_at = CURRENT_TIMESTAMP,
+          reviewed_by = ?
+      WHERE id = ?
+    `).bind(reviewedBy, linkId).run();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || String(err) };
+  }
+}
+
+/**
+ * Activates a link relationship.
+ * For PLANE_B_INLINE, strictly binds to the source article's current approved content hash.
+ */
+export async function activateLink(
+  db: any,
+  linkId: number,
+  reviewedBy?: string,
+  approvedContentHash?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 1. Fetch current link
+    const link = await db.prepare(`
+      SELECT * FROM article_internal_links WHERE id = ?
+    `).bind(linkId).first();
+
+    if (!link) {
+      return { success: false, error: `Link with id ${linkId} not found` };
+    }
+
+    let finalContentHash = link.source_content_hash;
+
+    if (link.placement_plane === 'PLANE_B_INLINE') {
+      if (approvedContentHash) {
+        finalContentHash = approvedContentHash;
+      } else {
+        // Look up source article's content_hash
+        const sourceArt = await db.prepare(`
+          SELECT content_hash FROM articles WHERE id = ?
+        `).bind(link.source_article_id).first();
+        if (!sourceArt || !sourceArt.content_hash) {
+          return {
+            success: false,
+            error: 'Cannot activate PLANE_B_INLINE link without source article content_hash'
+          };
+        }
+        finalContentHash = sourceArt.content_hash;
+      }
+    }
+
+    await db.prepare(`
+      UPDATE article_internal_links
+      SET status = 'ACTIVE',
+          source_content_hash = ?,
+          reviewed_at = CURRENT_TIMESTAMP,
+          reviewed_by = COALESCE(?, reviewed_by)
+      WHERE id = ?
+    `).bind(finalContentHash || null, reviewedBy || null, linkId).run();
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || String(err) };
+  }
+}
+
+/**
+ * Rejects a relationship candidate.
+ */
+export async function rejectLink(
+  db: any,
+  linkId: number,
+  reviewedBy: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db.prepare(`
+      UPDATE article_internal_links
+      SET status = 'REJECTED',
+          reviewed_at = CURRENT_TIMESTAMP,
+          reviewed_by = ?
+      WHERE id = ?
+    `).bind(reviewedBy, linkId).run();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || String(err) };
+  }
+}
+
+/**
+ * Marks a link as STALE (e.g. when source article content hash changes).
+ */
+export async function markLinkStale(
+  db: any,
+  linkId: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db.prepare(`
+      UPDATE article_internal_links
+      SET status = 'STALE'
+      WHERE id = ?
+    `).bind(linkId).run();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || String(err) };
+  }
+}
+
+/**
+ * Evaluates whether an active PLANE_B_INLINE link has become stale based on hash comparison.
+ */
+export function evaluatePlaneBStaleness(
+  link: ArticleInternalLink,
+  currentSourceContentHash: string
+): boolean {
+  if (link.placement_plane !== 'PLANE_B_INLINE' || link.status !== 'ACTIVE') {
+    return false;
+  }
+  if (!link.source_content_hash) {
+    return true; // Missing hash on active inline link is stale/invalid
+  }
+  return link.source_content_hash !== currentSourceContentHash;
+}
+
+/**
+ * Checks all active PLANE_B_INLINE links for a source article and marks any that differ from the current content hash as STALE.
+ */
+export async function checkAndReconcilePlaneBStaleness(
+  db: any,
+  sourceArticleId: number,
+  currentContentHash: string
+): Promise<number> {
+  const activeInlineLinks = await db.prepare(`
+    SELECT id, source_content_hash
+    FROM article_internal_links
+    WHERE source_article_id = ?
+      AND placement_plane = 'PLANE_B_INLINE'
+      AND status = 'ACTIVE'
+  `).bind(sourceArticleId).all();
+
+  const links = activeInlineLinks.results || activeInlineLinks || [];
+  let staleCount = 0;
+
+  for (const l of links) {
+    if (l.source_content_hash !== currentContentHash) {
+      await markLinkStale(db, l.id);
+      staleCount++;
+    }
+  }
+
+  return staleCount;
+}
+
+/**
+ * Fetches active Plane A links for public rendering outside article body.
+ * Enforces:
+ * - status = 'ACTIVE'
+ * - placement_plane = 'PLANE_A_DYNAMIC'
+ * - target article MUST be published (omitted if draft, scheduled, or deleted)
+ * - no self-links (source_article_id != target_article_id)
+ * - deduplicates target articles (one primary card per unique destination)
+ * - dynamically resolves target article current slug at runtime
+ */
+export async function getActivePlaneALinks(
+  db: any,
+  sourceArticleId: number
+): Promise<ResolvedPlaneALink[]> {
+  const query = `
+    SELECT 
+      l.id,
+      l.source_article_id,
+      l.target_article_id,
+      l.relationship_type,
+      l.reader_reason,
+      l.placement_plane,
+      l.confidence_score,
+      a.title as target_title,
+      a.slug as target_slug,
+      a.status as target_status,
+      a.reading_time_minutes as target_reading_time_minutes,
+      a.featured_image as target_featured_image,
+      c.name as target_category_name
+    FROM article_internal_links l
+    INNER JOIN articles a ON l.target_article_id = a.id
+    LEFT JOIN categories c ON a.category_id = c.id
+    WHERE l.source_article_id = ?
+      AND l.placement_plane = 'PLANE_A_DYNAMIC'
+      AND l.status = 'ACTIVE'
+      AND a.status = 'published'
+      AND l.target_article_id != ?
+    ORDER BY l.confidence_score DESC, l.id ASC
+  `;
+
+  const rows = await db.prepare(query).bind(sourceArticleId, sourceArticleId).all();
+  const rawResults = rows.results || rows || [];
+
+  // Deduplicate target articles (ONE primary relationship per target destination)
+  const seenTargets = new Set<number>();
+  const deduplicated: ResolvedPlaneALink[] = [];
+
+  for (const row of rawResults) {
+    if (seenTargets.has(row.target_article_id)) {
+      continue;
+    }
+    seenTargets.add(row.target_article_id);
+    deduplicated.push({
+      id: row.id,
+      source_article_id: row.source_article_id,
+      target_article_id: row.target_article_id,
+      relationship_type: row.relationship_type as RelationshipType,
+      reader_reason: row.reader_reason,
+      placement_plane: 'PLANE_A_DYNAMIC',
+      confidence_score: row.confidence_score || 1.0,
+      target_title: row.target_title,
+      target_slug: row.target_slug,
+      target_category_name: row.target_category_name || undefined,
+      target_reading_time_minutes: row.target_reading_time_minutes || 3,
+      target_featured_image: row.target_featured_image || undefined
+    });
+  }
+
+  return deduplicated;
+}
+
+/**
+ * Queries Plane B recommendations for editorial review.
+ */
+export async function getPlaneBRecommendations(
+  db: any,
+  sourceArticleId: number
+): Promise<ArticleInternalLink[]> {
+  const query = `
+    SELECT *
+    FROM article_internal_links
+    WHERE source_article_id = ?
+      AND placement_plane = 'PLANE_B_INLINE'
+    ORDER BY confidence_score DESC, id ASC
+  `;
+  const rows = await db.prepare(query).bind(sourceArticleId).all();
+  return (rows.results || rows || []) as ArticleInternalLink[];
+}
+
+/**
+ * Diagnostic tool: Detects published articles that lack meaningful inbound semantic links.
+ * Candidate orphan when:
+ * - status = 'published'
+ * - inbound active semantic links = 0
+ * - parent_pillar_id IS NULL and pillar_role != 'PILLAR'
+ * Returns structured findings. Zero fixed quota.
+ */
+export async function detectOrphans(db: any): Promise<OrphanDiagnosticResult[]> {
+  const query = `
+    SELECT 
+      a.id as article_id,
+      a.slug,
+      a.title,
+      a.status,
+      COALESCE(a.pillar_role, 'STANDALONE') as pillar_role,
+      a.parent_pillar_id,
+      COUNT(l.id) as inbound_active_semantic_links_count
+    FROM articles a
+    LEFT JOIN article_internal_links l 
+      ON l.target_article_id = a.id 
+     AND l.status = 'ACTIVE'
+    WHERE a.status = 'published'
+    GROUP BY a.id
+    ORDER BY a.id ASC
+  `;
+
+  const rows = await db.prepare(query).all();
+  const articles = rows.results || rows || [];
+
+  return articles.map((art: any) => {
+    const linkCount = Number(art.inbound_active_semantic_links_count || 0);
+    const pillarRole = art.pillar_role || 'STANDALONE';
+    const parentPillarId = art.parent_pillar_id || null;
+
+    // An article is an orphan candidate if it has 0 inbound active semantic links
+    // and is not attached to an explicit parent pillar, and is not a pillar itself.
+    const isOrphan = linkCount === 0 && parentPillarId === null && pillarRole !== 'PILLAR';
+
+    let reason = 'Healthy contextual discovery path';
+    if (isOrphan) {
+      reason = 'Zero inbound active semantic links and no parent pillar attachment';
+    } else if (linkCount === 0 && pillarRole === 'PILLAR') {
+      reason = 'Root pillar hub (standalone discovery via topic navigation)';
+    } else if (linkCount === 0 && parentPillarId !== null) {
+      reason = 'Attached to parent pillar navigation path';
+    }
+
+    return {
+      article_id: art.article_id,
+      slug: art.slug,
+      title: art.title,
+      status: art.status,
+      pillar_role: pillarRole,
+      parent_pillar_id: parentPillarId,
+      inbound_active_semantic_links_count: linkCount,
+      is_orphan: isOrphan,
+      reason
+    };
+  });
+}
+
+/**
+ * Deterministic candidate generation for bidirectional link discovery.
+ * Identifies:
+ * - FORWARD: new article -> candidate old articles
+ * - BACKLINK: candidate old articles -> new article
+ * Uses structured signals (title, focus keyword, concepts, category). No embeddings.
+ */
+export async function discoverBidirectionalCandidates(
+  db: any,
+  article: {
+    id: number;
+    title: string;
+    focus_keyword?: string;
+    category_id?: number;
+    description?: string;
+    pillar_role?: string;
+  },
+  candidatePool?: any[]
+): Promise<DiscoveryCandidate[]> {
+  let pool = candidatePool;
+  if (!pool) {
+    const res = await db.prepare(`
+      SELECT id, title, slug, focus_keyword, category_id, description, pillar_role
+      FROM articles
+      WHERE id != ? AND status = 'published'
+    `).bind(article.id).all();
+    pool = res.results || res || [];
+  }
+
+  const candidates: DiscoveryCandidate[] = [];
+  const artTitleWords = (article.title || '').toLowerCase().split(/\s+/).filter(w => w.length >= 4);
+  const artKeyword = (article.focus_keyword || '').toLowerCase().trim();
+
+  // Known domain clusters for deterministic semantic matching
+  const DOMAIN_CLUSTERS = [
+    {
+      keywords: ['kondensasi', 'embun', 'kelembapan', 'kaca', 'ventilasi', 'suhu'],
+      concept: 'DIAGNOSIS_EMBUN'
+    },
+    {
+      keywords: ['thermal bridge', 'jembatan termal', 'kusen', 'aluminium', 'konduksi', 'panas', 'dingin'],
+      concept: 'DETAIL_MATERIAL_KUSEN'
+    },
+    {
+      keywords: ['shading', 'peneduh', 'louver', 'overhang', 'awning', 'fasad', 'secondary skin', 'matahari'],
+      concept: 'SOLUSI_FASAD_MAKRO'
+    }
+  ];
+
+  function getArticleClusters(text: string): string[] {
+    const lower = text.toLowerCase();
+    const clusters: string[] = [];
+    for (const cluster of DOMAIN_CLUSTERS) {
+      if (cluster.keywords.some(k => lower.includes(k))) {
+        clusters.push(cluster.concept);
+      }
+    }
+    return clusters;
+  }
+
+  const artText = `${article.title} ${article.focus_keyword || ''} ${article.description || ''}`;
+  const artClusters = getArticleClusters(artText);
+
+  const candidateList = pool || [];
+  for (const other of candidateList) {
+    if (other.id === article.id) continue;
+
+    const otherText = `${other.title} ${other.focus_keyword || ''} ${other.description || ''}`;
+    const otherClusters = getArticleClusters(otherText);
+
+    // Compute semantic match score based on shared clusters, keyword overlap, or cross-cluster domain relationships
+    const sharedClusters = artClusters.filter(c => otherClusters.includes(c));
+    const otherKeyword = (other.focus_keyword || '').toLowerCase().trim();
+    const hasKeywordCrossMatch = (otherKeyword && artText.toLowerCase().includes(otherKeyword)) ||
+                                 (artKeyword && otherText.toLowerCase().includes(artKeyword));
+
+    const hasCrossClusterRelation =
+      (artClusters.includes('SOLUSI_FASAD_MAKRO') && otherClusters.includes('DETAIL_MATERIAL_KUSEN')) ||
+      (artClusters.includes('DETAIL_MATERIAL_KUSEN') && otherClusters.includes('SOLUSI_FASAD_MAKRO')) ||
+      (artClusters.includes('DETAIL_MATERIAL_KUSEN') && otherClusters.includes('DIAGNOSIS_EMBUN')) ||
+      (artClusters.includes('DIAGNOSIS_EMBUN') && otherClusters.includes('DETAIL_MATERIAL_KUSEN')) ||
+      (artClusters.includes('DIAGNOSIS_EMBUN') && otherClusters.includes('SOLUSI_FASAD_MAKRO')) ||
+      (artClusters.includes('SOLUSI_FASAD_MAKRO') && otherClusters.includes('DIAGNOSIS_EMBUN'));
+
+    if (sharedClusters.length > 0 || hasKeywordCrossMatch || hasCrossClusterRelation) {
+      // Determine relationship types deterministically
+      let forwardRel: RelationshipType = 'RELATED_DECISION';
+      let backlinkRel: RelationshipType = 'RELATED_SYSTEM';
+      let forwardReason = `Membantu pembaca memahami kaitan antara ${article.title} dengan ${other.title}`;
+      let backlinkReason = `Melengkapi pertimbangan pada ${other.title} dengan panduan ${article.title}`;
+
+      if (artClusters.includes('SOLUSI_FASAD_MAKRO') && otherClusters.includes('DETAIL_MATERIAL_KUSEN')) {
+        forwardRel = 'RELATED_MATERIAL';
+        forwardReason = 'Jika memilih kisi atau kusen aluminium, pahami karakteristik konduksi panas material kusen';
+        backlinkRel = 'RELATED_DECISION';
+        backlinkReason = 'Sebelum mengganti kusen jendela, pertimbangkan solusi peneduh luar fasad';
+      } else if (artClusters.includes('DETAIL_MATERIAL_KUSEN') && otherClusters.includes('DIAGNOSIS_EMBUN')) {
+        forwardRel = 'RELATED_PROBLEM';
+        forwardReason = 'Perbedaan suhu ekstrem pada kusen logam dapat memicu kondensasi embun pada kaca';
+        backlinkRel = 'BACKGROUND_EXPLAINER';
+        backlinkReason = 'Pelajari fenomena jembatan termal pada kusen yang menjadi akar pemicu embun';
+      } else if (artClusters.includes('DIAGNOSIS_EMBUN') && otherClusters.includes('SOLUSI_FASAD_MAKRO')) {
+        forwardRel = 'RELATED_SYSTEM';
+        forwardReason = 'Ketahui bagaimana naungan atap dan kisi luar menjaga kestabilan suhu bukaan kaca';
+        backlinkRel = 'RELATED_PROBLEM';
+        backlinkReason = 'Identifikasi apakah masalah hawa panas ruangan disertai pembentukan embun pada kaca';
+      }
+
+      // Check pillar constraints: Never assign PARENT_PILLAR or CHILD_SUPPORTING unless explicitly marked
+      if ((forwardRel as string) === 'PARENT_PILLAR' && other.pillar_role !== 'PILLAR') {
+        forwardRel = 'RELATED_DECISION';
+      }
+      if ((backlinkRel as string) === 'CHILD_SUPPORTING' && other.pillar_role !== 'PILLAR') {
+        backlinkRel = 'RELATED_SYSTEM';
+      }
+
+      // 1. FORWARD Candidate (Article -> Other)
+      candidates.push({
+        source_article_id: article.id,
+        target_article_id: other.id,
+        direction: 'FORWARD',
+        relationship_type: forwardRel,
+        reader_reason: forwardReason,
+        confidence_score: sharedClusters.length > 0 ? 0.92 : 0.80,
+        recommended_plane: 'PLANE_A_DYNAMIC',
+        status: 'CANDIDATE',
+        match_rationale: `Shared architectural concept (${sharedClusters.join(', ') || 'keyword overlap'})`
+      });
+
+      // 2. BACKLINK Candidate (Other -> Article)
+      candidates.push({
+        source_article_id: other.id,
+        target_article_id: article.id,
+        direction: 'BACKLINK',
+        relationship_type: backlinkRel,
+        reader_reason: backlinkReason,
+        confidence_score: sharedClusters.length > 0 ? 0.90 : 0.78,
+        recommended_plane: 'PLANE_A_DYNAMIC',
+        status: 'CANDIDATE',
+        match_rationale: `Bidirectional decision support path from existing published article`
+      });
+    }
+  }
+
+  return candidates;
+}
+
+/**
+ * Derives actionable operational states for Mission Control.
+ * Only surfaces actionable states (no dashboard noise for healthy active links):
+ * - LINK_REVIEW_REQUIRED: Candidates awaiting human approval.
+ * - ORPHAN_DETECTED: Published articles with zero inbound discovery paths.
+ * - BACKLINK_RECOMMENDED: Backlink opportunities for newly published articles.
+ * - LINK_REVISION_RECOMMENDED: Published inline links marked as STALE.
+ */
+export async function deriveInternalLinkActionableStates(
+  db: any
+): Promise<InternalLinkActionableState[]> {
+  const actionableStates: InternalLinkActionableState[] = [];
+
+  // 1. Detect Orphans
+  const orphans = await detectOrphans(db);
+  for (const o of orphans) {
+    if (o.is_orphan) {
+      actionableStates.push({
+        type: 'ORPHAN_DETECTED',
+        article_id: o.article_id,
+        article_title: o.title,
+        article_slug: o.slug,
+        details: o.reason,
+        severity: 'warning'
+      });
+    }
+  }
+
+  // 2. Pending Candidates (LINK_REVIEW_REQUIRED)
+  const pendingLinks = await db.prepare(`
+    SELECT l.id, l.source_article_id, l.target_article_id, l.relationship_type, l.placement_plane,
+           s.title as source_title, s.slug as source_slug,
+           t.title as target_title
+    FROM article_internal_links l
+    INNER JOIN articles s ON l.source_article_id = s.id
+    INNER JOIN articles t ON l.target_article_id = t.id
+    WHERE l.status = 'CANDIDATE'
+    ORDER BY l.created_at ASC
+  `).all();
+
+  const candidates = pendingLinks.results || pendingLinks || [];
+  for (const c of candidates) {
+    actionableStates.push({
+      type: 'LINK_REVIEW_REQUIRED',
+      article_id: c.source_article_id,
+      article_title: c.source_title,
+      article_slug: c.source_slug,
+      target_article_id: c.target_article_id,
+      target_article_title: c.target_title,
+      link_id: c.id,
+      details: `Candidate ${c.relationship_type} (${c.placement_plane}) requires editorial review`,
+      severity: 'action_required'
+    });
+  }
+
+  // 3. Stale Inline Links (LINK_REVISION_RECOMMENDED)
+  const staleLinks = await db.prepare(`
+    SELECT l.id, l.source_article_id, l.target_article_id, l.anchor_text,
+           s.title as source_title, s.slug as source_slug,
+           t.title as target_title
+    FROM article_internal_links l
+    INNER JOIN articles s ON l.source_article_id = s.id
+    INNER JOIN articles t ON l.target_article_id = t.id
+    WHERE l.status = 'STALE' AND l.placement_plane = 'PLANE_B_INLINE'
+    ORDER BY l.id ASC
+  `).all();
+
+  const stales = staleLinks.results || staleLinks || [];
+  for (const st of stales) {
+    actionableStates.push({
+      type: 'LINK_REVISION_RECOMMENDED',
+      article_id: st.source_article_id,
+      article_title: st.source_title,
+      article_slug: st.source_slug,
+      target_article_id: st.target_article_id,
+      target_article_title: st.target_title,
+      link_id: st.id,
+      details: `Inline link to "${st.target_title}" became STALE due to source article content hash revision. Revalidation required.`,
+      severity: 'action_required'
+    });
+  }
+
+  return actionableStates;
+}

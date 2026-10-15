@@ -1,0 +1,49 @@
+---
+import type { ResolvedPlaneALink } from '../lib/internal-link/types.ts';
+
+interface Props {
+  links?: ResolvedPlaneALink[];
+}
+
+const { links = [] } = Astro.props;
+
+if (!links || links.length === 0) {
+  // If no meaningful active relationships exist: render nothing. No empty box.
+  return null;
+}
+---
+
+<section class="my-10 border border-stone/30 dark:border-stone/20 bg-[#faf9f6] dark:bg-[#18181b]/50 p-6 sm:p-8">
+  <div class="flex items-center gap-2 mb-3 text-xs font-mono font-bold uppercase tracking-[0.14em] text-accent">
+    <span>🧭</span>
+    <span>Artikel Pendukung untuk Keputusan Ini</span>
+  </div>
+  <p class="text-xs sm:text-sm text-muted dark:text-stone/80 mb-6 leading-relaxed font-normal">
+    Teruskan pertimbangan desain Anda berdasarkan kondisi nyata dan kebutuhan ruang rumah:
+  </p>
+
+  <div class="space-y-5">
+    {links.map((link) => (
+      <div class="border-b border-stone/20 dark:border-stone/10 pb-5 last:border-b-0 last:pb-0">
+        <p class="text-xs sm:text-sm text-ink/90 dark:text-paper/90 font-medium mb-1.5 leading-snug">
+          &ldquo;{link.reader_reason}&rdquo;
+        </p>
+        <div class="flex items-baseline gap-2">
+          <span class="text-accent text-sm leading-none select-none">➔</span>
+          <a
+            href={`/${link.target_slug}`}
+            class="text-sm sm:text-base font-semibold text-ink dark:text-paper hover:text-primary transition underline underline-offset-4 decoration-stone/40 hover:decoration-primary"
+          >
+            {link.target_title}
+          </a>
+        </div>
+        <div class="mt-1.5 flex items-center gap-3 text-[11px] font-mono text-muted dark:text-stone/60">
+          <span class="uppercase tracking-wider">{link.relationship_type.replace(/_/g, ' ')}</span>
+          {link.target_reading_time_minutes && (
+            <span>• {link.target_reading_time_minutes} min read</span>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+</section>

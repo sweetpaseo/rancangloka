@@ -377,7 +377,8 @@ export function processArticleContent(
   allArticles: any[] = [],
   relatedArticle?: any,
   siteSettings: Record<string, string> = {},
-  toc: TableOfContentItem[] = []
+  toc: TableOfContentItem[] = [],
+  options?: { disableAutoKeywordLinks?: boolean }
 ): string {
   // Step 1: Normalize terminology (ban foreign jargon like verdict) & sanitize raw HTML & inject Heading IDs
   let html = injectHeadingIds(sanitizeArticleHtml(normalizeUserFacingTerminology(rawHtml)));
@@ -405,8 +406,13 @@ export function processArticleContent(
     html = injectInArticleRelated(html, relatedArticle);
   }
 
-  // Step 6: Inject Auto-Keyword Contextual Internal Links
-  html = injectAutoKeywordLinks(html, article.id, allArticles, 2);
+  // Step 6: Legacy Auto-Keyword Contextual Internal Links
+  // INTERNAL-LINK-ENGINE-1: Silent regex keyword injection into approved prose is disabled by default.
+  // Contextual links must follow semantic editorial review (Plane B) or render outside prose (Plane A).
+  const allowLegacyAutoKeywords = options?.disableAutoKeywordLinks === false;
+  if (allowLegacyAutoKeywords) {
+    html = injectAutoKeywordLinks(html, article.id, allArticles, 2);
+  }
 
   return normalizeUserFacingTerminology(sanitizeArticleHtml(html));
 }

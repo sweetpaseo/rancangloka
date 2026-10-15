@@ -51,6 +51,8 @@ export interface Article {
   is_trending: number;
   is_sponsored?: number;
   disable_internal_links?: number;
+  pillar_role?: 'PILLAR' | 'SUPPORTING' | 'STANDALONE';
+  parent_pillar_id?: number | null;
   published_at: string;
   updated_at: string;
 }
