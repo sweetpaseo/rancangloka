@@ -51,7 +51,10 @@ import {
   discoverBidirectionalCandidates,
   deriveInternalLinkActionableStates,
   ARCHITECTURAL_TAXONOMY,
-  extractArchitecturalConcepts
+  extractArchitecturalConcepts,
+  extractArticleExcerpt,
+  stripFormatting,
+  truncateAtWordBoundary
 } from '../src/lib/internal-link/index.ts';
 
 import { processArticleContent } from '../src/lib/seo.ts';
@@ -290,6 +293,9 @@ class InMemoryD1Mock {
                       confidence_score: l.confidence_score,
                       target_title: target.title,
                       target_slug: target.slug,
+                      target_description: target.description,
+                      target_content_md: target.content_md,
+                      target_content_html: target.content_html,
                       target_status: target.status,
                       target_reading_time_minutes: target.reading_time_minutes,
                       target_featured_image: target.featured_image,
@@ -1344,6 +1350,15 @@ async function runTestSuite() {
     // Invariant: Missing image fallback (clean rendering without thumbnail, no broken image boxes)
     assert.ok(compSource.includes('{thumbUrl &&'), 'Component must conditionally render thumbnail only when valid thumbUrl exists');
 
+    // Invariant: Card content hierarchy & public omission of reader_reason
+    assert.equal(compSource.includes('{link.reader_reason}'), false, 'reader_reason must not be rendered publicly in card UI');
+    const titlePos = compSource.indexOf('{link.target_title}');
+    const excerptPos = compSource.indexOf('{link.target_excerpt}');
+    const metaPos = compSource.indexOf('{link.relationship_type');
+    assert.ok(titlePos > 0 && excerptPos > 0 && metaPos > 0, 'Card elements must be present in template');
+    assert.ok(titlePos < excerptPos, 'Title must appear before excerpt in card hierarchy');
+    assert.ok(excerptPos < metaPos, 'Excerpt must appear before metadata in card hierarchy');
+
     // 2. Verify across live graph shapes:
     // Article 5 -> 8 (1 card)
     // Article 6 -> 9 (1 card)
@@ -1352,12 +1367,12 @@ async function runTestSuite() {
     // Article 9 -> 8,6 (2 cards)
     const liveGraphDb = new InMemoryD1Mock();
     const liveArticles = [
-      { id: 5, slug: 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia', title: 'Kusen Aluminium vs UPVC', featured_image: 'https://images.unsplash.com/photo-5?w=1200', image_alt: 'Kusen aluminium' },
-      { id: 6, slug: 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman', title: 'Rekayasa Ventilasi Silang', featured_image: 'https://images.unsplash.com/photo-6?w=1200', image_alt: 'Ventilasi silang' },
-      { id: 7, slug: 'panduan-memilih-genteng-rumah-tropis', title: 'Panduan Memilih Genteng', featured_image: 'https://images.unsplash.com/photo-7?w=1200', image_alt: 'Genteng tanah liat' },
-      { id: 8, slug: 'insulasi-atap-peredam-panas-ruang-bawah-genteng', title: 'Insulasi Atap Peredam Panas', featured_image: 'https://images.unsplash.com/photo-8?w=1200', image_alt: 'Insulasi aluminium foil' },
-      { id: 9, slug: 'ventilasi-atap-solusi-loteng-panas', title: 'Ventilasi Atap Solusi Loteng Panas', featured_image: 'https://images.unsplash.com/photo-9?w=1200', image_alt: 'Turbine ventilator' },
-      { id: 99, slug: 'artikel-tanpa-gambar', title: 'Artikel Tanpa Gambar', featured_image: '', image_alt: '' }
+      { id: 5, slug: 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia', title: 'Kusen Aluminium vs UPVC', description: 'Perbandingan kusen aluminium dan uPVC untuk rumah tropis.', featured_image: 'https://images.unsplash.com/photo-5?w=1200', image_alt: 'Kusen aluminium' },
+      { id: 6, slug: 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman', title: 'Rekayasa Ventilasi Silang', description: 'Cara membaca jalur udara dan batas ventilasi silang.', featured_image: 'https://images.unsplash.com/photo-6?w=1200', image_alt: 'Ventilasi silang' },
+      { id: 7, slug: 'panduan-memilih-genteng-rumah-tropis', title: 'Panduan Memilih Genteng', description: 'Panduan komparasi genteng tanah liat, beton, dan metal.', featured_image: 'https://images.unsplash.com/photo-7?w=1200', image_alt: 'Genteng tanah liat' },
+      { id: 8, slug: 'insulasi-atap-peredam-panas-ruang-bawah-genteng', title: 'Insulasi Atap Peredam Panas', description: 'Karakter konduksi panas dan aplikasi insulasi bawah genteng.', featured_image: 'https://images.unsplash.com/photo-8?w=1200', image_alt: 'Insulasi aluminium foil' },
+      { id: 9, slug: 'ventilasi-atap-solusi-loteng-panas', title: 'Ventilasi Atap Solusi Loteng Panas', description: 'Solusi bukaan loteng untuk melepas panas radiasi atap.', featured_image: 'https://images.unsplash.com/photo-9?w=1200', image_alt: 'Turbine ventilator' },
+      { id: 99, slug: 'artikel-tanpa-gambar', title: 'Artikel Tanpa Gambar', description: 'Deskripsi artikel tanpa gambar.', featured_image: '', image_alt: '' }
     ];
 
     for (const a of liveArticles) {
@@ -1418,7 +1433,8 @@ async function runTestSuite() {
       assert.ok(l.target_featured_image);
       assert.ok(l.target_image_alt);
       assert.ok(l.target_title);
-      assert.ok(l.reader_reason);
+      assert.ok(l.target_excerpt, 'target_excerpt must be present for cards');
+      assert.ok(l.reader_reason, 'reader_reason must remain available in semantic link data');
       assert.ok(l.relationship_type);
       const thumbUrl = getCanonicalThumbnailUrl(l.target_featured_image);
       assert.ok(thumbUrl);
@@ -1784,6 +1800,64 @@ async function runTestSuite() {
     recordPass('28. Future article featured image automatic compact derivative lifecycle: Multi-format (WebP, JPEG, PNG) 160x160 WebP Lanczos center-crop, canonical .webp contract (zero misleading extensions), idempotent R2 persistence, cross-format fallback cache safety, and durable failure observability verified');
   } catch (err) {
     recordFail('28. Future article automatic derivative lifecycle', err);
+  }
+
+  // ----------------------------------------------------
+  // TEST 29: ARTICLE SUPPORT CARD CONTENT HIERARCHY & EXCERPT EXTRACTION
+  // ----------------------------------------------------
+  try {
+    // 1. Excerpt extraction from canonical description
+    const descExcerpt = extractArticleExcerpt('Perbandingan mendalam kusen aluminium dan uPVC untuk rumah tropis di Indonesia, mulai dari ketahanan panas hingga perawatan.');
+    assert.equal(descExcerpt, 'Perbandingan mendalam kusen aluminium dan uPVC untuk rumah tropis di Indonesia, mulai dari ketahanan panas hingga perawatan.');
+
+    // 2. Markdown, HTML, and citation stripping
+    const dirtyMd = '## Subheading\n\nProfil aluminium **terasa panas** karena [konduksi](https://example.com) logam[^1]. <span class="tag">Uji lab</span> membuktikan.';
+    const cleanExcerpt = extractArticleExcerpt('', dirtyMd);
+    assert.equal(cleanExcerpt.includes('Subheading'), false, 'Headings must be excluded');
+    assert.equal(cleanExcerpt.includes('**'), false, 'Markdown bold must be stripped');
+    assert.equal(cleanExcerpt.includes('https://'), false, 'Markdown URLs must be stripped');
+    assert.equal(cleanExcerpt.includes('[^1]'), false, 'Citation markup must be stripped');
+    assert.equal(cleanExcerpt.includes('<span'), false, 'HTML tags must be stripped');
+    assert.ok(cleanExcerpt.includes('Profil aluminium terasa panas karena konduksi logam. Uji lab membuktikan.'));
+
+    // 3. Clean word-boundary truncation with ellipsis
+    const veryLongText = 'Ini adalah kalimat yang sangat panjang yang dirancang untuk menguji apakah pemotongan teks pada batas kata berjalan dengan benar tanpa memotong kata di tengah jalan secara canggung dan selalu mengakhiri kalimat dengan elipsis yang rapi.';
+    const truncated = truncateAtWordBoundary(veryLongText, 100);
+    assert.ok(truncated.length <= 101);
+    assert.ok(truncated.endsWith('…'));
+    assert.equal(truncated.includes('  '), false);
+    const words = truncated.replace('…', '').split(' ');
+    const lastWord = words[words.length - 1];
+    assert.ok(lastWord.length > 1, 'Last word should not be an awkward 1-char slice');
+
+    // 4. Fallback hierarchy: description > content_md > content_html > ''
+    const withDesc = extractArticleExcerpt('Deskripsi utama', 'Konten MD alternatif', '<p>Konten HTML</p>');
+    assert.equal(withDesc, 'Deskripsi utama');
+
+    const withMdOnly = extractArticleExcerpt('', 'Paragraf pembuka dari markdown artikel yang cukup panjang untuk memenuhi syarat minimum.', '<p>HTML</p>');
+    assert.ok(withMdOnly.startsWith('Paragraf pembuka'));
+
+    const withHtmlOnly = extractArticleExcerpt('', '', '<p>Paragraf pembuka dari konten HTML artikel yang representatif dan memadai.</p>');
+    assert.ok(withHtmlOnly.startsWith('Paragraf pembuka'));
+
+    // 5. Card Component Visual Hierarchy: Title -> Excerpt -> Meta
+    const compPath = path.join(process.cwd(), 'src/components/ArticleSupportModule.astro');
+    const compSource = fs.readFileSync(compPath, 'utf8');
+
+    assert.equal(compSource.includes('{link.reader_reason}'), false, 'reader_reason must not be rendered publicly in card UI');
+    const titleIdx = compSource.indexOf('{link.target_title}');
+    const excerptIdx = compSource.indexOf('{link.target_excerpt}');
+    const metaIdx = compSource.indexOf('{link.relationship_type');
+
+    assert.ok(titleIdx > 0, 'Title must exist in template');
+    assert.ok(excerptIdx > 0, 'Excerpt must exist in template');
+    assert.ok(metaIdx > 0, 'Meta must exist in template');
+    assert.ok(titleIdx < excerptIdx, 'Title must visually precede Excerpt in card hierarchy');
+    assert.ok(excerptIdx < metaIdx, 'Excerpt must visually precede Meta in card hierarchy');
+
+    recordPass('29. Article support card content hierarchy & excerpt extraction: title -> excerpt -> meta, reader_reason preserved in data but omitted from public UI, deterministic SSR excerpt extraction with zero JS');
+  } catch (err) {
+    recordFail('29. Card content hierarchy & excerpt extraction', err);
   }
 
   // ----------------------------------------------------

@@ -48,19 +48,20 @@ if (!links || links.length === 0) {
               </a>
             )}
             <div class="flex-1 min-w-0">
-              <p class="text-xs sm:text-sm text-ink/90 dark:text-paper/90 font-medium mb-1.5 leading-snug">
-                &ldquo;{link.reader_reason}&rdquo;
-              </p>
-              <div class="flex items-baseline gap-2">
-                <span class="text-accent text-sm leading-none select-none">➔</span>
+              <h3 class="text-sm sm:text-base font-semibold text-ink dark:text-paper leading-snug mb-1">
                 <a
                   href={`/${link.target_slug}`}
-                  class="text-sm sm:text-base font-semibold text-ink dark:text-paper hover:text-primary transition underline underline-offset-4 decoration-stone/40 hover:decoration-primary"
+                  class="hover:text-primary transition underline underline-offset-4 decoration-stone/40 hover:decoration-primary"
                 >
                   {link.target_title}
                 </a>
-              </div>
-              <div class="mt-1.5 flex items-center gap-3 text-[11px] font-mono text-muted dark:text-stone/60">
+              </h3>
+              {link.target_excerpt && (
+                <p class="text-xs sm:text-sm text-muted dark:text-stone/80 font-normal leading-relaxed mb-2 line-clamp-2 sm:line-clamp-3">
+                  {link.target_excerpt}
+                </p>
+              )}
+              <div class="flex items-center gap-3 text-[11px] font-mono text-muted dark:text-stone/60">
                 <span class="uppercase tracking-wider">{link.relationship_type.replace(/_/g, ' ')}</span>
                 {link.target_reading_time_minutes && (
                   <span>• {link.target_reading_time_minutes} min read</span>

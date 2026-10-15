@@ -447,6 +447,117 @@ export async function checkAndReconcilePlaneBStaleness(
 }
 
 /**
+ * Strips markdown and HTML formatting from prose for clean excerpt presentation.
+ */
+export function stripFormatting(text: string): string {
+  if (!text) return '';
+  return text
+    // Remove markdown images
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    // Remove markdown links keeping label text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    // Remove citation / footnote references like [^1], [1], [^ref]
+    .replace(/\[\^?[a-zA-Z0-9_-]+\]/g, '')
+    // Remove HTML tags
+    .replace(/<[^>]+>/g, '')
+    // Remove markdown headings
+    .replace(/^#+\s+/gm, '')
+    // Remove blockquotes
+    .replace(/^>\s+/gm, '')
+    // Remove bold/italics
+    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, '$1')
+    // Remove inline code ticks
+    .replace(/`([^`]+)`/g, '$1')
+    // Remove horizontal rules
+    .replace(/^[-*_]{3,}\s*$/gm, '')
+    // Collapse multi-spaces and newlines into single spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Truncates text cleanly at word boundaries up to maxChars, ending with an ellipsis.
+ */
+export function truncateAtWordBoundary(text: string, maxChars: number = 180): string {
+  const cleaned = text.trim();
+  if (cleaned.length <= maxChars) {
+    return cleaned;
+  }
+  const slice = cleaned.slice(0, maxChars);
+  const lastSpace = slice.lastIndexOf(' ');
+  if (lastSpace > maxChars * 0.6) {
+    return slice.slice(0, lastSpace).trim() + '…';
+  }
+  return slice.trim() + '…';
+}
+
+/**
+ * Extracts a clean, concise excerpt (approx 100-180 chars) from canonical description or first prose paragraph.
+ * Ensures:
+ * - No headings
+ * - Strips Markdown / HTML
+ * - No citation markup leakage
+ * - No raw HTML
+ * - No reader_reason fallback unless unavoidable
+ * - Deterministic SSR output
+ */
+export function extractArticleExcerpt(
+  description?: string | null,
+  contentMd?: string | null,
+  contentHtml?: string | null,
+  maxChars: number = 180
+): string {
+  if (description && description.trim().length > 0) {
+    const stripped = stripFormatting(description);
+    if (stripped.length > 0) {
+      return truncateAtWordBoundary(stripped, maxChars);
+    }
+  }
+
+  // Fallback: extract first meaningful prose paragraph from content_md
+  if (contentMd && contentMd.trim().length > 0) {
+    const paragraphs = contentMd.split(/\n\s*\n/);
+    for (const rawPara of paragraphs) {
+      const trimmed = rawPara.trim();
+      if (
+        trimmed.startsWith('#') ||
+        trimmed.startsWith('>') ||
+        trimmed.startsWith('|') ||
+        trimmed.startsWith('---') ||
+        trimmed.startsWith('***') ||
+        trimmed.startsWith('![') ||
+        trimmed.startsWith('<')
+      ) {
+        continue;
+      }
+      const stripped = stripFormatting(trimmed);
+      if (stripped.length >= 20) {
+        return truncateAtWordBoundary(stripped, maxChars);
+      }
+    }
+  }
+
+  // Fallback: extract from contentHtml if contentMd is absent
+  if (contentHtml && contentHtml.trim().length > 0) {
+    const pMatches = contentHtml.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+    if (pMatches) {
+      for (const p of pMatches) {
+        const stripped = stripFormatting(p);
+        if (stripped.length >= 20) {
+          return truncateAtWordBoundary(stripped, maxChars);
+        }
+      }
+    }
+    const stripped = stripFormatting(contentHtml);
+    if (stripped.length >= 20) {
+      return truncateAtWordBoundary(stripped, maxChars);
+    }
+  }
+
+  return '';
+}
+
+/**
  * Fetches active Plane A links for public rendering outside article body.
  * Enforces:
  * - status = 'ACTIVE'
@@ -471,6 +582,9 @@ export async function getActivePlaneALinks(
       l.confidence_score,
       a.title as target_title,
       a.slug as target_slug,
+      a.description as target_description,
+      a.content_md as target_content_md,
+      a.content_html as target_content_html,
       a.status as target_status,
       a.reading_time_minutes as target_reading_time_minutes,
       a.featured_image as target_featured_image,
@@ -499,6 +613,12 @@ export async function getActivePlaneALinks(
       continue;
     }
     seenTargets.add(row.target_article_id);
+    const target_excerpt = extractArticleExcerpt(
+      row.target_description,
+      row.target_content_md,
+      row.target_content_html
+    );
+
     deduplicated.push({
       id: row.id,
       source_article_id: row.source_article_id,
@@ -509,6 +629,7 @@ export async function getActivePlaneALinks(
       confidence_score: row.confidence_score || 1.0,
       target_title: row.target_title,
       target_slug: row.target_slug,
+      target_excerpt: target_excerpt || undefined,
       target_category_name: row.target_category_name || undefined,
       target_reading_time_minutes: row.target_reading_time_minutes || 3,
       target_featured_image: row.target_featured_image || undefined,

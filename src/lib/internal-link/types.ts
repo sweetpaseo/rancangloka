@@ -63,6 +63,7 @@ export interface ResolvedPlaneALink {
   confidence_score: number;
   target_title: string;
   target_slug: string;
+  target_excerpt?: string;
   target_category_name?: string;
   target_reading_time_minutes?: number;
   target_featured_image?: string;
