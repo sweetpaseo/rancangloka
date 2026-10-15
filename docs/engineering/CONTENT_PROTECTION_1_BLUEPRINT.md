@@ -5,7 +5,7 @@
 **Parent Document:** `docs/BLUEPRINT.md`
 **Target Repository:** `rancangloka-astro/`
 **Current Production Worker:** `1ec3dfd1-60b9-493f-aa48-ea63ea1dde0f`
-**Date:** 2026-10-15
+**Date:** 2026-10-16
 
 ---
 
@@ -48,8 +48,8 @@ Audit berbasis bukti langsung (*evidence-based audit*) terhadap repositori `ranc
 | **Robots Directives** | `public/robots.txt` | Aturan dasar: `Allow: /`, `Disallow: /admin/`, `Disallow: /api/`. Daftar 5 sitemap. **GAP:** Belum ada deklarasi spesifik untuk crawler AI (GPTBot, CCBot, ClaudeBot, dll). |
 | **Sitemap XML** | `src/pages/sitemap*.ts` | Master sitemap index, post sitemap, page, category, dan news sitemap. Dilengkapi Google Image Sitemap tags (`<image:loc>`, `<image:title>`). Cache 1 jam browser, 24 jam CDN. |
 | **Sindikasi RSS** | `src/pages/rss.xml.ts` | Menghasilkan RSS 2.0. **FAKTA BAIK:** Naskah penuh TIDAK terekspos; hanya memuat judul, ringkasan pendek (`a.description`), kategori, dan atribusi URL kanonikal. Cache 30m/2h. |
-| **Pencarian Publik API** | `src/pages/api/search.json.ts` | Endpoint publik GET `?q=`. **GAP:** Mengekspos field metadata internal (`content_hash`, `views`, `key_takeaways`, `focus_keyword`) dalam payload JSON. |
-| **Watermark Engine** | `src/lib/watermark/` & `stored-image-artifact.ts` | Model pengaturan watermark di D1 (`watermark_settings`) dan master asset di R2 (`site/watermarks/master/`). LokaMedia mendukung watermark teks `rancangloka.com` deterministik (posisi bottom-right, opacity 0.62) saat pembuatan gambar. |
+| **Pencarian Publik API** | `src/pages/api/search.json.ts` | Endpoint publik GET `?q=`. **GAP:** Mengekspos field metadata internal (`content_hash`, `views`, `key_takeaways`, `focus_keyword`, `category_id`, `author_id`) dalam payload JSON. |
+| **Watermark Engine** | `src/lib/watermark/` & `stored-image-artifact.ts` | Model pengaturan watermark di D1 (`watermark_settings`) dan master asset di R2 (`site/watermarks/master/`). LokaMedia mendukung watermark teks `rancangloka.com` deterministik saat pembuatan gambar. |
 | **Cloudflare WAF / Rules** | Repositori / Edge | Belum ada aturan WAF custom atau rate-limit rule yang tercatat dalam repo. |
 
 ---
@@ -159,7 +159,7 @@ Kualitas bahasa Indonesia ragam konsultan arsitektur RancangLoka, aksesibilitas 
 +---------------------------------------------------------------------------------------------------------+
 | B. PASSIVE TEXT FINGERPRINT (Dihitung otomatis tanpa mengubah naskah):                                  |
 |    - Normalized n-gram signatures (3-gram & 5-gram token naskah bersih)                                |
-|    - Rare technical phrase signatures (istilah teknis arsitektur: thermal bridge, louver, dll)         |
+|    - Corpus-relative distinctive phrase signatures (Bukan sekadar jargon arsitektur umum)              |
 |    - Paragraph SHA-256 sequence (fingerprint per paragraf terbit)                                      |
 |    - Sentence boundary fingerprints (pola pembuka dan penutup kalimat)                                 |
 +---------------------------------------------------------------------------------------------------------+
@@ -175,37 +175,100 @@ Kualitas bahasa Indonesia ragam konsultan arsitektur RancangLoka, aksesibilitas 
 +---------------------------------------------------------------------------------------------------------+
 | E. ASSET FINGERPRINT (Untuk Media Milik RancangLoka):                                                  |
 |    - Cryptographic asset hash (SHA-256 berkas biner asli)                                               |
-|    - Perceptual image hash (pHash / dHash untuk deteksi gambar hasil crop/kompresi)                     |
+|    - Perceptual image hash (pHash/dHash untuk mendeteksi resize/kompresi minor; crop terbatas)         |
 |    - asset_id & source_type                                                                             |
 |    - article_binding & derivative lineage                                                               |
 |    - Label kebenaran asal-usul visual: EDITORIAL_CONCEPT_VISUAL                                         |
 +---------------------------------------------------------------------------------------------------------+
 ```
 
+### Koreksi Definisi "Frasa Khas" (Distinctive Phrase Correction):
+Istilah "frasa langka" (*rare phrase*) **WAJIB DIARTIKAN SEBAGAI**:
+> **CORPUS-RELATIVE DISTINCTIVE PHRASE / SIGNATURE**
+> *(Frasa khas yang unik secara relatif dalam korpus RancangLoka).*
+
+Frasa ini **BUKAN** sekadar kosakata domain arsitektur umum seperti `thermal bridge`, `kusen uPVC`, `louver`, atau `ventilasi silang`. Istilah teknis umum digunakan oleh seluruh industri dan tidak boleh diklaim sebagai bukti kepemilikan naskah. Sidik jari teks difokuskan pada kombinasi multi-kata khas (*distinctive word chains*), analogi spesifik konsultan RancangLoka, urutan logika kalimat, dan pola pembuka kalimat kontekstual.
+
+### Koreksi Batasan Perceptual Hash (Perceptual Hash Boundary):
+Perceptual hash (seperti pHash atau dHash) **memiliki batasan teknis yang jelas**:
+- **Sangat Kuat Terhadap:** Perubahan skala resolusi (*resize*), re-kompresi format (JPEG ke WebP), dan penyesuaian gamma/kontras minor.
+- **Terbatas Terhadap Pemotongan (*Crop*):** Perceptual hash global tidak tahan terhadap pemotongan gambar yang drastis (*arbitrary cropping*). Kemampuan crop robustness terbatas dan wajib diuji melalui tolok ukur sebelum implementasi.
+- **Sifat Bukti:** Nilai *distance* pHash adalah bukti kemiripan visual (*visual similarity evidence*), bukan bukti keaslian mutlak.
+
+### Skalabilitas Penyimpanan Publication DNA di D1 (Storage Scalability):
+Menyimpan seluruh bita n-gram mentah (3-gram dan 5-gram) untuk ribuan artikel akan memicu ledakan ukuran database (*storage bloat*) di D1. Oleh karena itu, arsitektur V1 mengadopsi pendekatan ringkas:
+- **Pendekatan Kompak:** Menggunakan *selected hashed shingles*, *MinHash sketches* (64–128 integer hash per artikel), atau *SimHash* ringkas (~1 KB per artikel).
+- **Paragraph Hashes:** 10–20 baris hash paragraf per artikel (~500 B).
+- **Reproducibility on Demand:** Karena `content_md` asli tersimpan secara abadi di D1 dan tidak pernah bermutasi, sidik jari n-gram lengkap dapat dihitung ulang kapan saja (*rebuilt on demand*) jika dibutuhkan untuk analisis forensik mendalam, tanpa perlu disimpan permanen secara berlebihan di D1.
+- **Estimasi Beban D1:** Hanya ~1.5–2.5 KB per artikel; 1000 artikel hanya membutuhkan ~2.5 MB ruang D1.
+
 ### Bahasa & Status Deteksi Kloning (Clone Detection Language):
-Sistem dilarang secara gegabah melabeli situs lain sebagai "pencuri" hanya berdasarkan kemiripan teks. Sistem analitik Dimas menggunakan status kandidat terukur:
+Sistem analitik Dimas menggunakan status kandidat terukur:
 - `LOW_SIMILARITY`: Kemiripan wajar akibat topik arsitektur yang sama.
-- `REVIEW_REQUIRED`: Terdapat kemiripan frasa teknis langka dan struktur heading yang mencurigakan.
+- `REVIEW_REQUIRED`: Terdapat kemiripan frasa khas korpus dan struktur heading yang mencurigakan.
 - `SUSPECTED_DERIVED_CONTENT`: Naskah parafrase berat dengan alur keputusan identik dan urutan paragraf serupa.
 - `PROBABLE_CONTENT_CLONE`: Naskah identik, tabel identik, atau gambar dengan hash perceptual serupa yang dipublikasikan setelah stempel waktu RancangLoka.
 
-*Ambang batas kemiripan (thresholds) TIDAK difinalisasi pada cetak biru ini; ambang batas akan dikalibrasi berdasarkan pengujian korpus.* Peninjauan manusia (*human review*) tetap wajib sebelum dilakukan eskalasi formal.
-
-### Pemanfaatan Infrastruktur Provenansi yang Sudah Ada:
-Publication DNA **TIDAK MEMBUAT SISTEM DUPLIKAT BARU**, melainkan memperluas infrastruktur yang sudah terbukti di RancangLoka:
-- **Digunakan Kembali 100%:** `content_hash`, `published_at`, `actual_published_at`, tanda terima penerbitan (`publication_runs`), riwayat persetujuan manusia (`approval_records`), ID aset R2 (`asset_id`), dan tabel relasi `article_media`.
-- **Tambahan Baru yang Dibutuhkan Nanti:** Tabel pembantu ringan di D1 untuk menyimpan n-gram/rare phrase hash (`article_dna_signatures`) dan perceptual hash gambar (`media_asset_phashes`).
+Peninjauan manusia (*human review*) tetap wajib sebelum dilakukan eskalasi formal.
 
 ### Pemisahan Tegas dari AI Text Detector:
 > **`PUBLICATION DNA != AI TEXT DETECTION`**
-- Publication DNA **sama sekali tidak bertujuan** mengoptimasi skor, memanipulasi, atau mengecoh detektor AI pihak ketiga (seperti ZeroGPT, GPTZero, Copyleaks, dsb).
-- Skor dari AI detector berstatus **`ADVISORY ONLY`** (hanya pertimbangan penasihat).
-- Kualitas kepenulisan manusia tetap dijaga oleh manusia dan staf redaksi internal (Joko, Nadia, Rina, Chief Editor).
-- Provenansi dan kepemilikan naskah diatur secara independen oleh Publication DNA.
+- Publication DNA **sama sekali tidak bertujuan** mengoptimasi skor atau mengecoh detektor AI pihak ketiga (ZeroGPT, GPTZero, dsb).
+- Skor dari AI detector berstatus **`ADVISORY ONLY`**. Kualitas kepenulisan manusia tetap dijaga oleh Joko, Nadia, Rina, dan Chief Editor.
 
 ---
 
-## 7. Kebijakan Mesin Pencari & Keselamatan Pengindeksan (Search Engine Safety)
+## 7. Kebijakan Identitas Visual RancangLoka (RANCANGLOKA_VISUAL_IDENTITY_POLICY)
+
+### 10 Aturan Inti Identitas Visual:
+1. **Semua aset visual editorial/publikasi wajib memiliki provenansi:** Setiap berkas gambar terikat pada `asset_id`, stempel waktu pembuatan, tipe sumber, dan catatan lisensi di D1.
+2. **Watermark kepemilikan hanya untuk aset milik RancangLoka:** Hanya gambar yang dibuat sendiri atau dimiliki secara sah oleh RancangLoka yang boleh memuat watermark `rancangloka.com`.
+3. **Larangan keras watermark pada aset pihak ketiga:** Gambar dari manufaktur, toko resmi (Official Store), atau seller pihak ketiga **DILARANG KERAS** diberi watermark RancangLoka yang dapat mengesankan klaim kepemilikan palsu.
+4. **Master original RancangLoka selalu bersih:** Berkas master resolusi tinggi di R2 selalu tersimpan tanpa watermark permanen (*clean master*).
+5. **Watermark kasat mata hanya diterapkan pada derivatif publik:** Watermark diaplikasikan saat persiapan derivatif publik, bukan dibakar mati ke dalam master original.
+6. **Publication DNA / asset provenance adalah identitas forensik utama:** Hash kriptografis dan stempel waktu adalah bukti hukum utama; watermark kasat mata hanyalah efek pencegah sekunder.
+7. **Watermark kasat mata bersifat pencegah sekunder (secondary deterrence):** Mengutamakan estetika visual majalah arsitektur premium di atas paranoia pencurian.
+8. **Thumbnail derivatif tidak dipaksa memuat watermark kecil:** Derivatif 160x160 WebP tidak dipaksa memuat teks watermark yang dapat merusak keterbacaan thumbnail.
+9. **Aset turunan media sosial boleh menggunakan penanda visual lebih tegas:** Format media sosial dibaca di luar ekosistem web sehingga branding visual diperbolehkan lebih kuat.
+10. **Dokumentasi hands-on langsung boleh menggunakan watermark kepemilikan:** Foto fisik yang diambil langsung oleh tim RancangLoka adalah bukti primer orisinal dan berhak memuat watermark kepemilikan halus.
+
+### Klasifikasi Kelas Sumber Aset (Asset Source Classes):
+
+| Kelas Sumber Aset | Hak Kepemilikan | Kewajiban Kredit Sumber | Kewajiban Provenansi | Kelayakan Watermark Kasat Mata | Perilaku Publication DNA |
+|---|---|---|---|---|---|
+| **`RANCANGLOKA_ORIGINAL`** | Milik RancangLoka | Internal Editorial Desk | WAJIB (`asset_id`, hash) | DIIZINKAN (Halus pada derivatif) | Cryptographic hash + pHash |
+| **`RANCANGLOKA_HANDS_ON`** | Milik RancangLoka (Bukti Primer) | Fotografer/Tim RancangLoka | WAJIB (Metadata alat/waktu) | DIIZINKAN (Halus pada derivatif) | Cryptographic hash + pHash + EXIF proof |
+| **`EDITORIAL_CONCEPT_VISUAL`** | Dihasilkan AI/Budi untuk RancangLoka | Label `EDITORIAL_CONCEPT_VISUAL` | WAJIB (Prompt/seed/Budi ID) | OPSIONAL / Kontekstual | Hash biner + lineage generator |
+| **`MANUFACTURER_SOURCE`** | Milik Manufaktur/Brand | WAJIB menyertakan nama brand | WAJIB (URL sumber katalog) | **DILARANG KERAS** | Hash biner + lisensi sumber |
+| **`OFFICIAL_SELLER_SOURCE`** | Milik Toko/Seller Resmi | WAJIB menyertakan nama toko | WAJIB (Listing source URL) | **DILARANG KERAS** | Hash biner + snapshot offer |
+| **`LICENSED_THIRD_PARTY`** | Pihak Ketiga (Unsplash/Stock) | Sesuai syarat lisensi | WAJIB (ID lisensi/kreator) | **DILARANG KERAS** | Hash biner + attribution string |
+| **`USER_SUPPLIED`** | Pembaca/Kontributor | Nama kontributor | WAJIB (Persetujuan rilis) | **DILARANG KERAS** | Hash biner + persetujuan |
+
+### Arsitektur Master & Derivatif:
+
+```
+[ PRIVATE CLEAN MASTER (R2) ]
+(Resolusi Penuh, Bersih Tanpa Watermark Mati)
+              │
+              ▼
+   [ MEDIA PREPARATION PIPELINE ]
+(Resize, Format WebP, Quality 85, Apply Contextual Watermark)
+              │
+              ├──► PUBLIC_ARTICLE (WebP 1200px / 800px)
+              ├──► THUMBNAIL (WebP 160x160 px, Tanpa Teks Watermark Rusak)
+              ├──► SOCIAL_PREVIEW (Open Graph 1200x630 px)
+              ├──► SOCIAL_DISTRIBUTION (Format Khusus Instagram/X dengan Branding Tegas)
+              └──► OG_IMAGE (Optimal untuk Unfurling di Pesan Instan)
+```
+
+### Perilaku Watermark yang Fleksibel:
+- Nilai opasitas, posisi, ukuran font, dan margin **DILARANG DIKUNCI MATI** di cetak biru sebelum dilakukan uji visual pada layar pembaca nyata.
+- Penempatan watermark wajib mendukung *safe-area selection* agar tidak menutupi fokus arsitektur bangunan.
+- Teks penanda identitas tetap minimal: `rancangloka.com`.
+
+---
+
+## 8. Kebijakan Mesin Pencari & Keselamatan Pengindeksan (Search Engine Safety)
 
 Googlebot dan Bingbot adalah urat nadi distribusi pembaca RancangLoka. Setiap kebijakan proteksi konten yang merusak pengindeksan adalah **kegagalan fatal**.
 
@@ -217,7 +280,7 @@ Googlebot dan Bingbot adalah urat nadi distribusi pembaca RancangLoka. Setiap ke
 
 ---
 
-## 8. Kebijakan AI Crawler (Robots vs Network Enforcement)
+## 9. Kebijakan AI Crawler (Robots vs Network Enforcement)
 
 ### Dua Lapisan Pengendalian:
 1. **Robots.txt Directive (Voluntary):** Petunjuk etis standar industri yang dipatuhi oleh penyedia AI bereputasi baik (OpenAI, Anthropic, Google). Biaya komputasi: nol.
@@ -232,7 +295,7 @@ Googlebot dan Bingbot adalah urat nadi distribusi pembaca RancangLoka. Setiap ke
 
 ---
 
-## 9. Arsitektur Pertahanan Laju & Caching Edge yang Aman (Safe Edge Caching)
+## 10. Arsitektur Pertahanan Laju & Caching Edge yang Aman (Safe Edge Caching)
 
 ### Celah Temuan Audit:
 Pada `src/middleware.ts`, baris 143:
@@ -258,7 +321,7 @@ Setiap halaman artikel publik diperintahkan untuk **tidak di-cache**. Ini membuk
 
 ---
 
-## 10. Pertahanan Laju Adaptif Tanpa Ambang Batas Buatan (Adaptive Rate Defense)
+## 11. Pertahanan Laju Adaptif Tanpa Ambang Batas Buatan (Adaptive Rate Defense)
 
 ### Koreksi Cetak Biru:
 Angka-angka ambang batas sebelumnya ($<30$, $>60$, $>180$ req/menit) **DIHAPUS DARI STATUS KEBIJAKAN PRODUKSI**. Menetapkan angka laju tanpa data dasar riil berisiko memblokir pembaca manusia sah yang membuka banyak tab sekaligus (*false positive*).
@@ -279,46 +342,19 @@ Angka-angka ambang batas sebelumnya ($<30$, $>60$, $>180$ req/menit) **DIHAPUS D
 
 ---
 
-## 11. Pertahanan Hotlink Bertahap (Staged Hotlink Defense)
+## 12. Pertahanan Hotlink Bertahap (Staged Hotlink Defense)
 
 ### Keputusan Sementara Chief Editor (Provisional Decision):
 **`OBSERVE_FIRST_THEN_SELECTIVE_403`:**
 - Menolak strategi pengalihan ke banner promo (*redirect-to-banner*) karena membuang komputasi dan bandwidth.
 
 ### Tahapan Pelaksanaan:
-- **FASE 1 (OBSERVE):** Pasang pencatatan telemetri di `/media/[...key].ts` untuk mengukur:
-  - Domain `Referer` eksternal yang paling sering memanggil aset RancangLoka.
-  - Persentase pembaca sah dengan `Referer` kosong (mode penyamaran, browser privasi).
-  - Lalu lintas perayap gambar resmi (Googlebot-Image) dan aplikasi pesan instan.
+- **FASE 1 (OBSERVE):** Pasang pencatatan telemetri di `/media/[...key].ts` untuk mengukur domain referer eksternal, volume referer kosong, dan bot perayap gambar resmi.
 - **FASE 2 (SELECTIVE ENFORCEMENT):**
   - Izinkan request dengan `Referer` kosong.
   - Izinkan request dari `rancangloka.com` dan mesin pencari terverifikasi.
   - Kembalikan *HTTP 403 Forbidden* ringan (0 byte) hanya untuk domain eksternal yang terbukti melakukan hotlinking abusif.
 - Header `Referer` diposisikan murni sebagai sinyal penghematan bandwidth, bukan bukti otentikasi identitas yang kokoh.
-
----
-
-## 12. Strategi Watermark Redaksional yang Dikoreksi
-
-### Koreksi Cetak Biru:
-Rekomendasi sebelumnya yang mewajibkan watermark 0.5–0.6 opacity pada setiap visual konsep **DIBATALKAN**.
-
-### Prinsip Kanonikal:
-> **`PUBLICATION_DNA_FIRST, VISIBLE_WATERMARK_SECONDARY`**
-> *(DNA Publikasi adalah pertahanan utama; watermark kasat mata bersifat sekunder dan kontekstual.)*
-
-### Kebijakan Sementara Chief Editor:
-**`PASSIVE_PUBLICATION_DNA_DEFAULT, VISIBLE_WATERMARK_CONTEXTUAL_ONLY`**
-
-| Kategori Visual | Kebijakan Watermark | Rasional Teknis & Estetika |
-|---|---|---|
-| **Foto Dokumenter Arsitektur** | *DEFAULT: NO VISIBLE WATERMARK* + Passive Provenance | Menjaga kemewahan estetika visual spasial dan detail bangunan; tidak merusak apresiasi fotografi. |
-| **Visual Konsep Editorial (Budi)** | *DEFAULT: PASSIVE PROVENANCE*. (Watermark kasat mata opsional hanya jika diinstruksikan Chief Editor). | Provenansi dicatat di D1 (`EDITORIAL_CONCEPT_VISUAL`); watermark tidak dipaksakan secara seragam. |
-| **Infografis & Diagram** | *INTEGRATED BRANDING* | Branding RancangLoka menyatu secara alami sebagai elemen desain diagram/tabel, bukan stempel mengganggu. |
-| **Gambar Sumber Produk** | *NO RANCANGLOKA WATERMARK* | Menghormati hak kekayaan intelektual manufaktur; dilarang mengklaim gambar produk pihak ketiga. |
-| **Aset Turunan Media Sosial** | *VISIBLE CORNER BADGE* | Format media sosial dibaca di platform pihak ketiga sehingga memerlukan penanda identitas yang lebih tegas. |
-
-*Tingkat opasitas teks dilarang dikunci secara permanen sebelum dilakukan uji visual pada layar.*
 
 ---
 
@@ -341,16 +377,14 @@ Rekomendasi sebelumnya yang mewajibkan watermark 0.5–0.6 opacity pada setiap v
 Saat ini endpoint search publik mengembalikan seluruh objek `Article` yang difilter, membocorkan kolom internal yang tidak relevan bagi pembaca.
 
 ### Tindakan (Field Whitelisting):
-Pangkas payload `search.json.ts` hanya menyajikan:
+Pangkas payload `search.json.ts` hanya menyajikan subset data yang dikonsumsi oleh `SearchModal.astro`:
 - `title`
 - `slug`
 - `description`
 - `category_name`
-- `category_color`
 - `featured_image`
-- `reading_time_minutes`
 
-Menutup kebocoran metrik internal (`content_hash`, `views`, `key_takeaways`, `focus_keyword`) dan menghemat ukuran payload hingga ~65%.
+Menutup kebocoran metrik internal (`content_hash`, `views`, `key_takeaways`, `focus_keyword`, `category_id`, `author_id`) dan menghemat ukuran payload hingga ~70%.
 
 ---
 
@@ -443,7 +477,7 @@ Sebelum implementasi teknis dimulai, wajib dilakukan audit izin akun Cloudflare 
          ▼
 [ CONTENT_PROTECTION-1B ] (Identitas Konten / Publication DNA)
   - Perluasan skema D1 untuk tanda bukti Publication DNA pasif
-  - Pembangkitan sidik jari n-gram, struktur, dan pHash media saat publikasi
+  - Pembangkitan sidik jari n-gram kompak, struktur, dan pHash media saat publikasi
   - Integrasi header pasif X-RL-Provenance-Hash
   - Penetapan status kandidat kloning (tanpa pemindai otomatis berat di V1)
          │
@@ -475,13 +509,14 @@ Untuk transparansi tata kelola rekayasa, seluruh parameter cetak biru diklasifik
 ### A. DECIDED (Sudah Diputuskan & Mengikat):
 1. Konten web publik tidak dapat dibuat mustahil disalin; perlindungan difokuskan pada infrastruktur, bot liar, hotlinking, dan pembuktian hak cipta.
 2. Invarian: `PUBLICATION_DNA_MUST_NOT_ALTER_EDITORIAL_PROSE` (V1 100% pasif; zero-width, homoglif, dan typo buatan ditolak).
-3. Googlebot dan Bingbot terverifikasi menerima bypass tanpa tantangan JavaScript.
-4. Seluruh bentuk *security theater* (anti-klik kanan, seleksi teks, DOM obfuscation, login-wall pembaca) ditolak mutlak.
-5. Pemanfaatan infrastruktur provenansi yang sudah ada (`content_hash`, tanda terima D1) tanpa menduplikasi sistem.
-6. Pemisahan mutlak: `PUBLICATION DNA != AI TEXT DETECTION` (Detektor AI eksternal bersifat *advisory only*).
+3. Kebijakan Identitas Visual: `RANCANGLOKA_VISUAL_IDENTITY_POLICY` mengikat 10 aturan inti identitas aset.
+4. Googlebot dan Bingbot terverifikasi menerima bypass tanpa tantangan JavaScript.
+5. Seluruh bentuk *security theater* (anti-klik kanan, seleksi teks, DOM obfuscation, login-wall pembaca) ditolak mutlak.
+6. Pemanfaatan infrastruktur provenansi yang sudah ada (`content_hash`, tanda terima D1) tanpa menduplikasi sistem.
+7. Pemisahan mutlak: `PUBLICATION DNA != AI TEXT DETECTION` (Detektor AI eksternal bersifat *advisory only*).
 
 ### B. PROVISIONAL (Keputusan Sementara Chief Editor):
-1. **AI Crawler:** `SELECTIVE AI ACCESS` (Izinkan mesin pencari/rujukan, larang penelan korpus pelatihan massal di robots).
+1. **AI Crawler:** `SELECTIVE AI ACCESS` (Izinkan bot pencari/sitasi, larang penelan korpus pelatihan massal di robots).
 2. **Watermark Visual:** `PASSIVE_PUBLICATION_DNA_DEFAULT` + `VISIBLE_WATERMARK_CONTEXTUAL_ONLY` (Foto dokumenter bersih tanpa watermark; infografis menyatu secara alami; watermark kasat mata hanya opsional jika ada kebutuhan khusus).
 3. **Sindikasi RSS:** `SUMMARY_ONLY_PLUS_CANONICAL_BACKLINK` (Pertahankan format ringkasan saat ini).
 4. **Hotlink Defense:** `OBSERVE_FIRST_THEN_SELECTIVE_403` (Amati lalu lintas terlebih dahulu sebelum memblokir referer asing; hindari redirect-to-banner).
@@ -503,12 +538,13 @@ Untuk transparansi tata kelola rekayasa, seluruh parameter cetak biru diklasifik
 
 Cetak biru yang dikeraskan ini dinyatakan lolos verifikasi jika:
 1. Mengintegrasikan sub-lapisan **Content Identity Protection** dengan invarian `PUBLICATION_DNA_MUST_NOT_ALTER_EDITORIAL_PROSE`.
-2. Menghapus seluruh angka ambang batas rate-limit buatan dan menegakkan `RATE_LIMIT_THRESHOLDS_REQUIRE_BASELINE_OBSERVATION`.
-3. Mengoreksi klaim reduksi performa menjadi hipotesis yang wajib diuji tolok ukurnya di produksi.
-4. Menegaskan klasifikasi `CAPABILITY_REQUIRES_PLAN_VERIFICATION` pada fitur Cloudflare tingkat lanjut.
-5. Memperbarui kebijakan watermark menjadi pasif sebagai default dan kasat mata secara kontekstual.
-6. Mempertahankan keselamatan 100% Googlebot, Bingbot, sitemap, dan RSS.
-7. Tidak mengubah satu baris pun kode aplikasi produksi atau pengaturan database/storage.
+2. Mengintegrasikan **`RANCANGLOKA_VISUAL_IDENTITY_POLICY`** dengan 10 aturan inti dan 7 kelas sumber aset.
+3. Menghapus seluruh angka ambang batas rate-limit buatan dan menegakkan `RATE_LIMIT_THRESHOLDS_REQUIRE_BASELINE_OBSERVATION`.
+4. Mengoreksi klaim reduksi performa menjadi hipotesis yang wajib diuji tolok ukurnya di produksi.
+5. Menegaskan klasifikasi `CAPABILITY_REQUIRES_PLAN_VERIFICATION` pada fitur Cloudflare tingkat lanjut.
+6. Memperbarui kebijakan watermark menjadi pasif sebagai default dan kasat mata secara kontekstual.
+7. Mempertahankan keselamatan 100% Googlebot, Bingbot, sitemap, dan RSS.
+8. Tidak mengubah satu baris pun kode aplikasi produksi atau pengaturan database/storage.
 
 ---
 *Dokumen ini merupakan cetak biru resmi yang telah dikeraskan untuk arsitektur perlindungan konten dan DNA publikasi RancangLoka.*
