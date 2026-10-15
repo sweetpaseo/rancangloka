@@ -4,7 +4,7 @@
 **Tanggal:** 2026-10-15  
 **Milestone:** `INTERNAL-LINK-ENGINE-1`  
 **Fase:** `AUDIT_AND_DESIGN_ONLY`  
-**Status:** `DESIGN_READY` (Zero code mutation, zero database mutation, zero content hash disruption)
+**Status Kontrak Desain:** `INTERNAL_LINK_ENGINE_1_DESIGN_CONTRACT_FINAL` (Zero code mutation, zero database mutation, zero content hash disruption)
 
 ---
 
@@ -34,7 +34,7 @@ Struktur informasi RancangLoka dirancang berlapis secara hierarkis dan kontekstu
 ```mermaid
 graph TD
     Home["Beranda (Homepage)<br/>Kurasi Pilihan & Kajian Terkini"] --> CatHub["Category / Topic Hub<br/>(Arsitektur, Material, Kenyamanan)"]
-    CatHub --> Pillar["Pillar Article<br/>(Panduan Induk Komprehensif)"]
+    CatHub --> Pillar["Pillar Article<br/>(Hanya dengan Identitas Metadata Eksplisit)"]
     
     Pillar --> Supporting1["Supporting Article 1<br/>(Deep-dive Spesifik Komponen)"]
     Pillar --> Supporting2["Supporting Article 2<br/>(Deep-dive Spesifik Material)"]
@@ -57,7 +57,7 @@ Sistem Internal Link Engine V1 mendukung 9 tipe hubungan semantik yang berpusat 
 
 | Tipe Hubungan | Definisi & Nilai Tambah Pembaca | Contoh Kasus Nyata |
 |---|---|---|
-| `PARENT_PILLAR` | Artikel tujuan adalah panduan induk komprehensif yang memayungi domain arsitektural ini. | Naskah *Louver Aluminium* menunjuk ke *Panduan Sistem Shading Luar Fasad Tropis*. |
+| `PARENT_PILLAR` | Artikel tujuan adalah panduan induk komprehensif yang memayungi domain arsitektural ini (Wajib memiliki metadata pilar eksplisit). | Naskah *Louver Aluminium* menunjuk ke *Panduan Sistem Shading Luar Fasad Tropis*. |
 | `CHILD_SUPPORTING` | Artikel tujuan membedah secara teknis detail komponen, rumus kalkulasi, atau studi kasus turunan dari artikel pilar. | Naskah *Sistem Shading Luar* menunjuk ke *Detail Sambungan Dak Beton Tritisan*. |
 | `RELATED_PROBLEM` | Artikel tujuan mendiagnosis gejala masalah hunian yang sering terjadi bersamaan atau menjadi akar persoalan. | Naskah *Kondensasi Jendela Kaca* menunjuk ke *Masalah Sirkulasi Ruang Pengap & Lembap*. |
 | `RELATED_MATERIAL` | Artikel tujuan mengulas karakteristik fisik, durabilitas, atau trade-off material yang disebutkan dalam naskah. | Naskah *Sistem Shading* menunjuk ke *Spesifikasi Fisik & Ketahanan Kayu Ulin vs Aluminium*. |
@@ -67,7 +67,9 @@ Sistem Internal Link Engine V1 mendukung 9 tipe hubungan semantik yang berpusat 
 | `RELATED_SYSTEM` | Artikel tujuan menghubungkan sistem bukaan dengan sistem selubung bangunan lain (atap, ventilasi silang, dinding). | Naskah *Peneduh Jendela* menunjuk ke *Rekayasa Ventilasi Silang Plafon Tropis*. |
 | `RELATED_FAILURE_MODE` | Artikel tujuan menjelaskan bagaimana material atau konfigurasi tersebut dapat gagal jika salah pasang/rawat. | Naskah *Pemasangan Louver* menunjuk ke *Penyebab Tempias Air Hujan pada Bukaan Fasad*. |
 
-> **Catatan Kebijakan Tipe Hubungan:** Tipe generik seperti `RELATED_CONTEXT` **ditolak dan dilarang**. Setiap relasi wajib memiliki intensi pembaca yang tajam. Relasi tanpa nilai tambah spesifik memicu tautan mekanis berkualitas rendah (*link slop*).
+> **Aturan Kebijakan Invarian Pilar (`INVARIANT_EXPLICIT_PILLAR_IDENTITY`):**
+> Relasi `PARENT_PILLAR` dan `CHILD_SUPPORTING` **hanya boleh digunakan** apabila identitas pilar pada artikel sumber/target tersimpan secara eksplisit dalam metadata kanonikal (misal `pillar_role = 'PILLAR'` atau flag pilar terverifikasi di basis data). Dilarang keras menyimpulkan status pilar semata-mata dari panjang judul, jumlah kata naskah, cakupan topik umum, kategori, atau skor semantik.
+> Tipe relasi generik seperti `RELATED_CONTEXT` **ditolak dan dilarang**. Setiap relasi wajib memiliki intensi pembaca yang tajam.
 
 ---
 
@@ -77,7 +79,7 @@ Audit menyeluruh terhadap basis kode aktif (`rancangloka-astro/`) mengungkap fak
 
 ```
 +------------------------------------+--------------------------+-------------------------------------------------------+
-| Komponen Arsitektur                | Status Saat Ini          | Temuan Audit Nyata                                    |
+| Komponen Arsitektur                | Status Saat Ini          | Temuan Audit Struktur Tautan                          |
 +------------------------------------+--------------------------+-------------------------------------------------------+
 | Article Renderer ([slug].astro)    | IMPLEMENTED (MECHANICAL) | Memproses HTML via regex keyword & kategori recency.  |
 | Database Schema (db/schema.sql)    | ABSENT                   | Tabel relasi link / graph belum ada di basis data.   |
@@ -105,14 +107,14 @@ Audit menyeluruh terhadap basis kode aktif (`rancangloka-astro/`) mengungkap fak
 
 ## 5. Audit Sampel Konten Produksi: Artikel A, B, dan C
 
-Audit terhadap tiga artikel live di ekosistem RancangLoka:
+Audit struktur tautan terhadap tiga artikel live di ekosistem RancangLoka:
 
 * **Artikel A (ID 7):** *Jendela Berkondensasi: Kelembapan Ruangan, Suhu Permukaan Kaca, Ventilasi, atau Thermal Bridge?* (Kategori: `Kenyamanan Rumah` / ID 6)
 * **Artikel B (ID 8):** *Thermal Bridge Kusen Aluminium: Mengapa Permukaan Kusen Terasa Sangat Panas atau Dingin?* (Kategori: `Material & Finishing` / ID 5)
 * **Artikel C (ID 9):** *Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?* (Kategori: `Arsitektur & Renovasi` / ID 3)
 
-### Fakta Keterkaitan Semantik di Lapangan:
-Ketiga artikel ini secara sains fisika bangunan merupakan satu klaster pengetahuan yang luar biasa padu:
+### Fakta Keterkaitan Semantik Struktur Konten:
+Ketiga artikel ini secara sains fisika bangunan merupakan satu klaster pengetahuan yang saling melengkapi:
 * **Artikel C** adalah **Solusi Makro Fasad** (mencegah radiasi matahari menyentuh bukaan kaca luar).
 * **Artikel B** adalah **Detail Konduksi Material** (bagaimana kusen aluminium tetap mengalirkan panas/dingin secara konduksi meski dinaungi, serta peran thermal break).
 * **Artikel A** adalah **Diagnosis Masalah Ruang & Fisika Embun** (gejala kondensasi yang timbul akibat pertemuan udara lembap tropis dengan permukaan dingin pada kaca dan kusen aluminium tanpa thermal break).
@@ -122,6 +124,7 @@ Ketiga artikel ini secara sains fisika bangunan merupakan satu klaster pengetahu
 * **Tautan Keluar di Naskah (*Outbound Prose Links*):** **0** (Nol).
 * **Visibilitas di Kotak Rekomendasi:** **0%** (Karena ketiganya berada di kategori yang berbeda—ID 3, ID 5, dan ID 6—sistem `getRelatedArticles` dan `"BACA JUGA"` tidak akan pernah menampilkan salah satu di antara mereka pada artikel lainnya).
 * **Status Isolasi:** **TERISOLASI PENUH (*Functionally Orphaned Cluster*)**. Pembaca yang membaca Artikel C tidak memiliki rute navigasi terkurasi untuk mendalami jembatan termal kusen di Artikel B atau masalah kondensasi di Artikel A.
+* **Status Metadata Pilar:** Tidak ada satupun dari Artikel A, B, atau C yang saat ini ditandai sebagai artikel pilar dalam basis data. Oleh karena itu, hubungan antar ketiganya dalam graf sampel wajib menggunakan relasi horizontal yang didukung.
 
 ---
 
@@ -152,18 +155,22 @@ Untuk menjamin kepatuhan mutlak terhadap invarian ini, RancangLoka menetapkan **
 
 ## 7. Kualitas Tautan Kontekstual & Kebijakan Teks Jangkar (Anchor Text Policy)
 
+### Prinsip Bebas Kuota Mekanis (`NO_MECHANICAL_INTERNAL_LINK_QUOTA`):
+Kepadatan tautan internal **tidak diatur oleh hitungan kata mekanis** (misal: dilarang memberlakukan aturan *"maksimal 1 link per 350 kata"* atau target kuota N link per artikel). Kehadiran tautan kontekstual murni ditentukan oleh kebutuhan pembaca (*Semantic Journey Need*).
+
 ### Kriteria Penilaian Semantik (*Semantic Scoring Signals*):
 Engine tidak menggunakan pencocokan kata kunci mentah (*raw keyword matching*). Kandidat tautan dinilai berdasarkan:
 1. **Relevansi Intensi (*Reader Intent Alignment*):** Apakah artikel tujuan menjawab keraguan logis pembaca pada paragraf tersebut?
 2. **Kedekatan Domain Masalah (*Shared Problem Domain*):** Apakah keduanya berbagi konteks kegagalan atau solusi fisika bangunan yang sama?
 3. **Ketergantungan Prasyarat (*Conceptual Prerequisite*):** Apakah pemahaman artikel A diperlukan sebelum mempraktikkan artikel B?
-4. **Kesesuaian Konteks Iklim (*Tropical Context Proximity*):** Keselarasan konteks iklim tropis lembap Indonesia.
+4. **Kesesuaian Konteik Iklim (*Tropical Context Proximity*):** Keselarasan konteks iklim tropis lembap Indonesia.
 
 ### Larangan Keras (*Strict Anti-Pattern Bans*):
-* ❌ **Keyword Stuffing:** Dilarang menautkan kata kunci yang sama berulang kali dalam satu halaman.
+* ❌ **Repeated Destination Spam:** Dilarang menautkan artikel tujuan yang sama berulang kali dalam satu halaman.
+* ❌ **Redundant Question Answering:** Dilarang menyertakan beberapa tautan yang menjawab pertanyaan kognitif yang sama dalam satu bagian.
+* ❌ **Dense Anchor Clustering:** Dilarang menumpuk gugusan tautan padat dalam satu paragraf tunggal.
+* ❌ **SEO Count Link Filling:** Dilarang menyisipkan tautan semata-mata demi memenuhi target kuota algoritma mesin pencari.
 * ❌ **Anchor Generik AI/SEO:** Dilarang menggunakan anchor *"klik di sini"*, *"baca di sini"*, *"artikel ini"*, atau *"tautan berikut"*.
-* ❌ **Tautan Berdekatan (*Link Clustering*):** Dilarang menempatkan lebih dari satu tautan dalam satu paragraf yang sama.
-* ❌ **Kerapatan Berlebih:** Dibatasi maksimal 1 tautan kontekstual per 350–400 kata.
 * ❌ **Tautan Sirkular / Diri Sendiri:** Dilarang menautkan artikel ke dirinya sendiri atau membuat loop rekursif tanpa akhir.
 
 ### Standar Teks Jangkar Alami (*Natural Indonesian Anchors*):
@@ -206,10 +213,10 @@ Modul tidak menampilkan daftar kartu acak, melainkan menyajikan **Alasan Pembaca
 
 ## 9. Model Hubungan Pilar ↔ Artikel Pendukung (Pillar / Supporting Model)
 
-### Representasi Metadata Minimalis:
-Setiap artikel memiliki peran arsitektural dalam klaster topik:
+### Representasi Metadata Eksplisit:
+Relasi hierarkis pilar tunduk pada `INVARIANT_EXPLICIT_PILLAR_IDENTITY`:
 * `pillar_role`: `PILLAR` (Artikel Induk), `SUPPORTING` (Artikel Pendukung), atau `STANDALONE` (Artikel Mandiri).
-* `parent_pillar_id`: ID artikel induk (berlaku untuk artikel pendukung).
+* `parent_pillar_id`: ID artikel induk (berlaku untuk artikel pendukung yang terdaftar).
 
 ### Alur Graf Dua-Arah (*Bidirectional Navigation*):
 1. **Pillar $\to$ Supporting:** Halaman Pilar menampilkan indeks kurasi topik terstruktur (*Topic Navigation Block*) yang merinci seluruh sub-bab teknis pendukungnya.
@@ -263,7 +270,8 @@ graph LR
 
 ## 12. Skema Basis Data Relasi Graf (Proposed Minimalist D1 Schema)
 
-Dirancang seringan mungkin (*lean & fast*) tanpa beban migrasi besar:
+### Kontrak Unik Dua-Bidang (*Two-Plane Uniqueness Contract*):
+Relasi semantik yang sama dapat secara sah hadir tepat satu kali pada bidang dinamis luar naskah (`PLANE_A_DYNAMIC`), dan secara terpisah satu kali pada teks inline naskah (`PLANE_B_INLINE`). Penempatan duplikat dalam bidang yang **sama** dicegah oleh indeks unik komposit:
 
 ```sql
 -- Tabel Kanonikal Graf Tautan Internal RancangLoka
@@ -290,17 +298,20 @@ CREATE TABLE IF NOT EXISTS article_internal_links (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   reviewed_at DATETIME,
   reviewed_by TEXT,
-  UNIQUE(source_article_id, target_article_id, relationship_type)
+  UNIQUE(source_article_id, target_article_id, relationship_type, placement_plane)
 );
 
 CREATE INDEX IF NOT EXISTS idx_internal_links_source ON article_internal_links(source_article_id, status);
 CREATE INDEX IF NOT EXISTS idx_internal_links_target ON article_internal_links(target_article_id, status);
 ```
 
-### Penanganan Relasi Usang / Tautan Basi (*Stale Link Invariants*):
-1. **Target Berubah Status (Draft / Dihapus):** Kueri runtime menyaring `WHERE target.status = 'published'`. Jika artikel tujuan ditarik dari publikasi, tautan otomatis hilang seketika dari Plane A (*fail-safe zero 404*).
-2. **Slug Target Berubah:** Tautan berorientasi pada `target_article_id` (foreign key numerik stabil), bukan string slug statis. Resolver URL selalu mengambil slug aktif terbaru dari tabel `articles`.
-3. **Naskah Sumber Direvisi:** Jika revisi naskah menghapus konteks paragraf yang bersangkutan, status tautan Plane B ditandai sebagai `STALE` untuk ditinjau ulang oleh Dimas/Joko.
+### Pemeriksaan Koherensi Kontrak Skema V1 (`V1_SCHEMA_CONTRACT_COHERENT`):
+1. **Koherensi Dua-Bidang:** Penambahan `placement_plane` pada batasan `UNIQUE` memungkinkan Plane A dan Plane B hidup berdampingan tanpa saling menolak atau memicu tabel terpisah yang berlebihan.
+2. **Integritas Hash Konten:** Plane A membaca relasi aktif murni sebagai data pendukung tampilan SSR tanpa menyentuh kolom `articles.content_md` maupun `articles.content_hash`.
+3. **Siklus Hidup Status (`status`):** Mendukung transisi `CANDIDATE` $\to$ `APPROVED` $\to$ `ACTIVE`, serta penolakan `REJECTED` atau invalidasi `STALE`.
+4. **Penanganan Status Terbit Target:** Kueri runtime Plane A menyaring `WHERE target.status = 'published'`. Jika artikel tujuan ditarik dari peredaran, tautan otomatis hilang seketika (*fail-safe zero 404*).
+5. **Kekebalan Perubahan Slug:** Relasi mengikat `target_article_id` (foreign key numerik permanen). Perubahan slug pada tabel `articles` langsung tercermin tanpa memutus relasi graf.
+6. **Dukungan Deteksi Orphan:** Deteksi dilakukan melalui kueri agregasi sederhana `LEFT JOIN article_internal_links ON articles.id = target_article_id` yang terindeks cepat.
 
 ---
 
@@ -310,7 +321,7 @@ Sesuai filosofi operasional RancangLoka: *"RancangLoka harus membawa keputusan y
 
 Mission Control menambahkan kartu tindakan terkurasi pada antarmuka operator:
 1. **Kartu `ORPHAN_DETECTED`:** Memberitahu redaksi jika ada artikel baru yang belum memiliki jalur navigasi masuk yang memadai.
-2. **Kartu `BACKLINK_RECOMMENDED`:** Memberikan rekomendasi spesifik: *"Artikel C (baru) sangat cocok dirujuk oleh Artikel B (lama) pada bagian solusi radiasi fasad. Setujui untuk dimasukkan ke modul pendukung?"*
+2. **Kartu `BACKLINK_RECOMMENDED`:** Memberikan rekomendasi spesifik: *"Artikel C sangat cocok dirujuk oleh Artikel B pada bagian solusi radiasi fasad. Setujui untuk dimasukkan ke modul pendukung?"*
 3. **Metrik Kesehatan Graf Internal:**
    * Jumlah Artikel Terisolasi (*Orphan Count*)
    * Cakupan Perjalanan Keputusan (*Decision Journey Coverage %*)
@@ -319,69 +330,91 @@ Mission Control menambahkan kartu tindakan terkurasi pada antarmuka operator:
 
 ---
 
-## 14. Graf Contoh Nyata untuk Klaster Artikel A, B, dan C
+## 14. Graf Contoh Nyata untuk Klaster Artikel A, B, dan C (Revisi Relasi Horizontal)
 
-Berdasarkan analisis naskah aktual, berikut adalah rancangan graf tautan semantik ideal untuk Artikel A, B, dan C:
+Berdasarkan analisis struktur naskah aktual—dan mengingat **Artikel C belum ditetapkan sebagai pilar dalam metadata kanonikal**—seluruh tepi graf disusun menggunakan relasi horizontal yang sepenuhnya didukung:
 
 ```
                                   [ ARTIKEL C ]
              "Memilih Sistem Shading Luar untuk Rumah Tropis:
            Overhang, Louver, Awning, atau Secondary Facade?"
-                    (PARENT_PILLAR / Fasad Peneduh Pasif)
+                           (Solusi Fasad Makro)
                                 ▲            │
-       RELATED_DECISION /       │            │  RELATED_MATERIAL /
-       CHILD_SUPPORTING         │            │  BACKGROUND_EXPLAINER
+         RELATED_SYSTEM /       │            │  RELATED_MATERIAL /
+         RELATED_DECISION       │            │  BACKGROUND_EXPLAINER
                                 │            ▼
 [ ARTIKEL A ] ◄──────────────────────── [ ARTIKEL B ]
 "Jendela Berkondensasi:             "Thermal Bridge Kusen Aluminium:
  Kelembapan Ruangan, Suhu Kaca,      Mengapa Permukaan Kusen Terasa
  Ventilasi, atau Thermal Bridge?"     Sangat Panas atau Dingin?"
- (RELATED_PROBLEM / Diagnosis Fisika) (CHILD_SUPPORTING / Detail Konduksi)
-               RELATED_FAILURE_MODE / CAUSAL_LINK
+ (Diagnosis Masalah Embun Ruang)     (Detail Konduksi Panas Kusen)
+               RELATED_FAILURE_MODE / RELATED_PROBLEM
 ```
 
 ### Rincian Tepi Graf (*Graph Edge Specifications*):
 
 1. **Edge 1: Dari Artikel C $\to$ Artikel B**
-   * **Tipe:** `RELATED_MATERIAL` / `BACKGROUND_EXPLAINER`
-   * **Bidang:** `PLANE_A_DYNAMIC` (Modul Pendukung) & opsi `PLANE_B_INLINE` pada naskah louver aluminium.
+   * **Sumber:** Artikel C (`memilih-sistem-shading-luar-rumah-tropis`, ID 9)
+   * **Target:** Artikel B (`thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi`, ID 8)
+   * **Tipe Relasi:** `RELATED_MATERIAL` / `BACKGROUND_EXPLAINER`
+   * **Rekomendasi Penempatan:** `PLANE_A_DYNAMIC` (Modul Pendukung) & opsional `PLANE_B_INLINE` pada pembahasan louver aluminium.
    * **Alasan Pembaca (*Reader Reason*):** *"Jika Anda memilih sirip louver atau kusen berbahan aluminium, pahami bagaimana material logam menghantarkan panas secara konduksi ke dalam ruangan."*
-   * **Anchor Alami (Plane B):** *"konduktivitas termal pada profil aluminium"*
+   * **Anchor Alami (Plane B jika disetujui):** *"konduktivitas termal pada profil aluminium"*
 
 2. **Edge 2: Dari Artikel B $\to$ Artikel C**
-   * **Tipe:** `RELATED_DECISION` / `PARENT_PILLAR`
-   * **Bidang:** `PLANE_A_DYNAMIC` (Modul Pendukung) & opsi `PLANE_B_INLINE` pada sub-bab solusi pasif.
+   * **Sumber:** Artikel B (`thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi`, ID 8)
+   * **Target:** Artikel C (`memilih-sistem-shading-luar-rumah-tropis`, ID 9)
+   * **Tipe Relasi:** `RELATED_DECISION` / `RELATED_SYSTEM`
+   * **Rekomendasi Penempatan:** `PLANE_A_DYNAMIC` (Modul Pendukung) & opsional `PLANE_B_INLINE` pada sub-bab peredam panas pasif.
    * **Alasan Pembaca (*Reader Reason*):** *"Sebelum mengganti kusen atau membongkar jendela, pertimbangkan menaungi bukaan kaca dari luar menggunakan sistem peneduh fasad tropis."*
-   * **Anchor Alami (Plane B):** *"memasang sistem peneduh luar pada jendela"*
+   * **Anchor Alami (Plane B jika disetujui):** *"memasang sistem peneduh luar pada jendela"*
 
 3. **Edge 3: Dari Artikel B $\to$ Artikel A**
-   * **Tipe:** `RELATED_PROBLEM` / `RELATED_FAILURE_MODE`
-   * **Bidang:** `PLANE_A_DYNAMIC` (Modul Pendukung)
+   * **Sumber:** Artikel B (`thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi`, ID 8)
+   * **Target:** Artikel A (`jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge`, ID 7)
+   * **Tipe Relasi:** `RELATED_PROBLEM` / `RELATED_FAILURE_MODE`
+   * **Rekomendasi Penempatan:** `PLANE_A_DYNAMIC` (Modul Pendukung)
    * **Alasan Pembaca (*Reader Reason*):** *"Kusen aluminium yang dingin di malam hari akibat AC sering kali memicu tetesan air embun pada sambungan kaca dan dinding."*
-   * **Anchor Alami (Plane B):** *"risiko pengembunan pada kaca dan kusen jendela"*
+   * **Anchor Alami (Plane B jika disetujui):** *"risiko pengembunan pada kaca dan kusen jendela"*
 
 4. **Edge 4: Dari Artikel A $\to$ Artikel B**
-   * **Tipe:** `BACKGROUND_EXPLAINER` / `RELATED_MATERIAL`
-   * **Bidang:** `PLANE_A_DYNAMIC` (Modul Pendukung) & opsi `PLANE_B_INLINE` pada sub-bab akar masalah jembatan termal.
+   * **Sumber:** Artikel A (`jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge`, ID 7)
+   * **Target:** Artikel B (`thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi`, ID 8)
+   * **Tipe Relasi:** `BACKGROUND_EXPLAINER` / `RELATED_MATERIAL`
+   * **Rekomendasi Penempatan:** `PLANE_A_DYNAMIC` (Modul Pendukung) & opsional `PLANE_B_INLINE` pada pembahasan akar jembatan termal.
    * **Alasan Pembaca (*Reader Reason*):** *"Pelajari mekanisme jembatan termal pada rangka jendela yang menyebabkan perbedaan suhu ekstrem pemicu embun."*
-   * **Anchor Alami (Plane B):** *"terjadinya jembatan termal pada kusen jendela"*
+   * **Anchor Alami (Plane B jika disetujui):** *"terjadinya jembatan termal pada kusen jendela"*
 
 5. **Edge 5: Dari Artikel A $\to$ Artikel C**
-   * **Tipe:** `RELATED_SYSTEM`
-   * **Bidang:** `PLANE_A_DYNAMIC` (Modul Pendukung)
+   * **Sumber:** Artikel A (`jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge`, ID 7)
+   * **Target:** Artikel C (`memilih-sistem-shading-luar-rumah-tropis`, ID 9)
+   * **Tipe Relasi:** `RELATED_SYSTEM` / `RELATED_DECISION`
+   * **Rekomendasi Penempatan:** `PLANE_A_DYNAMIC` (Modul Pendukung)
    * **Alasan Pembaca (*Reader Reason*):** *"Ketahui bagaimana naungan atap dan kisi luar membantu menjaga suhu permukaan kaca tetap stabil dari sengatan cuaca luar."*
+   * **Anchor Alami (Plane B jika disetujui):** *"perlindungan naungan atap dan peneduh luar"*
 
 ---
 
-## 15. Batasan Ruang Lingkup V1 vs Fase Masa Depan
+## 15. Sasaran Performa & Penerimaan Teknis (Performance Targets & Acceptance Goals)
+
+Seluruh metrik performa dalam fase desain ini merupakan **target performa / sasaran akseptasi (*acceptance goals*)**, bukan klaim pengukuran runtime (pengukuran empiris wajib dilakukan pada fase pengujian akseptasi implementasi):
+
+* **Target Kueri Relasi Edge:** Kueri D1 untuk Plane A (`article_internal_links`) dirancang seringan mungkin melalui indeks komposit (`idx_internal_links_source`), dengan target lookup yang optimal pada Cloudflare Workers edge.
+* **Arsitektur Zero Client-Side JS:** Seluruh tautan Plane A dan Plane B dirender sebagai tag HTML native `<a href="...">` murni pada SSR, tanpa membutuhkan runtime client-side JavaScript.
+* **Sasaran Integritas Lighthouse:** Penambahan modul pendukung ditargetkan tidak menimbulkan regresi material pada skor performa Google Lighthouse dan Core Web Vitals (LCP, CLS, INP) yang saat ini sudah berada di kisaran 90–100.
+* **Protokol Verifikasi:** Benchmark latensi kueri D1 dan uji render HTML akan diukur secara empiris dengan skrip pengujian otomatis saat implementasi mesin dijalankan.
+
+---
+
+## 16. Batasan Ruang Lingkup V1 vs Fase Masa Depan
 
 ### Termasuk dalam V1 (`INTERNAL-LINK-ENGINE-1`):
-* [x] Audit komprehensif basis kode dan klaster konten nyata.
+* [x] Audit komprehensif basis kode dan struktur tautan klaster konten nyata.
 * [x] Penetapan prinsip kanonikal *"melanjutkan perjalanan berpikir pembaca"*.
 * [x] Spesifikasi taksonomi 9 relasi semantik berpusat pada pembaca.
 * [x] Arsitektur Dua-Bidang (Plane A Dinamis Aman vs Plane B Editorial Inline).
 * [x] Desain modul publik *"Artikel Pendukung untuk Keputusan Ini"* (Zero-JS).
-* [x] Skema basis data relasi graf minimalis (`article_internal_links`).
+* [x] Skema basis data relasi graf minimalis (`article_internal_links`) dengan kontrak unik empat-kunci.
 * [x] Algoritma deteksi orphan articles & penemuan balik dua-arah (*bidirectional discovery*).
 * [x] Pemetaan peran staf redaksi kanonikal (Dimas, Joko, Nadia, Rina, Chief Editor, Sari).
 * [x] Proteksi integritas naskah terbit (Zero mutation on published content hash).
@@ -393,6 +426,6 @@ Berdasarkan analisis naskah aktual, berikut adalah rancangan graf tautan semanti
 
 ---
 
-## 16. Kesimpulan & Rekomendasi Arsitektur
+## 17. Kesimpulan & Rekomendasi Arsitektur
 
-Arsitektur **INTERNAL-LINK-ENGINE-1** siap untuk masuk ke tahap implementasi teknis berikutnya saat diinstruksikan oleh Chief Editor. Sistem ini mengeliminasi jebakan SEO mekanis kuno dan menggantinya dengan sistem penjelajahan pengetahuan hunian yang mendalam, bermartabat, dan sepenuhnya menghormati integritas artikel yang telah diterbitkan.
+Kontrak desain arsitektur **INTERNAL-LINK-ENGINE-1** telah disempurnakan dan diverifikasi koheren secara menyeluruh. Sistem ini mengeliminasi jebakan SEO mekanis kuno, menghormati `INVARIANT_NO_UNVERIFIED_FIRST_HAND_AUTHORITY`, menegakkan invarian identitas pilar eksplisit, mengunci kontrak unik dua-bidang, dan sepenuhnya menjaga integritas kriptografis artikel yang telah diterbitkan.
