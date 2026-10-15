@@ -58,6 +58,7 @@ export async function getArticleOperationsSummary(db: any): Promise<ArticleOpera
   let latestPublished: ArticleOperationsSummary['latestPublished'] = null;
   let latestApproval: ArticleOperationsSummary['latestApproval'] = null;
   let latestReceipt: ArticleOperationsSummary['latestReceipt'] = null;
+  let internalLinks: ArticleOperationsSummary['internalLinks'] = undefined;
 
   if (db && typeof db.prepare === 'function') {
     try {
@@ -116,6 +117,18 @@ export async function getArticleOperationsSummary(db: any): Promise<ArticleOpera
           createdAt: receiptRow.created_at
         };
       }
+
+      // 6. Actionable Semantic Internal Link States
+      try {
+        const { deriveInternalLinkActionableStates } = await import('../internal-link/index.ts');
+        const actions = await deriveInternalLinkActionableStates(db);
+        internalLinks = {
+          actionableCount: actions.length,
+          actions
+        };
+      } catch {
+        // Table may be absent in local/unmigrated test fixtures
+      }
     } catch {
       // Fallback
     }
@@ -129,7 +142,8 @@ export async function getArticleOperationsSummary(db: any): Promise<ArticleOpera
     quarantinedCount,
     latestPublished,
     latestApproval,
-    latestReceipt
+    latestReceipt,
+    internalLinks
   };
 }
 

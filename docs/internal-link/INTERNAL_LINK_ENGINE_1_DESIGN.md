@@ -452,7 +452,57 @@ Kontrak desain arsitektur **INTERNAL-LINK-ENGINE-1** telah disempurnakan dan div
 4. **Pencegahan Mutasi Naskah Diam-diam:**
    - `processArticleContent` di `src/lib/seo.ts` menonaktifkan injeksi regex keyword mekanis secara default.
    - Stored markdown/HTML dan `content_hash` artikel terbit (termasuk Artikel A, B, C) 100% terlindungi.
-5. **Hasil Pengujian & Benchmark Empiris:**
+5. **Hasil Pengujian & Benchmark Empiris Awal:**
    - 20/20 tes di `scripts/test-internal-link-engine.js` lulus.
-   - Waktu lookup Plane A: ~0.0052 ms per kueri.
-   - Waktu render prosesor naskah: ~0.0465 ms per render.
+
+---
+
+## 19. Laporan Hardening Pra-Produksi & Audit E2E (Pre-Production Hardening & E2E Acceptance Audit)
+
+**Tanggal:** 2026-10-15  
+**Klasifikasi:** `INTERNAL_LINK_ENGINE_1_PREPROD_HARDENED`
+
+### 1. Invarian Hubungan Utama Basis Data (`ONE_PRIMARY_RELATIONSHIP_PER_PLACEMENT`)
+- **Koreksi Skema:** Kontrak skema `db/migrations/0033_internal_link_engine.sql` dan `db/schema.sql` diperbaiki dari empat-kunci menjadi tiga-kunci:
+  ```sql
+  UNIQUE(source_article_id, target_article_id, placement_plane)
+  ```
+- **Rasional:** Untuk pasangan `(source, target, placement_plane)` hanya boleh ada tepat SATU hubungan semantik primer. Atribut `relationship_type` mencatat hubungan primer tersebut. Alasan/argumen semantik sekunder dicatat di dalam kolom `reader_reason`, bukan dengan menduplikasi baris relasi/kartu.
+
+### 2. Penemuan Semantik Generik Tanpa Overfit (`GENERIC_DISCOVERY_NOT_ARTICLE_SPECIFIC`)
+- **Audit Kemandirian Topik:** `discoverBidirectionalCandidates` dibersihkan dari seluruh keterikatan hardcoded terhadap Artikel A, B, atau C (tidak ada ID, slug, atau judul naskah spesifik yang di-hardcode).
+- **Taksonomi Arsitektural Bersifat Komposabel:** Menggunakan domain taxonomy arsitektur generik (`ARCHITECTURAL_TAXONOMY`) dan pemetaan subsistem (`ARCHITECTURAL_SUBSYSTEMS`: `envelope`, `roofing`, `air_and_moisture`, `thermal_acoustics`) yang otomatis memetakan relasi `RELATED_PROBLEM`, `RELATED_MATERIAL`, `RELATED_SYSTEM`, dan `RELATED_FAILURE_MODE` untuk topik-topik masa depan yang belum pernah ada sebelumnya (*unseen future topics* seperti ventilasi pasif / rumah pengap, waterproofing atap bocor, acoustic glazing kebisingan jalan, dsb.).
+- **Pengujian Topik Baru:** Diverifikasi pada 4 artikel sintetik baru tanpa ada aturan khusus di kode layanan.
+
+### 3. Integrasi Nyata E2E Mission Control (`MISSION_CONTROL_ACTIONABLE_LINK_STATES`)
+- **Penyambungan Runtime Otoritatif:** Fungsi `deriveInternalLinkActionableStates` disambungkan secara nyata ke dalam:
+  - `src/lib/mission-control/types.ts`: `ArticleOperationsSummary.internalLinks` merekam `{ actionableCount: number, actions: InternalLinkActionableState[] }`.
+  - `src/lib/mission-control/summaries.ts`: Mengagregasikan status tautan aktif per artikel untuk ringkasan operasional Chief Editor.
+  - `src/lib/mission-control/tasks.ts`: Menyuntikkan kartu tugas terstruktur ke dalam antrean review Chief Editor (`stage: 'ready_for_review'`) saat terdeteksi `ORPHAN_DETECTED`, `LINK_REVIEW_REQUIRED`, `BACKLINK_RECOMMENDED`, atau `LINK_REVISION_RECOMMENDED`.
+- **Invarian Kebersihan Dasbor:** Hubungan berstatus `ACTIVE` yang sehat tetap tidak terlihat di antrean tugas (zero clutter). Begitu relasi diperbaiki atau disetujui, kartu tugas otomatis terhapus dari antrean.
+
+### 4. Konsistensi Metadata Pilar
+- Validasi fungsi `validatePillarMetadataSync` dan `validatePillarMetadata` menegakkan:
+  - `PILLAR`: `parent_pillar_id` wajib `NULL`.
+  - `STANDALONE`: `parent_pillar_id` wajib `NULL`.
+  - `SUPPORTING`: `parent_pillar_id` wajib mereferensikan artikel yang berstatus `PILLAR`.
+  - Pelarangan relasi mandiri (*self-parenting*) dan lingkaran referensi (*circularity*).
+- Artikel A, B, dan C tetap berstatus `STANDALONE`.
+
+### 5. Klasifikasi Bahasa Pengukuran Performa yang Akurat
+- **[LOCAL MICROBENCHMARK]:** Lookup in-memory `getActivePlaneALinks` memakan waktu rata-rata **0.0070 ms per lookup** (500 iterasi).
+- **[LOCAL SSR BENCHMARK]:** Render in-memory `processArticleContent` memakan waktu rata-rata **0.0548 ms per render** (500 iterasi).
+- **[PRODUCTION MEASUREMENT STATUS]:** Latensi Cloudflare D1 aktual dan skor Google Lighthouse di lingkungan produksi secara ketat diklasifikasikan sebagai *To be measured post-deployment*. Tidak ada klaim performa produksi prematur sebelum deployment nyata.
+
+### 6. Transisi Permukaan Tautan Publik (Deduplikasi Tampilan)
+- Diperiksa dan diimplementasikan pada `src/pages/[slug].astro`:
+  - `Plane A Dynamic Safe` (*Artikel Pendukung untuk Keputusan Ini*) memiliki prioritas tertinggi.
+  - Rekomendasi in-article `BACA JUGA` difilter untuk mengecualikan target yang sudah tampil di Plane A.
+  - Grid rekomendasi artikel di footer (`RelatedArticles`) difilter untuk mengecualikan target yang sudah ada di Plane A dan naskah BACA JUGA.
+  - Zero duplikasi destinasi rekomendasi di hadapan pembaca.
+
+### 7. Hasil Pengujian Lengkap
+- `scripts/test-internal-link-engine.js`: 25/25 lulus uji tanpa regresi.
+- `scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md`: SHA-256 tetap tepat `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28`.
+- Typecheck (`npx tsc --noEmit`): 0 error.
+- SSR Build (`npm run build`): Sukses sempurna.

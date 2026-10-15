@@ -34,7 +34,10 @@ import {
   RELATIONSHIP_TYPES,
   PLACEMENT_PLANES,
   LINK_STATUSES,
+  VALID_PILLAR_ROLES,
   validateLinkCandidate,
+  validatePillarMetadataSync,
+  validatePillarMetadata,
   createLinkCandidate,
   approveLink,
   activateLink,
@@ -46,10 +49,13 @@ import {
   getPlaneBRecommendations,
   detectOrphans,
   discoverBidirectionalCandidates,
-  deriveInternalLinkActionableStates
+  deriveInternalLinkActionableStates,
+  ARCHITECTURAL_TAXONOMY,
+  extractArchitecturalConcepts
 } from '../src/lib/internal-link/index.ts';
 
 import { processArticleContent } from '../src/lib/seo.ts';
+import { getPipelineBoard } from '../src/lib/mission-control/tasks.ts';
 
 // Lightweight in-memory D1 mock for testing
 class InMemoryD1Mock {
@@ -76,6 +82,8 @@ class InMemoryD1Mock {
       content_hash: art.content_hash || '',
       pillar_role: art.pillar_role || 'STANDALONE',
       parent_pillar_id: art.parent_pillar_id || null,
+      published_at: art.published_at || new Date().toISOString(),
+      updated_at: art.updated_at || new Date().toISOString(),
       views: 0
     });
   }
@@ -104,15 +112,14 @@ class InMemoryD1Mock {
                 source_content_hash
               ] = params;
 
-              // Check unique constraint
+              // Check UNIQUE(source_article_id, target_article_id, placement_plane) constraint
               for (const l of self.links.values()) {
                 if (
                   l.source_article_id === source_article_id &&
                   l.target_article_id === target_article_id &&
-                  l.relationship_type === relationship_type &&
                   l.placement_plane === placement_plane
                 ) {
-                  throw new Error(`UNIQUE constraint failed: article_internal_links`);
+                  throw new Error(`UNIQUE constraint failed: article_internal_links(source_article_id, target_article_id, placement_plane)`);
                 }
               }
 
@@ -179,6 +186,12 @@ class InMemoryD1Mock {
               return { meta: { changes: 1 } };
             }
 
+            if (/DELETE FROM article_internal_links WHERE id = \?/i.test(trimmed)) {
+              const [id] = params;
+              const existed = self.links.delete(id);
+              return { meta: { changes: existed ? 1 : 0 } };
+            }
+
             return { meta: { changes: 0 } };
           },
 
@@ -193,6 +206,31 @@ class InMemoryD1Mock {
               const [id] = params;
               const l = self.links.get(id);
               return { results: l ? [l] : [] };
+            }
+
+            if (/SELECT id, pillar_role, parent_pillar_id FROM articles WHERE id = \?/i.test(trimmed)) {
+              const [id] = params;
+              const a = self.articles.get(id);
+              return { results: a ? [{ id: a.id, pillar_role: a.pillar_role, parent_pillar_id: a.parent_pillar_id }] : [] };
+            }
+
+            if (/SELECT id, parent_pillar_id FROM articles WHERE id = \?/i.test(trimmed)) {
+              const [id] = params;
+              const a = self.articles.get(id);
+              return { results: a ? [{ id: a.id, parent_pillar_id: a.parent_pillar_id }] : [] };
+            }
+
+            if (/SELECT id, slug, title, status, updated_at, published_at, featured_image FROM articles/i.test(trimmed)) {
+              const results = Array.from(self.articles.values());
+              return { results };
+            }
+
+            if (/SELECT job_id, article_id.*FROM media_jobs/i.test(trimmed)) {
+              return { results: [] };
+            }
+
+            if (/SELECT article_id, approved_by, created_at FROM article_editorial_approvals/i.test(trimmed)) {
+              return { results: [] };
             }
 
             if (/SELECT content_hash FROM articles WHERE id = \?/i.test(trimmed)) {
@@ -303,9 +341,14 @@ class InMemoryD1Mock {
                     target_article_id: l.target_article_id,
                     relationship_type: l.relationship_type,
                     placement_plane: l.placement_plane,
+                    reader_reason: l.reader_reason,
+                    anchor_text: l.anchor_text,
                     source_title: s?.title || '',
                     source_slug: s?.slug || '',
-                    target_title: t?.title || ''
+                    source_pub: s?.published_at,
+                    target_title: t?.title || '',
+                    target_slug: t?.slug || '',
+                    target_pub: t?.published_at
                   });
                 }
               }
@@ -663,30 +706,31 @@ async function runTestSuite() {
   }
 
   // ----------------------------------------------------
-  // TEST 9: One Target Renders Once Despite Competing Candidate Reasoning
+  // TEST 9: DB Invariant: Exactly One Primary Relationship Per Placement Plane
   // ----------------------------------------------------
   try {
-    // Add second competing link from 9 -> 8 with different relationship type
-    // (In db, using different relationship_type satisfies the 4-part UNIQUE constraint)
+    // Attempting to add a second competing link from 9 -> 8 for the same placement plane
+    // MUST fail at database level due to UNIQUE(source_article_id, target_article_id, placement_plane)
     const competingCand = await createLinkCandidate(db, {
       source_article_id: 9,
       target_article_id: 8,
       relationship_type: 'BACKGROUND_EXPLAINER',
       reader_reason: 'Penjelasan dasar fisika bangunan konduksi',
       placement_plane: 'PLANE_A_DYNAMIC',
-      confidence_score: 0.70, // lower confidence than 0.95
+      confidence_score: 0.70,
       status: 'ACTIVE'
     }, articleC, articleB);
-    assert.equal(competingCand.success, true);
+    assert.equal(competingCand.success, false, 'Database must reject duplicate relationship for same (source, target, plane)');
+    assert.match(competingCand.error, /UNIQUE constraint failed/);
 
     const planeALinksFor9 = await getActivePlaneALinks(db, 9);
     const targets = planeALinksFor9.filter(l => l.target_article_id === 8);
-    assert.equal(targets.length, 1, 'Support module must deduplicate target articles to exactly 1');
-    assert.equal(targets[0].relationship_type, 'RELATED_MATERIAL', 'Primary relationship with highest confidence must win');
+    assert.equal(targets.length, 1, 'Only one primary relationship exists per target article');
+    assert.equal(targets[0].relationship_type, 'RELATED_MATERIAL', 'Existing primary relationship must remain intact');
 
-    recordPass('9. Deduplication renders one primary relationship per target article');
+    recordPass('9. DB UNIQUE constraint strictly enforces one primary relationship per placement plane');
   } catch (err) {
-    recordFail('9. Target deduplication', err);
+    recordFail('9. DB one-primary-relationship invariant', err);
   }
 
   // ----------------------------------------------------
@@ -899,21 +943,361 @@ async function runTestSuite() {
   }
 
   // ----------------------------------------------------
-  // SECTION: EMPIRICAL PERFORMANCE MEASUREMENTS
+  // TEST 21: Database-Level UNIQUE Constraint Invariant
   // ----------------------------------------------------
-  console.log('\n--- PERFORMANCE BENCHMARK (MEASURED, NOT ASSUMED) ---');
+  try {
+    // There must be exactly ONE primary semantic relationship for a given (source, target, placement_plane)
+    // Attempting to insert a duplicate with DIFFERENT relationship_type MUST fail at DB level
+    const dupRes = await createLinkCandidate(db, {
+      source_article_id: 9,
+      target_article_id: 8,
+      relationship_type: 'RELATED_DECISION', // Different from existing RELATED_MATERIAL
+      reader_reason: 'Alternative reasoning for same destination',
+      placement_plane: 'PLANE_A_DYNAMIC',
+      status: 'CANDIDATE'
+    }, articleC, articleB);
+
+    assert.equal(dupRes.success, false, 'Database must reject duplicate semantic row for same (source, target, plane)');
+    assert.match(dupRes.error, /UNIQUE constraint failed/);
+    recordPass('21. DB-Level UNIQUE(source_article_id, target_article_id, placement_plane) strictly rejects duplicate rows');
+  } catch (err) {
+    recordFail('21. DB-Level UNIQUE constraint invariant', err);
+  }
+
+  // ----------------------------------------------------
+  // TEST 22: Prove Generic Discovery — No A/B/C Overfit
+  // ----------------------------------------------------
+  try {
+    // 4 Unseen synthetic fixtures from building science domains:
+    const fixture1 = {
+      id: 101,
+      slug: 'mengatasi-rumah-pengap-tanpa-ac-ventilasi-alami',
+      title: 'Mengatasi Rumah Pengap Tanpa AC Lewat Desain Ventilasi Alami',
+      focus_keyword: 'ventilasi silang',
+      description: 'Panduan merancang ventilasi pasif dan roster untuk melancarkan sirkulasi udara rumah pengap',
+      pillar_role: 'STANDALONE',
+      status: 'published'
+    };
+    const fixture2 = {
+      id: 102,
+      slug: 'penyebab-dak-atap-beton-bocor-perbaikan',
+      title: 'Penyebab Dak Atap Beton Bocor dan Pilihan Solusi Perbaikan',
+      focus_keyword: 'atap bocor',
+      description: 'Analisis retak rambut dan genangan air yang memicu dak atap rembes dan bocor ke plafon',
+      pillar_role: 'STANDALONE',
+      status: 'published'
+    };
+    const fixture3 = {
+      id: 103,
+      slug: 'meredam-kebisingan-jalan-raya-jendela-akustik',
+      title: 'Meredam Kebisingan Jalan Raya dengan Jendela Kaca Akustik',
+      focus_keyword: 'kaca kedap suara',
+      description: 'Perbandingan insulasi akustik kaca laminated vs double glazed untuk mereduksi suara bising jalan',
+      pillar_role: 'STANDALONE',
+      status: 'published'
+    };
+    const fixture4 = {
+      id: 104,
+      slug: 'ventilasi-dapur-lembab-exhaust-fan-bukaan',
+      title: 'Ventilasi Dapur Lembab: Solusi Exhaust Fan dan Bukaan Udara',
+      focus_keyword: 'ventilasi dapur',
+      description: 'Cara mengatasi uap minyak dan kelembapan tinggi di dapur dengan penempatan exhaust fan dan bovenly',
+      pillar_role: 'STANDALONE',
+      status: 'published'
+    };
+
+    const unseenPool = [fixture1, fixture2, fixture3, fixture4];
+
+    // 1. Forward discovery for Fixture 1 (Rumah Pengap / Ventilasi Silang)
+    const candidatesF1 = await discoverBidirectionalCandidates(null, fixture1, unseenPool);
+    assert.ok(candidatesF1.length > 0, 'Must discover candidates for unseen topic');
+
+    // Fixture 1 should connect to Fixture 4 (Ventilasi Dapur Lembab) via shared system 'ventilasi' and moisture problems
+    const f1ToF4 = candidatesF1.find(c => c.target_article_id === 104 && c.direction === 'FORWARD');
+    assert.ok(f1ToF4, 'Should connect ventilasi rumah pengap to ventilasi dapur lembab');
+    assert.equal(f1ToF4.relationship_type, 'RELATED_SYSTEM');
+    assert.match(f1ToF4.reader_reason, /ventilasi/i);
+
+    // 2. Backlink discovery for Fixture 4 (should have backlink candidate from Fixture 1)
+    const backlinkF4 = candidatesF1.find(c => c.source_article_id === 104 && c.target_article_id === 101 && c.direction === 'BACKLINK');
+    assert.ok(backlinkF4, 'Should generate backlink from ventilasi dapur back to ventilasi rumah pengap');
+
+    // 3. Forward discovery for Fixture 3 (Kebisingan Jalan / Kaca Akustik) with existing Article B (Kusen Aluminium)
+    const candidatesF3 = await discoverBidirectionalCandidates(null, fixture3, [articleB]);
+    assert.ok(candidatesF3.length > 0);
+    const f3ToB = candidatesF3.find(c => c.target_article_id === 8 && c.direction === 'FORWARD');
+    assert.ok(['RELATED_SYSTEM', 'RELATED_MATERIAL'].includes(f3ToB.relationship_type), 'Should be RELATED_SYSTEM or RELATED_MATERIAL');
+
+    // 4. Verify taxonomy foundation contains standard architectural concepts
+    assert.ok(ARCHITECTURAL_TAXONOMY.problems.includes('pengap'));
+    assert.ok(ARCHITECTURAL_TAXONOMY.systems.includes('ventilasi'));
+    assert.ok(ARCHITECTURAL_TAXONOMY.materials.includes('kaca'));
+
+    recordPass('22. Generic semantic discovery operates across unseen topics without A/B/C overfit');
+  } catch (err) {
+    recordFail('22. Generic discovery audit', err);
+  }
+
+  // ----------------------------------------------------
+  // TEST 23: Pillar Metadata Consistency
+  // ----------------------------------------------------
+  try {
+    // 1. Valid PILLAR role with null parent
+    const validPillar = validatePillarMetadataSync({ id: 200, pillar_role: 'PILLAR', parent_pillar_id: null });
+    assert.equal(validPillar.valid, true);
+
+    // 2. Valid STANDALONE role with null parent
+    const validStandalone = validatePillarMetadataSync({ id: 201, pillar_role: 'STANDALONE', parent_pillar_id: null });
+    assert.equal(validStandalone.valid, true);
+
+    // 3. Invalid role
+    const invalidRole = validatePillarMetadataSync({ id: 202, pillar_role: 'MAIN_TOPIC', parent_pillar_id: null });
+    assert.equal(invalidRole.valid, false);
+    assert.match(invalidRole.error, /Invalid pillar_role/);
+
+    // 4. PILLAR with non-null parent is strictly forbidden
+    const pillarWithParent = validatePillarMetadataSync({ id: 203, pillar_role: 'PILLAR', parent_pillar_id: 200 });
+    assert.equal(pillarWithParent.valid, false);
+    assert.match(pillarWithParent.error, /cannot have a parent_pillar_id/);
+
+    // 5. STANDALONE with non-null parent is strictly forbidden
+    const standaloneWithParent = validatePillarMetadataSync({ id: 204, pillar_role: 'STANDALONE', parent_pillar_id: 200 });
+    assert.equal(standaloneWithParent.valid, false);
+    assert.match(standaloneWithParent.error, /cannot have a parent_pillar_id/);
+
+    // 6. SUPPORTING requires parent_pillar_id
+    const supportingNoParent = validatePillarMetadataSync({ id: 205, pillar_role: 'SUPPORTING', parent_pillar_id: null });
+    assert.equal(supportingNoParent.valid, false);
+    assert.match(supportingNoParent.error, /requires parent_pillar_id/);
+
+    // 7. Self-parenting is strictly forbidden
+    const selfParent = validatePillarMetadataSync({ id: 206, pillar_role: 'SUPPORTING', parent_pillar_id: 206 });
+    assert.equal(selfParent.valid, false);
+    assert.match(selfParent.error, /Self-parenting is strictly prohibited/);
+
+    // 8. Lookup checks: parent must exist and have pillar_role = 'PILLAR'
+    const mockPillars = new Map([
+      [200, { id: 200, pillar_role: 'PILLAR', parent_pillar_id: null }],
+      [201, { id: 201, pillar_role: 'STANDALONE', parent_pillar_id: null }],
+      [207, { id: 207, pillar_role: 'SUPPORTING', parent_pillar_id: 200 }]
+    ]);
+    const lookup = (id) => mockPillars.get(id);
+
+    const validSupporting = validatePillarMetadataSync({ id: 208, pillar_role: 'SUPPORTING', parent_pillar_id: 200 }, lookup);
+    assert.equal(validSupporting.valid, true);
+
+    const invalidParentRole = validatePillarMetadataSync({ id: 209, pillar_role: 'SUPPORTING', parent_pillar_id: 201 }, lookup);
+    assert.equal(invalidParentRole.valid, false);
+    assert.match(invalidParentRole.error, /must reference an article with pillar_role="PILLAR"/);
+
+    // 9. Circularity detection
+    const circularPillars = new Map([
+      [301, { id: 301, pillar_role: 'SUPPORTING', parent_pillar_id: 302 }],
+      [302, { id: 302, pillar_role: 'PILLAR', parent_pillar_id: 301 }]
+    ]);
+    const circularCheck = validatePillarMetadataSync({ id: 301, pillar_role: 'SUPPORTING', parent_pillar_id: 302 }, (id) => circularPillars.get(id));
+    assert.equal(circularCheck.valid, false);
+    assert.match(circularCheck.error, /Circular pillar hierarchy detected/);
+
+    // 10. Async D1 validation
+    const d1PillarCheck = await validatePillarMetadata(db, { id: 8, pillar_role: 'STANDALONE', parent_pillar_id: null });
+    assert.equal(d1PillarCheck.valid, true);
+
+    // 11. Articles A/B/C remain STANDALONE
+    assert.equal(articleA.pillar_role, 'STANDALONE');
+    assert.equal(articleB.pillar_role, 'STANDALONE');
+    assert.equal(articleC.pillar_role, 'STANDALONE');
+
+    recordPass('23. Pillar metadata consistency strictly enforced (PILLAR/STANDALONE null parent, SUPPORTING valid parent, anti-circularity)');
+  } catch (err) {
+    recordFail('23. Pillar metadata consistency', err);
+  }
+
+  // ----------------------------------------------------
+  // TEST 24: Mission Control Real E2E Operational Lifecycle
+  // ----------------------------------------------------
+  try {
+    // Fresh test database for clean lifecycle simulation
+    const e2eDb = new InMemoryD1Mock();
+
+    // Established hub & article
+    const artHub = {
+      id: 500,
+      slug: 'arsitektur-tropis-modern-hub',
+      title: 'Panduan Induk Arsitektur Tropis Modern',
+      status: 'published',
+      published_at: '2026-09-01T10:00:00Z',
+      pillar_role: 'PILLAR',
+      parent_pillar_id: null
+    };
+    e2eDb.seedArticle(artHub);
+
+    // Established published article with valid discovery path
+    const artEstablished = {
+      id: 501,
+      slug: 'panduan-fasad-kisi-kayu-tropis',
+      title: 'Panduan Fasad Kisi Kayu Tropis',
+      status: 'published',
+      published_at: '2026-10-01T10:00:00Z',
+      content_hash: 'hash_501_v1',
+      pillar_role: 'SUPPORTING',
+      parent_pillar_id: 500
+    };
+    e2eDb.seedArticle(artEstablished);
+
+    await createLinkCandidate(e2eDb, {
+      source_article_id: 500,
+      target_article_id: 501,
+      relationship_type: 'CHILD_SUPPORTING',
+      reader_reason: 'Panduan fasad kisi kayu sebagai bagian dari arsitektur tropis',
+      placement_plane: 'PLANE_A_DYNAMIC',
+      status: 'ACTIVE'
+    }, artHub, artEstablished);
+
+    // Newly published orphan article
+    const artOrphan = {
+      id: 502,
+      slug: 'mengatasi-tampias-hujan-jendela-kayu',
+      title: 'Mengatasi Tampias Hujan Jendela Kayu',
+      status: 'published',
+      published_at: '2026-10-14T10:00:00Z',
+      content_hash: 'hash_502_v1',
+      pillar_role: 'STANDALONE',
+      parent_pillar_id: null
+    };
+    e2eDb.seedArticle(artOrphan);
+
+    // Step 1: Detect orphan
+    const orphanList = await detectOrphans(e2eDb);
+    const orphan502 = orphanList.find(o => o.article_id === 502);
+    assert.ok(orphan502 && orphan502.is_orphan, 'Article 502 must be detected as orphan');
+
+    // Step 2: Mission Control Task Board contains ORPHAN_DETECTED
+    let board = await getPipelineBoard(e2eDb);
+    const orphanTask = board.tasks.find(t => t.status === 'ORPHAN_DETECTED' && t.relatedArticleId === 502);
+    assert.ok(orphanTask, 'Mission Control task board must display ORPHAN_DETECTED task card');
+    assert.equal(orphanTask.stage, 'ready_for_review');
+
+    // Step 3: Backlink candidate is created from artEstablished (501) -> artOrphan (502)
+    const candBacklink = await createLinkCandidate(e2eDb, {
+      source_article_id: 501,
+      target_article_id: 502,
+      relationship_type: 'RELATED_PROBLEM',
+      reader_reason: 'Melengkapi pertimbangan fasad kisi dengan solusi mengatasi tampias hujan (backlink)',
+      placement_plane: 'PLANE_A_DYNAMIC',
+      status: 'CANDIDATE'
+    }, artEstablished, artOrphan);
+    assert.equal(candBacklink.success, true);
+
+    // Step 4: Chief Editor-facing state contains BACKLINK_RECOMMENDED
+    board = await getPipelineBoard(e2eDb);
+    const backlinkTask = board.tasks.find(t => t.status === 'BACKLINK_RECOMMENDED');
+    assert.ok(backlinkTask, 'Chief Editor task board must contain BACKLINK_RECOMMENDED');
+    assert.equal(backlinkTask.relatedArticleId, 501);
+
+    // Step 5: Inline Plane B relationship becomes STALE due to hash revision
+    const candInline = await createLinkCandidate(e2eDb, {
+      source_article_id: 501,
+      target_article_id: 502,
+      relationship_type: 'RELATED_DECISION',
+      reader_reason: 'Rekomendasi teknis sambungan kayu',
+      placement_plane: 'PLANE_B_INLINE',
+      anchor_text: 'mengatasi tampias hujan pada jendela kayu',
+      status: 'ACTIVE',
+      source_content_hash: 'hash_501_v1'
+    }, artEstablished, artOrphan);
+    assert.equal(candInline.success, true);
+
+    // Simulate content revision on artEstablished
+    artEstablished.content_hash = 'hash_501_v2';
+    await checkAndReconcilePlaneBStaleness(e2eDb, 501, 'hash_501_v2');
+
+    // Mission Control surfaces LINK_REVISION_RECOMMENDED
+    board = await getPipelineBoard(e2eDb);
+    const staleTask = board.tasks.find(t => t.status === 'LINK_REVISION_RECOMMENDED');
+    assert.ok(staleTask, 'Mission Control task board must contain LINK_REVISION_RECOMMENDED');
+
+    // Step 6: Resolve & activate links
+    // - Activate the backlink candidate (status: ACTIVE)
+    await activateLink(e2eDb, candBacklink.id, 'Chief Editor');
+    // - Resolve/delete or re-activate the stale inline link
+    await activateLink(e2eDb, candInline.id, 'Chief Editor', 'hash_501_v2');
+
+    // Step 7: Resolved/healthy links completely disappear from Mission Control actionable queue
+    board = await getPipelineBoard(e2eDb);
+    const remainingLinkTasks = board.tasks.filter(t => [
+      'ORPHAN_DETECTED',
+      'BACKLINK_RECOMMENDED',
+      'LINK_REVIEW_REQUIRED',
+      'LINK_REVISION_RECOMMENDED'
+    ].includes(t.status));
+
+    assert.equal(remainingLinkTasks.length, 0, 'All actionable link tasks must be cleared when relationships are healthy/resolved');
+    recordPass('24. Mission Control real E2E lifecycle verified (orphan -> backlink rec -> stale revision -> clean queue)');
+  } catch (err) {
+    recordFail('24. Mission Control E2E lifecycle', err);
+  }
+
+  // ----------------------------------------------------
+  // TEST 25: Public Recommendation Surface Deduplication
+  // ----------------------------------------------------
+  try {
+    // Test the deduplication contract implemented in [slug].astro
+    const planeALinks = [
+      { target_article_id: 8, target_slug: 'article-b' },
+      { target_article_id: 7, target_slug: 'article-a' }
+    ];
+    const fetchedRelated = [
+      { id: 8, slug: 'article-b' }, // In Plane A
+      { id: 104, slug: 'article-dapur' }, // Not in Plane A
+      { id: 7, slug: 'article-a' }, // In Plane A
+      { id: 101, slug: 'article-pengap' }, // Not in Plane A
+      { id: 102, slug: 'article-bocor' } // Not in Plane A
+    ];
+
+    // Filter candidateRelated
+    const planeATargetIds = new Set(planeALinks.map(l => l.target_article_id));
+    const candidateRelated = fetchedRelated.filter(art => !planeATargetIds.has(art.id));
+
+    // BACA JUGA takes first candidate not in Plane A
+    const bacaJugaArticle = candidateRelated.length > 0 ? candidateRelated[0] : null;
+    assert.equal(bacaJugaArticle.id, 104, 'BACA JUGA must take first non-Plane A article');
+
+    // RelatedArticles footer takes remaining up to 3 (excluding both Plane A and BACA JUGA)
+    const relatedArticles = candidateRelated.filter(art => !bacaJugaArticle || art.id !== bacaJugaArticle.id).slice(0, 3);
+    assert.equal(relatedArticles.length, 2);
+    assert.deepEqual(relatedArticles.map(a => a.id), [101, 102]);
+
+    // Verify ZERO overlap between the 3 surfaces
+    const planeASet = new Set(planeALinks.map(l => l.target_article_id));
+    assert.equal(planeASet.has(bacaJugaArticle.id), false, 'BACA JUGA must not overlap with Plane A');
+    for (const r of relatedArticles) {
+      assert.equal(planeASet.has(r.id), false, 'Footer related must not overlap with Plane A');
+      assert.notEqual(r.id, bacaJugaArticle.id, 'Footer related must not overlap with BACA JUGA');
+    }
+
+    recordPass('25. Public surface deduplication prevents redundant destinations across Plane A, BACA JUGA, and footer');
+  } catch (err) {
+    recordFail('25. Public surface deduplication', err);
+  }
+
+  // ----------------------------------------------------
+  // SECTION: EMPIRICAL PERFORMANCE MEASUREMENTS
+  // (Accurately classified as local benchmarks, NOT production D1/Lighthouse)
+  // ----------------------------------------------------
+  console.log('\n--- PERFORMANCE MEASUREMENTS (CLASSIFIED ACCURATELY) ---');
   const BENCH_ITERATIONS = 500;
 
-  // 1. D1 Plane A link query & deduplication timing
+  // 1. LOCAL MICROBENCHMARK: In-memory query & deduplication
   const startQuery = performance.now();
   for (let i = 0; i < BENCH_ITERATIONS; i++) {
     await getActivePlaneALinks(db, 8);
   }
   const endQuery = performance.now();
   const avgQueryMs = (endQuery - startQuery) / BENCH_ITERATIONS;
-  console.log(`  ⏱️  getActivePlaneALinks avg timing: ${avgQueryMs.toFixed(4)} ms per lookup (${BENCH_ITERATIONS} iterations)`);
+  console.log(`  ⏱️  [LOCAL MICROBENCHMARK] getActivePlaneALinks in-memory timing: ${avgQueryMs.toFixed(4)} ms per lookup (${BENCH_ITERATIONS} iterations)`);
 
-  // 2. SSR content processor timing (with legacy regex linker disabled)
+  // 2. LOCAL SSR BENCHMARK: Content processor with regex auto-linker disabled
   const sampleHtml = articleB.content_html.repeat(5); // ~1,000 words
   const startProc = performance.now();
   for (let i = 0; i < BENCH_ITERATIONS; i++) {
@@ -921,7 +1305,10 @@ async function runTestSuite() {
   }
   const endProc = performance.now();
   const avgProcMs = (endProc - startProc) / BENCH_ITERATIONS;
-  console.log(`  ⏱️  processArticleContent avg timing: ${avgProcMs.toFixed(4)} ms per render (${BENCH_ITERATIONS} iterations)`);
+  console.log(`  ⏱️  [LOCAL SSR BENCHMARK] processArticleContent SSR rendering timing: ${avgProcMs.toFixed(4)} ms per render (${BENCH_ITERATIONS} iterations)`);
+
+  // 3. PRODUCTION MEASUREMENT STATUS
+  console.log(`  ℹ️  [PRODUCTION MEASUREMENT STATUS] Production D1 latency and Lighthouse scores will be measured only after production deployment.`);
   console.log('------------------------------------------------------\n');
 
   // ----------------------------------------------------

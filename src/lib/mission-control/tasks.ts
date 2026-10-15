@@ -178,6 +178,30 @@ export async function getPipelineBoard(db: any): Promise<PipelineBoardData> {
         }
       }
     }
+
+    // 4. Process Actionable Internal Link Items into Chief Editor task board
+    try {
+      const { deriveInternalLinkActionableStates } = await import('../internal-link/index.ts');
+      const linkActions = await deriveInternalLinkActionableStates(db);
+      for (const act of linkActions) {
+        stageCounts['ready_for_review'] = (stageCounts['ready_for_review'] || 0) + 1;
+        tasks.push({
+          taskId: `link_action_${act.type.toLowerCase()}_${act.article_id}${act.link_id ? '_' + act.link_id : ''}`,
+          title: `[${act.type}] ${sanitizeString(act.article_title)}`,
+          subsystem: 'editorial',
+          status: act.type,
+          stage: 'ready_for_review',
+          retryCount: 0,
+          lastUpdate: new Date().toISOString(),
+          blockerOrError: sanitizeString(act.details),
+          relatedArticleId: act.article_id,
+          slug: sanitizeString(act.article_slug),
+          approvalEvidence: null
+        });
+      }
+    } catch {
+      // Internal links table might not be initialized yet
+    }
   } catch (err: any) {
     // Return empty on error
   }

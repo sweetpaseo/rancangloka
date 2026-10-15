@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS article_internal_links (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   reviewed_at DATETIME,
   reviewed_by TEXT,
-  UNIQUE(source_article_id, target_article_id, relationship_type, placement_plane)
+  UNIQUE(source_article_id, target_article_id, placement_plane)
 );
 
 CREATE INDEX IF NOT EXISTS idx_internal_links_source ON article_internal_links(source_article_id, status);

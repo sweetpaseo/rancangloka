@@ -13,6 +13,28 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-INTERNAL-LINK-ENGINE-1-HARDENING: Pre-Production Hardening, DB-Level Invariant, Generic Semantic Discovery & Mission Control E2E Lifecycle 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T13:30:00+07:00
+- **Status Operasional:** `INTERNAL_LINK_ENGINE_1_PREPROD_HARDENED`
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Tujuan Rekayasa:**
+  - Melakukan pre-production hardening dan audit akseptasi E2E komprehensif untuk Internal Link Engine V1 sebelum dilakukan migrasi dan deployment ke lingkungan produksi.
+  - Menegakkan invarian database satu hubungan primer per penempatan (`ONE_PRIMARY_RELATIONSHIP_PER_PLACEMENT`): `UNIQUE(source_article_id, target_article_id, placement_plane)`.
+  - Membuktikan penemuan semantik generik berbasis taksonomi arsitektur (`ARCHITECTURAL_TAXONOMY` dan `ARCHITECTURAL_SUBSYSTEMS`) tanpa overfit atau hardcoding Artikel A/B/C.
+  - Menyambungkan status tautan bermakna ke dalam Mission Control runtime (`ArticleOperationsSummary` dan pipeline board Chief Editor pada `stage: 'ready_for_review'`).
+  - Menegakkan konsistensi hierarki pilar: `PILLAR` dan `STANDALONE` wajib ber-parent null, `SUPPORTING` wajib ber-parent pilar valid, pelarangan referensi mandiri dan melingkar (*anti-circularity*).
+  - Melakukan pemisahan terminologi performa yang akurat: membedakan `LOCAL MICROBENCHMARK` (~0.0070 ms) dan `LOCAL SSR BENCHMARK` (~0.0548 ms) dari pengukuran produksi D1/Lighthouse pasca-deployment.
+  - Mendeduplikasi permukaan rekomendasi publik (Plane A, in-article BACA JUGA, dan footer RelatedArticles) agar tidak menampilkan destinasi redundan.
+- **Hasil & Status Keselamatan:**
+  - Pengujian Otomatis: 25/25 tes di `scripts/test-internal-link-engine.js` lulus 100%.
+  - Seluruh rangkaian regresi lulus (Mission Control, Staff Registry, Article Persistence, Content Quarantine, Dimas-Budi Handoff, Nadia Reader Voice, Premium Editorial Depth).
+  - Typecheck (`npx tsc --noEmit`) dan Astro build (`npm run build`) lulus bersih tanpa catatan error.
+  - Artikel C Clean Draft SHA-256: `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` (100% utuh tanpa perubahan).
+  - Nol mutasi D1/R2 produksi, nol deployment, nol push remote, nol seeding relasi produksi.
+  - Klasifikasi: **`INTERNAL_LINK_ENGINE_1_PREPROD_HARDENED`**.
+  - Status Akhir: `READY_FOR_INTERNAL_LINK_ENGINE_1_PRODUCTION_ACCEPTANCE`.
+
 ### RANCANGLOKA-INTERNAL-LINK-ENGINE-1: Semantic Internal Link Engine V1, Two-Plane Architecture, Explicit Pillar Metadata & Content Provenance Invariants 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T13:00:00+07:00

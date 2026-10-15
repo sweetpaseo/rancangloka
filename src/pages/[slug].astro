@@ -57,11 +57,17 @@ if (xRobotsTag) {
 
 if (article) {
   const [fetchedRelated, internalLinkCandidates, fetchedPlaneALinks] = await Promise.all([
-    getRelatedArticles(db, article.id, article.category_id, 3),
+    getRelatedArticles(db, article.id, article.category_id, 6),
     getInternalLinkCandidates(db, 50),
     getActivePlaneALinks(db, article.id).catch(() => [])
   ]);
   planeALinks = fetchedPlaneALinks || [];
+
+  // Surface deduplication across Plane A, BACA JUGA, and RelatedArticles footer
+  const planeATargetIds = new Set(planeALinks.map((l: any) => l.target_article_id));
+  const candidateRelated = (fetchedRelated || []).filter((art: any) => !planeATargetIds.has(art.id));
+  const bacaJugaArticle = candidateRelated.length > 0 ? candidateRelated[0] : null;
+  relatedArticles = candidateRelated.filter((art: any) => !bacaJugaArticle || art.id !== bacaJugaArticle.id).slice(0, 3);
 
   let rawContentHtml = article.content_html;
   const isMalformedHtml =
@@ -80,7 +86,7 @@ if (article) {
     safeArticleHtml,
     article,
     internalLinkCandidates,
-    relatedArticles[0],
+    bacaJugaArticle,
     siteSettings,
     toc
   );

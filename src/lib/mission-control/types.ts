@@ -171,6 +171,10 @@ export interface ArticleOperationsSummary {
     articleId: number | null;
     createdAt: string;
   } | null;
+  internalLinks?: {
+    actionableCount: number;
+    actions: import('../internal-link/types.ts').InternalLinkActionableState[];
+  };
 }
 
 export interface MediaOperationsSummary {

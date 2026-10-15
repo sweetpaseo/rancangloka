@@ -34,7 +34,8 @@ export const LINK_STATUSES = [
 
 export type LinkStatus = typeof LINK_STATUSES[number];
 
-export type PillarRole = 'PILLAR' | 'SUPPORTING' | 'STANDALONE';
+export const PILLAR_ROLES = ['PILLAR', 'SUPPORTING', 'STANDALONE'] as const;
+export type PillarRole = typeof PILLAR_ROLES[number];
 
 export interface ArticleInternalLink {
   id?: number;

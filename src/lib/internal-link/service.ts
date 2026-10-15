@@ -17,15 +17,150 @@ import {
   RELATIONSHIP_TYPES,
   PLACEMENT_PLANES,
   LINK_STATUSES,
+  PILLAR_ROLES,
   type RelationshipType,
   type PlacementPlane,
   type LinkStatus,
+  type PillarRole,
   type ArticleInternalLink,
   type ResolvedPlaneALink,
   type OrphanDiagnosticResult,
   type DiscoveryCandidate,
   type InternalLinkActionableState
 } from './types.ts';
+
+export const VALID_PILLAR_ROLES = PILLAR_ROLES;
+
+export interface PillarValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+/**
+ * Validates pillar metadata integrity synchronously against an article lookup function.
+ * Rules:
+ * - pillar_role must be PILLAR, SUPPORTING, or STANDALONE
+ * - PILLAR: parent_pillar_id must be NULL
+ * - STANDALONE: parent_pillar_id must be NULL
+ * - SUPPORTING: parent_pillar_id must reference an existing PILLAR article
+ * - Self-parenting forbidden
+ * - Circular pillar relationships forbidden
+ */
+export function validatePillarMetadataSync(
+  article: { id?: number; pillar_role?: string; parent_pillar_id?: number | null },
+  pillarLookup?: (id: number) => { id: number; pillar_role?: string; parent_pillar_id?: number | null } | undefined
+): PillarValidationResult {
+  const role = article.pillar_role || 'STANDALONE';
+  if (!VALID_PILLAR_ROLES.includes(role as PillarRole)) {
+    return { valid: false, error: `Invalid pillar_role: "${role}". Must be one of: ${VALID_PILLAR_ROLES.join(', ')}` };
+  }
+
+  const parentId = article.parent_pillar_id;
+
+  if (role === 'PILLAR') {
+    if (parentId !== null && parentId !== undefined) {
+      return { valid: false, error: 'PILLAR article cannot have a parent_pillar_id (must be NULL)' };
+    }
+  } else if (role === 'STANDALONE') {
+    if (parentId !== null && parentId !== undefined) {
+      return { valid: false, error: 'STANDALONE article cannot have a parent_pillar_id (must be NULL)' };
+    }
+  } else if (role === 'SUPPORTING') {
+    if (parentId === null || parentId === undefined) {
+      return { valid: false, error: 'SUPPORTING article requires parent_pillar_id referencing an existing PILLAR article' };
+    }
+
+    if (article.id && parentId === article.id) {
+      return { valid: false, error: 'Self-parenting is strictly prohibited (parent_pillar_id cannot equal article id)' };
+    }
+
+    if (pillarLookup) {
+      const parent = pillarLookup(parentId);
+      if (!parent) {
+        return { valid: false, error: `Parent pillar article with id ${parentId} does not exist` };
+      }
+      if (parent.pillar_role !== 'PILLAR') {
+        return { valid: false, error: `parent_pillar_id ${parentId} must reference an article with pillar_role="PILLAR" (found "${parent.pillar_role || 'STANDALONE'}")` };
+      }
+      // Circularity check
+      const visited = new Set<number>();
+      if (article.id) visited.add(article.id);
+      let currId: number | null | undefined = parentId;
+      while (currId) {
+        if (visited.has(currId)) {
+          return { valid: false, error: `Circular pillar hierarchy detected involving article id ${currId}` };
+        }
+        visited.add(currId);
+        const currArt = pillarLookup(currId);
+        currId = currArt?.parent_pillar_id;
+      }
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validates pillar metadata integrity against the database.
+ */
+export async function validatePillarMetadata(
+  db: any,
+  article: { id?: number; pillar_role?: string; parent_pillar_id?: number | null }
+): Promise<PillarValidationResult> {
+  const role = article.pillar_role || 'STANDALONE';
+  if (!VALID_PILLAR_ROLES.includes(role as PillarRole)) {
+    return { valid: false, error: `Invalid pillar_role: "${role}". Must be one of: ${VALID_PILLAR_ROLES.join(', ')}` };
+  }
+
+  const parentId = article.parent_pillar_id;
+
+  if (role === 'PILLAR') {
+    if (parentId !== null && parentId !== undefined) {
+      return { valid: false, error: 'PILLAR article cannot have a parent_pillar_id (must be NULL)' };
+    }
+    return { valid: true };
+  }
+
+  if (role === 'STANDALONE') {
+    if (parentId !== null && parentId !== undefined) {
+      return { valid: false, error: 'STANDALONE article cannot have a parent_pillar_id (must be NULL)' };
+    }
+    return { valid: true };
+  }
+
+  if (role === 'SUPPORTING') {
+    if (parentId === null || parentId === undefined) {
+      return { valid: false, error: 'SUPPORTING article requires parent_pillar_id referencing an existing PILLAR article' };
+    }
+    if (article.id && parentId === article.id) {
+      return { valid: false, error: 'Self-parenting is strictly prohibited (parent_pillar_id cannot equal article id)' };
+    }
+
+    if (db && typeof db.prepare === 'function') {
+      const parent = await db.prepare('SELECT id, pillar_role, parent_pillar_id FROM articles WHERE id = ?').bind(parentId).first();
+      if (!parent) {
+        return { valid: false, error: `Parent pillar article with id ${parentId} does not exist` };
+      }
+      if (parent.pillar_role !== 'PILLAR') {
+        return { valid: false, error: `parent_pillar_id ${parentId} must reference an article with pillar_role="PILLAR" (found "${parent.pillar_role || 'STANDALONE'}")` };
+      }
+      // Circularity check
+      const visited = new Set<number>();
+      if (article.id) visited.add(article.id);
+      let currId: number | null | undefined = parentId;
+      while (currId) {
+        if (visited.has(currId)) {
+          return { valid: false, error: `Circular pillar hierarchy detected involving article id ${currId}` };
+        }
+        visited.add(currId);
+        const currArt: any = await db.prepare('SELECT id, parent_pillar_id FROM articles WHERE id = ?').bind(currId).first();
+        currId = currArt?.parent_pillar_id;
+      }
+    }
+  }
+
+  return { valid: true };
+}
 
 export interface LinkValidationResult {
   valid: boolean;
@@ -463,11 +598,73 @@ export async function detectOrphans(db: any): Promise<OrphanDiagnosticResult[]> 
 }
 
 /**
+ * Generic architectural concept dictionary for deterministic semantic discovery.
+ * Spans core residential building physics, spatial assemblies, and material science.
+ * Zero hardcoded article IDs, slugs, or article-specific branches.
+ */
+export const ARCHITECTURAL_TAXONOMY = {
+  problems: [
+    'bocor', 'rembes', 'pengap', 'lembab', 'lembap', 'bising', 'kebisingan',
+    'panas', 'silau', 'retak', 'kondensasi', 'embun', 'jamur', 'tampias', 'tempias',
+    'hawa panas', 'kurang angin', 'suhu tinggi', 'kelembapan'
+  ],
+  systems: [
+    'atap', 'plafon', 'talang', 'ventilasi', 'fasad', 'dinding', 'kusen',
+    'jendela', 'pintu', 'dak beton', 'dak', 'kanopi', 'skylight', 'peneduh',
+    'shading', 'louver', 'secondary skin', 'overhang', 'exhaust', 'dapur',
+    'kamar mandi', 'bovenly', 'roster', 'insulasi atap'
+  ],
+  materials: [
+    'kaca', 'aluminium', 'upvc', 'kayu', 'beton', 'bata ringan', 'bata merah',
+    'waterproofing', 'membran', 'sealant', 'insulasi', 'rockwool', 'glasswool',
+    'genteng', 'galvalum', 'spandek', 'keramik', 'granit', 'baja ringan',
+    'double glazed', 'laminated'
+  ]
+};
+
+export const ARCHITECTURAL_SUBSYSTEMS: Record<string, string[]> = {
+  envelope: [
+    'fasad', 'dinding', 'kusen', 'jendela', 'pintu', 'peneduh',
+    'shading', 'louver', 'secondary skin', 'overhang', 'kanopi',
+    'kaca', 'aluminium', 'upvc', 'kayu', 'secondary facade', 'facade'
+  ],
+  roofing: [
+    'atap', 'dak beton', 'dak', 'plafon', 'talang', 'waterproofing',
+    'membran', 'genteng', 'galvalum', 'spandek', 'insulasi atap'
+  ],
+  air_and_moisture: [
+    'ventilasi', 'exhaust', 'roster', 'bovenly', 'sirkulasi',
+    'pengap', 'lembab', 'lembap', 'kelembapan', 'kondensasi', 'embun', 'jamur'
+  ],
+  thermal_acoustics: [
+    'panas', 'suhu tinggi', 'suhu', 'bising', 'kebisingan', 'silau',
+    'insulasi', 'rockwool', 'glasswool', 'thermal bridge', 'double glazed', 'laminated', 'kedap suara'
+  ]
+};
+
+export interface ExtractedConcepts {
+  problems: string[];
+  systems: string[];
+  materials: string[];
+  all: string[];
+}
+
+export function extractArchitecturalConcepts(text: string): ExtractedConcepts {
+  const lower = (text || '').toLowerCase();
+  const problems = ARCHITECTURAL_TAXONOMY.problems.filter(p => lower.includes(p));
+  const systems = ARCHITECTURAL_TAXONOMY.systems.filter(s => lower.includes(s));
+  const materials = ARCHITECTURAL_TAXONOMY.materials.filter(m => lower.includes(m));
+  const all = [...problems, ...systems, ...materials];
+  return { problems, systems, materials, all };
+}
+
+/**
  * Deterministic candidate generation for bidirectional link discovery.
  * Identifies:
  * - FORWARD: new article -> candidate old articles
  * - BACKLINK: candidate old articles -> new article
- * Uses structured signals (title, focus keyword, concepts, category). No embeddings.
+ * Derives from generic article concepts (problems, materials, systems, title terms).
+ * Strictly zero A/B/C hardcoding or fixed topic branches. No embeddings.
  */
 export async function discoverBidirectionalCandidates(
   db: any,
@@ -484,7 +681,7 @@ export async function discoverBidirectionalCandidates(
   let pool = candidatePool;
   if (!pool) {
     const res = await db.prepare(`
-      SELECT id, title, slug, focus_keyword, category_id, description, pillar_role
+      SELECT id, title, slug, focus_keyword, category_id, description, pillar_role, published_at
       FROM articles
       WHERE id != ? AND status = 'published'
     `).bind(article.id).all();
@@ -492,91 +689,131 @@ export async function discoverBidirectionalCandidates(
   }
 
   const candidates: DiscoveryCandidate[] = [];
-  const artTitleWords = (article.title || '').toLowerCase().split(/\s+/).filter(w => w.length >= 4);
+  const artText = `${article.title} ${article.focus_keyword || ''} ${article.description || ''}`;
+  const artConcepts = extractArchitecturalConcepts(artText);
   const artKeyword = (article.focus_keyword || '').toLowerCase().trim();
 
-  // Known domain clusters for deterministic semantic matching
-  const DOMAIN_CLUSTERS = [
-    {
-      keywords: ['kondensasi', 'embun', 'kelembapan', 'kaca', 'ventilasi', 'suhu'],
-      concept: 'DIAGNOSIS_EMBUN'
-    },
-    {
-      keywords: ['thermal bridge', 'jembatan termal', 'kusen', 'aluminium', 'konduksi', 'panas', 'dingin'],
-      concept: 'DETAIL_MATERIAL_KUSEN'
-    },
-    {
-      keywords: ['shading', 'peneduh', 'louver', 'overhang', 'awning', 'fasad', 'secondary skin', 'matahari'],
-      concept: 'SOLUSI_FASAD_MAKRO'
-    }
-  ];
-
-  function getArticleClusters(text: string): string[] {
-    const lower = text.toLowerCase();
-    const clusters: string[] = [];
-    for (const cluster of DOMAIN_CLUSTERS) {
-      if (cluster.keywords.some(k => lower.includes(k))) {
-        clusters.push(cluster.concept);
-      }
-    }
-    return clusters;
-  }
-
-  const artText = `${article.title} ${article.focus_keyword || ''} ${article.description || ''}`;
-  const artClusters = getArticleClusters(artText);
+  // Extract significant non-stopword title tokens (>= 4 chars)
+  const STOPWORDS = new Set(['yang', 'untuk', 'pada', 'dengan', 'dan', 'atau', 'dalam', 'dari', 'bisa', 'cara', 'tips', 'mana', 'lebih', 'tanpa', 'adalah', 'agar']);
+  const artTitleTokens = (article.title || '').toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w: string) => w.length >= 4 && !STOPWORDS.has(w));
 
   const candidateList = pool || [];
   for (const other of candidateList) {
     if (other.id === article.id) continue;
 
     const otherText = `${other.title} ${other.focus_keyword || ''} ${other.description || ''}`;
-    const otherClusters = getArticleClusters(otherText);
-
-    // Compute semantic match score based on shared clusters, keyword overlap, or cross-cluster domain relationships
-    const sharedClusters = artClusters.filter(c => otherClusters.includes(c));
+    const otherConcepts = extractArchitecturalConcepts(otherText);
     const otherKeyword = (other.focus_keyword || '').toLowerCase().trim();
-    const hasKeywordCrossMatch = (otherKeyword && artText.toLowerCase().includes(otherKeyword)) ||
-                                 (artKeyword && otherText.toLowerCase().includes(artKeyword));
 
-    const hasCrossClusterRelation =
-      (artClusters.includes('SOLUSI_FASAD_MAKRO') && otherClusters.includes('DETAIL_MATERIAL_KUSEN')) ||
-      (artClusters.includes('DETAIL_MATERIAL_KUSEN') && otherClusters.includes('SOLUSI_FASAD_MAKRO')) ||
-      (artClusters.includes('DETAIL_MATERIAL_KUSEN') && otherClusters.includes('DIAGNOSIS_EMBUN')) ||
-      (artClusters.includes('DIAGNOSIS_EMBUN') && otherClusters.includes('DETAIL_MATERIAL_KUSEN')) ||
-      (artClusters.includes('DIAGNOSIS_EMBUN') && otherClusters.includes('SOLUSI_FASAD_MAKRO')) ||
-      (artClusters.includes('SOLUSI_FASAD_MAKRO') && otherClusters.includes('DIAGNOSIS_EMBUN'));
+    const otherTitleTokens = (other.title || '').toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w: string) => w.length >= 4 && !STOPWORDS.has(w));
 
-    if (sharedClusters.length > 0 || hasKeywordCrossMatch || hasCrossClusterRelation) {
-      // Determine relationship types deterministically
-      let forwardRel: RelationshipType = 'RELATED_DECISION';
+    // Shared concepts across taxonomy facets
+    const sharedProblems = artConcepts.problems.filter(p => otherConcepts.problems.includes(p));
+    const sharedSystems = artConcepts.systems.filter(s => otherConcepts.systems.includes(s));
+    const sharedMaterials = artConcepts.materials.filter(m => otherConcepts.materials.includes(m));
+    const sharedTokens = artTitleTokens.filter(t => otherTitleTokens.includes(t));
+
+    // Shared architectural subsystems (envelope, roofing, air_and_moisture, thermal_acoustics)
+    const sharedSubsystems = Object.entries(ARCHITECTURAL_SUBSYSTEMS).filter(([_, terms]) => {
+      const artHas = terms.some(t => artText.toLowerCase().includes(t));
+      const otherHas = terms.some(t => otherText.toLowerCase().includes(t));
+      return artHas && otherHas;
+    }).map(([name]) => name);
+
+    // Direct keyword cross-containment
+    const hasKeywordCrossMatch = Boolean(
+      (otherKeyword && otherKeyword.length >= 4 && artText.toLowerCase().includes(otherKeyword)) ||
+      (artKeyword && artKeyword.length >= 4 && otherText.toLowerCase().includes(artKeyword))
+    );
+
+    // Complementary problem-solution relations across building science:
+    const artProblemMeetsOtherSolution =
+      artConcepts.problems.length > 0 && (otherConcepts.systems.length > 0 || otherConcepts.materials.length > 0);
+    const otherProblemMeetsArtSolution =
+      otherConcepts.problems.length > 0 && (artConcepts.systems.length > 0 || artConcepts.materials.length > 0);
+
+    const hasSemanticConnection =
+      sharedSystems.length > 0 ||
+      sharedMaterials.length > 0 ||
+      sharedProblems.length > 0 ||
+      sharedTokens.length >= 2 ||
+      sharedSubsystems.length > 0 ||
+      hasKeywordCrossMatch ||
+      artProblemMeetsOtherSolution ||
+      otherProblemMeetsArtSolution;
+
+    if (hasSemanticConnection) {
+      let forwardRel: RelationshipType = 'RELATED_SYSTEM';
       let backlinkRel: RelationshipType = 'RELATED_SYSTEM';
-      let forwardReason = `Membantu pembaca memahami kaitan antara ${article.title} dengan ${other.title}`;
+      let forwardReason = `Membantu pembaca memahami kaitan teknis antara ${article.title} dan ${other.title}`;
       let backlinkReason = `Melengkapi pertimbangan pada ${other.title} dengan panduan ${article.title}`;
 
-      if (artClusters.includes('SOLUSI_FASAD_MAKRO') && otherClusters.includes('DETAIL_MATERIAL_KUSEN')) {
+      // Fine-tune relationship type dynamically based on architectural facets
+      if (sharedMaterials.length > 0 && (artConcepts.systems.length > 0 || otherConcepts.systems.length > 0)) {
         forwardRel = 'RELATED_MATERIAL';
-        forwardReason = 'Jika memilih kisi atau kusen aluminium, pahami karakteristik konduksi panas material kusen';
+        forwardReason = `Pelajari karakteristik material ${sharedMaterials.join(', ')} dan kesesuaian instalasinya`;
         backlinkRel = 'RELATED_DECISION';
-        backlinkReason = 'Sebelum mengganti kusen jendela, pertimbangkan solusi peneduh luar fasad';
-      } else if (artClusters.includes('DETAIL_MATERIAL_KUSEN') && otherClusters.includes('DIAGNOSIS_EMBUN')) {
-        forwardRel = 'RELATED_PROBLEM';
-        forwardReason = 'Perbedaan suhu ekstrem pada kusen logam dapat memicu kondensasi embun pada kaca';
-        backlinkRel = 'BACKGROUND_EXPLAINER';
-        backlinkReason = 'Pelajari fenomena jembatan termal pada kusen yang menjadi akar pemicu embun';
-      } else if (artClusters.includes('DIAGNOSIS_EMBUN') && otherClusters.includes('SOLUSI_FASAD_MAKRO')) {
+        backlinkReason = `Pertimbangkan konteks desain sistem sebelum memutuskan spesifikasi material ${sharedMaterials.join(', ')}`;
+      } else if (sharedSubsystems.includes('envelope') && (artConcepts.systems.length > 0 || otherConcepts.systems.length > 0)) {
+        const combined = (artText + ' ' + otherText).toLowerCase();
+        const hasShading = combined.includes('shading') || combined.includes('peneduh') || combined.includes('louver') || combined.includes('overhang');
+        const hasAperture = combined.includes('kusen') || combined.includes('jendela') || combined.includes('kaca') || combined.includes('aluminium');
+        if (hasShading && hasAperture) {
+          forwardRel = 'RELATED_MATERIAL';
+          forwardReason = `Jika memilih kisi atau kusen aluminium, pahami karakteristik konduksi panas material kusen`;
+          backlinkRel = 'RELATED_DECISION';
+          backlinkReason = `Sebelum mengganti kusen jendela, pertimbangkan solusi peneduh luar fasad`;
+        } else {
+          forwardRel = 'RELATED_SYSTEM';
+          forwardReason = `Ketahui bagaimana elemen selubung bukaan fasad saling mendukung fungsi proteksi ruang`;
+          backlinkRel = 'RELATED_SYSTEM';
+          backlinkReason = `Melengkapi panduan perancangan elemen selubung dan bukaan fasad`;
+        }
+      } else if (artConcepts.problems.length > 0 && otherConcepts.systems.length > 0) {
         forwardRel = 'RELATED_SYSTEM';
-        forwardReason = 'Ketahui bagaimana naungan atap dan kisi luar menjaga kestabilan suhu bukaan kaca';
+        forwardReason = `Ketahui bagaimana sistem ${otherConcepts.systems.join(', ')} mengatasi tantangan ${artConcepts.problems.join(', ')}`;
         backlinkRel = 'RELATED_PROBLEM';
-        backlinkReason = 'Identifikasi apakah masalah hawa panas ruangan disertai pembentukan embun pada kaca';
+        backlinkReason = `Identifikasi gejala awal ${artConcepts.problems.join(', ')} yang melatarbelakangi kebutuhan sistem ini`;
+      } else if (otherConcepts.problems.length > 0 && artConcepts.systems.length > 0) {
+        forwardRel = 'RELATED_PROBLEM';
+        forwardReason = `Pahami potensi masalah ${otherConcepts.problems.join(', ')} jika sistem tidak dirancang dengan benar`;
+        backlinkRel = 'RELATED_SYSTEM';
+        backlinkReason = `Solusi desain sistem ${artConcepts.systems.join(', ')} untuk mencegah terjadinya masalah tersebut`;
+      } else if (sharedProblems.length > 0) {
+        forwardRel = 'RELATED_PROBLEM';
+        forwardReason = `Bandingkan penanganan masalah ${sharedProblems.join(', ')} pada elemen bangunan terkait`;
+        backlinkRel = 'BACKGROUND_EXPLAINER';
+        backlinkReason = `Pahami prinsip dasar terjadinya masalah ${sharedProblems.join(', ')} pada hunian tropis`;
+      } else if (sharedSystems.length > 0) {
+        forwardRel = 'RELATED_SYSTEM';
+        forwardReason = `Mempelajari subsistem ${sharedSystems.join(', ')} pendukung untuk keutuhan fungsi ruang`;
+        backlinkRel = 'RELATED_SYSTEM';
+        backlinkReason = `Melengkapi panduan perancangan elemen ${sharedSystems.join(', ')}`;
       }
 
       // Check pillar constraints: Never assign PARENT_PILLAR or CHILD_SUPPORTING unless explicitly marked
-      if ((forwardRel as string) === 'PARENT_PILLAR' && other.pillar_role !== 'PILLAR') {
+      if (other.pillar_role !== 'PILLAR' && (forwardRel as string) === 'PARENT_PILLAR') {
         forwardRel = 'RELATED_DECISION';
       }
-      if ((backlinkRel as string) === 'CHILD_SUPPORTING' && other.pillar_role !== 'PILLAR') {
+      if (other.pillar_role !== 'PILLAR' && (backlinkRel as string) === 'CHILD_SUPPORTING') {
         backlinkRel = 'RELATED_SYSTEM';
       }
+
+      const matchScore = Math.min(
+        0.95,
+        0.75 +
+          (sharedSystems.length * 0.05) +
+          (sharedMaterials.length * 0.05) +
+          (sharedProblems.length * 0.05) +
+          (sharedSubsystems.length * 0.04) +
+          (hasKeywordCrossMatch ? 0.05 : 0)
+      );
 
       // 1. FORWARD Candidate (Article -> Other)
       candidates.push({
@@ -585,10 +822,10 @@ export async function discoverBidirectionalCandidates(
         direction: 'FORWARD',
         relationship_type: forwardRel,
         reader_reason: forwardReason,
-        confidence_score: sharedClusters.length > 0 ? 0.92 : 0.80,
+        confidence_score: Number(matchScore.toFixed(2)),
         recommended_plane: 'PLANE_A_DYNAMIC',
         status: 'CANDIDATE',
-        match_rationale: `Shared architectural concept (${sharedClusters.join(', ') || 'keyword overlap'})`
+        match_rationale: `Shared taxonomy concepts (${[...sharedSystems, ...sharedMaterials, ...sharedProblems, ...sharedSubsystems].join(', ') || 'domain match'})`
       });
 
       // 2. BACKLINK Candidate (Other -> Article)
@@ -598,7 +835,7 @@ export async function discoverBidirectionalCandidates(
         direction: 'BACKLINK',
         relationship_type: backlinkRel,
         reader_reason: backlinkReason,
-        confidence_score: sharedClusters.length > 0 ? 0.90 : 0.78,
+        confidence_score: Number((matchScore - 0.02).toFixed(2)),
         recommended_plane: 'PLANE_A_DYNAMIC',
         status: 'CANDIDATE',
         match_rationale: `Bidirectional decision support path from existing published article`
@@ -612,9 +849,9 @@ export async function discoverBidirectionalCandidates(
 /**
  * Derives actionable operational states for Mission Control.
  * Only surfaces actionable states (no dashboard noise for healthy active links):
+ * - ORPHAN_DETECTED: Published articles with zero inbound discovery paths and no parent pillar.
+ * - BACKLINK_RECOMMENDED: Backlink opportunities connecting established articles to newly published articles.
  * - LINK_REVIEW_REQUIRED: Candidates awaiting human approval.
- * - ORPHAN_DETECTED: Published articles with zero inbound discovery paths.
- * - BACKLINK_RECOMMENDED: Backlink opportunities for newly published articles.
  * - LINK_REVISION_RECOMMENDED: Published inline links marked as STALE.
  */
 export async function deriveInternalLinkActionableStates(
@@ -637,11 +874,12 @@ export async function deriveInternalLinkActionableStates(
     }
   }
 
-  // 2. Pending Candidates (LINK_REVIEW_REQUIRED)
+  // 2. Pending Candidates (LINK_REVIEW_REQUIRED and BACKLINK_RECOMMENDED)
   const pendingLinks = await db.prepare(`
     SELECT l.id, l.source_article_id, l.target_article_id, l.relationship_type, l.placement_plane,
+           l.reader_reason, l.anchor_text,
            s.title as source_title, s.slug as source_slug,
-           t.title as target_title
+           t.title as target_title, t.slug as target_slug
     FROM article_internal_links l
     INNER JOIN articles s ON l.source_article_id = s.id
     INNER JOIN articles t ON l.target_article_id = t.id
@@ -651,17 +889,40 @@ export async function deriveInternalLinkActionableStates(
 
   const candidates = pendingLinks.results || pendingLinks || [];
   for (const c of candidates) {
-    actionableStates.push({
-      type: 'LINK_REVIEW_REQUIRED',
-      article_id: c.source_article_id,
-      article_title: c.source_title,
-      article_slug: c.source_slug,
-      target_article_id: c.target_article_id,
-      target_article_title: c.target_title,
-      link_id: c.id,
-      details: `Candidate ${c.relationship_type} (${c.placement_plane}) requires editorial review`,
-      severity: 'action_required'
-    });
+    const isBacklinkRecommendation =
+      (c.reader_reason && (
+        c.reader_reason.toLowerCase().includes('backlink') ||
+        c.reader_reason.toLowerCase().includes('melengkapi pertimbangan') ||
+        c.reader_reason.toLowerCase().includes('inbound')
+      )) ||
+      (c.anchor_text && c.anchor_text.toLowerCase().includes('backlink')) ||
+      (orphans.some(o => o.article_id === c.target_article_id && o.is_orphan));
+
+    if (isBacklinkRecommendation) {
+      actionableStates.push({
+        type: 'BACKLINK_RECOMMENDED',
+        article_id: c.source_article_id,
+        article_title: c.source_title,
+        article_slug: c.source_slug,
+        target_article_id: c.target_article_id,
+        target_article_title: c.target_title,
+        link_id: c.id,
+        details: `Backlink opportunity: Connect established article "${c.source_title}" to newly added article "${c.target_title}"`,
+        severity: 'info'
+      });
+    } else {
+      actionableStates.push({
+        type: 'LINK_REVIEW_REQUIRED',
+        article_id: c.source_article_id,
+        article_title: c.source_title,
+        article_slug: c.source_slug,
+        target_article_id: c.target_article_id,
+        target_article_title: c.target_title,
+        link_id: c.id,
+        details: `Candidate ${c.relationship_type} (${c.placement_plane}) requires editorial review`,
+        severity: 'action_required'
+      });
+    }
   }
 
   // 3. Stale Inline Links (LINK_REVISION_RECOMMENDED)

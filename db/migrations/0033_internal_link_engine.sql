@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS article_internal_links (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   reviewed_at DATETIME,
   reviewed_by TEXT,
-  UNIQUE(source_article_id, target_article_id, relationship_type, placement_plane)
+  UNIQUE(source_article_id, target_article_id, placement_plane)
 );
 
 -- 2. Indexes for source and target lookups
