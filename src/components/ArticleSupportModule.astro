@@ -1,5 +1,6 @@
 ---
 import type { ResolvedPlaneALink } from '../lib/internal-link/types.ts';
+import { getCanonicalThumbnailUrl } from '../lib/image.ts';
 
 interface Props {
   links?: ResolvedPlaneALink[];
@@ -10,16 +11,6 @@ const { links = [] } = Astro.props;
 if (!links || links.length === 0) {
   // If no meaningful active relationships exist: render nothing. No empty box.
   return null;
-}
-
-function getOptimizedThumbnail(url?: string): string | null {
-  if (!url || typeof url !== 'string' || !url.trim()) return null;
-  const cleanUrl = url.trim();
-  if (cleanUrl.includes('images.unsplash.com')) {
-    const base = cleanUrl.split('?')[0];
-    return `${base}?w=160&h=160&auto=format&fit=crop&q=80&fm=webp`;
-  }
-  return cleanUrl;
 }
 ---
 
@@ -34,7 +25,7 @@ function getOptimizedThumbnail(url?: string): string | null {
 
   <div class="space-y-5">
     {links.map((link) => {
-      const thumbUrl = getOptimizedThumbnail(link.target_featured_image);
+      const thumbUrl = getCanonicalThumbnailUrl(link.target_featured_image);
       return (
         <article class="border-b border-stone/20 dark:border-stone/10 pb-5 last:border-b-0 last:pb-0">
           <div class="flex items-start gap-3.5 sm:gap-4">

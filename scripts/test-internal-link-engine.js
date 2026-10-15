@@ -56,6 +56,7 @@ import {
 
 import { processArticleContent } from '../src/lib/seo.ts';
 import { getPipelineBoard } from '../src/lib/mission-control/tasks.ts';
+import { getCanonicalThumbnailUrl } from '../src/lib/image.ts';
 
 // Lightweight in-memory D1 mock for testing
 class InMemoryD1Mock {
@@ -1337,7 +1338,7 @@ async function runTestSuite() {
 
     const liveEdges = [
       // 5 -> 8
-      { source_article_id: 5, target_article_id: 8, relationship_type: 'RELATED_DECISION', reader_reason: 'Pertimbangkan insulasi sebelum memutuskan kusen' },
+      { source_article_id: 5, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Karakter material insulasi peredam panas' },
       // 6 -> 9
       { source_article_id: 6, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Ventilasi atap melengkapi ventilasi silang dinding' },
       // 7 -> 8, 9
@@ -1391,6 +1392,9 @@ async function runTestSuite() {
       assert.ok(l.target_title);
       assert.ok(l.reader_reason);
       assert.ok(l.relationship_type);
+      const thumbUrl = getCanonicalThumbnailUrl(l.target_featured_image);
+      assert.ok(thumbUrl);
+      assert.ok(thumbUrl.includes('w=160') || thumbUrl.startsWith('/media/thumbnails/'));
     }
 
     // Verify missing image fallback
@@ -1398,8 +1402,17 @@ async function runTestSuite() {
     const missingImgLink = linksFor5.find(l => l.target_article_id === 99);
     assert.ok(missingImgLink);
     assert.equal(Boolean(missingImgLink.target_featured_image), false);
+    assert.equal(getCanonicalThumbnailUrl(missingImgLink.target_featured_image), null);
 
-    recordPass('26. Support module UI polish: editorial thumbnails, live graph shapes (1, 2, 3 cards), zero-link empty rendering, fallback on missing image, accessible decorative alt, and zero-JS invariants verified');
+    // Verify getCanonicalThumbnailUrl derivative contracts
+    assert.equal(getCanonicalThumbnailUrl('/media/images/photo123.webp'), '/media/thumbnails/photo123.webp');
+    assert.equal(getCanonicalThumbnailUrl('https://rancangloka.com/media/images/photo123.webp'), 'https://rancangloka.com/media/thumbnails/photo123.webp');
+    assert.equal(getCanonicalThumbnailUrl('/media/photo123.webp'), '/media/thumbnails/photo123.webp');
+    assert.equal(getCanonicalThumbnailUrl(''), null);
+    assert.equal(getCanonicalThumbnailUrl(null), null);
+    assert.equal(getCanonicalThumbnailUrl(undefined), null);
+
+    recordPass('26. Support module UI polish: editorial thumbnails, live graph shapes (1, 2, 3 cards), zero-link empty rendering, fallback on missing image, accessible decorative alt, getCanonicalThumbnailUrl derivative contract, and zero-JS invariants verified');
   } catch (err) {
     recordFail('26. Support module thumbnail polish', err);
   }

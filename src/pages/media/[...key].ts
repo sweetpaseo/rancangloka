@@ -67,6 +67,25 @@ export const GET: APIRoute = async ({ params, locals }) => {
       }
     }
 
+    // Graceful fallback for thumbnail derivatives: if specific thumbnail asset is not yet in R2,
+    // seamlessly fall back to looking up the original cover asset so images never break during transition.
+    if (!object && (exactKey.startsWith('thumbnails/') || exactKey.startsWith('media/thumbnails/'))) {
+      const originalSubpath = exactKey.replace(/^(media\/)?thumbnails\//, '');
+      const candidates = [
+        `images/${originalSubpath}`,
+        `media/images/${originalSubpath}`,
+        originalSubpath,
+        `media/${originalSubpath}`
+      ];
+      for (const cand of candidates) {
+        object = await bucket.get(cand);
+        if (object) {
+          exactKey = cand;
+          break;
+        }
+      }
+    }
+
     if (!object) {
       return new Response('Image not found', { status: 404 });
     }
