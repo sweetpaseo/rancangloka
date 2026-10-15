@@ -1367,12 +1367,66 @@ async function runTestSuite() {
     // Article 9 -> 8,6 (2 cards)
     const liveGraphDb = new InMemoryD1Mock();
     const liveArticles = [
-      { id: 5, slug: 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia', title: 'Kusen Aluminium vs UPVC', description: 'Perbandingan kusen aluminium dan uPVC untuk rumah tropis.', content_md: '# Kusen Aluminium vs UPVC\n\nMemilih material bukaan jendela dan pintu untuk rumah di Indonesia sering kali menghadirkan dilema nyata.', featured_image: 'https://images.unsplash.com/photo-5?w=1200', image_alt: 'Kusen aluminium' },
-      { id: 6, slug: 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman', title: 'Rekayasa Ventilasi Silang', description: 'Cara membaca jalur udara dan batas ventilasi silang.', content_md: '# Rekayasa Ventilasi Silang\n\nAda kamar yang sudah memiliki jendela di dua sisi, tetapi tetap terasa pengap. Pada siang hari, daun jendela dibuka lebar.', featured_image: 'https://images.unsplash.com/photo-6?w=1200', image_alt: 'Ventilasi silang' },
-      { id: 7, slug: 'panduan-memilih-genteng-rumah-tropis', title: 'Panduan Memilih Genteng', description: 'Panduan komparasi genteng tanah liat, beton, dan metal.', content_md: '# Panduan Memilih Genteng\n\nSebelum memilih antara mengurangi kelembapan atau mengganti kaca, keluhan jendela yang basah berembun pada pagi hari sering dihadapi pemilik rumah tanpa diagnosis yang cukup kuat.', featured_image: 'https://images.unsplash.com/photo-7?w=1200', image_alt: 'Genteng tanah liat' },
-      { id: 8, slug: 'insulasi-atap-peredam-panas-ruang-bawah-genteng', title: 'Insulasi Atap Peredam Panas', description: 'Karakter konduksi panas dan aplikasi insulasi bawah genteng.', content_md: '# Insulasi Atap Peredam Panas\n\nSebelum memilih antara memasang peneduh matahari atau mengganti kusen, keluhan kusen aluminium yang terasa panas menyengat saat siang hari sering dihadapi pemilik rumah.', featured_image: 'https://images.unsplash.com/photo-8?w=1200', image_alt: 'Insulasi aluminium foil' },
-      { id: 9, slug: 'ventilasi-atap-solusi-loteng-panas', title: 'Ventilasi Atap Solusi Loteng Panas', description: 'Solusi bukaan loteng untuk melepas panas radiasi atap.', content_md: '# Ventilasi Atap Solusi Loteng Panas\n\nKamar tidur di lantai dua terasa panas dan pengap setiap sore meski AC sudah menyala dari siang?', featured_image: 'https://images.unsplash.com/photo-9?w=1200', image_alt: 'Turbine ventilator' },
-      { id: 99, slug: 'artikel-tanpa-gambar', title: 'Artikel Tanpa Gambar', description: 'Deskripsi artikel tanpa gambar.', content_md: '# Artikel Tanpa Gambar\n\nIni adalah naskah pembuka artikel tanpa gambar untuk pengujian.', featured_image: '', image_alt: '' }
+      {
+        id: 5,
+        slug: 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia',
+        title: 'Kusen Aluminium vs uPVC untuk Rumah Tropis di Indonesia',
+        description: 'Perbandingan mendalam kusen aluminium dan uPVC untuk rumah tropis di Indonesia, dari karakter termal, muai-susut, hingga ketahanan jangka panjang.',
+        content_md: '# Kusen Aluminium vs uPVC untuk Rumah Tropis di Indonesia\n\nMemilih material bukaan jendela dan pintu untuk rumah di Indonesia sering kali menghadirkan dilema nyata. Iklim tropis lembap memberi ujian berlapis sepanjang tahun: paparan sinar matahari terik yang memicu pemuaian, curah hujan deras disertai angin kencang yang mencari celah sekecil apa pun untuk merembes, serta kelembapan udara konstan yang memicu jamur atau rayap pada material organik.',
+        featured_image: '/media/images/631baf7a25e9986b9f0d01073633cb434ae162b3df1241ddac56b977026276e9.webp',
+        image_alt: 'Perbandingan kusen aluminium warna gelap dan kusen uPVC putih pada dua bukaan kaca rumah tropis yang terhubung ke teras taman.',
+        reading_time_minutes: 8
+      },
+      {
+        id: 6,
+        slug: 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman',
+        title: 'Rekayasa Ventilasi Silang Alami untuk Rumah Tropis yang Lebih Nyaman',
+        description: 'Cara membaca jalur udara, posisi bukaan, arah angin, dan batas ventilasi silang agar rumah tropis sejuk alami tanpa ketergantungan pendingin mekanikal.',
+        content_md: '# Rekayasa Ventilasi Silang Alami untuk Rumah Tropis yang Lebih Nyaman\n\nAda kamar yang sudah memiliki jendela di dua sisi, tetapi tetap terasa pengap. Pada siang hari, daun jendela dibuka lebar. Udara memang masuk, namun ruang tidak kunjung terasa ringan. Penghuni akhirnya menyalakan pendingin mekanikal, bukan karena rumah sama sekali tidak memiliki bukaan, melainkan karena bukaan itu belum tentu membentuk jalur udara yang bekerja.',
+        featured_image: '/media/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman-8422.webp',
+        image_alt: 'Rekayasa Ventilasi Silang Alami untuk Rumah Tropis yang Lebih Nyaman',
+        reading_time_minutes: 7
+      },
+      {
+        id: 7,
+        slug: 'jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge',
+        title: 'Jendela Berkondensasi: Kelembapan Ruangan, Suhu Permukaan Kaca, Ventilasi, atau Thermal Bridge?',
+        description: 'Jendela berembun bukan otomatis produk rusak. Pelajari 4 penyebab utama: kelembapan tinggi, suhu kaca dingin, ventilasi buruk, atau thermal bridge kusen.',
+        content_md: '# Jendela Berkondensasi: Kelembapan Ruangan, Suhu Permukaan Kaca, Ventilasi, atau Thermal Bridge?\n\nSebelum memilih antara mengurangi kelembapan atau mengganti kaca, keluhan jendela yang basah berembun pada pagi hari sering dihadapi pemilik rumah tanpa diagnosis yang cukup kuat. Munculnya butiran air pada permukaan kaca dapat mencerminkan mekanisme fisik yang berlainan: udara ruangan terlalu lembap, suhu permukaan kaca di bawah titik embun, ventilasi tidak memadai, atau bagian kusen yang menjadi thermal bridge.',
+        featured_image: '/media/images/b5cd50198632fecc2810b756554ce8ffe6df3129f5d828447064beee41845af4.webp',
+        image_alt: 'Kondensasi pada permukaan kaca jendela rumah dengan kusen aluminium',
+        reading_time_minutes: 5
+      },
+      {
+        id: 8,
+        slug: 'thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi',
+        title: 'Thermal Bridge Kusen Aluminium: Mengapa Permukaan Kusen Terasa Sangat Panas atau Dingin?',
+        description: 'Kusen aluminium terasa sangat panas atau berembun dingin? Pelajari penyebab thermal bridge, dampaknya pada kenyamanan rumah, dan solusi bertahap yang realistis.',
+        content_md: '# Thermal Bridge Kusen Aluminium: Mengapa Permukaan Kusen Terasa Sangat Panas atau Dingin?\n\nSebelum memilih antara memasang peneduh matahari atau mengganti kusen, keluhan kusen aluminium yang terasa panas menyengat saat siang hari sering dihadapi pemilik rumah tanpa diagnosis yang cukup kuat. Sensasi panas saat disentuh di siang hari atau dingin saat malam berpendingin udara sering dihadapi tanpa diagnosis yang cukup kuat. Perilaku tersebut adalah konsekuensi fisika dari konduktivitas profil logam.',
+        featured_image: '/media/images/8ecd77ff40bb4d933e27e44980bcec9ebb040e0cb971de72e5387ff6b463247d.webp',
+        image_alt: 'Detail sambungan kusen aluminium, kaca, dan dinding pada jendela rumah',
+        reading_time_minutes: 5
+      },
+      {
+        id: 9,
+        slug: 'memilih-sistem-shading-luar-rumah-tropis',
+        title: 'Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?',
+        description: 'Panduan peneduh luar rumah tropis: komparasi overhang, louver, awning, dan secondary facade untuk memblokir radiasi matahari sebelum menyentuh kaca.',
+        content_md: '# Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?\n\nKamar tidur di lantai dua terasa panas dan pengap setiap sore meski AC sudah menyala dari siang?\n\nReaksi pertama yang paling sering dilakukan pemilik rumah adalah menarik gorden tebal rapat-rapat atau memasang kaca film gelap di sisi dalam jendela. Masalahnya, langkah ini sebenarnya sudah terlambat.',
+        featured_image: '/media/images/4ee0363758a41bd45aae735349028ab19ca6256964c20ec1d98af4e65c578bf4.webp',
+        image_alt: 'Detail sistem peneduh luar berupa overhang dan louver pada fasad rumah tropis modern yang melindungi bukaan kaca dari radiasi matahari langsung.',
+        reading_time_minutes: 7
+      },
+      {
+        id: 99,
+        slug: 'artikel-tanpa-gambar',
+        title: 'Artikel Tanpa Gambar',
+        description: 'Deskripsi artikel tanpa gambar.',
+        content_md: '# Artikel Tanpa Gambar\n\nIni adalah naskah pembuka artikel tanpa gambar untuk pengujian.',
+        featured_image: '',
+        image_alt: '',
+        reading_time_minutes: 3
+      }
     ];
 
     for (const a of liveArticles) {
@@ -1381,19 +1435,19 @@ async function runTestSuite() {
 
     const liveEdges = [
       // 5 -> 8
-      { source_article_id: 5, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Karakter material insulasi peredam panas' },
+      { source_article_id: 5, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Jika Anda mempertimbangkan kusen aluminium, pahami bagaimana fenomena thermal bridge dapat menyebabkan permukaan profil terasa sangat panas atau dingin.' },
       // 6 -> 9
-      { source_article_id: 6, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Ventilasi atap melengkapi ventilasi silang dinding' },
+      { source_article_id: 6, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Agar bukaan ventilasi silang tetap efektif sekaligus lebih terlindungi dari tempias hujan dan paparan panas matahari, pelajari pilihan sistem peneduh luar yang sesuai dengan orientasi bangunan.' },
       // 7 -> 8, 9
-      { source_article_id: 7, target_article_id: 8, relationship_type: 'BACKGROUND_EXPLAINER', reader_reason: 'Peredam panas bawah genteng' },
-      { source_article_id: 7, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Bukaan udara loteng pendukung genteng' },
+      { source_article_id: 7, target_article_id: 8, relationship_type: 'BACKGROUND_EXPLAINER', reader_reason: 'Untuk memahami salah satu penyebab perbedaan suhu pada area jendela, pelajari bagaimana thermal bridge dapat terjadi pada profil kusen aluminium.' },
+      { source_article_id: 7, target_article_id: 9, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Jika suhu permukaan kaca banyak dipengaruhi panas dari luar, lihat bagaimana peneduh eksternal dapat mengurangi radiasi sebelum mencapai bukaan.' },
       // 8 -> 9, 7, 5 (Canonical Production Graph)
-      { source_article_id: 8, target_article_id: 9, relationship_type: 'RELATED_DECISION', reader_reason: 'Pelepasan panas loteng' },
-      { source_article_id: 8, target_article_id: 7, relationship_type: 'RELATED_PROBLEM', reader_reason: 'Karakter konduksi material genteng' },
-      { source_article_id: 8, target_article_id: 5, relationship_type: 'RELATED_DECISION', reader_reason: 'Kusen penahan panas pada bukaan bawah' },
+      { source_article_id: 8, target_article_id: 9, relationship_type: 'RELATED_DECISION', reader_reason: 'Sebelum mengganti kusen atau membongkar jendela, pertimbangkan apakah paparan panas dapat dikurangi lebih dahulu dengan peneduh luar yang sesuai dengan orientasi bukaan.' },
+      { source_article_id: 8, target_article_id: 7, relationship_type: 'RELATED_PROBLEM', reader_reason: 'Jika masalah suhu pada kusen disertai embun atau tetesan air pada kaca, lanjutkan dengan memahami hubungan suhu permukaan, kelembapan, dan kondensasi.' },
+      { source_article_id: 8, target_article_id: 5, relationship_type: 'RELATED_DECISION', reader_reason: 'Sebelum memutuskan penggantian kusen, bandingkan karakteristik termal dan ketahanan jangka panjang antara profil aluminium dan uPVC untuk iklim tropis.' },
       // 9 -> 8, 6
-      { source_article_id: 9, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Insulasi penahan radiasi atap' },
-      { source_article_id: 9, target_article_id: 6, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Sirkulasi udara silang penunjang atap' },
+      { source_article_id: 9, target_article_id: 8, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Jika Anda mempertimbangkan elemen aluminium pada sistem bukaan atau peneduh, pahami juga bagaimana material aluminium menghantarkan panas pada komponen bangunan.' },
+      { source_article_id: 9, target_article_id: 6, relationship_type: 'RELATED_SYSTEM', reader_reason: 'Selain menahan radiasi panas matahari pada fasad, pastikan penempatan bukaan di balik peneduh membentuk jalur ventilasi silang yang efektif mengalirkan udara.' },
       // Edge with target without image
       { source_article_id: 99, target_article_id: 99, relationship_type: 'RELATED_MATERIAL', reader_reason: 'Self-link test' },
       { source_article_id: 5, target_article_id: 99, relationship_type: 'BACKGROUND_EXPLAINER', reader_reason: 'Target tanpa featured image' }
@@ -1436,6 +1490,41 @@ async function runTestSuite() {
     assert.equal(card9.relationship_type, 'RELATED_DECISION', 'Card 9 must be RELATED_DECISION');
     assert.equal(card7.relationship_type, 'RELATED_PROBLEM', 'Card 7 must be RELATED_PROBLEM');
     assert.equal(card5.relationship_type, 'RELATED_DECISION', 'Card 5 must be RELATED_DECISION');
+
+    // Canonical Target Metadata Binding Consistency Assertions for Article 8
+    assert.equal(card9.target_title, 'Memilih Sistem Shading Luar untuk Rumah Tropis: Overhang, Louver, Awning, atau Secondary Facade?');
+    assert.equal(card9.target_slug, 'memilih-sistem-shading-luar-rumah-tropis');
+    assert.equal(card9.target_excerpt, 'Kamar tidur di lantai dua terasa panas dan pengap setiap sore meski AC sudah menyala dari siang?');
+
+    assert.equal(card7.target_title, 'Jendela Berkondensasi: Kelembapan Ruangan, Suhu Permukaan Kaca, Ventilasi, atau Thermal Bridge?');
+    assert.equal(card7.target_slug, 'jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge');
+    assert.equal(card7.target_excerpt, 'Sebelum memilih antara mengurangi kelembapan atau mengganti kaca, keluhan jendela yang basah berembun pada pagi hari sering dihadapi pemilik rumah tanpa diagnosis yang cukup kuat.');
+
+    assert.equal(card5.target_title, 'Kusen Aluminium vs uPVC untuk Rumah Tropis di Indonesia');
+    assert.equal(card5.target_slug, 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia');
+    assert.equal(card5.target_excerpt, 'Memilih material bukaan jendela dan pintu untuk rumah di Indonesia sering kali menghadirkan dilema nyata.');
+
+    // Canonical Target Metadata Binding Consistency Assertions for Article 9
+    const card8From9 = linksFor9.find(l => l.target_article_id === 8);
+    const card6From9 = linksFor9.find(l => l.target_article_id === 6);
+    assert.equal(card8From9.target_title, 'Thermal Bridge Kusen Aluminium: Mengapa Permukaan Kusen Terasa Sangat Panas atau Dingin?');
+    assert.equal(card8From9.target_slug, 'thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi');
+    assert.equal(card8From9.target_excerpt, 'Sebelum memilih antara memasang peneduh matahari atau mengganti kusen, keluhan kusen aluminium yang terasa panas menyengat saat siang hari sering dihadapi pemilik rumah tanpa…');
+    assert.equal(card8From9.relationship_type, 'RELATED_MATERIAL');
+
+    assert.equal(card6From9.target_title, 'Rekayasa Ventilasi Silang Alami untuk Rumah Tropis yang Lebih Nyaman');
+    assert.equal(card6From9.target_slug, 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman');
+    assert.equal(card6From9.target_excerpt, 'Ada kamar yang sudah memiliki jendela di dua sisi, tetapi tetap terasa pengap. Pada siang hari, daun jendela dibuka lebar.');
+    assert.equal(card6From9.relationship_type, 'RELATED_SYSTEM');
+
+    // Invariant: Prove target_article_id, target_title, target_slug, target_featured_image all originate from the same row
+    for (const l of [...linksFor8, ...linksFor9]) {
+      const sourceRow = liveArticles.find(a => a.id === l.target_article_id);
+      assert.ok(sourceRow, `Target row ${l.target_article_id} must exist in articles catalog`);
+      assert.equal(l.target_title, sourceRow.title, `Card title must originate from target row ${l.target_article_id}`);
+      assert.equal(l.target_slug, sourceRow.slug, `Card slug must originate from target row ${l.target_article_id}`);
+      assert.equal(l.target_featured_image, sourceRow.featured_image, `Card featured_image must originate from target row ${l.target_article_id}`);
+    }
 
     for (const l of linksFor8) {
       assert.ok(l.target_featured_image);
