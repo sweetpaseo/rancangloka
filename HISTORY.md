@@ -13,6 +13,33 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-ARTICLE-SUPPORT-THUMBNAIL-PAYLOAD-OPTIMIZATION: Canonical 160x160 WebP Derivative Pipeline, 96.6% Transferred Byte Reduction & Edge Fallback 2026-10-15
+
+- **Tanggal / Waktu:** 2026-10-15T16:50:00+07:00
+- **Status Operasional:** `ARTICLE_SUPPORT_THUMBNAIL_PAYLOAD_OPTIMIZED`
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Commit:** `39078ef` (`perf(media): add compact derivatives for article support thumbnails`)
+- **Pencapaian Kunci Optimasi Payload:**
+  1. *Pengukuran Baseline Payload:* Gambar sampul editorial pada artikel 5–9 berukuran 1200–1315 px lebar dengan ukuran 146–218 KB per gambar (total 5 gambar = 872.1 KB). Pada Artikel 8 (3 kartu dukungan: 9, 7, 5), modul pendukung sebelumnya mentransfer ~577.9 KB (591.740 bytes) meskipun thumbnail hanya ditampilkan pada ukuran 80x80 px (desktop) dan 56x56 px (mobile).
+  2. *Arsitektur Derivatif Kanonikal 160x160 WebP:* Menetapkan standar derivatif thumbnail kanonikal 160x160 px (rasio 1:1, center-crop, Lanczos downsampling) dalam format WebP (quality=85).
+  3. *Resolusi URL & Preset:* Menambahkan preset `compactThumb` ke `MAGAZINE_IMAGE_PRESETS` dan fungsi `getCanonicalThumbnailUrl` di `src/lib/image.ts`, memetakan path R2 kanonikal `/media/images/<filename>` atau `/media/<filename>` secara deterministik ke `/media/thumbnails/<filename>`.
+  4. *Pencegahan Kegagalan Edge (Edge Fallback Invariant):* Menambahkan penanganan fallback otomatis pada endpoint dynamic `src/pages/media/[...key].ts`. Jika berkas `thumbnails/<filename>` belum diunggah ke R2, sistem otomatis mengalirkan gambar asli `images/<filename>`, menjamin zero broken images selama proses deployment/backfill.
+  5. *Pengurangan Payload Terukur:*
+     - Artikel 5: 166.8 KB $\rightarrow$ 7.09 KB (95.8% reduction)
+     - Artikel 6: 148.0 KB $\rightarrow$ 9.12 KB (93.8% reduction)
+     - Artikel 7: 193.1 KB $\rightarrow$ 5.53 KB (97.1% reduction)
+     - Artikel 8: 146.3 KB $\rightarrow$ 4.52 KB (96.9% reduction)
+     - Artikel 9: 218.0 KB $\rightarrow$ 7.07 KB (96.8% reduction)
+     - Total 5 thumbnail: 872.1 KB $\rightarrow$ 33.32 KB (96.2% overall reduction, rerata ~6.66 KB per thumbnail, melampaui target $\le$ 25 KB).
+     - Modul 3 Kartu Artikel 8: 577.9 KB $\rightarrow$ 19.68 KB (**96.6% bandwidth reduction**).
+  6. *Invarian Tata Letak & Zero JS:* Preserved layout 80x80 desktop / 56x56 mobile, `loading="lazy"`, `decoding="async"`, `aspect-ratio: 1/1` (CLS = 0), `alt=""`, `aria-hidden="true"`, serta zero client JS.
+  7. *Integritas Naskah & Graf Semantik:* 9 hubungan Plane A aktif, 0 baris Plane B inline, hash Artikel C `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` 100% utuh tanpa perubahan.
+  8. *Rencana Backfill Produksi:* 5 berkas WebP derivatif dibangkitkan lokal via `scripts/create-thumbnail-derivatives.py` ke `artifacts/thumbnails/`, siap diunggah ke R2 bucket `rancangloka-media` segera setelah otorisasi produksi diberikan.
+- **Hasil & Status Keselamatan:**
+  - Status Pengujian: `test-internal-link-engine.js` (26/26 PASS), `npx tsc --noEmit` (0 errors), `npm run build` (sukses).
+  - Status Produksi: Belum ada deploy/push atau mutasi R2 produksi (staging/local only).
+  - Klasifikasi: **`ARTICLE_SUPPORT_THUMBNAIL_PAYLOAD_OPTIMIZED`** (`READY_FOR_THUMBNAIL_PRODUCTION_AUTHORIZATION`).
+
 ### RANCANGLOKA-INTERNAL-LINK-ORPHAN-REMEDIATION-COMPLETE: Activation of Approved Plane A Edges 1–4, Production Graph Total 9 & Zero Corpus Orphans 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T16:05:00+07:00
