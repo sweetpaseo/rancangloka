@@ -455,17 +455,57 @@ Untuk menjamin keselamatan rekayasa, implementasi dibagi menjadi sub-fase teriso
 
 ---
 
-## 17. Kesimpulan & Status Kesiapan
+## 17. Status Implementasi 1B-A
 
-Kontrak data Publication DNA telah dikeraskan sepenuhnya:
-- Menghapus asumsi kolom yang tidak ada (`approved_at` $\rightarrow$ `created_at`).
-- Mengganti ID 32-bit dengan UUID v4 128-bit anti-benturan.
-- Menetapkan `version_key` yang mendukung artikel historis tanpa memalsukan data.
-- Menjamin keamanan numerik MinHash menggunakan BigInt dan format string heksadesimal 16-karakter.
-- Memisahkan status operasional mutabel dari rekam forensik abadi.
-- Menegakkan semantik eksekusi non-blocking pasca-receipt.
+Implementasi dasar 1B-A telah diselesaikan pada commit `c155d43`:
+- Modul inti murni: `src/lib/content-protection/publication-dna.ts`
+- Migrasi aditif D1: `db/migrations/0034_article_publication_dna.sql`
+- Suite pengujian offline: `scripts/test-publication-dna.js`
 
-**Klasifikasi Evaluasi:**
-# `CONTENT_PROTECTION_1B_FINAL_PLAN_PASS`
+---
 
-RancangLoka siap memasuki tahap implementasi teknis sub-fase **1B-A**.
+## 18. Audit Paritas Hash Otoritatif & Penguncian Vektor Golden (Determinism Lock)
+
+### 1. Kontrak Kanonikal Content Hash (`articles.content_hash`)
+Melalui audit repositori menyeluruh terhadap modul penerbitan (`publisher-service.ts`, `publish-article-c-production.js`, `run-publication-polish-1.js`), ditetapkan kontrak kanonikal tunggal:
+
+> **`CANONICAL_CONTENT_HASH_V1 = SHA-256(raw UTF-8 bytes of articles.content_md exactly as persisted)`**
+
+Helper `computeCanonicalContentHash(canonicalMarkdown)` pada Publication DNA mengimplementasikan kontrak ini secara eksak tanpa transformasi teks apa pun.
+
+### 2. Hasil Audit Paritas Produksi (Articles 5–9)
+Audit langsung secara read-only (SELECT ONLY) terhadap basis data produksi Cloudflare D1 (`rancangloka_db`) mengungkapkan fakta historis silsilah naskah:
+
+| Article ID | Slug | Stored `content_hash` | `computeCanonicalContentHash` (Raw UTF-8) | Legacy `seo.ts` Hash (Normalized) | Klasifikasi Paritas |
+|---|---|---|---|---|---|
+| **5** | `kusen-aluminium-vs-upvc...` | `14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277` | `7d06b0ae...` (**MISMATCH**) | `14275912...` (**MATCH**) | Phase 1 Legacy Seed |
+| **6** | `rekayasa-ventilasi-silang...` | `18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d` | `3622730b...` (**MISMATCH**) | `18a20463...` (**MATCH**) | Phase 1 Legacy Seed |
+| **7** | `jendela-berkondensasi...` | `00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298` | `00dc804d...` (**MATCH**) | `b2258047...` (**MISMATCH**) | Pipeline Modern (Art A) |
+| **8** | `thermal-bridge-kusen...` | `66094cf52d2d10650b82141adace0cedc27fc9a3f63ae1f85e19a57c38d4e260` | `66094cf5...` (**MATCH**) | `a0e5ddb0...` (**MISMATCH**) | Pipeline Modern (Art B) |
+| **9** | `memilih-sistem-shading...` | `12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28` | `12c59631...` (**MATCH**) | `cd3e5653...` (**MISMATCH**) | Pipeline Modern (Art C) |
+
+**Temuan Silsilah:**
+- Seluruh artikel yang diproduksi oleh pipeline editorial modern (Artikel 7, 8, 9) memiliki **100% paritas eksak** dengan `computeCanonicalContentHash`.
+- Artikel 5 dan 6 berasal dari fase impor awal pra-Hermes, di mana naskah di-hash menggunakan `src/lib/seo.ts:generateContentHash` (`content.replace(/\s+/g, ' ').trim().toLowerCase()`).
+- Karena naskah dan hash produksi berstatus immutable, divergensi historis ini didokumentasikan sebagai bagian dari silsilah `PARTIAL_HISTORICAL_PROVENANCE`.
+
+### 3. Aturan Vektor Golden Literal (Literal Golden-Vector Rule)
+Pengujian regresi Publication DNA (`scripts/test-publication-dna.js`) wajib menggunakan konstanta literal terkomit (**FROZEN LITERAL CONSTANTS**) untuk:
+- `published_content_hash`
+- `normalized_text_hash`
+- `block_hashes_json`
+- `minhash_signature_json` (vektor 64-elemen lengkap)
+- `structural_signature_json`
+
+Dilarang keras menghitung nilai ekspektasi secara dinamis saat tes berjalan (`expected = generatePublicationDnaMaterial(...)`), guna mendeteksi segala bentuk pergeseran algoritma di masa mendatang.
+
+### 4. Kontrak Pergeseran Parser Markdown (Markdown Parser Drift Contract)
+Segmentasi blok semantik Publication DNA v1 bergantung pada `marked.lexer`.
+- Perlindungan integritas ditegakkan melalui: lockfiles paket (`package-lock.json`), konstanta versi generator (`GENERATOR_VERSION = 'dna-engine/1.0.0'`), dan pengujian vektor golden literal.
+- **Aturan Pembaruan:** Jika pembaruan pustaka pihak ketiga mengubah salah satu nilai vektor V1 yang telah dibekukan, dilarang memperbarui nilai tes secara diam-diam. Operator wajib menentukan apakah (A) terjadi regresi implementasi atau (B) semantik sidik jari sengaja diubah. Jika B, versi kontrak generator (`DNA_VERSION` / `GENERATOR_VERSION`) wajib dinaikkan.
+
+### 5. Semantik Sentinel MinHash Kosong (`EMPTY_MINHASH_IS_SENTINEL`)
+Teks kosong atau tanpa token substansial menghasilkan representasi deterministik:
+- 64 komponen heksadesimal bernilai `'0000000000000000'`.
+- Konstanta pengawas diekspor secara resmi: `EMPTY_MINHASH_IS_SENTINEL = true` dan `EMPTY_MINHASH_SENTINEL_ELEMENT = '0000000000000000'`.
+- **Aturan Perbandingan Kemiripan:** Mesin pembanding forensik di masa depan wajib mendeteksi vektor sentinel ini secara eksplisit dan DILARANG menginterpretasikan dua tanda tangan nol sebagai 100% kemiripan tekstual.

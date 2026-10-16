@@ -101,6 +101,15 @@ export const MINHASH_COEFFICIENTS_64: ReadonlyArray<readonly [bigint, bigint]> =
   [269274227275045835n, 2219966670540931311n],
 ]);
 
+/**
+ * Invariant: EMPTY_MINHASH_IS_SENTINEL
+ * Empty token sets (or text producing < 4 words) evaluate deterministically to 64 zero-filled hex strings.
+ * Future similarity comparison engines MUST detect this sentinel explicitly and MUST NOT
+ * interpret two zero-vector signatures as 100% textual similarity.
+ */
+export const EMPTY_MINHASH_SENTINEL_ELEMENT = '0000000000000000';
+export const EMPTY_MINHASH_IS_SENTINEL = true;
+
 // ============================================================================
 // 2. Types & Interfaces
 // ============================================================================

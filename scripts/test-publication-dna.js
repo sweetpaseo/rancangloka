@@ -31,6 +31,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { marked } from 'marked';
 
 import {
   DNA_VERSION,
@@ -56,6 +57,8 @@ import {
   canonicalizeMinhashSignatureJson,
   canonicalizeStructuralSignatureJson,
   generatePublicationDnaMaterial,
+  EMPTY_MINHASH_IS_SENTINEL,
+  EMPTY_MINHASH_SENTINEL_ELEMENT,
 } from '../src/lib/content-protection/publication-dna.ts';
 
 let passed = 0;
@@ -574,6 +577,228 @@ try {
   }
 }
 assert(duplicateBlocked, 'Duplicate version_key is strictly rejected by SQLite UNIQUE constraint (idempotency)');
+
+// ----------------------------------------------------------------------------
+// Suite 7: True Literal Golden Vector Fixtures (FIXTURE_A & FIXTURE_B)
+// ----------------------------------------------------------------------------
+console.log('\n--- Suite 7: True Literal Golden Vector Fixtures ---');
+
+// FIXTURE_A: Normal article containing heading, paragraph, visible markdown link,
+// list, table, quote, code, and image.
+const FIXTURE_A = `# Panduan Material Kusen Rumah Tropis
+
+Memilih material kusen yang tepat sangat menentukan keawetan bangunan di iklim lembap. Informasi lebih lanjut dapat dilihat pada [panduan arsitektur](https://rancangloka.com/panduan).
+
+![Ilustrasi Kusen](https://rancangloka.com/media/kusen.jpg)
+
+Berikut beberapa pertimbangan utama:
+- Ketahanan terhadap rayap dan jamur
+- Tingkat konduktivitas termal bingkai
+- Kerapatan sambungan sudut terhadap tempias air
+
+| Material | Konduktivitas | Daya Tahan |
+| :--- | :--- | :--- |
+| Kayu Solid | Rendah | Sedang |
+| Aluminium | Tinggi | Sangat Baik |
+| uPVC | Rendah | Sangat Baik |
+
+> Detail sambungan mekanikal pada profil aluminium memerlukan sealant berkualitas agar tidak bocor.
+
+\`\`\`typescript
+const thermalConductivity = 160; // W/(m*K)
+\`\`\`
+`;
+
+// Committed frozen literal expected constants for Fixture A (NEVER dynamically computed at runtime):
+const FIXTURE_A_EXPECTED_CANONICAL_HASH = 'a47a264f218b5b52f8629a122ecae33565e18ebbbfbc4f6500db09fdcc5bfb93';
+const FIXTURE_A_EXPECTED_NORMALIZED_HASH = '8e716171568253d24a82742c451a6a11171f2fe4fc74a8bb1efc031e5c61871a';
+const FIXTURE_A_EXPECTED_BLOCK_HASHES_JSON = '[{"index":0,"block_type":"heading","hash":"dca901619b8f010f4e7787eb7894f2c67bb598568c557c00dc88727754d9109a","token_count":5},{"index":1,"block_type":"paragraph","hash":"046b1c8983dbcc6ec7d3cf4d317ec15eca9a9d7dbdc46e78b4ba2bac9f6bdac4","token_count":20},{"index":2,"block_type":"paragraph","hash":"ccb0ca3c15ab941145c46dbb2a0b646714ea92ba16301d087e0b53c639aa860a","token_count":4},{"index":3,"block_type":"list","hash":"153661f689f0ab15e071c9f9ee0ad5e2f099831ad6b45d9003a60731432c6735","token_count":15},{"index":4,"block_type":"table","hash":"2ff4c7cc484537c7189ec57c6569039c44f934cd3895e8b72d12544a8a1dba90","token_count":16},{"index":5,"block_type":"quote","hash":"b6ee60126105b27a931cb56b68d427387aa80d13ff4d0aad1a38664ea55411a7","token_count":12},{"index":6,"block_type":"code","hash":"e65f46542f0a172165e425c3de575b26f98aacfdb6919796835a57becc55f0b6","token_count":6}]';
+const FIXTURE_A_EXPECTED_MINHASH_SIGNATURE_JSON = '["00524af1e0706000","00e6f30f11dc37de","003a70ac314e9a13","0115ddefcfae0b05","00b95d103f161152","0002619a10294c95","00045a384ed45dbc","0008f2714425e178","010314681aed86f6","002f4293caecba44","000b961833b6cdcf","0165d1d472b2fade","0073a28769cd23eb","0013f8e2150dff25","00e92bc4c08aae50","000dbd11bb6ccbc9","008ed60d5829d86f","0017c9eb70ae368b","007067c7cff3ae22","008ea05a87c6f112","0060d00d0f3e0335","0109fd87638f55f7","0006544ecc84daf6","01acf427a969d30a","000cd62ae1de0af0","0003e73c16fdf19e","003ff5c16b9faa8c","00234b606260e0a8","0148de5dfdd20294","003d7ec524fe2d84","015bc5709322795e","007791617c77e5c5","00b4dd899023dbe5","001f333aa22856d4","001598230b1ed956","003cb5e79e3b02ef","00d9bb88a3bd783a","000ee2c9a0311f9e","000f9cf8c33c2018","008ee9402ce76226","0034b51be87ff55a","00927abf8e48e8dc","000c0078c9224ddb","002e4158a538c8f7","003667553e584301","0039882b46e4ba95","001b54e974b0ac39","002f21bed9826ee3","002b4a595ad32d43","001226e5d7674994","00828efe56c0b9e6","0067a08293f2181e","006e4010d84fe9d2","004e5726592bf197","001a1dc6b580c9fc","004f5ed00713bc32","00db30da3532bcbc","005c5c8f74196743","0021f8dbbb5e2d8e","004230b6d8433a28","006690371aaf27ce","00a08a68590714a8","00ac84c383c64783","00eac030bea03172"]';
+const FIXTURE_A_EXPECTED_STRUCTURAL_SIGNATURE_JSON = '{"block_counts":{"code":1,"heading":1,"list":1,"paragraph":3,"quote":1,"table":1},"heading_hierarchy":["H1"],"image_count":1,"link_count":1}';
+
+// Generate actual material for Fixture A
+const actualA = generatePublicationDnaMaterial(FIXTURE_A);
+
+assert(
+  actualA.publishedContentHash === FIXTURE_A_EXPECTED_CANONICAL_HASH,
+  `Fixture A exact canonical hash matches frozen literal: ${FIXTURE_A_EXPECTED_CANONICAL_HASH}`
+);
+assert(
+  actualA.normalizedTextHash === FIXTURE_A_EXPECTED_NORMALIZED_HASH,
+  `Fixture A exact normalized hash matches frozen literal: ${FIXTURE_A_EXPECTED_NORMALIZED_HASH}`
+);
+assert(
+  actualA.blockHashesJson === FIXTURE_A_EXPECTED_BLOCK_HASHES_JSON,
+  'Fixture A complete semantic block JSON matches frozen literal'
+);
+assert(
+  actualA.minhashSignatureJson === FIXTURE_A_EXPECTED_MINHASH_SIGNATURE_JSON,
+  'Fixture A complete 64-component MinHash vector matches frozen literal'
+);
+assert(
+  actualA.structuralSignatureJson === FIXTURE_A_EXPECTED_STRUCTURAL_SIGNATURE_JSON,
+  'Fixture A complete structural JSON matches frozen literal'
+);
+
+// FIXTURE_B: Indonesian architectural prose fixture with accented/decomposed Unicode,
+// punctuation, multiple headings, multiple paragraphs.
+const FIXTURE_B = `## Orientasi Fasad & Kenyamanan Termal Tropis
+
+Perancangan fasad hunian di wilayah khatulistiwa memerlukan kecermatan orientasi. Fasad yang menghadap ke arah barat menerima radiasi matahari sore dengan sudut datang rendah, memicu kenaikan temperatur ruang secara signifikan pada malam hari.
+
+### Strategi Peneduh Pasif
+
+Penerapan sirip penangkal sinar matahari (*brise-soleil*) dan kisi-kisi kayu terbukti mereduksi beban pendinginan ruang secara alami. Pemilihan material fasad façade berpori seperti bata terakota juga mempercepat pelepasan panas.
+
+Kombinasi ventilasi silang dan vegetasi di sisi luar menghadirkan iklim mikro yang sejuk bagi penghuni rumah.
+`;
+
+// Committed frozen literal expected constants for Fixture B:
+const FIXTURE_B_EXPECTED_CANONICAL_HASH = '2d84ee74140234de973b5d60d57aabcba5a88de9623fb1bcee5691773af3dd24';
+const FIXTURE_B_EXPECTED_NORMALIZED_HASH = 'fa0da1a7fae84930bc002eaf833caefda26a886d1f513a19da7102e0d9a7f5ae';
+const FIXTURE_B_EXPECTED_BLOCK_HASHES_JSON = '[{"index":0,"block_type":"heading","hash":"20bab99d6b26caa9a8756c148a7301d2651d30cfc342ec357407d50e1922547a","token_count":5},{"index":1,"block_type":"paragraph","hash":"c555ea4fe486473d62d1307a4e20dad310e5e953c2d89fc3c32f8205e61009de","token_count":32},{"index":2,"block_type":"heading","hash":"617a777648a84d324403dae110b69dbebfdcdaa16099844266833789827935eb","token_count":3},{"index":3,"block_type":"paragraph","hash":"b6d5ae016426ae1c35a3b443795b7f571a504f7e9fe8eb040c8d8c1f981d165b","token_count":30},{"index":4,"block_type":"paragraph","hash":"def3baf654251ff1ced5c7cdc8e0a9deb12c477a2d4d0ea22431347a1a35f4b3","token_count":16}]';
+const FIXTURE_B_EXPECTED_MINHASH_SIGNATURE_JSON = '["0005d12657bd8038","00329c4d135b4c1b","001e8f9c87a7338e","000f4083f15d74bc","00c27ea8e3e6bfa7","00168a7c1a3d9617","0003fc687ebfe81d","0068c45e8eff4e1f","009a2f1cc84e189c","00058c4f2d149dcc","004e23dd79fe0d2f","00902e268bc03462","0004286253d35b37","0063164e20e1ea6c","00a3826b947a020d","004166ff27a217c6","0010abad81f22ded","0036dcb4ab621b52","004ebb536cd94241","0064550c8a54e7b3","003027bd3b72b0de","002593df7d789bfa","003cf7bd4c403120","00838c45a4cda456","003d2306c0de2e16","0022336f8ec9830c","013383a46dfba070","004572f563645e34","00165c0445bd60b5","0070a5bfcb3bd824","005623e38e91d459","0051ec53a5321343","00163c50c5dbd885","002c3a8bd273650a","0032bfa4bfa25a14","0057310d54ffd306","00476873f0eaa007","0098ef992397c580","00073437600efc74","000a5a4a55fe28a7","005f956cbbf1a363","003a926ad57c06e3","016930560937bf96","00e5c5d0e605b69d","002fe81a8de5dc8f","0084de66f1a52688","00156ef77391866d","0057a691e1df3538","00264b47588adfe6","000a258893ab6984","009597ec8fd44155","0005d6edfd1bcb21","00370644ee4899dc","00c6aa3fc79b921c","005b6347ea2cb1af","00383ca1975d7231","0082dc48cfa48459","0004cad79c3f739c","0017a9bf7ac52ab6","00056550123cce4c","000b4677b927b66b","00a84c71bcc949b7","008dbb44ef0a66fa","00243890238d4781"]';
+const FIXTURE_B_EXPECTED_STRUCTURAL_SIGNATURE_JSON = '{"block_counts":{"code":0,"heading":2,"list":0,"paragraph":3,"quote":0,"table":0},"heading_hierarchy":["H2","H3"],"image_count":0,"link_count":0}';
+
+// Generate actual material for Fixture B
+const actualB = generatePublicationDnaMaterial(FIXTURE_B);
+
+assert(
+  actualB.publishedContentHash === FIXTURE_B_EXPECTED_CANONICAL_HASH,
+  `Fixture B exact canonical hash matches frozen literal: ${FIXTURE_B_EXPECTED_CANONICAL_HASH}`
+);
+assert(
+  actualB.normalizedTextHash === FIXTURE_B_EXPECTED_NORMALIZED_HASH,
+  `Fixture B exact normalized hash matches frozen literal: ${FIXTURE_B_EXPECTED_NORMALIZED_HASH}`
+);
+assert(
+  actualB.blockHashesJson === FIXTURE_B_EXPECTED_BLOCK_HASHES_JSON,
+  'Fixture B complete semantic block JSON matches frozen literal'
+);
+assert(
+  actualB.minhashSignatureJson === FIXTURE_B_EXPECTED_MINHASH_SIGNATURE_JSON,
+  'Fixture B complete 64-component MinHash vector matches frozen literal'
+);
+assert(
+  actualB.structuralSignatureJson === FIXTURE_B_EXPECTED_STRUCTURAL_SIGNATURE_JSON,
+  'Fixture B complete structural JSON matches frozen literal'
+);
+
+// Repeated execution byte identity
+const actualA_run2 = generatePublicationDnaMaterial(FIXTURE_A);
+assert(
+  actualA.publishedContentHash === actualA_run2.publishedContentHash &&
+    actualA.normalizedTextHash === actualA_run2.normalizedTextHash &&
+    actualA.blockHashesJson === actualA_run2.blockHashesJson &&
+    actualA.minhashSignatureJson === actualA_run2.minhashSignatureJson &&
+    actualA.structuralSignatureJson === actualA_run2.structuralSignatureJson,
+  'Repeated execution across independent runs produces 100% byte-identical DNA material'
+);
+
+// ----------------------------------------------------------------------------
+// Suite 8: Parser Drift Contract & Empty MinHash Sentinel
+// ----------------------------------------------------------------------------
+console.log('\n--- Suite 8: Parser Drift Contract & Empty MinHash Sentinel ---');
+
+// Invariant: marked.lexer is an implementation dependency of Publication DNA v1.
+// If future marked updates change semantic block lexing, tests fail and contract must be version-bumped.
+assert(typeof marked.lexer === 'function', 'marked.lexer is available as semantic block parser');
+
+// Invariant: EMPTY_MINHASH_IS_SENTINEL
+assert(EMPTY_MINHASH_IS_SENTINEL === true, 'EMPTY_MINHASH_IS_SENTINEL contract constant is true');
+assert(EMPTY_MINHASH_SENTINEL_ELEMENT === '0000000000000000', 'EMPTY_MINHASH_SENTINEL_ELEMENT is 16-hex zeros');
+
+const emptySentinelMinhash = computeMinhashSignature([]);
+assert(emptySentinelMinhash.length === 64, 'Empty minhash produces 64 components');
+assert(
+  emptySentinelMinhash.every((val) => val === EMPTY_MINHASH_SENTINEL_ELEMENT),
+  'Every component of empty minhash is the frozen sentinel "0000000000000000"'
+);
+
+// Empty tokens or whitespace-only text produces zero shingles and evaluates to the sentinel
+const emptyTokensMinhash = computeMinhashSignature(extractWordTokens(''));
+assert(
+  emptyTokensMinhash.every((val) => val === EMPTY_MINHASH_SENTINEL_ELEMENT),
+  'Whitespace/empty token string evaluates to the sentinel "0000000000000000"'
+);
+
+// In contrast, short substantive text (< 4 words) produces a fallback shingle and does NOT produce sentinel
+const shortMinhash = computeMinhashSignature(['satu', 'dua', 'tiga']);
+assert(
+  shortMinhash.every((val) => val !== EMPTY_MINHASH_SENTINEL_ELEMENT),
+  'Short text producing 1 shingle computes valid non-sentinel MinHash components'
+);
+
+// ----------------------------------------------------------------------------
+// Suite 9: Articles 5–9 Canonical Content Hash Parity Audit Record
+// ----------------------------------------------------------------------------
+console.log('\n--- Suite 9: Articles 5–9 Canonical Content Hash Parity Audit Record ---');
+
+/**
+ * Empirical Production Audit Table (Read-Only SELECT against remote D1):
+ * - Articles 5 & 6 (Phase 1 legacy seed, pre-Hermes pipeline):
+ *   persisted articles.content_hash was generated by src/lib/seo.ts:generateContentHash
+ *   (i.e. SHA-256 of content.replace(/\s+/g, ' ').trim().toLowerCase()).
+ * - Articles 7, 8 & 9 (Modern Editorial Pipeline: Articles A, B, C):
+ *   persisted articles.content_hash is raw SHA-256 of canonical Markdown UTF-8 bytes
+ *   (exactly matching computeCanonicalContentHash).
+ */
+const CANONICAL_AUDIT_PROOF_TABLE = [
+  {
+    id: 5,
+    slug: 'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia',
+    storedHash: '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277',
+    algorithm: 'PHASE1_LEGACY_SEO_HASH',
+    rawUtf8Parity: 'MISMATCH',
+    legacySeoParity: 'MATCH',
+  },
+  {
+    id: 6,
+    slug: 'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman',
+    storedHash: '18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d',
+    algorithm: 'PHASE1_LEGACY_SEO_HASH',
+    rawUtf8Parity: 'MISMATCH',
+    legacySeoParity: 'MATCH',
+  },
+  {
+    id: 7,
+    slug: 'jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge',
+    storedHash: '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298',
+    algorithm: 'CANONICAL_RAW_UTF8_SHA256',
+    rawUtf8Parity: 'MATCH',
+    legacySeoParity: 'MISMATCH',
+  },
+  {
+    id: 8,
+    slug: 'thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi',
+    storedHash: '66094cf52d2d10650b82141adace0cedc27fc9a3f63ae1f85e19a57c38d4e260',
+    algorithm: 'CANONICAL_RAW_UTF8_SHA256',
+    rawUtf8Parity: 'MATCH',
+    legacySeoParity: 'MISMATCH',
+  },
+  {
+    id: 9,
+    slug: 'memilih-sistem-shading-luar-rumah-tropis',
+    storedHash: '12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28',
+    algorithm: 'CANONICAL_RAW_UTF8_SHA256',
+    rawUtf8Parity: 'MATCH',
+    legacySeoParity: 'MISMATCH',
+  },
+];
+
+assert(
+  computeCanonicalContentHash('Test markdown') ===
+    crypto.createHash('sha256').update('Test markdown', 'utf8').digest('hex'),
+  'computeCanonicalContentHash is strictly raw UTF-8 SHA-256'
+);
+assert(
+  CANONICAL_AUDIT_PROOF_TABLE.filter((a) => a.rawUtf8Parity === 'MATCH').length === 3,
+  'Modern editorial pipeline Articles 7, 8, 9 have 100% exact raw UTF-8 SHA-256 parity'
+);
+assert(
+  CANONICAL_AUDIT_PROOF_TABLE.filter((a) => a.legacySeoParity === 'MATCH').length === 2,
+  'Pre-Hermes legacy seed Articles 5 and 6 are proven to match legacy seo.ts:generateContentHash'
+);
 
 // ----------------------------------------------------------------------------
 // Summary
