@@ -81,12 +81,19 @@ Publication DNA V1 **DILARANG KERAS** menggunakan teknik-teknik manipulatif beri
 
 ### 1. Penggantian Identifier 32-Bit (`dna_id`):
 - Format pendek `dna_<sha256_prefix8>` (32-bit) **DITOLAK** karena tidak memadai untuk identitas forensik durabel jangka panjang dan rawan tabrakan (*collision*).
-- **Format Kanonikal Terpilih:** **UUID v4 (128-bit random) dengan prefix `dna_`**:
+- **Format Kanonikal Terpilih:** **UUID v4 / 128-bit UUID (~122 random bits after UUID version/variant fields) dengan prefix `dna_`**:
   ```typescript
   const dnaId = `dna_${crypto.randomUUID()}`;
   // Contoh: dna_8f1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d
   ```
   Menjamin resistansi benturan kriptografis berstandar industri dengan ergonomi prefix yang jelas.
+  Modul implementasi resmi: `src/lib/content-protection/publication-dna.ts`.
+  Konstanta versi resmi:
+  - `DNA_VERSION = 'v1.0'`
+  - `NORMALIZATION_VERSION = 'norm-v1'`
+  - `SHINGLE_VERSION = 'shingle-4w-v1'`
+  - `MINHASH_VERSION = 'minhash-64h-v1'`
+  - `GENERATOR_VERSION = 'dna-engine/1.0.0'`
 
 ### 2. Kunci Versi Kanonikal (`version_key`):
 Menyelesaikan masalah artikel pra-sistem seperti Article 6 yang tidak memiliki tanda terima tanpa perlu membuat data sintetis palsu:
@@ -211,8 +218,9 @@ interface SemanticBlockRecord {
 - **DILARANG MENGGUNAKAN KOEFISIEN ACAK SAAT RUNTIME.**
 - 64 pasangan koefisien hash linier $(a_i, b_i)$ didefinisikan sebagai **tabel konstanta statis (*hardcoded fixed coefficient table*)** yang diinisialisasi sekali dengan seed tetap.
 - Konstanta modulo: $p = 2305843009213693951\text{n}$ ($2^{61}-1$ sebagai `BigInt`).
-- Persamaan hash untuk setiap shingle $x$:
-  $$h_i(x) = ((a_i \cdot x + b_i) \pmod p) \pmod{2^{64}\text{n}}$$
+- **Pemetaan Shingle ke Elemen Field:** Setiap shingle 4 perkataan di-hash menggunakan SHA-256 (UTF-8). 8 byte pertama dibaca sebagai unsigned 64-bit integer big-endian (`readBigUInt64BE(0)`), lalu direduksi modulo $p = 2^{61}-1$.
+- Persamaan hash untuk setiap shingle field element $x$:
+  $$h_i(x) = (a_i \cdot x + b_i) \pmod p$$
 - **Uji Keberterimaan Deterministik (Golden Acceptance Test):**
   Naskah artikel yang sama yang diproses 100 kali pada mesin atau Worker yang berbeda di bawah `minhash_version = 'minhash-64h-v1'` **WAJIB menghasilkan string array MinHash yang identik hingga tingkat byte**.
 
@@ -257,7 +265,7 @@ Sebelum RancangLoka memiliki korpus pembanding yang terkalibrasi (artikel berbed
 Skema `article_dna_signatures` dirancang bersifat **APPEND-ONLY**, tahan benturan, mendukung artikel pra-sistem, dan memiliki konstrain keunikan idempotem:
 
 ```sql
--- Migration: 0027_article_publication_dna.sql
+-- Migration: 0034_article_publication_dna.sql
 -- Description: Add immutable Publication DNA signatures table
 
 CREATE TABLE IF NOT EXISTS article_dna_signatures (
@@ -420,7 +428,7 @@ Untuk menjamin keselamatan rekayasa, implementasi dibagi menjadi sub-fase teriso
 [ 1B-A: Core DNA Library & Additive Schema ]
   - Pustaka murni: normalizer norm-v1, semantic block segmenter, 64-MinHash BigInt engine.
   - Golden-vector tests (100% lulus tanpa koneksi jaringan).
-  - File migrasi D1 aditif: 0027_article_publication_dna.sql.
+  - File migrasi D1 aditif: 0034_article_publication_dna.sql.
          │
          ▼
 [ 1B-B: Publisher Service Post-Receipt Integration ]
