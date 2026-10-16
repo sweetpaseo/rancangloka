@@ -13,6 +13,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-CONTENT-PROTECTION-1A-PRODUCTION-ACCEPTED: Production Deployment & Acceptance of Edge Caching 2026-10-16
+
+- **Tanggal / Waktu:** 2026-10-16T11:00:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED`
+- **Otorisasi:** Chief Editor Production Deployment Instruction
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Commits:** `18573a8` -> `69105e7` -> `7378a82`
+- **Previous Deployment Version:** `1ec3dfd1-60b9-493f-aa48-ea63ea1dde0f` (2026-10-15T16:08:37Z)
+- **Active Production Version:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (2026-10-16T04:01:26Z / 10:54:38 WIB)
+- **Bukti & Observasi Performa Produksi:**
+  1. *Cache MISS -> HIT Terbukti:*
+     - Artikel 8 (`/thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi`): Cold MISS 683ms/1407ms -> Warm HIT 54ms–100ms (`Cf-Cache-Status: HIT`).
+     - Beranda (`/`): Cold MISS 1013ms -> Warm HIT 164ms (`Cf-Cache-Status: HIT`).
+     - Header Publik: `Cache-Control: public, max-age=60`.
+  2. *Bypass Rute Privat & Admin Terbukti:*
+     - `/admin/login`: `Cache-Control: no-store, private`, `Cf-Cache-Status: BYPASS`.
+     - Request rute privat dengan synthetic cookie (`admin_session=invalid-cache-smoke`): Status 302, `Cf-Cache-Status: BYPASS` (tidak pernah menjadi HIT).
+     - `/api/admin/posts`: Status 401, `Cache-Control: no-store, private`, `Cf-Cache-Status: BYPASS`.
+     - `/api/internal/v1/hermes-ingest`: Status 405, `Cache-Control: no-store, private`, `Cf-Cache-Status: BYPASS`.
+  3. *Error 404 Cache Safety:*
+     - `/__content-protection-1a-cache-smoke-not-found`: Status 404, `Cache-Control: no-store, private`, `Cf-Cache-Status: BYPASS` (tidak pernah di-cache).
+  4. *Integritas Pencarian, RSS, Sitemap, Robots:*
+     - `/api/search.json`: Valid JSON, 5 field publik whitelist saja (zero leakage), `Cf-Cache-Status: HIT`.
+     - `/rss.xml`: Summary-only (zero `<content:encoded>`), `Cf-Cache-Status: HIT`.
+     - `/sitemap*.xml`: Valid XML index & sitemaps, `Cache-Control: public, max-age=3600`.
+     - `/robots.txt`: Kebijakan AI terpilih aktif, Googlebot & Bingbot diizinkan, sitemaps terhubung.
+  5. *Modul Dukungan Artikel (Article Support Module):*
+     - Artikel 8 membuktikan section `<!-- 6.5 Plane A Dynamic Support Module -->` aktif merender kartu pendukung ke Artikel 9 dengan thumbnail dan relasi metadata tanpa regresi.
+  6. *Integritas Hash Konten D1:*
+     - Artikel 5, 6, 7, 8, 9 diverifikasi via remote D1 read-only: hash dan status 100% identik dan tidak tersentuh.
+  7. *Invarian Keselamatan:*
+     - `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, Media Worker `DISABLED`.
+     - Zero mutasi D1 remote manual, zero mutasi R2, zero mutasi setting dashboard Cloudflare.
+
 ### RANCANGLOKA-CONTENT-PROTECTION-1A-FOUNDATION-SAFE-WORKERS-CACHE: Foundation Content Protection, Safe Workers Cache & Invalidation Dependency Model 2026-10-16
 
 - **Tanggal / Waktu:** 2026-10-16T08:25:00+07:00
