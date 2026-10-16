@@ -59,6 +59,10 @@ import {
   generatePublicationDnaMaterial,
   EMPTY_MINHASH_IS_SENTINEL,
   EMPTY_MINHASH_SENTINEL_ELEMENT,
+  CONTENT_HASH_CONTRACT_LEGACY_V0,
+  CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+  computeLegacyContentHashV0,
+  computeContentHashForContract,
 } from '../src/lib/content-protection/publication-dna.ts';
 
 let passed = 0;
@@ -456,18 +460,18 @@ db.exec(`
   INSERT INTO publication_execution_receipts (receipt_id, article_id, content_hash) VALUES ('rcpt_test_5', 5, 'hash5');
 `);
 
-// Insert FULL_PROVENANCE row
+// Insert FULL_PROVENANCE row for Article 5 with legacy-normalized-sha256-v0
 const insertStmt = db.prepare(`
   INSERT INTO article_dna_signatures (
     dna_id, version_key, article_id, publication_receipt_id, publication_execution_id,
-    provenance_class, published_content_hash, approved_content_hash, canonical_slug,
+    provenance_class, content_hash_contract, published_content_hash, approved_content_hash, canonical_slug,
     canonical_url, approved_recorded_at, actual_published_at, historical_published_at,
     dna_version, normalization_version, shingle_version, minhash_version,
     normalized_text_hash, block_hashes_json, minhash_signature_json, structural_signature_json,
     featured_asset_id, featured_asset_sha256, generator_version
   ) VALUES (
     ?, ?, ?, ?, ?,
-    ?, ?, ?, ?,
+    ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -476,16 +480,17 @@ const insertStmt = db.prepare(`
 `);
 
 insertStmt.run(
-  'dna_full_test_1',
+  'dna_full_test_5',
   'receipt:rcpt_test_5',
   5,
   'rcpt_test_5',
   'pexec_test_5',
   'FULL_PROVENANCE',
-  'hash5',
-  'hash5_approved',
-  'kusen-aluminium',
-  'https://rancangloka.com/kusen-aluminium',
+  CONTENT_HASH_CONTRACT_LEGACY_V0,
+  '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277',
+  '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277',
+  'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia',
+  'https://rancangloka.com/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia',
   '2026-09-28 06:15:42',
   '2026-09-28T06:10:39.816Z',
   null,
@@ -504,23 +509,32 @@ insertStmt.run(
 
 const fullRow = db.prepare("SELECT * FROM article_dna_signatures WHERE version_key = 'receipt:rcpt_test_5'").all();
 assert(fullRow.length === 1, 'FULL_PROVENANCE row successfully inserted and retrieved');
+assert(
+  fullRow[0].content_hash_contract === CONTENT_HASH_CONTRACT_LEGACY_V0,
+  `Article 5 correctly stores content_hash_contract = '${CONTENT_HASH_CONTRACT_LEGACY_V0}'`
+);
+assert(
+  fullRow[0].provenance_class === 'FULL_PROVENANCE',
+  'Article 5 is correctly classified as FULL_PROVENANCE'
+);
 
-// Insert Article 6 PARTIAL_HISTORICAL_PROVENANCE row with NULL receipt
+// Insert Article 6 PARTIAL_HISTORICAL_PROVENANCE row with NULL receipt & legacy contract
 db.exec(`
-  INSERT INTO articles (id, slug, status, content_hash) VALUES (6, 'ventilasi-silang', 'published', 'hash6');
+  INSERT INTO articles (id, slug, status, content_hash) VALUES (6, 'ventilasi-silang', 'published', '18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d');
 `);
 
 insertStmt.run(
   'dna_hist_test_6',
-  'historical:6:hash6',
+  'historical:6:18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d',
   6,
   null, // NULL receipt
   null, // NULL execution
   'PARTIAL_HISTORICAL_PROVENANCE',
-  'hash6',
+  CONTENT_HASH_CONTRACT_LEGACY_V0,
+  '18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d',
   null, // NULL approved hash
-  'ventilasi-silang',
-  'https://rancangloka.com/ventilasi-silang',
+  'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman',
+  'https://rancangloka.com/rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman',
   null, // NULL approved_recorded_at
   null, // NULL actual_published_at
   '2026-09-13T23:05:51.804Z',
@@ -537,10 +551,96 @@ insertStmt.run(
   'dna-engine/1.0.0'
 );
 
-const histRow = db.prepare("SELECT * FROM article_dna_signatures WHERE version_key = 'historical:6:hash6'").all();
+const histRow = db.prepare("SELECT * FROM article_dna_signatures WHERE version_key = 'historical:6:18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d'").all();
 assert(histRow.length === 1, 'PARTIAL_HISTORICAL_PROVENANCE row with NULL receipt successfully inserted');
 assert(histRow[0].publication_receipt_id === null, 'Historical row publication_receipt_id is strictly NULL');
+assert(
+  histRow[0].provenance_class === 'PARTIAL_HISTORICAL_PROVENANCE',
+  'Article 6 is correctly classified as PARTIAL_HISTORICAL_PROVENANCE'
+);
+assert(
+  histRow[0].content_hash_contract === CONTENT_HASH_CONTRACT_LEGACY_V0,
+  `Article 6 correctly stores content_hash_contract = '${CONTENT_HASH_CONTRACT_LEGACY_V0}'`
+);
 assert(histRow[0].historical_published_at === '2026-09-13T23:05:51.804Z', 'Historical published timestamp preserved');
+
+// Insert Modern Article 7 FULL_PROVENANCE row with canonical-markdown-sha256-v1 contract
+db.exec(`
+  INSERT INTO articles (id, slug, status, content_hash) VALUES (7, 'jendela-berkondensasi', 'published', '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298');
+  INSERT INTO publication_execution_receipts (receipt_id, article_id, content_hash) VALUES ('rcpt_artA_d476e9020634', 7, '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298');
+`);
+
+insertStmt.run(
+  'dna_full_test_7',
+  'receipt:rcpt_artA_d476e9020634',
+  7,
+  'rcpt_artA_d476e9020634',
+  'pexec_artA_d476e9020634',
+  'FULL_PROVENANCE',
+  CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+  '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298',
+  '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298',
+  'jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge',
+  'https://rancangloka.com/jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge',
+  '2026-10-07 01:24:49',
+  '2026-10-07T01:25:00.000Z',
+  null,
+  'v1.0',
+  'norm-v1',
+  'shingle-4w-v1',
+  'minhash-64h-v1',
+  'norm_hash_7',
+  '[]',
+  '[]',
+  '{}',
+  'ast_feat_7',
+  'sha256_feat_7',
+  'dna-engine/1.0.0'
+);
+
+const modernRow = db.prepare("SELECT * FROM article_dna_signatures WHERE version_key = 'receipt:rcpt_artA_d476e9020634'").all();
+assert(modernRow.length === 1, 'Modern article row with canonical-markdown-sha256-v1 successfully inserted');
+assert(
+  modernRow[0].content_hash_contract === CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+  `Modern Article 7 stores content_hash_contract = '${CONTENT_HASH_CONTRACT_MARKDOWN_V1}'`
+);
+
+// Verify content_hash_contract NOT NULL constraint
+let nullContractBlocked = false;
+try {
+  insertStmt.run(
+    'dna_null_contract_attempt',
+    'receipt:rcpt_test_null',
+    7,
+    'rcpt_test_null',
+    'pexec_test_null',
+    'FULL_PROVENANCE',
+    null, // VIOLATION: NOT NULL
+    'hash',
+    null,
+    'slug',
+    'url',
+    null,
+    null,
+    null,
+    'v1.0',
+    'norm-v1',
+    'shingle-4w-v1',
+    'minhash-64h-v1',
+    'nh',
+    '[]',
+    '[]',
+    '{}',
+    null,
+    null,
+    'v1'
+  );
+} catch (e) {
+  if (e.message.includes('NOT NULL constraint failed')) {
+    nullContractBlocked = true;
+  }
+}
+assert(nullContractBlocked, 'NULL content_hash_contract is strictly rejected by SQLite NOT NULL constraint');
 
 // Verify uniqueness constraint on version_key
 let duplicateBlocked = false;
@@ -552,6 +652,7 @@ try {
     'rcpt_test_5',
     'pexec_test_5',
     'FULL_PROVENANCE',
+    CONTENT_HASH_CONTRACT_LEGACY_V0,
     'hash5',
     null,
     'slug',
@@ -798,6 +899,103 @@ assert(
 assert(
   CANONICAL_AUDIT_PROOF_TABLE.filter((a) => a.legacySeoParity === 'MATCH').length === 2,
   'Pre-Hermes legacy seed Articles 5 and 6 are proven to match legacy seo.ts:generateContentHash'
+);
+
+// Proof A: Legacy helper reproduces Article 5 stored hash exactly
+const art5Fixture = JSON.parse(fs.readFileSync(path.resolve('scripts/fixtures/article5_production.json'), 'utf8'));
+const art5LegacyHash = computeLegacyContentHashV0(art5Fixture.content_md);
+assert(
+  art5LegacyHash === '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277',
+  'Proof A: computeLegacyContentHashV0 reproduces Article 5 stored content_hash exactly'
+);
+
+// Proof B: Legacy helper reproduces Article 6 stored hash exactly
+const art6Fixture = JSON.parse(fs.readFileSync(path.resolve('scripts/fixtures/article6_production.json'), 'utf8'));
+const art6LegacyHash = computeLegacyContentHashV0(art6Fixture.content_md);
+assert(
+  art6LegacyHash === '18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d',
+  'Proof B: computeLegacyContentHashV0 reproduces Article 6 stored content_hash exactly'
+);
+
+// Proof C: Modern helper reproduces Articles 7, 8, 9 exactly
+const art7Md = fs.readFileSync(path.resolve('scripts/content-bootstrap/restore-1/artA/article.md'), 'utf8');
+const art8Md = fs.readFileSync(path.resolve('scripts/content-bootstrap/restore-1/artB/article.md'), 'utf8');
+const art9Md = fs.readFileSync(path.resolve('scripts/content-bootstrap/artC-research-reset/article-c-clean-draft.md'), 'utf8');
+
+assert(
+  computeCanonicalContentHash(art7Md) === '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298',
+  'Proof C1: computeCanonicalContentHash reproduces Article 7 stored hash exactly'
+);
+assert(
+  computeCanonicalContentHash(art8Md) === '66094cf52d2d10650b82141adace0cedc27fc9a3f63ae1f85e19a57c38d4e260',
+  'Proof C2: computeCanonicalContentHash reproduces Article 8 stored hash exactly'
+);
+assert(
+  computeCanonicalContentHash(art9Md) === '12c59631d3b297b97e35cf192da05102661c281e3370399fef291eb014692c28',
+  'Proof C3: computeCanonicalContentHash reproduces Article 9 stored hash exactly'
+);
+
+// Proof D: Legacy helper and modern helper intentionally produce different values for fixtures where normalization changes bytes
+assert(
+  computeLegacyContentHashV0(art7Md) !== computeCanonicalContentHash(art7Md),
+  'Proof D1: Legacy helper and modern helper intentionally produce different hashes for Article 7'
+);
+assert(
+  computeLegacyContentHashV0(art5Fixture.content_md) !== computeCanonicalContentHash(art5Fixture.content_md),
+  'Proof D2: Legacy helper and modern helper intentionally produce different hashes for Article 5'
+);
+
+// Proof E: content_hash_contract serialization is deterministic and part of PublicationDnaMaterial
+const modernMaterial = generatePublicationDnaMaterial(art7Md, CONTENT_HASH_CONTRACT_MARKDOWN_V1);
+assert(
+  modernMaterial.contentHashContract === CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+  `Proof E1: generatePublicationDnaMaterial records contentHashContract = '${CONTENT_HASH_CONTRACT_MARKDOWN_V1}'`
+);
+assert(
+  modernMaterial.publishedContentHash === '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298',
+  'Proof E2: modern material publishedContentHash matches canonical raw UTF-8 SHA-256'
+);
+
+const legacyMaterial5 = generatePublicationDnaMaterial(art5Fixture.content_md, CONTENT_HASH_CONTRACT_LEGACY_V0);
+assert(
+  legacyMaterial5.contentHashContract === CONTENT_HASH_CONTRACT_LEGACY_V0,
+  `Proof E3: generatePublicationDnaMaterial records contentHashContract = '${CONTENT_HASH_CONTRACT_LEGACY_V0}'`
+);
+assert(
+  legacyMaterial5.publishedContentHash === '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277',
+  'Proof E4: legacy material publishedContentHash reproduces historical stored hash under legacy contract'
+);
+
+// Proof F: Article 5 can be represented as: FULL_PROVENANCE + LEGACY_CONTENT_HASH_V0
+const rowArt5 = db.prepare("SELECT * FROM article_dna_signatures WHERE version_key = 'receipt:rcpt_test_5'").get();
+assert(
+  rowArt5.provenance_class === 'FULL_PROVENANCE' && rowArt5.content_hash_contract === CONTENT_HASH_CONTRACT_LEGACY_V0,
+  'Proof F: Article 5 is represented as FULL_PROVENANCE + LEGACY_CONTENT_HASH_V0 without contradiction'
+);
+
+// Proof G: Article 6 can be represented as: PARTIAL_HISTORICAL_PROVENANCE + LEGACY_CONTENT_HASH_V0
+const rowArt6 = db.prepare("SELECT * FROM article_dna_signatures WHERE version_key = 'historical:6:18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d'").get();
+assert(
+  rowArt6.provenance_class === 'PARTIAL_HISTORICAL_PROVENANCE' && rowArt6.content_hash_contract === CONTENT_HASH_CONTRACT_LEGACY_V0,
+  'Proof G: Article 6 is represented as PARTIAL_HISTORICAL_PROVENANCE + LEGACY_CONTENT_HASH_V0 without contradiction'
+);
+
+// Proof H: New publication contract defaults to and enforces CANONICAL_MARKDOWN_HASH_V1
+const defaultModernMaterial = generatePublicationDnaMaterial(art9Md);
+assert(
+  defaultModernMaterial.contentHashContract === CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+  'Proof H1: generatePublicationDnaMaterial default contract is strictly CANONICAL_MARKDOWN_HASH_V1'
+);
+assert(
+  defaultModernMaterial.publishedContentHash === computeCanonicalContentHash(art9Md),
+  'Proof H2: default publishedContentHash strictly equals computeCanonicalContentHash'
+);
+
+// Dispatcher fails closed on unknown contract
+assertThrows(
+  () => computeContentHashForContract('test', 'unknown-contract-v99'),
+  'UNKNOWN_CONTENT_HASH_CONTRACT',
+  'Proof H3: computeContentHashForContract strictly rejects unknown contracts fail-closed'
 );
 
 // ----------------------------------------------------------------------------

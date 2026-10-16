@@ -26,6 +26,13 @@ export const SHINGLE_VERSION = 'shingle-4w-v1';
 export const MINHASH_VERSION = 'minhash-64h-v1';
 export const GENERATOR_VERSION = 'dna-engine/1.0.0';
 
+export const CONTENT_HASH_CONTRACT_LEGACY_V0 = 'legacy-normalized-sha256-v0';
+export const CONTENT_HASH_CONTRACT_MARKDOWN_V1 = 'canonical-markdown-sha256-v1';
+
+export type ContentHashContract =
+  | typeof CONTENT_HASH_CONTRACT_LEGACY_V0
+  | typeof CONTENT_HASH_CONTRACT_MARKDOWN_V1;
+
 export const MINHASH_COMPONENTS = 64;
 export const MINHASH_PRIME = 2305843009213693951n; // Mersenne prime 2^61 - 1
 
@@ -152,6 +159,7 @@ export interface PublicationDnaMaterial {
   shingleVersion: string;
   minhashVersion: string;
   generatorVersion: string;
+  contentHashContract: ContentHashContract;
   publishedContentHash: string;
   normalizedTextHash: string;
   blockHashesJson: string;
@@ -214,15 +222,39 @@ export function buildPublicationVersionKey(params: VersionKeyParams): string {
 }
 
 // ============================================================================
-// 4. Exact Content Hash
+// 4. Content Hash Contracts & Computation
 // ============================================================================
 
 /**
- * Computes the exact cryptographic identity of the canonical Markdown prose.
- * Matches articles.content_hash.
+ * Historical Phase-1 content hashing contract used by Articles 5 and 6:
+ * SHA-256 of content_md with collapsed whitespace and lowercased.
+ */
+export function computeLegacyContentHashV0(markdown: string): string {
+  const normalized = (markdown || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
+}
+
+/**
+ * Modern canonical content hash contract (V1):
+ * SHA-256 of raw canonical Markdown UTF-8 bytes exactly as persisted.
+ * This is the mandatory invariant for all new publication versions.
  */
 export function computeCanonicalContentHash(canonicalMarkdown: string): string {
   return crypto.createHash('sha256').update(canonicalMarkdown || '', 'utf8').digest('hex');
+}
+
+/**
+ * Explicit dispatcher to compute content hash for a specific hash contract.
+ * Does NOT perform heuristic guessing; selection must be explicit.
+ */
+export function computeContentHashForContract(markdown: string, contract: ContentHashContract): string {
+  if (contract === CONTENT_HASH_CONTRACT_MARKDOWN_V1) {
+    return computeCanonicalContentHash(markdown);
+  }
+  if (contract === CONTENT_HASH_CONTRACT_LEGACY_V0) {
+    return computeLegacyContentHashV0(markdown);
+  }
+  throw new Error(`UNKNOWN_CONTENT_HASH_CONTRACT: '${String(contract)}'`);
 }
 
 // ============================================================================
@@ -606,9 +638,14 @@ export function canonicalizeStructuralSignatureJson(struct: StructuralSignature)
 
 /**
  * Pure generator creating complete Publication DNA fingerprint material from canonical Markdown.
+ * Defaults to modern CANONICAL_MARKDOWN_HASH_V1 contract.
+ * Explicit historical callers (e.g. backfill for Articles 5 & 6) may pass contract = CONTENT_HASH_CONTRACT_LEGACY_V0.
  */
-export function generatePublicationDnaMaterial(canonicalMarkdown: string): PublicationDnaMaterial {
-  const publishedContentHash = computeCanonicalContentHash(canonicalMarkdown);
+export function generatePublicationDnaMaterial(
+  canonicalMarkdown: string,
+  contract: ContentHashContract = CONTENT_HASH_CONTRACT_MARKDOWN_V1
+): PublicationDnaMaterial {
+  const publishedContentHash = computeContentHashForContract(canonicalMarkdown, contract);
   const normalizedText = normalizeSimilarityText(canonicalMarkdown);
   const normalizedTextHash = computeNormalizedTextHash(normalizedText);
 
@@ -628,6 +665,7 @@ export function generatePublicationDnaMaterial(canonicalMarkdown: string): Publi
     shingleVersion: SHINGLE_VERSION,
     minhashVersion: MINHASH_VERSION,
     generatorVersion: GENERATOR_VERSION,
+    contentHashContract: contract,
     publishedContentHash,
     normalizedTextHash,
     blockHashesJson,

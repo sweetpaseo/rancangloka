@@ -509,3 +509,43 @@ Teks kosong atau tanpa token substansial menghasilkan representasi deterministik
 - 64 komponen heksadesimal bernilai `'0000000000000000'`.
 - Konstanta pengawas diekspor secara resmi: `EMPTY_MINHASH_IS_SENTINEL = true` dan `EMPTY_MINHASH_SENTINEL_ELEMENT = '0000000000000000'`.
 - **Aturan Perbandingan Kemiripan:** Mesin pembanding forensik di masa depan wajib mendeteksi vektor sentinel ini secara eksplisit dan DILARANG menginterpretasikan dua tanda tangan nol sebagai 100% kemiripan tekstual.
+
+---
+
+## 19. Kontrak Content Hash Historis (Historical Content Hash Contracts)
+
+### 1. Koeksistensi Dua Kontrak Hash Kanonikal
+Berdasarkan audit forensik terhadap artikel yang telah terbit di basis data produksi Cloudflare D1, RancangLoka secara formal mengakui dan memelihara dua kontrak hashing naskah:
+
+1. **`legacy-normalized-sha256-v0` (Phase 1 Legacy Seed):**
+   - **Algoritma:** `SHA-256(content_md.replace(/\s+/g, ' ').trim().toLowerCase())`
+   - **Cakupan Historis:** Artikel 5 (`kusen-aluminium-vs-upvc...`) dan Artikel 6 (`rekayasa-ventilasi-silang...`).
+   - **Karakteristik:** Teks dinormalisasi (semua whitespace diubah menjadi spasi tunggal, di-trim, dan di-lowercase) sebelum komputasi SHA-256 dilakukan.
+
+2. **`canonical-markdown-sha256-v1` (Modern Publication Pipeline):**
+   - **Algoritma:** `SHA-256(raw UTF-8 bytes of articles.content_md exactly as persisted)`
+   - **Cakupan:** Artikel 7, 8, 9, dan seluruh artikel baru di masa depan yang diterbitkan melalui pipeline kanonikal.
+   - **Karakteristik:** Hash biner presisi bit-level tanpa modifikasi atau normalisasi string sedikit pun.
+
+### 2. Invarian Permanen: `DO_NOT_REHASH_HISTORICAL_PUBLICATIONS_IN_PLACE`
+> **`DO_NOT_REHASH_HISTORICAL_PUBLICATIONS_IN_PLACE`**
+> *(Naskah publikasi historis dilarang keras di-rehash atau dimutasi di tempat demi menyesuaikan dengan konvensi hash yang lebih baru.)*
+
+- Artikel 5 dan 6 **TIDAK RUSAK ATAU KORUP**. Nilai `content_hash` yang tersimpan adalah sah dan mengikat sesuai kontrak yang berlaku saat artikel tersebut diimpor/diaudit.
+- Nilai `articles.content_hash` pada Artikel 5 dan 6 bersifat abadi (*immutable*), sama seperti prosa editorialnya.
+- Publication DNA mencatat kolom `content_hash_contract` secara eksplisit pada setiap baris `article_dna_signatures` untuk mengetahui fungsi hashing yang mengatur rekaman tersebut.
+
+### 3. Pemisahan Provenansi vs Kontrak Hash (Disentangling Provenance Class from Hash Contract)
+Status kelengkapan jejak penerbitan (`provenance_class`) dan versi kontrak hash (`content_hash_contract`) adalah dua dimensi ortogonal yang terpisah:
+
+| Article ID | Slug | `provenance_class` | `content_hash_contract` | Catatan Provenansi |
+|---|---|---|---|---|
+| **5** | `kusen-aluminium-vs-upvc...` | `FULL_PROVENANCE` | `legacy-normalized-sha256-v0` | Memiliki receipt penerbitan dan approval audit, namun menggunakan hash seed legacy v0. |
+| **6** | `rekayasa-ventilasi-silang...` | `PARTIAL_HISTORICAL_PROVENANCE` | `legacy-normalized-sha256-v0` | Pra-sistem receipt atomik, menggunakan hash seed legacy v0. |
+| **7** | `jendela-berkondensasi...` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | Pipeline modern kanonikal. |
+| **8** | `thermal-bridge-kusen...` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | Pipeline modern kanonikal. |
+| **9** | `memilih-sistem-shading...` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | Pipeline modern kanonikal. |
+
+### 4. Penegakan Runtime Fail-Closed
+- Helper `computeContentHashForContract(markdown, contract)` menyediakan *fail-closed dispatcher*. Jika kontrak yang diminta tidak dikenal, fungsi akan melempar *runtime error*.
+- Pembuatan DNA baru melalui `generatePublicationDnaMaterial` selalu menggunakan `canonical-markdown-sha256-v1` secara default.
