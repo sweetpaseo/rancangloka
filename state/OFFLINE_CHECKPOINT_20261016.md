@@ -1,11 +1,11 @@
 # 🛑 RancangLoka & Hermes — Offline Master Checkpoint
-**Tanggal / Waktu:** 2026-10-16T13:25:00+07:00
-**Status Sesi:** Penutupan Sesi Rekayasa 16 Oktober 2026 / Master Checkpoint CONTENT_PROTECTION-1A & 1B
+**Tanggal / Waktu:** 2026-10-16T15:45:00+07:00
+**Status Sesi:** Penutupan Sesi Rekayasa 16 Oktober 2026 / Master Checkpoint CONTENT_PROTECTION-1A, 1B-A, 1B-B, 1B-C (Production Accepted)
 **Branch:** `feat/jev-lokamedia-integration`
-**Git HEAD:** `7186de7` (`feat(security): integrate publication dna with publisher`)
-**Previous Production Worker:** `1ec3dfd1-60b9-493f-aa48-ea63ea1dde0f` (2026-10-15T16:08:37Z)
-**Active Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (2026-10-16T04:01:26Z / 10:54:38 WIB)
-**Status Operasional:** `CONTENT_PROTECTION_1B_B_CLOSED` | `CONTENT_PROTECTION_1B_A_CLOSED` | `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `READY_FOR_CONTENT_PROTECTION_1B_C`
+**Git HEAD:** `cd1aabd` (`feat(security): prepare publication dna historical backfill`)
+**Previous Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (2026-10-16T04:01:26Z / 10:54:38 WIB)
+**Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (2026-10-16T08:38:18Z / 15:38:18 WIB)
+**Status Operasional:** `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `READY_FOR_NEXT_RANCANGLOKA_MILESTONE`
 
 ---
 
@@ -181,20 +181,53 @@ Sesi rekayasa hari ini berhasil menyelesaikan seluruh target besar pada domain p
   - `bdc9c5d` `test(security): lock publication dna golden vectors`
   - `3945ea3` `fix(security): version publication content hash contracts`
   - `7186de7` `feat(security): integrate publication dna with publisher`
+  - `652a7a8` `docs(checkpoint): correct publication dna technical record`
+  - `cd1aabd` `feat(security): prepare publication dna historical backfill`
 - **Tracked Working Tree:** Clean (`git status -uno` confirms nothing unstaged).
 - **Untracked Preserved:** Seluruh fixture, skrip bootstrap, dan artefak lokal tetap terjaga utuh tanpa ter-commit.
 - **Kondisi Offline:** Sistem siap ditinggalkan dalam kondisi aman, stabil, terverifikasi lokal, dan siap untuk perencanaan fase berikutnya.
 
 ---
 
-## 5. Rencana Fase Berikutnya: `CONTENT_PROTECTION-1B-C`
+## 5. Hasil Peluncuran Produksi: `CONTENT_PROTECTION-1B-C`
 
-- **Tujuan Utama:** Perencanaan Backfill Historis untuk Artikel Terbit 5 s/d 9 & Perencanaan Rollout Migrasi Produksi 0034.
-- **Strategi Backfill Historis:**
-  - **Artikel 5 & 6:** Menggunakan kontrak `LEGACY_CONTENT_HASH_V0` (`legacy-normalized-sha256-v0`). Artikel 5 memiliki receipt approval (`FULL_PROVENANCE`), sedangkan Artikel 6 tidak memiliki approval terpisah (`PARTIAL_HISTORICAL_PROVENANCE`).
-  - **Artikel 7, 8, 9:** Menggunakan kontrak `CONTENT_HASH_CONTRACT_MARKDOWN_V1` (`canonical-markdown-sha256-v1`) dengan `FULL_PROVENANCE`.
-- **Rencana Rollout Migrasi 0034:** Mengikuti protokol kontrol ganda sebelum eksekusi remote D1.
+Peluncuran produksi terkontrol (**Controlled Production Rollout**) telah diselesaikan dan diverifikasi penuh:
+
+1. **Aplikasi Migrasi 0034 ke D1 Remote (`rancangloka_db` / `3a86e9ad-410f-4440-884e-2eb813ec4cf7`):**
+   - Menjalankan `npx wrangler d1 execute DB --remote --file=db/migrations/0034_article_publication_dna.sql`.
+   - Skema tabel `article_dna_signatures` diverifikasi memiliki 27 kolom (termasuk `source_fidelity TEXT NOT NULL`) dan 4 indeks sekunder.
+   - Pra-backfill row count: 0.
+
+2. **Deployment Cloudflare Worker Runtime:**
+   - Active Production Version: `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% traffic).
+   - Rollback Reference: `624b040f-52ed-4fde-8b6b-fd4d3d413586`.
+   - Health smoke: Beranda (200), Artikel 5/7/8/9 (200), RSS/Sitemap/Search (200), Admin login (200 no-store/bypass), 404 (404 no-store/bypass). Cache MISS $\to$ HIT terbukti (Artikel 8 dan Beranda).
+
+3. **Controlled Publication DNA Backfill (Articles 5–9):**
+   - Utilitas `scripts/backfill-publication-dna.js` dijalankan dengan flag ganda `--remote --apply --confirm-production-dna-backfill`.
+   - Tepat 5 baris DNA abadi disisipkan:
+     - **Artikel 5:** `dna_5db18b85-b775-41ea-b5a3-62facacce785` | `receipt:rcpt_bbae85b48e1b2f8d` | `FULL_PROVENANCE` | `legacy-normalized-sha256-v0` | `NORMALIZED_HASH_VERIFIED`
+     - **Artikel 6:** `dna_c6a6977b-05f2-4994-8a08-98e170c8ec79` | `historical:6:18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d` | `PARTIAL_HISTORICAL_PROVENANCE` | `legacy-normalized-sha256-v0` | `NORMALIZED_HASH_VERIFIED`
+     - **Artikel 7:** `dna_e8fcdd1e-0f8c-43a5-bcb5-dbdf8c2d80fd` | `receipt:rcpt_artA_d476e9020634` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+     - **Artikel 8:** `dna_91f69443-eeeb-43c9-9b9a-5f9b20d625da` | `receipt:rcpt_artB_f3fb92d8c53d` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+     - **Artikel 9:** `dna_c3a67801-04a0-4192-ad58-fd11b4a525f0` | `receipt:rcpt_artC_8341d2fda3bc` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+
+4. **Kelengkapan Sidik Jari Kriptografis & Forensik:**
+   - Seluruh baris memiliki `normalized_text_hash` (64 heksadesimal), `block_hashes_json` (4.607–9.824 char), `minhash_signature_json` (1.217 char), `structural_signature_json` (177–227 char).
+   - Versi kontrak kanonikal: `dna_version = 'v1.0'`, `normalization_version = 'norm-v1'`, `shingle_version = 'shingle-4w-v1'`, `minhash_version = 'minhash-64h-v1'`, `generator_version = 'dna-engine/1.0.0'`.
+
+5. **Bukti Idempotensi Produksi:**
+   - Dry-run pasca-backfill menghasilkan tepat: **`5 x ALREADY_EXISTS_IDENTICAL`**, 0 WOULD_INSERT, 0 BLOCKED.
+
+6. **Integritas Sumber Data Otoritatif:**
+   - Hash naskah Artikel 5–9, tanda terima penerbitan (`publication_execution_receipts`), persetujuan editorial (`article_editorial_approvals`), dan eksekusi rilis **100% identik dan tanpa mutasi**.
+   - Mutasi R2: 0. Mutasi Cloudflare dashboard: 0.
+   - Invarian keselamatan aktif: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, autonomous media = DISABLED.
 
 ---
-*Dokumen ini disusun untuk menutup milestone CONTENT_PROTECTION-1B-A dan CONTENT_PROTECTION-1B-B.*
-*Klasifikasi: `CONTENT_PROTECTION_1B_B_CLOSED` | `READY_FOR_CONTENT_PROTECTION_1B_C`*
+*Dokumen ini disusun untuk menutup milestone CONTENT_PROTECTION-1B.*
+*Klasifikasi: `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED`*
+*Final Status:*
+`CONTENT_PROTECTION_1B_CORE_CLOSED`
+`CONTENT_PROTECTION_1B_C_CLOSED`
+`READY_FOR_NEXT_RANCANGLOKA_MILESTONE`

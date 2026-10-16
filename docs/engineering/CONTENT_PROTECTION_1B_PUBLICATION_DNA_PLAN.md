@@ -5,10 +5,10 @@
 **Phase:** `PUBLICATION DNA DATA-CONTRACT HARDENING & FINAL PLANNING`
 **Parent Blueprint:** [`docs/engineering/CONTENT_PROTECTION_1_BLUEPRINT.md`](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/docs/engineering/CONTENT_PROTECTION_1_BLUEPRINT.md)
 **Target Repository:** `rancangloka-astro/`
-**Status:** `CONTENT_PROTECTION_1B_FINAL_PLAN_PASS`
+**Status:** `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED`
 **Date:** 2026-10-16
-**Current Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586`
-**Current Source HEAD:** `0271e8d`
+**Current Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (Previous: `624b040f-52ed-4fde-8b6b-fd4d3d413586`)
+**Current Source HEAD:** `cd1aabd`
 **Branch:** `feat/jev-lokamedia-integration`
 
 ---
@@ -673,20 +673,58 @@ Summary: 5 total, 5 WOULD_INSERT, 0 ALREADY_EXISTS, 0 BLOCKED. Mode: DRY_RUN
 - Mutasi yang terjadi pada R2 produksi: **0 (NOL)**.
 
 ### 8. Prosedur Wajib Peluncuran Produksi (Mandatory Production Rollout Order)
-*(DOKUMENTASI SAJA — DILARANG DIEKSEKUSI PADA SESI INI)*
+*(BERHASIL DIEKSEKUSI PADA 2026-10-16)*
 
 - **LANGKAH 1:** Aplikasikan migrasi 0034 ke D1 produksi:
-  `npx wrangler d1 execute DB --remote --file=db/migrations/0034_article_publication_dna.sql`
+  `npx wrangler d1 execute DB --remote --file=db/migrations/0034_article_publication_dna.sql` (SELESAI)
 - **LANGKAH 2:** Verifikasi bahwa tabel `article_dna_signatures` telah terbentuk dan berstatus kosong (0 baris):
-  `npx wrangler d1 execute DB --remote --command="SELECT COUNT(*) AS total FROM article_dna_signatures"`
+  `npx wrangler d1 execute DB --remote --command="SELECT COUNT(*) AS total FROM article_dna_signatures"` (SELESAI — 0 rows)
 - **LANGKAH 3:** Deploy runtime Cloudflare Worker yang memuat dukungan `source_fidelity` (fase 1B-B dan 1B-C):
-  `npm run deploy`
-- **LANGKAH 4:** Lakukan smoke test terhadap perilaku publikasi, invalidasi cache, dan panel admin yang sedang berjalan untuk memastikan tidak ada regresi.
+  `npx wrangler deploy` (SELESAI — Worker Version: `8f174086-8679-4f31-aec9-1c64844e8bd9`)
+- **LANGKAH 4:** Lakukan smoke test terhadap perilaku publikasi, invalidasi cache, dan panel admin yang sedang berjalan untuk memastikan tidak ada regresi:
+  (SELESAI — seluruh rute publik 200, edge cache HIT, admin/404 BYPASS no-store)
 - **LANGKAH 5:** Jalankan kembali dry-run utilitas backfill untuk memvalidasi kesiapan akhir basis data:
-  `node scripts/backfill-publication-dna.js --remote --dry-run`
+  `node scripts/backfill-publication-dna.js --remote --dry-run` (SELESAI — 5 x WOULD_INSERT)
 - **LANGKAH 6:** Jalankan backfill produksi dengan gerbang konfirmasi ganda:
-  `node scripts/backfill-publication-dna.js --remote --apply --confirm-production-dna-backfill`
+  `node scripts/backfill-publication-dna.js --remote --apply --confirm-production-dna-backfill` (SELESAI — 5 DNA rows inserted)
 - **LANGKAH 7:** Verifikasi bahwa tepat 5 baris DNA abadi telah tersimpan di D1 produksi:
-  `npx wrangler d1 execute DB --remote --command="SELECT article_id, version_key, provenance_class, content_hash_contract, source_fidelity FROM article_dna_signatures ORDER BY article_id ASC"`
+  `npx wrangler d1 execute DB --remote --command="SELECT article_id, version_key, provenance_class, content_hash_contract, source_fidelity FROM article_dna_signatures ORDER BY article_id ASC"` (SELESAI — 5 rows verified)
 - **LANGKAH 8:** Ulangi eksekusi skrip backfill untuk membuktikan idempotensi mutlak:
-  Hasil yang wajib diperoleh: **`5 x ALREADY_EXISTS_IDENTICAL`**, dengan 0 perubahan dan 0 baris tambahan.
+  Hasil yang diperoleh: **`5 x ALREADY_EXISTS_IDENTICAL`**, dengan 0 perubahan dan 0 baris tambahan.
+
+---
+
+## 9. Rekam Jejak Akseptansi Produksi (Production Acceptance Record)
+
+Pada 16 Oktober 2026, seluruh rangkaian peluncuran produksi `CONTENT_PROTECTION-1B-C` telah diselesaikan dengan akseptansi penuh:
+
+1. **Migrasi Database D1 Remote:**
+   - Database: `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`)
+   - Migrasi `db/migrations/0034_article_publication_dna.sql` berhasil diterapkan.
+   - Tabel `article_dna_signatures` memiliki 27 kolom termasuk `source_fidelity TEXT NOT NULL`.
+   - Pre-backfill row count: tepat 0.
+
+2. **Deployment Cloudflare Worker Runtime:**
+   - Active Version: `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% produksi).
+   - Baseline Rollback: `624b040f-52ed-4fde-8b6b-fd4d3d413586`.
+   - Health smoke: Beranda (200), Artikel 5/7/8/9 (200), RSS/Sitemap/Search (200), Admin login (200 no-store/bypass), 404 (404 no-store/bypass). Cache MISS $\to$ HIT terverifikasi pada fetch kedua (Artikel 8 dan Beranda `Cf-Cache-Status: HIT`).
+
+3. **Controlled Publication DNA Backfill (Articles 5–9):**
+   - Tepat 5 baris disisipkan secara atomik dan immutable:
+     - **Artikel 5:** `dna_5db18b85-b775-41ea-b5a3-62facacce785` | `receipt:rcpt_bbae85b48e1b2f8d` | `FULL_PROVENANCE` | `legacy-normalized-sha256-v0` | `NORMALIZED_HASH_VERIFIED`
+     - **Artikel 6:** `dna_c6a6977b-05f2-4994-8a08-98e170c8ec79` | `historical:6:18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d` | `PARTIAL_HISTORICAL_PROVENANCE` | `legacy-normalized-sha256-v0` | `NORMALIZED_HASH_VERIFIED`
+     - **Artikel 7:** `dna_e8fcdd1e-0f8c-43a5-bcb5-dbdf8c2d80fd` | `receipt:rcpt_artA_d476e9020634` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+     - **Artikel 8:** `dna_91f69443-eeeb-43c9-9b9a-5f9b20d625da` | `receipt:rcpt_artB_f3fb92d8c53d` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+     - **Artikel 9:** `dna_c3a67801-04a0-4192-ad58-fd11b4a525f0` | `receipt:rcpt_artC_8341d2fda3bc` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+
+4. **Kelengkapan Sidik Jari Kriptografis & Forensik:**
+   - Seluruh baris memiliki `normalized_text_hash` (64 heksadesimal), `block_hashes_json` (4.607 s/d 9.824 karakter), `minhash_signature_json` (64 komponen afin, 1.217 karakter), dan `structural_signature_json` (177 s/d 227 karakter).
+   - Seluruh baris memuat kontrak versi kanonikal: `dna_version = 'v1.0'`, `normalization_version = 'norm-v1'`, `shingle_version = 'shingle-4w-v1'`, `minhash_version = 'minhash-64h-v1'`, `generator_version = 'dna-engine/1.0.0'`.
+
+5. **Bukti Idempotensi Produksi:**
+   - Dry-run pasca-backfill menghasilkan tepat: **`5 x ALREADY_EXISTS_IDENTICAL`**, 0 WOULD_INSERT, 0 BLOCKED.
+
+6. **Integritas Sumber Data Otoritatif:**
+   - Hash naskah Artikel 5–9, tanda terima penerbitan (`publication_execution_receipts`), persetujuan editorial (`article_editorial_approvals`), dan eksekusi rilis **100% identik dan tanpa mutasi**.
+   - Tidak ada mutasi R2 atau perubahan konfigurasi dashboard Cloudflare.
+   - Seluruh invarian keselamatan (`automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, autonomous media = DISABLED) tetap aktif.

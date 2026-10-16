@@ -13,6 +13,46 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-CONTENT-PROTECTION-1B-C-PRODUCTION-ROLLOUT: Migration 0034, Worker Deployment & Historical Publication DNA Production Backfill 2026-10-16
+
+- **Tanggal / Waktu:** 2026-10-16T15:45:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `READY_FOR_NEXT_RANCANGLOKA_MILESTONE`
+- **Otorisasi:** Chief Editor Explicit Production Rollout Directive
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Previous Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586`
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`)
+- **Poin Kunci Rekayasa & Keamanan:**
+  1. *Aplikasi Migrasi 0034 ke D1 Remote:*
+     - Berhasil mengeksekusi `npx wrangler d1 execute DB --remote --file=db/migrations/0034_article_publication_dna.sql`.
+     - Tabel `article_dna_signatures` terbentuk secara bersih dengan 27 kolom (termasuk kolom wajib `source_fidelity TEXT NOT NULL`) dan 4 indeks sekunder.
+     - Verifikasi pra-backfill: `SELECT COUNT(*) AS dna_rows FROM article_dna_signatures` menghasilkan tepat 0 baris.
+  2. *Deployment Cloudflare Worker Runtime:*
+     - Runtime Worker yang memuat integrasi 1B-B dan dukungan `source_fidelity` 1B-C dideploy via `npx wrangler deploy`.
+     - Versi baru terdaftar: `8f174086-8679-4f31-aec9-1c64844e8bd9` menerima 100% lalu lintas produksi.
+     - Versi sebelumnya (`624b040f-52ed-4fde-8b6b-fd4d3d413586`) dicatat sebagai target rollback yang aman.
+  3. *Post-Deploy Health Smoke & Cache Safety:*
+     - Seluruh endpoint publik (`/`, Artikel 5, Artikel 7, Artikel 8, Artikel 9, `/api/search.json`, `/rss.xml`, `/sitemap.xml`) mengembalikan respons 200 OK tanpa error 5xx.
+     - Cache MISS $\to$ HIT terbukti bekerja pada fetch berulang: Artikel 8 (`cf-cache-status: HIT`) dan Beranda (`cf-cache-status: HIT`) dengan `Cache-Control: public, max-age=60`.
+     - Rute admin (`/admin/login`) dan rute 404 mempertahankan bypass penuh dengan header `Cache-Control: no-store, private` dan `cf-cache-status: BYPASS`.
+  4. *Controlled Production Publication DNA Backfill:*
+     - Skrip `scripts/backfill-publication-dna.js` dijalankan dengan flag ganda `--remote --apply --confirm-production-dna-backfill`.
+     - Tepat 5 baris DNA abadi disisipkan secara atomik (0 update, 0 delete, 0 replace):
+       - **Artikel 5:** `dna_5db18b85-b775-41ea-b5a3-62facacce785` | `receipt:rcpt_bbae85b48e1b2f8d` | `FULL_PROVENANCE` | `legacy-normalized-sha256-v0` | `NORMALIZED_HASH_VERIFIED`
+       - **Artikel 6:** `dna_c6a6977b-05f2-4994-8a08-98e170c8ec79` | `historical:6:18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d` | `PARTIAL_HISTORICAL_PROVENANCE` | `legacy-normalized-sha256-v0` | `NORMALIZED_HASH_VERIFIED`
+       - **Artikel 7:** `dna_e8fcdd1e-0f8c-43a5-bcb5-dbdf8c2d80fd` | `receipt:rcpt_artA_d476e9020634` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+       - **Artikel 8:** `dna_91f69443-eeeb-43c9-9b9a-5f9b20d625da` | `receipt:rcpt_artB_f3fb92d8c53d` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+       - **Artikel 9:** `dna_c3a67801-04a0-4192-ad58-fd11b4a525f0` | `receipt:rcpt_artC_8341d2fda3bc` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED`
+  5. *Kelengkapan Sidik Jari Kriptografis & Forensik:*
+     - Seluruh 5 baris memiliki string sidik jari non-kosong: `normalized_text_hash` (64 heksadesimal), `block_hashes_json` (4.607 s/d 9.824 karakter), `minhash_signature_json` (1.217 karakter), dan `structural_signature_json` (177 s/d 227 karakter).
+     - Seluruh baris memuat versi kontrak kanonikal: `dna_version = 'v1.0'`, `normalization_version = 'norm-v1'`, `shingle_version = 'shingle-4w-v1'`, `minhash_version = 'minhash-64h-v1'`, `generator_version = 'dna-engine/1.0.0'`.
+  6. *Bukti Idempotensi Produksi:*
+     - Dry-run pasca-backfill dijalankan ulang dan menghasilkan tepat: **`5 x ALREADY_EXISTS_IDENTICAL`**, 0 WOULD_INSERT, 0 BLOCKED.
+  7. *Integritas Data Sumber & Keselamatan Operasional:*
+     - Kueri forensik memverifikasi bahwa naskah artikel, hash artikel, tanda terima penerbitan (`publication_execution_receipts`), dan persetujuan editorial (`article_editorial_approvals`) **100% tidak berubah**.
+     - Tidak ada mutasi R2 atau perubahan konfigurasi dashboard Cloudflare.
+     - Invarian keselamatan permanen tetap aktif: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, autonomous media = DISABLED.
+
 ### RANCANGLOKA-CONTENT-PROTECTION-1B-PUBLICATION-DNA: Publication DNA Schema, Deterministic Fingerprint Core & Post-Receipt Materializer Integration 2026-10-16
 
 - **Tanggal / Waktu:** 2026-10-16T13:15:00+07:00
