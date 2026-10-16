@@ -57,8 +57,11 @@ export async function executeD1Query(db, sql, params = []) {
   throw new Error('Unsupported database interface for query execution');
 }
 
+import fs from 'node:fs';
+import path from 'node:path';
+
 /**
- * Creates a remote Wrangler D1 read-only adapter.
+ * Creates a remote Wrangler D1 read-only adapter (with controlled INSERT-only capability when authorized).
  */
 export function createRemoteWranglerAdapter(databaseBinding = 'DB') {
   return {
@@ -96,7 +99,36 @@ export function createRemoteWranglerAdapter(databaseBinding = 'DB') {
           return results[0] || null;
         },
         async run() {
-          throw new Error('DIRECT_REMOTE_RUN_BLOCKED: Remote mutations are strictly forbidden during 1B-C preparation');
+          const trimmed = sql.trim();
+          const upper = trimmed.toUpperCase();
+          if (!upper.startsWith('INSERT INTO ARTICLE_DNA_SIGNATURES')) {
+            throw new Error(`FORBIDDEN_MUTATION: Remote mutations are strictly limited to INSERT into article_dna_signatures. Attempted: ${trimmed.substring(0, 60)}`);
+          }
+
+          let formattedSql = sql;
+          if (boundParams.length > 0) {
+            for (const param of boundParams) {
+              if (param === null || param === undefined) {
+                formattedSql = formattedSql.replace('?', 'NULL');
+              } else if (typeof param === 'number') {
+                formattedSql = formattedSql.replace('?', param);
+              } else {
+                formattedSql = formattedSql.replace('?', `'${String(param).replace(/'/g, "''")}'`);
+              }
+            }
+          }
+
+          const tempFile = path.resolve(process.cwd(), `.temp_dna_insert_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.sql`);
+          try {
+            fs.writeFileSync(tempFile, formattedSql, 'utf8');
+            const cmd = `npx wrangler d1 execute ${databaseBinding} --remote --file="${tempFile}"`;
+            execSync(cmd, { encoding: 'utf8', maxBuffer: 25 * 1024 * 1024 });
+            return { success: true };
+          } finally {
+            if (fs.existsSync(tempFile)) {
+              fs.unlinkSync(tempFile);
+            }
+          }
         }
       };
     }
@@ -395,7 +427,9 @@ export async function runPublicationDnaBackfill(options = {}) {
   for (const p of plans) {
     if (p.planned_action === 'WOULD_INSERT') {
       if (isWriteMode && p.snapshot) {
+        console.log(`[Backfill] Materializing Publication DNA for Article ${p.article_id} (${p.slug})...`);
         const insertRes = await materializePublicationDna(options.db, p.snapshot);
+        console.log(`[Backfill] Article ${p.article_id} -> ${insertRes.status} (DNA ID: ${insertRes.dnaId || 'N/A'}${insertRes.error ? ', Error: ' + insertRes.error : ''})`);
         if (insertRes.status === 'DNA_GENERATED') {
           insertedCount++;
         } else if (insertRes.status === 'DNA_ALREADY_EXISTS') {
@@ -472,7 +506,6 @@ export function formatDryRunTable(plans) {
 }
 
 import { fileURLToPath } from 'node:url';
-import path from 'node:path';
 
 // CLI entry point
 if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
@@ -489,9 +522,9 @@ if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.res
   console.log(`Target Scope:   article_id IN (5, 6, 7, 8, 9)`);
   console.log('================================================================\n');
 
-  if (isRemote && isApply) {
-    console.error('FATAL SAFETY VIOLATION: Production writes are strictly forbidden in this task.');
-    console.error('Allowed production operations: SELECT, PRAGMA. Exiting.');
+  if (isRemote && isApply && !isConfirm) {
+    console.error('FATAL SAFETY VIOLATION: Remote production writes require explicit --confirm-production-dna-backfill confirmation flag.');
+    console.error('Allowed production operations without confirmation: SELECT, PRAGMA, DRY-RUN. Exiting.');
     process.exit(1);
   }
 
