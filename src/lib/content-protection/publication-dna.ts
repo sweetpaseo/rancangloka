@@ -33,6 +33,13 @@ export type ContentHashContract =
   | typeof CONTENT_HASH_CONTRACT_LEGACY_V0
   | typeof CONTENT_HASH_CONTRACT_MARKDOWN_V1;
 
+export const SOURCE_FIDELITY_BYTE_EXACT = 'BYTE_EXACT_HASH_VERIFIED';
+export const SOURCE_FIDELITY_NORMALIZED = 'NORMALIZED_HASH_VERIFIED';
+
+export type SourceFidelity =
+  | typeof SOURCE_FIDELITY_BYTE_EXACT
+  | typeof SOURCE_FIDELITY_NORMALIZED;
+
 export const MINHASH_COMPONENTS = 64;
 export const MINHASH_PRIME = 2305843009213693951n; // Mersenne prime 2^61 - 1
 

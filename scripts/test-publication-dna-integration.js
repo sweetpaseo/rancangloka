@@ -743,6 +743,7 @@ async function runIntegrationTests() {
     assert.strictEqual(row.publication_execution_id, fix.executionId);
     assert.strictEqual(row.provenance_class, 'FULL_PROVENANCE');
     assert.strictEqual(row.content_hash_contract, 'canonical-markdown-sha256-v1');
+    assert.strictEqual(row.source_fidelity, 'BYTE_EXACT_HASH_VERIFIED');
     assert.strictEqual(row.published_content_hash, fix.contentHash);
     assert.strictEqual(row.approved_content_hash, fix.contentHash);
     assert.strictEqual(row.canonical_slug, fix.slug);

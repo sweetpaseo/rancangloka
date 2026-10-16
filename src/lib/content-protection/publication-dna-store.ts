@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * RancangLoka Publication DNA Store & Materializer (CONTENT_PROTECTION-1B-B)
+ * RancangLoka Publication DNA Store & Materializer (CONTENT_PROTECTION-1B-B / 1B-C)
  *
  * Authoritative storage and materialization layer for publication DNA signatures.
  * Binds immutable fingerprinting and provenance directly to publication receipts.
@@ -9,7 +9,8 @@
  * - Append-only table: NO UPDATE, NO DELETE on article_dna_signatures.
  * - Idempotent on identical version_key (DNA_ALREADY_EXISTS).
  * - Conflict-detecting on modified content/versions for same key (DNA_VERSION_CONFLICT).
- * - All new publications strictly enforce CONTENT_HASH_CONTRACT_MARKDOWN_V1.
+ * - All new publications strictly enforce CONTENT_HASH_CONTRACT_MARKDOWN_V1 and BYTE_EXACT_HASH_VERIFIED.
+ * - Historical backfill records use NORMALIZED_HASH_VERIFIED with legacy-normalized-sha256-v0.
  * - DNA failure NEVER rolls back publication (PUBLICATION_SUCCEEDS_DNA_PENDING).
  * ============================================================================
  */
@@ -20,12 +21,17 @@ import {
   SHINGLE_VERSION,
   MINHASH_VERSION,
   GENERATOR_VERSION,
+  CONTENT_HASH_CONTRACT_LEGACY_V0,
   CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+  SOURCE_FIDELITY_BYTE_EXACT,
+  SOURCE_FIDELITY_NORMALIZED,
   type ContentHashContract,
   type ProvenanceClass,
+  type SourceFidelity,
   generateDnaId,
   buildPublicationVersionKey,
   computeCanonicalContentHash,
+  computeLegacyContentHashV0,
   generatePublicationDnaMaterial
 } from './publication-dna.ts';
 
@@ -39,12 +45,13 @@ export interface PublicationDnaSourceSnapshot {
   approvedRecordedAt?: string | null;
   featuredAssetId?: string | null;
   featuredAssetSha256?: string | null;
-  executionId: string;
-  receiptId: string;
-  actualPublishedAt: string;
+  executionId?: string | null;
+  receiptId?: string | null;
+  actualPublishedAt?: string | null;
   historicalPublishedAt?: string | null;
   provenanceClass?: ProvenanceClass;
   contentHashContract?: ContentHashContract;
+  sourceFidelity?: SourceFidelity;
 }
 
 export type MaterializeDnaStatus =
@@ -62,6 +69,7 @@ export interface MaterializePublicationDnaResult {
   articleId: number;
   publishedContentHash: string;
   contentHashContract: ContentHashContract;
+  sourceFidelity?: SourceFidelity;
   error?: string;
   details?: Record<string, any>;
 }
@@ -77,11 +85,12 @@ function logDnaOperationalEvent(
   const logPayload = {
     event: result.status,
     article_id: snapshot.articleId,
-    receipt_id: snapshot.receiptId,
-    execution_id: snapshot.executionId,
+    receipt_id: snapshot.receiptId || null,
+    execution_id: snapshot.executionId || null,
     version_key: result.versionKey,
     published_content_hash: snapshot.contentHash,
     content_hash_contract: result.contentHashContract,
+    source_fidelity: result.sourceFidelity || snapshot.sourceFidelity || null,
     dna_version: DNA_VERSION,
     generator_version: GENERATOR_VERSION,
     error_class: result.status,
@@ -105,6 +114,40 @@ export async function materializePublicationDna(
   const provenanceClass: ProvenanceClass = snapshot.provenanceClass || 'FULL_PROVENANCE';
   const contract: ContentHashContract = snapshot.contentHashContract || CONTENT_HASH_CONTRACT_MARKDOWN_V1;
 
+  // 1. Enforce Source Fidelity Contract
+  let sourceFidelity: SourceFidelity;
+  if (contract === CONTENT_HASH_CONTRACT_MARKDOWN_V1) {
+    if (snapshot.sourceFidelity && snapshot.sourceFidelity !== SOURCE_FIDELITY_BYTE_EXACT) {
+      const fidFailRes: MaterializePublicationDnaResult = {
+        status: 'DNA_GENERATION_FAILED',
+        versionKey: `invalid-fidelity:${snapshot.articleId}`,
+        articleId: snapshot.articleId,
+        publishedContentHash: snapshot.contentHash,
+        contentHashContract: contract,
+        error: `Canonical publisher contract '${CONTENT_HASH_CONTRACT_MARKDOWN_V1}' cannot emit '${snapshot.sourceFidelity}'. Must be '${SOURCE_FIDELITY_BYTE_EXACT}'.`
+      };
+      logDnaOperationalEvent(fidFailRes, snapshot);
+      return fidFailRes;
+    }
+    sourceFidelity = SOURCE_FIDELITY_BYTE_EXACT;
+  } else if (contract === CONTENT_HASH_CONTRACT_LEGACY_V0) {
+    if (snapshot.sourceFidelity && snapshot.sourceFidelity !== SOURCE_FIDELITY_NORMALIZED) {
+      const fidFailRes: MaterializePublicationDnaResult = {
+        status: 'DNA_GENERATION_FAILED',
+        versionKey: `invalid-fidelity:${snapshot.articleId}`,
+        articleId: snapshot.articleId,
+        publishedContentHash: snapshot.contentHash,
+        contentHashContract: contract,
+        error: `Historical legacy V0 content hash cannot claim '${snapshot.sourceFidelity}'. Must be '${SOURCE_FIDELITY_NORMALIZED}'.`
+      };
+      logDnaOperationalEvent(fidFailRes, snapshot);
+      return fidFailRes;
+    }
+    sourceFidelity = SOURCE_FIDELITY_NORMALIZED;
+  } else {
+    sourceFidelity = SOURCE_FIDELITY_BYTE_EXACT;
+  }
+
   let versionKey: string;
   try {
     versionKey = buildPublicationVersionKey({
@@ -120,13 +163,14 @@ export async function materializePublicationDna(
       articleId: snapshot.articleId,
       publishedContentHash: snapshot.contentHash,
       contentHashContract: contract,
+      sourceFidelity,
       error: `Failed to construct version_key: ${keyErr?.message || String(keyErr)}`
     };
     logDnaOperationalEvent(res, snapshot);
     return res;
   }
 
-  // 1. Idempotency & Conflict Check against existing record
+  // 2. Idempotency & Conflict Check against existing record
   try {
     const existing = await db
       .prepare('SELECT * FROM article_dna_signatures WHERE version_key = ? LIMIT 1')
@@ -139,6 +183,7 @@ export async function materializePublicationDna(
         existing.article_id === snapshot.articleId &&
         existing.published_content_hash === snapshot.contentHash &&
         existing.content_hash_contract === contract &&
+        existing.source_fidelity === sourceFidelity &&
         existing.publication_receipt_id === (snapshot.receiptId || null) &&
         existing.dna_version === DNA_VERSION &&
         existing.normalization_version === NORMALIZATION_VERSION &&
@@ -153,7 +198,8 @@ export async function materializePublicationDna(
           versionKey,
           articleId: snapshot.articleId,
           publishedContentHash: snapshot.contentHash,
-          contentHashContract: existing.content_hash_contract as ContentHashContract
+          contentHashContract: existing.content_hash_contract as ContentHashContract,
+          sourceFidelity: existing.source_fidelity as SourceFidelity
         };
       }
 
@@ -165,6 +211,7 @@ export async function materializePublicationDna(
         articleId: snapshot.articleId,
         publishedContentHash: snapshot.contentHash,
         contentHashContract: existing.content_hash_contract as ContentHashContract,
+        sourceFidelity: existing.source_fidelity as SourceFidelity,
         error: `Existing DNA record '${existing.dna_id}' with version_key '${versionKey}' conflicts with snapshot fields`
       };
       logDnaOperationalEvent(conflictRes, snapshot);
@@ -178,7 +225,7 @@ export async function materializePublicationDna(
     }
   }
 
-  // 2. Modern Hash Enforcement for new canonical publications
+  // 3. Content Hash Verification
   if (contract === CONTENT_HASH_CONTRACT_MARKDOWN_V1) {
     const computedModernHash = computeCanonicalContentHash(snapshot.contentMarkdown || '');
     if (computedModernHash !== snapshot.contentHash) {
@@ -188,14 +235,30 @@ export async function materializePublicationDna(
         articleId: snapshot.articleId,
         publishedContentHash: snapshot.contentHash,
         contentHashContract: contract,
+        sourceFidelity,
         error: `Source hash mismatch: computed ${computedModernHash} !== expected ${snapshot.contentHash}`
+      };
+      logDnaOperationalEvent(mismatchRes, snapshot);
+      return mismatchRes;
+    }
+  } else if (contract === CONTENT_HASH_CONTRACT_LEGACY_V0) {
+    const computedLegacyHash = computeLegacyContentHashV0(snapshot.contentMarkdown || '');
+    if (computedLegacyHash !== snapshot.contentHash) {
+      const mismatchRes: MaterializePublicationDnaResult = {
+        status: 'DNA_SOURCE_HASH_MISMATCH',
+        versionKey,
+        articleId: snapshot.articleId,
+        publishedContentHash: snapshot.contentHash,
+        contentHashContract: contract,
+        sourceFidelity,
+        error: `Legacy source hash mismatch: computed ${computedLegacyHash} !== expected ${snapshot.contentHash}`
       };
       logDnaOperationalEvent(mismatchRes, snapshot);
       return mismatchRes;
     }
   }
 
-  // 3. Approval Provenance Validation
+  // 4. Approval Provenance Validation
   if (provenanceClass === 'FULL_PROVENANCE') {
     if (!snapshot.approvedContentHash || snapshot.approvedContentHash !== snapshot.contentHash) {
       const provMismatchRes: MaterializePublicationDnaResult = {
@@ -204,6 +267,7 @@ export async function materializePublicationDna(
         articleId: snapshot.articleId,
         publishedContentHash: snapshot.contentHash,
         contentHashContract: contract,
+        sourceFidelity,
         error: !snapshot.approvedContentHash
           ? 'Missing approved_content_hash for FULL_PROVENANCE publication'
           : `Approval provenance hash mismatch: approved ${snapshot.approvedContentHash} !== published ${snapshot.contentHash}`
@@ -213,7 +277,7 @@ export async function materializePublicationDna(
     }
   }
 
-  // 4. Generate Pure Deterministic DNA Material
+  // 5. Generate Pure Deterministic DNA Material
   let dnaMaterial;
   try {
     dnaMaterial = generatePublicationDnaMaterial(snapshot.contentMarkdown, contract);
@@ -224,6 +288,7 @@ export async function materializePublicationDna(
       articleId: snapshot.articleId,
       publishedContentHash: snapshot.contentHash,
       contentHashContract: contract,
+      sourceFidelity,
       error: `Failed to compute DNA material: ${genErr?.message || String(genErr)}`
     };
     logDnaOperationalEvent(genFailRes, snapshot);
@@ -232,20 +297,20 @@ export async function materializePublicationDna(
 
   const dnaId = generateDnaId();
 
-  // 5. Append-only Immutable INSERT
+  // 6. Append-only Immutable INSERT
   try {
     await db
       .prepare(`
         INSERT INTO article_dna_signatures (
           dna_id, version_key, article_id, publication_receipt_id, publication_execution_id,
-          provenance_class, content_hash_contract, published_content_hash, approved_content_hash,
+          provenance_class, content_hash_contract, source_fidelity, published_content_hash, approved_content_hash,
           canonical_slug, canonical_url, approved_recorded_at, actual_published_at, historical_published_at,
           dna_version, normalization_version, shingle_version, minhash_version,
           normalized_text_hash, block_hashes_json, minhash_signature_json, structural_signature_json,
           featured_asset_id, featured_asset_sha256, generator_version, created_at
         ) VALUES (
           ?, ?, ?, ?, ?,
-          ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?,
           ?, ?, ?, ?,
           ?, ?, ?, ?,
@@ -260,6 +325,7 @@ export async function materializePublicationDna(
         snapshot.executionId || null,
         provenanceClass,
         contract,
+        sourceFidelity,
         snapshot.contentHash,
         snapshot.approvedContentHash || null,
         snapshot.slug,
@@ -287,7 +353,8 @@ export async function materializePublicationDna(
       versionKey,
       articleId: snapshot.articleId,
       publishedContentHash: snapshot.contentHash,
-      contentHashContract: contract
+      contentHashContract: contract,
+      sourceFidelity
     };
   } catch (insertErr: any) {
     const errMsg = insertErr?.message || String(insertErr);
@@ -307,7 +374,8 @@ export async function materializePublicationDna(
             versionKey,
             articleId: snapshot.articleId,
             publishedContentHash: snapshot.contentHash,
-            contentHashContract: existingAfter.content_hash_contract as ContentHashContract
+            contentHashContract: existingAfter.content_hash_contract as ContentHashContract,
+            sourceFidelity: existingAfter.source_fidelity as SourceFidelity
           };
         }
       } catch {
@@ -321,6 +389,7 @@ export async function materializePublicationDna(
       articleId: snapshot.articleId,
       publishedContentHash: snapshot.contentHash,
       contentHashContract: contract,
+      sourceFidelity,
       error: errMsg
     };
     logDnaOperationalEvent(failRes, snapshot);

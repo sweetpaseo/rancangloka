@@ -76,7 +76,8 @@ import {
   type MaterializePublicationDnaResult
 } from '../content-protection/publication-dna-store.ts';
 import {
-  CONTENT_HASH_CONTRACT_MARKDOWN_V1
+  CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+  SOURCE_FIDELITY_BYTE_EXACT
 } from '../content-protection/publication-dna.ts';
 
 export {
@@ -793,7 +794,8 @@ export async function executeAtomicPublication(
     receiptId,
     actualPublishedAt,
     provenanceClass: 'FULL_PROVENANCE',
-    contentHashContract: CONTENT_HASH_CONTRACT_MARKDOWN_V1
+    contentHashContract: CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+    sourceFidelity: SOURCE_FIDELITY_BYTE_EXACT
   };
 
   const dnaPromise = (async () => {

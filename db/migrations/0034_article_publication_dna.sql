@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS article_dna_signatures (
   publication_execution_id TEXT NULL,
   provenance_class TEXT NOT NULL,
   content_hash_contract TEXT NOT NULL,
+  source_fidelity TEXT NOT NULL,
 
   published_content_hash TEXT NOT NULL,
   approved_content_hash TEXT NULL,

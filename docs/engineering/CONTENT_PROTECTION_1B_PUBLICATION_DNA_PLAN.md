@@ -606,3 +606,87 @@ $$\text{Chief Editor Approval} \rightarrow \text{Readiness Snapshot} \rightarrow
 ### 9. Dependensi Penerapan Migrasi
 > **`MIGRATION_0034_MUST_EXIST_BEFORE_1B_RUNTIME_ACTIVATION`**
 > *(Migrasi `db/migrations/0034_article_publication_dna.sql` wajib diaplikasikan ke basis data target sebelum runtime mengaktifkan persistensi DNA secara produksi.)*
+
+---
+
+## 21. Persiapan Backfill Produksi & Model Fidelitas Sumber (CONTENT_PROTECTION-1B-C)
+
+### 1. Forensic Nuance — Pemisahan Provenansi vs Fidelitas Byte Sumber
+Kelengkapan jejak provenansi editorial (`provenance_class`) dan fidelitas konten sumber (`source_fidelity`) adalah dua dimensi forensik yang independen:
+- **`provenance_class`:** Menjawab apakah rantai persetujuan editorial manusia dan tanda terima penerbitan atomik tersedia secara lengkap (`FULL_PROVENANCE` vs `PARTIAL_HISTORICAL_PROVENANCE`).
+- **`source_fidelity`:** Menjawab apakah naskah Markdown saat ini terbukti secara kriptografis identik hingga tingkat bit raw UTF-8 aslinya (`BYTE_EXACT_HASH_VERIFIED`), atau hanya terbukti kompatibel dengan kontrak normalisasi historis (`NORMALIZED_HASH_VERIFIED`).
+
+**Kasus Khusus Artikel 5:**
+Artikel 5 memiliki `provenance_class = FULL_PROVENANCE` (memiliki approval id=9 dan receipt id `rcpt_bbae85b48e1b2f8d`), namun fidelitas sumbernya adalah `NORMALIZED_HASH_VERIFIED`. Hash historisnya dihitung menggunakan `legacy-normalized-sha256-v0` yang menormalisasi spasi berlebih dan case sebelum hashing. Oleh karena itu, kecocokan hash membuktikan kepatuhan terhadap kontrak normalisasi historis, tetapi tidak membuktikan identitas byte-exact Markdown asli. RancangLoka tidak melakukan overclaim identitas byte untuk Artikel 5 dan 6.
+
+### 2. Kontrak Fidelitas Sumber (`source_fidelity`)
+Kolom permanen `source_fidelity TEXT NOT NULL` ditambahkan ke `article_dna_signatures` dengan nilai yang terdefinisi ketat (dilarang menggunakan label kabur seperti HIGH/MEDIUM/LOW):
+- **`BYTE_EXACT_HASH_VERIFIED`:** Raw bytes Markdown kanonikal saat ini menghasilkan hash yang persis sama dengan `content_hash` publikasi di bawah algoritma `canonical-markdown-sha256-v1`.
+- **`NORMALIZED_HASH_VERIFIED`:** Markdown saat ini mereproduksi hash otoritatif historis di bawah algoritma `legacy-normalized-sha256-v0`, namun kontrak hash historis tidak mengunci variasi byte kecil seperti whitespace/casing.
+
+### 3. Matriks Klasifikasi Artikel 5–9
+| Article ID | Slug | `provenance_class` | `content_hash_contract` | `source_fidelity` | Kunci Versi (`version_key`) |
+|---|---|---|---|---|---|
+| **5** | `kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia` | `FULL_PROVENANCE` | `legacy-normalized-sha256-v0` | `NORMALIZED_HASH_VERIFIED` | `receipt:rcpt_bbae85b48e1b2f8d` |
+| **6** | `rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman` | `PARTIAL_HISTORICAL_PROVENANCE` | `legacy-normalized-sha256-v0` | `NORMALIZED_HASH_VERIFIED` | `historical:6:18a20463...` |
+| **7** | `jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED` | `receipt:rcpt_artA_d476e9020634` |
+| **8** | `thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED` | `receipt:rcpt_artB_f3fb92d8c53d` |
+| **9** | `memilih-sistem-shading-luar-rumah-tropis` | `FULL_PROVENANCE` | `canonical-markdown-sha256-v1` | `BYTE_EXACT_HASH_VERIFIED` | `receipt:rcpt_artC_8341d2fda3bc` |
+
+### 4. Amandemen Migrasi 0034
+Karena migrasi `db/migrations/0034_article_publication_dna.sql` belum pernah diaplikasikan ke lingkungan produksi, migrasi tersebut diamandemen langsung di tempat (*in-place amendment*) tanpa membuat file 0035. Kolom `source_fidelity TEXT NOT NULL` ditambahkan ke dalam DDL `CREATE TABLE article_dna_signatures`.
+
+### 5. Fidelitas Publikasi Baru di Masa Depan
+Seluruh publikasi baru yang dihasilkan oleh publisher runtime kanonikal selalu menggunakan `canonical-markdown-sha256-v1`. Oleh karena itu, publisher runtime secara deterministik menetapkan:
+$$\text{source\_fidelity} = \text{BYTE\_EXACT\_HASH\_VERIFIED}$$
+Materializer (`publication-dna-store.ts`) secara ketat menolak upaya publikasi baru untuk memancarkan `NORMALIZED_HASH_VERIFIED` di bawah kontrak Markdown V1, serta menolak naskah Legacy V0 mengklaim `BYTE_EXACT_HASH_VERIFIED`.
+
+### 6. Utilitas Backfill & Keamanan Eksekusi CLI
+Utilitas backfill diimplementasikan pada `scripts/backfill-publication-dna.js`:
+- **Scope Terbatas Ketat:** Hanya memproses `article_id IN (5,6,7,8,9)`. Artikel lain tidak akan disentuh secara implisit.
+- **Tabel Sumber Read-Only:** Hanya melakukan pembacaan SELECT dari tabel `articles`, `article_editorial_approvals`, `publication_execution_receipts`, `article_publication_executions`, `media_assets`, dan `article_media`. Tidak ada operasi UPDATE, DELETE, atau ALTER di seluruh alur kerja backfill.
+- **Satu-Satunya Target Tulis:** Hanya menyisipkan ke tabel `article_dna_signatures`.
+- **Default Aman Dry-Run:** Default eksekusi adalah selalu `--dry-run`.
+- **Gerbang Konfirmasi Ganda (*Dual Confirmation Gate*):** Mode tulis produksi wajib menyertakan DUA argumen eksplisit:
+  `--apply --confirm-production-dna-backfill`
+  Jika hanya salah satu yang diberikan, eksekusi secara otomatis bertahan di mode DRY RUN.
+- **Prinsip Validasi Total Pra-Tulis:** Seluruh artikel dalam cakupan (5–9) harus menghasilkan status `WOULD_INSERT`. Jika terdapat satu saja artikel yang menghasilkan status `BLOCKED_*`, seluruh proses berhenti seketika tanpa ada penyisipan data.
+
+### 7. Hasil Dry-Run Produksi Aktual (Cloudflare D1 `DB`)
+Eksekusi verifikasi read-only dijalankan langsung terhadap basis data produksi Cloudflare D1 menggunakan perintah:
+`node scripts/backfill-publication-dna.js --remote --dry-run`
+
+Hasil yang diperoleh (100% konsisten dan valid):
+```
+===============================================================================================================================================================================
+Article | Slug                                 | Version Key                    | Provenance | Contract      | Fidelity   | Hash Verif           | Appr | Rcpt | Asset | Planned Action
+===============================================================================================================================================================================
+5       | kusen-aluminium-vs-upvc-untuk-rumah- | receipt:rcpt_bbae85b48e1b2f8d  | FULL       | v0-legacy     | NORMALIZED | PASS_NORMALIZED_MATCH| VALID| VALID| RESOLV| WOULD_INSERT
+6       | rekayasa-ventilasi-silang-alami-untu | historical:6:18a20463523fc5ada | PARTIAL    | v0-legacy     | NORMALIZED | PASS_NORMALIZED_MATCH| PRT_OK|PRT_OK| NONE  | WOULD_INSERT
+7       | jendela-berkondensasi-kelembapan-suh | receipt:rcpt_artA_d476e9020634 | FULL       | v1-markdown   | BYTE_EXACT | PASS_BYTE_EXACT_MATCH| VALID| VALID| RESOLV| WOULD_INSERT
+8       | thermal-bridge-kusen-aluminium-penye | receipt:rcpt_artB_f3fb92d8c53d | FULL       | v1-markdown   | BYTE_EXACT | PASS_BYTE_EXACT_MATCH| VALID| VALID| RESOLV| WOULD_INSERT
+9       | memilih-sistem-shading-luar-rumah-tr | receipt:rcpt_artC_8341d2fda3bc | FULL       | v1-markdown   | BYTE_EXACT | PASS_BYTE_EXACT_MATCH| VALID| VALID| RESOLV| WOULD_INSERT
+===============================================================================================================================================================================
+Summary: 5 total, 5 WOULD_INSERT, 0 ALREADY_EXISTS, 0 BLOCKED. Mode: DRY_RUN
+```
+- Mutasi yang terjadi pada D1 produksi: **0 (NOL)**.
+- Mutasi yang terjadi pada R2 produksi: **0 (NOL)**.
+
+### 8. Prosedur Wajib Peluncuran Produksi (Mandatory Production Rollout Order)
+*(DOKUMENTASI SAJA — DILARANG DIEKSEKUSI PADA SESI INI)*
+
+- **LANGKAH 1:** Aplikasikan migrasi 0034 ke D1 produksi:
+  `npx wrangler d1 execute DB --remote --file=db/migrations/0034_article_publication_dna.sql`
+- **LANGKAH 2:** Verifikasi bahwa tabel `article_dna_signatures` telah terbentuk dan berstatus kosong (0 baris):
+  `npx wrangler d1 execute DB --remote --command="SELECT COUNT(*) AS total FROM article_dna_signatures"`
+- **LANGKAH 3:** Deploy runtime Cloudflare Worker yang memuat dukungan `source_fidelity` (fase 1B-B dan 1B-C):
+  `npm run deploy`
+- **LANGKAH 4:** Lakukan smoke test terhadap perilaku publikasi, invalidasi cache, dan panel admin yang sedang berjalan untuk memastikan tidak ada regresi.
+- **LANGKAH 5:** Jalankan kembali dry-run utilitas backfill untuk memvalidasi kesiapan akhir basis data:
+  `node scripts/backfill-publication-dna.js --remote --dry-run`
+- **LANGKAH 6:** Jalankan backfill produksi dengan gerbang konfirmasi ganda:
+  `node scripts/backfill-publication-dna.js --remote --apply --confirm-production-dna-backfill`
+- **LANGKAH 7:** Verifikasi bahwa tepat 5 baris DNA abadi telah tersimpan di D1 produksi:
+  `npx wrangler d1 execute DB --remote --command="SELECT article_id, version_key, provenance_class, content_hash_contract, source_fidelity FROM article_dna_signatures ORDER BY article_id ASC"`
+- **LANGKAH 8:** Ulangi eksekusi skrip backfill untuk membuktikan idempotensi mutlak:
+  Hasil yang wajib diperoleh: **`5 x ALREADY_EXISTS_IDENTICAL`**, dengan 0 perubahan dan 0 baris tambahan.

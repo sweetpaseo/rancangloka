@@ -63,6 +63,8 @@ import {
   CONTENT_HASH_CONTRACT_MARKDOWN_V1,
   computeLegacyContentHashV0,
   computeContentHashForContract,
+  SOURCE_FIDELITY_BYTE_EXACT,
+  SOURCE_FIDELITY_NORMALIZED,
 } from '../src/lib/content-protection/publication-dna.ts';
 
 let passed = 0;
@@ -464,14 +466,14 @@ db.exec(`
 const insertStmt = db.prepare(`
   INSERT INTO article_dna_signatures (
     dna_id, version_key, article_id, publication_receipt_id, publication_execution_id,
-    provenance_class, content_hash_contract, published_content_hash, approved_content_hash, canonical_slug,
+    provenance_class, content_hash_contract, source_fidelity, published_content_hash, approved_content_hash, canonical_slug,
     canonical_url, approved_recorded_at, actual_published_at, historical_published_at,
     dna_version, normalization_version, shingle_version, minhash_version,
     normalized_text_hash, block_hashes_json, minhash_signature_json, structural_signature_json,
     featured_asset_id, featured_asset_sha256, generator_version
   ) VALUES (
     ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -487,6 +489,7 @@ insertStmt.run(
   'pexec_test_5',
   'FULL_PROVENANCE',
   CONTENT_HASH_CONTRACT_LEGACY_V0,
+  SOURCE_FIDELITY_NORMALIZED,
   '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277',
   '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277',
   'kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia',
@@ -517,6 +520,10 @@ assert(
   fullRow[0].provenance_class === 'FULL_PROVENANCE',
   'Article 5 is correctly classified as FULL_PROVENANCE'
 );
+assert(
+  fullRow[0].source_fidelity === SOURCE_FIDELITY_NORMALIZED,
+  'Article 5 is correctly classified with source_fidelity = NORMALIZED_HASH_VERIFIED'
+);
 
 // Insert Article 6 PARTIAL_HISTORICAL_PROVENANCE row with NULL receipt & legacy contract
 db.exec(`
@@ -531,6 +538,7 @@ insertStmt.run(
   null, // NULL execution
   'PARTIAL_HISTORICAL_PROVENANCE',
   CONTENT_HASH_CONTRACT_LEGACY_V0,
+  SOURCE_FIDELITY_NORMALIZED,
   '18a20463523fc5ada7287fc54e37b8346d0e69b90cef9656544950dd4bb4dd1d',
   null, // NULL approved hash
   'rekayasa-ventilasi-silang-alami-untuk-rumah-tropis-yang-lebih-nyaman',
@@ -562,6 +570,10 @@ assert(
   histRow[0].content_hash_contract === CONTENT_HASH_CONTRACT_LEGACY_V0,
   `Article 6 correctly stores content_hash_contract = '${CONTENT_HASH_CONTRACT_LEGACY_V0}'`
 );
+assert(
+  histRow[0].source_fidelity === SOURCE_FIDELITY_NORMALIZED,
+  'Article 6 is correctly classified with source_fidelity = NORMALIZED_HASH_VERIFIED'
+);
 assert(histRow[0].historical_published_at === '2026-09-13T23:05:51.804Z', 'Historical published timestamp preserved');
 
 // Insert Modern Article 7 FULL_PROVENANCE row with canonical-markdown-sha256-v1 contract
@@ -578,6 +590,7 @@ insertStmt.run(
   'pexec_artA_d476e9020634',
   'FULL_PROVENANCE',
   CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+  SOURCE_FIDELITY_BYTE_EXACT,
   '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298',
   '00dc804d7f3bd9f54772988c00709e1ff01b80ff303d42760bc4ac91df6c8298',
   'jendela-berkondensasi-kelembapan-suhu-kaca-ventilasi-thermal-bridge',
@@ -604,6 +617,10 @@ assert(
   modernRow[0].content_hash_contract === CONTENT_HASH_CONTRACT_MARKDOWN_V1,
   `Modern Article 7 stores content_hash_contract = '${CONTENT_HASH_CONTRACT_MARKDOWN_V1}'`
 );
+assert(
+  modernRow[0].source_fidelity === SOURCE_FIDELITY_BYTE_EXACT,
+  'Modern Article 7 has source_fidelity = BYTE_EXACT_HASH_VERIFIED'
+);
 
 // Verify content_hash_contract NOT NULL constraint
 let nullContractBlocked = false;
@@ -616,6 +633,7 @@ try {
     'pexec_test_null',
     'FULL_PROVENANCE',
     null, // VIOLATION: NOT NULL
+    SOURCE_FIDELITY_BYTE_EXACT,
     'hash',
     null,
     'slug',
@@ -642,6 +660,44 @@ try {
 }
 assert(nullContractBlocked, 'NULL content_hash_contract is strictly rejected by SQLite NOT NULL constraint');
 
+// Verify source_fidelity NOT NULL constraint
+let nullFidelityBlocked = false;
+try {
+  insertStmt.run(
+    'dna_null_fidelity_attempt',
+    'receipt:rcpt_test_null_fidelity',
+    7,
+    'rcpt_test_null_fidelity',
+    'pexec_test_null_fidelity',
+    'FULL_PROVENANCE',
+    CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+    null, // VIOLATION: NOT NULL
+    'hash',
+    null,
+    'slug',
+    'url',
+    null,
+    null,
+    null,
+    'v1.0',
+    'norm-v1',
+    'shingle-4w-v1',
+    'minhash-64h-v1',
+    'nh',
+    '[]',
+    '[]',
+    '{}',
+    null,
+    null,
+    'v1'
+  );
+} catch (e) {
+  if (e.message.includes('NOT NULL constraint failed')) {
+    nullFidelityBlocked = true;
+  }
+}
+assert(nullFidelityBlocked, 'NULL source_fidelity is strictly rejected by SQLite NOT NULL constraint');
+
 // Verify uniqueness constraint on version_key
 let duplicateBlocked = false;
 try {
@@ -653,6 +709,7 @@ try {
     'pexec_test_5',
     'FULL_PROVENANCE',
     CONTENT_HASH_CONTRACT_LEGACY_V0,
+    SOURCE_FIDELITY_NORMALIZED,
     'hash5',
     null,
     'slug',
