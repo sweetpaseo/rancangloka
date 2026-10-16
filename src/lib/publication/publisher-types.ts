@@ -141,6 +141,7 @@ export interface PrepublishValidationResult {
     content_hash: string;
     category_id: number;
     author_id: number;
+    content_md?: string;
   };
 }
 

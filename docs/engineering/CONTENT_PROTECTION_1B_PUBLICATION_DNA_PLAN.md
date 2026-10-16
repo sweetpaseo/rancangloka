@@ -549,3 +549,60 @@ Status kelengkapan jejak penerbitan (`provenance_class`) dan versi kontrak hash 
 ### 4. Penegakan Runtime Fail-Closed
 - Helper `computeContentHashForContract(markdown, contract)` menyediakan *fail-closed dispatcher*. Jika kontrak yang diminta tidak dikenal, fungsi akan melempar *runtime error*.
 - Pembuatan DNA baru melalui `generatePublicationDnaMaterial` selalu menggunakan `canonical-markdown-sha256-v1` secara default.
+
+---
+
+## 20. Integrasi Runtime Publikasi ke Publication DNA (CONTENT_PROTECTION-1B-B)
+
+### 1. Titik Integrasi Pasca-Receipt Otoritatif
+Materialisasi Publication DNA terintegrasi langsung ke dalam fungsi `executeAtomicPublication` (`src/lib/publication/publisher-service.ts`) persis setelah transaksi atomik D1 berhasil meng-commit:
+1. Pembaruan status naskah menjadi `'published'`.
+2. Pembaruan status eksekusi menjadi `'PUBLISHED'`.
+3. Penyimpanan tanda terima penerbitan atomik (`publication_execution_receipts`).
+
+Alur sekuensial kanonikal:
+$$\text{Chief Editor Approval} \rightarrow \text{Readiness Snapshot} \rightarrow \text{Plan} \rightarrow \text{Publisher Batch Commit} \rightarrow \text{Receipt Created} \rightarrow \text{Publication DNA Materialization} \rightarrow \text{Workers Cache Invalidation}$$
+
+### 2. Aturan Snapshot Publikasi Terkunci (Captured Publication Snapshot Rule)
+> **`PUBLICATION_DNA_BINDS_TO_EXACT_PUBLISHED_CONTENT`**
+> *(Publication DNA wajib mengikat naskah persis yang diterbitkan oleh transaksi basis data, bukan naskah dinamis yang mungkin termutasi kemudian hari.)*
+
+- **Bebas Kondisi Balapan (*Zero Race Condition*):** Generator DNA dilarang keras melakukan re-query naskah Markdown dari tabel `articles` saat `waitUntil` berjalan di latar belakang.
+- **Objek Snapshot Abadi (`PublicationDnaSourceSnapshot`):** Prosa kanonikal (`contentMarkdown`), hash (`contentHash`), slug, URL, metadata persetujuan (`approvedContentHash`, `approvedRecordedAt`), aset unggulan (`featuredAssetId`, `featuredAssetSha256`), ID eksekusi, ID tanda terima, dan stempel waktu server publikasi dibekukan ke dalam objek in-memory sebelum penjadwalan DNA dimulai.
+
+### 3. Semantik Eksekusi `waitUntil` & Mode Non-Worker
+- **Cloudflare Worker Runtime:** Ketika `options.ctx?.waitUntil` tersedia, materialisasi DNA dijadwalkan secara asinkron tanpa memblokir latensi respons HTTP ke pemanggil. Promise dilengkapi *catch handler* menyeluruh (`.catch(...)`) untuk menjamin zero unhandled rejections.
+- **Node.js / CLI Local Execution:** Ketika dijalankan di luar runtime Worker (misal: pengujian otomatis atau skrip CLI lokal), fungsi publikasi secara eksplisit melakukan `await` terhadap promise materialisasi DNA guna menghindari *unhandled dangling promises*.
+
+### 4. Penegakan Kontrak Hash Modern & Validasi Persetujuan
+- **Modern Hash Enforcement:** Seluruh publikasi baru wajib menggunakan `CONTENT_HASH_CONTRACT_MARKDOWN_V1` (`'canonical-markdown-sha256-v1'`). `computeCanonicalContentHash(snapshot.contentMarkdown)` wajib cocok 100% dengan `snapshot.contentHash` dan `receipt.content_hash`. Jika terjadi diskrepansi, proses materialisasi mengembalikan `DNA_SOURCE_HASH_MISMATCH` dan tidak menyisipkan baris DNA apa pun.
+- **Approval Provenance Validation:** Untuk status `FULL_PROVENANCE`, `approved_content_hash` wajib ada dan bernilai identik dengan `snapshot.contentHash`. Jika tidak cocok atau tidak tersedia, materialisasi mengembalikan `DNA_PROVENANCE_SOURCE_MISMATCH` dengan zero row insert.
+
+### 5. Idempotensi & Deteksi Konflik Versi (Idempotency vs Conflict)
+- Kunci versi kanonikal: `version_key = 'receipt:' + publication_receipt_id`.
+- **Idempotensi Sempurna (`DNA_ALREADY_EXISTS`):** Eksekusi berulang untuk tanda terima yang sama dengan nilai field kritis yang identik mengembalikan rekam DNA yang sudah ada tanpa melakukan duplikasi baris.
+- **Deteksi Konflik Ketat (`DNA_VERSION_CONFLICT`):** Jika `version_key` sudah ada namun field kritis (seperti `article_id`, `published_content_hash`, atau versi generator) tidak cocok, sistem menolak mutasi dengan status `DNA_VERSION_CONFLICT`. Baris asli yang abadi tidak akan pernah ditimpa (`NO UPDATE`).
+
+### 6. Semantik Kegagalan Fail-Safe (`PUBLICATION_SUCCEEDS_DNA_PENDING`)
+- Kegagalan materialisasi DNA terjadi **SETELAH** publikasi artikel dan pembuatan receipt berhasil dikomit ke basis data.
+- Kegagalan DNA dilarang keras: (a) me-rollback publikasi artikel, (b) menghapus tanda terima, (c) mengubah status artikel kembali ke draf, atau (d) menggagalkan respons penerbitan.
+- Kondisi di mana tanda terima terbit ada namun baris DNA belum terbuat secara operasional didefinisikan sebagai status **`DNA_PENDING`**.
+
+### 7. Independensi Invalidation Cache (Content Protection 1A)
+- Penjadwalan materialisasi DNA dan operasi invalidasi Workers Cache (`invalidateArticleCache`) adalah dua concern operasional pasca-penerbitan yang terpisah dan independen.
+- Kegagalan DNA tidak membatalkan atau menghentikan invalidasi cache.
+- Kegagalan invalidasi cache tidak mempengaruhi materialisasi DNA.
+
+### 8. Taksonomi Status Operasional
+| Status Hasil | Klasifikasi | Aksi Penyimpanan D1 |
+|---|---|---|
+| `DNA_GENERATED` | Sukses Bersih | Satu baris disisipkan ke `article_dna_signatures` |
+| `DNA_ALREADY_EXISTS` | Idempotent | Zero insert, mengembalikan `dna_id` yang ada |
+| `DNA_SOURCE_HASH_MISMATCH` | Error Sumber | Zero insert, pencatatan log operasional |
+| `DNA_PROVENANCE_SOURCE_MISMATCH` | Error Provenansi | Zero insert, pencatatan log operasional |
+| `DNA_VERSION_CONFLICT` | Konflik Integritas | Zero insert, baris lama dipertahankan, peringatan log |
+| `DNA_GENERATION_FAILED` | Error Database/Runtime | Zero insert, status publikasi tetap sukses |
+
+### 9. Dependensi Penerapan Migrasi
+> **`MIGRATION_0034_MUST_EXIST_BEFORE_1B_RUNTIME_ACTIVATION`**
+> *(Migrasi `db/migrations/0034_article_publication_dna.sql` wajib diaplikasikan ke basis data target sebelum runtime mengaktifkan persistensi DNA secara produksi.)*

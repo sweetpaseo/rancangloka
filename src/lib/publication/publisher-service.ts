@@ -70,6 +70,14 @@ import {
   computeCanonicalPreflightHash
 } from '../decision/publication-preflight-state.ts';
 import { invalidateArticleCache, type CachePurgeAdapter } from '../cache/index.ts';
+import {
+  materializePublicationDna,
+  type PublicationDnaSourceSnapshot,
+  type MaterializePublicationDnaResult
+} from '../content-protection/publication-dna-store.ts';
+import {
+  CONTENT_HASH_CONTRACT_MARKDOWN_V1
+} from '../content-protection/publication-dna.ts';
 
 export {
   resolvePublicationAuthorization,
@@ -519,7 +527,8 @@ export async function validatePrepublishInvariants(
       title: article.title,
       content_hash: article.content_hash,
       category_id: article.category_id,
-      author_id: article.author_id
+      author_id: article.author_id,
+      content_md: article.content_md
     }
   };
 }
@@ -535,8 +544,18 @@ export async function executeAtomicPublication(
   articleSlug: string,
   attemptNumber: number = 1,
   trustedServerTime?: string,
-  options: { ctx?: any; cacheAdapter?: CachePurgeAdapter } = {}
-): Promise<{ receiptId: string; actualPublishedAt: string; canonicalUrl: string }> {
+  options: {
+    ctx?: any;
+    cacheAdapter?: CachePurgeAdapter;
+    contentMarkdown?: string;
+    onDnaResult?: (res: MaterializePublicationDnaResult) => void;
+  } = {}
+): Promise<{
+  receiptId: string;
+  actualPublishedAt: string;
+  canonicalUrl: string;
+  dnaResult?: MaterializePublicationDnaResult;
+}> {
   // Check if article is ALREADY published and receipt exists (Crash recovery / Idempotency)
   const existingReceipt = await db
     .prepare('SELECT * FROM publication_execution_receipts WHERE execution_id = ? LIMIT 1')
@@ -705,6 +724,107 @@ export async function executeAtomicPublication(
     throw new Error('ATOMIC_BATCH_FAILED: Article status update failed (article was not draft or changed concurrently)');
   }
 
+  // Content Protection 1B-B: Publication DNA Materialization
+  // Immutable provenance and forensic similarity record bound to publication receipt.
+  // Captured publication snapshot guarantees zero race condition if mutable prose changes post-commit.
+  // DNA materialization failure NEVER rolls back publication (PUBLICATION_SUCCEEDS_DNA_PENDING).
+  let dnaResult: MaterializePublicationDnaResult | undefined;
+
+  let canonicalMarkdown = options?.contentMarkdown;
+  if (typeof canonicalMarkdown !== 'string' || !canonicalMarkdown) {
+    try {
+      const artRow = await db
+        .prepare('SELECT content_md FROM articles WHERE id = ? LIMIT 1')
+        .bind(execution.article_id)
+        .first();
+      canonicalMarkdown = artRow?.content_md || '';
+    } catch {
+      canonicalMarkdown = '';
+    }
+  }
+
+  let approvedContentHash: string | null = null;
+  let approvedRecordedAt: string | null = null;
+  try {
+    const approvalRow = await db
+      .prepare(`
+        SELECT approved_content_hash, created_at
+        FROM article_editorial_approvals
+        WHERE article_id = ? AND approval_status = 'APPROVED'
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      `)
+      .bind(execution.article_id)
+      .first();
+    if (approvalRow) {
+      approvedContentHash = approvalRow.approved_content_hash || null;
+      approvedRecordedAt = approvalRow.created_at || null;
+    }
+  } catch {
+    // Non-fatal if table not present in test SQLite
+  }
+
+  let featuredAssetSha256: string | null = null;
+  if (execution.featured_asset_id) {
+    try {
+      const assetRow = await db
+        .prepare('SELECT sha256 FROM media_assets WHERE asset_id = ? LIMIT 1')
+        .bind(execution.featured_asset_id)
+        .first();
+      if (assetRow?.sha256) {
+        featuredAssetSha256 = assetRow.sha256;
+      }
+    } catch {
+      // Non-fatal if media_assets not present
+    }
+  }
+
+  const sourceSnapshot: PublicationDnaSourceSnapshot = {
+    articleId: execution.article_id,
+    contentMarkdown: canonicalMarkdown || '',
+    contentHash: execution.content_hash,
+    slug: articleSlug,
+    canonicalUrl,
+    approvedContentHash,
+    approvedRecordedAt,
+    featuredAssetId: execution.featured_asset_id || null,
+    featuredAssetSha256,
+    executionId: execution.execution_id,
+    receiptId,
+    actualPublishedAt,
+    provenanceClass: 'FULL_PROVENANCE',
+    contentHashContract: CONTENT_HASH_CONTRACT_MARKDOWN_V1
+  };
+
+  const dnaPromise = (async () => {
+    try {
+      const res = await materializePublicationDna(db, sourceSnapshot);
+      if (options?.onDnaResult) {
+        options.onDnaResult(res);
+      }
+      return res;
+    } catch (err: any) {
+      const failRes: MaterializePublicationDnaResult = {
+        status: 'DNA_GENERATION_FAILED',
+        versionKey: `receipt:${receiptId}`,
+        articleId: execution.article_id,
+        publishedContentHash: execution.content_hash,
+        contentHashContract: CONTENT_HASH_CONTRACT_MARKDOWN_V1,
+        error: err?.message || String(err)
+      };
+      if (options?.onDnaResult) {
+        options.onDnaResult(failRes);
+      }
+      return failRes;
+    }
+  })();
+
+  if (options?.ctx && typeof options.ctx.waitUntil === 'function') {
+    options.ctx.waitUntil(dnaPromise);
+  } else {
+    dnaResult = await dnaPromise;
+  }
+
   // Content Protection 1A: Workers Cache targeted publication invalidation
   // Invalidation failure is non-fatal to atomic publication (Fail-Safe)
   try {
@@ -736,7 +856,7 @@ export async function executeAtomicPublication(
     );
   }
 
-  return { receiptId, actualPublishedAt, canonicalUrl };
+  return { receiptId, actualPublishedAt, canonicalUrl, dnaResult };
 }
 
 /**
@@ -895,7 +1015,10 @@ export async function processSingleExecution(
       gateResult.article!.slug,
       attemptNumber,
       nowUtc,
-      options
+      {
+        ...options,
+        contentMarkdown: gateResult.article?.content_md
+      }
     );
 
     const durationMs = Date.now() - startTime;
