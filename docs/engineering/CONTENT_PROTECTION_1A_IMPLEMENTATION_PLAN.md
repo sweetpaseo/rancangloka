@@ -57,6 +57,22 @@ Fase ini menyelesaikan empat masalah arsitektur mendesak:
 > **PILIHAN: Cloudflare Workers Caching (`[cache] enabled = true` di `wrangler.toml`) + Kebijakan Respons Deklaratif `Cache-Control` di `src/middleware.ts`.**
 > **Alasan:** Ini adalah satu-satunya arsitektur yang menjamin **Worker dan D1 sama sekali tidak dijalankan pada cache hit**, dikelola 100% secara deklaratif di dalam repositori Git, memiliki isolasi versi alami, dan tidak membebani kode aplikasi dengan boilerplate imperatif.
 
+### Model Biaya & Pengukuran Permintaan Workers Cache (Workers Cache Request Cost & Billing Model)
+
+Dalam arsitektur Cloudflare Workers, **pengukuran permintaan (request metering)** dan **eksekusi CPU/origin** adalah dua dimensi tagihan yang berbeda:
+
+1. **REQUEST BILLING: `USAGE_DEPENDENT`**
+   - Seluruh permintaan yang masuk ke Workers Cache (termasuk respons Cache HIT di edge) tetap dihitung dan ditagih sesuai tarif permintaan standar Cloudflare Workers.
+   - Cache HIT **TIDAK SAMA DENGAN permintaan gratis (*free request*)**.
+2. **CPU ON CACHE HIT: `NO_WORKER_EXECUTION_EXPECTED`**
+   - Saat terjadi Cache HIT di edge, Cloudflare langsung mengembalikan respons yang tersimpan tanpa mengeksekusi kode Worker aplikasi (0 CPU ms).
+3. **D1 ON CACHE HIT: `NO_D1_READ_EXPECTED`**
+   - Karena Worker tidak berjalan pada Cache HIT, kueri database D1 (6–7 kueri per request artikel) ditiadakan sepenuhnya (0 D1 read queries).
+4. **STATIC ASSET COST: `DO_NOT_CLAIM_FREE_UNDER_WORKERS_CACHE`**
+   - Aset statis tidak boleh diklaim otomatis bebas biaya ketika Workers Cache aktif. Perilaku penagihan permintaan aset statis mengikuti kebijakan routing aset Workers yang berlaku.
+5. **PENGUKURAN DAMPAK AKTUAL: `TO_BE_MEASURED_AFTER_DEPLOY`**
+   - Dampak biaya aktual terhadap akun RancangLoka wajib diukur secara empiris pasca-deployment produksi menggunakan telemetri Cloudflare Analytics. Tidak ada estimasi biaya bulanan fiktif atau asumsi spekulatif yang dicatat ke dalam arsitektur.
+
 ---
 
 ## 3. Koreksi Mekanisme Purge & Kepemilikan Cache (Worker-Owned Invalidation)

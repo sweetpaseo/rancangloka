@@ -83,7 +83,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
           );
         }
         // Exactly same gate - NO BYPASS!
-        const result = await publishNow(db, targetId, actor, body.nowUtc);
+        const ctx = (locals as any)?.runtime?.ctx || (locals as any)?.ctx;
+        const result = await publishNow(db, targetId, actor, body.nowUtc, { ctx });
         return new Response(
           JSON.stringify({ status: 'success', result }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }

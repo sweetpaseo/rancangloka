@@ -81,11 +81,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const limit = body.limit || 10;
 
 
+    const ctx = (locals as any)?.runtime?.ctx || (locals as any)?.ctx;
     const result = await runPublisherDispatcher(db, {
       triggerSource,
       workerId,
       nowUtc,
-      limit
+      limit,
+      ctx
     });
 
     return new Response(

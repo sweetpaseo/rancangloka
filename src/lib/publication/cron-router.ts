@@ -144,7 +144,8 @@ export async function executeCronJob(
   job: CronJobIdentity,
   db: any,
   _env?: any,
-  triggerSource: CronTriggerSource = 'cloudflare_cron'
+  triggerSource: CronTriggerSource = 'cloudflare_cron',
+  ctx?: ExecutionContext
 ): Promise<CronExecutionResult> {
   const startTime = Date.now();
 
@@ -258,7 +259,8 @@ export async function executeCronJob(
           triggerSource,
           async () => {
             const res = await runPublisherDispatcher(db, {
-              triggerSource: 'cron'
+              triggerSource: 'cron',
+              ctx
             });
 
             const isBlocked =
@@ -376,7 +378,7 @@ export async function handleScheduledEvent(
     };
   }
 
-  const runPromise = executeCronJob(job, db, env);
+  const runPromise = executeCronJob(job, db, env, 'cloudflare_cron', ctx);
 
   // Lifetime tracking: ensure background task promises are tracked by Cloudflare runtime
   if (ctx && typeof ctx.waitUntil === 'function') {

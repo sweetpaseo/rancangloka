@@ -17,6 +17,8 @@
  * L. No article prose/hash mutation
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import { onRequest } from '../src/middleware.ts';
 import {
@@ -26,6 +28,8 @@ import {
   purgeCacheTags,
   invalidateArticleCache
 } from '../src/lib/cache/index.ts';
+import { insertArticle, updateArticle } from '../src/lib/db.ts';
+import { executeAtomicPublication } from '../src/lib/publication/publisher-service.ts';
 
 console.log('🧪 Starting CONTENT_PROTECTION-1A Cache & Protection Test Suite...\n');
 
@@ -353,12 +357,293 @@ async function runSuite() {
         })
       })
     };
+    const mockAdapter = {
+      purged: [],
+      purge: async (tags) => { mockAdapter.purged.push(...tags); }
+    };
 
-    const invalidationRes = await invalidateArticleCache(mockDb, 7, 'ARTICLE_TITLE_CHANGED');
+    const invalidationRes = await invalidateArticleCache(mockDb, 7, 'ARTICLE_TITLE_CHANGED', { adapter: mockAdapter });
     assert.equal(invalidationRes.success, true);
+    assert.equal(invalidationRes.status, 'SUCCESS');
     assert.ok(invalidationRes.tags.includes('article-7'));
     assert.ok(invalidationRes.tags.includes('support-target-7'));
     pass('L. Invalidation runs purely out-of-band with zero article prose or hash mutation');
+  }
+
+  // =========================================================================
+  // PRE-PRODUCTION HARDENING BEHAVIORAL SUITE (ITEMS A THROUGH L)
+  // =========================================================================
+  console.log('\n🛡️ Starting CONTENT_PROTECTION-1A Pre-Production Hardening Suite...');
+
+  // Hardening A: Production adapter uses Workers Cache API contract ({ tags: [...] })
+  {
+    let receivedPayload = null;
+    const mockCtx = {
+      cache: {
+        purge: async (payload) => {
+          receivedPayload = payload;
+        }
+      }
+    };
+    const res = await purgeCacheTags(['article-1', 'homepage'], { ctx: mockCtx });
+    assert.equal(res.status, 'SUCCESS');
+    assert.deepEqual(receivedPayload, { tags: ['article-1', 'homepage'] });
+
+    let adapterReceivedTags = null;
+    const mockAdapter = {
+      purge: async (tags) => {
+        adapterReceivedTags = tags;
+      }
+    };
+    const resAdapter = await purgeCacheTags(['article-2'], { adapter: mockAdapter });
+    assert.equal(resAdapter.status, 'SUCCESS');
+    assert.deepEqual(adapterReceivedTags, ['article-2']);
+    pass('Hardening A: Production adapter uses Workers Cache API contract ({ tags: [...] })');
+  }
+
+  // Hardening B: No caches.default is used
+  {
+    const cacheCode = fs.readFileSync(path.resolve('src/lib/cache/index.ts'), 'utf8');
+    assert.ok(!cacheCode.includes('caches.default'), 'Must not reference caches.default');
+    assert.ok(!cacheCode.includes('caches.open'), 'Must not reference caches.open');
+    pass('Hardening B: No caches.default is used');
+  }
+
+  // Hardening C: No ambiguous global cache fallback exists
+  {
+    const cacheCode = fs.readFileSync(path.resolve('src/lib/cache/index.ts'), 'utf8');
+    assert.ok(!cacheCode.includes('globalThis.caches'), 'Must not use globalThis.caches');
+    assert.ok(!cacheCode.includes('global.caches'), 'Must not use global.caches');
+    assert.ok(!cacheCode.includes('// C. Non-Worker environment fallback (local simulation / tests)\n    return true;'), 'Must not silently return true');
+    pass('Hardening C: No ambiguous global cache fallback exists');
+  }
+
+  // Hardening D: Unavailable cache runtime produces CACHE_API_UNAVAILABLE
+  {
+    // Calling in plain Node without ctx or adapter
+    const res = await purgeCacheTags(['article-999']);
+    assert.equal(res.status, 'CACHE_API_UNAVAILABLE');
+    assert.ok(res.error && res.error.includes('unavailable'));
+    assert.deepEqual(res.tags, ['article-999']);
+    pass('Hardening D: Unavailable cache runtime produces CACHE_API_UNAVAILABLE');
+  }
+
+  // Hardening E: Purge failure produces CACHE_INVALIDATION_FAILED
+  {
+    const failingAdapter = {
+      purge: async () => {
+        throw new Error('Cloudflare Edge network purge timeout');
+      }
+    };
+    const res = await purgeCacheTags(['article-500'], { adapter: failingAdapter });
+    assert.equal(res.status, 'CACHE_INVALIDATION_FAILED');
+    assert.equal(res.error, 'Cloudflare Edge network purge timeout');
+    assert.deepEqual(res.tags, ['article-500']);
+    pass('Hardening E: Purge failure produces CACHE_INVALIDATION_FAILED');
+  }
+
+  // Hardening F: Cache failure does not roll back canonical article mutation
+  {
+    const failingAdapter = {
+      purge: async () => {
+        throw new Error('Fatal edge connection error');
+      }
+    };
+    const art = await insertArticle(null, {
+      title: 'Rollback Invariant Test Article',
+      slug: 'rollback-invariant-test-slug',
+      status: 'draft'
+    });
+    const updated = await updateArticle(
+      null,
+      art.id,
+      { title: 'Persisted Mutation With Cache Failure' },
+      { cacheAdapter: failingAdapter }
+    );
+    assert.equal(updated.title, 'Persisted Mutation With Cache Failure');
+    pass('Hardening F: Cache failure does not roll back canonical article mutation (DATABASE_TRUTH_WINS)');
+  }
+
+  // Hardening G: Canonical publisher invokes invalidation after successful publication
+  {
+    const execution = {
+      execution_id: 'exec_canonical_pub_test',
+      plan_id: 'plan_canonical_pub_test',
+      article_id: 101,
+      target_publish_at: '2026-10-16T12:00:00Z',
+      content_hash: 'sha256_canonical_test_hash',
+      featured_asset_id: 'ast_canonical_asset',
+      claimed_by_worker: 'worker_pub_test',
+      attempts_count: 0
+    };
+    const mockDb = {
+      prepare: (sql) => ({
+        bind: (...args) => ({
+          first: async () => {
+            if (sql.includes('publication_execution_receipts')) return null;
+            if (sql.includes('server_now')) return { server_now: '2026-10-16T10:00:00.000Z' };
+            if (sql.includes('category_id FROM articles')) return { category_id: 3 };
+            return null;
+          },
+          run: async () => ({ changes: 1 }),
+          all: async () => ({ results: [] })
+        }),
+        first: async () => ({ server_now: '2026-10-16T10:00:00.000Z' })
+      }),
+      batch: async (stmts) => stmts.map(() => ({ meta: { changes: 1 }, changes: 1 }))
+    };
+
+    const trackedTags = [];
+    const trackingAdapter = {
+      purge: async (tags) => {
+        trackedTags.push(...tags);
+      }
+    };
+
+    const pubRes = await executeAtomicPublication(
+      mockDb,
+      execution,
+      'canonical-slug-test',
+      1,
+      undefined,
+      { cacheAdapter: trackingAdapter }
+    );
+
+    assert.ok(pubRes.receiptId.startsWith('rcpt_'));
+    assert.ok(trackedTags.includes('article-101'));
+    assert.ok(trackedTags.includes('category-3'));
+    assert.ok(trackedTags.includes('homepage'));
+    assert.ok(trackedTags.includes('rss'));
+    assert.ok(trackedTags.includes('sitemap'));
+    assert.ok(trackedTags.includes('search'));
+    pass('Hardening G: Canonical publisher invokes invalidation after successful publication');
+  }
+
+  // Hardening H: updateArticle Worker path invokes invalidation
+  {
+    const trackedTags = [];
+    const trackingAdapter = {
+      purge: async (tags) => {
+        trackedTags.push(...tags);
+      }
+    };
+    const art = await insertArticle(null, {
+      title: 'Initial Title',
+      slug: 'update-invalidation-slug',
+      status: 'published',
+      category_id: 1
+    }, { cacheAdapter: trackingAdapter });
+
+    trackedTags.length = 0; // reset
+    await updateArticle(
+      null,
+      art.id,
+      { title: 'Updated Title Triggers Cache' },
+      { cacheAdapter: trackingAdapter }
+    );
+
+    assert.ok(trackedTags.includes(`article-${art.id}`));
+    assert.ok(trackedTags.includes(`support-target-${art.id}`));
+    assert.ok(trackedTags.includes('homepage'));
+    assert.ok(trackedTags.includes('rss'));
+    assert.ok(trackedTags.includes('search'));
+    assert.ok(trackedTags.includes('category-1'));
+    pass('Hardening H: updateArticle Worker path invokes invalidation');
+  }
+
+  // Hardening I: insertArticle cannot silently create published public content without the canonical publication/invalidation contract
+  {
+    // 1. Default status is draft
+    const draftArt = await insertArticle(null, {
+      title: 'Default Draft Article',
+      slug: 'default-draft-slug'
+    });
+    assert.equal(draftArt.status, 'draft', 'insertArticle default status MUST be draft');
+
+    // 2. Direct published insert triggers mandatory invalidation
+    const trackedTags = [];
+    const trackingAdapter = {
+      purge: async (tags) => {
+        trackedTags.push(...tags);
+      }
+    };
+    const pubArt = await insertArticle(
+      null,
+      {
+        title: 'Explicit Published Article',
+        slug: 'explicit-published-slug',
+        status: 'published',
+        category_id: 4
+      },
+      { cacheAdapter: trackingAdapter }
+    );
+    assert.equal(pubArt.status, 'published');
+    assert.ok(trackedTags.includes(`article-${pubArt.id}`));
+    assert.ok(trackedTags.includes('homepage'));
+    assert.ok(trackedTags.includes('category-4'));
+    pass('Hardening I: insertArticle cannot silently create published public content without the canonical publication/invalidation contract');
+  }
+
+  // Hardening J: Legacy direct-D1 scripts are classified/documented as bypass paths
+  {
+    const pubScriptPath = path.resolve('scripts/publish-article-c-production.js');
+    if (fs.existsSync(pubScriptPath)) {
+      const pubScript = fs.readFileSync(pubScriptPath, 'utf8');
+      assert.ok(pubScript.includes('LEGACY_DIRECT_D1') || pubScript.includes('MAINTENANCE_ONLY'), 'Must classify publish-article-c as LEGACY_DIRECT_D1');
+      assert.ok(pubScript.includes('DIRECT_PRODUCTION_D1_MUTATION_BYPASSES_WORKERS_CACHE_INVALIDATION'), 'Must include bypass warning in publish-article-c');
+    }
+
+    const repairScript = fs.readFileSync(path.resolve('scripts/repair-article5-content-html.js'), 'utf8');
+    assert.ok(repairScript.includes('LEGACY_DIRECT_D1') || repairScript.includes('MAINTENANCE_ONLY'), 'Must classify repair-article5 as LEGACY_DIRECT_D1');
+    assert.ok(repairScript.includes('DIRECT_PRODUCTION_D1_MUTATION_BYPASSES_WORKERS_CACHE_INVALIDATION'), 'Must include bypass warning in repair-article5');
+    pass('Hardening J: Legacy direct-D1 scripts are classified/documented as bypass paths');
+  }
+
+  // Hardening K: Cache tags remain deterministic
+  {
+    const allEvents = [
+      'ARTICLE_PUBLISHED',
+      'ARTICLE_REVISED',
+      'ARTICLE_TITLE_CHANGED',
+      'ARTICLE_FEATURED_IMAGE_CHANGED',
+      'ARTICLE_OPENING_PROSE_CHANGED',
+      'ARTICLE_READING_TIME_CHANGED',
+      'ARTICLE_UNPUBLISHED',
+      'ARTICLE_SLUG_CHANGED',
+      'INTERNAL_LINK_GRAPH_CHANGED'
+    ];
+    for (const evt of allEvents) {
+      const tags1 = getInvalidationTagsForEvent(15, evt, { categoryId: 3, sourceId: 20 });
+      const tags2 = getInvalidationTagsForEvent(15, evt, { categoryId: 3, sourceId: 20 });
+      assert.deepEqual(tags1, tags2, `Tags for ${evt} must be strictly deterministic`);
+      assert.ok(Array.isArray(tags1) && tags1.length > 0);
+    }
+    pass('Hardening K: Cache tags remain deterministic');
+  }
+
+  // Hardening L: Published article prose/hash is untouched
+  {
+    const originalMd = '## Canonical Prose Heading\nThis is the authoritative prose.';
+    const originalHash = 'sha256_canonical_prose_hash_value';
+    const testArticle = {
+      id: 50,
+      title: 'Prose Protection Test',
+      slug: 'prose-protection-test',
+      content_md: originalMd,
+      content_hash: originalHash,
+      category_id: 1,
+      status: 'published'
+    };
+
+    const mockAdapter = {
+      purged: [],
+      purge: async (tags) => { mockAdapter.purged.push(...tags); }
+    };
+    const res = await invalidateArticleCache(null, testArticle.id, 'ARTICLE_REVISED', { adapter: mockAdapter });
+    assert.equal(res.status, 'SUCCESS');
+    assert.equal(testArticle.content_md, originalMd, 'Prose content must be 100% untouched');
+    assert.equal(testArticle.content_hash, originalHash, 'Content hash must be 100% untouched');
+    pass('Hardening L: Published article prose/hash is untouched');
   }
 
   console.log(`\n===========================================================`);

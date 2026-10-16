@@ -23,7 +23,7 @@ import {
 import { isPubliclyDiscoverable, QUARANTINE_REGISTRY } from './quarantine.ts';
 export { isPubliclyDiscoverable, isIndexableArticle, getQuarantineState } from './quarantine.ts';
 import { renderArticleMarkdownSafely, sanitizeArticleHtml } from './article/renderer.ts';
-import { invalidateArticleCache } from './cache/index.ts';
+import { invalidateArticleCache, type CachePurgeAdapter } from './cache/index.ts';
 
 export interface Article {
   id: number;
@@ -1521,7 +1521,11 @@ export async function resolveAndValidateContentHtml(
   return sanitizeArticleHtml(htmlStr);
 }
 
-export async function insertArticle(db: any, article: Partial<Article>): Promise<Article> {
+export async function insertArticle(
+  db: any,
+  article: Partial<Article>,
+  options: { ctx?: any; cacheAdapter?: CachePurgeAdapter } = {}
+): Promise<Article> {
   const slug = article.slug || `article-${Date.now()}`;
   const title = article.title || 'Untitled';
   const description = article.description || '';
@@ -1531,7 +1535,8 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
   const image_alt = article.image_alt || article.title || '';
   const category_id = article.category_id || 1;
   const author_id = article.author_id || 1;
-  const status = article.status || 'published';
+  // CANONICAL INVARIANT: New articles enter as draft by default
+  const status = article.status || 'draft';
   const reading_time_minutes = article.reading_time_minutes || 3;
   const key_takeaways = article.key_takeaways || '[]';
   const focus_keyword = article.focus_keyword || '';
@@ -1640,6 +1645,48 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
       throw new DatabaseWriteError(`Artikel dengan ID ${insertedId} tidak dapat diverifikasi setelah INSERT.`);
     }
 
+    // Content Protection 1A: If inserted directly as 'published', trigger mandatory cache invalidation
+    if (status === 'published') {
+      console.warn(
+        JSON.stringify({
+          event: 'DIRECT_PUBLISHED_INSERT_TRIGGERED',
+          article_id: insertedId,
+          slug,
+          message: 'Article inserted directly as published; triggering mandatory Workers Cache invalidation.',
+          timestamp: new Date().toISOString()
+        })
+      );
+      try {
+        const invRes = await invalidateArticleCache(db, insertedId, 'ARTICLE_PUBLISHED', {
+          categoryId: persisted.category_id,
+          ctx: options?.ctx,
+          adapter: options?.cacheAdapter
+        });
+        if (invRes.status !== 'SUCCESS') {
+          console.warn(
+            JSON.stringify({
+              event: invRes.status,
+              article_id: insertedId,
+              invalidation_event: 'ARTICLE_PUBLISHED',
+              error: invRes.error,
+              tags: invRes.tags,
+              timestamp: new Date().toISOString()
+            })
+          );
+        }
+      } catch (cacheErr: any) {
+        console.error(
+          JSON.stringify({
+            event: 'CACHE_INVALIDATION_FAILED',
+            article_id: insertedId,
+            invalidation_event: 'ARTICLE_PUBLISHED',
+            error: cacheErr?.message || String(cacheErr),
+            timestamp: new Date().toISOString()
+          })
+        );
+      }
+    }
+
     return persisted;
   }
 
@@ -1676,10 +1723,28 @@ export async function insertArticle(db: any, article: Partial<Article>): Promise
   };
 
   inMemoryArticles.unshift(fullArticle);
+
+  if (status === 'published') {
+    try {
+      await invalidateArticleCache(null, fullArticle.id, 'ARTICLE_PUBLISHED', {
+        categoryId: fullArticle.category_id,
+        ctx: options?.ctx,
+        adapter: options?.cacheAdapter
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+
   return fullArticle;
 }
 
-export async function updateArticle(db: any, id: number, article: Partial<Article>): Promise<Article> {
+export async function updateArticle(
+  db: any,
+  id: number,
+  article: Partial<Article>,
+  options: { ctx?: any; cacheAdapter?: CachePurgeAdapter } = {}
+): Promise<Article> {
   // If content_html was passed as a Promise, await it
   let rawContentHtml = article.content_html;
   if (rawContentHtml && typeof (rawContentHtml as any).then === 'function') {
@@ -1883,13 +1948,29 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
       } else if (existing.reading_time_minutes !== updated.reading_time_minutes) {
         eventType = 'ARTICLE_READING_TIME_CHANGED';
       }
-      await invalidateArticleCache(db, id, eventType, { categoryId: updated.category_id });
-    } catch (cacheErr) {
+      const invRes = await invalidateArticleCache(db, id, eventType, {
+        categoryId: updated.category_id,
+        ctx: options?.ctx,
+        adapter: options?.cacheAdapter
+      });
+      if (invRes.status !== 'SUCCESS') {
+        console.warn(
+          JSON.stringify({
+            event: invRes.status,
+            article_id: id,
+            invalidation_event: eventType,
+            error: invRes.error,
+            tags: invRes.tags,
+            timestamp: new Date().toISOString()
+          })
+        );
+      }
+    } catch (cacheErr: any) {
       console.error(
         JSON.stringify({
           event: 'CACHE_INVALIDATION_FAILED',
           article_id: id,
-          error: (cacheErr as any)?.message || String(cacheErr),
+          error: cacheErr?.message || String(cacheErr),
           timestamp: new Date().toISOString()
         })
       );
@@ -1935,6 +2016,30 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
   };
 
   inMemoryArticles[idx] = updatedArticle;
+
+  // Invalidate in-memory if adapter or ctx provided
+  try {
+    let eventType: 'ARTICLE_UNPUBLISHED' | 'ARTICLE_SLUG_CHANGED' | 'ARTICLE_TITLE_CHANGED' | 'ARTICLE_FEATURED_IMAGE_CHANGED' | 'ARTICLE_READING_TIME_CHANGED' | 'ARTICLE_REVISED' = 'ARTICLE_REVISED';
+    if (existingMem.status === 'published' && updatedArticle.status !== 'published') {
+      eventType = 'ARTICLE_UNPUBLISHED';
+    } else if (existingMem.slug !== updatedArticle.slug) {
+      eventType = 'ARTICLE_SLUG_CHANGED';
+    } else if (existingMem.title !== updatedArticle.title) {
+      eventType = 'ARTICLE_TITLE_CHANGED';
+    } else if (existingMem.featured_image !== updatedArticle.featured_image) {
+      eventType = 'ARTICLE_FEATURED_IMAGE_CHANGED';
+    } else if (existingMem.reading_time_minutes !== updatedArticle.reading_time_minutes) {
+      eventType = 'ARTICLE_READING_TIME_CHANGED';
+    }
+    await invalidateArticleCache(null, id, eventType, {
+      categoryId: updatedArticle.category_id,
+      ctx: options?.ctx,
+      adapter: options?.cacheAdapter
+    });
+  } catch {
+    // Non-fatal
+  }
+
   return updatedArticle;
 }
 

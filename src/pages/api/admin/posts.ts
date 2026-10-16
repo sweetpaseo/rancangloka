@@ -39,6 +39,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       }
     }
 
+    const ctx = (locals as any)?.runtime?.ctx || (locals as any)?.ctx;
     const article = await insertArticle(db, {
       title,
       slug,
@@ -58,7 +59,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       is_trending: body.is_trending ? 1 : 0,
       is_sponsored: body.is_sponsored ? 1 : 0,
       disable_internal_links: body.disable_internal_links ? 1 : (body.is_sponsored ? 1 : 0)
-    });
+    }, { ctx });
 
     return new Response(JSON.stringify({ status: 'success', article }), { status: 200 });
   } catch (err: any) {
@@ -98,7 +99,8 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     if (body.is_sponsored !== undefined) updates.is_sponsored = body.is_sponsored ? 1 : 0;
     if (body.disable_internal_links !== undefined) updates.disable_internal_links = body.disable_internal_links ? 1 : 0;
 
-    const article = await updateArticle(db, id, updates);
+    const ctx = (locals as any)?.runtime?.ctx || (locals as any)?.ctx;
+    const article = await updateArticle(db, id, updates, { ctx });
     return new Response(JSON.stringify({ status: 'success', article }), { status: 200 });
   } catch (err: any) {
     return new Response(JSON.stringify({ status: 'error', message: err.message }), { status: 500 });

@@ -69,7 +69,7 @@ import {
   buildCanonicalPublicationPreflightState,
   computeCanonicalPreflightHash
 } from '../decision/publication-preflight-state.ts';
-import { invalidateArticleCache } from '../cache/index.ts';
+import { invalidateArticleCache, type CachePurgeAdapter } from '../cache/index.ts';
 
 export {
   resolvePublicationAuthorization,
@@ -534,7 +534,8 @@ export async function executeAtomicPublication(
   execution: PublicationExecutionRecord,
   articleSlug: string,
   attemptNumber: number = 1,
-  trustedServerTime?: string
+  trustedServerTime?: string,
+  options: { ctx?: any; cacheAdapter?: CachePurgeAdapter } = {}
 ): Promise<{ receiptId: string; actualPublishedAt: string; canonicalUrl: string }> {
   // Check if article is ALREADY published and receipt exists (Crash recovery / Idempotency)
   const existingReceipt = await db
@@ -705,16 +706,31 @@ export async function executeAtomicPublication(
   }
 
   // Content Protection 1A: Workers Cache targeted publication invalidation
-  // Invalidation failure is non-fatal to atomic publication
+  // Invalidation failure is non-fatal to atomic publication (Fail-Safe)
   try {
-    await invalidateArticleCache(db, execution.article_id, 'ARTICLE_PUBLISHED');
-  } catch (cacheErr) {
+    const invRes = await invalidateArticleCache(db, execution.article_id, 'ARTICLE_PUBLISHED', {
+      ctx: options?.ctx,
+      adapter: options?.cacheAdapter
+    });
+    if (invRes.status !== 'SUCCESS') {
+      console.warn(
+        JSON.stringify({
+          event: invRes.status,
+          article_id: execution.article_id,
+          invalidation_event: 'ARTICLE_PUBLISHED',
+          error: invRes.error,
+          tags: invRes.tags,
+          timestamp: new Date().toISOString()
+        })
+      );
+    }
+  } catch (cacheErr: any) {
     console.error(
       JSON.stringify({
         event: 'CACHE_INVALIDATION_FAILED',
         article_id: execution.article_id,
         invalidation_event: 'ARTICLE_PUBLISHED',
-        error: (cacheErr as any)?.message || String(cacheErr),
+        error: cacheErr?.message || String(cacheErr),
         timestamp: new Date().toISOString()
       })
     );
@@ -731,7 +747,8 @@ export async function processSingleExecution(
   db: any,
   execution: PublicationExecutionRecord,
   workerId: string,
-  nowUtc?: string
+  nowUtc?: string,
+  options: { ctx?: any; cacheAdapter?: CachePurgeAdapter } = {}
 ): Promise<ExecutionDispatchResult> {
   const startTime = Date.now();
   const attemptNumber = execution.attempts_count + 1;
@@ -877,7 +894,8 @@ export async function processSingleExecution(
       execution,
       gateResult.article!.slug,
       attemptNumber,
-      nowUtc
+      nowUtc,
+      options
     );
 
     const durationMs = Date.now() - startTime;
@@ -1049,6 +1067,8 @@ export async function runPublisherDispatcher(
     workerId?: string;
     nowUtc?: string;
     limit?: number;
+    ctx?: any;
+    cacheAdapter?: CachePurgeAdapter;
   } = {}
 ): Promise<DispatchRunResult> {
   const startTime = Date.now();
@@ -1180,7 +1200,10 @@ export async function runPublisherDispatcher(
   let claimedCount = 0;
 
   for (const execution of due) {
-    const res = await processSingleExecution(db, execution, workerId, options.nowUtc);
+    const res = await processSingleExecution(db, execution, workerId, options.nowUtc, {
+      ctx: options.ctx,
+      cacheAdapter: options.cacheAdapter
+    });
     results.push(res);
 
     if (res.outcome !== 'SKIPPED') {
@@ -1243,7 +1266,8 @@ export async function publishNow(
   db: any,
   planOrExecutionId: string,
   actor: string = 'operator',
-  nowUtc?: string
+  nowUtc?: string,
+  options: { ctx?: any; cacheAdapter?: CachePurgeAdapter } = {}
 ): Promise<ExecutionDispatchResult> {
   // SOAK-0 Emergency Kill Switch Check
   let autoControl;
@@ -1320,7 +1344,7 @@ export async function publishNow(
   }
 
   const workerId = `manual_${actor}_${getRandomHex(4)}`;
-  return processSingleExecution(db, execution, workerId, nowUtc);
+  return processSingleExecution(db, execution, workerId, nowUtc, options);
 }
 
 /**

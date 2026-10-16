@@ -1,6 +1,13 @@
 /**
  * Safe Article 5 Derivative Content HTML Repair Script
  * Milestone: ARTICLE-CONTENT-PERSISTENCE-1
+ * Classification: LEGACY_DIRECT_D1 / MAINTENANCE_ONLY
+ *
+ * ⚠️ WARNING: DIRECT_PRODUCTION_D1_MUTATION_BYPASSES_WORKERS_CACHE_INVALIDATION
+ * Normal production publication or content repair must proceed via the canonical Worker runtime publication pipeline.
+ * Direct D1 execution via wrangler d1 execute --remote bypasses the Cloudflare Worker runtime
+ * and does NOT trigger Workers Cache invalidation. If run in production with active Workers Cache,
+ * an explicit supported cache invalidation procedure must be executed separately.
  *
  * Regenerates Article 5 content_html from canonical approved content_md in Cloudflare D1.
  *
@@ -42,7 +49,8 @@ const CANONICAL_PUBLISHED_AT = '2026-09-28T06:10:39.816Z';
 const CANONICAL_FEATURED_ASSET = 'ast_mfUpgVe99C_bq_p2d_O4Ge4L';
 
 async function main() {
-  console.log('=== SAFE ARTICLE 5 DERIVATIVE REPAIR ===\n');
+  console.log('=== SAFE ARTICLE 5 DERIVATIVE REPAIR ===');
+  console.log('⚠️ WARNING: DIRECT_PRODUCTION_D1_MUTATION_BYPASSES_WORKERS_CACHE_INVALIDATION\n');
 
   // 1. Load canonical Article 5 fixture
   const fixturePath = path.resolve(process.cwd(), 'scripts/fixtures/article5_canonical.json');

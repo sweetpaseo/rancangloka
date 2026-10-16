@@ -174,68 +174,145 @@ export async function queryPlaneASourceArticles(
   }
 }
 
+export type CacheInvalidationStatus =
+  | 'SUCCESS'
+  | 'CACHE_API_UNAVAILABLE'
+  | 'CACHE_INVALIDATION_FAILED';
+
+export interface CachePurgeAdapter {
+  purge(tags: string[]): Promise<void>;
+}
+
+export interface CachePurgeResult {
+  status: CacheInvalidationStatus;
+  tags: string[];
+  error?: string;
+}
+
 /**
  * 4. Safe Workers Cache purge implementation.
  * Uses selector object { tags: [...] } compliant with Cloudflare Workers Cache API.
- * Never throws into caller; logs structured error if invalidation fails.
+ * Never throws into caller; logs structured error/warning if invalidation fails or is unavailable.
+ *
+ * Priority of execution:
+ * 1. Injected CachePurgeAdapter (preferred for explicit dependency injection / tests)
+ * 2. ctx.cache.purge({ tags }) (when ExecutionContext is passed)
+ * 3. cache.purge({ tags }) from 'cloudflare:workers' (production Workers runtime)
+ * 4. CACHE_API_UNAVAILABLE (explicit observable failure when running outside Workers runtime without adapter)
  */
 export async function purgeCacheTags(
   tags: string[],
-  options: { ctx?: any } = {}
-): Promise<boolean> {
+  options: { ctx?: any; adapter?: CachePurgeAdapter } = {}
+): Promise<CachePurgeResult> {
   if (!tags || tags.length === 0) {
-    return true;
+    return { status: 'SUCCESS', tags: [] };
   }
 
-  try {
-    // A. Check if ExecutionContext cache purge is available
-    if (options.ctx?.cache && typeof options.ctx.cache.purge === 'function') {
-      await options.ctx.cache.purge({ tags });
-      return true;
-    }
-
-    // B. Check if cloudflare:workers cache module is available in Workers runtime
-    let cloudflareCache: any = null;
+  // A. Check if explicit CachePurgeAdapter is injected (Dependency Injection)
+  if (options.adapter && typeof options.adapter.purge === 'function') {
     try {
-      // Dynamic import to avoid breaking Node.js test runners
-      // @ts-ignore
-      const cfMod = await import('cloudflare:workers');
-      cloudflareCache = cfMod?.cache;
-    } catch {
-      // Environment does not support cloudflare:workers (e.g. local Node test runner)
+      await options.adapter.purge(tags);
+      return { status: 'SUCCESS', tags };
+    } catch (err: any) {
+      const error = err?.message || String(err);
+      console.error(
+        JSON.stringify({
+          event: 'CACHE_INVALIDATION_FAILED',
+          tags,
+          adapter: 'injected_adapter',
+          error,
+          timestamp: new Date().toISOString()
+        })
+      );
+      return { status: 'CACHE_INVALIDATION_FAILED', tags, error };
     }
-
-    if (cloudflareCache && typeof cloudflareCache.purge === 'function') {
-      await cloudflareCache.purge({ tags });
-      return true;
-    }
-
-    // C. Non-Worker environment fallback (local simulation / tests)
-    return true;
-  } catch (err: any) {
-    console.error(
-      JSON.stringify({
-        event: 'CACHE_INVALIDATION_FAILED',
-        tags,
-        error: err?.message || String(err),
-        timestamp: new Date().toISOString()
-      })
-    );
-    return false;
   }
+
+  // B. Check if ExecutionContext cache purge is available
+  if (options.ctx?.cache && typeof options.ctx.cache.purge === 'function') {
+    try {
+      await options.ctx.cache.purge({ tags });
+      return { status: 'SUCCESS', tags };
+    } catch (err: any) {
+      const error = err?.message || String(err);
+      console.error(
+        JSON.stringify({
+          event: 'CACHE_INVALIDATION_FAILED',
+          tags,
+          adapter: 'ctx.cache',
+          error,
+          timestamp: new Date().toISOString()
+        })
+      );
+      return { status: 'CACHE_INVALIDATION_FAILED', tags, error };
+    }
+  }
+
+  // C. Check if cloudflare:workers cache module is available in Workers runtime
+  let cloudflareCache: any = null;
+  try {
+    // Dynamic import to avoid breaking Node.js test runners
+    // @ts-ignore
+    const cfMod = await import('cloudflare:workers');
+    cloudflareCache = cfMod?.cache;
+  } catch {
+    // Environment does not support cloudflare:workers (e.g. local Node runtime)
+  }
+
+  if (cloudflareCache && typeof cloudflareCache.purge === 'function') {
+    try {
+      await cloudflareCache.purge({ tags });
+      return { status: 'SUCCESS', tags };
+    } catch (err: any) {
+      const error = err?.message || String(err);
+      console.error(
+        JSON.stringify({
+          event: 'CACHE_INVALIDATION_FAILED',
+          tags,
+          adapter: 'cloudflare:workers',
+          error,
+          timestamp: new Date().toISOString()
+        })
+      );
+      return { status: 'CACHE_INVALIDATION_FAILED', tags, error };
+    }
+  }
+
+  // D. Explicit Observable Failure: Workers Cache API is NOT available
+  // CANONICAL INVARIANT: DO NOT silently report success outside Workers runtime without mock adapter
+  const errorMsg = 'Workers Cache API (cloudflare:workers or ctx.cache) is unavailable in current runtime';
+  console.warn(
+    JSON.stringify({
+      event: 'CACHE_API_UNAVAILABLE',
+      tags,
+      error: errorMsg,
+      timestamp: new Date().toISOString()
+    })
+  );
+
+  return {
+    status: 'CACHE_API_UNAVAILABLE',
+    tags,
+    error: errorMsg
+  };
 }
 
 /**
  * 5. High-level publication cache invalidator.
  * Queries metadata if needed, calculates deterministic tags, and purges.
- * Invalidation failure never fails the underlying publication operation.
+ * Invalidation failure never fails the underlying publication operation (Fail-Safe).
  */
 export async function invalidateArticleCache(
   db: any,
   articleId: number,
   eventType: InvalidationEventType,
-  options: { categoryId?: number | null; sourceId?: number; ctx?: any } = {}
-): Promise<{ success: boolean; tags: string[] }> {
+  options: {
+    categoryId?: number | null;
+    sourceId?: number;
+    ctx?: any;
+    adapter?: CachePurgeAdapter;
+  } = {}
+): Promise<{ success: boolean; status: CacheInvalidationStatus; tags: string[]; error?: string }> {
   let categoryId = options.categoryId;
 
   // Resolve category if not supplied
@@ -256,6 +333,16 @@ export async function invalidateArticleCache(
     sourceId: options.sourceId
   });
 
-  const success = await purgeCacheTags(tags, { ctx: options.ctx });
-  return { success, tags };
+  const purgeRes = await purgeCacheTags(tags, {
+    ctx: options.ctx,
+    adapter: options.adapter
+  });
+
+  const success = purgeRes.status === 'SUCCESS';
+  return {
+    success,
+    status: purgeRes.status,
+    tags,
+    error: purgeRes.error
+  };
 }
