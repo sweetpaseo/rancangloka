@@ -36,11 +36,11 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
      - Komponen sidik jari:
        - Normalisasi Markdown kanonikal (whitespace collapse, CRLF -> LF, casing preserved).
        - Hash blok paragraf deterministik (SHA-256 tiap blok naskah non-kosong).
-       - MinHash 64-dimensi berbasis MurmurHash3 32-bit dengan 64 seed deterministik independen untuk deteksi kemiripan Jaccard $k$-shingle ($k=5$).
+       - MinHash 64-dimensi: 4-word token shingles -> SHA-256 (8-byte big-endian BigInt) mod (2^61 - 1) -> 64 fungsi hash afin terversi deterministik ((a_i * x + b_i) mod p) -> nilai minimum tiap komponen tersimpan sebagai 64 string heksadesimal lowercase fixed-width.
        - Structural tag signature (representasi sekuensial tag Markdown `#`, `##`, `###`, `p`, `ul`, `ol`, `blockquote`, dll).
        - Zero pHash, zero SimHash, zero rare-phrases (sesuai batasan skop 1B).
-  4. *Penguncian 14 Golden Vectors:*
-     - Menulis [scripts/test-publication-dna.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna.js) dengan 112 assertions mengunci secara harfiah 14 vektor emas (exact string hash, block count, MinHash vectors, dan structural tag signatures) untuk mencegah pergeseran algoritma di masa mendatang.
+  4. *Penguncian Golden Vector Fixtures & Suite Pengujian Core:*
+     - Menulis [scripts/test-publication-dna.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna.js) dengan 112 assertions yang mengunci secara harfiah 2 fixture golden sintetis beku (canonical hash, normalized hash, semantic blocks JSON, full 64-component MinHash, dan structural signature JSON) serta kasus batas deterministik untuk mencegah pergeseran algoritma di masa mendatang.
   5. *Dual Content Hash Contracts & Grandfathering:*
      - Mengakui perbedaan historis: Artikel 5 & 6 menggunakan `LEGACY_CONTENT_HASH_V0` (`legacy-normalized-sha256-v0`), sedangkan Artikel 7, 8, 9 dan seluruh publikasi baru menggunakan `CONTENT_HASH_CONTRACT_MARKDOWN_V1` (`canonical-markdown-sha256-v1`).
      - Menyediakan parser dan validator eksplisit pada `publication-dna.ts`.
@@ -61,8 +61,8 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
      - Penjadwalan `ctx.waitUntil(...)` pada Cloudflare Workers dengan penanganan kesalahan lengkap, dan `await` eksplisit pada pengujian lokal/Node CLI untuk mencegah *dangling unhandled promises*.
      - Invarian Kegagalan: `PUBLICATION_SUCCEEDS_DNA_PENDING`. Kegagalan DNA berjalan pasca-komit dan tidak pernah membatalkan publikasi, membatalkan tanda terima, atau mengubah status artikel.
      - Independensi Purge Cache: DNA materialization dan Workers cache invalidation (`invalidateArticleCache`) berjalan secara independen tanpa saling memblokir.
-  8. *Suite Pengujian Integrasi:*
-     - Menulis [scripts/test-publication-dna-integration.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna-integration.js) (14 pengujian komprehensif, 6 suite) yang memvalidasi seluruh matriks idempotensi, konflik, mismatch hash/provenance, kontrak `waitUntil`, atomisitas transaksi, isolasi race snapshot, dan kelengkapan 26 kolom forensik.
+  8. *Suite Pengujian Integrasi 1B-B:*
+     - Menulis [scripts/test-publication-dna-integration.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna-integration.js) (14 pengujian integrasi komprehensif pada 6 suite) yang memvalidasi seluruh matriks idempotensi, konflik versi, mismatch hash/provenance, kontrak `waitUntil`, atomisitas transaksi, isolasi race snapshot, dan kelengkapan 26 kolom forensik.
   9. *Verifikasi Keselamatan Produksi:*
      - D1 Remote Mutation: 0 (Zero).
      - R2 Remote Mutation: 0 (Zero).

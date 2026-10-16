@@ -88,11 +88,11 @@ Sesi rekayasa hari ini berhasil menyelesaikan seluruh target besar pada domain p
   - 4 pilar sidik jari kanonikal:
     1. Normalisasi Markdown Kanonikal (CRLF $\to$ LF, collapse spasi berlebih, preserved case).
     2. Hash Blok Paragraf (array SHA-256 tiap blok non-kosong).
-    3. MinHash 64-dimensi (MurmurHash3 32-bit dengan 64 seed deterministik independen untuk estimasi kemiripan Jaccard $k$-shingle pada $k=5$).
+    3. MinHash 64-dimensi: 4-word token shingles $\to$ SHA-256 (8-byte big-endian BigInt) mod $(2^{61} - 1)$ $\to$ 64 fungsi hash afin terversi deterministik $((a_i \cdot x + b_i) \pmod p)$ $\to$ nilai minimum tiap komponen $\to$ 64 string heksadesimal lowercase fixed-width.
     4. Structural Tag Signature (urutan penanda struktur Markdown: `#`, `##`, `p`, `ul`, `blockquote`, dsb).
   - Batasan Skop Terpenuhi: Zero pHash, zero SimHash, zero rare-phrases.
-- **14 Golden Vectors Terkunci:**
-  - Suite pengujian [scripts/test-publication-dna.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna.js) (112 assertions) mengunci nilai harfiah hash, vektor MinHash, dan structural signatures untuk mencegah degradasi algoritma di masa depan.
+- **Penguncian 2 Golden Vector Fixtures Beku:**
+  - Suite pengujian [scripts/test-publication-dna.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna.js) (112 assertions) mengunci secara harfiah 2 fixture golden sintetis beku (canonical hash, normalized hash, semantic blocks JSON, full 64-component MinHash, dan structural signature JSON) serta kasus batas deterministik untuk mencegah degradasi algoritma di masa depan.
 - **Grandfathering Kontrak Hash Konten:**
   - Artikel 5 & 6 diakui menggunakan kontrak historis `LEGACY_CONTENT_HASH_V0` (`legacy-normalized-sha256-v0`).
   - Artikel 7, 8, 9 dan seluruh artikel rilis baru menggunakan `CONTENT_HASH_CONTRACT_MARKDOWN_V1` (`canonical-markdown-sha256-v1`).
@@ -117,8 +117,8 @@ Sesi rekayasa hari ini berhasil menyelesaikan seluruh target besar pada domain p
   - Runtime Lokal/Node CLI: Promise di-`await` secara eksplisit untuk mencegah *unhandled dangling promises*.
   - Invarian Kegagalan: `PUBLICATION_SUCCEEDS_DNA_PENDING`. Kegagalan materialisasi DNA tidak pernah membatalkan publikasi artikel, tidak membatalkan tanda terima, dan tidak mengubah status penerbitan.
   - Independensi Purge Cache: Operasi purge Workers Cache (`invalidateArticleCache`) dan penjadwalan DNA berjalan secara independen pasca-komit tanpa saling menghalangi.
-- **Suite Pengujian Integrasi:**
-  - Berkas: [scripts/test-publication-dna-integration.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna-integration.js) (14 pengujian komprehensif, 6 suite) yang memverifikasi seluruh matriks idempotensi, konflik, kegagalan database, atomisitas transaksi, isolasi race snapshot, dan kelengkapan 26 kolom forensik.
+- **Suite Pengujian Integrasi 1B-B:**
+  - Berkas: [scripts/test-publication-dna-integration.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna-integration.js) (14 pengujian integrasi terarah, 6 suite) yang memverifikasi seluruh matriks idempotensi, konflik versi, kegagalan database, atomisitas transaksi, isolasi race snapshot, dan kelengkapan 26 kolom forensik.
 
 ---
 
@@ -147,8 +147,8 @@ Sesi rekayasa hari ini berhasil menyelesaikan seluruh target besar pada domain p
 ## 3. Matriks Hasil Pengujian & Verifikasi
 
 1. **Test Suite CONTENT_PROTECTION-1B:**
-   - `node scripts/test-publication-dna.js`: **112 PASSED, 0 FAILED** (Pure deterministic fingerprint & 14 golden vectors)
-   - `node scripts/test-publication-dna-integration.js`: **14 PASSED, 0 FAILED** (Materializer, idempotency, race-safety, waitUntil)
+   - `node scripts/test-publication-dna.js`: **112 PASSED, 0 FAILED** (Pure deterministic fingerprint, 2 frozen golden fixtures, boundary cases)
+   - `node scripts/test-publication-dna-integration.js`: **14 PASSED, 0 FAILED** (14 integration tests: materializer, idempotency, race-safety, waitUntil)
 2. **Test Suite CONTENT_PROTECTION-1A:**
    - `node scripts/test-content-protection-cache.js`: **24 PASSED, 0 FAILED** (Edge caching & selective purge)
 3. **Test Suite Regresi Ekosistem:**
@@ -157,7 +157,7 @@ Sesi rekayasa hari ini berhasil menyelesaikan seluruh target besar pada domain p
    - `node scripts/test-soak-safety.js`: **54 PASSED, 0 FAILED** (Safety envelopes & circuit breaker)
    - `node scripts/test-internal-link-engine.js`: **29 PASSED, 0 FAILED** (Semantic link graph)
    - `node scripts/test-mission-control-liveops.js`: **78 PASSED, 0 FAILED** (Operator liveops & staff registry)
-   - **Total Pengujian Otomatis Lolos:** **426 PASSED, 0 FAILED**
+   - **LATEST VERIFIED AGGREGATE:** **426 passing automated checks across the relevant validated suites** (berdasarkan riwayat pengujian tervalidasi pada penutupan milestone terkait; tidak dijalankan ulang penuh saat pembaruan dokumentasi ini)
 4. **Pemeriksaan Kompilasi & Build:**
    - `npx tsc --noEmit`: **0 ERRORS**
    - `npm run build`: **SUKSES (6.57s, 250 assets)**
