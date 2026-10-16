@@ -64,6 +64,7 @@ const getIconClass = (path: string) => {
 const breadcrumbMap: Record<string, string[]> = {
   '/admin': ['Ringkasan'],
   '/admin/approvals': ['Ringkasan & Kontrol', 'Persetujuan Redaksi'],
+  '/admin/decisions': ['Ringkasan & Kontrol', 'Decision Engine'],
   '/admin/mission-control': ['Hermes Mission Control'],
   '/admin/mission-control/staff': ['Hermes Mission Control', 'Staff Registry'],
   '/admin/mission-control/departments': ['Hermes Mission Control', 'Departemen'],
@@ -97,6 +98,7 @@ const groups = [
     items: [
       { href: '/admin', label: 'Ringkasan', icon: 'grid' },
       { href: '/admin/approvals', label: 'Persetujuan', icon: 'check-square', badge: pendingApprovalCount },
+      { href: '/admin/decisions', label: 'Decision Engine', icon: 'command' },
       { href: '/admin/mission-control', label: 'Mission Control', icon: 'command' },
       { href: '/admin/mission-control/staff', label: 'Staff Registry', icon: 'people' },
       { href: '/admin/mission-control/departments', label: 'Departemen', icon: 'page' },

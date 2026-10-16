@@ -1,0 +1,844 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import {
+  DECISION_MODEL_PILOT_KUSEN,
+  ARTICLE_5_EVIDENCE_BASE
+} from '../../lib/product-decision/pilot-kusen.ts';
+import {
+  getCanonicalScenarioPresets,
+  parseDecisionContextFromParams,
+  runDecisionInspection,
+  FIT_LABELS_ID,
+  CLAIM_CLASS_LABELS_ID,
+  SOLUTION_LABELS_ID,
+  BUILDING_CONTEXT_OPTIONS,
+  CLIMATE_EXPOSURE_OPTIONS,
+  APPLICATION_LOCATION_OPTIONS,
+  BUDGET_CLASS_OPTIONS,
+  MAINTENANCE_TOLERANCE_OPTIONS,
+  COMFORT_PRIORITY_OPTIONS,
+  BUILD_PHASE_OPTIONS
+} from '../../lib/product-decision/admin-inspector.ts';
+
+// Cache & Privacy Defense-in-Depth
+Astro.response.headers.set('Cache-Control', 'no-store, private');
+Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+// Parse Context & Invariants: Presets populate context parameters only
+const { context, selectedScenarioId, evidenceMode } = parseDecisionContextFromParams(Astro.url.searchParams);
+const presets = getCanonicalScenarioPresets();
+
+// Execute pure deterministic evaluator
+const result = runDecisionInspection(context, evidenceMode, DECISION_MODEL_PILOT_KUSEN);
+
+// Helper for solution Indonesian labels
+const getSolutionName = (id?: string) => {
+  if (!id) return '-';
+  return SOLUTION_LABELS_ID[id] || id;
+};
+
+// Evidence freshness description
+const freshnessStatusMap = {
+  current: {
+    status: 'CURRENT',
+    label: 'Valid & Termutakhir (CURRENT)',
+    badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    description: 'Naskah Artikel 5 terverifikasi identik dengan kalibrasi snapshot bukti model.'
+  },
+  drift: {
+    status: 'NEEDS_RECALIBRATION',
+    label: 'Perlu Rekalibrasi (NEEDS_RECALIBRATION)',
+    badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
+    description: 'Naskah Artikel 5 mengalami perubahan sejak kalibrasi snapshot. Evaluasi diblokir demi integritas editorial.'
+  },
+  unavailable: {
+    status: 'EVIDENCE_UNAVAILABLE',
+    label: 'Bukti Tidak Tersedia (EVIDENCE_UNAVAILABLE)',
+    badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
+    description: 'Data bukti publikasi rujukan tidak ditemukan dalam sistem. Evaluasi diblokir.'
+  }
+};
+const activeFreshness = freshnessStatusMap[evidenceMode];
+---
+
+<AdminLayout title="Product Decision Inspector">
+  <div class="max-w-[1520px] mx-auto space-y-6">
+
+    <!-- Top Header & Capabilities Banner -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-md bg-[#0066ee]/10 text-[#0066ee] font-mono text-[10px] font-bold uppercase tracking-wider">
+            PRODUCT DECISION ENGINE (PDE-1C)
+          </span>
+          <span class="text-slate-300">•</span>
+          <span class="text-xs font-mono text-slate-500">Inspektor Keputusan Editorial Redaksi</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-outfit font-black text-slate-900 tracking-tight mt-1">
+          Inspeksi Model Keputusan: Solusi Bangunan
+        </h1>
+        <p class="text-xs text-slate-500 mt-1 max-w-3xl">
+          Antarmuka internal redaksi untuk memverifikasi logika keputusan deterministik sebelum dirilis ke pembaca.
+          Prinsip Mission Control: pahami alasan mesin mengambil keputusan tanpa menebak-nebak.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <span class="text-[10px] font-mono text-slate-400 block uppercase">Mode Eksekusi</span>
+          <span class="text-xs font-mono font-bold text-emerald-600 flex items-center justify-end gap-1">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            PURE DETERMINISTIC RUNTIME
+          </span>
+        </div>
+        <a
+          href="/admin/decisions"
+          class="rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-2 text-xs font-outfit font-bold text-slate-700 transition shadow-2xs"
+        >
+          Reset Simulator
+        </a>
+      </div>
+    </div>
+
+    <!-- REGION A: DECISION MODEL SUMMARY -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">MODEL DEFINITION</span>
+          <h2 class="text-lg font-outfit font-bold text-slate-900 mt-0.5">
+            {DECISION_MODEL_PILOT_KUSEN.problem.title}
+          </h2>
+          <p class="text-xs text-slate-600 mt-1 max-w-3xl">
+            {DECISION_MODEL_PILOT_KUSEN.problem.description}
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-mono text-[11px] font-semibold">
+            Model: <strong class="text-slate-900">{DECISION_MODEL_PILOT_KUSEN.model_id}</strong> ({DECISION_MODEL_PILOT_KUSEN.model_version})
+          </span>
+          <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-mono text-[11px] font-semibold">
+            Kriteria: <strong class="text-slate-900">{DECISION_MODEL_PILOT_KUSEN.criteria_version}</strong>
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+        <div class="bg-slate-50/70 border border-slate-200/60 rounded-xl p-3.5">
+          <span class="text-[10px] font-mono text-slate-400 uppercase font-bold block mb-1">Kelas Solusi yang Dievaluasi</span>
+          <div class="space-y-1">
+            {DECISION_MODEL_PILOT_KUSEN.solution_classes.map(sol => (
+              <div class="flex items-center justify-between text-xs font-outfit">
+                <span class="font-bold text-slate-800">{sol.indonesian_label}</span>
+                <span class="font-mono text-[10px] text-slate-400">{sol.solution_id}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="bg-slate-50/70 border border-slate-200/60 rounded-xl p-3.5">
+          <span class="text-[10px] font-mono text-slate-400 uppercase font-bold block mb-1">Status Bukti Naskah Artikel 5</span>
+          <div class="flex items-center gap-2 mt-1">
+            <span class={`px-2 py-0.5 rounded text-[11px] font-mono font-bold border ${activeFreshness.badgeClass}`}>
+              {activeFreshness.status}
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1.5 leading-snug">
+            {activeFreshness.description}
+          </p>
+        </div>
+
+        <div class="bg-slate-50/70 border border-slate-200/60 rounded-xl p-3.5">
+          <span class="text-[10px] font-mono text-slate-400 uppercase font-bold block mb-1">Evidence Snapshot Hash (Canonical)</span>
+          <p class="font-mono text-[11px] text-slate-800 break-all select-all mt-1 bg-white p-1.5 rounded border border-slate-200">
+            {DECISION_MODEL_PILOT_KUSEN.evidence_snapshot_hash}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGION B: PILOT SCENARIO PRESETS & CONTEXT SIMULATOR -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-6">
+      <!-- Canonical Scenario Shortcuts -->
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-outfit font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <span>🎯 Skenario Uji Kanonikal (Preset Cepat)</span>
+            </h3>
+            <p class="text-[11px] text-slate-500 mt-0.5">
+              Klik preset untuk mengisi form parameter konteks.
+              <strong class="text-slate-700">Invarian:</strong> Preset HANYA mengisi input konteks; mesin tetap mengevaluasi kondisi secara murni tanpa tahu jawaban harapan (<code class="font-mono text-[10px] bg-slate-100 px-1 py-0.5 rounded">SCENARIO_PRESET_IS_CONTEXT_ONLY</code>).
+            </p>
+          </div>
+          <span class="text-[10px] font-mono text-slate-400 shrink-0">5 Skenario Tersedia</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+          {presets.map((preset, index) => {
+            const isSelected = selectedScenarioId === preset.scenario_id;
+            return (
+              <a
+                href={`/admin/decisions?scenario=${preset.scenario_id}&evidence_mode=${evidenceMode}`}
+                class={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
+                  isSelected
+                    ? 'border-[#0066ee] bg-[#0066ee]/5 ring-2 ring-[#0066ee]/20'
+                    : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80'
+                }`}
+              >
+                <div>
+                  <span class="text-[10px] font-mono font-bold text-slate-400 block mb-1">
+                    SKENARIO {index + 1}
+                  </span>
+                  <p class="text-xs font-outfit font-bold text-slate-800 line-clamp-2 leading-tight">
+                    {preset.title}
+                  </p>
+                </div>
+                <div class="mt-2.5 pt-2 border-t border-slate-100 text-[10px] font-mono text-slate-500">
+                  Target: {preset.expected_solution_id === 'sol_upvc_multi_chamber' ? 'uPVC' : 'Aluminium'}
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </div>
+
+      <!-- Context Simulator Form -->
+      <form method="GET" action="/admin/decisions" class="border-t border-slate-100 pt-5 space-y-5">
+        <div>
+          <h3 class="text-sm font-outfit font-bold text-slate-900 uppercase tracking-wider">
+            ⚙️ Simulator Dimensi Konteks Pembaca (6 Parameter Wajib)
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            Setiap perubahan parameter langsung dievaluasi ulang oleh engine secara deterministik di server.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- 1. Problem Goal -->
+          <div class="lg:col-span-3 space-y-1">
+            <label for="problem_goal" class="block text-xs font-outfit font-bold text-slate-800">
+              1. Tujuan Masalah Utama (Problem Goal) <span class="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="problem_goal"
+              name="problem_goal"
+              required
+              value={context.problem_goal}
+              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30 focus:border-[#0066ee]"
+              placeholder="Contoh: Mereduksi panas radiasi sore dan kebisingan pada kamar tidur ber-AC"
+            />
+          </div>
+
+          <!-- 2. Building Context -->
+          <div class="space-y-1">
+            <label for="building_context" class="block text-xs font-outfit font-bold text-slate-800">
+              2. Tipe Bangunan / Rumah <span class="text-rose-500">*</span>
+            </label>
+            <select
+              id="building_context"
+              name="building_context"
+              required
+              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+            >
+              {BUILDING_CONTEXT_OPTIONS.map(opt => (
+                <option value={opt.value} selected={context.building_context === opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <!-- 3. Climate Exposure -->
+          <div class="space-y-1">
+            <label for="climate_exposure" class="block text-xs font-outfit font-bold text-slate-800">
+              3. Paparan Iklim / Cuaca <span class="text-rose-500">*</span>
+            </label>
+            <select
+              id="climate_exposure"
+              name="climate_exposure"
+              required
+              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+            >
+              {CLIMATE_EXPOSURE_OPTIONS.map(opt => (
+                <option value={opt.value} selected={context.climate_exposure === opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <!-- 4. Application Location -->
+          <div class="space-y-1">
+            <label for="application_location" class="block text-xs font-outfit font-bold text-slate-800">
+              4. Lokasi Bukani Ruangan <span class="text-rose-500">*</span>
+            </label>
+            <select
+              id="application_location"
+              name="application_location"
+              required
+              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+            >
+              {APPLICATION_LOCATION_OPTIONS.map(opt => (
+                <option value={opt.value} selected={context.application_location === opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <!-- 5. Budget Class -->
+          <div class="space-y-1">
+            <label for="budget_class" class="block text-xs font-outfit font-bold text-slate-800">
+              5. Kelas Anggaran <span class="text-rose-500">*</span>
+            </label>
+            <select
+              id="budget_class"
+              name="budget_class"
+              required
+              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+            >
+              {BUDGET_CLASS_OPTIONS.map(opt => (
+                <option value={opt.value} selected={context.budget_class === opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <!-- 6. Maintenance Tolerance -->
+          <div class="space-y-1">
+            <label for="maintenance_tolerance" class="block text-xs font-outfit font-bold text-slate-800">
+              6. Toleransi Perawatan <span class="text-rose-500">*</span>
+            </label>
+            <select
+              id="maintenance_tolerance"
+              name="maintenance_tolerance"
+              required
+              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+            >
+              {MAINTENANCE_TOLERANCE_OPTIONS.map(opt => (
+                <option value={opt.value} selected={context.maintenance_tolerance === opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <!-- Simulation: Evidence Freshness Mode -->
+          <div class="space-y-1">
+            <label for="evidence_mode" class="block text-xs font-outfit font-bold text-slate-800">
+              Simulasi Status Bukti Naskah
+            </label>
+            <select
+              id="evidence_mode"
+              name="evidence_mode"
+              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30 font-mono"
+            >
+              <option value="current" selected={evidenceMode === 'current'}>Normal (CURRENT - Hash Sesuai)</option>
+              <option value="drift" selected={evidenceMode === 'drift'}>Simulasi Drift (NEEDS_RECALIBRATION)</option>
+              <option value="unavailable" selected={evidenceMode === 'unavailable'}>Simulasi Hilang (EVIDENCE_UNAVAILABLE)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Optional Dimensions Accordion -->
+        <details class="bg-slate-50/60 border border-slate-200/80 rounded-xl p-3 text-xs">
+          <summary class="font-outfit font-bold text-slate-700 cursor-pointer select-none">
+            + Dimensi Tambahan / Opsional (Kenyamanan & Tahap Bangun)
+          </summary>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 mt-2 border-t border-slate-200/60">
+            <div class="space-y-1">
+              <label for="comfort_priority" class="block text-xs font-outfit font-medium text-slate-700">
+                Prioritas Kenyamanan
+              </label>
+              <select
+                id="comfort_priority"
+                name="comfort_priority"
+                class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800"
+              >
+                <option value="">(Tidak ditentukan)</option>
+                {COMFORT_PRIORITY_OPTIONS.map(opt => (
+                  <option value={opt.value} selected={context.comfort_priority === opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div class="space-y-1">
+              <label for="build_phase" class="block text-xs font-outfit font-medium text-slate-700">
+                Tahap Konstruksi
+              </label>
+              <select
+                id="build_phase"
+                name="build_phase"
+                class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800"
+              >
+                <option value="">(Tidak ditentukan)</option>
+                {BUILD_PHASE_OPTIONS.map(opt => (
+                  <option value={opt.value} selected={context.build_phase === opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </details>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="submit"
+            class="rounded-xl bg-[#0066ee] hover:bg-blue-600 text-white font-outfit font-bold px-5 py-2.5 text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+          >
+            <span>Jalankan Evaluasi Deterministik</span>
+            <span>→</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {/* EVALUATION BLOCKED STATE (Defense Gate) */}
+    {!result.ok && (
+      <div class="bg-rose-50 border-2 border-rose-300 rounded-2xl p-6 space-y-3">
+        <div class="flex items-center gap-2 text-rose-800">
+          <span class="text-xl">🛑</span>
+          <h2 class="text-base font-outfit font-black tracking-tight uppercase">
+            EVALUASI DIBLOKIR: {result.status}
+          </h2>
+        </div>
+        <p class="text-xs font-outfit text-rose-900 leading-relaxed font-semibold">
+          {result.error}
+        </p>
+        <p class="text-[11px] text-rose-700">
+          Sistem menolak menyajikan rekomendasi normal karena integritas bukti atau parameter konteks tidak terpenuhi.
+          Sesuai prinsip kehati-hatian RancangLoka, rekomendasi keputusan hanya boleh keluar bila seluruh bukti valid.
+        </p>
+        {result.issues && result.issues.length > 0 && (
+          <div class="bg-white/80 rounded-xl p-3 border border-rose-200 text-xs font-mono space-y-1">
+            <span class="text-[10px] font-bold uppercase text-rose-600 block mb-1">Daftar Pelanggaran:</span>
+            {result.issues.map(iss => (
+              <div class="text-rose-800">
+                • [{iss.code}] {iss.field}: {iss.message}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* EVALUATION SUCCESS: REGIONS C, D, E, F, G, H, I, J */}
+    {result.ok && result.recommendation && (
+      <>
+        <!-- REGION C: RECOMMENDATION RESULT -->
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-6">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">HASIL KEPUTUSAN</span>
+              <h2 class="text-lg font-outfit font-bold text-slate-900 mt-0.5">
+                Rekomendasi Solusi & Kecocokan Konteks
+              </h2>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-mono text-xs font-bold">
+              STATUS: {result.status}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Recommended Solution Card -->
+            <div class="border-2 border-emerald-400/80 bg-emerald-50/20 rounded-2xl p-5 space-y-4 relative">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <span class="text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider block mb-1">
+                    OPSI YANG DIREKOMENDASIKAN
+                  </span>
+                  <h3 class="text-xl font-outfit font-black text-slate-900 tracking-tight">
+                    {getSolutionName(result.recommendation.recommended_solution_id)}
+                  </h3>
+                  <span class="font-mono text-[11px] text-slate-400">
+                    ID: {result.recommendation.recommended_solution_id}
+                  </span>
+                </div>
+                <div class="text-right">
+                  <span class={`inline-block px-3 py-1 rounded-lg text-xs font-outfit font-bold border ${FIT_LABELS_ID[result.recommendation.recommended_fit]?.badgeClass}`}>
+                    {FIT_LABELS_ID[result.recommendation.recommended_fit]?.label}
+                  </span>
+                  <span class="block font-mono text-[10px] text-slate-400 mt-1">
+                    {result.recommendation.recommended_fit}
+                  </span>
+                </div>
+              </div>
+
+              <div class="space-y-2 pt-2 border-t border-emerald-200/50">
+                <span class="text-[11px] font-outfit font-bold text-slate-700 block">Cocok untuk profil:</span>
+                <ul class="text-xs text-slate-600 space-y-1">
+                  {result.recommendation.fits_who.map(item => (
+                    <li class="flex items-start gap-1.5">
+                      <span class="text-emerald-600 font-bold shrink-0">✓</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <!-- Alternative Solution Card -->
+            <div class="border border-slate-200 bg-slate-50/50 rounded-2xl p-5 space-y-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    OPSI ALTERNATIF
+                  </span>
+                  <h3 class="text-xl font-outfit font-bold text-slate-800 tracking-tight">
+                    {getSolutionName(result.recommendation.alternative_solution_id)}
+                  </h3>
+                  <span class="font-mono text-[11px] text-slate-400">
+                    ID: {result.recommendation.alternative_solution_id || '-'}
+                  </span>
+                </div>
+                {result.recommendation.alternative_fit && (
+                  <div class="text-right">
+                    <span class={`inline-block px-3 py-1 rounded-lg text-xs font-outfit font-bold border ${FIT_LABELS_ID[result.recommendation.alternative_fit]?.badgeClass}`}>
+                      {FIT_LABELS_ID[result.recommendation.alternative_fit]?.label}
+                    </span>
+                    <span class="block font-mono text-[10px] text-slate-400 mt-1">
+                      {result.recommendation.alternative_fit}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div class="space-y-2 pt-2 border-t border-slate-200/60">
+                <span class="text-[11px] font-outfit font-bold text-slate-700 block">Batasan / Tidak cocok jika:</span>
+                <ul class="text-xs text-slate-600 space-y-1">
+                  {result.recommendation.does_not_fit_who.map(item => (
+                    <li class="flex items-start gap-1.5">
+                      <span class="text-amber-600 font-bold shrink-0">!</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REGION D: THREE GOLDEN QUESTIONS -->
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-5">
+          <div class="border-b border-slate-100 pb-3">
+            <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">STANDAR EXPLAINABILITY REDAKSI</span>
+            <h2 class="text-lg font-outfit font-bold text-slate-900 mt-0.5">
+              Tiga Pertanyaan Emas Redaksi (The Three Golden Questions)
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Rekomendasi wajib dapat dijawab dan dipertanggungjawabkan secara logis tanpa frasa AI-slop atau pemasaran.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- 1. Why recommended -->
+            <div class="bg-emerald-50/40 border border-emerald-200/80 rounded-xl p-4 space-y-2">
+              <span class="text-xs font-outfit font-black text-emerald-900 uppercase flex items-center gap-1.5">
+                <span>1. Mengapa Opsi Ini?</span>
+              </span>
+              <p class="text-xs font-outfit text-slate-800 leading-relaxed">
+                "{result.recommendation.why_recommended}"
+              </p>
+            </div>
+
+            <!-- 2. Why not alternative -->
+            <div class="bg-amber-50/40 border border-amber-200/80 rounded-xl p-4 space-y-2">
+              <span class="text-xs font-outfit font-black text-amber-900 uppercase flex items-center gap-1.5">
+                <span>2. Mengapa Bukan Alternatifnya?</span>
+              </span>
+              <p class="text-xs font-outfit text-slate-800 leading-relaxed">
+                "{result.recommendation.why_not_alternative || 'Alternatif memiliki trade-off yang kurang sesuai dengan konteks saat ini.'}"
+              </p>
+            </div>
+          </div>
+
+          <!-- 3. Pivot conditions -->
+          <div class="bg-blue-50/40 border border-blue-200/80 rounded-xl p-4 space-y-3">
+            <span class="text-xs font-outfit font-black text-blue-900 uppercase flex items-center gap-1.5">
+              <span>3. Kondisi Apa yang Dapat Mengubah Rekomendasi? (Pivot Conditions)</span>
+            </span>
+            <div class="space-y-2">
+              {result.recommendation.pivot_conditions.map(pc => (
+                <div class="bg-white/80 border border-blue-200/60 rounded-lg p-3 text-xs space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-mono text-[10px] font-bold">
+                      BERUBAH KE: {getSolutionName(pc.pivots_to_solution_id)}
+                    </span>
+                  </div>
+                  <p class="font-outfit font-bold text-slate-800 mt-1">
+                    Syarat Terpicu: "{pc.trigger_condition}"
+                  </p>
+                  <p class="text-[11px] text-slate-600">
+                    Rasionalitas Redaksi: {pc.rationale}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <!-- REGION E: TRADEOFFS & NEXT PRACTICAL ACTIONS -->
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-5">
+          <div class="border-b border-slate-100 pb-3">
+            <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">KOMPROMI & MITIGASI LAPANGAN</span>
+            <h2 class="text-lg font-outfit font-bold text-slate-900 mt-0.5">
+              Trade-off Nyata yang Harus Diterima Pembaca
+            </h2>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-3">
+              <span class="text-xs font-outfit font-bold text-slate-700 block">Kompromi Fisik & Desain:</span>
+              {result.recommendation.critical_tradeoffs.map(tr => (
+                <div class="border border-slate-200 rounded-xl p-3.5 space-y-2 bg-slate-50/40">
+                  <span class="text-xs font-outfit font-bold text-slate-800 block">
+                    {tr.aspect}
+                  </span>
+                  <p class="text-xs text-slate-600 leading-relaxed">
+                    <strong class="text-amber-800">Kompromi:</strong> {tr.compromise}
+                  </p>
+                  {tr.mitigation_tip && (
+                    <div class="text-[11px] text-emerald-800 bg-emerald-50/60 p-2 rounded-lg border border-emerald-200/50">
+                      <strong>Tips Mitigasi:</strong> {tr.mitigation_tip}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div class="space-y-3">
+              <span class="text-xs font-outfit font-bold text-slate-700 block">Langkah Praktis Selanjutnya (Next Actions):</span>
+              <div class="space-y-2.5">
+                {result.recommendation.next_practical_actions.map(action => (
+                  <div class="border border-slate-200 rounded-xl p-3 bg-white flex items-start gap-3">
+                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white font-mono text-xs font-bold">
+                      {action.order}
+                    </span>
+                    <div>
+                      <h4 class="text-xs font-outfit font-bold text-slate-800">
+                        {action.action_title}
+                      </h4>
+                      <p class="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                        {action.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REGION F: CONSTRAINT TRACE (HARD & SOFT) -->
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-5">
+          <div class="border-b border-slate-100 pb-3">
+            <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">PELACAKAN BATASAN (CONSTRAINTS)</span>
+            <h2 class="text-lg font-outfit font-bold text-slate-900 mt-0.5">
+              Evaluasi Batasan Hard & Soft
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Batasan Hard langsung mendiskualifikasi opsi yang tidak memenuhi syarat keselamatan/fisik. Batasan Soft menyesuaikan skor kecocokan secara proporsional.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- HARD Constraints -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-outfit font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                  HARD CONSTRAINTS (Diskualifikasi)
+                </span>
+                <span class="text-[10px] font-mono text-slate-400">
+                  {result.trace.hard_constraint_results.length} dievaluasi
+                </span>
+              </div>
+
+              <div class="space-y-2">
+                {result.trace.hard_constraint_results.map(hc => (
+                  <div class={`border rounded-xl p-3 text-xs space-y-1.5 ${
+                    hc.applied ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-slate-50/30 opacity-75'
+                  }`}>
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-outfit font-bold text-slate-800">{hc.name}</span>
+                      <span class={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                        hc.applied ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {hc.applied ? 'AKTIF (TERPICU)' : 'TIDAK TERPICU'}
+                      </span>
+                    </div>
+                    <p class="text-[11px] text-slate-600">
+                      {hc.impact_explanation}
+                    </p>
+                    {hc.applied && hc.disqualified_solution_ids.length > 0 && (
+                      <div class="text-[10px] font-mono text-rose-700 bg-rose-100/60 p-1.5 rounded">
+                        Mendiskualifikasi: {hc.disqualified_solution_ids.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <!-- SOFT Constraints -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-outfit font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+                  SOFT CONSTRAINTS (Penyesuaian Fit)
+                </span>
+                <span class="text-[10px] font-mono text-slate-400">
+                  {result.trace.soft_constraint_results.length} dievaluasi
+                </span>
+              </div>
+
+              <div class="space-y-2">
+                {result.trace.soft_constraint_results.map(sc => (
+                  <div class={`border rounded-xl p-3 text-xs space-y-1.5 ${
+                    sc.applied ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200 bg-slate-50/30 opacity-75'
+                  }`}>
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-outfit font-bold text-slate-800">{sc.name}</span>
+                      <span class={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                        sc.applied ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {sc.applied ? 'AKTIF (TERPICU)' : 'TIDAK TERPICU'}
+                      </span>
+                    </div>
+                    <p class="text-[11px] text-slate-600">
+                      {sc.impact_explanation}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REGION G: CRITERION TRACE -->
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">BUKTI KRITERIA</span>
+              <h2 class="text-lg font-outfit font-bold text-slate-900 mt-0.5">
+                Pelacakan Evaluasi Kriteria & Fakta Penilaian
+              </h2>
+            </div>
+            <span class="text-xs font-mono text-slate-400">
+              {result.trace.criterion_results.length} Kriteria Terkait
+            </span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 bg-slate-50/80 text-[10px] font-mono uppercase text-slate-500">
+                  <th class="py-2.5 px-3">Kriteria & Dimensi</th>
+                  <th class="py-2.5 px-3">Solusi</th>
+                  <th class="py-2.5 px-3">Tipe Bukti</th>
+                  <th class="py-2.5 px-3">Nilai Kualitatif</th>
+                  <th class="py-2.5 px-3">Fakta / Data Lab</th>
+                  <th class="py-2.5 px-3">Kelas Klaim</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-outfit">
+                {result.trace.criterion_results.map(crit => (
+                  <tr class="hover:bg-slate-50/50">
+                    <td class="py-2.5 px-3">
+                      <span class="font-bold text-slate-900 block">{crit.criterion_id}</span>
+                      <span class="text-[10px] font-mono text-slate-400">{crit.dimension_type}</span>
+                    </td>
+                    <td class="py-2.5 px-3 font-semibold text-slate-800">
+                      {getSolutionName(crit.solution_id)}
+                    </td>
+                    <td class="py-2.5 px-3 font-mono text-[11px] text-slate-600">
+                      {crit.value_type}
+                    </td>
+                    <td class="py-2.5 px-3">
+                      <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-[11px] font-bold">
+                        {crit.qualitative_tier}
+                      </span>
+                    </td>
+                    <td class="py-2.5 px-3 text-[11px] text-slate-600 max-w-md">
+                      {crit.factual_basis}
+                      {crit.measured_value && (
+                        <span class="block font-mono text-[10px] text-emerald-700 mt-0.5 font-bold">
+                          Terukur: {crit.measured_value.value} {crit.measured_value.unit}
+                        </span>
+                      )}
+                    </td>
+                    <td class="py-2.5 px-3">
+                      <span class={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${CLAIM_CLASS_LABELS_ID[crit.evidence_binding.claim_class]?.badgeClass}`}>
+                        {CLAIM_CLASS_LABELS_ID[crit.evidence_binding.claim_class]?.label}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- REGION H & I: EVIDENCE INSPECTOR & PUBLICATION IDENTITY -->
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">DNA PUBLIKASI & INTEGRITAS BUKTI</span>
+            <h2 class="text-lg font-outfit font-bold text-slate-900 mt-0.5">
+              Identitas Bukti Artikel 5: Kusen Aluminium vs uPVC
+            </h2>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <span class="text-[10px] text-slate-400 block uppercase">Article ID & Slug</span>
+              <strong class="text-slate-900 block mt-0.5">ID: {ARTICLE_5_EVIDENCE_BASE.article_id}</strong>
+              <span class="text-[10px] text-slate-500 break-all">{ARTICLE_5_EVIDENCE_BASE.article_slug}</span>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <span class="text-[10px] text-slate-400 block uppercase">Publication Version Key</span>
+              <strong class="text-slate-900 block mt-0.5 break-all">{ARTICLE_5_EVIDENCE_BASE.publication_version_key}</strong>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <span class="text-[10px] text-slate-400 block uppercase">Source Fidelity</span>
+              <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px] inline-block mt-0.5">
+                {ARTICLE_5_EVIDENCE_BASE.source_fidelity}
+              </span>
+              <span class="block text-[10px] text-slate-400 mt-1">Bukan BYTE_EXACT (Legacy Normalized)</span>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <span class="text-[10px] text-slate-400 block uppercase">Published Content Hash</span>
+              <span class="text-[10px] text-slate-700 break-all block mt-0.5 select-all">
+                {ARTICLE_5_EVIDENCE_BASE.published_content_hash}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- REGION J: TECHNICAL EXPLAINABILITY TRACE -->
+        <details class="bg-slate-50/80 border border-slate-200 rounded-2xl p-5 shadow-2xs group">
+          <summary class="cursor-pointer font-mono text-xs font-bold text-slate-700 hover:text-slate-900 flex items-center justify-between select-none">
+            <span>🔬 Trace Teknis Lengkap Evaluator (Untuk Audit Dimas / Engineering)</span>
+            <span class="text-slate-400 group-open:rotate-180 transition">▼</span>
+          </summary>
+          <div class="pt-4 mt-3 border-t border-slate-200 space-y-2">
+            <p class="text-[11px] text-slate-500 font-sans">
+              Payload trace ini dihasilkan murni oleh <code class="font-mono text-slate-700">evaluateDecision()</code> untuk observabilitas deterministik tanpa I/O.
+            </p>
+            <pre class="bg-slate-900 text-slate-100 p-4 rounded-xl text-[11px] font-mono overflow-x-auto max-h-[500px]">
+{JSON.stringify(result.trace, null, 2)}
+            </pre>
+          </div>
+        </details>
+      </>
+    )}
+
+  </div>
+</AdminLayout>

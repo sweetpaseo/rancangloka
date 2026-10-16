@@ -274,7 +274,7 @@ Sesi hari ini juga merampungkan tonggak penting berikutnya: **PRODUCT_DECISION_E
      4. `scen_tight_budget_standard_renovation` $\to$ `sol_aluminium_standar` (`STRONG_FIT`).
      5. `scen_low_maintenance_family_home` $\to$ `sol_upvc_multi_chamber` (`STRONG_FIT`).
    - Identitas Bukti Artikel 5: `article_id: 5`, `publication_version_key: receipt:rcpt_bbae85b48e1b2f8d`, `published_content_hash: 14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`, `source_fidelity: NORMALIZED_HASH_VERIFIED`.
-   - Evidence Snapshot Hash: `40a1b92e59e5f764a851d451240166dcf1ee7da9c1b3f9ff7900b868e82ef474`.
+   - Evidence Snapshot Hash: `eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed` (direkonsiliasi dari `40a1b92...` akibat OLD_REPORT_SNAPSHOT_TRANSCRIPTION_ERROR; pilot source tidak berubah).
    - Status Rekalibrasi Terderivasi: `deriveEvidenceFreshness` mendeteksi pergeseran naskah tanpa mutable boolean flag.
 
 4. **Pengujian & Verifikasi PDE-1A:**

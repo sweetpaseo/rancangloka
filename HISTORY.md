@@ -90,7 +90,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
      - 7 Kriteria Otoritatif Artikel 5: konduktivitas termal bingkai, kekakuan struktural bentang lebar, ketahanan rembes air sudut, insulasi akustik, ketahanan korosi pesisir, stabilitas muai-panjang termal, ketebalan profil visual (*sightlines*).
      - 5 Skenario Deterministik dengan Pivot Conditions: kamar tidur lantai 2 hadap barat, pintu geser kaca masif 3.6m, fasad pesisir terpaan hujan, renovasi anggaran ketat, rumah tinggal rendah perawatan.
      - Evidence Identity: `article_id: 5`, `publication_version_key: receipt:rcpt_bbae85b48e1b2f8d`, `published_content_hash: 14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`, `source_fidelity: NORMALIZED_HASH_VERIFIED`.
-     - Snapshot Hash Deterministik: `40a1b92e59e5f764a851d451240166dcf1ee7da9c1b3f9ff7900b868e82ef474`.
+     - Snapshot Hash Deterministik: `eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed` (direkonsiliasi dari `40a1b92...` akibat OLD_REPORT_SNAPSHOT_TRANSCRIPTION_ERROR; pilot source tidak berubah).
      - Dynamic Freshness: `deriveEvidenceFreshness` mendeteksi pergeseran naskah secara murni (`CURRENT`, `NEEDS_RECALIBRATION`, `EVIDENCE_UNAVAILABLE`) tanpa boolean statis mutabel.
   5. *Pengujian & Verifikasi Lokal PDE-1A:*
      - Test Suite: `scripts/test-product-decision-engine-contract.js` (14/14 PASS).
