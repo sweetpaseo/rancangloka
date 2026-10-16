@@ -8,3 +8,4 @@
 export * from './types.ts';
 export * from './contracts.ts';
 export * from './pilot-kusen.ts';
+export * from './evaluator.ts';

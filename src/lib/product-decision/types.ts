@@ -299,3 +299,100 @@ export type EvidenceFreshnessState =
   | 'CURRENT'
   | 'NEEDS_RECALIBRATION'
   | 'EVIDENCE_UNAVAILABLE';
+
+// ============================================================================
+// 11. DETERMINISTIC EVALUATOR RUNTIME TYPES (PDE-1B)
+// ============================================================================
+
+export interface HardConstraintTrace {
+  constraint_id: string;
+  name: string;
+  severity: 'HARD';
+  applied: boolean;
+  disqualified_solution_ids: string[];
+  affected_solution_ids: string[];
+  impact_explanation: string;
+}
+
+export interface SoftConstraintTrace {
+  constraint_id: string;
+  name: string;
+  severity: 'SOFT';
+  applied: boolean;
+  affected_solution_ids: string[];
+  impact_explanation: string;
+}
+
+export interface CriterionTraceItem {
+  criterion_id: string;
+  solution_id: string;
+  dimension_type: 'CORE' | 'OPTIONAL' | 'DOMAIN_SPECIFIC';
+  value_type: CriterionValueType;
+  qualitative_tier: string;
+  measured_value?: MeasuredValueSpec;
+  factual_basis: string;
+  evidence_binding: EvidenceBinding;
+}
+
+export interface SolutionFitTrace {
+  solution_id: string;
+  fit: FitTaxonomy;
+  is_eligible: boolean;
+  disqualification_reason?: string;
+  soft_constraint_impacts: string[];
+}
+
+export interface ScenarioApplicabilityTrace {
+  scenario_id: string;
+  title: string;
+  matched_dimensions: number;
+  total_dimensions: number;
+  applicability_ratio: number;
+  matching_details: string[];
+}
+
+export interface EvaluationTrace {
+  model_id: string;
+  model_version: string;
+  criteria_version: string;
+  context: DecisionContext;
+  eligible_solutions: string[];
+  disqualified_solutions: string[];
+  hard_constraint_results: HardConstraintTrace[];
+  soft_constraint_results: SoftConstraintTrace[];
+  criterion_results: CriterionTraceItem[];
+  fit_results: SolutionFitTrace[];
+  scenario_applicability: ScenarioApplicabilityTrace[];
+  selected_solution_id?: string;
+  alternative_solution_id?: string;
+  pivot_conditions: PivotCondition[];
+  evidence_snapshot_hash: string;
+}
+
+export interface EvaluatorOptions {
+  /** Map of publication_version_key -> { published_content_hash: string } for freshness verification */
+  authoritativeEvidenceMap?: Map<string, { published_content_hash: string }>;
+}
+
+export interface EvaluationSuccessResult {
+  ok: true;
+  status: 'RECOMMENDED';
+  recommendation: RecommendationContract;
+  trace: EvaluationTrace;
+}
+
+export interface EvaluationBlockedResult {
+  ok: false;
+  status:
+    | 'EVALUATION_BLOCKED_EVIDENCE_STALE'
+    | 'EVALUATION_BLOCKED_EVIDENCE_UNAVAILABLE'
+    | 'INVALID_CONTEXT'
+    | 'COMMERCE_FIELD_DETECTED'
+    | 'ALL_SOLUTIONS_DISQUALIFIED'
+    | 'AMBIGUOUS';
+  error: string;
+  issues?: Array<{ code: string; field: string; message: string }>;
+  trace?: Partial<EvaluationTrace>;
+}
+
+export type EvaluationResult = EvaluationSuccessResult | EvaluationBlockedResult;
