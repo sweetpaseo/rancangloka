@@ -572,6 +572,148 @@ test('T. All solutions disqualified returns ALL_SOLUTIONS_DISQUALIFIED result', 
 });
 
 // ----------------------------------------------------------------------------
+// Test U: Mutated Oracle Test (GOLDEN_EXPECTATIONS_MUST_NOT_DRIVE_RUNTIME_DECISIONS)
+// ----------------------------------------------------------------------------
+test('U. Mutated Oracle Test: Mutating golden expectations does NOT alter runtime evaluation', () => {
+  // Deep clone pilot model
+  const mutatedModel = JSON.parse(JSON.stringify(DECISION_MODEL_PILOT_KUSEN));
+
+  // Invert/corrupt all golden expectation fields in scenarios while keeping valid solution refs
+  for (const sc of mutatedModel.scenarios) {
+    const origRecommended = sc.expected_recommendation.recommended_solution_id;
+    // Invert the solution ID and fit to wrong values
+    sc.expected_recommendation.recommended_solution_id =
+      origRecommended === 'sol_upvc_multi_chamber' ? 'sol_aluminium_standar' : 'sol_upvc_multi_chamber';
+    sc.expected_recommendation.recommended_fit = 'POOR_FIT';
+    sc.expected_recommendation.alternative_solution_id = origRecommended;
+    sc.expected_recommendation.alternative_fit = 'POOR_FIT';
+  }
+
+  // Restore the constraint functions on the cloned model because JSON.parse strips functions
+  mutatedModel.constraints = DECISION_MODEL_PILOT_KUSEN.constraints;
+
+  for (let i = 0; i < DECISION_MODEL_PILOT_KUSEN.scenarios.length; i++) {
+    const origScenario = DECISION_MODEL_PILOT_KUSEN.scenarios[i];
+    const result = evaluateDecision(mutatedModel, origScenario.context);
+
+    assert.strictEqual(result.ok, true, `Evaluation failed on mutated model: ${JSON.stringify(result)}`);
+
+    // Verify evaluator outputs original true recommendation and NOT the mutated oracle
+    if (result.recommendation.recommended_solution_id !== origScenario.expected_recommendation.recommended_solution_id) {
+      throw new Error(`SCENARIO_EXPECTATION_REPLAY_DETECTED: Evaluator replayed mutated oracle recommendation for scenario ${origScenario.scenario_id}`);
+    }
+
+    if (result.recommendation.recommended_fit !== origScenario.expected_recommendation.recommended_fit) {
+      throw new Error(`SCENARIO_EXPECTATION_REPLAY_DETECTED: Evaluator replayed mutated oracle fit for scenario ${origScenario.scenario_id}`);
+    }
+
+    assert.strictEqual(
+      result.recommendation.recommended_solution_id,
+      origScenario.expected_recommendation.recommended_solution_id,
+      `Scenario ${origScenario.scenario_id} did not yield original recommended solution`
+    );
+    assert.strictEqual(
+      result.recommendation.recommended_fit,
+      origScenario.expected_recommendation.recommended_fit,
+      `Scenario ${origScenario.scenario_id} did not yield original recommended fit`
+    );
+  }
+});
+
+// ----------------------------------------------------------------------------
+// Test V: Scenario-Free / Oracle-Free Proof
+// ----------------------------------------------------------------------------
+test('V. Scenario-Free Proof: Raw DecisionContext evaluates identically without scenario wrapper', () => {
+  for (const scenario of DECISION_MODEL_PILOT_KUSEN.scenarios) {
+    // Pure raw context object stripped of scenario metadata or oracle expectations
+    const rawContext = {
+      problem_goal: scenario.context.problem_goal,
+      building_context: scenario.context.building_context,
+      climate_exposure: scenario.context.climate_exposure,
+      application_location: scenario.context.application_location,
+      budget_class: scenario.context.budget_class,
+      maintenance_tolerance: scenario.context.maintenance_tolerance,
+      comfort_priority: scenario.context.comfort_priority,
+      build_phase: scenario.context.build_phase
+    };
+
+    const resultFromRaw = evaluateDecision(DECISION_MODEL_PILOT_KUSEN, rawContext);
+
+    assert.strictEqual(resultFromRaw.ok, true);
+    assert.strictEqual(
+      resultFromRaw.recommendation.recommended_solution_id,
+      scenario.expected_recommendation.recommended_solution_id
+    );
+    assert.strictEqual(
+      resultFromRaw.recommendation.recommended_fit,
+      scenario.expected_recommendation.recommended_fit
+    );
+    assert.strictEqual(
+      resultFromRaw.recommendation.alternative_solution_id,
+      scenario.expected_recommendation.alternative_solution_id
+    );
+    assert.strictEqual(
+      resultFromRaw.recommendation.alternative_fit,
+      scenario.expected_recommendation.alternative_fit
+    );
+
+    // Trace contains complete explainability output
+    assert.strictEqual(resultFromRaw.trace.eligible_solutions.length, 2);
+    assert.strictEqual(resultFromRaw.trace.selected_solution_id, scenario.expected_recommendation.recommended_solution_id);
+    assert.strictEqual(resultFromRaw.trace.alternative_solution_id, scenario.expected_recommendation.alternative_solution_id);
+    assert.ok(resultFromRaw.trace.hard_constraint_results.length > 0);
+    assert.ok(resultFromRaw.trace.soft_constraint_results.length > 0);
+    assert.ok(resultFromRaw.trace.criterion_results.length > 0);
+  }
+});
+
+// ----------------------------------------------------------------------------
+// Test W: Criteria Material Participation Test
+// ----------------------------------------------------------------------------
+test('W. Criteria Material Participation: Inverting relevant criteria evaluations shifts recommendation', () => {
+  // In Scenario 3 (coastal), uPVC wins due to superior corrosion and water tightness.
+  // We clone model and modify criteria evaluations so aluminium has superior coastal performance.
+  const modifiedEvaluations = DECISION_MODEL_PILOT_KUSEN.evaluations.map(ev => {
+    // Invert crit_coastal_corrosion_resistance
+    if (ev.criterion_id === 'crit_coastal_corrosion_resistance') {
+      if (ev.solution_id === 'sol_aluminium_standar') {
+        return { ...ev, qualitative_tier: 'INHERENTLY_CORROSION_PROOF' };
+      }
+      if (ev.solution_id === 'sol_upvc_multi_chamber') {
+        return { ...ev, qualitative_tier: 'COATING_DEPENDENT' };
+      }
+    }
+    // Invert crit_corner_water_tightness
+    if (ev.criterion_id === 'crit_corner_water_tightness') {
+      if (ev.solution_id === 'sol_aluminium_standar') {
+        return { ...ev, qualitative_tier: 'FUSION_WELDED_HERMETIC' };
+      }
+      if (ev.solution_id === 'sol_upvc_multi_chamber') {
+        return { ...ev, qualitative_tier: 'MECHANICAL_JOINT_DEPENDENT' };
+      }
+    }
+    return ev;
+  });
+
+  const modifiedModel = {
+    ...DECISION_MODEL_PILOT_KUSEN,
+    evaluations: modifiedEvaluations
+  };
+
+  const coastalContext = DECISION_MODEL_PILOT_KUSEN.scenarios[2].context;
+
+  // Baseline evaluation with standard model
+  const baselineResult = evaluateDecision(DECISION_MODEL_PILOT_KUSEN, coastalContext);
+  assert.strictEqual(baselineResult.recommendation.recommended_solution_id, 'sol_upvc_multi_chamber');
+
+  // Modified evaluation with inverted criteria tiers
+  const modifiedResult = evaluateDecision(modifiedModel, coastalContext);
+  assert.strictEqual(modifiedResult.ok, true);
+  // Proves criteria evaluations materially flipped the selection to aluminium!
+  assert.strictEqual(modifiedResult.recommendation.recommended_solution_id, 'sol_aluminium_standar');
+});
+
+// ----------------------------------------------------------------------------
 // SUMMARY
 // ----------------------------------------------------------------------------
 console.log('\n================================================================');

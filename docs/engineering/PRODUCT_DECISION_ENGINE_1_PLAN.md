@@ -812,8 +812,20 @@ Setiap bukti terikat secara presisi pada sidik jari Publication DNA artikel otor
 - Modul `contracts.ts` memuat scanner struktural ketat `scanForForbiddenFields` yang memindai objek model secara rekursif terhadap 18 kata kunci komersial dan skor semu (`affiliate_url`, `commission`, `merchant`, `merchant_rank`, `payout`, `offer_price`, `affiliate_priority`, `sponsored_rank`, `price`, `best_overall`, `winner_score`, `star_rating`, dll.). Model ditolak jika ditemukan satu pun field komersial.
 
 ### 23.6 Fixture Pilot Artikel 5 (`src/lib/product-decision/pilot-kusen.ts`)
-- **2 Solution Classes:** `sol_aluminium_standar` (Aluminium Arsitektural Ekstrusi Standar) dan `sol_upvc_multi_chamber` (uPVC Multi-Chamber dengan Tulangan Baja Galvanis).
-- **7 Criteria Nyata:** Konduktivitas termal bingkai, kekakuan struktural bentang besar, ketahanan rembes air sambungan sudut, insulasi akustik, ketahanan korosi udara pesisir, stabilitas muai-panjang termal, dan ketebalan profil visual (*sightline*).
+- **Master Identifiers:**
+  - `model_id`: `'model_pde_kusen_tropis'`
+  - `model_version`: `'v1.0.0'`
+  - `criteria_version`: `'crit_kusen_v1'`
+  - `problem_id`: `'dp_kusen_jendela_tropis'`
+- **2 Solution Classes:** `sol_aluminium_standar` (Kusen Aluminium Arsitektural) dan `sol_upvc_multi_chamber` (Kusen uPVC Bersekat Multi-Chamber).
+- **7 Criteria Nyata Otoritatif:**
+  1. `crit_thermal_insulation` (Isolasi Konduksi Termal Bingkai)
+  2. `crit_structural_rigidity` (Kekakuan Struktural Bentang Lebar)
+  3. `crit_corner_water_tightness` (Keandalan Sambungan Sudut terhadap Rembes Air)
+  4. `crit_acoustic_attenuation` (Redaman Getaran Akustik Profil)
+  5. `crit_coastal_corrosion_resistance` (Ketahanan Korosi Garam Udara Pesisir)
+  6. `crit_thermal_expansion_stability` (Stabilitas Dimensi terhadap Pemuaian Suhu)
+  7. `crit_slim_sightlines` (Garis Bingkai Ramping / Slim Sightlines)
 - **3 Constraints:** 1 HARD (`c_massive_opening_rigidity`) dan 2 SOFT (`c_west_afternoon_heat_bedroom`, `c_tight_initial_budget`).
 - **5 Canonical Scenarios (Source Fixture):**
   1. `scen_west_facing_master_bedroom` -> `sol_upvc_multi_chamber` (`STRONG_FIT`).
@@ -821,64 +833,49 @@ Setiap bukti terikat secara presisi pada sidik jari Publication DNA artikel otor
   3. `scen_coastal_rain_exposed_facade` -> `sol_upvc_multi_chamber` (`STRONG_FIT`).
   4. `scen_tight_budget_standard_renovation` -> `sol_aluminium_standar` (`GOOD_FIT_WITH_TRADEOFF`).
   5. `scen_low_maintenance_family_home` -> `sol_upvc_multi_chamber` (`GOOD_FIT_WITH_TRADEOFF`).
-- **Golden Evidence Snapshot Hash:** `40a1b92e59e5f764a851d451240166dcf1ee7da9c1b3f9ff7900b868e82ef474`.
+- **Authoritative Evidence Snapshot Hash:** `eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed`.
 
 ---
 
-## 24. Implementasi PDE-1B: Deterministic Evaluator Runtime
+## 24. Implementasi PDE-1B: Deterministic Evaluator Runtime & Anti-Replay Invariant
 
 Tonggak **`PRODUCT_DECISION_ENGINE-1B`** mengimplementasikan mesin evaluasi keputusan deterministik murni (*pure deterministic evaluator runtime*) pada berkas [src/lib/product-decision/evaluator.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/product-decision/evaluator.ts) dan suite pengujian [scripts/test-product-decision-engine-evaluator.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-product-decision-engine-evaluator.js).
 
-### 24.1 Sepuluh Fase Evaluasi Kanonikal
-Evaluator mengeksekusi pipeline terstruktur dalam 10 fase berurutan tanpa efek samping:
-1. **Fase 1 (Validasi Model & Konteks):** Memvalidasi 6 dimensi CORE wajib (`problem_goal`, `building_context`, `climate_exposure`, `application_location`, `budget_class`, `maintenance_tolerance`), menolak field komersial via `scanForForbiddenFields`, dan memeriksa kesegaran bukti via `deriveEvidenceFreshness`.
-2. **Fase 2 (Evaluasi Batasan HARD):** Menjalankan batasan keras. Solusi yang melanggar batasan `HARD` didiskualifikasi secara eksplisit ke dalam `disqualified_solutions` dan statusnya ditandai `POOR_FIT` (`is_eligible = false`).
-3. **Fase 3 (Evaluasi Batasan SOFT):** Menjalankan batasan lunak. Batasan `SOFT` tidak mendiskualifikasi solusi, melainkan mencatat dampak kompromi dan memicu degradasi fit (`GOOD_FIT_WITH_TRADEOFF` atau `CONDITIONAL_FIT`).
-4. **Fase 4 (Evaluasi Kriteria per Solusi):** Memetakan kriteria kualitatif (`BOOLEAN`, `ORDINAL`, `QUALITATIVE_CATEGORY`, `MEASURED_VALUE`) secara utuh dengan dasar faktual dan evidence binding tanpa mensintesis angka desimal semu.
-5. **Fase 5 (Aplikasi Konteks & Skenario):** Menghitung kecocokan dimensi kontekstual dan keselarasan aktivasi batasan secara deterministik terhadap arketipe skenario referensi.
-6. **Fase 6 (Derivasi Status Kecocokan):** Menghitung status kecocokan kualitatif untuk setiap kelas solusi (`STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, `CONDITIONAL_FIT`, `POOR_FIT`).
-7. **Fase 7 (Pemilihan Kelas Solusi Rekomendasi):** Memilih solusi terbaik yang memenuhi syarat (*eligible*). Jika kandidat utama didiskualifikasi oleh batasan keras, sistem otomatis memilih solusi alternatif yang memenuhi syarat.
-8. **Fase 8 (Pemilihan Kelas Solusi Alternatif):** Menetapkan solusi alternatif yang memenuhi syarat beserta status kecocokannya.
-9. **Fase 9 (Konstruksi Rekomendasi 3 Pertanyaan Emas):** Merangkum rekomendasi yang menjawab secara terstruktur: *Mengapa Opsi Ini?*, *Mengapa Bukan Opsi Tandingan?*, dan *Kondisi Apa yang Membalikkan Hasil?* (pivot conditions), dilengkapi tindakan praktis terurut (*next practical actions*) dan bukti terikat (*evidence bindings*).
-10. **Fase 10 (Perakitan Jejak Evaluasi):** Membentuk objek [EvaluationTrace](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/product-decision/types.ts) terstruktur lengkap untuk audit redaksional.
+### 24.1 Invarian Anti-Replay Permanen
+> **INVARIAN PERMANEN:**  
+> **`GOLDEN_EXPECTATIONS_MUST_NOT_DRIVE_RUNTIME_DECISIONS`**  
+> Seluruh field ekspektasi skenario (`expected_recommendation.recommended_solution_id`, `recommended_fit`, `alternative_solution_id`, `alternative_fit`) adalah data oracle/pengujian murni yang diperuntukkan bagi *test runner*. Modul `evaluateDecision()` **DILARANG KERAS MEMBACA** field ekspektasi tersebut untuk menentukan rekomendasi runtime.
 
-### 24.2 Perilaku Batasan (HARD vs SOFT)
-- **HARD Constraint:** Pelanggaran batasan keras secara tegas mengubah status kelayakan solusi menjadi tidak memenuhi syarat (`is_eligible = false`) dan menetapkan `fit = 'POOR_FIT'`. Solusi yang terkena batasan keras tidak dapat menjadi rekomendasi utama.
-- **SOFT Constraint:** Tidak pernah mendiskualifikasi solusi. Dampak batasan dicatat secara transparan pada jejak evaluasi dan mendegradasi tingkat kecocokan dari `STRONG_FIT` menjadi `GOOD_FIT_WITH_TRADEOFF` atau `CONDITIONAL_FIT`.
+### 24.2 Mekanisme Seleksi & Evaluasi Deterministik
+Seleksi solusi rekomendasi dijalankan murni berdasarkan komputasi deterministik atas:
+1. **Dimensi Konteks:** Memetakan konteks fisik bangunan, paparan iklim, lokasi ruangan, batasan anggaran, dan toleransi perawatan pembaca.
+2. **Batasan HARD:** Mendiskualifikasi solusi secara tegas (`is_eligible = false`, `fit = 'POOR_FIT'`).
+3. **Batasan SOFT:** Menghitung dampak penalti/kompromi fungsional tanpa menggugurkan solusi.
+4. **Tradeoff Kontekstual:** Menghitung jumlah kompromi teknis yang terpicu oleh dimensi konteks aktif.
+5. **Evaluasi Kriteria:** Menilai keunggulan kualitatif solusi pada kriteria yang relevan dengan prioritas konteks pembaca (termal, korosi pesisir, kekedapan air sambungan sudut, kekakuan bentang lebar, atau kerampingan profil).
+6. **Derivasi Fit Tanpa Skor Numerik:**
+   - Rekomendasi utama tanpa batasan lunak aktif dan unggul pada kriteria relevan -> `STRONG_FIT`.
+   - Rekomendasi dengan batasan lunak aktif atau kompromi kontekstual -> `GOOD_FIT_WITH_TRADEOFF`.
+   - Alternatif yang terhalang kendala struktural, anggaran, atau korosi -> `CONDITIONAL_FIT`.
+   - Solusi yang didiskualifikasi batasan keras -> `POOR_FIT`.
 
-### 24.3 Aturan Derivasi Kecocokan (Fit Derivation)
-Taksonomi kecocokan dibatasi ketat pada 4 status kualitatif tanpa skor numerik:
-- **`STRONG_FIT`:** Solusi sangat cocok dengan konteks pembaca, memiliki performa superior pada kriteria prioritas, dan tidak terbebani oleh batasan lunak aktif baru.
-- **`GOOD_FIT_WITH_TRADEOFF`:** Solusi layak secara fungsional namun memiliki kompromi teknis yang memerlukan mitigasi (misal: perawatan berkala atau perlindungan kanopi).
-- **`CONDITIONAL_FIT`:** Solusi hanya dianjurkan sebagai opsi sekunder atau membutuhkan kondisi khusus untuk dapat bekerja optimal.
-- **`POOR_FIT`:** Solusi tidak memenuhi syarat fungsional atau didiskualifikasi oleh batasan keras.
-
-### 24.4 Penjaga Kesegaran Bukti (Evidence Freshness Guard)
-- Saat pemetaan bukti otoritatif disertakan via opsi evaluasi (`authoritativeEvidenceMap`), evaluator memvalidasi hash naskah setiap `EvidenceBinding`.
-- Jika hash naskah mengalami pergeseran (*drift*), evaluasi diblokir secara terstruktur dengan status `EVALUATION_BLOCKED_EVIDENCE_STALE`.
-- Jika catatan bukti otoritatif tidak ditemukan, evaluasi diblokir dengan status `EVALUATION_BLOCKED_EVIDENCE_UNAVAILABLE`.
-- Sistem tidak pernah memproduksi rekomendasi dari bukti yang telah usang atau tidak terverifikasi.
-
-### 24.5 Jaminan Determinisme & Bebas Efek Samping
-- Evaluator murni bebas I/O, bebas dependensi runtime Cloudflare/browser, dan tidak menggunakan `Date.now()`, `Math.random()`, atau ID acak/UUID.
-- Seluruh array keluaran (solusi yang memenuhi syarat, jejak kriteria, jejak kecocokan, dan binding bukti) diurutkan secara deterministik berdasarkan kunci kanonikal.
-- Evaluasi berulang pada konteks dan model yang sama menghasilkan keluaran yang identik hingga tingkat byte (*byte-equivalent deep equality*).
-
-### 24.6 Pemisahan Total Engine Generik dari Domain Pilot
-- Berkas [evaluator.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/product-decision/evaluator.ts) terbukti memiliki 0 kata/frasa spesifik domain kusen (`aluminium`, `upvc`, `window`, `kusen`, `article 5`, `scen_`).
-- Seluruh logika keputusan bersifat agnostik dan hanya memproses kontrak generik model keputusan.
-
-### 24.7 Hasil Pengujian Otomatis
-- **Test Suite PDE-1B (`scripts/test-product-decision-engine-evaluator.js`):** **19/19 PASSED, 0 FAILED**.
-  - Verifikasi seluruh 5 skenario pilot kanonikal.
-  - Verifikasi determinisme byte-exact.
-  - Verifikasi independensi ID skenario.
-  - 5 pengujian perturbasi konteks dan 3 pengujian batas pivot membuktikan mesin mengevaluasi konteks nyata dan bukan memutar ulang (*replay*) data fixture.
-  - Pengujian batasan HARD dan SOFT, penolakan konteks invalid, pemblokiran bukti basi/hilang, penolakan field komersial, dan ketiadaan skor numerik.
+### 24.3 Hasil Pengujian Otomatis
+- **Test Suite PDE-1B (`scripts/test-product-decision-engine-evaluator.js`):** **22/22 PASSED, 0 FAILED**.
+  - **Tes A & B:** 5 skenario pilot kanonikal mereproduksi rekomendasi dan fit secara tepat.
+  - **Tes C:** Determinisme byte-exact deep-equality pada eksekusi berulang.
+  - **Tes D:** Independensi pembungkus skenario.
+  - **Tes E:** 5 pengujian perturbasi konteks mengubah luaran secara deterministik.
+  - **Tes F:** 3 pengujian batas pivot membuktikan responsivitas transisi solusi.
+  - **Tes G & H:** Pembuktian batasan HARD (diskualifikasi) dan SOFT (degradasi fit tanpa diskualifikasi).
+  - **Tes I, J, K:** Penolakan konteks cacat, pemblokiran bukti basi (`EVALUATION_BLOCKED_EVIDENCE_STALE`), dan bukti hilang (`EVALUATION_BLOCKED_EVIDENCE_UNAVAILABLE`).
+  - **Tes L, M, N, O, P, Q, R, S, T:** Firewall komersial, ketiadaan skor angka semu, keterikatan bukti, 3 Pertanyaan Emas, zero domain strings, preservasi tipe kualitatif, ketiadaan ID acak/timestamp, determinisme urutan array, dan penanganan diskualifikasi total.
+  - **Tes U (Mutated Oracle Test):** Membuktikan bahwa memutasi/mengacak nilai `expected_recommendation` skenario pada model klon tidak mengubah hasil evaluasi runtime sama sekali (`SCENARIO_EXPECTATION_REPLAY_DETECTED = NEGATIVE`).
+  - **Tes V (Scenario-Free Proof):** Membuktikan bahwa mengevaluasi `DecisionContext` murni tanpa menyertakan metadata skenario menghasilkan rekomendasi dan jejak yang identik.
+  - **Tes W (Criteria Material Participation):** Membuktikan bahwa membalik tier evaluasi kriteria relevan pada model klon secara langsung mengubah pemilihan rekomendasi solusi.
 - **Regresi PDE-1A (`scripts/test-product-decision-engine-contract.js`):** **14/14 PASSED, 0 FAILED**.
 - **Pemeriksaan Tipe & Kompilasi:** `npx tsc --noEmit` **0 ERRORS**, `npm run build` **SUKSES**.
 
 ---
 
-*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1B_PASS`*
-*Milestone Berikutnya: `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1C1` (Admin / Editorial Inspection UI)*
+*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1B_PASS`*  
+*Milestone Berikutnya: `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1C` (Admin / Editorial Inspection UI)*

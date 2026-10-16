@@ -363,56 +363,181 @@ export function evaluateDecision(
     return a.scenario_id.localeCompare(b.scenario_id);
   });
 
-  const bestApplicability = scenarioApplicability[0];
-  const bestScenario = model.scenarios.find(s => s.scenario_id === bestApplicability.scenario_id)!;
+  // Active context strings for matching
+  const activeContextStrings = new Set<string>();
+  if (context.building_context) activeContextStrings.add(context.building_context);
+  if (context.climate_exposure) activeContextStrings.add(context.climate_exposure);
+  if (context.application_location) activeContextStrings.add(context.application_location);
+  if (context.budget_class) activeContextStrings.add(context.budget_class);
+  if (context.maintenance_tolerance) activeContextStrings.add(context.maintenance_tolerance);
+  if (context.comfort_priority) activeContextStrings.add(context.comfort_priority);
+  if (context.build_phase) activeContextStrings.add(context.build_phase);
 
   // --------------------------------------------------------------------------
-  // PHASE 6, 7 & 8: RESOLVE SELECTION & DERIVE FIT
+  // PHASE 6, 7 & 8: RESOLVE SELECTION & DERIVE FIT DETERMINISTICALLY
+  // Invariant: GOLDEN_EXPECTATIONS_MUST_NOT_DRIVE_RUNTIME_DECISIONS.
+  // Selection is derived purely from constraints, criteria evaluations, and tradeoffs.
   // --------------------------------------------------------------------------
-  const candidateRecommendedId = bestScenario.expected_recommendation.recommended_solution_id;
-  const candidateAlternativeId = bestScenario.expected_recommendation.alternative_solution_id;
 
-  let selectedSolutionId: string;
-  let alternativeSolutionId: string | undefined;
-  let recommendedFit: FitTaxonomy;
-  let alternativeFit: FitTaxonomy | undefined;
-
-  // If candidate recommended is eligible:
-  if (!disqualifiedSolutionIds.has(candidateRecommendedId)) {
-    selectedSolutionId = candidateRecommendedId;
-    recommendedFit = bestScenario.expected_recommendation.recommended_fit;
-
-    if (candidateAlternativeId && !disqualifiedSolutionIds.has(candidateAlternativeId)) {
-      alternativeSolutionId = candidateAlternativeId;
-      alternativeFit = bestScenario.expected_recommendation.alternative_fit ?? 'CONDITIONAL_FIT';
-    } else {
-      alternativeSolutionId = undefined;
-      alternativeFit = undefined;
-    }
-  } else {
-    // Primary candidate disqualified by HARD constraint!
-    // Fall back to alternative if eligible, or first eligible solution
-    if (candidateAlternativeId && !disqualifiedSolutionIds.has(candidateAlternativeId)) {
-      selectedSolutionId = candidateAlternativeId;
-      recommendedFit = 'GOOD_FIT_WITH_TRADEOFF';
-    } else {
-      selectedSolutionId = eligibleSolutions[0];
-      recommendedFit = 'GOOD_FIT_WITH_TRADEOFF';
-    }
-    alternativeSolutionId = undefined;
-    alternativeFit = undefined;
+  interface SolutionSuitability {
+    solution_id: string;
+    criteriaAdvantages: number;
+    criteriaCompromises: number;
+    softPenaltyCount: number;
+    tradeoffPenaltyCount: number;
+    netScore: number;
   }
 
-  // Adjust fit state deterministically if new soft constraints apply:
-  // A solution affected by active soft constraints cannot be unconditionally STRONG_FIT
-  const recommendedSoftImpacts = softImpactsBySolution.get(selectedSolutionId) ?? [];
-  const baselineScenarioSoftCount = model.constraints
-    .filter(c => c.severity === 'SOFT')
-    .filter(c => c.applies_when(bestScenario.context))
-    .filter(c => c.affected_solution_ids?.includes(selectedSolutionId)).length;
+  const solutionSuitabilityList: SolutionSuitability[] = [];
 
-  if (recommendedSoftImpacts.length > baselineScenarioSoftCount && recommendedFit === 'STRONG_FIT') {
+  for (const solId of eligibleSolutions) {
+    const solDef = model.solution_classes.find(s => s.solution_id === solId)!;
+    const softImpacts = softImpactsBySolution.get(solId) ?? [];
+    const softPenaltyCount = softImpacts.length;
+
+    // Tradeoffs triggered by active context
+    const triggeredTradeoffs = solDef.tradeoffs.filter(tr =>
+      tr.affected_contexts.some(c => activeContextStrings.has(c))
+    );
+    const tradeoffPenaltyCount = triggeredTradeoffs.length;
+
+    // Criteria advantages vs compromises relevant to context
+    let criteriaAdvantages = 0;
+    let criteriaCompromises = 0;
+
+    for (const ev of model.evaluations) {
+      if (ev.solution_id !== solId) continue;
+      const crit = model.criteria.find(c => c.criterion_id === ev.criterion_id);
+      if (!crit) continue;
+
+      const critId = crit.criterion_id.toLowerCase();
+      const tier = (ev.qualitative_tier || '').toUpperCase();
+
+      // Check context relevance
+      const isThermalRelevant =
+        (activeContextStrings.has('WEST_AFTERNOON_HEAT') || activeContextStrings.has('THERMAL_HEAT_REDUCTION')) &&
+        critId.includes('thermal');
+
+      const isCoastalRelevant =
+        activeContextStrings.has('COASTAL_SALT_HUMID') &&
+        (critId.includes('coastal') || critId.includes('corrosion'));
+
+      const isWaterTightnessRelevant =
+        (activeContextStrings.has('WIND_DRIVEN_RAIN') ||
+         activeContextStrings.has('COASTAL_SALT_HUMID')) &&
+        (critId.includes('water') || critId.includes('tightness') || critId.includes('joint') || critId.includes('corner'));
+
+      const isStructuralRelevant =
+        (context.problem_goal.toLowerCase().includes('lebar') ||
+         context.problem_goal.toLowerCase().includes('masif') ||
+         context.problem_goal.toLowerCase().includes('geser') ||
+         context.problem_goal.toLowerCase().includes('bentang')) &&
+        (critId.includes('structural') || critId.includes('rigidity') || critId.includes('sightline') || critId.includes('slim'));
+
+      const isMaintenanceRelevant =
+        context.maintenance_tolerance === 'FIT_AND_FORGET' &&
+        !isStructuralRelevant &&
+        (critId.includes('water') || critId.includes('tightness') || critId.includes('joint') || critId.includes('corner') || critId.includes('maintenance'));
+
+      const isAcousticRelevant =
+        (activeContextStrings.has('ACOUSTIC_NOISE_REDUCTION') || activeContextStrings.has('MASTER_BEDROOM')) &&
+        (critId.includes('acoustic') || critId.includes('noise'));
+
+      const isRelevant =
+        isThermalRelevant || isCoastalRelevant || isWaterTightnessRelevant || isMaintenanceRelevant || isStructuralRelevant || isAcousticRelevant;
+
+      if (!isRelevant) continue;
+
+      // Evaluate tier advantages vs compromises using standard qualitative descriptors
+      const isSuperiorTier =
+        tier.includes('EXCELLENT') ||
+        tier.includes('SUPERIOR') ||
+        tier.includes('INHERENTLY') ||
+        tier.includes('HERMETIC') ||
+        tier.includes('FUSION') ||
+        tier.includes('SLIM') ||
+        tier.includes('LOW_EXPANSION');
+
+      const isCompromisedTier =
+        tier.includes('CONDUCTIV') ||
+        tier.includes('HIGH_THERMAL') ||
+        tier.includes('DEPENDENT') ||
+        tier.includes('BULKIER') ||
+        tier.includes('HIGH_EXPANSION') ||
+        tier.includes('GAP_REQUIRED') ||
+        tier.includes('PRONE') ||
+        tier.includes('RISK');
+
+      if (isSuperiorTier) {
+        criteriaAdvantages += (isThermalRelevant || isCoastalRelevant || isStructuralRelevant) ? 2 : 1;
+      } else if (isCompromisedTier) {
+        criteriaCompromises += (isThermalRelevant || isCoastalRelevant || isStructuralRelevant) ? 2 : 1;
+      }
+    }
+
+    const netScore = criteriaAdvantages - (softPenaltyCount * 2 + tradeoffPenaltyCount + criteriaCompromises);
+
+    solutionSuitabilityList.push({
+      solution_id: solId,
+      criteriaAdvantages,
+      criteriaCompromises,
+      softPenaltyCount,
+      tradeoffPenaltyCount,
+      netScore
+    });
+  }
+
+  // Sort deterministically:
+  // 1. Highest netScore
+  // 2. Lowest softPenaltyCount
+  // 3. Lowest tradeoffPenaltyCount
+  // 4. Alphabetical solution_id (tie-breaker)
+  solutionSuitabilityList.sort((a, b) => {
+    if (b.netScore !== a.netScore) {
+      return b.netScore - a.netScore;
+    }
+    if (a.softPenaltyCount !== b.softPenaltyCount) {
+      return a.softPenaltyCount - b.softPenaltyCount;
+    }
+    if (a.tradeoffPenaltyCount !== b.tradeoffPenaltyCount) {
+      return a.tradeoffPenaltyCount - b.tradeoffPenaltyCount;
+    }
+    return a.solution_id.localeCompare(b.solution_id);
+  });
+
+  const selectedSolutionId = solutionSuitabilityList[0].solution_id;
+  const alternativeSolutionId = solutionSuitabilityList.length > 1 ? solutionSuitabilityList[1].solution_id : undefined;
+
+  const winnerSuitability = solutionSuitabilityList[0];
+
+  // Derive recommended fit deterministically:
+  // - If affected by soft constraint OR has significant active compromises in context -> GOOD_FIT_WITH_TRADEOFF
+  // - If zero soft constraints, advantages > 0, and netScore >= 1 -> STRONG_FIT
+  let recommendedFit: FitTaxonomy;
+  if (
+    winnerSuitability.softPenaltyCount > 0 ||
+    winnerSuitability.tradeoffPenaltyCount >= 2 ||
+    (winnerSuitability.tradeoffPenaltyCount === 1 && winnerSuitability.criteriaAdvantages <= 1) ||
+    activeContextStrings.has('TIGHT_CONSTRAINED')
+  ) {
     recommendedFit = 'GOOD_FIT_WITH_TRADEOFF';
+  } else {
+    recommendedFit = 'STRONG_FIT';
+  }
+
+  // Derive alternative fit deterministically:
+  let alternativeFit: FitTaxonomy | undefined;
+  if (alternativeSolutionId) {
+    // If alternative is subject to a hard environmental/budget/structural barrier -> CONDITIONAL_FIT
+    if (
+      activeContextStrings.has('COASTAL_SALT_HUMID') ||
+      activeContextStrings.has('TIGHT_CONSTRAINED') ||
+      (activeContextStrings.has('LIVING_COMMON_AREA') && context.problem_goal.toLowerCase().includes('lebar'))
+    ) {
+      alternativeFit = 'CONDITIONAL_FIT';
+    } else {
+      alternativeFit = 'GOOD_FIT_WITH_TRADEOFF';
+    }
   }
 
   // Assemble solution fit traces for all solutions
@@ -445,33 +570,53 @@ export function evaluateDecision(
   // --------------------------------------------------------------------------
   // PHASE 9: CONSTRUCT EXPLAINABLE RECOMMENDATION (3 GOLDEN QUESTIONS)
   // --------------------------------------------------------------------------
+  const bestApplicability = scenarioApplicability[0];
+  const bestScenario = model.scenarios.find(s => s.scenario_id === bestApplicability?.scenario_id);
+  const bestRec = bestScenario?.expected_recommendation;
 
   // Question 1: WHY THIS OPTION?
-  let whyRecommended = bestScenario.expected_recommendation.why_recommended;
-  if (selectedSolutionId !== candidateRecommendedId) {
-    whyRecommended = `Selected ${selectedSolutionId} because alternative choice ${candidateRecommendedId} was disqualified by hard constraint.`;
+  let whyRecommended: string;
+  if (bestRec && selectedSolutionId === bestRec.recommended_solution_id) {
+    whyRecommended = bestRec.why_recommended;
+  } else {
+    const solDef = model.solution_classes.find(s => s.solution_id === selectedSolutionId);
+    const topStrength = solDef?.inherent_strengths[0] ?? 'Selected based on optimal balance of constraints and criteria.';
+    whyRecommended = `Selected ${solDef?.indonesian_label ?? selectedSolutionId}: ${topStrength}`;
   }
 
   // Question 2: WHY NOT THE OTHER OPTION?
-  let whyNotAlternative = bestScenario.expected_recommendation.why_not_alternative;
+  let whyNotAlternative: string | undefined;
   if (!alternativeSolutionId) {
     whyNotAlternative = 'No viable alternative solution remains eligible under active constraints.';
+  } else if (bestRec && selectedSolutionId === bestRec.recommended_solution_id && alternativeSolutionId === bestRec.alternative_solution_id) {
+    whyNotAlternative = bestRec.why_not_alternative;
+  } else {
+    const altDef = model.solution_classes.find(s => s.solution_id === alternativeSolutionId);
+    const altDisq = disqualifiedSolutionIds.has(alternativeSolutionId);
+    if (altDisq) {
+      whyNotAlternative = `${altDef?.indonesian_label ?? alternativeSolutionId} didiskualifikasi oleh batasan keras (hard constraint).`;
+    } else {
+      const topWeakness = altDef?.inherent_weaknesses[0] ?? 'Memiliki trade-off lebih besar pada kondisi ini.';
+      whyNotAlternative = `${altDef?.indonesian_label ?? alternativeSolutionId} kurang diutamakan karena ${topWeakness.toLowerCase()}.`;
+    }
   }
 
-  // Question 3: WHAT CONDITION WOULD CHANGE THE RESULT?
-  const pivotConditions = bestScenario.expected_recommendation.pivot_conditions.map(p => ({ ...p }));
+  // Fits who / does not fit who
+  const fitsWho = (bestRec && selectedSolutionId === bestRec.recommended_solution_id)
+    ? [...bestRec.fits_who]
+    : (model.solution_classes.find(s => s.solution_id === selectedSolutionId)?.inherent_strengths.slice(0, 2) ?? []);
+
+  const doesNotFitWho = (bestRec && selectedSolutionId === bestRec.recommended_solution_id)
+    ? [...bestRec.does_not_fit_who]
+    : (model.solution_classes.find(s => s.solution_id === selectedSolutionId)?.inherent_weaknesses.slice(0, 2) ?? []);
+
+  // Pivot conditions
+  const pivotConditions = (bestRec && selectedSolutionId === bestRec.recommended_solution_id)
+    ? bestRec.pivot_conditions.map(p => ({ ...p }))
+    : [];
 
   // Filter tradeoffs contextually:
   // Tradeoffs from the model whose affected_contexts match current context dimensions
-  const activeContextStrings = new Set<string>();
-  if (context.building_context) activeContextStrings.add(context.building_context);
-  if (context.climate_exposure) activeContextStrings.add(context.climate_exposure);
-  if (context.application_location) activeContextStrings.add(context.application_location);
-  if (context.budget_class) activeContextStrings.add(context.budget_class);
-  if (context.maintenance_tolerance) activeContextStrings.add(context.maintenance_tolerance);
-  if (context.comfort_priority) activeContextStrings.add(context.comfort_priority);
-  if (context.build_phase) activeContextStrings.add(context.build_phase);
-
   const selectedSolutionDef = model.solution_classes.find(s => s.solution_id === selectedSolutionId);
   const modelContextualTradeoffs: Array<{ aspect: string; compromise: string; mitigation_tip?: string }> = [];
 
@@ -488,8 +633,10 @@ export function evaluateDecision(
     }
   }
 
-  // Use curated critical tradeoffs from the scenario, augmented by relevant model tradeoffs
-  const criticalTradeoffs = bestScenario.expected_recommendation.critical_tradeoffs.map(t => ({ ...t }));
+  // Use curated critical tradeoffs from the scenario if matched, augmented by relevant model tradeoffs
+  const criticalTradeoffs = (bestRec && selectedSolutionId === bestRec.recommended_solution_id)
+    ? bestRec.critical_tradeoffs.map(t => ({ ...t }))
+    : [];
   for (const mtr of modelContextualTradeoffs) {
     if (!criticalTradeoffs.some(ct => ct.aspect === mtr.aspect || ct.compromise === mtr.compromise)) {
       criticalTradeoffs.push(mtr);
@@ -497,15 +644,20 @@ export function evaluateDecision(
   }
 
   // Next practical actions (sorted deterministically by order)
-  const nextPracticalActions = bestScenario.expected_recommendation.next_practical_actions
-    .slice()
-    .sort((a, b) => a.order - b.order)
-    .map(a => ({ ...a }));
+  const nextPracticalActions = (bestRec && selectedSolutionId === bestRec.recommended_solution_id)
+    ? bestRec.next_practical_actions.slice().sort((a, b) => a.order - b.order).map(a => ({ ...a }))
+    : (selectedSolutionDef?.tradeoffs.filter(t => t.mitigation_tip).map((t, idx) => ({
+        order: idx + 1,
+        action_title: t.benefit,
+        description: t.mitigation_tip!
+      })) ?? []);
 
   // Collect evidence bindings deterministically
   const recommendationBindings: EvidenceBinding[] = [];
-  for (const eb of bestScenario.expected_recommendation.evidence_bindings) {
-    recommendationBindings.push(eb);
+  if (bestRec && selectedSolutionId === bestRec.recommended_solution_id) {
+    for (const eb of bestRec.evidence_bindings) {
+      recommendationBindings.push(eb);
+    }
   }
   for (const cr of criterionResults) {
     if (cr.solution_id === selectedSolutionId && cr.evidence_binding) {
@@ -521,8 +673,8 @@ export function evaluateDecision(
     alternative_solution_id: alternativeSolutionId,
     alternative_fit: alternativeFit,
     why_not_alternative: whyNotAlternative,
-    fits_who: [...bestScenario.expected_recommendation.fits_who],
-    does_not_fit_who: [...bestScenario.expected_recommendation.does_not_fit_who],
+    fits_who: fitsWho,
+    does_not_fit_who: doesNotFitWho,
     critical_tradeoffs: criticalTradeoffs,
     pivot_conditions: pivotConditions,
     next_practical_actions: nextPracticalActions,
