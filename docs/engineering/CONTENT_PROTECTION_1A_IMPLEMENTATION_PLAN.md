@@ -66,10 +66,12 @@ Zona Cache Purge API (`https://api.cloudflare.com/client/v4/zones/.../purge_cach
 
 1. **Deployment-Scoped Invalidation (Default):**
    Setiap kali versi Worker baru dideploy ke produksi, Cloudflare Workers Caching secara default mengisolasi namespace cache ke versi tersebut. Cache lama tidak bocor ke runtime baru.
-2. **Worker-Owned Runtime Invalidation:**
-   Jika invalidasi instan diperlukan dalam siklus hidup Worker saat artikel dimutasi, invalidasi dilakukan melalui konteks Worker (`ctx.cache.purge(url)` / `ctx.cache.invalidate(url)`) atau pemanggilan endpoint internal terotentikasi yang membersihkan entri cache terkait.
-3. **Penyelarasan TTL & Stale Behavior:**
-   Respons publik dikendalikan oleh `s-maxage` dan `stale-while-revalidate`. Permintaan latar belakang akan merevalidasi cache secara otomatis tanpa memblokir pembaca.
+2. **Worker-Owned Runtime Tag Purge:**
+   Jika invalidasi instan diperlukan dalam siklus hidup Worker saat artikel dimutasi, invalidasi dilakukan melalui Workers Cache tag purge selector: `cache.purge({ tags: [...] })` (dari `cloudflare:workers` atau `ctx.cache.purge({ tags: [...] })`). Workers Cache tidak menerima purges berbasis raw URL string.
+3. **Pemisahan Header Browser vs Cloudflare Edge:**
+   Cloudflare Workers Cache mendokumentasikan bahwa penggunaan `s-maxage` mengimplikasikan `proxy-revalidate` dan menonaktifkan `stale-while-revalidate`. Oleh karena itu, arsitektur memisahkan kebijakan browser dan Cloudflare edge:
+   - Browser: `Cache-Control: public, max-age=<browser_ttl>`
+   - Cloudflare Edge: `Cloudflare-CDN-Cache-Control: public, max-age=<edge_ttl>, stale-while-revalidate=<window>`
 
 ---
 
@@ -98,12 +100,13 @@ Sebuah halaman artikel `https://rancangloka.com/[slug]` **TIDAK BERDIRI SENDIRI*
 6. **Site Settings:** Judul situs, deskripsi, dan preferensi global (`site_settings`).
 
 ### Tag & Dependensi Logis:
-- `article:<article_id>`: Halaman kanonikal artikel itu sendiri.
-- `category:<category_id>`: Halaman arsip/kategori yang menaungi artikel.
+- `article-<article_id>`: Halaman kanonikal artikel itu sendiri.
+- `category-<category_id>`: Halaman arsip/kategori yang menaungi artikel.
 - `homepage`: Halaman depan `/`.
 - `rss`: Feed sindikasi `/rss.xml`.
 - `sitemap`: Indeks dan berkas `/sitemap*.xml`.
-- `support-target:<target_article_id>`: Kumpulan artikel sumber yang menautkan artikel target ini melalui Plane A.
+- `search`: Endpoint API pencarian `/api/search.json`.
+- `support-target-<target_article_id>`: Kumpulan artikel sumber yang menautkan artikel target ini melalui Plane A.
 
 ---
 
@@ -117,17 +120,19 @@ Contoh nyata:
 
 ### Solusi: Reverse Invalidation Trigger pada Publication Engine
 Ketika sebuah artikel target ($T$) mengalami mutasi:
-1. Publication engine menjalankan kueri deterministik pada tabel kanonikal graf relasi D1:
+1. Publication engine menjalankan kueri deterministik pada skema kanonikal graf relasi D1:
    ```sql
    SELECT DISTINCT source_article_id
    FROM article_internal_links
    WHERE target_article_id = ?
-     AND plane = 'A'
-     AND is_active = 1;
+     AND placement_plane = 'PLANE_A_DYNAMIC'
+     AND status = 'ACTIVE';
    ```
-2. Untuk setiap `source_article_id` yang ditemukan, sistem mengambil slug kanonikalnya (`source_slug`).
-3. URL halaman sumber (`https://rancangloka.com/{source_slug}`) dimasukkan ke dalam daftar antrean invalidasi cache bersamaan dengan URL kanonikal Artikel $T$.
-4. **Karakteristik Operasional:** Kueri ini dieksekusi secara deterministik pada saat publikasi/penyuntingan (*at publication time*), **TIDAK MENGUBAH** struktur graf, dan tidak memerlukan fitur Cache-Tag berbayar.
+2. Menggunakan Workers Cache `Cache-Tag`, pembersihan cukup mem-purge tag:
+   - `article-<T>`
+   - `support-target-<T>`
+   Setiap artikel sumber yang menautkan target $T$ pada Article Support merender tag `support-target-<T>` pada responsnya. Saat `support-target-<T>` di-purge, seluruh halaman sumber terkait otomatis menjadi MISS tanpa perlu melakukan kueri URL manual.
+3. **Karakteristik Operasional:** Kueri dan tag purge ini dieksekusi secara deterministik pasca-mutasi basis data, **TIDAK MENGUBAH** struktur graf Plane A, dan fail-safe.
 
 ---
 
@@ -184,30 +189,30 @@ Untuk mempertahankan filosofi naskah bersih dan **zero client-side JavaScript**,
 Seluruh angka durasi cache diklasifikasikan sebagai **`CANDIDATE_INITIAL_TTL`** yang akan dikalibrasi berdasarkan pengamatan beban produksi nyata:
 
 ```
-+---------------------------+-----------------------------------+--------------------+-----------------------------------------------------+
-| Pola Rute URL             | Klasifikasi Akses                 | Status Edge Cache  | Header Cache-Control yang Diterapkan               |
-+---------------------------+-----------------------------------+--------------------+-----------------------------------------------------+
-| /                         | PUBLIC_HOMEPAGE                   | CACHEABLE (1A)     | public, max-age=60, s-maxage=1800, s-w-r=86400      |
-| /[slug] (Published, 200)  | PUBLIC_ARTICLE_SSR                | CACHEABLE (1A)     | public, max-age=60, s-maxage=3600, s-w-r=86400      |
-| /media/thumbnails/*       | PUBLIC_THUMBNAIL                  | IMMUTABLE (1 Year) | public, max-age=31536000, immutable                 |
-| /media/images/*           | PUBLIC_IMAGE                      | IMMUTABLE (1 Year) | public, max-age=31536000, immutable                 |
-| /assets/*, /_astro/*      | STATIC_BUILD_ASSET                | IMMUTABLE (1 Year) | public, max-age=31536000, immutable                 |
-| /api/search.json          | PUBLIC_SEARCH_API                 | SHORT CACHE (1A)   | public, max-age=60, s-maxage=300                    |
-| /rss.xml                  | RSS_FEED                          | EDGE CACHED (1A)   | public, max-age=1800, s-maxage=7200                 |
-| /sitemap*.xml             | XML_SITEMAPS                      | EDGE CACHED (1A)   | public, max-age=3600, s-maxage=86400                |
-| /admin/*                  | PRIVATE_ADMIN_UI                  | STRICTLY NO-STORE  | no-store, private, no-cache, must-revalidate        |
-| /api/admin/*              | PRIVATE_ADMIN_API                 | STRICTLY NO-STORE  | no-store, private, no-cache, must-revalidate        |
-| /api/internal/*           | INTERNAL_WORKER_API               | STRICTLY NO-STORE  | no-store, private, no-cache, must-revalidate        |
-| Respons Error (4xx, 5xx)  | ERROR_STATE                       | STRICTLY NO-STORE  | no-store, private, no-cache, must-revalidate        |
-| Draf / Pratinjau Redaksi  | EDITORIAL_PREVIEW                 | STRICTLY NO-STORE  | no-store, private, no-cache, must-revalidate        |
-| Sesi Berisi Cookie Admin  | AUTHENTICATED_SESSION             | STRICTLY NO-STORE  | no-store, private, no-cache, must-revalidate        |
-+---------------------------+-----------------------------------+--------------------+-----------------------------------------------------+
++---------------------------+-----------------------------------+--------------------+-----------------------------------------------------------------------------------------------------------------------+
+| Pola Rute URL             | Klasifikasi Akses                 | Status Edge Cache  | Header Kebijakan Cache yang Diterapkan                                                                               |
++---------------------------+-----------------------------------+--------------------+-----------------------------------------------------------------------------------------------------------------------+
+| /                         | PUBLIC_HOMEPAGE                   | CACHEABLE (1A)     | Browser: public, max-age=60 | Edge: Cloudflare-CDN-Cache-Control: public, max-age=1800, stale-while-revalidate=86400  |
+| /[slug] (Published, 200)  | PUBLIC_ARTICLE_SSR                | CACHEABLE (1A)     | Browser: public, max-age=60 | Edge: Cloudflare-CDN-Cache-Control: public, max-age=3600, stale-while-revalidate=86400  |
+| /media/thumbnails/*       | PUBLIC_THUMBNAIL                  | IMMUTABLE (1 Year) | public, max-age=31536000, immutable                                                                                   |
+| /media/images/*           | PUBLIC_IMAGE                      | IMMUTABLE (1 Year) | public, max-age=31536000, immutable                                                                                   |
+| /assets/*, /_astro/*      | STATIC_BUILD_ASSET                | IMMUTABLE (1 Year) | public, max-age=31536000, immutable                                                                                   |
+| /api/search.json          | PUBLIC_SEARCH_API                 | SHORT CACHE (1A)   | Browser: public, max-age=60 | Edge: Cloudflare-CDN-Cache-Control: public, max-age=300                                  |
+| /rss.xml                  | RSS_FEED                          | EDGE CACHED (1A)   | Browser: public, max-age=1800 | Edge: Cloudflare-CDN-Cache-Control: public, max-age=7200                                |
+| /sitemap*.xml             | XML_SITEMAPS                      | EDGE CACHED (1A)   | Browser: public, max-age=3600 | Edge: Cloudflare-CDN-Cache-Control: public, max-age=86400                               |
+| /admin/*                  | PRIVATE_ADMIN_UI                  | STRICTLY NO-STORE  | Cache-Control: no-store, private (Edge cache headers removed)                                                         |
+| /api/admin/*              | PRIVATE_ADMIN_API                 | STRICTLY NO-STORE  | Cache-Control: no-store, private (Edge cache headers removed)                                                         |
+| /api/internal/*           | INTERNAL_WORKER_API               | STRICTLY NO-STORE  | Cache-Control: no-store, private (Edge cache headers removed)                                                         |
+| Respons Error (4xx, 5xx)  | ERROR_STATE                       | STRICTLY NO-STORE  | Cache-Control: no-store, private (Edge cache headers removed)                                                         |
+| Draf / Pratinjau Redaksi  | EDITORIAL_PREVIEW                 | STRICTLY NO-STORE  | Cache-Control: no-store, private (Edge cache headers removed)                                                         |
+| Sesi Berisi Cookie Admin  | AUTHENTICATED_SESSION             | STRICTLY NO-STORE  | Cache-Control: no-store, private (Edge cache headers removed)                                                         |
++---------------------------+-----------------------------------+--------------------+-----------------------------------------------------------------------------------------------------------------------+
 ```
 
-### Pemisahan Lapisan TTL:
-- **Browser TTL (`max-age=60`):** Sangat pendek (1 menit) agar pengguna peramban mendapatkan pembaruan cepat saat navigasi ulang atau refresh.
-- **Shared Edge / Worker TTL (`s-maxage=1800–3600`):** Berdurasi 30–60 menit di edge Cloudflare, menyerap burst scraping tanpa membebani D1.
-- **Stale Behavior (`stale-while-revalidate=86400`):** Mengizinkan edge menyajikan konten cache seketika sementara proses revalidasi berjalan asinkron di latar belakang.
+### Pemisahan Lapisan TTL (Browser vs Cloudflare Edge):
+- **Browser Policy (`Cache-Control: public, max-age=60`):** Berdurasi pendek agar pembaca mendapatkan pembaruan cepat.
+- **Edge Policy (`Cloudflare-CDN-Cache-Control: public, max-age=1800–3600, stale-while-revalidate=86400`):** Berdurasi 30–60 menit di edge Cloudflare, menyerap burst scraping tanpa membebani SSR/D1. Tidak menggunakan `s-maxage` bersama `stale-while-revalidate` karena Cloudflare mendokumentasikan bahwa `s-maxage` menonaktifkan `stale-while-revalidate` pada Workers Cache.
+- **Strictly No-Store:** Seluruh rute privat, admin, internal API, status error, atau permintaan bermutasi menerima `Cache-Control: no-store, private` dan header edge CDN dihapus.
 
 ---
 
@@ -412,17 +417,17 @@ Untuk menjamin risiko operasional minimal dan kepatuhan penuh terhadap batas pen
 Untuk menutup siklus perencanaan implementasi secara definitif, 6 pertanyaan arsitektur mendasar dijawab secara eksplisit:
 
 1. **Teknologi cache apa yang dipilih untuk Fase 1A?**
-   > **Cloudflare Workers Caching (`[cache] enabled = true` di `wrangler.toml`)** yang dikendalikan secara deklaratif melalui header HTTP `Cache-Control` (`s-maxage`, `stale-while-revalidate`) di `src/middleware.ts`.
+   > **Cloudflare Workers Caching (`[cache] enabled = true` di `wrangler.toml`)** yang dikendalikan melalui pemisahan header `Cache-Control: public, max-age=<browser>` (browser) dan `Cloudflare-CDN-Cache-Control: public, max-age=<edge>, stale-while-revalidate=<window>` (edge) di `src/middleware.ts` dan route handlers.
 2. **Bagaimana cara mengaktifkannya?**
-   > Menambahkan blok `[cache]` dengan `enabled = true` pada `wrangler.toml`, dan memperbarui `src/middleware.ts` agar menyuntikkan header cache publik pada rute publik yang valid (menggantikan `no-store` universal).
+   > Menambahkan blok `[cache]` dengan `enabled = true` pada `wrangler.toml`, dan memperbarui `src/middleware.ts` serta page/endpoint handlers agar menyuntikkan header cache publik pada rute publik yang valid (menggantikan `no-store` universal).
 3. **Bagaimana cara cache tersebut dibersihkan (*purged*)?**
-   > Secara default melalui isolasi versi Worker (*version-scoped cache*) pada setiap deployment baru, serta pembersihan terarah (*targeted purge*) via mekanisme Worker-owned cache invalidation saat peristiwa publikasi terjadi.
+   > Secara default melalui isolasi versi Worker (*version-scoped cache*) pada setiap deployment baru, serta pembersihan terarah berbasis tag (`Cache-Tag`) via Workers Cache purge selector `cache.purge({ tags: [...] })` saat peristiwa publikasi terjadi.
 4. **Bagaimana rute terotentikasi dibypass dari cache?**
-   > Pada `src/middleware.ts`, setiap permintaan yang memuat cookie `admin_session`, atau mengarah ke `/admin/*`, `/api/admin/*`, `/api/internal/*`, atau menghasilkan status error (4xx/5xx) **wajib dan mutlak** menerima `Cache-Control: no-store, private, no-cache, must-revalidate`.
+   > Pada `src/middleware.ts`, setiap permintaan yang memuat cookie `admin_session`, atau mengarah ke `/admin/*`, `/api/admin/*`, `/api/internal/*`, non-GET/HEAD, atau menghasilkan status error (4xx/5xx) **wajib dan mutlak** menerima `Cache-Control: no-store, private` dan header edge CDN dihapus.
 5. **Bagaimana dependensi balik Article Support diinvalidasi?**
-   > Saat artikel target ($T$) disunting atau dibatalkan terbitnya, publication engine mengeksekusi:
-   > `SELECT DISTINCT source_article_id FROM article_internal_links WHERE target_article_id = ? AND plane = 'A' AND is_active = 1;`
-   > dan secara otomatis memasukkan seluruh URL artikel sumber yang terdampak ke dalam antrean invalidasi bersamaan dengan Artikel $T$.
+   > Saat artikel target ($T$) disunting atau dibatalkan terbitnya, publication engine mengeksekusi kueri skema kanonikal:
+   > `SELECT DISTINCT source_article_id FROM article_internal_links WHERE target_article_id = ? AND placement_plane = 'PLANE_A_DYNAMIC' AND status = 'ACTIVE';`
+   > dan membersihkan tag `article-<T>` serta `support-target-<T>`. Seluruh artikel sumber yang merender tautan target otomatis menjadi MISS saat `support-target-<T>` di-purge.
 6. **Bagaimana harga dinamis produk di masa depan dicegah agar tidak basi di dalam cache?**
    > Melalui pemisahan data komersial dari prosa statis (`PRICE_IS_DYNAMIC_COMMERCE_DATA_NOT_ARTICLE_PROSE`). Pembaruan snapshot harga akan mencari relasi `ARTICLE_PRODUCT_BINDING` di D1 dan memicu invalidasi terarah pada cache halaman ulasan produk terkait.
 

@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getDb, getAllArticles } from '../../lib/db';
+import { getDb, getAllArticles } from '../../lib/db.ts';
 
 export const GET: APIRoute = async ({ request, locals }) => {
   const url = new URL(request.url);
@@ -7,7 +7,12 @@ export const GET: APIRoute = async ({ request, locals }) => {
 
   if (!query) {
     return new Response(JSON.stringify([]), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=60',
+        'Cloudflare-CDN-Cache-Control': 'public, max-age=300',
+        'Cache-Tag': 'search'
+      }
     });
   }
 
@@ -23,10 +28,22 @@ export const GET: APIRoute = async ({ request, locals }) => {
     })
     .slice(0, 8);
 
-  return new Response(JSON.stringify(filtered), {
+  // Content Protection 1A: Whitelist only fields consumed by public UI (SearchModal)
+  // Purges internal fields: content_hash, views, key_takeaways, focus_keyword, etc.
+  const safeResults = filtered.map((a) => ({
+    title: a.title,
+    slug: a.slug,
+    description: a.description || '',
+    category_name: a.category_name || 'Artikel',
+    featured_image: a.featured_image || ''
+  }));
+
+  return new Response(JSON.stringify(safeResults), {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=60, s-maxage=300'
+      'Cache-Control': 'public, max-age=60',
+      'Cloudflare-CDN-Cache-Control': 'public, max-age=300',
+      'Cache-Tag': 'search'
     }
   });
 };

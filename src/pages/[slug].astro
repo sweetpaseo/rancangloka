@@ -12,6 +12,7 @@ import { getActivePlaneALinks } from '../lib/internal-link/index.ts';
 import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../lib/article/renderer.ts';
 import { renderMediaSlotAnchors } from '../lib/media/renderer.ts';
 import { getQuarantineRedirect, getArticleRobotsDirective, getArticleXRobotsTag } from '../lib/quarantine';
+import { getArticleCacheTags } from '../lib/cache/index.ts';
 
 const { slug } = Astro.params;
 
@@ -68,6 +69,12 @@ if (article) {
   const candidateRelated = (fetchedRelated || []).filter((art: any) => !planeATargetIds.has(art.id));
   const bacaJugaArticle = candidateRelated.length > 0 ? candidateRelated[0] : null;
   relatedArticles = candidateRelated.filter((art: any) => !bacaJugaArticle || art.id !== bacaJugaArticle.id).slice(0, 3);
+
+  // Content Protection 1A: Derive deterministic cache tags and edge cache policy
+  const cacheTags = getArticleCacheTags(article, { activePlaneALinks: planeALinks });
+  Astro.response.headers.set('Cache-Tag', cacheTags.join(', '));
+  Astro.response.headers.set('Cache-Control', 'public, max-age=60');
+  Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
 
   let rawContentHtml = article.content_html;
   const isMalformedHtml =

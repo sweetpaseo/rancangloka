@@ -1,8 +1,36 @@
+# RancangLoka — Standard Robots Policy
 User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/
 
+# Selective AI Search & Citation (Allowed for Discovery & Traffic Attribution)
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+# Bulk Training Data Harvesters (Disallowed)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Diffbot
+Disallow: /
+
+User-agent: Anthropic-ai
+Disallow: /
+
+# Canonical Sitemaps
 Sitemap: https://rancangloka.com/sitemap.xml
 Sitemap: https://rancangloka.com/post-sitemap.xml
 Sitemap: https://rancangloka.com/page-sitemap.xml

@@ -42,7 +42,9 @@ ${items}
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml',
-      'Cache-Control': 'public, max-age=1800, s-maxage=7200'
+      'Cache-Control': 'public, max-age=1800',
+      'Cloudflare-CDN-Cache-Control': 'public, max-age=7200',
+      'Cache-Tag': 'rss'
     }
   });
 };

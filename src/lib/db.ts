@@ -23,6 +23,7 @@ import {
 import { isPubliclyDiscoverable, QUARANTINE_REGISTRY } from './quarantine.ts';
 export { isPubliclyDiscoverable, isIndexableArticle, getQuarantineState } from './quarantine.ts';
 import { renderArticleMarkdownSafely, sanitizeArticleHtml } from './article/renderer.ts';
+import { invalidateArticleCache } from './cache/index.ts';
 
 export interface Article {
   id: number;
@@ -1867,6 +1868,33 @@ export async function updateArticle(db: any, id: number, article: Partial<Articl
     if (!updated) {
       throw new DatabaseWriteError(`Gagal memuat artikel ID ${id} setelah UPDATE.`);
     }
+
+    // Content Protection 1A: Targeted Cache Invalidation on Article Update
+    try {
+      let eventType: 'ARTICLE_UNPUBLISHED' | 'ARTICLE_SLUG_CHANGED' | 'ARTICLE_TITLE_CHANGED' | 'ARTICLE_FEATURED_IMAGE_CHANGED' | 'ARTICLE_READING_TIME_CHANGED' | 'ARTICLE_REVISED' = 'ARTICLE_REVISED';
+      if (existing.status === 'published' && updated.status !== 'published') {
+        eventType = 'ARTICLE_UNPUBLISHED';
+      } else if (existing.slug !== updated.slug) {
+        eventType = 'ARTICLE_SLUG_CHANGED';
+      } else if (existing.title !== updated.title) {
+        eventType = 'ARTICLE_TITLE_CHANGED';
+      } else if (existing.featured_image !== updated.featured_image) {
+        eventType = 'ARTICLE_FEATURED_IMAGE_CHANGED';
+      } else if (existing.reading_time_minutes !== updated.reading_time_minutes) {
+        eventType = 'ARTICLE_READING_TIME_CHANGED';
+      }
+      await invalidateArticleCache(db, id, eventType, { categoryId: updated.category_id });
+    } catch (cacheErr) {
+      console.error(
+        JSON.stringify({
+          event: 'CACHE_INVALIDATION_FAILED',
+          article_id: id,
+          error: (cacheErr as any)?.message || String(cacheErr),
+          timestamp: new Date().toISOString()
+        })
+      );
+    }
+
     return updated;
   }
 

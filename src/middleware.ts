@@ -138,11 +138,68 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 
-  // 5. Cache-Control for Real-Time Freshness on HTML Pages (assets, _astro, and media retain their own caching)
-  if (!pathname.startsWith('/assets/') && !pathname.startsWith('/_astro/') && !pathname.startsWith('/media/')) {
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
+  // 5. Content Protection Safe Cache Architecture (CONTENT_PROTECTION-1A)
+  // Assets and media retain their own immutable/static caching
+  if (pathname.startsWith('/assets/') || pathname.startsWith('/_astro/') || pathname.startsWith('/media/')) {
+    // Preserve existing asset and media cache headers
+  } else {
+    const method = request.method.toUpperCase();
+    const hasAdminSession = cookies.has('admin_session');
+    const isAdminPath = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
+    const isInternalPath = pathname.startsWith('/api/internal');
+    const isErrorState = response.status >= 400;
+    const isNonSafeMethod = method !== 'GET' && method !== 'HEAD';
+
+    // Hard Safety Gate: Non-cacheable surfaces MUST be strictly no-store
+    if (hasAdminSession || isAdminPath || isInternalPath || isErrorState || isNonSafeMethod) {
+      response.headers.set('Cache-Control', 'no-store, private');
+      response.headers.delete('Cloudflare-CDN-Cache-Control');
+      response.headers.delete('Cache-Tag');
+      response.headers.delete('Pragma');
+      response.headers.delete('Expires');
+    } else {
+      // Clean up legacy HTTP/1.0 headers
+      response.headers.delete('Pragma');
+      response.headers.delete('Expires');
+
+      // If the response already set explicit Cloudflare-CDN-Cache-Control (e.g. from page or API route), preserve it
+      if (!response.headers.has('Cloudflare-CDN-Cache-Control')) {
+        if (pathname === '/') {
+          response.headers.set('Cache-Control', 'public, max-age=60');
+          response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
+          if (!response.headers.has('Cache-Tag')) {
+            response.headers.set('Cache-Tag', 'homepage');
+          }
+        } else if (pathname === '/rss.xml') {
+          response.headers.set('Cache-Control', 'public, max-age=1800');
+          response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=7200');
+          if (!response.headers.has('Cache-Tag')) {
+            response.headers.set('Cache-Tag', 'rss');
+          }
+        } else if (pathname.startsWith('/sitemap') || pathname.endsWith('-sitemap.xml')) {
+          response.headers.set('Cache-Control', 'public, max-age=3600');
+          response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=86400');
+          if (!response.headers.has('Cache-Tag')) {
+            response.headers.set('Cache-Tag', 'sitemap');
+          }
+        } else if (pathname === '/api/search.json') {
+          response.headers.set('Cache-Control', 'public, max-age=60');
+          response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=300');
+          if (!response.headers.has('Cache-Tag')) {
+            response.headers.set('Cache-Tag', 'search');
+          }
+        } else if (!pathname.startsWith('/api/') && !pathname.includes('.')) {
+          // Public content/article route: default safe policy
+          response.headers.set('Cache-Control', 'public, max-age=60');
+          response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+        } else {
+          // Conservative default for unknown/unclassified routes
+          response.headers.set('Cache-Control', 'no-store, private');
+          response.headers.delete('Cloudflare-CDN-Cache-Control');
+          response.headers.delete('Cache-Tag');
+        }
+      }
+    }
   }
 
   // 6. Hide Admin and API from Search Engines entirely

@@ -69,6 +69,7 @@ import {
   buildCanonicalPublicationPreflightState,
   computeCanonicalPreflightHash
 } from '../decision/publication-preflight-state.ts';
+import { invalidateArticleCache } from '../cache/index.ts';
 
 export {
   resolvePublicationAuthorization,
@@ -701,6 +702,22 @@ export async function executeAtomicPublication(
     }
 
     throw new Error('ATOMIC_BATCH_FAILED: Article status update failed (article was not draft or changed concurrently)');
+  }
+
+  // Content Protection 1A: Workers Cache targeted publication invalidation
+  // Invalidation failure is non-fatal to atomic publication
+  try {
+    await invalidateArticleCache(db, execution.article_id, 'ARTICLE_PUBLISHED');
+  } catch (cacheErr) {
+    console.error(
+      JSON.stringify({
+        event: 'CACHE_INVALIDATION_FAILED',
+        article_id: execution.article_id,
+        invalidation_event: 'ARTICLE_PUBLISHED',
+        error: (cacheErr as any)?.message || String(cacheErr),
+        timestamp: new Date().toISOString()
+      })
+    );
   }
 
   return { receiptId, actualPublishedAt, canonicalUrl };

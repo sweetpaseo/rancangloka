@@ -14,6 +14,11 @@ const [articles, categories, siteSettings] = await Promise.all([
   getSiteSettings(db)
 ]);
 
+// Content Protection 1A: Public Homepage Cache Headers
+Astro.response.headers.set('Cache-Tag', 'homepage');
+Astro.response.headers.set('Cache-Control', 'public, max-age=60');
+Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
+
 // 1. Hero articles (top 3)
 const heroArticles = articles.slice(0, 3);
 const heroIds = new Set(heroArticles.map((a) => a.id));

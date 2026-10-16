@@ -306,7 +306,7 @@ Setiap halaman artikel publik diperintahkan untuk **tidak di-cache**. Ini membuk
 
 ### Rancangan Solusi Caching Aman (Safe Public Edge Caching):
 1. **Nilai Kandidat Default (Candidate Defaults — Bukan Kebijakan Kaku):**
-   - Header usulan: `Cache-Control: public, max-age=60, s-maxage=3600, stale-while-revalidate=86400`.
+   - Header terpisah: Browser `Cache-Control: public, max-age=60`, Cloudflare Edge `Cloudflare-CDN-Cache-Control: public, max-age=3600, stale-while-revalidate=86400` (menghindari kombinasi `s-maxage` + `stale-while-revalidate` yang menonaktifkan SWR pada Workers Cache).
    - Angka ini adalah default awal yang akan disesuaikan saat pengujian beban nyata.
 2. **Pengecualian Mutlak (Strict Exclusions):**
    Dilarang keras menerapkan caching artikel publik pada:
