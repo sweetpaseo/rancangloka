@@ -13,6 +13,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-CONTENT-PROTECTION-1A-FOUNDATION-SAFE-WORKERS-CACHE: Foundation Content Protection, Safe Workers Cache & Invalidation Dependency Model 2026-10-16
+
+- **Tanggal / Waktu:** 2026-10-16T08:25:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1A_IMPLEMENTATION_PASS` | `READY_FOR_CONTENT_PROTECTION_1A_PRODUCTION_REVIEW`
+- **Otorisasi:** Chief Editor Implementation Instruction
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Commit:** `18573a8` `feat(security): implement content protection foundation cache`
+- **Active Production Worker:** `1ec3dfd1-60b9-493f-aa48-ea63ea1dde0f` (Unchanged — Local Verification Only)
+- **Poin Kunci Rekayasa & Keamanan:**
+  1. *Aktivasi Bidang Cache Kanonikal:* Menambahkan `[cache] enabled = true` pada `wrangler.toml` dengan isolasi versi default (`cross_version_cache = false`), tanpa mutasi zona Cloudflare.
+  2. *Pemisahan Kebijakan Header:* Menghindari penonaktifan `stale-while-revalidate` akibat `s-maxage` dengan memisahkan browser policy (`Cache-Control: public, max-age=<browser>`) dan Cloudflare edge policy (`Cloudflare-CDN-Cache-Control: public, max-age=<edge>, stale-while-revalidate=<window>`).
+  3. *Batas Pengaman Mutlak (Strictly No-Store):* Rute privat (`/admin/*`, `/api/admin/*`), API internal (`/api/internal/*`), sesi berotentikasi (`admin_session`), method mutasi non-GET/HEAD, dan respons status error ($\ge 400$) secara deterministik menerima `Cache-Control: no-store, private` dan header CDN edge dibersihkan.
+  4. *Arsitektur Tag & Invalidation:* Membentuk kosakata tag deterministik (`article-<id>`, `category-<id>`, `homepage`, `rss`, `sitemap`, `search`, `support-target-<article_id>`) dan purge berbasis selektor `cache.purge({ tags: [...] })` yang fail-safe terhubung ke siklus mutasi publikasi dan artikel.
+  5. *Invalidasi Balik Modul Dukungan:* Kueri deterministik skema kanonikal D1 `article_internal_links` (`placement_plane = 'PLANE_A_DYNAMIC' AND status = 'ACTIVE'`) mem-purge tag `support-target-<target_id>`, otomatis memicu cache MISS pada seluruh artikel sumber tanpa iterasi URL manual.
+  6. *Minimisasi API Pencarian:* Pemangkasan payload `/api/search.json` menjadi 5 field kebutuhan antarmuka (`slug`, `featured_image`, `title`, `category_name`, `description`), membersihkan kebocoran 9 field internal, dan mengurangi payload transfer sebesar 63.6%.
+  7. *Kebijakan AI Terpilih (`robots.txt`):* Mengizinkan perayap pencarian/sitasi (`OAI-SearchBot`, `PerplexityBot`) dan menolak perayap korpus pelatihan massal (`GPTBot`, `ClaudeBot`, `CCBot`, `Bytespider`, `Diffbot`, `Anthropic-ai`).
+  8. *Hasil Pengujian:* 12/12 unit tes baru lolos, seluruh regresi ekosistem (275 tes) 100% lolos, build & typecheck bersih, dry-run sukses.
+
+### RANCANGLOKA-CLOUDFLARE-TOOLCHAIN-MIGRATION-WRANGLER-4: Safe Dependency Upgrade to Wrangler v4.151.0 2026-10-16
+
+- **Tanggal / Waktu:** 2026-10-16T07:45:00+07:00
+- **Status Operasional:** `WRANGLER_4_MIGRATION_PASS`
+- **Otorisasi:** Chief Editor Toolchain Migration Instruction
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Commit:** `4bee1fa` `chore(cloudflare): upgrade wrangler to v4`
+- **Poin Kunci Migrasi Toolchain:**
+  1. *Pembaruan Dependensi:* Memperbarui package lokal `wrangler` dari `3.114.17` ke `4.151.0` pada `package.json` dan `package-lock.json`.
+  2. *Prasyarat Fitur:* Memenuhi syarat minimal Wrangler $\ge 4.69.0$ untuk fitur native Cloudflare Workers Caching (`[cache] enabled = true`).
+  3. *Verifikasi Build & Dry Run:* Menjalankan typecheck `tsc`, build Astro SSR, dan `wrangler deploy --dry-run` membuktikan kompatibilitas penuh tanpa regresi pada runtime Cloudflare Workers.
+
 ### RANCANGLOKA-MASTER-ROADMAP-SYNC-AND-PRODUCT-REVIEW-AFFILIATE-REGISTRATION: Article Support Module Final Closure, Canonical Reporting Rule, Content Protection & Product Review Affiliate Roadmap Registration 2026-10-15
 
 - **Tanggal / Waktu:** 2026-10-15T23:30:00+07:00
