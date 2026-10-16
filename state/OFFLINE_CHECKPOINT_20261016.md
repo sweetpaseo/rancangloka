@@ -1,11 +1,20 @@
 # 🛑 RancangLoka & Hermes — Offline Master Checkpoint
-**Tanggal / Waktu:** 2026-10-16T15:45:00+07:00
-**Status Sesi:** Penutupan Sesi Rekayasa 16 Oktober 2026 / Master Checkpoint CONTENT_PROTECTION-1A, 1B-A, 1B-B, 1B-C (Production Accepted)
+**Tanggal / Waktu:** 2026-10-16T16:50:00+07:00
+**Status Sesi:** `READY_FOR_OFFLINE`
+**Current Development State:** `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1B`
 **Branch:** `feat/jev-lokamedia-integration`
-**Git HEAD:** `cd1aabd` (`feat(security): prepare publication dna historical backfill`)
+**Git HEAD:** `9bc1f48` (`feat(product): add decision engine data contract and pilot`)
 **Previous Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (2026-10-16T04:01:26Z / 10:54:38 WIB)
 **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (2026-10-16T08:38:18Z / 15:38:18 WIB)
-**Status Operasional:** `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `READY_FOR_NEXT_RANCANGLOKA_MILESTONE`
+**Status Operasional:**
+- `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED`
+- `CONTENT_PROTECTION_1A_FULLY_CLOSED`
+- `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED`
+- `CONTENT_PROTECTION_1B_CORE_CLOSED`
+- `CONTENT_PROTECTION_1B_C_CLOSED`
+- `PRODUCT_DECISION_ENGINE_1_PLAN_PASS`
+- `PRODUCT_DECISION_ENGINE_1A_PASS`
+- `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1B` (PDE-1B belum dimulai)
 
 ---
 
@@ -183,9 +192,13 @@ Sesi rekayasa hari ini berhasil menyelesaikan seluruh target besar pada domain p
   - `7186de7` `feat(security): integrate publication dna with publisher`
   - `652a7a8` `docs(checkpoint): correct publication dna technical record`
   - `cd1aabd` `feat(security): prepare publication dna historical backfill`
+  - `7bab92c` `feat(security): enable authorized production dna backfill execution`
+  - `b4a5974` `docs(checkpoint): close publication dna production rollout`
+  - `c669974` `docs(product): plan product decision engine architecture`
+  - `9bc1f48` `feat(product): add decision engine data contract and pilot`
 - **Tracked Working Tree:** Clean (`git status -uno` confirms nothing unstaged).
 - **Untracked Preserved:** Seluruh fixture, skrip bootstrap, dan artefak lokal tetap terjaga utuh tanpa ter-commit.
-- **Kondisi Offline:** Sistem siap ditinggalkan dalam kondisi aman, stabil, terverifikasi lokal, dan siap untuk perencanaan fase berikutnya.
+- **Kondisi Offline:** Sistem siap ditinggalkan dalam kondisi aman, stabil, terverifikasi lokal, dan siap untuk melanjutkan ke PDE-1B pada sesi berikutnya.
 
 ---
 
@@ -225,9 +238,86 @@ Peluncuran produksi terkontrol (**Controlled Production Rollout**) telah diseles
    - Invarian keselamatan aktif: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, autonomous media = DISABLED.
 
 ---
-*Dokumen ini disusun untuk menutup milestone CONTENT_PROTECTION-1B.*
-*Klasifikasi: `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED`*
-*Final Status:*
-`CONTENT_PROTECTION_1B_CORE_CLOSED`
-`CONTENT_PROTECTION_1B_C_CLOSED`
-`READY_FOR_NEXT_RANCANGLOKA_MILESTONE`
+
+## 6. Product Decision Engine: Perencanaan Arsitektur & Kontrak Data PDE-1A
+
+Sesi hari ini juga merampungkan tonggak penting berikutnya: **PRODUCT_DECISION_ENGINE-1 (PDE-1)**:
+
+1. **Prinsip Utama Rekayasa Keputusan:**
+   - `THE_READER_DECISION_IS_PRIMARY`: Keputusan pemilik rumah adalah pusat utama pertimbangan, bukan promosi produk.
+   - `SOLUTION_CLASS_PRECEDES_PRODUCT_SELECTION`: Pemilihan kelas solusi fisik mendahului produk/merek spesifik.
+   - `AFFILIATE_REVENUE_CANNOT_AFFECT_RECOMMENDATION`: Pendapatan komisi dilarang masuk ke logika evaluasi teknis.
+   - `NO_FAKE_NUMERIC_PRECISION`: Dilarang menciptakan skor angka desimal semu atau rating bintang tanpa dasar lab empiris.
+   - `ADMIN / EDITORIAL FIRST`: Pengujian dan audit redaksional tuntas di panel admin sebelum dibuka ke publik.
+
+2. **Implementasi Pure TypeScript Contracts (`src/lib/product-decision/`):**
+   - Berkas: `types.ts`, `contracts.ts`, `pilot-kusen.ts`, `index.ts`.
+   - Konsep Generik Teruji:
+     - `DecisionProblem`, `DecisionContext`, `DecisionConstraint`, `SolutionClass`, `DecisionCriterion`, `CriterionEvaluation`, `Tradeoff`, `DecisionScenario`, `RecommendationContract`, `EvidenceBinding`, `DecisionModelDefinition`.
+   - 6 Dimensi Konteks CORE Wajib:
+     - `problem_goal`, `building_context`, `climate_exposure`, `application_location`, `budget_class`, `maintenance_tolerance`.
+   - Taksonomi Kecocokan 4-Status Kualitatif:
+     - `STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, `CONDITIONAL_FIT`, `POOR_FIT`.
+   - Tipe Bukti Kriteria Kualitatif:
+     - `BOOLEAN`, `ORDINAL`, `QUALITATIVE_CATEGORY`, `MEASURED_VALUE` (hanya jika data riil tersedia).
+   - Pemindai Batas Komersial:
+     - `scanForForbiddenFields` memindai objek secara rekursif terhadap 18 kata kunci komersial/skor semu.
+
+3. **Article 5 Pilot Fixture (Kusen Aluminium vs uPVC):**
+   - `model_id`: `dp_kusen_aluminium_vs_upvc_tropis` (v1.0.0).
+   - 2 Solution Classes: `sol_aluminium_standar` dan `sol_upvc_multi_chamber`.
+   - 7 Kriteria Objektif Nyata dari Naskah Artikel 5: konduktivitas termal bingkai, kekakuan struktural bentang lebar, ketahanan rembes air sudut, insulasi akustik, ketahanan korosi pesisir, stabilitas muai-panjang termal, ketebalan profil visual (*sightlines*).
+   - 5 Skenario Deterministik dengan Pivot Conditions:
+     1. `scen_west_facing_master_bedroom` $\to$ `sol_upvc_multi_chamber` (`STRONG_FIT`).
+     2. `scen_large_living_sliding_door` $\to$ `sol_aluminium_standar` (`STRONG_FIT`).
+     3. `scen_coastal_rain_exposed_facade` $\to$ `sol_upvc_multi_chamber` (`STRONG_FIT`).
+     4. `scen_tight_budget_standard_renovation` $\to$ `sol_aluminium_standar` (`STRONG_FIT`).
+     5. `scen_low_maintenance_family_home` $\to$ `sol_upvc_multi_chamber` (`STRONG_FIT`).
+   - Identitas Bukti Artikel 5: `article_id: 5`, `publication_version_key: receipt:rcpt_bbae85b48e1b2f8d`, `published_content_hash: 14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`, `source_fidelity: NORMALIZED_HASH_VERIFIED`.
+   - Evidence Snapshot Hash: `40a1b92e59e5f764a851d451240166dcf1ee7da9c1b3f9ff7900b868e82ef474`.
+   - Status Rekalibrasi Terderivasi: `deriveEvidenceFreshness` mendeteksi pergeseran naskah tanpa mutable boolean flag.
+
+4. **Pengujian & Verifikasi PDE-1A:**
+   - `scripts/test-product-decision-engine-contract.js`: **14/14 PASS**.
+   - `npx tsc --noEmit`: **0 ERRORS**.
+   - `npm run build`: **SUKSES** (complete in 8.48s).
+   - `git diff --check`: **SUKSES** (0 whitespace errors).
+   - Mutasi Produksi D1: 0. Mutasi R2: 0. Deployment: NONE.
+
+---
+
+## 7. Titik Masuk Sesi Berikutnya (Next Session Entry Point)
+
+> **PERINGATAN PENGEMBANGAN SESI BERIKUTNYA:**
+> Sesi selanjutnya **WAJIB LANGSUNG DIMULAI DARI**:
+> **`PRODUCT_DECISION_ENGINE_1B: DETERMINISTIC EVALUATOR RUNTIME`**
+
+**DILARANG:**
+- Mengulang implementasi Content Protection 1A atau 1B (sudah berstatus CLOSED & PRODUCTION ACCEPTED).
+- Mengubah kontrak tipe data PDE-1A kecuali ditemukan bug/regresi nyata.
+- Mengaplikasikan migrasi D1 atau melakukan deploy sebelum evaluator PDE-1B teruji secara lokal.
+- Mengimplementasikan monetisasi afiliasi, produk SKU konkret, atau pembuatan keputusan otonom AI.
+
+**Cakupan Kerja PDE-1B:**
+1. Mesin evaluasi skenario deterministik (pure evaluation functions).
+2. Pencocokan batasan (Constraint matching: HARD vs SOFT).
+3. Penilaian kriteria solusi terhadap konteks pembaca.
+4. Pemilihan taksonomi kecocokan (`STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, dll.).
+5. Konstruksi kontrak rekomendasi (menjawab 3 Pertanyaan Emas & langkah praktis berikutnya).
+6. Evaluasi kondisi pembalik (*pivot conditions*).
+7. Golden evaluator tests berbasis 5 skenario Article 5 Pilot.
+
+---
+
+*Dokumen ini disusun sebagai penutupan resmi sesi rekayasa 16 Oktober 2026.*
+*Status Sesi: `READY_FOR_OFFLINE`*
+*Current Development State: `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1B`*
+*Klasifikasi:*
+- `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED`
+- `CONTENT_PROTECTION_1A_FULLY_CLOSED`
+- `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED`
+- `CONTENT_PROTECTION_1B_CORE_CLOSED`
+- `CONTENT_PROTECTION_1B_C_CLOSED`
+- `PRODUCT_DECISION_ENGINE_1_PLAN_PASS`
+- `PRODUCT_DECISION_ENGINE_1A_PASS`
+- `NEXT_SESSION_PRODUCT_DECISION_ENGINE_1B`

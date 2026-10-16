@@ -13,6 +13,54 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1A: Architecture Plan, Data Contracts & Article 5 Pilot Fixture 2026-10-16
+
+- **Tanggal / Waktu:** 2026-10-16T16:45:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1A_FULLY_CLOSED` | `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `PRODUCT_DECISION_ENGINE_1_PLAN_PASS` | `PRODUCT_DECISION_ENGINE_1A_PASS`
+- **Next Milestone:** `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1B` (PDE-1B belum dimulai)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`)
+- **Commits Kunci:**
+  - `c669974` `docs(product): plan product decision engine architecture` (Perencanaan arsitektur PDE-1)
+  - `9bc1f48` `feat(product): add decision engine data contract and pilot` (Implementasi kontrak data PDE-1A & pilot)
+- **Poin Kunci Rekayasa & Keamanan:**
+  1. *Penutupan Content Protection 1B & Baseline Produksi:*
+     - Migrasi 0034 terpasang di produksi; tabel `article_dna_signatures` memuat tepat 5 baris DNA abadi.
+     - Artikel 5–6: `NORMALIZED_HASH_VERIFIED` (`legacy-normalized-sha256-v0`).
+     - Artikel 7–9: `BYTE_EXACT_HASH_VERIFIED` (`canonical-markdown-sha256-v1`).
+     - Bukti idempotensi produksi: `5 x ALREADY_EXISTS_IDENTICAL`.
+     - 0 mutasi artikel sumber, 0 mutasi persetujuan redaksi, 0 mutasi tanda terima penerbitan, 0 mutasi R2.
+     - Invarian keselamatan permanen aktif: `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`, autonomous media = DISABLED.
+  2. *Perencanaan Arsitektur Product Decision Engine (PDE-1):*
+     - Dokumen: `docs/engineering/PRODUCT_DECISION_ENGINE_1_PLAN.md`.
+     - Prinsip Utama: `THE_READER_DECISION_IS_PRIMARY`, `SOLUTION_CLASS_PRECEDES_PRODUCT_SELECTION`, `AFFILIATE_REVENUE_CANNOT_AFFECT_RECOMMENDATION`, `NO_FAKE_NUMERIC_PRECISION`.
+     - Strategi V1: `ADMIN / EDITORIAL FIRST` (inspeksi redaksional sebelum rilis publik).
+     - Domain Pilot Terpilih: *Kusen Aluminium vs uPVC untuk Rumah Tropis di Indonesia* (Artikel 5).
+  3. *Implementasi Pure Data Contracts PDE-1A:*
+     - Modul TypeScript murni: `src/lib/product-decision/` (`types.ts`, `contracts.ts`, `pilot-kusen.ts`, `index.ts`).
+     - Konsep Generik: `DecisionProblem`, `DecisionContext`, `DecisionConstraint`, `SolutionClass`, `DecisionCriterion`, `CriterionEvaluation`, `Tradeoff`, `DecisionScenario`, `RecommendationContract`, `EvidenceBinding`, `DecisionModelDefinition`.
+     - 6 Dimensi Konteks CORE Wajib: `problem_goal`, `building_context`, `climate_exposure`, `application_location`, `budget_class`, `maintenance_tolerance`.
+     - Taksonomi Kecocokan (4 Status Kualitatif): `STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, `CONDITIONAL_FIT`, `POOR_FIT` (tanpa skor angka semu atau rating bintang).
+     - Tipe Bukti Kriteria: `BOOLEAN`, `ORDINAL`, `QUALITATIVE_CATEGORY`, `MEASURED_VALUE` (hanya jika data riil tersedia di naskah).
+     - Pemindai Batas Afiliasi/Komersial: `scanForForbiddenFields` memindai rekursif terhadap 18 kata kunci komersial/skor semu (`affiliate_url`, `commission`, `merchant`, `winner_score`, dll).
+  4. *Fixture Pilot Artikel 5 (Kusen Aluminium vs uPVC):*
+     - `model_id`: `dp_kusen_aluminium_vs_upvc_tropis`, `model_version: v1.0.0`, `criteria_version: v1.0.0`.
+     - 2 Solution Classes: `sol_aluminium_standar` dan `sol_upvc_multi_chamber`.
+     - 7 Kriteria Otoritatif Artikel 5: konduktivitas termal bingkai, kekakuan struktural bentang lebar, ketahanan rembes air sudut, insulasi akustik, ketahanan korosi pesisir, stabilitas muai-panjang termal, ketebalan profil visual (*sightlines*).
+     - 5 Skenario Deterministik dengan Pivot Conditions: kamar tidur lantai 2 hadap barat, pintu geser kaca masif 3.6m, fasad pesisir terpaan hujan, renovasi anggaran ketat, rumah tinggal rendah perawatan.
+     - Evidence Identity: `article_id: 5`, `publication_version_key: receipt:rcpt_bbae85b48e1b2f8d`, `published_content_hash: 14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`, `source_fidelity: NORMALIZED_HASH_VERIFIED`.
+     - Snapshot Hash Deterministik: `40a1b92e59e5f764a851d451240166dcf1ee7da9c1b3f9ff7900b868e82ef474`.
+     - Dynamic Freshness: `deriveEvidenceFreshness` mendeteksi pergeseran naskah secara murni (`CURRENT`, `NEEDS_RECALIBRATION`, `EVIDENCE_UNAVAILABLE`) tanpa boolean statis mutabel.
+  5. *Pengujian & Verifikasi Lokal PDE-1A:*
+     - Test Suite: `scripts/test-product-decision-engine-contract.js` (14/14 PASS).
+     - TypeScript: `npx tsc --noEmit` (0 errors).
+     - Build: `npm run build` (SUKSES, complete in 8.48s).
+     - Git diff check: SUKSES (0 whitespace errors).
+     - Mutasi Produksi D1: 0. Mutasi R2: 0. Worker Deployment: 0.
+  6. *Instruksi Sesi Berikutnya:*
+     - Sesi selanjutnya wajib langsung melanjutkan ke: **`PRODUCT_DECISION_ENGINE_1B`** (*Deterministic Evaluator Runtime*).
+     - Dilarang mengulang kembali Content Protection 1A/1B atau kontrak data PDE-1A.
+
 ### RANCANGLOKA-CONTENT-PROTECTION-1B-C-PRODUCTION-ROLLOUT: Migration 0034, Worker Deployment & Historical Publication DNA Production Backfill 2026-10-16
 
 - **Tanggal / Waktu:** 2026-10-16T15:45:00+07:00
