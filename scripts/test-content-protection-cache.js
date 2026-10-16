@@ -28,7 +28,7 @@ import {
   purgeCacheTags,
   invalidateArticleCache
 } from '../src/lib/cache/index.ts';
-import { insertArticle, updateArticle } from '../src/lib/db.ts';
+import { insertArticle, updateArticle, getArticleBySlug } from '../src/lib/db.ts';
 import { executeAtomicPublication } from '../src/lib/publication/publisher-service.ts';
 
 console.log('🧪 Starting CONTENT_PROTECTION-1A Cache & Protection Test Suite...\n');
@@ -530,9 +530,10 @@ async function runSuite() {
     const art = await insertArticle(null, {
       title: 'Initial Title',
       slug: 'update-invalidation-slug',
-      status: 'published',
       category_id: 1
-    }, { cacheAdapter: trackingAdapter });
+    });
+    // Transition to published via canonical mutation updateArticle
+    await updateArticle(null, art.id, { status: 'published' }, { cacheAdapter: trackingAdapter });
 
     trackedTags.length = 0; // reset
     await updateArticle(
@@ -553,35 +554,47 @@ async function runSuite() {
 
   // Hardening I: insertArticle cannot silently create published public content without the canonical publication/invalidation contract
   {
-    // 1. Default status is draft
+    // A. Default status is draft
     const draftArt = await insertArticle(null, {
       title: 'Default Draft Article',
       slug: 'default-draft-slug'
     });
     assert.equal(draftArt.status, 'draft', 'insertArticle default status MUST be draft');
 
-    // 2. Direct published insert triggers mandatory invalidation
-    const trackedTags = [];
-    const trackingAdapter = {
-      purge: async (tags) => {
-        trackedTags.push(...tags);
-      }
-    };
-    const pubArt = await insertArticle(
-      null,
-      {
-        title: 'Explicit Published Article',
-        slug: 'explicit-published-slug',
+    // B. Direct published insert is rejected with DIRECT_PUBLISHED_INSERT_FORBIDDEN
+    let threwDirectPub = false;
+    let caughtCode = '';
+    const forbiddenSlug = 'forbidden-direct-published-slug';
+    try {
+      await insertArticle(null, {
+        title: 'Explicit Published Forbidden Article',
+        slug: forbiddenSlug,
         status: 'published',
         category_id: 4
-      },
-      { cacheAdapter: trackingAdapter }
+      });
+    } catch (err) {
+      threwDirectPub = true;
+      caughtCode = err?.code || err?.message || '';
+    }
+    assert.ok(threwDirectPub, 'insertArticle with status="published" MUST throw');
+    assert.ok(
+      caughtCode.includes('DIRECT_PUBLISHED_INSERT_FORBIDDEN'),
+      `Must reject with DIRECT_PUBLISHED_INSERT_FORBIDDEN error, got: ${caughtCode}`
     );
-    assert.equal(pubArt.status, 'published');
-    assert.ok(trackedTags.includes(`article-${pubArt.id}`));
-    assert.ok(trackedTags.includes('homepage'));
-    assert.ok(trackedTags.includes('category-4'));
-    pass('Hardening I: insertArticle cannot silently create published public content without the canonical publication/invalidation contract');
+
+    // C. No D1/article mutation occurs after rejected direct published insert
+    const notPersisted = await getArticleBySlug(null, forbiddenSlug);
+    assert.equal(notPersisted, null, 'Rejected published insert must not create or persist article record');
+
+    // D. Non-public lifecycle state (e.g., scheduled) remains supported
+    const scheduledArt = await insertArticle(null, {
+      title: 'Scheduled Non-Public Article',
+      slug: 'scheduled-non-public-slug',
+      status: 'scheduled'
+    });
+    assert.equal(scheduledArt.status, 'scheduled', 'Non-public lifecycle states remain supported');
+
+    pass('Hardening I: insertArticle rejects status="published" with DIRECT_PUBLISHED_INSERT_FORBIDDEN and zero mutation');
   }
 
   // Hardening J: Legacy direct-D1 scripts are classified/documented as bypass paths

@@ -7,7 +7,8 @@ import {
   DuplicateContentError,
   DatabaseWriteError,
   DatabaseConstraintError,
-  ArticleNotFoundError
+  ArticleNotFoundError,
+  DirectPublishedInsertForbiddenError
 } from './errors.ts';
 import {
   prepareStateMutationCapture,
@@ -1526,6 +1527,14 @@ export async function insertArticle(
   article: Partial<Article>,
   options: { ctx?: any; cacheAdapter?: CachePurgeAdapter } = {}
 ): Promise<Article> {
+  // CANONICAL INVARIANT: Generic article insert cannot create published content directly.
+  // Direct insert with status='published' is strictly forbidden.
+  if (article.status === 'published') {
+    throw new DirectPublishedInsertForbiddenError(
+      'DIRECT_PUBLISHED_INSERT_FORBIDDEN: Generic article insert cannot create published content directly. Articles must follow Chief Editor Approval -> Readiness -> Publication Plan -> Canonical Publisher lifecycle.'
+    );
+  }
+
   const slug = article.slug || `article-${Date.now()}`;
   const title = article.title || 'Untitled';
   const description = article.description || '';
@@ -1645,48 +1654,6 @@ export async function insertArticle(
       throw new DatabaseWriteError(`Artikel dengan ID ${insertedId} tidak dapat diverifikasi setelah INSERT.`);
     }
 
-    // Content Protection 1A: If inserted directly as 'published', trigger mandatory cache invalidation
-    if (status === 'published') {
-      console.warn(
-        JSON.stringify({
-          event: 'DIRECT_PUBLISHED_INSERT_TRIGGERED',
-          article_id: insertedId,
-          slug,
-          message: 'Article inserted directly as published; triggering mandatory Workers Cache invalidation.',
-          timestamp: new Date().toISOString()
-        })
-      );
-      try {
-        const invRes = await invalidateArticleCache(db, insertedId, 'ARTICLE_PUBLISHED', {
-          categoryId: persisted.category_id,
-          ctx: options?.ctx,
-          adapter: options?.cacheAdapter
-        });
-        if (invRes.status !== 'SUCCESS') {
-          console.warn(
-            JSON.stringify({
-              event: invRes.status,
-              article_id: insertedId,
-              invalidation_event: 'ARTICLE_PUBLISHED',
-              error: invRes.error,
-              tags: invRes.tags,
-              timestamp: new Date().toISOString()
-            })
-          );
-        }
-      } catch (cacheErr: any) {
-        console.error(
-          JSON.stringify({
-            event: 'CACHE_INVALIDATION_FAILED',
-            article_id: insertedId,
-            invalidation_event: 'ARTICLE_PUBLISHED',
-            error: cacheErr?.message || String(cacheErr),
-            timestamp: new Date().toISOString()
-          })
-        );
-      }
-    }
-
     return persisted;
   }
 
@@ -1723,18 +1690,6 @@ export async function insertArticle(
   };
 
   inMemoryArticles.unshift(fullArticle);
-
-  if (status === 'published') {
-    try {
-      await invalidateArticleCache(null, fullArticle.id, 'ARTICLE_PUBLISHED', {
-        categoryId: fullArticle.category_id,
-        ctx: options?.ctx,
-        adapter: options?.cacheAdapter
-      });
-    } catch {
-      // Non-fatal
-    }
-  }
 
   return fullArticle;
 }

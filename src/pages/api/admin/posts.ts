@@ -17,26 +17,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     let status = body.status || 'draft';
 
-    // Automatic Quality Gate / Completeness Validation for 'published'
+    // CANONICAL INVARIANT: Direct published article creation is forbidden
     if (status === 'published') {
-      const missingFields: string[] = [];
-      if (!title || title.trim().length < 5 || title === 'Untitled') missingFields.push('Judul Artikel (min. 5 karakter)');
-      if (!contentMd || contentMd.trim().length < 50) missingFields.push('Konten Artikel (min. 50 karakter)');
-      if (!body.description || body.description.trim().length < 10) missingFields.push('Meta Deskripsi (min. 10 karakter)');
-      if (!body.featured_image || body.featured_image.trim() === '') missingFields.push('Featured Image / Cover');
-      if (!body.category_id) missingFields.push('Kategori Artikel');
-      if (!body.author_id) missingFields.push('Penulis (Author E-E-A-T)');
-
-      if (missingFields.length > 0) {
-        return new Response(
-          JSON.stringify({
-            status: 'validation_error',
-            message: `Artikel belum lengkap untuk dipublish. Mohon lengkapi: ${missingFields.join(', ')}.`,
-            missingFields
-          }),
-          { status: 422 }
-        );
-      }
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          code: 'DIRECT_PUBLISHED_INSERT_FORBIDDEN',
+          message: 'DIRECT_PUBLISHED_INSERT_FORBIDDEN: Artikel baru tidak dapat langsung dibuat dengan status published. Simpan sebagai draft terlebih dahulu, lalu lakukan publikasi melalui alur Chief Editor / Publisher kanonikal.'
+        }),
+        { status: 400 }
+      );
     }
 
     const ctx = (locals as any)?.runtime?.ctx || (locals as any)?.ctx;

@@ -13,7 +13,8 @@ export type ErrorCode =
   | 'AUTHOR_NOT_FOUND'
   | 'VALIDATION_FAILED'
   | 'FRONTMATTER_INVALID'
-  | 'UNSAFE_MARKDOWN';
+  | 'UNSAFE_MARKDOWN'
+  | 'DIRECT_PUBLISHED_INSERT_FORBIDDEN';
 
 export class AppError extends Error {
   public readonly code: ErrorCode;
@@ -99,5 +100,15 @@ export class UnsafeMarkdownError extends AppError {
   constructor(message = 'Artikel mengandung elemen HTML/skrip berbahaya yang tidak diizinkan', originalError?: any) {
     super('UNSAFE_MARKDOWN', message, 400, originalError);
     this.name = 'UnsafeMarkdownError';
+  }
+}
+
+export class DirectPublishedInsertForbiddenError extends AppError {
+  constructor(
+    message = 'DIRECT_PUBLISHED_INSERT_FORBIDDEN: Generic article insert cannot create published content directly. Articles must follow Chief Editor Approval -> Readiness -> Publication Plan -> Canonical Publisher lifecycle.',
+    originalError?: any
+  ) {
+    super('DIRECT_PUBLISHED_INSERT_FORBIDDEN', message, 400, originalError);
+    this.name = 'DirectPublishedInsertForbiddenError';
   }
 }
