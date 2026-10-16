@@ -774,4 +774,56 @@ Untuk menjaga eksekusi tetap terukur, terkendali, dan aman dari regresi, peta ja
 
 *Dokumen Perencanaan ini disiapkan secara resmi untuk menutup fase audit dan perencanaan arsitektur Product Decision Engine.*  
 *Klasifikasi: `PRODUCT_DECISION_ENGINE_1_PLAN_PASS`*  
-*Status Lanjutan: `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1A`*
+---
+
+## 23. PDE-1A Implementasi Kontrak Data & Fixture Pilot (Implementasi Selesai)
+
+### 23.1 Kontrak Tipe Final (`src/lib/product-decision/types.ts`)
+Kontrak tipe inti TypeScript murni diimplementasikan tanpa dependensi database, Astro, atau runtime UI:
+- **`DecisionProblem`:** Identitas masalah keputusan kanonikal (`problem_id`, `canonical_slug`, `title`, `description`, `primary_article_id`).
+- **`DecisionContext`:** 6 dimensi CORE wajib (`problem_goal`, `building_context`, `climate_exposure`, `application_location`, `budget_class`, `maintenance_tolerance`) dan dimensi opsional terdefinisi (`build_phase`, `comfort_priority`, `security_priority`, `installation_constraints`, `applicator_complexity`, `service_life_expectation`).
+- **`DecisionConstraint`:** Klasifikasi batasan `HARD` (menggugurkan kelas solusi) dan `SOFT` (mempengaruhi kecocokan/kompromi).
+- **`SolutionClass`:** Pilihan sistem teknologi arsitektural (`solution_id`, `name`, `tradeoffs`, `display_order`), bebas dari entitas merek/SKU/komersial.
+- **`DecisionCriterion` & `CriterionEvaluation`:** Kriteria evaluasi dengan nilai bukti kualitatif tanpa angka semu (`BOOLEAN`, `ORDINAL`, `QUALITATIVE_CATEGORY`, `MEASURED_VALUE`).
+- **`Tradeoff`:** Kompromi rekayasa terstruktur (`benefit`, `cost_or_compromise`, `affected_contexts`, `evidence_binding`).
+- **`RecommendationContract`:** Kontrak rekomendasi menjawab 3 Pertanyaan Emas: *Mengapa Opsi Ini?*, *Mengapa Bukan Opsi Tandingan?*, dan *Kondisi Apa yang Membalikkan Hasil?*.
+- **`DecisionScenario`:** Definisi skenario keputusan konkret dengan ekspektasi rekomendasi kanonikal.
+- **`DecisionModelDefinition`:** Wadah model statis dengan `model_id`, `model_version`, `criteria_version`, dan `evidence_snapshot_hash`.
+
+### 23.2 Dukungan Bukti Kualitatif (Anti Fake Numeric Precision)
+- Tipe data kriteria mewajibkan `evidence_value_type` bernilai `BOOLEAN`, `ORDINAL`, `QUALITATIVE_CATEGORY`, atau `MEASURED_VALUE`.
+- Dilarang keras mensintesis skor angka tunggal, rating bintang, atau persentase kecocokan buatan (`WINNER_SCORE`, `8.7/10`, `94_PERCENT_FIT`).
+- Taksonomi kecocokan dikunci tepat pada 4 status V1: `STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, `CONDITIONAL_FIT`, `POOR_FIT`.
+
+### 23.3 Pengikatan Versi Bukti Otoritatif (`EvidenceBinding`)
+Setiap bukti terikat secara presisi pada sidik jari Publication DNA artikel otoritatif:
+- `article_id: 5`
+- `article_slug: "kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia"`
+- `publication_version_key: "receipt:rcpt_bbae85b48e1b2f8d"`
+- `published_content_hash: "14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277"`
+- `source_fidelity: "NORMALIZED_HASH_VERIFIED"` (bukan `BYTE_EXACT_HASH_VERIFIED`)
+- `claim_class`: Menjaga derajat epistemik (`VERIFIED_FACT`, `TECHNICAL_CONSENSUS`, `EDITORIAL_INFERENCE`, `EDITORIAL_RECOMMENDATION`). Ringkasan bukti dibatasi maksimal 200 karakter.
+
+### 23.4 Penghitungan Snapshot Hash & Status Rekalibrasi Terderivasi
+- **`evidence_snapshot_hash`:** Dihitung deterministik via SHA-256 atas entitas bukti terurut (deduplikasi set identitas `${article_id}|${publication_version_key}|${claim_class}|${published_content_hash}`).
+- **Status Rekalibrasi Terderivasi:** `NEEDS_RECALIBRATION` tidak disimpan sebagai boolean mutabel di dalam data model, melainkan dihitung secara fungsional dinamis via `deriveEvidenceFreshness(model, authoritativeMap)`. Menghasilkan `CURRENT`, `NEEDS_RECALIBRATION` saat terjadi pergeseran hash bukti, atau `EVIDENCE_UNAVAILABLE` jika bukti hilang.
+
+### 23.5 Batas Pengaman Bebas Komersial (Affiliate & Commercial Boundary)
+- Modul `contracts.ts` memuat scanner struktural ketat `scanForForbiddenFields` yang memindai objek model secara rekursif terhadap 18 kata kunci komersial dan skor semu (`affiliate_url`, `commission`, `merchant`, `merchant_rank`, `payout`, `offer_price`, `affiliate_priority`, `sponsored_rank`, `price`, `best_overall`, `winner_score`, `star_rating`, dll.). Model ditolak jika ditemukan satu pun field komersial.
+
+### 23.6 Fixture Pilot Artikel 5 (`src/lib/product-decision/pilot-kusen.ts`)
+- **2 Solution Classes:** `sol_aluminium_standar` (Aluminium Arsitektural Ekstrusi Standar) dan `sol_upvc_multi_chamber` (uPVC Multi-Chamber dengan Tulangan Baja Galvanis).
+- **7 Criteria Nyata:** Konduktivitas termal bingkai, kekakuan struktural bentang besar, ketahanan rembes air sambungan sudut, insulasi akustik, ketahanan korosi udara pesisir, stabilitas muai-panjang termal, dan ketebalan profil visual (*sightline*).
+- **3 Constraints:** 1 HARD (`c_massive_opening_rigidity`) dan 2 SOFT (`c_west_afternoon_heat_bedroom`, `c_tight_initial_budget`).
+- **5 Canonical Scenarios:**
+  1. `scen_west_facing_master_bedroom` -> Preferensi `sol_upvc_multi_chamber` (`STRONG_FIT`).
+  2. `scen_large_living_sliding_door` -> Preferensi `sol_aluminium_standar` (`STRONG_FIT`).
+  3. `scen_coastal_rain_exposed_facade` -> Preferensi `sol_upvc_multi_chamber` (`STRONG_FIT`).
+  4. `scen_tight_budget_standard_renovation` -> Preferensi `sol_aluminium_standar` (`STRONG_FIT`).
+  5. `scen_low_maintenance_family_home` -> Preferensi `sol_upvc_multi_chamber` (`STRONG_FIT`).
+- **Golden Evidence Snapshot Hash:** `40a1b92e59e5f764a851d451240166dcf1ee7da9c1b3f9ff7900b868e82ef474`.
+
+---
+
+*Status Lanjutan: `PRODUCT_DECISION_ENGINE_1A_PASS`*
+*Status Berikutnya: `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1B`*
