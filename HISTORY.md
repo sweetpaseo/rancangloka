@@ -13,6 +13,62 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-CONTENT-PROTECTION-1B-PUBLICATION-DNA: Publication DNA Schema, Deterministic Fingerprint Core & Post-Receipt Materializer Integration 2026-10-16
+
+- **Tanggal / Waktu:** 2026-10-16T13:15:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1B_B_CLOSED` | `CONTENT_PROTECTION_1B_A_CLOSED` | `READY_FOR_CONTENT_PROTECTION_1B_C`
+- **Otorisasi:** Chief Editor CONTENT_PROTECTION-1B-A & 1B-B Directives
+- **Branch Aktif:** `feat/jev-lokamedia-integration`
+- **Commits:** `0271e8d` -> `17d2ba6` -> `c155d43` -> `bdc9c5d` -> `3945ea3` -> `7186de7`
+- **Active Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (Unchanged — Local Verification Only, Zero Remote Deploy)
+- **Poin Kunci Rekayasa & Keamanan:**
+  1. *Perencanaan Arsitektur & Pengerasan Kontrak Data:*
+     - Menyusun master architecture plan [docs/engineering/CONTENT_PROTECTION_1B_PUBLICATION_DNA_PLAN.md](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/docs/engineering/CONTENT_PROTECTION_1B_PUBLICATION_DNA_PLAN.md).
+     - Menetapkan sumber stempel waktu persetujuan dari kolom aktual `article_editorial_approvals.created_at` (bukan kolom fiktif `approved_at`), dengan semantik `approved_recorded_at`.
+     - Mengukuhkan klasifikasi dual provenance: `FULL_PROVENANCE` (approval receipt lengkap) vs `PARTIAL_HISTORICAL_PROVENANCE` (artikel rilis masa lalu tanpa receipt persetujuan eksplisit).
+  2. *Skema Database Aditif (Local Migration 0034):*
+     - Merancang [db/migrations/0034_article_publication_dna.sql](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/db/migrations/0034_article_publication_dna.sql) dengan tabel `article_dna_signatures` (26 kolom forensik).
+     - Menegakkan sifat strictly append-only (zero update, zero delete, zero mutable state column).
+     - Menetapkan `version_key` berformat `receipt:<publication_receipt_id>` dengan `UNIQUE` constraint, composite indices untuk pencarian forensik cepat, dan foreign key referensial ke `publication_execution_receipts`.
+     - Menetapkan invarian dependensi operasional: `MIGRATION_0034_MUST_EXIST_BEFORE_1B_RUNTIME_ACTIVATION` (migrasi 0034 lokal murni, belum diaplikasikan ke remote D1).
+  3. *Pure Deterministic Fingerprint Core:*
+     - Mengimplementasikan pustaka murni [src/lib/content-protection/publication-dna.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/content-protection/publication-dna.ts) tanpa efek samping atau I/O database.
+     - Komponen sidik jari:
+       - Normalisasi Markdown kanonikal (whitespace collapse, CRLF -> LF, casing preserved).
+       - Hash blok paragraf deterministik (SHA-256 tiap blok naskah non-kosong).
+       - MinHash 64-dimensi berbasis MurmurHash3 32-bit dengan 64 seed deterministik independen untuk deteksi kemiripan Jaccard $k$-shingle ($k=5$).
+       - Structural tag signature (representasi sekuensial tag Markdown `#`, `##`, `###`, `p`, `ul`, `ol`, `blockquote`, dll).
+       - Zero pHash, zero SimHash, zero rare-phrases (sesuai batasan skop 1B).
+  4. *Penguncian 14 Golden Vectors:*
+     - Menulis [scripts/test-publication-dna.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna.js) dengan 112 assertions mengunci secara harfiah 14 vektor emas (exact string hash, block count, MinHash vectors, dan structural tag signatures) untuk mencegah pergeseran algoritma di masa mendatang.
+  5. *Dual Content Hash Contracts & Grandfathering:*
+     - Mengakui perbedaan historis: Artikel 5 & 6 menggunakan `LEGACY_CONTENT_HASH_V0` (`legacy-normalized-sha256-v0`), sedangkan Artikel 7, 8, 9 dan seluruh publikasi baru menggunakan `CONTENT_HASH_CONTRACT_MARKDOWN_V1` (`canonical-markdown-sha256-v1`).
+     - Menyediakan parser dan validator eksplisit pada `publication-dna.ts`.
+     - Menegakkan larangan keras penggunaan V0 pada alur penerbitan kanonikal baru.
+  6. *Materializer Module & Idempotensi:*
+     - Membangun modul khusus [src/lib/content-protection/publication-dna-store.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/content-protection/publication-dna-store.ts) (`materializePublicationDna(db, snapshot)`).
+     - Menolak pola `ON CONFLICT DO NOTHING` yang membungkam konflik; menerapkan taksonomi hasil operasional terstruktur:
+       - `DNA_GENERATED`: Baris baru sukses di-insert.
+       - `DNA_ALREADY_EXISTS`: Eksekusi kedua dengan `version_key` dan nilai-nilai kritis identik.
+       - `DNA_VERSION_CONFLICT`: `version_key` sama namun mengandung konten, hash, atau metadata forensik yang berbeda.
+       - `DNA_SOURCE_HASH_MISMATCH`: Hash naskah Markdown yang dihitung tidak cocok dengan `content_hash` penerbitan.
+       - `DNA_PROVENANCE_SOURCE_MISMATCH`: Hash persetujuan redaksi tidak cocok dengan naskah publikasi untuk `FULL_PROVENANCE`.
+       - `DNA_GENERATION_FAILED`: Kesalahan database atau constraint D1 (dicatat terstruktur).
+  7. *Integrasi Publisher Runtime & Race-Safety:*
+     - Menghubungkan materialisasi DNA pada [src/lib/publication/publisher-service.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/publication/publisher-service.ts) di dalam `executeAtomicPublication`.
+     - Invarian Permanen: `PUBLICATION_DNA_BINDS_TO_EXACT_PUBLISHED_CONTENT`.
+     - Menangkap objek in-memory immutable `PublicationDnaSourceSnapshot` langsung dari transaksi penerbitan, menjamin DNA memproses naskah persis yang disetujui dan dirilis tanda terima, tanpa membaca ulang (*re-reading*) baris database yang dapat berubah secara asinkron.
+     - Penjadwalan `ctx.waitUntil(...)` pada Cloudflare Workers dengan penanganan kesalahan lengkap, dan `await` eksplisit pada pengujian lokal/Node CLI untuk mencegah *dangling unhandled promises*.
+     - Invarian Kegagalan: `PUBLICATION_SUCCEEDS_DNA_PENDING`. Kegagalan DNA berjalan pasca-komit dan tidak pernah membatalkan publikasi, membatalkan tanda terima, atau mengubah status artikel.
+     - Independensi Purge Cache: DNA materialization dan Workers cache invalidation (`invalidateArticleCache`) berjalan secara independen tanpa saling memblokir.
+  8. *Suite Pengujian Integrasi:*
+     - Menulis [scripts/test-publication-dna-integration.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna-integration.js) (14 pengujian komprehensif, 6 suite) yang memvalidasi seluruh matriks idempotensi, konflik, mismatch hash/provenance, kontrak `waitUntil`, atomisitas transaksi, isolasi race snapshot, dan kelengkapan 26 kolom forensik.
+  9. *Verifikasi Keselamatan Produksi:*
+     - D1 Remote Mutation: 0 (Zero).
+     - R2 Remote Mutation: 0 (Zero).
+     - Deployment: 0 (Zero).
+     - Git Push: 0 (Zero).
+
 ### RANCANGLOKA-CONTENT-PROTECTION-1A-PRODUCTION-ACCEPTED: Production Deployment & Acceptance of Edge Caching 2026-10-16
 
 - **Tanggal / Waktu:** 2026-10-16T11:00:00+07:00

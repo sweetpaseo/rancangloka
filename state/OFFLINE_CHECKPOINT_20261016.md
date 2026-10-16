@@ -1,18 +1,17 @@
 # 🛑 RancangLoka & Hermes — Offline Master Checkpoint
-**Tanggal / Waktu:** 2026-10-16T11:00:00+07:00
-**Status Sesi:** Penutupan Sesi Rekayasa 16 Oktober 2026 / Master Checkpoint CONTENT_PROTECTION-1A
+**Tanggal / Waktu:** 2026-10-16T13:25:00+07:00
+**Status Sesi:** Penutupan Sesi Rekayasa 16 Oktober 2026 / Master Checkpoint CONTENT_PROTECTION-1A & 1B
 **Branch:** `feat/jev-lokamedia-integration`
-**Git HEAD:** `7378a82` (`fix(editorial): forbid direct published article inserts`)
-**Previous Commit:** `69105e7` (`fix(security): harden workers cache invalidation runtime`)
+**Git HEAD:** `7186de7` (`feat(security): integrate publication dna with publisher`)
 **Previous Production Worker:** `1ec3dfd1-60b9-493f-aa48-ea63ea1dde0f` (2026-10-15T16:08:37Z)
 **Active Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (2026-10-16T04:01:26Z / 10:54:38 WIB)
-**Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `WRANGLER_4_MIGRATION_PASS`
+**Status Operasional:** `CONTENT_PROTECTION_1B_B_CLOSED` | `CONTENT_PROTECTION_1B_A_CLOSED` | `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `READY_FOR_CONTENT_PROTECTION_1B_C`
 
 ---
 
 ## 1. Status Ringkasan Ekosistem (Executive Summary — 16 Oktober 2026 Closeout)
 
-Sesi rekayasa hari ini berhasil menyelesaikan migrasi toolchain ke **Wrangler v4**, mengimplementasikan fondasi arsitektur **CONTENT_PROTECTION-1A**, menuntaskan pre-production hardening runtime dan pencegahan bypass `insertArticle`, melakukan deployment resmi ke Cloudflare Workers produksi, serta memverifikasi seluruh kriteria akseptansi edge caching secara langsung di lingkungan live.
+Sesi rekayasa hari ini berhasil menyelesaikan seluruh target besar pada domain perlindungan konten (**CONTENT_PROTECTION**), mulai dari aktivasi cache edge produksi pada **1A**, migrasi toolchain ke **Wrangler v4**, hingga penyelesaian implementasi inti **Publication DNA (1B-A)** dan integrasinya ke dalam siklus penerbitan kanonikal pasca-tanda terima (**1B-B**).
 
 ### 1. Migrasi Toolchain Cloudflare: Wrangler v3 $\to$ Wrangler v4
 - **Versi Awal:** `3.114.17`
@@ -45,7 +44,7 @@ Sesi rekayasa hari ini berhasil menyelesaikan migrasi toolchain ke **Wrangler v4
 - **Kebijakan AI Crawlers (`public/robots.txt`):**
   - Menerapkan kebijakan Chief Editor `SELECTIVE_AI_ACCESS`: mengizinkan `OAI-SearchBot`, `PerplexityBot`; menolak mass harvesters (`GPTBot`, `ClaudeBot`, `CCBot`, `Bytespider`, `Diffbot`, `Anthropic-ai`).
 
-### 3. Hasil Akseptansi Produksi Langsung (Live Edge Acceptance)
+### 3. Hasil Akseptansi Produksi Langsung CONTENT_PROTECTION-1A
 - **Deployment Version:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (100% traffic active).
 - **Cache MISS $\to$ HIT Terbukti di Edge:**
   - Artikel 8 (`/thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi`): Cold MISS 683ms/1407ms $\to$ Warm HIT 54ms–100ms (`Cf-Cache-Status: HIT`).
@@ -68,6 +67,59 @@ Sesi rekayasa hari ini berhasil menyelesaikan migrasi toolchain ke **Wrangler v4
 - **Integritas Konten Database:**
   - Kueri remote D1 membuktikan status dan hash konten Artikel 5, 6, 7, 8, 9 adalah 100% identik dan tidak bermutasi.
 
+### 4. Perencanaan Arsitektur & Pengerasan Data Publication DNA (CONTENT_PROTECTION-1B Plan)
+- **Dokumen Desain Otoritatif:** [docs/engineering/CONTENT_PROTECTION_1B_PUBLICATION_DNA_PLAN.md](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/docs/engineering/CONTENT_PROTECTION_1B_PUBLICATION_DNA_PLAN.md).
+- **Sumber Stempel Waktu Persetujuan:** Mengoreksi kekeliruan perencanaan awal yang mengasumsikan kolom `approved_at`; verifikasi skema produksi membuktikan bahwa tabel `article_editorial_approvals` menggunakan kolom aktual `created_at`, yang dipetakan secara kanonikal ke `approved_recorded_at`.
+- **Klasifikasi Provenance:**
+  - `FULL_PROVENANCE`: Artikel baru atau rilis historis dengan relasi persetujuan redaksi yang lengkap dan cocok (`approved_content_hash === publication_content_hash`).
+  - `PARTIAL_HISTORICAL_PROVENANCE`: Artikel rilis masa lalu (seperti Artikel 6) yang memiliki tanda terima penerbitan namun tidak memiliki catatan approval terpisah.
+- **Pemisahan Model Baca Publik vs Penyimpanan Forensik:** Sidik jari forensik tersimpan di tabel internal terpisah (`article_dna_signatures`), menjauhkan detail internal (seperti MinHash atau block hashes) dari mutasi skema `articles`.
+
+### 5. Skema Aditif & Core Sidik Jari Deterministik (CONTENT_PROTECTION-1B-A)
+- **Skema Database Aditif (Local Migration 0034):**
+  - Berkas: [db/migrations/0034_article_publication_dna.sql](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/db/migrations/0034_article_publication_dna.sql)
+  - Tabel: `article_dna_signatures` dengan 26 kolom forensik terstruktur.
+  - Sifat: Strictly append-only (zero UPDATE, zero DELETE, zero mutable status columns).
+  - Kunci Versi: `version_key = 'receipt:' || publication_receipt_id` dengan batasan `UNIQUE`.
+  - Dependensi Operasional: `MIGRATION_0034_MUST_EXIST_BEFORE_1B_RUNTIME_ACTIVATION` (migrasi bersifat LOKAL murni, belum diaplikasikan ke remote D1).
+- **Pure Deterministic Fingerprint Library:**
+  - Berkas: [src/lib/content-protection/publication-dna.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/content-protection/publication-dna.ts).
+  - Pustaka murni matematika/kriptografi tanpa efek samping dan tanpa akses I/O.
+  - 4 pilar sidik jari kanonikal:
+    1. Normalisasi Markdown Kanonikal (CRLF $\to$ LF, collapse spasi berlebih, preserved case).
+    2. Hash Blok Paragraf (array SHA-256 tiap blok non-kosong).
+    3. MinHash 64-dimensi (MurmurHash3 32-bit dengan 64 seed deterministik independen untuk estimasi kemiripan Jaccard $k$-shingle pada $k=5$).
+    4. Structural Tag Signature (urutan penanda struktur Markdown: `#`, `##`, `p`, `ul`, `blockquote`, dsb).
+  - Batasan Skop Terpenuhi: Zero pHash, zero SimHash, zero rare-phrases.
+- **14 Golden Vectors Terkunci:**
+  - Suite pengujian [scripts/test-publication-dna.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna.js) (112 assertions) mengunci nilai harfiah hash, vektor MinHash, dan structural signatures untuk mencegah degradasi algoritma di masa depan.
+- **Grandfathering Kontrak Hash Konten:**
+  - Artikel 5 & 6 diakui menggunakan kontrak historis `LEGACY_CONTENT_HASH_V0` (`legacy-normalized-sha256-v0`).
+  - Artikel 7, 8, 9 dan seluruh artikel rilis baru menggunakan `CONTENT_HASH_CONTRACT_MARKDOWN_V1` (`canonical-markdown-sha256-v1`).
+  - Pipeline penerbitan baru diwajibkan menggunakan V1 dan dilarang menurunkan ke V0.
+
+### 6. Integrasi Publisher Runtime & Post-Receipt Materialization (CONTENT_PROTECTION-1B-B)
+- **Modul Penyimpanan DNA (Materializer):**
+  - Berkas: [src/lib/content-protection/publication-dna-store.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/content-protection/publication-dna-store.ts).
+  - Fungsi: `materializePublicationDna(db, sourceSnapshot)`.
+  - Taksonomi Hasil Operasional Terstruktur:
+    - `DNA_GENERATED`: Sukses membuat dan meng-insert baris DNA baru.
+    - `DNA_ALREADY_EXISTS`: Idempoten; baris sudah ada dengan `version_key` dan nilai kritis identik.
+    - `DNA_VERSION_CONFLICT`: Konflik versi; `version_key` sama tetapi data konten, hash, atau metadata berbeda (tidak ditimpa).
+    - `DNA_SOURCE_HASH_MISMATCH`: Hash modern naskah Markdown snapshot tidak cocok dengan `content_hash` penerbitan.
+    - `DNA_PROVENANCE_SOURCE_MISMATCH`: Hash persetujuan redaksi tidak cocok dengan naskah penerbitan pada `FULL_PROVENANCE`.
+    - `DNA_GENERATION_FAILED`: Kesalahan eksekusi database (dicatat terstruktur).
+- **Integrasi Siklus Penerbitan Kanonikal:**
+  - Berkas: [src/lib/publication/publisher-service.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/publication/publisher-service.ts) di dalam `executeAtomicPublication`.
+  - Invarian Permanen: `PUBLICATION_DNA_BINDS_TO_EXACT_PUBLISHED_CONTENT`.
+  - Objek In-Memory Immutable: `PublicationDnaSourceSnapshot` dibentuk langsung dari transaksi penerbitan, mengikat naskah persis yang disetujui dan diterbitkan, tanpa membaca ulang (*re-reading*) baris database yang dapat berubah.
+  - Runtime Cloudflare Workers: Dijadwalkan via `ctx.waitUntil(promise.catch(...))` dengan penanganan galat mandiri.
+  - Runtime Lokal/Node CLI: Promise di-`await` secara eksplisit untuk mencegah *unhandled dangling promises*.
+  - Invarian Kegagalan: `PUBLICATION_SUCCEEDS_DNA_PENDING`. Kegagalan materialisasi DNA tidak pernah membatalkan publikasi artikel, tidak membatalkan tanda terima, dan tidak mengubah status penerbitan.
+  - Independensi Purge Cache: Operasi purge Workers Cache (`invalidateArticleCache`) dan penjadwalan DNA berjalan secara independen pasca-komit tanpa saling menghalangi.
+- **Suite Pengujian Integrasi:**
+  - Berkas: [scripts/test-publication-dna-integration.js](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/scripts/test-publication-dna-integration.js) (14 pengujian komprehensif, 6 suite) yang memverifikasi seluruh matriks idempotensi, konflik, kegagalan database, atomisitas transaksi, isolasi race snapshot, dan kelengkapan 26 kolom forensik.
+
 ---
 
 ## 2. Invarian Keselamatan & Audit Kontrol Ganda
@@ -79,28 +131,36 @@ Sesi rekayasa hari ini berhasil menyelesaikan migrasi toolchain ke **Wrangler v4
   - `publishingAuthority = 0`
   - `JEV_MODE = shadow` (Jefry strictly shadow/advisory)
   - Eksekusi media otonom = **DISABLED**
-  - Mutasi D1 Konten Produksi = **0 (Zero)**
-  - Mutasi R2 Produksi = **0 (Zero)**
+  - Mutasi D1 Konten Produksi Sesi 1B = **0 (Zero)**
+  - Mutasi R2 Produksi Sesi 1B = **0 (Zero)**
   - Mutasi Pengaturan Cloudflare Dashboard = **0 (Zero)**
-  - Status Rollback = **NONE (Akseptansi 100% Sukses)**
-  - Git Push = **0 (Zero)**
+  - Deployment Produksi Sesi 1B = **0 (Zero — Local Verification Only)**
+  - Git Push Sesi 1B = **0 (Zero — Local Commit Only)**
+- **Invarian Baru CONTENT_PROTECTION-1B:**
+  - `MIGRATION_0034_MUST_EXIST_BEFORE_1B_RUNTIME_ACTIVATION`: Migrasi 0034 lokal murni, belum dieksekusi di remote D1.
+  - `PUBLICATION_DNA_BINDS_TO_EXACT_PUBLISHED_CONTENT`: DNA wajib memproses snapshot naskah persis yang diterbitkan.
+  - `PUBLICATION_SUCCEEDS_DNA_PENDING`: Status penerbitan artikel tetap sukses meski DNA mengalami kendala operasional.
+  - `CONTENT_HASH_CONTRACT_MARKDOWN_V1`: Seluruh artikel rilis baru wajib menggunakan kontrak V1.
 
 ---
 
 ## 3. Matriks Hasil Pengujian & Verifikasi
 
-1. **Test Suite CONTENT_PROTECTION-1A:**
-   - `node scripts/test-content-protection-cache.js`: **24 PASSED, 0 FAILED**
-2. **Test Suite Regresi Ekosistem:**
-   - `node scripts/test-internal-link-engine.js`: **29 PASSED, 0 FAILED**
-   - `node scripts/test-mission-control-liveops.js`: **78 PASSED, 0 FAILED**
-   - `node scripts/test-publication-planner.js`: **67 PASSED, 0 FAILED**
-   - `node scripts/test-publication-publisher.js`: **48 PASSED, 0 FAILED**
-   - `node scripts/test-soak-safety.js`: **54 PASSED, 0 FAILED**
-   - **Total Tes Lulus:** **300 PASSED, 0 FAILED**
-3. **Pemeriksaan Kompilasi & Build:**
+1. **Test Suite CONTENT_PROTECTION-1B:**
+   - `node scripts/test-publication-dna.js`: **112 PASSED, 0 FAILED** (Pure deterministic fingerprint & 14 golden vectors)
+   - `node scripts/test-publication-dna-integration.js`: **14 PASSED, 0 FAILED** (Materializer, idempotency, race-safety, waitUntil)
+2. **Test Suite CONTENT_PROTECTION-1A:**
+   - `node scripts/test-content-protection-cache.js`: **24 PASSED, 0 FAILED** (Edge caching & selective purge)
+3. **Test Suite Regresi Ekosistem:**
+   - `node scripts/test-publication-publisher.js`: **48 PASSED, 0 FAILED** (Publisher atomicity & receipt generation)
+   - `node scripts/test-publication-planner.js`: **67 PASSED, 0 FAILED** (Dynamic quota & scheduling)
+   - `node scripts/test-soak-safety.js`: **54 PASSED, 0 FAILED** (Safety envelopes & circuit breaker)
+   - `node scripts/test-internal-link-engine.js`: **29 PASSED, 0 FAILED** (Semantic link graph)
+   - `node scripts/test-mission-control-liveops.js`: **78 PASSED, 0 FAILED** (Operator liveops & staff registry)
+   - **Total Pengujian Otomatis Lolos:** **426 PASSED, 0 FAILED**
+4. **Pemeriksaan Kompilasi & Build:**
    - `npx tsc --noEmit`: **0 ERRORS**
-   - `npm run build`: **SUKSES (6.29s, 250 assets)**
+   - `npm run build`: **SUKSES (6.57s, 250 assets)**
    - `npx wrangler deploy --dry-run`: **SUKSES (0 config errors)**
    - `git diff --check`: **SUKSES (0 whitespace errors)**
 
@@ -109,10 +169,32 @@ Sesi rekayasa hari ini berhasil menyelesaikan migrasi toolchain ke **Wrangler v4
 ## 4. Status Git & Tree Kerja
 
 - **Branch:** `feat/jev-lokamedia-integration`
-- **Commits:** `18573a8` -> `69105e7` -> `7378a82`
-- **Tracked Working Tree:** Clean (`git status -uno` confirms nothing untracked staged).
-- **Kondisi Offline:** Sistem siap ditinggalkan dalam kondisi aman, stabil, edge-cached, dan teruji penuh di lingkungan produksi.
+- **Rangkaian Commit Sesi Hari Ini:**
+  - `4bee1fa` `chore(cloudflare): upgrade wrangler to v4`
+  - `18573a8` `feat(security): implement content protection foundation cache`
+  - `69105e7` `fix(security): harden workers cache invalidation runtime`
+  - `7378a82` `fix(editorial): forbid direct published article inserts`
+  - `125d61c` `docs(checkpoint): close content protection 1a production rollout`
+  - `0271e8d` `docs(security): plan publication dna architecture`
+  - `17d2ba6` `docs(security): harden publication dna data contract`
+  - `c155d43` `feat(security): add publication dna fingerprint core`
+  - `bdc9c5d` `test(security): lock publication dna golden vectors`
+  - `3945ea3` `fix(security): version publication content hash contracts`
+  - `7186de7` `feat(security): integrate publication dna with publisher`
+- **Tracked Working Tree:** Clean (`git status -uno` confirms nothing unstaged).
+- **Untracked Preserved:** Seluruh fixture, skrip bootstrap, dan artefak lokal tetap terjaga utuh tanpa ter-commit.
+- **Kondisi Offline:** Sistem siap ditinggalkan dalam kondisi aman, stabil, terverifikasi lokal, dan siap untuk perencanaan fase berikutnya.
 
 ---
-*Dokumen ini disusun untuk menutup milestone CONTENT_PROTECTION-1A.*
-*Klasifikasi: `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED`*
+
+## 5. Rencana Fase Berikutnya: `CONTENT_PROTECTION-1B-C`
+
+- **Tujuan Utama:** Perencanaan Backfill Historis untuk Artikel Terbit 5 s/d 9 & Perencanaan Rollout Migrasi Produksi 0034.
+- **Strategi Backfill Historis:**
+  - **Artikel 5 & 6:** Menggunakan kontrak `LEGACY_CONTENT_HASH_V0` (`legacy-normalized-sha256-v0`). Artikel 5 memiliki receipt approval (`FULL_PROVENANCE`), sedangkan Artikel 6 tidak memiliki approval terpisah (`PARTIAL_HISTORICAL_PROVENANCE`).
+  - **Artikel 7, 8, 9:** Menggunakan kontrak `CONTENT_HASH_CONTRACT_MARKDOWN_V1` (`canonical-markdown-sha256-v1`) dengan `FULL_PROVENANCE`.
+- **Rencana Rollout Migrasi 0034:** Mengikuti protokol kontrol ganda sebelum eksekusi remote D1.
+
+---
+*Dokumen ini disusun untuk menutup milestone CONTENT_PROTECTION-1B-A dan CONTENT_PROTECTION-1B-B.*
+*Klasifikasi: `CONTENT_PROTECTION_1B_B_CLOSED` | `READY_FOR_CONTENT_PROTECTION_1B_C`*
