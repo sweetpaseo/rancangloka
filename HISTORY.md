@@ -13,6 +13,47 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1B: Pure Deterministic Evaluator Runtime & Anti-Replay Invariant Acceptance 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T00:30:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1A_FULLY_CLOSED` | `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `PRODUCT_DECISION_ENGINE_1_PLAN_PASS` | `PRODUCT_DECISION_ENGINE_1A_PASS` | `PRODUCT_DECISION_ENGINE_1B_PASS` | `PRODUCT_DECISION_ENGINE_1B_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1B_CLOSED`
+- **Next Milestone:** `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1C` (Admin / Editorial Inspection UI)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`)
+- **Commits Kunci:**
+  - `4ea0caf` `feat(product): implement deterministic decision evaluator` (Implementasi runtime evaluator deterministik murni 10 fase)
+  - `6a24194` `fix(product): remove golden-answer dependency from decision evaluator` (Dekopling total runtime dari field ekspektasi golden oracle)
+- **Poin Kunci Rekayasa & Keamanan:**
+  1. *Evaluator Deterministik Murni Tanpa Efek Samping (`src/lib/product-decision/evaluator.ts`):*
+     - Fungsi utama: `evaluateDecision(model, context, options)`.
+     - Zero I/O, zero network, zero Cloudflare/browser globals, zero AI/LLM, zero database access.
+     - Bebas dari `Date.now()`, `Math.random()`, atau ID/UUID acak. Seluruh struktur keluaran deep-equivalent hingga tingkat byte.
+     - Zero domain strings: berkas generic evaluator memiliki 0 kata `aluminium`, `upvc`, `window`, `kusen`, `article 5`, atau ID skenario spesifik.
+  2. *Invarian Permanen Anti-Replay (`GOLDEN_EXPECTATIONS_MUST_NOT_DRIVE_RUNTIME_DECISIONS`):*
+     - Field `expected_recommendation` pada skenario didefinisikan secara tegas sebagai data oracle/pengujian murni untuk test runner.
+     - Runtime evaluator dilarang keras membaca `expected_recommendation.recommended_solution_id`, `recommended_fit`, `alternative_solution_id`, maupun `alternative_fit`.
+     - Rekomendasi dihitung murni berdasarkan: dimensi konteks, batasan HARD (diskualifikasi `fit = 'POOR_FIT'`), batasan SOFT (degradasi fit tanpa diskualifikasi), tradeoff kontekstual, dan keunggulan kualitatif kriteria yang relevan dengan prioritas konteks pembaca.
+  3. *Audit Sumber Fixture & Rekonsiliasi Pelaporan:*
+     - `git diff 9bc1f48..4ea0caf -- src/lib/product-decision/pilot-kusen.ts` terbukti 100% EMPTY.
+     - Discrepancy diklasifikasikan sebagai `WARMUP_REPORT_TRANSCRIPTION_ERROR` (laporan warmup memparafrase secara manual, sedangkan laporan PDE-1B membaca literal dari kode sumber).
+     - Kriteria otoritatif: `crit_thermal_insulation`, `crit_structural_rigidity`, `crit_corner_water_tightness`, `crit_acoustic_attenuation`, `crit_coastal_corrosion_resistance`, `crit_thermal_expansion_stability`, `crit_slim_sightlines`.
+     - Snapshot hash otoritatif: `eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed`.
+  4. *Pengujian Ketat & Bukti Anti-Replay:*
+     - Suite Pengujian Evaluator (`scripts/test-product-decision-engine-evaluator.js`): **22/22 PASS, 0 FAILED**.
+     - **Tes U (Mutated Oracle Test):** Membuktikan bahwa memutasi nilai ekspektasi skenario pada model klon tidak mengubah hasil evaluasi runtime sama sekali (`SCENARIO_EXPECTATION_REPLAY_DETECTED = NEGATIVE`).
+     - **Tes V (Scenario-Free Proof):** Membuktikan bahwa evaluasi `DecisionContext` murni tanpa metadata skenario menghasilkan rekomendasi dan jejak identik.
+     - **Tes W (Criteria Material Participation):** Membuktikan bahwa membalik tier kriteria korosi pesisir secara langsung mengubah rekomendasi dari uPVC ke aluminium.
+     - Regresi Kontrak PDE-1A (`scripts/test-product-decision-engine-contract.js`): **14/14 PASS, 0 FAILED**.
+     - TypeScript: `npx tsc --noEmit` (0 errors). Astro build: `npm run build` (sukses dalam 6.77s). Git diff check: 0 errors.
+  5. *Keselamatan Produksi:*
+     - 0 mutasi database Cloudflare D1.
+     - 0 mutasi Cloudflare R2.
+     - 0 worker deployments.
+     - 0 git pushes.
+  6. *Instruksi Sesi Berikutnya:*
+     - Melanjutkan ke: **`PRODUCT_DECISION_ENGINE_1C`** (*Admin / Editorial Inspection UI*).
+     - Membangun antarmuka inspeksi redaksional di rute admin Astro SSR dengan simulator konteks interaktif di sisi klien tanpa mutasi database.
+
 ### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1A: Architecture Plan, Data Contracts & Article 5 Pilot Fixture 2026-10-16
 
 - **Tanggal / Waktu:** 2026-10-16T16:45:00+07:00
