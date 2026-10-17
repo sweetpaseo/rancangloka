@@ -263,6 +263,79 @@ Seluruh 26 skenario pengujian (A sampai Z) terbukti 100% lulus:
 
 ---
 
-*Status Milestone Sebelumnya: `PRODUCT_REVIEW_AFFILIATE_1A_PASS`*
-*Status Milestone Saat Ini: `PRODUCT_REVIEW_AFFILIATE_1B_PASS` (Termasuk `PRODUCT_REVIEW_AFFILIATE_1B_DOMAIN_HARDENING`)*
-*Status Sesi: `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1C`*
+## 12. Milestone 1C: Admin Product Review Desk & Editorial Inspector
+
+### A. Informasi Arsitektur & Antarmuka Meja Ulasan (`/admin/product-review`)
+RancangLoka membangun antarmuka privat khusus redaksi (*Editorial Inspector*) yang menerapkan pemisahan visual mutlak antara pertimbangan fisik arsitektural dan penawaran komersial:
+1. **Daftar Produk (Product List):**
+   - Menampilkan `canonical_name`, `brand`, `solution_class_id`, `identity_state`, jumlah varian, jumlah ulasan, mode ulasan terakhir, status kesegaran bukti, status kecocokan teknis, dan kesiapan editorial.
+   - **Invarian Ranking:** Dilarang menampilkan komisi, payout merchant, atau prioritas sponsor sebagai parameter ranking daftar. Produk tidak pernah disortir berdasarkan komisi.
+2. **Inspektur Detail Produk (Product Detail Inspector):**
+   - Menggunakan navigasi berbasis tab/seksi dengan pendekatan SSR (*minimal client JS*):
+     - **Ringkasan & Kesiapan (Overview & Readiness):** Audit kesiapan menyeluruh dan ringkasan entitas.
+     - **Identitas & Varian (Product Identity & Variants):** Menampilkan identitas murni (`product_id`, `brand`, `canonical_name`, `category_id`, `solution_class_id`, `identity_state`) dan sub-model varian tanpa mencampur review mode.
+     - **Ulasan Editorial RancangLoka (Editorial Reviews):** Catatan historis ulasan redaksi (`EditorialProductReview`), membedakan `ANALYTICAL_REVIEW` dengan `HANDS_ON_REVIEW`.
+     - **Bukti & Spesifikasi Fisik (Evidence & Specs):** Rekaman spesifikasi terukur (`SpecSnapshot`) dan daftar dokumen acuan terverifikasi (`EvidenceSource`) tanpa *source collapsing* tersembunyi.
+     - **Pencocokan Teknis PDE (Technical Match Panel):** Evaluasi kecocokan kualitatif terhadap kelas solusi PDE (`MATCH`, `MATCH_WITH_TRADEOFF`, dll.) serta penayangan masukan konteks hunian (`ProductReviewHandoffContract` - read only). Nol skor angka, nol data harga/komisi.
+     - **Pengalaman Pengguna Eksternal (External Review Signals):** Rekaman sinyal ulasan toko/pembeli bertanda `USER_EXPERIENCE_SIGNAL` yang tidak dicampur dengan ulasan editorial dan tidak dihitung ke skor teknis.
+     - **Penawaran Komersial (Commerce / Offer Layer):** Penawaran merchant aktif dan harga volatil pasar, dilengkapi deklarasi wajib: *"Data komersial tidak memengaruhi penilaian teknis."*
+     - **Transparansi & Afiliasi (Commercial Disclosure):** Pengungkapan hubungan afiliasi, sponsor, dan sampel barang.
+     - **Pergeseran Identitas (Identity Drift):** Pendeteksian penyimpangan judul/SKU listing toko dengan peringatan redaksi tanpa *auto-overwrite*.
+     - **Dashboard Kesegaran (Freshness Dashboard):** Evaluasi independen kesegaran spesifikasi, ulasan eksternal, dan harga pasar tanpa dilebur menjadi skor tunggal semu.
+
+### B. Label Sumber Data & Keamanan Akses
+- Invarian `ADMIN_MUST_KNOW_WHICH_DATA_SOURCE_IS_BEING_INSPECTED`: Antarmuka secara eksplisit menampilkan badge dan banner sumber data:
+  - `SYNTHETIC_TEST_DATA` (dengan tanda tegas `DEVELOPMENT / TEST DATA`)
+  - `LOCAL_DATABASE`
+  - `PRODUCTION_D1`
+- Akses route terproteksi via middleware admin (`isValidAdminSession`) dengan header privasi:
+  - `Cache-Control: no-store, private`
+  - `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet`
+  - Nol tautan publik dari header, footer, atau sitemap.
+
+### C. State Kesiapan Editorial (Editorial Readiness States)
+State kesiapan redaksi diturunkan secara deterministik (*read-only guidance*):
+- `READY_FOR_EDITORIAL_REVIEW`: Identitas valid, bukti lengkap, spesifikasi segar, dan evaluasi teknis terpenuhi.
+- `EVIDENCE_INCOMPLETE`: Belum ada dokumen bukti acuan yang dilampirkan.
+- `SPEC_STALE`: Snapshot spesifikasi teknis telah kadaluarsa (> 90 hari).
+- `IDENTITY_REVIEW_REQUIRED`: Terdeteksi pergeseran identitas listing merchant.
+- `HANDS_ON_PROVENANCE_INCOMPLETE`: Ulasan Hands-On tidak memiliki catatan metodologi, penguji, lokasi, atau uji lab primer.
+- `INSUFFICIENT_TECHNICAL_EVIDENCE`: Bukti spesifikasi belum mencukupi untuk keputusan kecocokan.
+
+### D. Penanganan Empty State & Tanpa Otomasi
+- Desain *empty state* eksplisit: *"Belum ada produk yang masuk ke Product Review Desk."*
+- Sistem tidak melempar error saat tabel database produksi belum tersedia pada fase pra-produksi.
+- Tidak ada kontrol publikasi/persetujuan otomatis (*no autonomous publication*); Chief Editor memegang otoritas penuh.
+
+### E. Hasil Pengujian Admin Inspector (`test-product-review-admin.js`)
+Seluruh 24 skenario pengujian inspektur admin (Test A sampai Test X) lulus 100%:
+- `Test A`: Route admin `/admin/product-review` tersedia di disk.
+- `Test B`: Middleware admin memproteksi route dengan sesi admin valid.
+- `Test C`: Header `Cache-Control: no-store, private` terpasang.
+- `Test D`: Header `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet` terpasang.
+- `Test E`: Identitas produk ditampilkan terpisah dari state ulasan.
+- `Test F`: Entitas `EditorialProductReview` terpisah dan mendukung multi-ulasan.
+- `Test G`: Ulasan analitis tidak dapat menampilkan badge *Tested by RancangLoka*.
+- `Test H`: Ulasan Hands-On menampilkan provenansi pengujian fisik primer lengkap.
+- `Test I`: Ulasan Hands-On tanpa provenansi memicu peringatan `HANDS_ON_PROVENANCE_INCOMPLETE`.
+- `Test J`: Ulasan eksternal bertanda eksplisit `USER_EXPERIENCE_SIGNAL`.
+- `Test K`: Panel pencocokan teknis terbebas dari seluruh bidang komersial.
+- `Test L`: Penawaran komersial tidak dapat mengubah hasil kecocokan teknis.
+- `Test M`: Nol skor angka semu (kesesuaian kualitatif murni).
+- `Test N`: Fidelitas bukti dan kelas klaim terlihat tanpa *source collapsing*.
+- `Test O`: Status kesegaran per entitas terpisah tanpa skor gabungan.
+- `Test P`: Peringatan pergeseran identitas muncul bila state !== CURRENT.
+- `Test Q`: Handoff PDE berstatus hanya-baca (*read-only*).
+- `Test R`: Pengungkapan transparansi komersial dan sponsor terlihat jelas.
+- `Test S`: Sumber data `SYNTHETIC_TEST_DATA` terlabeli secara tegas.
+- `Test T`: Data uji sintesis ditandai `DEVELOPMENT / TEST DATA`.
+- `Test U`: Fitur *empty state* berfungsi bersih tanpa error runtime.
+- `Test V`: Nol eksposur route ke navigasi publik atau sitemap.
+- `Test W`: Nol kontrol otomatisasi penerbitan/afiliasi mandiri.
+- `Test X`: Pengujian 100% offline tanpa ketergantungan koneksi D1 produksi.
+
+---
+
+*Status Milestone Sebelumnya: `PRODUCT_REVIEW_AFFILIATE_1B_PASS`*
+*Status Milestone Saat Ini: `PRODUCT_REVIEW_AFFILIATE_1C_PASS` (`PRODUCT_REVIEW_AFFILIATE_1C_CLOSED`)*
+*Target Milestone Berikutnya: `PRODUCT_REVIEW_AFFILIATE_1D` (Article Product Binding, Reader Decision Handoff & Edge Integration)*

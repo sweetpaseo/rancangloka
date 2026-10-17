@@ -1,316 +1,1194 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import {
-  SYNTHETIC_PRODUCT,
-  SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL,
-  SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
-  SYNTHETIC_SPEC_SNAPSHOT,
-  SYNTHETIC_EVIDENCE_MANUFACTURER,
-  SYNTHETIC_EVIDENCE_LAB_TEST,
-  SYNTHETIC_REVIEW_SNAPSHOT,
-  SYNTHETIC_OFFER_MERCHANT_A,
-  SYNTHETIC_OFFER_MERCHANT_B,
-  SYNTHETIC_PRICE_SNAPSHOT_A,
-  SYNTHETIC_PRICE_SNAPSHOT_B,
-  SYNTHETIC_AFFILIATE_DESTINATION_A,
-  SYNTHETIC_ARTICLE_PRODUCT_BINDING
-} from '../../lib/product-review/fixtures.ts';
-import {
-  evaluateEntityFreshness,
-  DEFAULT_FRESHNESS_POLICY
-} from '../../lib/product-review/freshness.ts';
+  getSyntheticProductDeskProjection,
+  PRODUCT_IDENTITY_STATE_CONFIG,
+  REVIEW_MODE_CONFIG,
+  EDITORIAL_STATUS_CONFIG,
+  PRODUCT_MATCH_CONFIG,
+  INSPECTION_FRESHNESS_CONFIG,
+  EDITORIAL_READINESS_CONFIG,
+  SOURCE_FIDELITY_CONFIG,
+  SOURCE_TYPE_LABELS,
+  validateHandsOnProvenance
+} from '../../lib/product-review/admin-inspector.ts';
 
-const SYNTHETIC_COMMERCIAL_DISCLOSURE = SYNTHETIC_ARTICLE_PRODUCT_BINDING.commercial_disclosure;
-const SYNTHETIC_AFFILIATE_A = SYNTHETIC_AFFILIATE_DESTINATION_A;
-
-// Cache & Privacy Defense-in-Depth (Strictly private admin inspection)
+// 1. Cache & Privacy Defense-in-Depth (Strictly private admin inspection)
 Astro.response.headers.set('Cache-Control', 'no-store, private');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
 
-// Freshness evaluation for inspectable components
-const specFreshness = evaluateEntityFreshness('spec_snapshot', SYNTHETIC_SPEC_SNAPSHOT.captured_at);
-const reviewFreshness = evaluateEntityFreshness('review_snapshot', SYNTHETIC_REVIEW_SNAPSHOT.captured_at);
-const priceFreshnessA = evaluateEntityFreshness('price_snapshot', SYNTHETIC_PRICE_SNAPSHOT_A.captured_at);
+// 2. Parse query parameters for inspection view state
+const url = Astro.url;
+const productIdParam = url.searchParams.get('product_id') || undefined;
+const activeTabParam = url.searchParams.get('tab') || 'overview';
+const emptyModeParam = url.searchParams.get('empty') === '1';
+
+// 3. Assemble projection (Safe SSR, zero external network dependency)
+const projection = getSyntheticProductDeskProjection({
+  productId: productIdParam,
+  activeTab: activeTabParam,
+  forceEmpty: emptyModeParam
+});
+
+const {
+  data_source,
+  data_source_meta,
+  products_list,
+  selected_product_id,
+  detail,
+  is_empty,
+  empty_reason,
+  active_tab
+} = projection;
+
+// Precompute hands-on provenance check for active detail reviews
+const handsOnCheckMap: Record<string, { valid: boolean; issues: string[] }> = {};
+if (detail) {
+  for (const rev of detail.editorial_reviews) {
+    if (rev.review_mode === 'HANDS_ON_REVIEW') {
+      handsOnCheckMap[rev.review_id] = validateHandsOnProvenance(rev, detail.evidence_sources);
+    }
+  }
+}
 ---
 
-<AdminLayout title="Product Review Desk Inspector">
+<AdminLayout title="Product Review Desk & Editorial Inspector">
   <div class="max-w-7xl mx-auto space-y-8">
-    <!-- Header -->
+    <!-- TOP HEADER & STATUS BAR -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-6">
       <div>
-        <div class="flex items-center gap-3">
-          <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-            INSPECTOR ONLY
+        <div class="flex flex-wrap items-center gap-2.5">
+          <span class="px-2.5 py-1 text-xs font-bold tracking-wider uppercase rounded-md bg-indigo-100 text-indigo-900 dark:bg-indigo-950/60 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800">
+            EDITORIAL INSPECTOR
           </span>
-          <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">PRODUCT_REVIEW_AFFILIATE-1B (DOMAIN HARDENED)</span>
+          <span class={`px-2.5 py-1 text-xs font-semibold rounded-md border ${data_source_meta.badgeClass}`}>
+            {data_source_meta.label}
+          </span>
+          {data_source_meta.isTestOnly && (
+            <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-200 border border-rose-300 dark:border-rose-800 uppercase tracking-wide">
+              DEVELOPMENT / TEST DATA
+            </span>
+          )}
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-          Product Review Desk & Firewall Inspector
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mt-2.5 flex items-center gap-2">
+          Meja Ulasan Produk & Inspektur Editorial
         </h1>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Pemisahan ketat antara Identitas Produk, Status Review Editorial, Bukti Teknis, dan Penawaran Komersial.
+          Inspeksi independen identitas fisik produk, status pengujian redaksi, bukti empiris, dan penawaran pasar.
         </p>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-          Domain Boundary: HARDENED
-        </span>
+
+      <!-- Quick mode selector (Safe SSR GET parameters) -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <a
+          href="/admin/product-review"
+          class={`px-3 py-1.5 rounded-lg border font-medium transition ${!emptyModeParam ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50'}`}
+        >
+          Katalog Data Uji
+        </a>
+        <a
+          href="/admin/product-review?empty=1"
+          class={`px-3 py-1.5 rounded-lg border font-medium transition ${emptyModeParam ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50'}`}
+        >
+          Simulasi Empty State
+        </a>
       </div>
     </div>
 
-    <!-- Editorial Invariant Banner -->
-    <div class="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl p-4 text-sm text-blue-900 dark:text-blue-200 flex items-start gap-3">
-      <div class="p-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold">i</div>
-      <div>
-        <p class="font-semibold">Prinsip Pemisahan Entitas Kanonikal:</p>
-        <p class="text-xs text-blue-800 dark:text-blue-300 mt-0.5">
-          <strong>Product:</strong> "What product is this?" (Identitas murni). <strong>Editorial Review:</strong> "How has RancangLoka reviewed it?" (Status analisis vs hands-on). <strong>Technical Evidence:</strong> Data terverifikasi & spesifikasi fisik. <strong>Commerce:</strong> Penawaran merchant & link afiliasi.
+    <!-- EDITORIAL FIREWALL INVARIANT BANNER -->
+    <div class="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl p-4 text-sm text-blue-900 dark:text-blue-200 flex items-start gap-3 shadow-xs">
+      <div class="p-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold shrink-0">
+        i
+      </div>
+      <div class="space-y-1">
+        <p class="font-bold text-blue-950 dark:text-blue-100">
+          Invarian Tetap Redaksi: EDITORIAL_CONCLUSION_MUST_NOT_VISUALLY_APPEAR_COMMERCE_DRIVEN
+        </p>
+        <p class="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+          Produk bukan pusat artikel; keputusan arsitektur pembaca lah pusatnya. Penilaian kecocokan teknis dilakukan secara buta terhadap data komersial (<em>commerce-blind</em>). Besaran komisi, penawaran merchant, dan status afiliasi dilarang keras mengubah evaluasi fisik, review mode, maupun skor kesesuaian produk.
         </p>
       </div>
     </div>
 
-    <!-- SECTION 1: PRODUCT IDENTITY & EDITORIAL REVIEWS -->
-    <div class="space-y-4">
+    <!-- DATA SOURCE PROVENANCE NOTICE -->
+    <div class={`rounded-xl border p-4 text-xs ${data_source_meta.bannerClass}`}>
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <span class="w-3 h-3 rounded-sm bg-indigo-600"></span>
-          1. Identitas Produk & Status Review Editorial (RancangLoka Work)
-        </h2>
-        <span class="text-xs text-gray-500 font-mono">PRODUCT != EDITORIAL_REVIEW</span>
+        <span class="font-bold uppercase tracking-wider">Sumber Data Aktif: {data_source}</span>
+        <span class="font-mono text-[11px]">ADMIN_MUST_KNOW_WHICH_DATA_SOURCE_IS_BEING_INSPECTED</span>
       </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Pure Product Identity Card -->
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
-          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Identitas Produk Murni (Pure Identity)</span>
-            <span class="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-              {SYNTHETIC_PRODUCT.identity_state}
-            </span>
-          </div>
-          <div>
-            <div class="text-xs text-gray-500">Nama Kanonikal</div>
-            <div class="text-base font-semibold text-gray-900 dark:text-white">{SYNTHETIC_PRODUCT.canonical_name}</div>
-          </div>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <span class="text-gray-500">Brand:</span>
-              <div class="font-medium text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.brand}</div>
-            </div>
-            <div>
-              <span class="text-gray-500">Kategori:</span>
-              <div class="font-medium text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.category_id}</div>
-            </div>
-            <div>
-              <span class="text-gray-500">Product ID:</span>
-              <div class="font-mono text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.product_id}</div>
-            </div>
-            <div>
-              <span class="text-gray-500">Kelas Solusi PDE:</span>
-              <div class="font-mono text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.solution_class_id}</div>
-            </div>
-          </div>
-          <div class="pt-2 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500">
-            Varian Terdaftar: <span class="font-semibold text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.variants.length} SKU</span>
-          </div>
-        </div>
-
-        <!-- Editorial Reviews Card (Decoupled entity supporting multiple reviews) -->
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
-          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Ulasan Editorial RancangLoka (EditorialProductReview)</span>
-            <span class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Multiple Reviews Supported</span>
-          </div>
-
-          <div class="space-y-3 text-xs">
-            <!-- Review 1: Analytical -->
-            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="font-semibold text-gray-900 dark:text-white font-mono">{SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL.review_id}</span>
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                  {SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL.review_mode}
-                </span>
-              </div>
-              <div class="text-gray-600 dark:text-gray-300">
-                Tested by RancangLoka: <span class="font-semibold">Tidak (Analytical Only)</span>
-              </div>
-              <div class="text-gray-500 text-[11px]">{SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL.notes}</div>
-            </div>
-
-            <!-- Review 2: Hands-On -->
-            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="font-semibold text-gray-900 dark:text-white font-mono">{SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON.review_id}</span>
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                  {SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON.review_mode}
-                </span>
-              </div>
-              <div class="text-gray-600 dark:text-gray-300">
-                Tested by RancangLoka: <span class="font-semibold text-emerald-600 dark:text-emerald-400">Ya (Workshop Lab Verified)</span>
-              </div>
-              <div class="text-gray-500 text-[11px]">{SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON.notes}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <p class="mt-1 leading-normal opacity-90">
+        {data_source_meta.description}
+      </p>
     </div>
 
-    <!-- SECTION 2: TECHNICAL EVIDENCE & SPECIFICATIONS -->
-    <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <span class="w-3 h-3 rounded-sm bg-blue-600"></span>
-          2. Spesifikasi Teknis & Bukti Empiris (Faktual)
-        </h2>
-        <span class="text-xs text-gray-500 font-mono">TECHNICAL MATCH INPUT</span>
+    <!-- EMPTY STATE DISPLAY -->
+    {is_empty ? (
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-12 text-center space-y-4 shadow-xs">
+        <div class="w-16 h-16 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-3xl">
+          📦
+        </div>
+        <div class="max-w-md mx-auto space-y-2">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+            Belum ada produk yang masuk ke Product Review Desk.
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            {empty_reason || 'Tabel produk ulasan di database saat ini kosong atau belum menerima data kandidat.'}
+          </p>
+        </div>
+        <div class="pt-2">
+          <a
+            href="/admin/product-review"
+            class="inline-flex items-center px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition"
+          >
+            Muat Data Uji Sintesis (Fixture)
+          </a>
+        </div>
       </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Spec Snapshot & Freshness Card -->
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
-          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Snapshot Spesifikasi</span>
-            <span class={`px-2 py-0.5 text-xs font-medium rounded ${specFreshness.is_fresh ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'}`}>
-              {specFreshness.status} ({specFreshness.days_remaining}d remaining)
+    ) : (
+      <!-- NORMAL CATALOG VIEW -->
+      <div class="space-y-8">
+        <!-- 1. PRODUCT LIST (SECTION 5) -->
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xs overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                Daftar Produk Terdaftar di Meja Ulasan
+              </h2>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Peringkat tidak dipengaruhi komisi atau prioritas toko. Pilih produk untuk memeriksa detail audit.
+              </p>
+            </div>
+            <span class="text-xs font-mono text-gray-500 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-md">
+              Total: {products_list.length} Produk
             </span>
           </div>
-          <div class="space-y-1.5 text-xs font-mono">
-            {Object.entries(SYNTHETIC_SPEC_SNAPSHOT.specs).slice(0, 5).map(([k, v]) => (
-              <div class="flex justify-between py-0.5 border-b border-gray-50 dark:border-gray-800/50">
-                <span class="text-gray-500">{k}:</span>
-                <span class="text-gray-900 dark:text-gray-200 font-semibold">{String(v)}</span>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-gray-600 dark:text-gray-300">
+              <thead class="bg-gray-50 dark:bg-gray-800/60 text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <tr>
+                  <th scope="col" class="px-5 py-3.5">Produk & Brand</th>
+                  <th scope="col" class="px-4 py-3.5">Kelas Solusi PDE</th>
+                  <th scope="col" class="px-4 py-3.5">Status Identitas</th>
+                  <th scope="col" class="px-4 py-3.5">Mode Ulasan</th>
+                  <th scope="col" class="px-4 py-3.5">Kesegaran Spesifikasi</th>
+                  <th scope="col" class="px-4 py-3.5">Kecocokan Teknis</th>
+                  <th scope="col" class="px-4 py-3.5">Kesiapan Editorial</th>
+                  <th scope="col" class="px-5 py-3.5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800 font-normal">
+                {products_list.map((item) => {
+                  const isSelected = item.product_id === selected_product_id;
+                  const identityConf = PRODUCT_IDENTITY_STATE_CONFIG[item.identity_state];
+                  const reviewModeConf = REVIEW_MODE_CONFIG[item.latest_review_mode];
+                  const freshnessConf = INSPECTION_FRESHNESS_CONFIG[item.evidence_freshness_status];
+                  const matchConf = PRODUCT_MATCH_CONFIG[item.technical_match_status];
+                  const readinessConf = EDITORIAL_READINESS_CONFIG[item.readiness_state];
+
+                  return (
+                    <tr class={`transition hover:bg-gray-50/70 dark:hover:bg-gray-800/40 ${isSelected ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''}`}>
+                      <td class="px-5 py-4">
+                        <div class="font-bold text-gray-900 dark:text-white text-sm">
+                          {item.canonical_name}
+                        </div>
+                        <div class="text-[11px] text-gray-500 mt-0.5">
+                          Brand: <span class="font-medium text-gray-700 dark:text-gray-300">{item.brand}</span> • ID: <span class="font-mono">{item.product_id}</span>
+                        </div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">
+                          {item.variant_count} Varian • {item.editorial_review_count} Ulasan Redaksi
+                        </div>
+                      </td>
+                      <td class="px-4 py-4 font-mono text-[11px]">
+                        <span class="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                          {item.solution_class_id}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span class={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${identityConf.badgeClass}`}>
+                          {item.identity_state}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span class={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${reviewModeConf.badgeClass}`}>
+                          {item.latest_review_mode}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span class={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${freshnessConf.badgeClass}`}>
+                          {freshnessConf.label}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span class={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${matchConf.badgeClass}`}>
+                          {matchConf.label}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span class={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${readinessConf.badgeClass}`}>
+                          {readinessConf.label}
+                        </span>
+                      </td>
+                      <td class="px-5 py-4 text-right">
+                        <a
+                          href={`/admin/product-review?product_id=${item.product_id}&tab=${active_tab}`}
+                          class={`inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold transition ${isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                        >
+                          {isSelected ? 'Sedang Diinspeksi' : 'Inspeksi'}
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. PRODUCT DETAIL INSPECTOR (SECTION 6) -->
+        {detail && (
+          <div class="space-y-6 pt-2">
+            <!-- DETAIL INSPECTOR HEADER -->
+            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-xs space-y-4">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-4">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      Inspektur Detail Produk
+                    </span>
+                    <span class="text-xs text-gray-400">•</span>
+                    <span class="font-mono text-xs text-gray-500">{detail.product.product_id}</span>
+                  </div>
+                  <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    {detail.product.canonical_name}
+                  </h2>
+                  <div class="text-xs text-gray-500 mt-1 flex flex-wrap gap-4">
+                    <span>Brand: <strong class="text-gray-800 dark:text-gray-200">{detail.product.brand}</strong></span>
+                    <span>Kategori: <strong class="text-gray-800 dark:text-gray-200">{detail.product.category_id}</strong></span>
+                    <span>Solusi PDE: <strong class="text-indigo-600 dark:text-indigo-400 font-mono">{detail.product.solution_class_id}</strong></span>
+                  </div>
+                </div>
+
+                <!-- EDITORIAL READINESS SUMMARY BADGE (SECTION 19) -->
+                <div class="flex flex-col md:items-end gap-1">
+                  <div class="text-xs text-gray-500">Status Kesiapan Redaksi:</div>
+                  <div class={`px-3 py-1 rounded-lg border text-xs font-bold ${EDITORIAL_READINESS_CONFIG[detail.readiness.state].badgeClass}`}>
+                    {EDITORIAL_READINESS_CONFIG[detail.readiness.state].label}
+                  </div>
+                  <div class="text-[11px] text-gray-500 max-w-xs text-left md:text-right mt-0.5">
+                    {EDITORIAL_READINESS_CONFIG[detail.readiness.state].description}
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-          <div class="text-xs text-gray-500 pt-1">
-            Fidelitas Bukti: <span class="font-semibold text-gray-800 dark:text-gray-200">{SYNTHETIC_SPEC_SNAPSHOT.source_fidelity}</span>
-          </div>
-        </div>
 
-        <!-- Evidence Sources Card -->
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
-          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Sumber Bukti Terverifikasi</span>
-            <span class="text-xs text-gray-500">2 Sumber</span>
-          </div>
-          <div class="space-y-3 text-xs">
-            <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
-              <div class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_EVIDENCE_MANUFACTURER.publisher}</div>
-              <div class="text-gray-500 text-[11px] mt-0.5">Tipe: {SYNTHETIC_EVIDENCE_MANUFACTURER.source_type} ({SYNTHETIC_EVIDENCE_MANUFACTURER.claim_class})</div>
-              <div class="text-[10px] text-indigo-600 dark:text-indigo-400 truncate mt-1">{SYNTHETIC_EVIDENCE_MANUFACTURER.source_url}</div>
+              <!-- NAVIGATION TABS -->
+              <div class="flex flex-wrap gap-1.5 border-b border-gray-100 dark:border-gray-800 pb-2">
+                {[
+                  { id: 'overview', label: 'Ringkasan & Kesiapan' },
+                  { id: 'identity', label: 'Identitas & Varian' },
+                  { id: 'editorial_reviews', label: 'Ulasan Editorial RancangLoka' },
+                  { id: 'evidence_specs', label: 'Bukti & Spesifikasi Fisik' },
+                  { id: 'technical_match', label: 'Pencocokan Teknis PDE' },
+                  { id: 'external_reviews', label: 'Pengalaman Pengguna Eksternal' },
+                  { id: 'commerce', label: 'Penawaran Komersial (Offer)' },
+                  { id: 'disclosure', label: 'Transparansi & Afiliasi' },
+                  { id: 'drift', label: 'Pergeseran Identitas (Drift)' },
+                  { id: 'freshness', label: 'Dashboard Kesegaran' }
+                ].map((tab) => {
+                  const isActive = active_tab === tab.id;
+                  return (
+                    <a
+                      href={`/admin/product-review?product_id=${detail.product.product_id}&tab=${tab.id}`}
+                      class={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${isActive ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-50 dark:bg-gray-800/60 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                    >
+                      {tab.label}
+                    </a>
+                  );
+                })}
+              </div>
             </div>
-            <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
-              <div class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_EVIDENCE_LAB_TEST.publisher}</div>
-              <div class="text-gray-500 text-[11px] mt-0.5">Tipe: {SYNTHETIC_EVIDENCE_LAB_TEST.source_type} ({SYNTHETIC_EVIDENCE_LAB_TEST.claim_class})</div>
-              <div class="text-[10px] text-indigo-600 dark:text-indigo-400 truncate mt-1">{SYNTHETIC_EVIDENCE_LAB_TEST.source_url}</div>
-            </div>
-          </div>
-        </div>
 
-        <!-- External Review Snapshot Card -->
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
-          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Review Snapshot (External)</span>
-            <span class="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
-              USER_EXPERIENCE_SIGNAL
-            </span>
+            <!-- TAB CONTENT 1: OVERVIEW & READINESS -->
+            {(active_tab === 'overview') && (
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Readiness Panel -->
+                <div class="md:col-span-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-xs space-y-4">
+                  <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-sm bg-emerald-600"></span>
+                    Audit Kesiapan Editorial (Editorial Readiness Audit)
+                  </h3>
+                  <div class={`p-4 rounded-xl border space-y-2 ${EDITORIAL_READINESS_CONFIG[detail.readiness.state].badgeClass}`}>
+                    <div class="font-bold text-sm">
+                      Status Evaluasi: {EDITORIAL_READINESS_CONFIG[detail.readiness.state].label}
+                    </div>
+                    <p class="text-xs leading-relaxed">
+                      {EDITORIAL_READINESS_CONFIG[detail.readiness.state].actionHint}
+                    </p>
+                    <div class="pt-2 border-t border-current/20 text-xs space-y-1">
+                      <div class="font-semibold">Temuan Evaluasi:</div>
+                      <ul class="list-disc list-inside space-y-0.5">
+                        {detail.readiness.reasons.map((r) => (
+                          <li>{r}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-4 text-xs pt-2">
+                    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1">
+                      <div class="text-gray-500">Kecocokan Solusi Arsitektur:</div>
+                      <div class="font-bold text-gray-900 dark:text-white">
+                        {PRODUCT_MATCH_CONFIG[detail.technical_match.match_status].label}
+                      </div>
+                      <div class="text-[11px] text-gray-500">{PRODUCT_MATCH_CONFIG[detail.technical_match.match_status].description}</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1">
+                      <div class="text-gray-500">Integritas Identitas Produk:</div>
+                      <div class="font-bold text-gray-900 dark:text-white">
+                        {PRODUCT_IDENTITY_STATE_CONFIG[detail.product.identity_state].label}
+                      </div>
+                      <div class="text-[11px] text-gray-500">
+                        {detail.product.identity_state === 'CURRENT' ? 'Identitas stabil tanpa pergeseran listing.' : 'Terdeteksi perbedaan listing dengan dokumen terdaftar.'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Fast Facts Side Card -->
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-xs space-y-4">
+                  <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Ringkasan Entitas
+                  </h3>
+                  <div class="space-y-2.5 text-xs">
+                    <div class="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">Varian SKU:</span>
+                      <span class="font-semibold text-gray-900 dark:text-white">{detail.variants.length} Varian</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">Ulasan Editorial:</span>
+                      <span class="font-semibold text-gray-900 dark:text-white">{detail.editorial_reviews.length} Dokumen</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">Sumber Bukti Terverifikasi:</span>
+                      <span class="font-semibold text-gray-900 dark:text-white">{detail.evidence_sources.length} Dokumen</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">Penawaran Merchant:</span>
+                      <span class="font-semibold text-gray-900 dark:text-white">{detail.offers.length} Listing Toko</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">Tautan Afiliasi Outbound:</span>
+                      <span class="font-semibold text-gray-900 dark:text-white">{detail.affiliate_destinations.length} Tautan Aktif</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">Artikel Terikat:</span>
+                      <span class="font-semibold text-gray-900 dark:text-white">{detail.article_binding ? `Artikel ID ${detail.article_binding.article_id}` : 'Belum Terikat'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- TAB CONTENT 2: PRODUCT IDENTITY & VARIANTS (SECTION 7) -->
+            {(active_tab === 'identity') && (
+              <div class="space-y-6">
+                <!-- Pure Product Identity Panel (NO review mode here) -->
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-4">
+                  <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <div>
+                      <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-indigo-600"></span>
+                        Identitas Fisik Produk Murni (Pure Manufactured Identity)
+                      </h3>
+                      <p class="text-xs text-gray-500 mt-0.5">
+                        Menjawab "What product is this?". Tidak memuat review mode atau status pengujian editorial.
+                      </p>
+                    </div>
+                    <span class={`px-2.5 py-1 text-xs font-semibold rounded-md border ${PRODUCT_IDENTITY_STATE_CONFIG[detail.product.identity_state].badgeClass}`}>
+                      {PRODUCT_IDENTITY_STATE_CONFIG[detail.product.identity_state].label}
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="space-y-1">
+                      <span class="text-gray-500">Nama Kanonikal Produk:</span>
+                      <div class="font-bold text-sm text-gray-900 dark:text-white">{detail.product.canonical_name}</div>
+                    </div>
+                    <div class="space-y-1">
+                      <span class="text-gray-500">Pabrikan / Brand:</span>
+                      <div class="font-bold text-sm text-gray-900 dark:text-white">{detail.product.brand}</div>
+                    </div>
+                    <div class="space-y-1">
+                      <span class="text-gray-500">Product ID (Imutabel):</span>
+                      <div class="font-mono text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                        {detail.product.product_id}
+                      </div>
+                    </div>
+                    <div class="space-y-1">
+                      <span class="text-gray-500">Kategori Katalog:</span>
+                      <div class="font-mono text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                        {detail.product.category_id}
+                      </div>
+                    </div>
+                    <div class="space-y-1">
+                      <span class="text-gray-500">Kelas Solusi PDE Rujukan:</span>
+                      <div class="font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 p-2 rounded border border-indigo-200 dark:border-indigo-900">
+                        {detail.product.solution_class_id}
+                      </div>
+                    </div>
+                    <div class="space-y-1">
+                      <span class="text-gray-500">Status Siklus Hidup Identitas:</span>
+                      <div class="font-semibold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                        {detail.product.identity_state}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Variants List Panel -->
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-4">
+                  <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                      Daftar Varian & Sub-Model Fisik ({detail.variants.length} Varian)
+                    </h3>
+                  </div>
+
+                  {detail.variants.length === 0 ? (
+                    <div class="p-6 text-center text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/40 rounded-xl">
+                      Belum ada sub-varian spesifik yang didaftarkan untuk produk ini.
+                    </div>
+                  ) : (
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {detail.variants.map((v) => (
+                        <div class="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 space-y-2 text-xs">
+                          <div class="flex items-center justify-between">
+                            <span class="font-bold text-gray-900 dark:text-white">{v.variant_name}</span>
+                            <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                              {v.identity_state}
+                            </span>
+                          </div>
+                          <div class="grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-300">
+                            <div>SKU / Model: <strong class="font-mono">{v.sku_or_model}</strong></div>
+                            <div>Variant ID: <strong class="font-mono">{v.variant_id}</strong></div>
+                          </div>
+                          {v.specific_specs && Object.keys(v.specific_specs).length > 0 && (
+                            <div class="pt-2 border-t border-gray-200/60 dark:border-gray-700/60 text-[11px] space-y-1">
+                              <span class="font-semibold text-gray-500">Spesifikasi Spesifik Varian:</span>
+                              <div class="font-mono text-[10px] bg-white dark:bg-gray-900 p-2 rounded border border-gray-100 dark:border-gray-800">
+                                {Object.entries(v.specific_specs).map(([k, val]) => (
+                                  <div>{k}: {String(val)}</div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <!-- TAB CONTENT 3: EDITORIAL REVIEWS & HANDS-ON PROVENANCE (SECTIONS 8 & 9) -->
+            {(active_tab === 'editorial_reviews') && (
+              <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-6">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <div>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-sm bg-purple-600"></span>
+                      Histori Ulasan Redaksional RancangLoka (EditorialProductReview)
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      Menjawab "How has RancangLoka reviewed it?". Entitas terpisah yang mendukung multi-ulasan.
+                    </p>
+                  </div>
+                  <span class="text-xs font-mono text-gray-500">
+                    {detail.editorial_reviews.length} Ulasan Terdaftar
+                  </span>
+                </div>
+
+                <div class="space-y-6">
+                  {detail.editorial_reviews.map((rev) => {
+                    const isHandsOn = rev.review_mode === 'HANDS_ON_REVIEW';
+                    const modeConf = REVIEW_MODE_CONFIG[rev.review_mode];
+                    const statusConf = EDITORIAL_STATUS_CONFIG[rev.editorial_status];
+                    const handsOnCheck = handsOnCheckMap[rev.review_id];
+
+                    return (
+                      <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/30 space-y-4">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
+                          <div class="flex items-center gap-2.5">
+                            <span class={`px-2.5 py-1 rounded text-xs font-bold border ${modeConf.badgeClass}`}>
+                              {modeConf.label}
+                            </span>
+                            <span class={`px-2 py-0.5 rounded text-[11px] font-semibold border ${statusConf.badgeClass}`}>
+                              {statusConf.label}
+                            </span>
+                            <span class="font-mono text-xs text-gray-500">{rev.review_id}</span>
+                          </div>
+                          <div class="text-xs text-gray-500">
+                            Ditinjau: {rev.reviewed_at ? rev.reviewed_at.split('T')[0] : '-'} oleh <strong>{rev.reviewer_identity || 'Redaksi'}</strong>
+                          </div>
+                        </div>
+
+                        <!-- TESTED BY RANCANGLOKA STATUS (INVARIANT: NEVER DISPLAY FOR ANALYTICAL) -->
+                        <div class="flex items-center gap-3 text-xs">
+                          <span class="text-gray-500 font-semibold">Tested by RancangLoka:</span>
+                          {isHandsOn && rev.tested_by_rancangloka ? (
+                            <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300">
+                              ✓ Ya (Tested by RancangLoka - Workshop Lab Verified)
+                            </span>
+                          ) : (
+                            <span class="px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                              ✕ Tidak (Analytical Only - Bukan Uji Fisik)
+                            </span>
+                          )}
+                        </div>
+
+                        <!-- HANDS-ON PROVENANCE UX (SECTION 9) -->
+                        {isHandsOn && (
+                          <div class="p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 space-y-3">
+                            <div class="flex items-center justify-between">
+                              <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                Provenansi Pengujian Fisik Primer (Primary Test Provenance)
+                              </span>
+                              {handsOnCheck && !handsOnCheck.valid && (
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-100 text-rose-800 border border-rose-300">
+                                  HANDS_ON_PROVENANCE_INCOMPLETE
+                                </span>
+                              )}
+                            </div>
+
+                            {rev.testing_provenance ? (
+                              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                <div>
+                                  <span class="text-gray-500">Tanggal Pengujian:</span>
+                                  <div class="font-medium text-gray-900 dark:text-white">{rev.testing_provenance.testing_date}</div>
+                                </div>
+                                <div>
+                                  <span class="text-gray-500">Identitas Penguji:</span>
+                                  <div class="font-medium text-gray-900 dark:text-white">{rev.testing_provenance.tester_identity}</div>
+                                </div>
+                                <div>
+                                  <span class="text-gray-500">Lokasi Fasilitas Uji:</span>
+                                  <div class="font-medium text-gray-900 dark:text-white">{rev.testing_provenance.testing_location}</div>
+                                </div>
+                                <div>
+                                  <span class="text-gray-500">Catatan Metodologi:</span>
+                                  <div class="font-medium text-gray-900 dark:text-white">{rev.testing_provenance.methodology_notes}</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div class="p-3 rounded-lg bg-rose-50 text-rose-800 text-xs border border-rose-200">
+                                Peringatan: Data testing_provenance kosong untuk ulasan Hands-On.
+                              </div>
+                            )}
+
+                            {handsOnCheck && !handsOnCheck.valid && (
+                              <div class="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 text-xs border border-rose-200 dark:border-rose-900 space-y-1">
+                                <div class="font-bold">Isu Provenansi:</div>
+                                <ul class="list-disc list-inside space-y-0.5">
+                                  {handsOnCheck.issues.map((issue) => (
+                                    <li>{issue}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {rev.notes && (
+                          <div class="text-xs text-gray-600 dark:text-gray-300 pt-1 border-t border-gray-100 dark:border-gray-800">
+                            <span class="font-semibold text-gray-500">Catatan Redaksi:</span> {rev.notes}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <!-- TAB CONTENT 4: EVIDENCE & SPECS (SECTIONS 11 & 12) -->
+            {(active_tab === 'evidence_specs') && (
+              <div class="space-y-6">
+                <!-- SPEC SNAPSHOT INSPECTOR (SECTION 12) -->
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-4">
+                  <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <div>
+                      <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-blue-600"></span>
+                        Snapshot Spesifikasi Fisik Terverifikasi (SpecSnapshot)
+                      </h3>
+                      <p class="text-xs text-gray-500 mt-0.5">
+                        Spesifikasi fisik terukur dari dokumen acuan.
+                      </p>
+                    </div>
+                    <span class={`px-2.5 py-1 text-xs font-semibold rounded-md border ${INSPECTION_FRESHNESS_CONFIG[detail.spec_freshness_state].badgeClass}`}>
+                      {INSPECTION_FRESHNESS_CONFIG[detail.spec_freshness_state].label}
+                    </span>
+                  </div>
+
+                  {detail.spec_snapshot ? (
+                    <div class="space-y-4 text-xs">
+                      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                        <div>Snapshot ID: <strong class="font-mono text-gray-800 dark:text-gray-200">{detail.spec_snapshot.spec_snapshot_id}</strong></div>
+                        <div>Diambil: <strong class="text-gray-800 dark:text-gray-200">{detail.spec_snapshot.captured_at.split('T')[0]}</strong></div>
+                        <div>Fidelitas: <strong class="text-gray-800 dark:text-gray-200">{detail.spec_snapshot.source_fidelity}</strong></div>
+                        <div>Sumber Acuan: <strong class="font-mono text-gray-800 dark:text-gray-200">{detail.spec_snapshot.source_id}</strong></div>
+                      </div>
+
+                      <div class="border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden font-mono">
+                        <table class="w-full text-left text-xs">
+                          <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500">
+                            <tr>
+                              <th class="px-4 py-2 font-medium">Parameter Spesifikasi</th>
+                              <th class="px-4 py-2 font-medium">Nilai Terukur</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            {Object.entries(detail.spec_snapshot.specs).map(([k, val]) => (
+                              <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                                <td class="px-4 py-2 text-gray-600 dark:text-gray-300">{k}</td>
+                                <td class="px-4 py-2 font-bold text-gray-900 dark:text-white">{String(val)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div class="p-6 text-center text-xs text-rose-700 bg-rose-50 rounded-xl">
+                      Snapshot spesifikasi belum tersedia untuk produk ini.
+                    </div>
+                  )}
+                </div>
+
+                <!-- EVIDENCE SOURCES INSPECTOR (SECTION 11) -->
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-4">
+                  <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <div>
+                      <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-indigo-600"></span>
+                        Dokumen Bukti Empiris Terverifikasi (EvidenceSource)
+                      </h3>
+                      <p class="text-xs text-gray-500 mt-0.5">
+                        Menjamin transparansi asal-usul klaim teknis tanpa source collapsing tersembunyi.
+                      </p>
+                    </div>
+                    <span class="text-xs font-mono text-gray-500">
+                      {detail.evidence_sources.length} Dokumen Acuan
+                    </span>
+                  </div>
+
+                  <div class="space-y-3">
+                    {detail.evidence_sources.map((src) => {
+                      const fidelityConf = SOURCE_FIDELITY_CONFIG[src.source_fidelity];
+                      return (
+                        <div class="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 text-xs space-y-2">
+                          <div class="flex flex-col md:flex-row md:items-center justify-between gap-1.5">
+                            <div class="flex items-center gap-2">
+                              <span class="font-bold text-gray-900 dark:text-white">{src.publisher}</span>
+                              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                {SOURCE_TYPE_LABELS[src.source_type] || src.source_type}
+                              </span>
+                            </div>
+                            <span class={`px-2 py-0.5 rounded text-[10px] font-semibold border ${fidelityConf.badgeClass}`}>
+                              {fidelityConf.label}
+                            </span>
+                          </div>
+
+                          <div class="text-gray-600 dark:text-gray-300">
+                            Cakupan Bukti: <strong class="text-gray-800 dark:text-gray-200">{src.evidence_scope}</strong>
+                          </div>
+
+                          <div class="flex flex-wrap gap-4 text-[11px] text-gray-500 pt-1">
+                            <div>Kelas Klaim: <strong class="text-indigo-600 dark:text-indigo-400">{src.claim_class}</strong></div>
+                            <div>Diambil: {src.retrieved_at.split('T')[0]}</div>
+                            <div>Source ID: <code class="font-mono">{src.source_id}</code></div>
+                          </div>
+
+                          <div class="pt-1">
+                            <span class="text-[10px] text-gray-400">URL Dokumen Bukti (Bukan Link Afiliasi):</span>
+                            <div class="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 truncate">
+                              {src.source_url}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- TAB CONTENT 5: TECHNICAL MATCH & PDE HANDOFF (SECTIONS 13 & 14) -->
+            {(active_tab === 'technical_match') && (
+              <div class="space-y-6">
+                <!-- TECHNICAL MATCH PANEL (SECTION 13 - COMMERCE-BLIND & ZERO NUMERIC SCORE) -->
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-4">
+                  <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <div>
+                      <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-emerald-600"></span>
+                        Penilaian Kecocokan Teknis Produk (Technical Match Panel)
+                      </h3>
+                      <p class="text-xs text-gray-500 mt-0.5">
+                        Murni kualitatif. Nol skor angka. Nol data harga, merchant, atau komisi.
+                      </p>
+                    </div>
+                    <span class={`px-3 py-1 text-xs font-bold rounded-md border ${PRODUCT_MATCH_CONFIG[detail.technical_match.match_status].badgeClass}`}>
+                      {PRODUCT_MATCH_CONFIG[detail.technical_match.match_status].label}
+                    </span>
+                  </div>
+
+                  <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 text-xs space-y-2">
+                    <div class="font-bold text-gray-900 dark:text-white">
+                      Deskripsi Evaluasi Kecocokan:
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+                      {PRODUCT_MATCH_CONFIG[detail.technical_match.match_status].description}
+                    </p>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs pt-2">
+                    <!-- Matched Traits -->
+                    <div class="p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/10 space-y-2">
+                      <div class="font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider text-[11px]">
+                        ✓ Karakteristik Teknis yang Terpenuhi ({detail.technical_match.matched_traits.length})
+                      </div>
+                      {detail.technical_match.matched_traits.length === 0 ? (
+                        <div class="text-gray-500 italic">Belum ada karakteristik yang cocok.</div>
+                      ) : (
+                        <ul class="space-y-1 text-emerald-800 dark:text-emerald-200">
+                          {detail.technical_match.matched_traits.map((t) => (
+                            <li class="flex items-center gap-1.5">
+                              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              <span class="font-mono text-[11px]">{t}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <!-- Tradeoffs / Disqualifications -->
+                    <div class="p-4 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/10 space-y-2">
+                      <div class="font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider text-[11px]">
+                        Kompromi & Mitigasi Fisik
+                      </div>
+                      {detail.technical_match.tradeoffs_addressed.length === 0 ? (
+                        <div class="text-gray-500 italic">Tidak ada kompromi yang dilaporkan.</div>
+                      ) : (
+                        <ul class="space-y-1.5 text-blue-800 dark:text-blue-200">
+                          {detail.technical_match.tradeoffs_addressed.map((t) => (
+                            <li class="flex items-start gap-1.5">
+                              <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></span>
+                              <span>{t}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+
+                  {detail.technical_match.disqualified_reasons.length > 0 && (
+                    <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1.5">
+                      <div class="font-bold uppercase tracking-wider text-[11px]">Pelanggaran Kriteria Red-Line (Disqualified):</div>
+                      <ul class="list-disc list-inside space-y-0.5">
+                        {detail.technical_match.disqualified_reasons.map((r) => (
+                          <li>{r}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                <!-- PDE HANDOFF CONTRACT VISIBILITY (SECTION 14 - READ ONLY) -->
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-4">
+                  <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <div>
+                      <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-purple-600"></span>
+                        PDE Decision Context (Read-Only Handoff Contract)
+                      </h3>
+                      <p class="text-xs text-gray-500 mt-0.5">
+                        Kontrak masukan arsitektur dari Product Decision Engine. Meja ulasan tidak dapat mengubah hasil PDE.
+                      </p>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                      READ-ONLY HANDOFF
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">problem_id:</span>
+                      <div class="font-bold text-gray-900 dark:text-white">{detail.pde_handoff.problem_id}</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">solution_class_id:</span>
+                      <div class="font-bold text-indigo-600 dark:text-indigo-400">{detail.pde_handoff.solution_class_id}</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+                      <span class="text-gray-500">model_version_key:</span>
+                      <div class="font-bold text-gray-900 dark:text-white">{detail.pde_handoff.model_version_key}</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 truncate">
+                      <span class="text-gray-500">evidence_version:</span>
+                      <div class="font-bold text-gray-900 dark:text-white truncate">{detail.pde_handoff.evidence_version}</div>
+                    </div>
+                  </div>
+
+                  <div class="space-y-2 text-xs pt-2">
+                    <div class="font-semibold text-gray-700 dark:text-gray-300">Ringkasan Konteks Hunian Pembaca:</div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+                      {Object.entries(detail.pde_handoff.context_summary).map(([k, val]) => (
+                        <div class="p-2.5 rounded bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+                          <span class="text-gray-500 block">{k}:</span>
+                          <span class="font-semibold text-gray-900 dark:text-white">{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- TAB CONTENT 6: EXTERNAL REVIEW SIGNALS (SECTION 10) -->
+            {(active_tab === 'external_reviews') && (
+              <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-4">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <div>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-sm bg-purple-600"></span>
+                      Pengalaman Pengguna Eksternal (ReviewSnapshot)
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      Sinyal pasar eksternal dari toko/pembeli. Dilarang dikonversi menjadi skor kualitas RancangLoka.
+                    </p>
+                  </div>
+                  <span class="px-2.5 py-1 text-xs font-bold rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                    USER_EXPERIENCE_SIGNAL
+                  </span>
+                </div>
+
+                <div class="p-4 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/50 dark:border-purple-900/30 text-xs text-purple-900 dark:text-purple-200 space-y-1">
+                  <p class="font-semibold">Prinsip Batas Sinyal Pengguna:</p>
+                  <p class="text-[11px] leading-relaxed">
+                    Testimoni atau rating bintang marketplace adalah data persepsi eksternal. Sinyal ini <strong>tidak pernah dicampur</strong> dengan status ulasan editorial RancangLoka dan <strong>tidak dimasukkan</strong> ke dalam formula pencocokan teknis produk.
+                  </p>
+                </div>
+
+                {detail.review_snapshot ? (
+                  <div class="space-y-4 text-xs">
+                    <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-2">
+                      <div class="flex items-center justify-between">
+                        <span class="font-bold text-sm text-gray-900 dark:text-white">{detail.review_snapshot.source_label}</span>
+                        <span class="font-mono text-gray-500 text-[11px]">Diambil: {detail.review_snapshot.captured_at.split('T')[0]}</span>
+                      </div>
+                      <div class="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-300 pt-1">
+                        <div>
+                          Rating Marketplace: <strong class="text-amber-600 font-bold">{detail.review_snapshot.external_rating}</strong> / {detail.review_snapshot.external_rating_max}
+                        </div>
+                        <div>
+                          Jumlah Ulasan: <strong class="text-gray-900 dark:text-white">{detail.review_snapshot.external_review_count} Ulasan</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="space-y-2">
+                      <div class="font-semibold text-gray-700 dark:text-gray-300 text-xs">Tema Pengalaman Berulang yang Terekam:</div>
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {detail.review_snapshot.recurring_themes.map((t) => (
+                          <div class="p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs space-y-1">
+                            <div class="flex items-center justify-between">
+                              <span class="font-bold text-gray-900 dark:text-white">{t.topic}</span>
+                              <span class={`px-1.5 py-0.5 rounded text-[10px] font-bold ${t.sentiment === 'POSITIVE' ? 'bg-emerald-100 text-emerald-800' : t.sentiment === 'NEGATIVE' ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-700'}`}>
+                                {t.sentiment}
+                              </span>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed">{t.summary}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div class="p-6 text-center text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/40 rounded-xl">
+                    Belum ada rekaman sinyal ulasan eksternal yang dihubungkan ke produk ini.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <!-- TAB CONTENT 7: COMMERCE PANEL (SECTION 15) -->
+            {(active_tab === 'commerce') && (
+              <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-6">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <div>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-sm bg-emerald-600"></span>
+                      Penawaran Merchant & Harga Pasar (Commerce Layer)
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      Data ketersediaan toko dan harga volatil. Terpisah mutlak dari analisis teknis.
+                    </p>
+                  </div>
+                  <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300">
+                    SEPARATED COMMERCE
+                  </span>
+                </div>
+
+                <!-- MANDATORY EXPLANATORY COPY (SECTION 15) -->
+                <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                  <div class="font-bold flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span>Pernyataan Independensi Komersial:</span>
+                  </div>
+                  <p class="text-[11px] leading-relaxed">
+                    <strong>"Data komersial tidak memengaruhi penilaian teknis."</strong> Peringkat toko, besaran komisi afiliasi, maupun status sponsor dilarang memengaruhi rekomendasi atau urutan evaluasi.
+                  </p>
+                </div>
+
+                <div class="space-y-4">
+                  <div class="font-semibold text-xs text-gray-700 dark:text-gray-300">Penawaran Merchant Terdaftar ({detail.offers.length} Toko):</div>
+                  {detail.offers.length === 0 ? (
+                    <div class="p-6 text-center text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/40 rounded-xl">
+                      Belum ada penawaran merchant aktif yang terhubung.
+                    </div>
+                  ) : (
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {detail.offers.map((off, idx) => {
+                        const price = detail.price_snapshots[idx];
+                        return (
+                          <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 text-xs space-y-3">
+                            <div class="flex items-center justify-between">
+                              <span class="font-bold text-gray-900 dark:text-white text-sm">{off.merchant_name}</span>
+                              <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${off.current_availability === 'IN_STOCK' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
+                                {off.current_availability}
+                              </span>
+                            </div>
+
+                            <div class="text-[11px] text-gray-600 dark:text-gray-300">
+                              Judul Listing: <span class="font-medium text-gray-800 dark:text-gray-200">{off.listing_title}</span>
+                            </div>
+
+                            {price && (
+                              <div class="p-3 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-between font-mono">
+                                <span class="text-gray-500">Harga Teramati:</span>
+                                <span class="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                                  {price.currency} {price.observed_price.toLocaleString('id-ID')}
+                                </span>
+                              </div>
+                            )}
+
+                            <div class="text-[10px] text-gray-400 truncate">
+                              URL Listing: <span class="font-mono">{off.listing_url}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <!-- TAB CONTENT 8: DISCLOSURE PANEL (SECTION 16) -->
+            {(active_tab === 'disclosure') && (
+              <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-6">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <div>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-sm bg-amber-600"></span>
+                      Transparansi Hubungan Komersial (Commercial Disclosure)
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      Pengungkapan wajib afiliasi dan barang uji demi menjaga kepercayaan pembaca.
+                    </p>
+                  </div>
+                  <span class="px-2 py-0.5 text-xs font-mono text-gray-500 bg-gray-100 dark:bg-gray-800 rounded">
+                    SECTION 16
+                  </span>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 text-xs space-y-4">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/50 space-y-1">
+                      <span class="text-gray-500">Hubungan Afiliasi:</span>
+                      <div class="font-bold text-gray-900 dark:text-white">
+                        {detail.commercial_disclosure.has_affiliate_links ? '✓ Ya (Mengandung Link Afiliasi)' : '✕ Tidak Ada'}
+                      </div>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/50 space-y-1">
+                      <span class="text-gray-500">Konten Bersponsor:</span>
+                      <div class="font-bold text-gray-900 dark:text-white">
+                        {detail.commercial_disclosure.is_sponsored_content ? '⚠️ Ya (Sponsored Content)' : '✓ Tidak (Independen)'}
+                      </div>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/50 space-y-1">
+                      <span class="text-gray-500">Barang Disediakan Brand:</span>
+                      <div class="font-bold text-gray-900 dark:text-white">
+                        {detail.commercial_disclosure.is_product_supplied_by_brand ? 'Ya (Sampel Pabrikan)' : '✓ Beli Sendiri / Bebas Sampel'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/50 space-y-1.5">
+                    <span class="font-bold text-amber-900 dark:text-amber-200">Pernyataan Pengungkapan Redaksi (Disclosure Statement):</span>
+                    <p class="text-gray-700 dark:text-gray-300 leading-relaxed text-[11px]">
+                      "{detail.commercial_disclosure.disclosure_statement}"
+                    </p>
+                  </div>
+                </div>
+
+                <!-- AFFILIATE DESTINATIONS (SECTION 15) -->
+                <div class="space-y-3 pt-2">
+                  <div class="font-semibold text-xs text-gray-700 dark:text-gray-300">Tautan Pelacakan Afiliasi Outbound ({detail.affiliate_destinations.length}):</div>
+                  <div class="space-y-2">
+                    {detail.affiliate_destinations.map((aff) => (
+                      <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 text-xs flex flex-col md:flex-row md:items-center justify-between gap-2">
+                        <div class="space-y-0.5 truncate">
+                          <div class="font-semibold text-gray-900 dark:text-white">Provider: {aff.provider}</div>
+                          <div class="font-mono text-[11px] text-gray-500 truncate">{aff.affiliate_destination_url}</div>
+                        </div>
+                        <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${aff.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
+                          {aff.is_active ? 'Aktif' : 'Non-aktif'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- TAB CONTENT 9: IDENTITY DRIFT (SECTION 17) -->
+            {(active_tab === 'drift') && (
+              <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-6">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <div>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-sm bg-rose-600"></span>
+                      Inspektur Pergeseran Identitas (Identity Drift Panel)
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      Mencegah mutasi identitas kanonikal secara diam-diam akibat perubahan judul/SKU listing toko.
+                    </p>
+                  </div>
+                  <span class={`px-2.5 py-1 text-xs font-bold rounded-md border ${PRODUCT_IDENTITY_STATE_CONFIG[detail.product.identity_state].badgeClass}`}>
+                    {PRODUCT_IDENTITY_STATE_CONFIG[detail.product.identity_state].label}
+                  </span>
+                </div>
+
+                {detail.product.identity_state !== 'CURRENT' ? (
+                  <div class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-xs text-rose-900 dark:text-rose-200 space-y-2">
+                    <div class="font-bold flex items-center gap-1.5 text-sm">
+                      <span>⚠️</span>
+                      <span>Peringatan Pergeseran Identitas Terdeteksi:</span>
+                    </div>
+                    <p class="text-xs leading-relaxed">
+                      {PRODUCT_IDENTITY_STATE_CONFIG[detail.product.identity_state].warning || 'Status produk menyimpang dari identitas kanonikal.'}
+                    </p>
+                    <p class="text-[11px] opacity-90 pt-1 border-t border-rose-200 dark:border-rose-900">
+                      Sistem dilarang menimpa identitas kanonikal secara otomatis. Editor wajib memvalidasi apakah ini revisi produk baru atau ketidakcocokan listing pihak ketiga.
+                    </p>
+                  </div>
+                ) : (
+                  <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+                    <div class="font-bold text-sm">✓ Identitas Stabil (CURRENT)</div>
+                    <p class="text-xs leading-relaxed">
+                      Judul produk kanonikal, nomor model SKU, dan spesifikasi inti konsisten antara dokumen pabrikan dan listing yang terdaftar.
+                    </p>
+                  </div>
+                )}
+
+                <div class="space-y-3 pt-2 text-xs">
+                  <div class="font-semibold text-gray-700 dark:text-gray-300">Status Siklus Hidup Identitas yang Didukung:</div>
+                  <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {Object.entries(PRODUCT_IDENTITY_STATE_CONFIG).map(([k, val]) => (
+                      <div class="p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 space-y-1">
+                        <span class={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${val.badgeClass}`}>{k}</span>
+                        <div class="font-semibold text-gray-900 dark:text-white text-[11px]">{val.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- TAB CONTENT 10: FRESHNESS DASHBOARD (SECTION 18) -->
+            {(active_tab === 'freshness') && (
+              <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-xs space-y-6">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <div>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-sm bg-blue-600"></span>
+                      Dashboard Kesegaran Data Independen (Freshness Dashboard)
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      Evaluasi kesegaran per entitas secara terpisah berdasarkan kebijakan terpusat. Tidak dilebur menjadi skor tunggal.
+                    </p>
+                  </div>
+                  <span class="px-2 py-0.5 text-xs font-mono text-gray-500 bg-gray-100 dark:bg-gray-800 rounded">
+                    SECTION 18
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  <!-- Spec Freshness -->
+                  <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-gray-900 dark:text-white">SpecSnapshot</span>
+                      <span class={`px-2 py-0.5 rounded text-[10px] font-bold border ${INSPECTION_FRESHNESS_CONFIG[detail.spec_freshness_state].badgeClass}`}>
+                        {INSPECTION_FRESHNESS_CONFIG[detail.spec_freshness_state].label}
+                      </span>
+                    </div>
+                    <div class="text-[11px] text-gray-500">
+                      Batas Maksimal: 90 Hari
+                    </div>
+                    <div class="text-[11px] text-gray-700 dark:text-gray-300">
+                      Diambil: {detail.spec_snapshot ? detail.spec_snapshot.captured_at.split('T')[0] : 'Tidak ada'}
+                    </div>
+                  </div>
+
+                  <!-- Review Freshness -->
+                  <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-gray-900 dark:text-white">ReviewSnapshot</span>
+                      <span class={`px-2 py-0.5 rounded text-[10px] font-bold border ${INSPECTION_FRESHNESS_CONFIG[detail.review_freshness_state].badgeClass}`}>
+                        {INSPECTION_FRESHNESS_CONFIG[detail.review_freshness_state].label}
+                      </span>
+                    </div>
+                    <div class="text-[11px] text-gray-500">
+                      Batas Maksimal: 30 Hari
+                    </div>
+                    <div class="text-[11px] text-gray-700 dark:text-gray-300">
+                      Diambil: {detail.review_snapshot ? detail.review_snapshot.captured_at.split('T')[0] : 'Tidak ada'}
+                    </div>
+                  </div>
+
+                  <!-- Price Freshness -->
+                  <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-gray-900 dark:text-white">PriceSnapshot</span>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        {detail.price_snapshots.length > 0 ? 'Aktif Terpantau' : 'Belum Ada'}
+                      </span>
+                    </div>
+                    <div class="text-[11px] text-gray-500">
+                      Batas Maksimal: 48 Jam
+                    </div>
+                    <div class="text-[11px] text-gray-700 dark:text-gray-300">
+                      Snapshot Terakhir: {detail.price_snapshots[0] ? detail.price_snapshots[0].captured_at.split('T')[0] : 'Tidak ada'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <div class="text-xs text-gray-500">
-            Sinyal pengalaman pengguna luar (pasar/toko) - <strong>bukan</strong> klaim faktual atau ulasan editorial RancangLoka.
-          </div>
-          <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 text-xs space-y-1">
-            <div class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_REVIEW_SNAPSHOT.source_label}</div>
-            <div class="text-gray-500">Rating: {SYNTHETIC_REVIEW_SNAPSHOT.external_rating} / {SYNTHETIC_REVIEW_SNAPSHOT.external_rating_max} ({SYNTHETIC_REVIEW_SNAPSHOT.external_review_count} ulasan)</div>
-          </div>
-        </div>
+        )}
       </div>
-    </div>
-
-    <!-- SECTION 2: COMMERCE & OFFER LAYER (SEPARATED) -->
-    <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <span class="w-3 h-3 rounded-sm bg-emerald-600"></span>
-          2. Lapisan Komersial & Destinasi Afiliasi (Terpisah Mutlak)
-        </h2>
-        <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Bebas Pengaruh terhadap Keputusan Teknis</span>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Merchant Offers Card -->
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
-          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Penawaran Merchant (Offer Layer)</span>
-            <span class="text-xs text-gray-500">2 Penjual Aktif</span>
-          </div>
-
-          <div class="space-y-3">
-            <!-- Merchant A -->
-            <div class="p-3 rounded-lg border border-gray-100 dark:border-gray-800 space-y-1.5 text-xs">
-              <div class="flex justify-between items-center">
-                <span class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_OFFER_MERCHANT_A.merchant_name}</span>
-                <span class="px-2 py-0.5 rounded text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 font-medium">
-                  {SYNTHETIC_OFFER_MERCHANT_A.current_availability}
-                </span>
-              </div>
-              <div class="text-gray-500 text-[11px]">{SYNTHETIC_OFFER_MERCHANT_A.listing_title}</div>
-              <div class="flex justify-between items-center pt-1 font-mono">
-                <span class="text-gray-500">Harga Terakhir:</span>
-                <span class="font-bold text-emerald-600 dark:text-emerald-400">
-                  {SYNTHETIC_PRICE_SNAPSHOT_A.currency} {SYNTHETIC_PRICE_SNAPSHOT_A.observed_price.toLocaleString('id-ID')}
-                </span>
-              </div>
-            </div>
-
-            <!-- Merchant B -->
-            <div class="p-3 rounded-lg border border-gray-100 dark:border-gray-800 space-y-1.5 text-xs">
-              <div class="flex justify-between items-center">
-                <span class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_OFFER_MERCHANT_B.merchant_name}</span>
-                <span class="px-2 py-0.5 rounded text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 font-medium">
-                  {SYNTHETIC_OFFER_MERCHANT_B.current_availability}
-                </span>
-              </div>
-              <div class="text-gray-500 text-[11px]">{SYNTHETIC_OFFER_MERCHANT_B.listing_title}</div>
-              <div class="flex justify-between items-center pt-1 font-mono">
-                <span class="text-gray-500">Harga Terakhir:</span>
-                <span class="font-bold text-emerald-600 dark:text-emerald-400">
-                  {SYNTHETIC_PRICE_SNAPSHOT_B.currency} {SYNTHETIC_PRICE_SNAPSHOT_B.observed_price.toLocaleString('id-ID')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Affiliate Destination & Disclosure Card -->
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
-          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Tautan Afiliasi & Transparansi Sponsor</span>
-            <span class="text-xs font-mono text-gray-500">AFFILIATE != SOURCE_URL</span>
-          </div>
-
-          <div class="space-y-3 text-xs">
-            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1">
-              <div class="text-gray-500 font-medium">Tautan Pelacakan Afiliasi Outbound:</div>
-              <div class="font-mono text-[11px] text-gray-800 dark:text-gray-200 break-all bg-white dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
-                {SYNTHETIC_AFFILIATE_A.affiliate_destination_url}
-              </div>
-              <div class="text-[10px] text-gray-500 pt-1">
-                Provider: <span class="font-semibold text-gray-700 dark:text-gray-300">{SYNTHETIC_AFFILIATE_A.provider}</span> | Status: Aktif
-              </div>
-            </div>
-
-            <div class="p-3 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 space-y-1.5">
-              <div class="font-semibold text-amber-900 dark:text-amber-200">Pengungkapan Komersial (Commercial Disclosure):</div>
-              <div class="grid grid-cols-2 gap-2 text-[11px] text-amber-800 dark:text-amber-300">
-                <div>Afiliasi: {SYNTHETIC_COMMERCIAL_DISCLOSURE.has_affiliate_relationship ? 'Ya (Dicantumkan)' : 'Tidak'}</div>
-                <div>Sponsored: {SYNTHETIC_COMMERCIAL_DISCLOSURE.is_sponsored_content ? 'Ya' : 'Tidak'}</div>
-                <div class="col-span-2">Barang disediakan brand: {SYNTHETIC_COMMERCIAL_DISCLOSURE.is_product_supplied_by_brand ? 'Ya' : 'Tidak (Membeli Sendiri)'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    )}
   </div>
 </AdminLayout>

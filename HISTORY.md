@@ -13,6 +13,34 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1C: Admin Product Review Desk & Editorial Inspector 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T13:55:00+07:00
+- **Status Operasional:** `PRODUCT_DECISION_ENGINE_1_COMPLETE` | `PRODUCT_REVIEW_AFFILIATE_1A_PASS` | `PRODUCT_REVIEW_AFFILIATE_1B_PASS` | `PRODUCT_REVIEW_AFFILIATE_1C_PASS` | `PRODUCT_REVIEW_AFFILIATE_1C_CLOSED` | `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1D`
+- **Next Milestone:** `PRODUCT_REVIEW_AFFILIATE_1D` (Article Product Binding, Reader Decision Handoff & Edge Integration)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic, ZERO WORKER DEPLOYMENT)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — ZERO PRODUCTION MUTATION / ZERO D1 WRITES (Migration 0036 strictly local/offline)
+- **Poin Kunci Rekayasa & Inspektur Editorial:**
+  1. *Pemisahan Visual Mutlak (Invarian EDITORIAL_CONCLUSION_MUST_NOT_VISUALLY_APPEAR_COMMERCE_DRIVEN):*
+     - Antarmuka privat `/admin/product-review` memisahkan data identitas fisik produk murni, status ulasan editorial RancangLoka, bukti empiris, dan penawaran merchant menjadi seksi terisolasi.
+     - Penilaian kecocokan teknis bersifat *commerce-blind* (nol komisi, nol harga, nol prioritas toko).
+  2. *Label Sumber Data Otoritatif (Invarian ADMIN_MUST_KNOW_WHICH_DATA_SOURCE_IS_BEING_INSPECTED):*
+     - Secara eksplisit menandai sumber data: `SYNTHETIC_TEST_DATA` (dengan badge tegas `DEVELOPMENT / TEST DATA`), `LOCAL_DATABASE`, atau `PRODUCTION_D1`.
+  3. *Penegakan Provenansi Hands-On & Peringatan Dini:*
+     - Ulasan analitis (`ANALYTICAL_REVIEW`) dilarang keras menampilkan *Tested by RancangLoka*.
+     - Ulasan `HANDS_ON_REVIEW` mewajibkan tanggal pengujian, identitas penguji, fasilitas uji, catatan metodologi, dan bukti uji lab primer; kekosongan salah satu parameter memicu peringatan administratif `HANDS_ON_PROVENANCE_INCOMPLETE`.
+  4. *Sinyal Ulasan Pengguna Eksternal (`ReviewSnapshot`):*
+     - Diberi label khusus `USER_EXPERIENCE_SIGNAL` dan terpisah mutlak dari ulasan editorial RancangLoka serta formula kecocokan teknis.
+  5. *Dashboard Kesegaran Independen & Inspektur Pergeseran Identitas:*
+     - Kesegaran spesifikasi, ulasan, penawaran, dan harga dipantau secara mandiri tanpa disatukan menjadi skor gabungan yang menyesatkan.
+     - Deteksi pergeseran identitas (`LISTING_AMBIGUOUS`, `VARIANT_CHANGED`, dll.) memperingatkan redaksi tanpa *auto-overwrite*.
+  6. *Kesiapan Editorial Deterministik (Editorial Readiness States):*
+     - Evaluasi kualitatif (`READY_FOR_EDITORIAL_REVIEW`, `EVIDENCE_INCOMPLETE`, `SPEC_STALE`, `IDENTITY_REVIEW_REQUIRED`, `HANDS_ON_PROVENANCE_INCOMPLETE`, `INSUFFICIENT_TECHNICAL_EVIDENCE`) tanpa persentase angka semu.
+  7. *Pengujian Lengkap 24/24 Lulus:*
+     - `test-product-review-admin.js`: 24/24 skenario pengujian (A-X) lulus 100%.
+     - Seluruh regresi 1A/1B dan PDE (1A-1E) tetap 100% hijau.
+     - `npx tsc --noEmit`, `npm run build`, dan `git diff --check` bersih 0 error.
+
 ### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1B-DOMAIN-HARDENING: Pre-1C Domain Model Hardening 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T13:05:00+07:00
