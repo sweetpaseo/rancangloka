@@ -27,7 +27,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   2. *Penguatan Visibilitas Peran Produk Artikel:*
      - Kebijakan `isArticleProductRoleReaderVisible`: Peran `RELATED_PRODUCT` diblokir dari perenderan publik secara default (`ROLE_NOT_READER_VISIBLE`).
   3. *Urutan Evaluasi Kelayakan Pembaca Deterministik (12 Tahap):*
-     - Memastikan komersial tetap berada di hilir (*downstream*) setelah evaluasi teknis, kesegaran spesifikasi, status editorial `PUBLISHED`, dan ketiadaan pergeseran identitas.
+     - Memastikan komersial tetap berada di hilir (*downstream*) setelah evaluasi kecocokan teknis produk (`MATCH`, `MATCH_WITH_TRADEOFF`, `CONDITIONAL_MATCH`), kesegaran spesifikasi, status editorial `PUBLISHED`, dan ketiadaan pergeseran identitas.
   4. *Aktivasi Skema Produksi Terkendali (Migrasi 0036):*
      - D1 `rancangloka_db` berhasil menerapkan `0036_product_review_desk.sql`.
      - Invarian `SCHEMA_ACTIVATION_MUST_NOT_IMPLY_PRODUCT_INGESTION`: Terverifikasi tepat 0 baris produk, 0 varian, 0 ulasan, 0 bukti, 0 penawaran, 0 destinasi afiliasi.
@@ -40,7 +40,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
      - Nol kartu produk, harga, atau tautan belanja pada halaman publik (Homepage, Artikel 5, Artikel 9).
      - Hash naskah Artikel 5 (`14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`), receipt (`rcpt_bbae85b48e1b2f8d`), dan artikel 6–9 tetap 100% utuh tanpa perubahan.
   7. *Verifikasi Regresi Penuh:*
-     - Seluruh 9 test suites Product Review & PDE (total 188 tes) lolos 100%.
+     - Seluruh 9 test suites Product Review & PDE (total tepat 194 tes: 22 + 26 + 26 + 28 + 14 + 22 + 13 + 27 + 16) lolos 100%.
      - `npx tsc --noEmit`, `npm run build`, dan `git diff --check` bersih tanpa error.
 
 ### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1D-A: Article Product Binding, Reader Decision Handoff & Edge Integration Prep 2026-10-17

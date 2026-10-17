@@ -457,7 +457,7 @@ Seluruh 22 skenario pengujian (Test A sampai Test V) terbukti 100% lulus:
 7. Provenansi ulasan valid (termasuk verifikasi lab primer untuk Hands-On).
 8. Bukti teknis otoritatif mencukupi.
 9. Kesegaran spesifikasi kritis dapat diterima.
-10. Kecocokan teknis (`technical_match`) berstatus `STRONG_FIT` atau `MODERATE_FIT`.
+10. Kecocokan teknis (`technical_match`) berstatus `MATCH`, `MATCH_WITH_TRADEOFF`, atau `CONDITIONAL_MATCH` (bukan `NOT_MATCH` atau `INSUFFICIENT_EVIDENCE`).
 11. DTO aman pembaca dihasilkan (bebas komisi, skor angka, atau data privat).
 12. Data penawaran komersial dilampirkan secara opsional di hilir (*downstream attachment*).
 

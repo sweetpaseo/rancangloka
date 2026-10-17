@@ -1,10 +1,10 @@
 # 🛑 RancangLoka & Hermes — Offline Master Checkpoint
-**Tanggal / Waktu:** 2026-10-17T14:45:00+07:00
+**Tanggal / Waktu:** 2026-10-17T15:05:00+07:00
 **Status Sesi:** `READY_FOR_OFFLINE`
 **Current Development State:** `PRODUCT_REVIEW_AFFILIATE_1_COMPLETE`
 **Branch:** `feat/jev-lokamedia-integration`
 **Active Production Worker:** `dea95d68-1708-4af7-8c02-3ea35c3af5ad` (Deployed & Verified live)
-**Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — Migration 0036 Applied (10 `product_review_%` tables present, 0 product rows)
+**Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — Migration 0036 Applied (10 `product_review_%` tables present, exactly 0 product rows)
 **Status Operasional:**
 - `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED`
 - `CONTENT_PROTECTION_1A_FULLY_CLOSED`
@@ -42,74 +42,55 @@
 
 ---
 
-## 1. Status Ringkasan Ekosistem (Executive Summary — 17 Oktober 2026 PDE-1D Production Activation)
+## 1. Status Ringkasan Ekosistem (Executive Summary — 17 Oktober 2026 PRODUCT_REVIEW_AFFILIATE_1 Final Closure)
 
-Sesi rekayasa ini berhasil menyelesaikan aktivasi terkendali Product Decision Engine Milestone PDE-1D ke database produksi Cloudflare D1 (`rancangloka_db`: `3a86e9ad-410f-4440-884e-2eb813ec4cf7`) dengan otorisasi resmi Pemimpin Redaksi (*Chief Editor*):
+Sesi rekayasa ini berhasil menyelesaikan aktivasi terkendali Product Review Desk & Affiliate Firewall (Milestone PRODUCT_REVIEW_AFFILIATE_1) ke Cloudflare D1 (`rancangloka_db`: `3a86e9ad-410f-4440-884e-2eb813ec4cf7`) dan Cloudflare Workers:
 
-1. **Otorisasi & Batasan Lingkup Ketat:**
-   - Chief Editor memberikan otorisasi eksplisit terbatas pada: rekonsiliasi migrasi, aplikasi migrasi 0035, persistensi model keputusan Article 5, aktivasi tepat 1 versi pilot, verifikasi paritas & idempotensi produksi, dan pemutakhiran riwayat/checkpoint.
-   - Tindakan tidak diotorisasi dan dipatuhi 100%: Nol deploy Worker, nol mutasi R2, nol mutasi artikel, nol mutasi Publication DNA, nol integrasi publik/afiliasi/sosial.
-2. **Rekonsiliasi Ledger Migrasi & Aplikasi D1 0035:**
-   - Audit replay migrasi 0034 (`0034_article_publication_dna.sql`) mengonfirmasi 100% idempoten (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`) dengan status `MIGRATION_0034_REPLAY_SAFE = PASS`.
-   - Eksekusi `npx wrangler d1 migrations apply rancangloka_db --remote` merekonsiliasi 0034 dan menerapkan 0035 secara resmi.
-   - Status migrasi remote kini melaporkan `✅ No migrations to apply!` (0 migrasi pending).
-   - Skema `decision_models` dan `decision_model_activations` terverifikasi aktif dengan partial unique index `idx_decision_models_active_unique` pada `(model_id) WHERE status = 'ACTIVE'`.
-3. **Persistensi & Aktivasi Model Otoritatif:**
-   - Utilitas `scripts/activate-product-decision-pilot.js` dipersenjatai dengan multi-gate safety flags (`--remote`, `--apply`, `--confirm-production-pde-activation`, `--actor chief_editor`) dan dikomit ke Git (`86e4ea8`) sebelum mutasi produksi.
-   - Model tersimpan dan teraktivasi:
-     - `version_key`: `model_pde_kusen_tropis@v1.0.0@crit_kusen_v1`
-     - `model_id`: `model_pde_kusen_tropis`
-     - `model_version`: `v1.0.0`
-     - `criteria_version`: `crit_kusen_v1`
-     - `status`: `ACTIVE` (Tepat 1 versi aktif untuk `model_pde_kusen_tropis`)
-     - `primary_article_id`: 5 (`/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`)
-     - `evidence_snapshot_hash`: `eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed`
-     - `model_payload_hash`: `1b7c9a2024cbc422015e3612a04077d47922f5dcf8a4d2dced5a309e89bfe9a0`
-     - `activated_by`: `chief_editor`
-4. **Verifikasi Bukti Keterikatan (Evidence Payload Integrity):**
-   - Seluruh 4 keterikatan bukti (`evidence_bindings_json`) terverifikasi mengikat Article 5 dengan:
-     - `published_content_hash = '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277'`
-     - `publication_version_key = 'receipt:rcpt_bbae85b48e1b2f8d'`
-     - `source_fidelity = 'NORMALIZED_HASH_VERIFIED'`
-   - String `23d1...` memiliki 0 kemunculan di produksi. Kesegaran bukti: `CURRENT`.
-5. **Audit Ledger Aktivasi (`decision_model_activations`):**
-   - Tercatat entri `ACTIVATE` di tabel `decision_model_activations` (`activation_id = act_0ae68df700be4610`) dengan `actor = 'chief_editor'`, `rationale = 'Chief Editor authorized production activation (PDE-1D)'`.
-   - 0 event supersesi palsu.
-6. **Bukti Idempotensi Produksi:**
-   - Eksekusi kedua dari perintah aktivasi yang identik menghasilkan laporan: `IDEMPOTENCY CONFIRMED: ALREADY_ACTIVE`.
-   - Jumlah baris `decision_models`: Tetap 1.
-   - Jumlah baris aktif: Tetap 1.
-   - Jumlah baris audit: Tetap 1.
-   - Nol mutasi duplikat.
-7. **Paritas Keputusan Produksi 5 Skenario (100% Deep Parity Pass):**
-   - Model dibaca kembali dari remote D1 dan dievaluasi via `evaluateDecision()` pada seluruh 5 skenario kanonikal.
-   - Hasil rekomendasi, status fit, alternatif, dan trace evaluasi terbukti 100% byte-for-byte identik dengan model statis.
-8. **Integritas Web Publik:**
-   - Uji HTTP smoke test read-only ke Article 5 menghasilkan HTTP 200 OK. Tidak ada ketergantungan SSR publik atau cache tag yang berubah.
+1. **Aktivasi Skema D1 Produksi (Migrasi 0036):**
+   - Migrasi `0036_product_review_desk.sql` berhasil diterapkan secara resmi ke database produksi D1.
+   - 10 tabel `product_review_%` terverifikasi aktif dengan 35 indeks.
+   - Invarian `SCHEMA_ACTIVATION_MUST_NOT_IMPLY_PRODUCT_INGESTION`: Tepat 0 baris produk di produksi.
+2. **Kanonikalitas Kosakata Kecocokan Teknis Produk:**
+   - Status kecocokan teknis Product Review (`ProductMatchStatus`) dikunci pada: `MATCH`, `MATCH_WITH_TRADEOFF`, `CONDITIONAL_MATCH`, `NOT_MATCH`, `INSUFFICIENT_EVIDENCE`.
+   - Tidak mencampuradukkan taksonomi fit PDE (`STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, `CONDITIONAL_FIT`, `POOR_FIT`) dengan Product Review.
+3. **Penguatan Gerbang Pembaca (Reader Eligibility Gate):**
+   - Invarian `UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT`: Ulasan `DRAFT`, `REVIEWED`, dan `ARCHIVED` diblokir mutlak. Hanya `PUBLISHED` yang berhak berkontribusi ke output DTO pembaca.
+   - Peran `RELATED_PRODUCT` diblokir mutlak dari perenderan publik secara default (`ROLE_NOT_READER_VISIBLE`).
+4. **Admin Desk di Produksi (`/admin/product-review`):**
+   - Terhubung langsung ke D1 Produksi (`PRODUCTION_D1`), menampilkan status kosong teratur: *"Belum ada produk yang masuk ke Product Review Desk."*
+   - Invarian `NO_SILENT_PRODUCT_REVIEW_PRODUCTION_FALLBACK`: Menjamin tidak ada data sintesis yang bocor ke produksi.
+   - Dilindungi Cloudflare Zero Trust Access (302 redirect), `Cache-Control: no-store, private`, `X-Robots-Tag: noindex`.
+5. **Integritas Publik & DNA Artikel 5–9:**
+   - Modul publik non-aktif (nol kartu rekomendasi, nol harga, nol tautan afiliasi).
+   - Naskah Artikel 5, hash abadi (`14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`), receipt (`rcpt_bbae85b48e1b2f8d`), dan artikel 6–9 tetap 100% utuh tanpa mutasi.
 
 ---
 
 ## 2. Metrik Verifikasi & Pengujian Otomatis
 
-Seluruh suite pengujian dieksekusi dari direktori `rancangloka-astro/`:
+Seluruh 9 suite pengujian dieksekusi dari direktori `rancangloka-astro/` dengan total tepat **194 pengujian**:
 
-1. **Test Suite PDE-1A (`scripts/test-product-decision-engine-contract.js`):** **14/14 PASSED, 0 FAILED**
-2. **Test Suite PDE-1B (`scripts/test-product-decision-engine-evaluator.js`):** **22/22 PASSED, 0 FAILED**
-3. **Test Suite PDE-1C (`scripts/test-product-decision-admin.js`):** **13/13 PASSED, 0 FAILED**
-4. **Test Suite PDE-1D-A (`scripts/test-product-decision-persistence.js`):** **27/27 PASSED, 0 FAILED**
-5. **Skrip Paritas Produksi (`scripts/verify-production-pde-parity.js`):** **5/5 SCENARIOS DEEP PARITY PASS**
-6. **Total Uji Regresi PDE:** **81/81 PASSED, 0 FAILED**
-7. **Pemeriksaan Tipe TypeScript:** `npx tsc --noEmit` **0 ERRORS**.
-8. **Kompilasi Astro SSR Cloudflare:** `npm run build` **SUKSES (7.62s)**.
-9. **Git Whitespace Check:** `git diff --check` **0 ERRORS**.
+1. **Test Suite Product Review Contract (`test-product-review-contract.js`):** **22/22 PASSED**
+2. **Test Suite Product Review Persistence (`test-product-review-persistence.js`):** **26/26 PASSED**
+3. **Test Suite Product Review Admin Desk (`test-product-review-admin.js`):** **26/26 PASSED**
+4. **Test Suite Product Review Reader Boundary (`test-product-review-reader-boundary.js`):** **28/28 PASSED**
+5. **Test Suite PDE Contract (`test-product-decision-engine-contract.js`):** **14/14 PASSED**
+6. **Test Suite PDE Evaluator (`test-product-decision-engine-evaluator.js`):** **22/22 PASSED**
+7. **Test Suite PDE Admin Inspector (`test-product-decision-admin.js`):** **13/13 PASSED**
+8. **Test Suite PDE Persistence (`test-product-decision-persistence.js`):** **27/27 PASSED**
+9. **Test Suite PDE Public Boundary (`test-product-decision-public-boundary.js`):** **16/16 PASSED**
+- **Total Pengujian Otomatis:** **194/194 PASSED (22+26+26+28+14+22+13+27+16 = 194)**
+- **Pemeriksaan Tipe TypeScript:** `npx tsc --noEmit` **0 ERRORS**
+- **Kompilasi Astro SSR Cloudflare:** `npm run build` **SUKSES**
+- **Git Whitespace Check:** `git diff --check` **0 ERRORS**
 
 ---
 
 ## 3. Status Keselamatan Produksi & Lingkungan Edge
 
-- **Database Cloudflare D1 (`rancangloka_db`):** Migrasi 0035 diterapkan secara sah; tabel `decision_models` memiliki 1 baris model ACTIVE; tabel `decision_model_activations` memiliki 1 baris audit ACTIVATE. Nol baris artikel bermutasi. Nol baris DNA bermutasi.
+- **Database Cloudflare D1 (`rancangloka_db`):** Migrasi 0036 aktif, 10 tabel `product_review_%` memiliki tepat 0 baris. Nol mutasi artikel, nol mutasi DNA.
 - **Penyimpanan R2 (`rancangloka-media`):** 0 mutasi aset.
-- **Cloudflare Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` aktif melayani 100% lalu lintas produksi tanpa deploy baru.
+- **Cloudflare Production Worker:** `dea95d68-1708-4af7-8c02-3ea35c3af5ad` aktif melayani lalu lintas produksi dengan empty-state handling aman.
 - **Invarian Keselamatan Editorial:**
   - `AUTO_PUBLISH = OFF`
   - `publishingAuthority = 0`
@@ -123,14 +104,14 @@ Seluruh suite pengujian dieksekusi dari direktori `rancangloka-astro/`:
 
 > **PERINGATAN PENGEMBANGAN SESI BERIKUTNYA:**  
 > Sesi selanjutnya **WAJIB LANGSUNG DIMULAI DARI**:  
-> **`PRODUCT_REVIEW_AFFILIATE_1`** (Product Review Desk & Affiliate Firewall Integration)
+> **`READY_FOR_CONTROLLED_REAL_PRODUCT_ONBOARDING`** (Onboarding Produk Riil Terkendali dengan Approval Chief Editor)
 
 ---
 
-*Dokumen ini disusun sebagai penutupan resmi tonggak arsitektur integrasi publik PDE-1E 17 Oktober 2026.*
+*Dokumen ini disusun sebagai penutupan resmi tonggak arsitektur PRODUCT_REVIEW_AFFILIATE_1 17 Oktober 2026.*
 *Status Sesi: `READY_FOR_OFFLINE`*  
 *Klasifikasi:*
-- `PRODUCT_DECISION_ENGINE_1E_PASS`
-- `PRODUCT_DECISION_ENGINE_1E_CLOSED`
-- `PRODUCT_DECISION_ENGINE_1_COMPLETE`
-- `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1`
+- `PRODUCT_REVIEW_AFFILIATE_1D_CLOSED`
+- `PRODUCT_REVIEW_AFFILIATE_1_COMPLETE`
+- `PRODUCT_REVIEW_INFRASTRUCTURE_PRODUCTION_READY`
+- `READY_FOR_CONTROLLED_REAL_PRODUCT_ONBOARDING`
