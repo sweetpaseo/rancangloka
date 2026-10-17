@@ -627,7 +627,7 @@ async function runTests() {
   // --------------------------------------------------------------------------
   // Test AA: Remote APPLY safety gate in activation utility
   // --------------------------------------------------------------------------
-  test('AA. Remote APPLY is strictly blocked during preparation phase in activation utility', () => {
+  test('AA. Remote APPLY is strictly blocked without complete explicit gate flags in activation utility', () => {
     const scriptPath = path.resolve(process.cwd(), 'scripts/activate-product-decision-pilot.js');
 
     // Run without confirm flag
@@ -637,17 +637,22 @@ async function runTests() {
     assert.equal(resNoConfirm.status, 1);
     assert.ok(resNoConfirm.stderr.includes('[BLOCKED]') || resNoConfirm.stdout.includes('[BLOCKED]'));
 
-    // Run with confirm flag
-    const resWithConfirm = spawnSync(
+    // Run with confirm flag but without actor
+    const resNoActor = spawnSync(
       process.execPath,
       [scriptPath, '--remote', '--apply', '--confirm-production-pde-activation'],
       { encoding: 'utf-8' }
     );
-    assert.equal(resWithConfirm.status, 1);
+    assert.equal(resNoActor.status, 1);
     assert.ok(
-      resWithConfirm.stderr.includes('[BLOCKED_PREPARATION_PHASE]') ||
-      resWithConfirm.stdout.includes('[BLOCKED_PREPARATION_PHASE]')
+      resNoActor.stderr.includes('[BLOCKED]') ||
+      resNoActor.stdout.includes('[BLOCKED]')
     );
+
+    // Run default (dry-run)
+    const resDefault = spawnSync(process.execPath, [scriptPath], { encoding: 'utf-8' });
+    assert.equal(resDefault.status, 0);
+    assert.ok(resDefault.stdout.includes('DRY RUN (NO_MUTATION)'));
   });
 
   console.log('================================================================');
