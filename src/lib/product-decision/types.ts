@@ -142,6 +142,17 @@ export interface DecisionContext {
 
 export type ConstraintSeverity = 'HARD' | 'SOFT';
 
+export interface ConstraintRule {
+  field: keyof DecisionContext;
+  operator: 'EQUALS' | 'NOT_EQUALS' | 'INCLUDES' | 'IN';
+  value: any;
+}
+
+export interface ConstraintPredicate {
+  operator: 'ALL' | 'ANY';
+  rules: ConstraintRule[];
+}
+
 export interface DecisionConstraint {
   constraint_id: string;
   name: string;
@@ -149,6 +160,8 @@ export interface DecisionConstraint {
   severity: ConstraintSeverity;
   /** Evaluated against DecisionContext */
   applies_when: (context: DecisionContext) => boolean;
+  /** Declarative predicate for serialization & edge runtime */
+  predicate?: ConstraintPredicate;
   /** Solution class IDs disqualified (for HARD) or downgraded (for SOFT) */
   disqualified_solution_ids?: string[];
   affected_solution_ids?: string[];
@@ -396,3 +409,68 @@ export interface EvaluationBlockedResult {
 }
 
 export type EvaluationResult = EvaluationSuccessResult | EvaluationBlockedResult;
+
+// ============================================================================
+// 12. D1 PERSISTENCE & LIFECYCLE TYPES (PDE-1D-A)
+// ============================================================================
+
+export const DECISION_MODEL_LIFECYCLE_STATUSES = [
+  'DRAFT',
+  'VALIDATED',
+  'ACTIVE',
+  'SUPERSEDED',
+  'DISABLED'
+] as const;
+
+export type DecisionModelLifecycleStatus = typeof DECISION_MODEL_LIFECYCLE_STATUSES[number];
+
+export interface DecisionModelRow {
+  version_key: string;
+  model_id: string;
+  model_version: string;
+  criteria_version: string;
+  problem_id: string;
+  problem_title: string;
+  problem_slug: string;
+  problem_description: string;
+  primary_article_id: number;
+  status: DecisionModelLifecycleStatus;
+  evidence_snapshot_hash: string;
+  model_payload_hash: string;
+  solution_classes_json: string;
+  criteria_json: string;
+  evaluations_json: string;
+  constraints_json: string;
+  scenarios_json: string;
+  evidence_bindings_json: string;
+  created_at: string;
+  activated_at?: string | null;
+  superseded_at?: string | null;
+  activated_by?: string | null;
+}
+
+export interface DecisionModelActivationRow {
+  activation_id: string;
+  version_key: string;
+  model_id: string;
+  action: 'ACTIVATE' | 'SUPERSEDE' | 'DISABLE';
+  actor: string;
+  rationale?: string | null;
+  recorded_at: string;
+}
+
+export interface DecisionModelVersionSummary {
+  version_key: string;
+  model_id: string;
+  model_version: string;
+  criteria_version: string;
+  problem_id: string;
+  problem_title: string;
+  status: DecisionModelLifecycleStatus;
+  evidence_snapshot_hash: string;
+  model_payload_hash: string;
+  created_at: string;
+  activated_at?: string | null;
+  superseded_at?: string | null;
+  activated_by?: string | null;
+}

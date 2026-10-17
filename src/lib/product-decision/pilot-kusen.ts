@@ -430,6 +430,13 @@ export const CONSTRAINTS_PILOT: DecisionConstraint[] = [
     description: 'Bukaan dengan lebar lebih dari 3 meter atau partisi lipat tinggi membutuhkan kekakuan logam prima.',
     severity: 'HARD',
     applies_when: (ctx) => ctx.application_location === 'LIVING_COMMON_AREA' && ctx.problem_goal.toLowerCase().includes('lebar'),
+    predicate: {
+      operator: 'ALL',
+      rules: [
+        { field: 'application_location', operator: 'EQUALS', value: 'LIVING_COMMON_AREA' },
+        { field: 'problem_goal', operator: 'INCLUDES', value: 'lebar' }
+      ]
+    },
     disqualified_solution_ids: [],
     affected_solution_ids: ['sol_upvc_multi_chamber'],
     impact_explanation: 'uPVC memerlukan tulangan baja khusus dan profil ekstra tebal pada bentang sangat lebar; aluminium lebih diutamakan.'
@@ -440,6 +447,13 @@ export const CONSTRAINTS_PILOT: DecisionConstraint[] = [
     description: 'Kamar tidur lantai 2 ber-AC menghadap barat menuntut reduksi konduksi panas agar ruangan tidak pengap.',
     severity: 'SOFT',
     applies_when: (ctx) => ctx.climate_exposure === 'WEST_AFTERNOON_HEAT' && ctx.application_location === 'MASTER_BEDROOM',
+    predicate: {
+      operator: 'ALL',
+      rules: [
+        { field: 'climate_exposure', operator: 'EQUALS', value: 'WEST_AFTERNOON_HEAT' },
+        { field: 'application_location', operator: 'EQUALS', value: 'MASTER_BEDROOM' }
+      ]
+    },
     affected_solution_ids: ['sol_aluminium_standar'],
     impact_explanation: 'Aluminium standar menghantarkan panas luar ke dalam kamar; uPVC bersekat lebih unggul menjaga suhu bingkai sejuk.'
   },
@@ -449,6 +463,12 @@ export const CONSTRAINTS_PILOT: DecisionConstraint[] = [
     description: 'Pemilik rumah dengan alokasi dana renovasi terbatas memerlukan material dengan ketersediaan luas dan biaya awal hemat.',
     severity: 'SOFT',
     applies_when: (ctx) => ctx.budget_class === 'TIGHT_CONSTRAINED',
+    predicate: {
+      operator: 'ALL',
+      rules: [
+        { field: 'budget_class', operator: 'EQUALS', value: 'TIGHT_CONSTRAINED' }
+      ]
+    },
     affected_solution_ids: ['sol_upvc_multi_chamber'],
     impact_explanation: 'uPVC multi-chamber berkualitas memiliki biaya awal lebih tinggi; aluminium standar lebih terjangkau.'
   }

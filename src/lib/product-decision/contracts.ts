@@ -11,7 +11,9 @@ import type {
   DecisionContext,
   EvidenceBinding,
   EvidenceFreshnessState,
-  FitTaxonomy
+  FitTaxonomy,
+  ConstraintPredicate,
+  ConstraintRule
 } from './types.ts';
 import { FIT_TAXONOMY_VALUES } from './types.ts';
 
@@ -356,4 +358,91 @@ export function validateDecisionModel(model: DecisionModelDefinition): Validatio
     valid: issues.length === 0,
     issues
   };
+}
+
+/**
+ * Pure deterministic evaluation of a declarative constraint predicate against DecisionContext.
+ * Guaranteed 100% side-effect free, edge-runtime safe, with zero eval() or new Function().
+ */
+export function evaluateConstraintPredicate(
+  predicate: ConstraintPredicate,
+  context: DecisionContext
+): boolean {
+  if (!predicate || !Array.isArray(predicate.rules) || predicate.rules.length === 0) {
+    return false;
+  }
+
+  const evalRule = (rule: ConstraintRule): boolean => {
+    const val = context[rule.field];
+    switch (rule.operator) {
+      case 'EQUALS':
+        return val === rule.value;
+      case 'NOT_EQUALS':
+        return val !== rule.value;
+      case 'INCLUDES':
+        return String(val ?? '').toLowerCase().includes(String(rule.value ?? '').toLowerCase());
+      case 'IN':
+        return Array.isArray(rule.value) && rule.value.includes(val);
+      default:
+        return false;
+    }
+  };
+
+  if (predicate.operator === 'ANY') {
+    return predicate.rules.some(evalRule);
+  }
+  return predicate.rules.every(evalRule);
+}
+
+/**
+ * Deduplicates and sorts an array of evidence bindings deterministically.
+ */
+export function canonicalizeEvidenceBindings(bindings: EvidenceBinding[]): EvidenceBinding[] {
+  const map = new Map<string, EvidenceBinding>();
+  for (const b of bindings) {
+    const key = `${b.article_id}|${b.publication_version_key}|${b.claim_class}|${b.published_content_hash}`;
+    if (!map.has(key)) {
+      map.set(key, { ...b });
+    }
+  }
+
+  const result = Array.from(map.values());
+  result.sort((a, b) => {
+    if (a.article_id !== b.article_id) {
+      return a.article_id - b.article_id;
+    }
+    const classDiff = a.claim_class.localeCompare(b.claim_class);
+    if (classDiff !== 0) {
+      return classDiff;
+    }
+    return a.evidence_summary.localeCompare(b.evidence_summary);
+  });
+  return result;
+}
+
+/**
+ * Extracts all evidence bindings from a decision model definition for freshness audit.
+ */
+export function extractAllModelBindings(model: DecisionModelDefinition): EvidenceBinding[] {
+  const bindings: EvidenceBinding[] = [];
+  for (const ev of model.evaluations) {
+    if (ev.evidence_binding) {
+      bindings.push(ev.evidence_binding);
+    }
+  }
+  for (const sol of model.solution_classes) {
+    for (const tr of sol.tradeoffs) {
+      if (tr.evidence_binding) {
+        bindings.push(tr.evidence_binding);
+      }
+    }
+  }
+  for (const sc of model.scenarios) {
+    if (sc.expected_recommendation?.evidence_bindings) {
+      for (const eb of sc.expected_recommendation.evidence_bindings) {
+        bindings.push(eb);
+      }
+    }
+  }
+  return canonicalizeEvidenceBindings(bindings);
 }

@@ -914,5 +914,77 @@ Tonggak **`PRODUCT_DECISION_ENGINE-1C`** mengimplementasikan antarmuka inspeksi 
 
 ---
 
-*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1C_PASS`*
-*Milestone Berikutnya: `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1D` (Controlled D1 Migration & Pilot Activation)*
+## 26. Implementasi PDE-1D-A: D1 Schema, Persistensi Model & Persiapan Aktivasi Terkendali
+
+Tonggak **`PRODUCT_DECISION_ENGINE-1D-A`** merancang dan mengimplementasikan lapisan persistensi D1 minimal dan aditif untuk menyimpan model Product Decision Engine terverifikasi tanpa mengubah arsitektur evaluator deterministik murni.
+
+### 26.1 Invarian Arsitektur Persistensi
+> **INVARIAN PERMANEN:**
+> **`D1_STORES_DECISION_MODEL` & `EVALUATOR_COMPUTES_DECISION`**
+> Cloudflare D1 bertindak sebagai repositori terstruktur dan audit ledger untuk versi model keputusan. D1 TIDAK BOLEH menjadi mesin kalkulasi rekomendasi (No SQL Decision Maker). Evaluasi konteks dan derivasi rekomendasi tetap 100% dijalankan oleh pure deterministic evaluator (`src/lib/product-decision/evaluator.ts`).
+>
+> **`MODEL_PERSISTENCE_ROUND_TRIP_MUST_PRESERVE_DECISION_SEMANTICS`**
+> Model keputusan yang diserialisasi ke D1 dan dibaca kembali (deserialisasi) wajib menghasilkan objek `DecisionModelDefinition` yang identik dan menghasilkan luaran evaluasi yang byte-for-byte identik pada seluruh skenario kanonikal.
+
+### 26.2 Skema D1 & Batas Relasional vs JSON Terstruktur
+Migrasi aditif yang dipilih secara otoritatif dari kebenaran repositori adalah **`db/migrations/0035_product_decision_engine.sql`**.
+
+Skema memadukan keunggulan integritas relasional dan efisiensi penyimpanan terstruktur (restrained middle ground):
+1. **Tabel `decision_models` (Model Version Store):**
+   - **Kolom Relasional Eksplisit:** `version_key` (Primary Key), `model_id`, `model_version`, `criteria_version`, `problem_id`, `problem_title`, `problem_slug`, `problem_description`, `primary_article_id` (FK ke `articles`), `status`, `evidence_snapshot_hash`, `model_payload_hash`, `created_at`, `activated_at`, `superseded_at`, `activated_by`.
+   - **Kolom JSON Terstruktur:** `solution_classes_json`, `criteria_json`, `evaluations_json`, `constraints_json`, `scenarios_json`, `evidence_bindings_json`.
+   - **Partial Unique Index:** `CREATE UNIQUE INDEX idx_decision_models_active_unique ON decision_models(model_id) WHERE status = 'ACTIVE';` — menjamin secara kriptografis dan level database bahwa hanya ada maksimal 1 versi berstatus `ACTIVE` untuk setiap `model_id`.
+2. **Tabel `decision_model_activations` (Human Activation Audit Ledger):**
+   - Append-only audit log untuk setiap perubahan status aktivasi: `activation_id`, `version_key` (FK), `model_id`, `action` (`ACTIVATE`, `SUPERSEDE`, `DISABLE`), `actor`, `rationale`, `recorded_at`.
+
+### 26.3 Identitas Versi & Siklus Hidup (Lifecycle)
+- **Kunci Versi Kanonikal:** `${model_id}@${model_version}@${criteria_version}` (misal: `model_pde_kusen_tropis@v1.0.0@crit_kusen_v1`).
+- **Taksonomi Status Siklus Hidup:**
+  - `DRAFT`: Model dalam tahap perancangan awal.
+  - `VALIDATED`: Model telah lolos validasi kontrak integritas dan pengujian evaluator.
+  - `ACTIVE`: Versi otoritatif tunggal yang sedang aktif digunakan.
+  - `SUPERSEDED`: Versi historis yang digantikan oleh aktivasi versi baru.
+  - `DISABLED`: Versi yang dinonaktifkan oleh tindakan editorial manual.
+- **Deteksi Konflik Semantik vs Idempotensi:**
+  - Fungsi `computeModelPayloadHash` menghitung SHA-256 dari seluruh isi deklaratif model.
+  - Jika `version_key` yang sama dimasukkan kembali dengan payload identik -> `ALREADY_EXISTS_IDENTICAL` (idempoten).
+  - Jika `version_key` yang sama dimasukkan dengan isi yang dimodifikasi -> `BLOCKED_VERSION_CONFLICT` (mencegah penimpaan diam-diam terhadap kebenaran historis).
+
+### 26.4 Serialisasi Predikat Batasan & Keamanan Runtime Edge
+- Antarmuka `DecisionConstraint` diperkaya dengan tipe deklaratif `ConstraintPredicate` dan `ConstraintRule` yang mendukung operator murni (`EQUALS`, `NOT_EQUALS`, `INCLUDES`, `IN`).
+- Fungsi `evaluateConstraintPredicate` mengevaluasi predikat secara 100% deterministik tanpa menggunakan `eval()` atau `new Function()`, menjamin keamanan mutlak pada Cloudflare Workers edge runtime.
+- Saat deserialisasi, predikat otomatis direhidrasi menjadi fungsi `applies_when: (ctx) => evaluateConstraintPredicate(predicate, ctx)`, sehingga `evaluator.ts` dapat mengeksekusi batasan tanpa perubahan antarmuka runtime.
+
+### 26.5 Gerbang Bukti Otoritatif (Evidence Freshness Guard)
+Aktivasi model (`activateDecisionModelVersion`) memeriksa kesegaran bukti via `deriveEvidenceFreshness`:
+- Jika hash artikel sumber telah bergeser -> ditolak dengan `BLOCKED_EVIDENCE_STALE`.
+- Jika artikel sumber atau hash receipt tidak ditemukan -> ditolak dengan `BLOCKED_EVIDENCE_UNAVAILABLE`.
+
+### 26.6 Batas Antarmuka Admin & Nol Dampak Cache Publik
+- Panel Admin `/admin/decisions` saat ini tetap menggunakan referensi statis `DECISION_MODEL_PILOT_KUSEN` sebagai golden baseline.
+- Pada integrasi tahap berikutnya, resolusi model aktif D1 akan menggunakan skema fallback aman (D1 active model -> verifikasi kesegaran -> fallback ke static fixture dalam lingkungan development).
+- Persistensi D1 bersifat internal dan privat; tidak ada rute SSR publik atau tag Workers Cache yang dipengaruhi pada tahap persiapan ini.
+
+### 26.7 Hasil Pengujian Otomatis PDE-1D-A
+- **Test Suite PDE-1D-A (`scripts/test-product-decision-persistence.js`):** **23/23 PASSED, 0 FAILED**.
+  - **Tes A:** Migrasi 0035 teraplikasikan bersih pada SQLite in-memory test DB.
+  - **Tes B & C:** Model pilot terserialisasi dan tersimpan ke tabel `decision_models`.
+  - **Tes D - L:** Round-trip D1 mempreservasi identitas model, snapshot hash, 2 solusi, 7 kriteria, 3 batasan, 14 evaluasi, tradeoff, evidence bindings, dan 5 skenario.
+  - **Tes M:** Bukti independensi: mutasi ekspektasi skenario tidak mengubah rekomendasi runtime.
+  - **Tes N:** 5 konteks kanonikal menghasilkan rekomendasi dan trace yang 100% identik sebelum vs setelah round-trip D1.
+  - **Tes O & P:** Idempotensi terbukti (`ALREADY_EXISTS_IDENTICAL`) dan pemblokiran konflik versi bekerja (`BLOCKED_VERSION_CONFLICT`).
+  - **Tes Q & R:** Penolakan status invalid via CHECK constraint dan jaminan tepat 1 versi aktif via partial unique index.
+  - **Tes S & T:** Bukti basi dan bukti tidak tersedia memblokir aktivasi model.
+  - **Tes U & V:** Bebas atribut komersial/afiliasi dan bebas skor numerik semu.
+  - **Tes W:** Eksekusi 100% offline tanpa koneksi remote/produksi.
+- **Regresi Lengkap:**
+  - `test-product-decision-engine-contract.js`: 14/14 PASS.
+  - `test-product-decision-engine-evaluator.js`: 22/22 PASS.
+  - `test-product-decision-admin.js`: 13/13 PASS.
+  - `test-product-decision-persistence.js`: 23/23 PASS.
+- **Pemeriksaan Tipe & Build:** `npx tsc --noEmit` **0 ERRORS**, `npm run build` **SUKSES**.
+
+---
+
+*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1D_PREP_PASS`*
+*Milestone Berikutnya: `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`*
