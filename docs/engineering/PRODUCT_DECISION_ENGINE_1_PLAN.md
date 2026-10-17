@@ -1076,4 +1076,118 @@ Model dibaca kembali dari remote D1 dan dideserialisasi via `deserializeDecision
 ---
 
 *Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACCEPTED` | `PRODUCT_DECISION_ENGINE_1D_CLOSED`*
-*Milestone Berikutnya: `READY_FOR_PRODUCT_DECISION_ENGINE_1E` (Future Boundary & Public Integration Architecture)*
+*Milestone Berikutnya: `PRODUCT_DECISION_ENGINE_1E` (Future Boundary & Public Integration Architecture)*
+
+---
+
+## 28. PDE-1E Arsitektur Batas Integrasi Publik & Rekayasa Firewalled Desk (Implementasi Selesai)
+
+### 28.1 Batas Baca Model Produksi (`src/lib/product-decision/runtime-model.ts`)
+Modul pembaca model waktu-jalan (runtime model reader) dibangun dengan prinsip strictly READ-ONLY tanpa mutasi, tanpa aktivasi, dan tanpa rekomendasi logika langsung:
+- **Fungsi Otoritatif:** `resolveActiveDecisionModel(db, options)`
+- **Invarian Mutlak `NO_SILENT_PRODUCTION_FALLBACK`:** Pada mode produksi (`mode: 'production'`), modul secara deterministik melempar eksepsi `INVARIANT_VIOLATION` jika opsi `allowFallbackToStatic` dicoba. Waktu-jalan publik tidak boleh secara diam-diam beralih ke fixture statis saat database D1 mengalami kegagalan atau ketiadaan model aktif.
+- **Verifikasi Kriptografis Otomatis:**
+  1. Kueri status `ACTIVE` pada tabel `decision_models` di D1.
+  2. Rekonstruksi model via `deserializeDecisionModel(row)`.
+  3. Verifikasi ulang `evidence_snapshot_hash` terhadap evaluasi bukti naskah aktual (`UNAVAILABLE_SNAPSHOT_MISMATCH` jika tidak cocok).
+  4. Verifikasi `model_payload_hash` SHA-256 (`UNAVAILABLE_INTEGRITY_MISMATCH` jika payload termodifikasi).
+  5. Pemeriksaan kesegaran bukti dinamis terhadap peta otoritatif (`UNAVAILABLE_EVIDENCE_STALE` jika `NEEDS_RECALIBRATION`, `UNAVAILABLE_EVIDENCE_MISSING` jika `EVIDENCE_UNAVAILABLE`).
+
+### 28.2 Kontrak Input Publik (Controlled Taxonomy Input Contract)
+- **6 Dimensi CORE Wajib:** `problem_goal`, `building_context`, `climate_exposure`, `application_location`, `budget_class`, `maintenance_tolerance`.
+- **Validasi Ketat Taksonomi:** Setiap input publik divalidasi via `validatePublicDecisionInput()`. Nilai di luar taksonomi yang diizinkan ditolak di gerbang awal.
+- **Zero Profiling & Zero PII:** Tidak ada pelacakan geolokasi paksa, tidak ada profiling perilaku tersembunyi, tidak ada input teks bebas yang diproses evaluator inti.
+- **Penolakan Bidang Komersial:** Setiap payload yang menyusupkan atribut komersial (`affiliate_url`, `merchant`, `commission`, dll.) langsung digagalkan dengan pesan error eksplisit.
+
+### 28.3 Kontrak Output Publik (`PublicDecisionResultDTO`)
+Menyediakan hasil ramah pembaca yang menjawab 3 Pertanyaan Emas RancangLoka tanpa membocorkan rincian forensik internal:
+- **`recommended_solution`:** Berisi `solution_id`, `name`/`title`, `fit_label` (label kualitatif Bahasa Indonesia), dan `explanation`/`summary`.
+- **`alternative_solution`:** Perbandingan berimbang terhadap alternatif sistem tandingan untuk konteks komparasi.
+- **`pivot_conditions`:** Kondisi eksplisit yang dapat membalikkan rekomendasi jika konteks pembaca berubah.
+- **`important_tradeoffs`:** Kompromi rekayasa nyata (manfaat vs biaya/konsekuensi) dengan tips mitigasi.
+- **`next_practical_actions`:** Tindakan praktis nyata bagi pemilik rumah sebelum membeli material.
+- **`evidence_transparency`:** Transparansi artikel sumber, jumlah klaim bukti, dasar tinjauan (`ANALYTICAL_REVIEW` vs `HANDS_ON_REVIEW`), dan pernyataan integritas redaksi.
+- **`commercial_firewall`:** Bukti independensi bahwa rekomendasi 100% bebas dari bias komersial/merchant.
+
+### 28.4 Bahasa Pembaca & Pemetaan Taksonomi Fit
+- **Prinsip Redaksional:** *"RancangLoka tidak menulis untuk membuat pembaca merasa penulisnya pintar. RancangLoka menulis supaya pembaca merasa dirinya sekarang mengerti."*
+- **Tone of Voice:** Nada konsultan ramah, bersahaja, jelas, lugas, dan bebas jargon (*Warm Advisory Tone*).
+- **Larangan Kosakata Verdict & Superlatif:** Dilarang menggunakan istilah *Winner*, *BEST*, *TOP PICK*, *#1*, atau persentase semu (*95% Match*).
+- **Pemetaan Taksonomi Status Fit Internal ke Bahasa Indonesia:**
+  - `STRONG_FIT` → **Sangat Cocok**
+  - `GOOD_FIT_WITH_TRADEOFF` → **Cocok dengan Kompromi**
+  - `CONDITIONAL_FIT` → **Cocok dengan Syarat Tertentu**
+  - `POOR_FIT` → **Kurang Direkomendasikan**
+
+### 28.5 Pengendalian Kegagalan & Model Usang (`STALE_MODEL_MUST_NOT_PRODUCE_PUBLIC_RECOMMENDATION`)
+Jika bukti referensi mengalami `NEEDS_RECALIBRATION` atau `EVIDENCE_UNAVAILABLE`:
+- Waktu-jalan publik **DILARANG KERAS** mengeluarkan rekomendasi normal.
+- Tampilan pembaca dialihkan ke status transparan: *"Rekomendasi ini sedang diperbarui karena sumber acuannya berubah."*
+- Kegagalan teknis D1, korupsi payload hash, atau model hilang dialihkan ke fallback pesan aman pembaca tanpa ekspose stack trace SQL atau internal debug hash.
+
+### 28.6 Tembok Pemisah Afiliasi & Serah Terima ke Product Review Desk (`createProductReviewHandoff`)
+- **Urutan Alur Kanonikal:**
+  1. *Reader Context* (Konteks Kebutuhan Pemilik Rumah)
+  2. *Solution Class Decision* (Keputusan Kelas Solusi Teknis dari Evaluator Deterministik)
+  3. *Eligible Product Characteristics* (Karakteristik Produk yang Memenuhi Syarat Teknis)
+  4. *Product Matching* (Pencocokan Produk oleh Product Review Desk)
+  5. *Offer / Affiliate Destination* (Tautan Toko / Merchant Terpercaya di Tahap Terakhir)
+- **Invarian Mutlak `AFFILIATE_REVENUE_CANNOT_AFFECT_RECOMMENDATION`:** Pendapatan komisi, ketersediaan stok toko, atau prioritas sponsor dilarang mempengaruhi keluaran rekomendasi kelas solusi.
+- **Kontrak Handoff (`ProductReviewHandoffContract`):**
+  - Hanya menyerahkan `problem_id`, `solution_class_id`, `required_characteristics`, `important_tradeoffs`, `must_avoid_characteristics`, `context_summary`, `model_version_key`, dan `evidence_version`.
+  - Properti `commercial_data_allowed: false` mengunci bahwa data komersial dilarang masuk ke dalam model keputusan.
+
+### 28.7 Matriks Pemisahan Bidang (Admin vs Publik vs Bersama)
+| Bidang | Klasifikasi | Keterangan |
+| :--- | :--- | :--- |
+| `model_payload_hash` | **ADMIN ONLY** | Sidik jari integritas kriptografis internal |
+| `evidence_snapshot_hash` | **ADMIN ONLY** | Hash deterministik bukti untuk audit forensik |
+| `activation_ledger` | **ADMIN ONLY** | Histori aktivasi aktor & alasan supersesi |
+| `raw_evaluation_trace` | **ADMIN ONLY** | Detail langkah evaluasi constraint & rule internal |
+| `forensic_audit_hashes` | **ADMIN ONLY** | Hash baris D1 & audit bukti |
+| `recommended_solution` | **PUBLIC SAFE** | Kartu solusi rekomendasi utama |
+| `alternative_solution` | **PUBLIC SAFE** | Kartu solusi pembanding alternatif |
+| `fit_label` | **PUBLIC SAFE** | Label kualitatif Bahasa Indonesia |
+| `why_recommended` | **PUBLIC SAFE** | Penjelasan lugas ramah pembaca |
+| `pivot_conditions` | **PUBLIC SAFE** | Batas skenario pembalik pilihan |
+| `important_tradeoffs` | **PUBLIC SAFE** | Daftar kompromi fisik & biaya |
+| `next_practical_actions`| **PUBLIC SAFE** | Langkah praktis aksi lapangan |
+| `evidence_transparency` | **PUBLIC SAFE** | Transparansi sumber & jumlah klaim |
+| `commercial_firewall`   | **PUBLIC SAFE** | Bukti bebas komisi & independensi |
+| `model_id` / `canonical_slug` | **SHARED** | Identitas kanonikal masalah |
+| `solution_classes.name` | **SHARED** | Nama kelas teknologi arsitektural |
+| `criteria.name`         | **SHARED** | Nama kriteria evaluasi fisik |
+
+### 28.8 Arsitektur URL, SEO, & Caching
+- **Invarian `NO_THIN_COMBINATORIAL_SEO_PAGES`:** Dilarang keras menghasilkan URL statis atau merayapi ribuan kombinasi parameter form (`?problem_goal=...&climate_exposure=...`).
+- **Penempatan Pilot (Article 5):**
+  - Direkomendasikan ditempatkan secara terpadu di dalam badan artikel (`/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`) tepat setelah bagian penjelasan komparasi teknis dan sebelum panduan eksekusi pemasangan.
+  - Alternatif alat interaktif penuh dapat diakses pada shell `/alat/keputusan-kusen-tropis` dengan header `X-Robots-Tag: noindex, follow` untuk form interaktif, menjaga agar konten utama artikel tetap menjadi kanonikal SEO tunggal.
+- **Kebijakan Cache:**
+  - Halaman artikel publik: Tetap di-cache di edge (`public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400`).
+  - Evaluasi keputusan interaktif: Berjalan via SSR form submission / API endpoint dengan header `Cache-Control: private, no-store`.
+- **Zero-JS / Performance First:** Antarmuka dirancang dapat berfungsi penuh dengan native HTML `<form method="POST">` (Zero-JS baseline) dan dapat diperkaya dengan pulau interaktif ringan tanpa mengubah arsitektur SSR Astro.
+
+### 28.9 Hasil Pengujian Batas Integrasi (`test-product-decision-public-boundary.js`)
+Seluruh 16 skenario pengujian arsitektur PDE-1E (A sampai P) terbukti 100% lulus:
+1. `Test A`: Model D1 aktif dapat di-resolve secara read-only.
+2. `Test B`: Tidak ada model aktif menghasilkan status typed `UNAVAILABLE_NO_ACTIVE_MODEL`.
+3. `Test C`: Bukti usang / missing memblokir rekomendasi publik (`UNAVAILABLE_EVIDENCE_STALE` & `UNAVAILABLE_EVIDENCE_MISSING`).
+4. `Test D`: Payload hash yang tidak cocok memblokir via `UNAVAILABLE_INTEGRITY_MISMATCH`.
+5. `Test E`: Input konteks tidak valid / bidang komersial disusupkan diblokir di validasi publik.
+6. `Test F`: DTO publik tidak membocorkan `model_payload_hash`.
+7. `Test G`: DTO publik tidak membocorkan ledger aktivasi atau identitas aktor internal.
+8. `Test H`: DTO publik bebas dari data komersial/merchant/affiliate/harga.
+9. `Test I`: DTO publik tidak memuat skor angka semu atau persentase palsu.
+10. `Test J`: DTO publik memuat solusi rekomendasi, alternatif, kompromi, kondisi pivot, dan aksi nyata.
+11. `Test K`: Trace evaluasi internal tidak bocor secara utuh ke publik.
+12. `Test L`: Model yang tersupersesi tidak terpilih sebagai model aktif.
+13. `Test M`: Fallback ke fixture statis dilarang keras pada mode produksi (`NO_SILENT_PRODUCTION_FALLBACK`).
+14. `Test N`: Fallback fixture statis diizinkan secara eksplisit hanya pada mode uji/lokal.
+15. `Test O`: Seluruh 5 skenario kanonikal terpetakan bersih ke DTO publik dan kontrak Review Desk Handoff.
+16. `Test P`: Matriks klasifikasi bidang (Admin vs Publik vs Bersama) terbukti konsisten.
+
+---
+
+*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1E_CLOSED` | `PRODUCT_DECISION_ENGINE_1_COMPLETE`*
+*Milestone Berikutnya: `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1`*

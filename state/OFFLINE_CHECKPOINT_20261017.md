@@ -1,9 +1,9 @@
 # 🛑 RancangLoka & Hermes — Offline Master Checkpoint
-**Tanggal / Waktu:** 2026-10-17T10:25:00+07:00
+**Tanggal / Waktu:** 2026-10-17T11:25:00+07:00
 **Status Sesi:** `READY_FOR_OFFLINE`
-**Current Development State:** `READY_FOR_PRODUCT_DECISION_ENGINE_1E`
+**Current Development State:** `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1`
 **Branch:** `feat/jev-lokamedia-integration`
-**Git HEAD:** `86e4ea8` (`feat(product): enable controlled decision model activation`)
+**Git HEAD:** `86ad6b0`
 **Previous Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (2026-10-16T04:01:26Z / 10:54:38 WIB)
 **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (2026-10-16T08:38:18Z / 15:38:18 WIB) — NO WORKER DEPLOYMENT
 **Status Operasional:**
@@ -24,7 +24,10 @@
 - `PRODUCT_DECISION_ENGINE_1D_PREP_CLOSED`
 - `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACCEPTED`
 - `PRODUCT_DECISION_ENGINE_1D_CLOSED`
-- `READY_FOR_PRODUCT_DECISION_ENGINE_1E`
+- `PRODUCT_DECISION_ENGINE_1E_PASS`
+- `PRODUCT_DECISION_ENGINE_1E_CLOSED`
+- `PRODUCT_DECISION_ENGINE_1_COMPLETE`
+- `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1`
 
 ---
 
@@ -109,18 +112,14 @@ Seluruh suite pengujian dieksekusi dari direktori `rancangloka-astro/`:
 
 > **PERINGATAN PENGEMBANGAN SESI BERIKUTNYA:**  
 > Sesi selanjutnya **WAJIB LANGSUNG DIMULAI DARI**:  
-> **`PRODUCT_DECISION_ENGINE_1E`** (Future Boundary & Public Integration Architecture)
-
-**Langkah Terkendali Fase PDE-1E:**
-1. Hubungkan rute `/admin/decisions` untuk membaca model keputusan aktif langsung dari Cloudflare D1 runtime dengan fallback aman ke static fixture jika offline/dev.
-2. Sediakan kemampuan inspeksi multi-versi model dan audit trail aktivasi pada panel admin internal.
-3. Tetap pertahankan zero public exposure sampai evaluasi performa SSR edge diverifikasi.
+> **`PRODUCT_REVIEW_AFFILIATE_1`** (Product Review Desk & Affiliate Firewall Integration)
 
 ---
 
-*Dokumen ini disusun sebagai penutupan resmi tonggak aktivasi produksi PDE-1D 17 Oktober 2026.*  
+*Dokumen ini disusun sebagai penutupan resmi tonggak arsitektur integrasi publik PDE-1E 17 Oktober 2026.*
 *Status Sesi: `READY_FOR_OFFLINE`*  
 *Klasifikasi:*
-- `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACCEPTED`
-- `PRODUCT_DECISION_ENGINE_1D_CLOSED`
-- `READY_FOR_PRODUCT_DECISION_ENGINE_1E`
+- `PRODUCT_DECISION_ENGINE_1E_PASS`
+- `PRODUCT_DECISION_ENGINE_1E_CLOSED`
+- `PRODUCT_DECISION_ENGINE_1_COMPLETE`
+- `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1`

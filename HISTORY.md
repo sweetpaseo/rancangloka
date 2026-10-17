@@ -13,6 +13,37 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1E: Future Boundary & Public Integration Architecture 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T11:25:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1A_FULLY_CLOSED` | `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `PRODUCT_DECISION_ENGINE_1_PLAN_PASS` | `PRODUCT_DECISION_ENGINE_1A_PASS` | `PRODUCT_DECISION_ENGINE_1B_PASS` | `PRODUCT_DECISION_ENGINE_1B_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1B_CLOSED` | `PRODUCT_DECISION_ENGINE_1C_PASS` | `PRODUCT_DECISION_ENGINE_1C_CLOSED` | `PRODUCT_DECISION_ENGINE_1D_PREP_PASS` | `PRODUCT_DECISION_ENGINE_1D_PREP_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1D_PREP_CLOSED` | `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACCEPTED` | `PRODUCT_DECISION_ENGINE_1D_CLOSED` | `PRODUCT_DECISION_ENGINE_1E_PASS` | `PRODUCT_DECISION_ENGINE_1E_CLOSED` | `PRODUCT_DECISION_ENGINE_1_COMPLETE` | `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1`
+- **Next Milestone:** `PRODUCT_REVIEW_AFFILIATE_1` (Product Review Desk & Affiliate Firewall Integration)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic, ZERO WORKER DEPLOYMENT)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — 0 mutasi pada sesi ini.
+- **Poin Kunci Arsitektur & Batas Integrasi:**
+  1. *Batas Baca Model Produksi (`src/lib/product-decision/runtime-model.ts`):*
+     - Menyediakan fungsi murni `resolveActiveDecisionModel(db, options)` strictly READ-ONLY.
+     - Penegakan invarian mutlak `NO_SILENT_PRODUCTION_FALLBACK`: Pada mode produksi (`mode: 'production'`), fallback ke fixture statis dilarang keras dan melempar eksepsi `INVARIANT_VIOLATION`.
+     - Verifikasi otomatis terhadap integritas kriptografis (`model_payload_hash`), kesesuaian snapshot bukti (`evidence_snapshot_hash`), dan kesegaran bukti dinamis (`NEEDS_RECALIBRATION` & `EVIDENCE_UNAVAILABLE`).
+  2. *Kontrak Input Publik & Taksonomi Terkontrol (`validatePublicDecisionInput`):*
+     - Menerima 6 dimensi CORE wajib (`problem_goal`, `building_context`, `climate_exposure`, `application_location`, `budget_class`, `maintenance_tolerance`).
+     - Menolak nilai di luar taksonomi dan secara deterministik memblokir upaya penyusupan atribut komersial (`affiliate_url`, `merchant`, `commission`, dll.). Zero profiling & zero PII.
+  3. *Kontrak Output Publik (`PublicDecisionResultDTO`):*
+     - Menjawab 3 Pertanyaan Emas RancangLoka tanpa membocorkan detail forensik internal (payload hash, ledger aktivasi, constraint debug internals, atau SQL ID mentah).
+     - Menyediakan rekomendasi utama, pembanding alternatif, kondisi pembalik (`pivot_conditions`), kompromi fisik (`important_tradeoffs`), aksi praktis pembaca (`next_practical_actions`), transparansi bukti, dan bukti independensi komersial.
+  4. *Bahasa Pembaca & Taksonomi Fit:*
+     - Nada *Warm Advisory Tone*: "Pilihan yang lebih cocok untuk kondisi ini". Dilarang menggunakan label verdict seperti *Winner*, *BEST*, *TOP PICK*, *#1*, atau skor persentase semu (*95% Match*).
+     - Pemetaan taksonomi fit kualitatif Bahasa Indonesia: `STRONG_FIT` (Sangat Cocok), `GOOD_FIT_WITH_TRADEOFF` (Cocok dengan Kompromi), `CONDITIONAL_FIT` (Cocok dengan Syarat Tertentu), `POOR_FIT` (Kurang Direkomendasikan).
+  5. *Tembok Pemisah Afiliasi & Serah Terima Desk (`ProductReviewHandoffContract`):*
+     - Urutan kanonikal ditegakkan: *Reader Context -> Solution Class Decision -> Eligible Product Characteristics -> Product Matching -> Offer/Affiliate Destination*.
+     - Invarian `AFFILIATE_REVENUE_CANNOT_AFFECT_RECOMMENDATION`: Model PDE dan evaluasi keputusan 100% bebas dari data komersial, merchant, atau komisi afiliasi.
+  6. *Arsitektur URL, SEO, & Cache:*
+     - Invarian `NO_THIN_COMBINATORIAL_SEO_PAGES`: Menolak pembuatan ribuan halaman terindeks berbasis parameter keputusan.
+     - Penempatan pilot Article 5 direkomendasikan berada di dalam badan artikel (`/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`).
+     - Form interaktif SSR dieksekusi dengan header `Cache-Control: private, no-store`. Baseline mendukung HTML native tanpa JS (Zero-JS baseline).
+  7. *Verifikasi Pengujian Komprehensif (16/16 Lulus):*
+     - Seluruh 16 kasus uji (A sampai P) pada `scripts/test-product-decision-public-boundary.js` lulus 100%. Seluruh rangkaian regresi eksisting (PDE-1A, PDE-1B, PDE-1C, PDE-1D-A, dan paritas produksi 5 skenario) tetap 100% hijau.
+
 ### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1D: Controlled Production Activation & Parity Verification 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T10:25:00+07:00
