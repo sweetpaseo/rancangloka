@@ -16,7 +16,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 ### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1C & 1D-A: Admin Inspector & D1 Persistence Preparation 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T08:30:00+07:00
-- **Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1A_FULLY_CLOSED` | `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `PRODUCT_DECISION_ENGINE_1_PLAN_PASS` | `PRODUCT_DECISION_ENGINE_1A_PASS` | `PRODUCT_DECISION_ENGINE_1B_PASS` | `PRODUCT_DECISION_ENGINE_1B_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1B_CLOSED` | `PRODUCT_DECISION_ENGINE_1C_PASS` | `PRODUCT_DECISION_ENGINE_1C_CLOSED` | `PRODUCT_DECISION_ENGINE_1D_PREP_PASS` | `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`
+- **Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1A_FULLY_CLOSED` | `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `PRODUCT_DECISION_ENGINE_1_PLAN_PASS` | `PRODUCT_DECISION_ENGINE_1A_PASS` | `PRODUCT_DECISION_ENGINE_1B_PASS` | `PRODUCT_DECISION_ENGINE_1B_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1B_CLOSED` | `PRODUCT_DECISION_ENGINE_1C_PASS` | `PRODUCT_DECISION_ENGINE_1C_CLOSED` | `PRODUCT_DECISION_ENGINE_1D_PREP_PASS` | `PRODUCT_DECISION_ENGINE_1D_PREP_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1D_PREP_CLOSED` | `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`
 - **Next Milestone:** `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION` (Controlled D1 Migration & Production Activation)
 - **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic)
 - **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`)
@@ -53,18 +53,19 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   7. *Utilitas Aktivasi Terkendali (`scripts/activate-product-decision-pilot.js`):*
      - Default mode: `DRY RUN (NO_MUTATION)`.
      - Remote apply pada fase persiapan diblokir mutlak dengan pesan `[BLOCKED_PREPARATION_PHASE]`.
-  8. *Hasil Pengujian Otomatis PDE-1D-A (`scripts/test-product-decision-persistence.js`):*
-     - **23/23 PASS, 0 FAILED** (mencakup tes A hingga W).
-     - Regresi PDE-1A (14/14), PDE-1B (22/22), PDE-1C (13/13), PDE-1D-A (23/23): **Total 72/72 PASS**.
+  8. *Rekonsiliasi Forensik Bukti Article 5 & Penguatan Uji Regresi:*
+     - Diskrepansi hash `23d1...` diklasifikasikan sebagai `PDE_1D_REPORT_TRANSCRIPTION_ERROR` (teks laporan salah ketik manual; kode sumber dan fixture di repositori selalu bernilai `142759...` dengan snapshot `eed64da...`).
+     - Suite pengujian `scripts/test-product-decision-persistence.js` diperkuat dari 23 menjadi **27/27 PASS, 0 FAILED** (menambah tes X, Y, Z, AA untuk mengunci identitas bukti, payload hash mutation, freshness rejection, dan remote apply safety gate).
+     - Regresi PDE-1A (14/14), PDE-1B (22/22), PDE-1C (13/13), PDE-1D-A (27/27): **Total 76/76 PASS**.
      - Pemeriksaan tipe: `npx tsc --noEmit` (0 errors).
-     - Build SSR: `npm run build` (sukses dalam 6.69s).
+     - Build SSR: `npm run build` (sukses).
   9. *Status Keselamatan Produksi:*
-     - 0 mutasi database Cloudflare D1 produksi.
+     - 0 mutasi database Cloudflare D1 produksi (migrasi 0035 berstatus pending, tabel `decision_models` belum ada di produksi).
      - 0 mutasi Cloudflare R2.
      - 0 worker deployments.
      - 0 git pushes.
   10. *Kesiapan Sesi Berikutnya:*
-      - Ekosistem siap secara aman untuk: **`PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`** (eksekusi migrasi D1 0035 remote secara terkendali dan aktivasi model pilot oleh Chief Editor).
+      - Ekosistem terbukti 100% siap secara teknis untuk: **`PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`** (eksekusi migrasi D1 0035 remote secara terkendali dan aktivasi model pilot oleh Chief Editor).
 
 ### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1B: Pure Deterministic Evaluator Runtime & Anti-Replay Invariant Acceptance 2026-10-17
 

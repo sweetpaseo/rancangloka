@@ -20,19 +20,21 @@
 - `PRODUCT_DECISION_ENGINE_1C_PASS`
 - `PRODUCT_DECISION_ENGINE_1C_CLOSED`
 - `PRODUCT_DECISION_ENGINE_1D_PREP_PASS`
+- `PRODUCT_DECISION_ENGINE_1D_PREP_ACCEPTANCE_PASS`
+- `PRODUCT_DECISION_ENGINE_1D_PREP_CLOSED`
 - `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`
 
 ---
 
-## 1. Status Ringkasan Ekosistem (Executive Summary — 17 Oktober 2026 Closeout)
+## 1. Status Ringkasan Ekosistem (Executive Summary — 17 Oktober 2026 Closeout & Forensic Acceptance)
 
-Sesi rekayasa hari ini berhasil menyelesaikan dua tonggak utama:
+Sesi rekayasa hari ini berhasil menyelesaikan validasi mendalam dan rekonsiliasi forensik identitas bukti:
 1. **`PRODUCT_DECISION_ENGINE-1C` (Admin / Editorial Decision Inspector):**
    - Menghadirkan antarmuka inspeksi keputusan redaksional internal di rute `/admin/decisions`.
    - Menegakkan invarian `ADMIN_METADATA_MUST_RENDER_MODEL_SOURCE_TRUTH` di mana metadata versi model (`criteria_version = 'crit_kusen_v1'`, `model_id`, `model_version`, `evidence_snapshot_hash`) dirender dinamis langsung dari sumber otoritatif `DECISION_MODEL_PILOT_KUSEN` tanpa hardcoding.
    - Menegakkan invarian `EVALUATOR_CRITICAL_CONTEXT_MUST_USE_CONTROLLED_TAXONOMY` di mana 6 dimensi CORE menggunakan kontrol semantik terkendali (`<select>`), meniadakan input teks bebas dan memvalidasi integritas nilai di sisi server.
    - Menegakkan invarian `SCENARIO_PRESET_IS_CONTEXT_ONLY` di mana tombol preset 5 skenario pilot hanya mengisi form parameter konteks tanpa menyuntikkan ekspektasi oracle ke evaluator runtime.
-2. **`PRODUCT_DECISION_ENGINE-1D-A` (D1 Schema & Pilot Persistence Preparation):**
+2. **`PRODUCT_DECISION_ENGINE-1D-A` (D1 Schema & Pilot Persistence Preparation & Acceptance):**
    - Merancang dan mengimplementasikan lapisan persistensi D1 minimal dan aditif tanpa mengubah arsitektur evaluator deterministik murni.
    - Migrasi terpilih: `db/migrations/0035_product_decision_engine.sql` (tabel `decision_models` dan `decision_model_activations`).
    - Batas relasional vs JSON terstruktur: Relasional untuk identitas, masalah, status, hash, dan timestamp; JSON terstruktur untuk solusi, kriteria, evaluasi, batasan, skenario, dan evidence bindings.
@@ -42,6 +44,17 @@ Sesi rekayasa hari ini berhasil menyelesaikan dua tonggak utama:
    - Deteksi konflik versi (`BLOCKED_VERSION_CONFLICT`) vs idempotensi (`ALREADY_EXISTS_IDENTICAL`) via stable payload hash `computeModelPayloadHash`.
    - Gerbang kesegaran bukti via `deriveEvidenceFreshness` memblokir aktivasi jika bukti basi (`BLOCKED_EVIDENCE_STALE`) atau hilang (`BLOCKED_EVIDENCE_UNAVAILABLE`).
    - Utilitas aktivasi `scripts/activate-product-decision-pilot.js` dengan mode default `DRY RUN (NO_MUTATION)` dan pemblokiran remote apply pada fase persiapan.
+3. **Forensic Reconciliation Identitas Bukti Article 5:**
+   - Diskrepansi hash `23d1...` pada laporan PDE-1D-A sebelumnya terbukti sebagai `PDE_1D_REPORT_TRANSCRIPTION_ERROR` (kesalahan pengetikan manual pada teks markdown laporan).
+   - Kode sumber otoritatif `src/lib/product-decision/pilot-kusen.ts` 100% konsisten mengikat Article 5 ke:
+     - `article_id: 5`
+     - `publication_version_key: 'receipt:rcpt_bbae85b48e1b2f8d'`
+     - `published_content_hash: '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277'`
+     - `source_fidelity: 'NORMALIZED_HASH_VERIFIED'`
+     - `evidence_snapshot_hash: 'eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed'`
+   - String `23d1...` memiliki 0 kemunculan di seluruh basis kode, commit git, skema, maupun fixtures.
+   - Suite pengujian persistensi diperkuat dengan 4 uji tambahan (Tes X, Y, Z, AA), mengunci identitas bukti secara permanen.
+   - Inspeksi remote D1 mengonfirmasi migrasi 0035 berstatus pending, tabel `decision_models` belum ada di produksi, dan 0 mutasi remote terjadi.
 
 ---
 
@@ -49,7 +62,7 @@ Sesi rekayasa hari ini berhasil menyelesaikan dua tonggak utama:
 
 Seluruh suite pengujian lokal dieksekusi dari direktori `rancangloka-astro/`:
 
-1. **Test Suite PDE-1D-A (`scripts/test-product-decision-persistence.js`):** **23/23 PASSED, 0 FAILED**
+1. **Test Suite PDE-1D-A (`scripts/test-product-decision-persistence.js`):** **27/27 PASSED, 0 FAILED**
    - Tes A: Migrasi 0035 diaplikasikan bersih pada SQLite in-memory test DB.
    - Tes B: Model pilot terserialisasi ke structured row.
    - Tes C: Model pilot tersimpan aman ke D1 test.
@@ -61,12 +74,16 @@ Seluruh suite pengujian lokal dieksekusi dari direktori `rancangloka-astro/`:
    - Tes S & T: Bukti basi dan bukti tidak tersedia memblokir aktivasi.
    - Tes U & V: Bebas atribut komersial/afiliasi dan bebas skor numerik semu.
    - Tes W: Eksekusi 100% offline tanpa koneksi remote/produksi.
+   - Tes X: Kunci eksplisit identitas bukti Article 5 = `142759...` dan penolakan `23d1...` pada model statis, baris serialisasi, dan model reloaded.
+   - Tes Y: Perubahan identitas bukti Article 5 secara material mengubah `model_payload_hash`.
+   - Tes Z: Bukti palsu `23d1...` memicu `NEEDS_RECALIBRATION` dan memblokir aktivasi (`BLOCKED_EVIDENCE_STALE`).
+   - Tes AA: Saklar pengaman utilitas aktivasi secara mutlak memblokir `--remote --apply` pada fase persiapan.
 2. **Test Suite PDE-1C (`scripts/test-product-decision-admin.js`):** **13/13 PASSED, 0 FAILED**
 3. **Test Suite PDE-1B (`scripts/test-product-decision-engine-evaluator.js`):** **22/22 PASSED, 0 FAILED**
 4. **Test Suite PDE-1A (`scripts/test-product-decision-engine-contract.js`):** **14/14 PASSED, 0 FAILED**
-5. **Total Uji Regresi PDE:** **72/72 PASSED, 0 FAILED**
+5. **Total Uji Regresi PDE:** **76/76 PASSED, 0 FAILED**
 6. **Pemeriksaan Tipe TypeScript:** `npx tsc --noEmit` **0 ERRORS**.
-7. **Kompilasi Astro SSR Cloudflare:** `npm run build` **SUKSES** (selesai dalam 6.69s).
+7. **Kompilasi Astro SSR Cloudflare:** `npm run build` **SUKSES**.
 8. **Git Whitespace Check:** `git diff --check` **0 ERRORS**.
 
 ---
@@ -110,4 +127,6 @@ Seluruh suite pengujian lokal dieksekusi dari direktori `rancangloka-astro/`:
 - `PRODUCT_DECISION_ENGINE_1B_CLOSED`
 - `PRODUCT_DECISION_ENGINE_1C_CLOSED`
 - `PRODUCT_DECISION_ENGINE_1D_PREP_PASS`
+- `PRODUCT_DECISION_ENGINE_1D_PREP_ACCEPTANCE_PASS`
+- `PRODUCT_DECISION_ENGINE_1D_PREP_CLOSED`
 - `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`
