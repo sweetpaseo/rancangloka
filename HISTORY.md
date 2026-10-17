@@ -13,6 +13,38 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1D-A: Article Product Binding, Reader Decision Handoff & Edge Integration Prep 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T14:15:00+07:00
+- **Status Operasional:** `PRODUCT_REVIEW_AFFILIATE_1A_CLOSED` | `PRODUCT_REVIEW_AFFILIATE_1B_CLOSED` | `PRODUCT_REVIEW_AFFILIATE_1C_CLOSED` | `PRODUCT_REVIEW_AFFILIATE_1D_A_PREP` (PASS)
+- **Next Milestone:** `PRODUCT_REVIEW_AFFILIATE_1D_B` (Controlled Production Activation & Pilot Integration Planning)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic, ZERO WORKER DEPLOYMENT)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — ZERO PRODUCTION MUTATION / ZERO D1 WRITES (Migration 0036 strictly local/offline)
+- **Poin Kunci Rekayasa & Edge Integration Prep:**
+  1. *Runtime Jembatan Keputusan Pembaca (`reader-runtime.ts`):*
+     - Membangun alur kanonikal permanen: `READER DECISION -> PDE SOLUTION CLASS -> TECHNICAL PRODUCT MATCH -> EDITORIAL REVIEW -> OFFER -> AFFILIATE DESTINATION`.
+     - Tidak pernah: `AFFILIATE OFFER -> RECOMMENDATION`.
+  2. *Gerbang Kelayakan Produk Pembaca (`deriveReaderProductEligibility`):*
+     - Menilai kelayakan teknis murni sebelum mempertimbangkan penawaran komersial (`ELIGIBLE`, `ELIGIBLE_WITH_TRADEOFF`, `BLOCKED_INSUFFICIENT_EVIDENCE`, `BLOCKED_STALE_SPEC`, `BLOCKED_IDENTITY_DRIFT`, `BLOCKED_TECHNICAL_MISMATCH`, `BLOCKED_EDITORIAL_REVIEW`).
+     - Nol skor angka semu atau ranking numerik.
+  3. *DTO Aman Pembaca (`ReaderProductDTO`):*
+     - Menghapus bersih seluruh hash internal, catatan admin, identitas penguji privat, detail fasilitas lab, trace bukti mentah, rate komisi, payout, dan prioritas merchant.
+     - Memisahkan secara tegas ulasan analitis (*Bukan uji lab fisik*) dari ulasan fisik *Tested by RancangLoka*.
+  4. *Pemisahan Kesegaran Teknis vs Komersial:*
+     - Kesegaran spesifikasi (90 hari) memblokir rekomendasi jika kadaluarsa.
+     - Kesegaran harga observasi (48 jam) atau ketiadaan stok tidak menggugurkan kelayakan analisis teknis material.
+  5. *Invarian Perlindungan DNA Artikel & Imutabilitas Prosa:*
+     - Invarian `DYNAMIC_COMMERCE_DATA_MUST_NOT_INVALIDATE_ARTICLE_PROVENANCE`: Kartu produk dan data harga dilampirkan dinamis di edge di luar hash naskah artikel.
+     - Naskah artikel kanonikal, `articles.content_hash`, `published_at`, dan DNA publikasi terbukti 100% bit-identical tanpa mutasi.
+  6. *Invarian Anti-Fallback Produksi:*
+     - Invarian `NO_SILENT_PRODUCT_REVIEW_PRODUCTION_FALLBACK`: Fixture sintesis diblokir keras di lingkungan produksi. Kekosongan data D1 menghasilkan failure state terketik (`NO_BINDING`, `PRODUCT_UNAVAILABLE`).
+  7. *Invarian SEO:*
+     - `NO_THIN_AFFILIATE_SEO_PAGES`: Kartu produk menyatu di dalam halaman artikel kanonikal, tanpa URL kombinasi filter/merchant/harga yang dapat diindeks crawler.
+  8. *Hasil Pengujian 22/22 Lulus:*
+     - `test-product-review-reader-boundary.js`: 22/22 skenario pengujian (A-V) lulus 100% secara offline.
+     - Seluruh tes regresi Product Review (1A, 1B, 1C) dan PDE (1A, 1B, 1C, 1D-A, 1E) tetap 100% hijau.
+     - `npx tsc --noEmit`, `npm run build`, dan `git diff --check` bersih tanpa error.
+
 ### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1C: Admin Product Review Desk & Editorial Inspector 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T13:55:00+07:00

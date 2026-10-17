@@ -336,6 +336,90 @@ Seluruh 24 skenario pengujian inspektur admin (Test A sampai Test X) lulus 100%:
 
 ---
 
-*Status Milestone Sebelumnya: `PRODUCT_REVIEW_AFFILIATE_1B_PASS`*
-*Status Milestone Saat Ini: `PRODUCT_REVIEW_AFFILIATE_1C_PASS` (`PRODUCT_REVIEW_AFFILIATE_1C_CLOSED`)*
-*Target Milestone Berikutnya: `PRODUCT_REVIEW_AFFILIATE_1D` (Article Product Binding, Reader Decision Handoff & Edge Integration)*
+*Status Milestone Sebelumnya: `PRODUCT_REVIEW_AFFILIATE_1C_PASS` (`PRODUCT_REVIEW_AFFILIATE_1C_CLOSED`)*
+*Status Milestone Saat Ini: `PRODUCT_REVIEW_AFFILIATE_1D_A_PASS` (Local / Pre-Production Integration Prep)*
+*Target Milestone Berikutnya: `PRODUCT_REVIEW_AFFILIATE_1D_B` (Controlled Production Activation & Pilot Integration)*
+
+---
+
+## 13. Milestone 1D-A: Article Product Binding, Reader Decision Handoff & Edge Integration Prep
+
+### A. Runtime Article Product Binding (`ArticleProductBinding`)
+- Hubungan kanonikal antara artikel, produk, varian teknis, peran editorial (`ArticleProductRole`), dan jangkar bagian (`section_anchor`).
+- **Invarian Penting:** Dilarang mengkodekan skor rekomendasi, komisi, payout afiliasi, atau prioritas merchant ke dalam `ArticleProductBinding`. Penempatan artikel murni berbasis relevansi arsitektur, bukan peringkat komersial.
+- **Peran Editorial Kanonikal:**
+  - `MATCHED_PRODUCT`: Produk pasaran yang spesifikasi fisiknya terbukti cocok dengan keputusan solusi arsitektur.
+  - `PRIMARY_SUBJECT`: Produk yang menjadi fokus ulasan mendalam pada artikel ulasan produk.
+  - `ALTERNATIVE`: Produk dari kelas solusi alternatif untuk perbandingan kebutuhan rumah berbeda.
+  - `EXAMPLE`: Contoh material fisik yang beredar di distributor Indonesia.
+  - `RELATED_PRODUCT`: Komponen pendukung (private / reserved secara default).
+
+### B. Kontrak Reader Decision Handoff dari PDE
+- Mengonsumsi `ProductReviewHandoffContract` murni dari Product Decision Engine (PDE).
+- Memuat: `problem_id`, `solution_class_id`, `required_characteristics`, `important_tradeoffs`, `must_avoid_characteristics`, `context_summary`, `model_version_key`, `evidence_version`, dan penegasan `commercial_data_allowed = false`.
+- Product Review Desk murni menerima (*read-only*), tanpa pernah memutasi atau menafsir ulang rekomendasi upstream PDE.
+
+### C. DTO Aman Pembaca (`ReaderProductDTO`)
+- Entitas publik terpisah yang bersih dari seluruh metadata internal:
+  - Dihapus: hash internal, catatan admin, identitas/kontak pribadi penguji, lokasi workshop privat, trace bukti mentah, payout afiliasi, rate komisi, dan metrik prioritas merchant.
+  - Dilarang: Skor numerik, peringkat bintang (*star rating*), atau skor angka semu.
+- Label Ulasan Transparan:
+  - `ANALYTICAL_REVIEW`: Menampilkan *"Analisis berbasis spesifikasi fisik terverifikasi, manual teknis pabrikan, dan konsensus material bangunan tropis (Bukan uji lab fisik)"*. Dilarang menampilkan *Tested by RancangLoka*.
+  - `HANDS_ON_REVIEW`: Hanya menampilkan *Tested by RancangLoka* jika lolos verifikasi provenansi uji fisik primer.
+
+### D. Gerbang Kelayakan Produk Pembaca (`deriveReaderProductEligibility`)
+Produk hanya dapat direkomendasikan kepada pembaca jika memenuhi gerbang kelayakan murni teknis:
+- Identitas produk berstatus `CURRENT` (lolos tanpa *identity drift*).
+- Memiliki ulasan editorial resmi terdaftar.
+- Hasil pencocokan teknis bukan `NOT_MATCH` dan bukan `INSUFFICIENT_EVIDENCE`.
+- Snapshot spesifikasi teknis masih segar (`SPEC_FRESH`, usia <= 90 hari).
+- State kelayakan: `ELIGIBLE`, `ELIGIBLE_WITH_TRADEOFF`, `BLOCKED_INSUFFICIENT_EVIDENCE`, `BLOCKED_STALE_SPEC`, `BLOCKED_IDENTITY_DRIFT`, `BLOCKED_TECHNICAL_MISMATCH`, atau `BLOCKED_EDITORIAL_REVIEW`.
+
+### E. Pemisahan Kesegaran Teknis vs Kesegaran Komersial
+- **Kesegaran Teknis:** Menentukan kelayakan rekomendasi arsitektur fisik (ambang 90 hari). Spesifikasi kadaluarsa memblokir rekomendasi produk.
+- **Kesegaran Komersial:** Menentukan keakuratan harga observasi pasar (ambang 48 jam). Harga kadaluarsa atau ketiadaan toko/stok TIDAK menggugurkan analisis teknis produk yang valid.
+
+### F. Batasan Penawaran Harga & CTA Afiliasi
+- Harga pasar tidak pernah disuntikkan ke dalam teks prosa artikel yang statis dan abadi.
+- Wording CTA netral redaksional: *"Cek harga & varian di toko mitra"*, *"Periksa ketersediaan & harga terkini"*. Menghindari bahasa klikbait/FOMO (*"BELI SEKARANG"*, *"BEST DEAL"*).
+- Seluruh tautan afiliasi keluar otomatis menggunakan atribut: `rel="sponsored nofollow noopener"` dan `target="_blank"`.
+- Transparansi pengungkapan komersial (`commercial_disclosure`) terpisah secara struktural dari kesimpulan ulasan teknis.
+
+### G. Batasan SEO, Penempatan Artikel & Data Terstruktur
+- **Penempatan:** Muncul SETELAH pembaca memahami kelas solusi/material, SEBELUM aksi pengadaan/pemasangan akhir.
+- **SEO Invariant:** `NO_THIN_AFFILIATE_SEO_PAGES`. Kartu produk menyatu di dalam halaman artikel kanonikal. Tidak ada URL kombinasi filter/merchant/harga yang dapat diindeks crawler.
+- **Data Terstruktur:** Dilarang mengarang Schema.org Product/Review sebelum ada data pasar riil yang terverifikasi.
+
+### H. Batasan DNA Publikasi & Imutabilitas Prosa Artikel
+- **Invarian Permanen:** `DYNAMIC_COMMERCE_DATA_MUST_NOT_INVALIDATE_ARTICLE_PROVENANCE`.
+- Data modul produk dan harga dinamis dilampirkan saat SSR edge di luar hash prosa artikel.
+- Prosa artikel, `articles.content_hash`, `published_at`, dan tanda terima penerbitan asli bersifat abadi (100% bit-identical).
+
+### I. Invarian Fallback Produksi
+- **Invarian Permanen:** `NO_SILENT_PRODUCT_REVIEW_PRODUCTION_FALLBACK`.
+- Runtime produksi dilarang menukar data D1 yang hilang dengan fixture sintesis. Data sintesis hanya diizinkan secara eksplisit pada mode test/development offline.
+
+### J. Hasil Pengujian Reader Boundary (`test-product-review-reader-boundary.js`)
+Seluruh 22 skenario pengujian (Test A sampai Test V) terbukti 100% lulus:
+- `Test A`: Resolusi `ArticleProductBinding` valid dan terikat ke artikel.
+- `Test B`: Handoff PDE terbukti hanya-baca (*read-only*).
+- `Test C`: Produk layak terpetakan ke `ReaderProductDTO` aman pembaca.
+- `Test D`: `NOT_MATCH` memblokir rekomendasi ke pembaca.
+- `Test E`: `INSUFFICIENT_EVIDENCE` memblokir rekomendasi.
+- `Test F`: Spesifikasi teknis kadaluarsa memblokir rekomendasi (`BLOCKED_STALE_SPEC`).
+- `Test G`: Pergeseran identitas memblokir rekomendasi (`BLOCKED_IDENTITY_DRIFT`).
+- `Test H`: Ulasan analitis tidak pernah menampilkan *Tested by RancangLoka*.
+- `Test I`: Ulasan Hands-On valid berhak menampilkan *Tested by RancangLoka*.
+- `Test J`: Data komersial tidak dapat mengubah kelayakan teknis produk.
+- `Test K`: Perubahan harga observasi tidak mengubah kelayakan teknis produk.
+- `Test L`: Perubahan link afiliasi tidak mengubah kelayakan teknis produk.
+- `Test M`: Hubungan sponsorship tidak mengubah status kelayakan teknis.
+- `Test N`: Ketiadaan data komersial tidak menghapus analisis teknis yang valid.
+- `Test O`: Nol komisi / payout pada DTO pembaca.
+- `Test P`: Nol catatan admin / identitas penguji privat / trace bukti mentah.
+- `Test Q`: Nol skor angka semu atau ranking numerik.
+- `Test R`: Helper tautan afiliasi menyertakan `rel="sponsored nofollow noopener"`.
+- `Test S`: Fixture sintesis diblokir tegas dari mode produksi.
+- `Test T`: Nol fallback diam-diam pada mode produksi.
+- `Test U`: Mutasi komersial dinamis terbukti 0% memutasi hash atau teks prosa artikel kanonikal.
+- `Test V`: Pengujian 100% offline tanpa dependensi produk riil, merchant, atau jaringan.

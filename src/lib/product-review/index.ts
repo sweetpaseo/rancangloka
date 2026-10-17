@@ -12,3 +12,4 @@ export * from './fixtures.ts';
 export * from './freshness.ts';
 export * from './store.ts';
 export * from './admin-inspector.ts';
+export * from './reader-runtime.ts';
