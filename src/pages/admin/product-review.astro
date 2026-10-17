@@ -1,0 +1,245 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import {
+  SYNTHETIC_PRODUCT,
+  SYNTHETIC_SPEC_SNAPSHOT,
+  SYNTHETIC_EVIDENCE_MANUFACTURER,
+  SYNTHETIC_EVIDENCE_LAB_TEST,
+  SYNTHETIC_REVIEW_SNAPSHOT,
+  SYNTHETIC_OFFER_MERCHANT_A,
+  SYNTHETIC_OFFER_MERCHANT_B,
+  SYNTHETIC_PRICE_SNAPSHOT_A,
+  SYNTHETIC_PRICE_SNAPSHOT_B,
+  SYNTHETIC_AFFILIATE_DESTINATION_A,
+  SYNTHETIC_ARTICLE_PRODUCT_BINDING
+} from '../../lib/product-review/fixtures.ts';
+import {
+  evaluateEntityFreshness,
+  DEFAULT_FRESHNESS_POLICY
+} from '../../lib/product-review/freshness.ts';
+
+const SYNTHETIC_COMMERCIAL_DISCLOSURE = SYNTHETIC_ARTICLE_PRODUCT_BINDING.commercial_disclosure;
+const SYNTHETIC_AFFILIATE_A = SYNTHETIC_AFFILIATE_DESTINATION_A;
+
+// Cache & Privacy Defense-in-Depth (Strictly private admin inspection)
+Astro.response.headers.set('Cache-Control', 'no-store, private');
+Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+// Freshness evaluation for inspectable components
+const specFreshness = evaluateEntityFreshness('spec_snapshot', SYNTHETIC_SPEC_SNAPSHOT.captured_at);
+const reviewFreshness = evaluateEntityFreshness('review_snapshot', SYNTHETIC_REVIEW_SNAPSHOT.captured_at);
+const priceFreshnessA = evaluateEntityFreshness('price_snapshot', SYNTHETIC_PRICE_SNAPSHOT_A.captured_at);
+---
+
+<AdminLayout title="Product Review Desk Inspector">
+  <div class="max-w-7xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+            INSPECTOR ONLY
+          </span>
+          <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">PRODUCT_REVIEW_AFFILIATE-1B</span>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+          Product Review Desk & Firewall Inspector
+        </h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Pemisahan ketat antara Otoritas Editorial / Bukti Teknis dengan Penawaran Komersial / Afiliasi.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
+          Commercial Firewall: ACTIVE
+        </span>
+      </div>
+    </div>
+
+    <!-- Editorial Invariant Banner -->
+    <div class="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl p-4 text-sm text-blue-900 dark:text-blue-200 flex items-start gap-3">
+      <div class="p-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold">i</div>
+      <div>
+        <p class="font-semibold">Prinsip Editorial Kanonikal:</p>
+        <p class="text-xs text-blue-800 dark:text-blue-300 mt-0.5">
+          <em>"THE PRODUCT IS NOT THE CENTER OF THE ARTICLE. THE READER'S DECISION IS."</em> Rekomendasi teknis 100% bebas dari komisi merchant, ranking sponsor, atau nilai payout afiliasi.
+        </p>
+      </div>
+    </div>
+
+    <!-- SECTION 1: EDITORIAL & TECHNICAL DATA (PRIMARY) -->
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <span class="w-3 h-3 rounded-sm bg-indigo-600"></span>
+          1. Data Teknis & Bukti Editorial (Kanonikal / Otoritatif)
+        </h2>
+        <span class="text-xs text-gray-500 font-mono">EDITORIAL_DATA != COMMERCE_DATA</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Product Identity Card -->
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Identitas Produk</span>
+            <span class="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+              {SYNTHETIC_PRODUCT.identity_state}
+            </span>
+          </div>
+          <div>
+            <div class="text-xs text-gray-500">Nama Kanonikal</div>
+            <div class="text-base font-semibold text-gray-900 dark:text-white">{SYNTHETIC_PRODUCT.canonical_name}</div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span class="text-gray-500">Brand:</span>
+              <div class="font-medium text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.brand}</div>
+            </div>
+            <div>
+              <span class="text-gray-500">Kelas Solusi PDE:</span>
+              <div class="font-mono text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.solution_class_id}</div>
+            </div>
+            <div>
+              <span class="text-gray-500">Review Mode:</span>
+              <div class="font-medium text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.review_mode}</div>
+            </div>
+            <div>
+              <span class="text-gray-500">Tested by RancangLoka:</span>
+              <div class="font-medium text-gray-800 dark:text-gray-200">
+                {SYNTHETIC_PRODUCT.tested_by_rancangloka ? 'Ya (Lab Provenance)' : 'Tidak (Analytical Only)'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spec Snapshot & Freshness Card -->
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Snapshot Spesifikasi</span>
+            <span class={`px-2 py-0.5 text-xs font-medium rounded ${specFreshness.is_fresh ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'}`}>
+              {specFreshness.status} ({specFreshness.days_remaining}d remaining)
+            </span>
+          </div>
+          <div class="space-y-1.5 text-xs font-mono">
+            {Object.entries(SYNTHETIC_SPEC_SNAPSHOT.specs).slice(0, 5).map(([k, v]) => (
+              <div class="flex justify-between py-0.5 border-b border-gray-50 dark:border-gray-800/50">
+                <span class="text-gray-500">{k}:</span>
+                <span class="text-gray-900 dark:text-gray-200 font-semibold">{String(v)}</span>
+              </div>
+            ))}
+          </div>
+          <div class="text-xs text-gray-500 pt-1">
+            Fidelitas Bukti: <span class="font-semibold text-gray-800 dark:text-gray-200">{SYNTHETIC_SPEC_SNAPSHOT.source_fidelity}</span>
+          </div>
+        </div>
+
+        <!-- Evidence Sources Card -->
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Sumber Bukti Terverifikasi</span>
+            <span class="text-xs text-gray-500">2 Sumber</span>
+          </div>
+          <div class="space-y-3 text-xs">
+            <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+              <div class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_EVIDENCE_MANUFACTURER.publisher}</div>
+              <div class="text-gray-500 text-[11px] mt-0.5">Tipe: {SYNTHETIC_EVIDENCE_MANUFACTURER.source_type} ({SYNTHETIC_EVIDENCE_MANUFACTURER.claim_class})</div>
+              <div class="text-[10px] text-indigo-600 dark:text-indigo-400 truncate mt-1">{SYNTHETIC_EVIDENCE_MANUFACTURER.source_url}</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+              <div class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_EVIDENCE_LAB_TEST.publisher}</div>
+              <div class="text-gray-500 text-[11px] mt-0.5">Tipe: {SYNTHETIC_EVIDENCE_LAB_TEST.source_type} ({SYNTHETIC_EVIDENCE_LAB_TEST.claim_class})</div>
+              <div class="text-[10px] text-indigo-600 dark:text-indigo-400 truncate mt-1">{SYNTHETIC_EVIDENCE_LAB_TEST.source_url}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: COMMERCE & OFFER LAYER (SEPARATED) -->
+    <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <span class="w-3 h-3 rounded-sm bg-emerald-600"></span>
+          2. Lapisan Komersial & Destinasi Afiliasi (Terpisah Mutlak)
+        </h2>
+        <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Bebas Pengaruh terhadap Keputusan Teknis</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Merchant Offers Card -->
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Penawaran Merchant (Offer Layer)</span>
+            <span class="text-xs text-gray-500">2 Penjual Aktif</span>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Merchant A -->
+            <div class="p-3 rounded-lg border border-gray-100 dark:border-gray-800 space-y-1.5 text-xs">
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_OFFER_MERCHANT_A.merchant_name}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 font-medium">
+                  {SYNTHETIC_OFFER_MERCHANT_A.current_availability}
+                </span>
+              </div>
+              <div class="text-gray-500 text-[11px]">{SYNTHETIC_OFFER_MERCHANT_A.listing_title}</div>
+              <div class="flex justify-between items-center pt-1 font-mono">
+                <span class="text-gray-500">Harga Terakhir:</span>
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">
+                  {SYNTHETIC_PRICE_SNAPSHOT_A.currency} {SYNTHETIC_PRICE_SNAPSHOT_A.observed_price.toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+
+            <!-- Merchant B -->
+            <div class="p-3 rounded-lg border border-gray-100 dark:border-gray-800 space-y-1.5 text-xs">
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_OFFER_MERCHANT_B.merchant_name}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 font-medium">
+                  {SYNTHETIC_OFFER_MERCHANT_B.current_availability}
+                </span>
+              </div>
+              <div class="text-gray-500 text-[11px]">{SYNTHETIC_OFFER_MERCHANT_B.listing_title}</div>
+              <div class="flex justify-between items-center pt-1 font-mono">
+                <span class="text-gray-500">Harga Terakhir:</span>
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">
+                  {SYNTHETIC_PRICE_SNAPSHOT_B.currency} {SYNTHETIC_PRICE_SNAPSHOT_B.observed_price.toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Affiliate Destination & Disclosure Card -->
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Tautan Afiliasi & Transparansi Sponsor</span>
+            <span class="text-xs font-mono text-gray-500">AFFILIATE != SOURCE_URL</span>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1">
+              <div class="text-gray-500 font-medium">Tautan Pelacakan Afiliasi Outbound:</div>
+              <div class="font-mono text-[11px] text-gray-800 dark:text-gray-200 break-all bg-white dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+                {SYNTHETIC_AFFILIATE_A.affiliate_destination_url}
+              </div>
+              <div class="text-[10px] text-gray-500 pt-1">
+                Provider: <span class="font-semibold text-gray-700 dark:text-gray-300">{SYNTHETIC_AFFILIATE_A.provider}</span> | Status: Aktif
+              </div>
+            </div>
+
+            <div class="p-3 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 space-y-1.5">
+              <div class="font-semibold text-amber-900 dark:text-amber-200">Pengungkapan Komersial (Commercial Disclosure):</div>
+              <div class="grid grid-cols-2 gap-2 text-[11px] text-amber-800 dark:text-amber-300">
+                <div>Afiliasi: {SYNTHETIC_COMMERCIAL_DISCLOSURE.has_affiliate_relationship ? 'Ya (Dicantumkan)' : 'Tidak'}</div>
+                <div>Sponsored: {SYNTHETIC_COMMERCIAL_DISCLOSURE.is_sponsored_content ? 'Ya' : 'Tidak'}</div>
+                <div class="col-span-2">Barang disediakan brand: {SYNTHETIC_COMMERCIAL_DISCLOSURE.is_product_supplied_by_brand ? 'Ya' : 'Tidak (Membeli Sendiri)'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

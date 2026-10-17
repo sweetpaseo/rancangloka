@@ -184,5 +184,69 @@ Seluruh 22 skenario pengujian arsitektur dan kontrak data (A sampai V) lulus 100
 
 ---
 
-*Status Milestone: `PRODUCT_REVIEW_AFFILIATE_1A_PASS`*  
-*Status Sesi: `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1B`*
+## 10. Canonical Roadmap Sequence & Milestone Definitions
+
+Roadmap canonical untuk inisiatif `PRODUCT_REVIEW_AFFILIATE_1`:
+1. **`PRODUCT_REVIEW_AFFILIATE_1A`:** Product Review Desk Architecture + Pure Data Contract (STATUS: `CLOSED / PASS`)
+2. **`PRODUCT_REVIEW_AFFILIATE_1B`:** Product Review Desk Persistence Foundation & Technical Match Assembler (STATUS: `CLOSED / PASS`)
+3. **`PRODUCT_REVIEW_AFFILIATE_1C`:** Admin Product Review Desk & Editorial Inspector (TARGET BERIKUTNYA)
+4. **`PRODUCT_REVIEW_AFFILIATE_1D`:** Article Product Binding, Reader Decision Handoff & Edge Integration
+
+---
+
+## 11. Milestone 1B: Product Review Desk Persistence Foundation
+
+### A. Batasan Skema Relasional vs JSON (`db/migrations/0036_product_review_desk.sql`)
+Arsitektur database dirancang seimbang menghindari ekstrim tabel terlalu banyak maupun satu blob JSON raksasa:
+- **Relasional Otoritatif:**
+  - `product_review_products`: Identitas kanonikal produk editorial, review mode, status tested by rancangloka, dan lifecycle state.
+  - `product_review_variants`: Identitas SKU fisik dan varian teknis.
+  - `product_review_evidence_sources`: Provenansi sumber bukti, tipe, fidelitas, dan claim class.
+  - `product_review_offers`: Penawaran komersial per merchant listing.
+  - `product_review_affiliate_destinations`: Tautan keluar berpelacak komersial, terisolasi penuh dari ranking teknis.
+  - `product_review_article_bindings`: Pengikatan relasional antara artikel dan produk dengan peran editorial (`ArticleProductRole`).
+- **Append-Oriented Observation Snapshots:**
+  - `product_review_spec_snapshots`: Snapshot spesifikasi terukur berbasis waktu dan bukti.
+  - `product_review_review_snapshots`: Snapshot sinyal pengalaman pengguna eksternal (`USER_EXPERIENCE_SIGNAL`).
+  - `product_review_price_snapshots`: Snapshot harga dinamis pasar (`observed_price`).
+- **JSON Terstruktur (Field Tertentu):** Digunakan untuk atribut dinamis terukur (`specs_json`, `attributes_json`, `recurring_themes_json`, `tracking_metadata_json`, `commercial_disclosure_json`).
+
+### B. Imutabilitas Identitas & Pencegahan Mutasi Diam-diam
+- Invarian `COMMERCE_CHANGE_MUST_NOT_MUTATE_EDITORIAL_IDENTITY`: Perubahan harga, pergantian seller/toko, atau pergantian link afiliasi dilarang keras mengubah `product_id`, `variant_id`, atau provenansi lembar bukti.
+- Invarian `SNAPSHOTS_ARE_APPEND_ORIENTED_OBSERVATIONS`: Snapshot tidak pernah di-UPDATE di tempat (*no update in place*). Setiap observasi baru membentuk baris baru dengan snapshot hash deterministik SHA-256. Duplikasi identik menghasilkan status `ALREADY_EXISTS_IDENTICAL`, sedangkan tabrakan konten menghasilkan `BLOCKED_SNAPSHOT_CONFLICT`.
+
+### C. Kebijakan Kesegaran Data Terpusat & Terkonfigurasi (`freshness.ts`)
+Invarian `FRESHNESS_POLICY_MUST_BE_CONFIGURABLE_AND_EXPLICIT` ditegakkan melalui modul kebijakan terpusat `DEFAULT_FRESHNESS_POLICY`:
+- `product_identity_max_age_days`: 180 hari
+- `spec_snapshot_max_age_days`: 90 hari
+- `review_snapshot_max_age_days`: 30 hari
+- `offer_max_age_days`: 7 hari
+- `price_snapshot_max_age_hours`: 48 jam
+- Mendukung override dinamis berdasarkan kategori produk dan sumber bukti tanpa perubahan skema.
+
+### D. Tembok Pembatas Input Pencocokan Teknis (`assembleTechnicalMatchInput`)
+- Invarian `TECHNICAL_MATCH_INPUT_MUST_BE_COMMERCE_BLIND`: Fungsi assembler memindai seluruh masukan dan secara tegas menolak bila ditemukan field komersial (`commission`, `payout`, `affiliate_priority`, dll.).
+- Output DTO hanya memuat karakteristik fisik, varian, spesifikasi terverifikasi, dan klaim resmi.
+
+### E. Halaman Inspeksi Admin Terisolasi (`/admin/product-review`)
+- Route inspeksi privat hanya-baca (*read-only*), terproteksi auth admin, dengan header `Cache-Control: no-store, private` dan `X-Robots-Tag: noindex, nofollow`.
+- Memisahkan secara visual antara blok DATA TEKNIS / BUKTI EDITORIAL dengan blok PENAWARAN MERCHANT / AFILIASI KOMERSIAL.
+
+### F. Hasil Pengujian Persistensi (`test-product-review-persistence.js`)
+Seluruh 26 skenario pengujian (A sampai Z) terbukti 100% lulus:
+- `Test A`: Migrasi 0036 teraplikasi bersih di database uji lokal.
+- `Test B` - `Test K`: Persistensi seluruh entitas (Product, Variant, EvidenceSource, SpecSnapshot, Offer, PriceSnapshot, ReviewSnapshot, AffiliateDestination, CommercialDisclosure, ArticleProductBinding).
+- `Test L`: Round-trip identitas produk sintesis utuh tanpa kehilangan data.
+- `Test M`: Idempotensi insert data duplikat identik.
+- `Test N`: Konflik payload snapshot imutabel diblokir.
+- `Test O` - `Test R`: Mutasi komersial (harga, merchant, link afiliasi, disclosure sponsor) terbukti 0% mempengaruhi input pencocokan teknis (deep-equal).
+- `Test S`: Perubahan spesifikasi fisik terbukti mempengaruhi input teknis.
+- `Test T`: Perubahan provenansi sumber bukti terdeteksi.
+- `Test U` - `Test W`: Penegakan review mode, keharusan provenansi lab untuk hands-on, dan status review eksternal sebagai sinyal.
+- `Test X` - `Test Z`: Nol skor angka semu, nol koneksi remote produksi, dan semantik evaluasi PDE eksisting 100% terjaga.
+
+---
+
+*Status Milestone Sebelumnya: `PRODUCT_REVIEW_AFFILIATE_1A_PASS`*
+*Status Milestone Saat Ini: `PRODUCT_REVIEW_AFFILIATE_1B_PASS`*
+*Status Sesi: `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1C`*

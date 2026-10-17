@@ -13,6 +13,34 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1B: Product Review Desk Persistence Foundation 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T12:40:00+07:00
+- **Status Operasional:** `PRODUCT_DECISION_ENGINE_1_COMPLETE` | `PRODUCT_REVIEW_AFFILIATE_1A_PASS` | `PRODUCT_REVIEW_AFFILIATE_1B_PASS` | `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1C`
+- **Next Milestone:** `PRODUCT_REVIEW_AFFILIATE_1C` (Admin Product Review Desk & Editorial Inspector)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic, ZERO WORKER DEPLOYMENT)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — ZERO MIGRATION / ZERO MUTATION (Migration 0036 strictly local/offline)
+- **Poin Kunci Rekayasa & Persistensi:**
+  1. *Resolusi Roadmap Kanonikal:*
+     - Roadmap resmi: `1A` Data Contract -> `1B` Persistence Foundation -> `1C` Admin Inspector -> `1D` Reader Decision Handoff & Edge Integration.
+  2. *Desain Skema Relasional vs JSON Terkendali (`0036_product_review_desk.sql`):*
+     - Menghindari ekstrim tabel terlalu banyak maupun satu blob JSON raksasa.
+     - Relasional terindeks: `product_review_products`, `product_review_variants`, `product_review_evidence_sources`, `product_review_offers`, `product_review_affiliate_destinations`, `product_review_article_bindings`.
+     - Append-oriented observations: `product_review_spec_snapshots`, `product_review_price_snapshots`, `product_review_review_snapshots`.
+  3. *Imutabilitas Identitas & Perlindungan Konflik:*
+     - Invarian `COMMERCE_CHANGE_MUST_NOT_MUTATE_EDITORIAL_IDENTITY`: Perubahan harga, penambahan merchant, atau komisi afiliasi dilarang keras mengubah identitas produk/varian kanonikal.
+     - Invarian `SNAPSHOTS_ARE_APPEND_ORIENTED_OBSERVATIONS`: Snapshot tidak pernah di-UPDATE di tempat. Hashing SHA-256 mendeteksi idempotensi (`ALREADY_EXISTS_IDENTICAL`) dan memblokir tabrakan semantik (`BLOCKED_SNAPSHOT_CONFLICT`).
+  4. *Kebijakan Kesegaran Terpusat & Terkonfigurasi (`freshness.ts`):*
+     - Invarian `FRESHNESS_POLICY_MUST_BE_CONFIGURABLE_AND_EXPLICIT`.
+     - Default windows: Produk (180h), Spesifikasi (90h), Review (30h), Offer (7h), Harga (48j).
+  5. *Assembler Input Pencocokan Teknis Blind-Commerce (`assembleTechnicalMatchInput`):*
+     - Invarian `TECHNICAL_MATCH_INPUT_MUST_BE_COMMERCE_BLIND`: Menolak keras objek yang disusupi properti komersial (`commission`, `payout`, `affiliate_priority`).
+     - Dibuktikan secara empiris: Mutasi data komersial menghasilkan output teknis yang `deepEqual`.
+  6. *Halaman Inspeksi Admin Terisolasi (`/admin/product-review`):*
+     - Halaman privat hanya-baca (*read-only*), noindex, no-store, memisahkan secara visual blok editorial teknis dari blok penawaran komersial/afiliasi.
+  7. *Pengujian Lengkap 26/26 Lulus (`scripts/test-product-review-persistence.js`):*
+     - Seluruh kasus uji A sampai Z lulus 100%. Regresi 1A (22/22) dan PDE (92/92) tetap 100% hijau.
+
 ### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1A: Product Review Desk Architecture + Pure Data Contract 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T11:45:00+07:00
