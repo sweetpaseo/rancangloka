@@ -40,6 +40,9 @@ import { DatabaseSync } from 'node:sqlite';
 
 import {
   SYNTHETIC_PRODUCT,
+  SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL,
+  SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
+  SYNTHETIC_EVIDENCE_PRIMARY_TEST,
   SYNTHETIC_VARIANT_1,
   SYNTHETIC_VARIANT_2,
   SYNTHETIC_SPEC_SNAPSHOT,
@@ -61,6 +64,11 @@ import {
   insertProduct,
   getProduct,
   updateProductIdentityState,
+  insertEditorialReview,
+  getEditorialReview,
+  getEditorialReviewsByProduct,
+  getLatestEditorialReviewForProduct,
+  updateEditorialReviewStatus,
   insertVariant,
   getVariantsByProduct,
   insertEvidenceSource,
@@ -173,10 +181,10 @@ async function runTestSuite() {
   const tableCheck = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'product_review_%'")
     .all();
-  assert.equal(tableCheck.length >= 9, true, 'At least 9 product_review tables must exist');
+  assert.equal(tableCheck.length >= 10, true, 'At least 10 product_review tables must exist');
   console.log('✓ Test A PASS');
 
-  // Test B: Product persists
+  // Test B: Product persists (Pure Identity)
   console.log('Testing Test B: Product persists...');
   const insertProdRes = await insertProduct(db, {
     product_id: SYNTHETIC_PRODUCT.product_id,
@@ -185,8 +193,6 @@ async function runTestSuite() {
     category_id: SYNTHETIC_PRODUCT.category_id,
     solution_class_id: SYNTHETIC_PRODUCT.solution_class_id,
     identity_state: SYNTHETIC_PRODUCT.identity_state,
-    review_mode: SYNTHETIC_PRODUCT.review_mode,
-    tested_by_rancangloka: SYNTHETIC_PRODUCT.tested_by_rancangloka,
     variants: [],
     spec_snapshots: [],
     evidence_sources: []
@@ -254,6 +260,28 @@ async function runTestSuite() {
   const evidenceList = await getEvidenceSourcesByProduct(db, SYNTHETIC_PRODUCT.product_id);
   assert.equal(evidenceList.length, 2);
   console.log('✓ Test D PASS');
+
+  // Test D2: EditorialProductReview persists independently (Multiple reviews per product)
+  console.log('Testing Test D2: EditorialProductReview persists independently...');
+  const insertRev1Res = await insertEditorialReview(db, SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL);
+  assert.equal(insertRev1Res.status, 'INSERTED');
+
+  // Add primary test evidence source before inserting hands-on review
+  await insertEvidenceSource(db, SYNTHETIC_EVIDENCE_PRIMARY_TEST);
+
+  const insertRev2Res = await insertEditorialReview(db, SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON, [SYNTHETIC_EVIDENCE_PRIMARY_TEST]);
+  assert.equal(insertRev2Res.status, 'INSERTED');
+
+  const allReviews = await getEditorialReviewsByProduct(db, SYNTHETIC_PRODUCT.product_id);
+  assert.equal(allReviews.length, 2, 'One product must support multiple editorial reviews');
+  assert.equal(allReviews[0].review_mode, 'ANALYTICAL_REVIEW');
+  assert.equal(allReviews[1].review_mode, 'HANDS_ON_REVIEW');
+
+  // Ensure adding reviews did not alter product identity
+  const prodAfterReviews = await getProduct(db, SYNTHETIC_PRODUCT.product_id);
+  assert.equal(prodAfterReviews.canonical_name, SYNTHETIC_PRODUCT.canonical_name);
+  assert.equal(prodAfterReviews.product_id, SYNTHETIC_PRODUCT.product_id);
+  console.log('✓ Test D2 PASS');
 
   // Test E: SpecSnapshot persists
   console.log('Testing Test E: SpecSnapshot persists...');
@@ -398,13 +426,14 @@ async function runTestSuite() {
     category_id: SYNTHETIC_PRODUCT.category_id,
     solution_class_id: SYNTHETIC_PRODUCT.solution_class_id,
     identity_state: SYNTHETIC_PRODUCT.identity_state,
-    review_mode: SYNTHETIC_PRODUCT.review_mode,
-    tested_by_rancangloka: SYNTHETIC_PRODUCT.tested_by_rancangloka,
     variants: [],
     spec_snapshots: [],
     evidence_sources: []
   });
   assert.equal(dupProd.status, 'ALREADY_EXISTS_IDENTICAL');
+
+  const dupRev = await insertEditorialReview(db, SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL);
+  assert.equal(dupRev.status, 'ALREADY_EXISTS_IDENTICAL');
 
   const dupSpec = await appendSpecSnapshot(db, {
     spec_snapshot_id: SYNTHETIC_SPEC_SNAPSHOT.spec_snapshot_id,
@@ -557,6 +586,7 @@ async function runTestSuite() {
 
   // Test T: Evidence provenance change is detectable
   console.log('Testing Test T: Evidence provenance change is detectable...');
+  const countBeforeT = (await getEvidenceSourcesByProduct(db, SYNTHETIC_PRODUCT.product_id)).length;
   const newEvidenceSource = {
     source_id: 'src_synth_low_fidelity_blog',
     product_identity_reference: SYNTHETIC_PRODUCT.product_id,
@@ -570,45 +600,33 @@ async function runTestSuite() {
   };
   await insertEvidenceSource(db, newEvidenceSource);
   const updatedEvidenceSources = await getEvidenceSourcesByProduct(db, SYNTHETIC_PRODUCT.product_id);
-  assert.equal(updatedEvidenceSources.length, 3);
+  assert.equal(updatedEvidenceSources.length, countBeforeT + 1);
   console.log('✓ Test T PASS');
 
   // Test U: Analytical review cannot acquire Tested by RancangLoka status
   console.log('Testing Test U: Analytical review cannot acquire Tested by RancangLoka status...');
-  const invalidAnalyticalProd = {
-    product_id: 'prod_invalid_tested_claim',
-    canonical_name: 'Produk Klaim Palsu',
-    brand: 'Fictional Brand',
-    category_id: 'cat_test',
-    solution_class_id: 'sol_upvc_multi_chamber',
-    identity_state: 'CURRENT',
+  const invalidAnalyticalRev = {
+    review_id: 'rev_invalid_tested_claim',
+    product_id: SYNTHETIC_PRODUCT.product_id,
     review_mode: 'ANALYTICAL_REVIEW',
-    tested_by_rancangloka: true, // FORBIDDEN without hands-on review and primary test evidence
-    variants: [],
-    spec_snapshots: [],
-    evidence_sources: []
+    tested_by_rancangloka: true, // FORBIDDEN without primary test evidence
+    editorial_status: 'DRAFT'
   };
-  const insertInvalidProdRes = await insertProduct(db, invalidAnalyticalProd);
-  assert.equal(insertInvalidProdRes.status, 'BLOCKED_VALIDATION_FAILED');
+  const insertInvalidRevRes = await insertEditorialReview(db, invalidAnalyticalRev);
+  assert.equal(insertInvalidRevRes.status, 'BLOCKED_VALIDATION_FAILED');
   console.log('✓ Test U PASS');
 
   // Test V: Hands-on review requires primary test provenance
   console.log('Testing Test V: Hands-on review requires primary test provenance...');
-  const invalidHandsOnProd = {
-    product_id: 'prod_invalid_handson_no_prov',
-    canonical_name: 'Produk Hands On Tanpa Bukti',
-    brand: 'Fictional Brand',
-    category_id: 'cat_test',
-    solution_class_id: 'sol_upvc_multi_chamber',
-    identity_state: 'CURRENT',
+  const invalidHandsOnRev = {
+    review_id: 'rev_invalid_handson_no_prov',
+    product_id: SYNTHETIC_PRODUCT.product_id,
     review_mode: 'HANDS_ON_REVIEW',
     tested_by_rancangloka: true,
     // Missing testing_provenance
-    variants: [],
-    spec_snapshots: [],
-    evidence_sources: []
+    editorial_status: 'DRAFT'
   };
-  const insertInvalidHandsOnRes = await insertProduct(db, invalidHandsOnProd);
+  const insertInvalidHandsOnRes = await insertEditorialReview(db, invalidHandsOnRev);
   assert.equal(insertInvalidHandsOnRes.status, 'BLOCKED_VALIDATION_FAILED');
   console.log('✓ Test V PASS');
 

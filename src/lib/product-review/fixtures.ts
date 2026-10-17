@@ -11,6 +11,7 @@
 
 import type {
   Product,
+  EditorialProductReview,
   Variant,
   Offer,
   AffiliateDestination,
@@ -46,6 +47,24 @@ export const SYNTHETIC_EVIDENCE_LAB_TEST: EvidenceSource = Object.freeze({
   claim_class: 'VERIFIED_FACT',
   source_fidelity: 'PRIMARY_DOCUMENT',
   product_identity_reference: 'prod_synthetic_upvc_01'
+});
+
+export const SYNTHETIC_EVIDENCE_PRIMARY_TEST: EvidenceSource = Object.freeze({
+  source_id: 'src_synth_primary_test_03',
+  source_type: 'RANCANGLOKA_PRIMARY_TEST',
+  source_url: 'https://rancangloka.id/lab/reports/2026-10-nh-kus-x1-test.pdf',
+  publisher: 'RancangLoka Editorial Lab',
+  retrieved_at: '2026-10-16T15:00:00Z',
+  evidence_scope: 'Physical acoustic & thermal chamber measurement',
+  claim_class: 'VERIFIED_FACT',
+  source_fidelity: 'PRIMARY_DOCUMENT',
+  product_identity_reference: 'prod_synthetic_upvc_01',
+  testing_provenance: Object.freeze({
+    testing_date: '2026-10-16',
+    tester_identity: 'Irwan & Tim Teknis RancangLoka',
+    testing_location: 'Workshop Pengujian Fasade Jakarta Barat',
+    methodology_notes: 'Pengujian insulasi suara lapangan 34 dB dan permeabilitas udara siklonik 600 Pa.'
+  })
 });
 
 /**
@@ -127,7 +146,8 @@ export const SYNTHETIC_REVIEW_SNAPSHOT: ReviewSnapshot = Object.freeze({
 });
 
 /**
- * Canonical Synthetic Product (Independent of Merchant Commerce)
+ * Canonical Synthetic Product (Pure Physical Identity - Independent of Editorial Review & Commerce)
+ * Permanent Invariant: EDITORIAL_REVIEW_STATE_MUST_NOT_MUTATE_PRODUCT_IDENTITY
  */
 export const SYNTHETIC_PRODUCT: Product = Object.freeze({
   product_id: 'prod_synthetic_upvc_01',
@@ -136,8 +156,6 @@ export const SYNTHETIC_PRODUCT: Product = Object.freeze({
   category_id: 'cat_kusen_jendela',
   solution_class_id: 'sol_upvc_multi_chamber',
   identity_state: 'CURRENT',
-  review_mode: 'ANALYTICAL_REVIEW',
-  tested_by_rancangloka: false,
   variants: Object.freeze([SYNTHETIC_VARIANT_1, SYNTHETIC_VARIANT_2]),
   spec_snapshots: Object.freeze([SYNTHETIC_SPEC_SNAPSHOT]),
   evidence_sources: Object.freeze([
@@ -145,6 +163,46 @@ export const SYNTHETIC_PRODUCT: Product = Object.freeze({
     SYNTHETIC_EVIDENCE_LAB_TEST
   ]),
   review_snapshots: Object.freeze([SYNTHETIC_REVIEW_SNAPSHOT])
+});
+
+/**
+ * Canonical Synthetic Editorial Review: ANALYTICAL_REVIEW
+ * Invariant: tested_by_rancangloka must be false for analytical reviews.
+ */
+export const SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL: EditorialProductReview = Object.freeze({
+  review_id: 'rev_synth_analytical_01',
+  product_id: 'prod_synthetic_upvc_01',
+  variant_id: 'var_synth_white_60mm',
+  article_id: 5,
+  review_mode: 'ANALYTICAL_REVIEW',
+  tested_by_rancangloka: false,
+  editorial_status: 'REVIEWED',
+  reviewed_at: '2026-10-15T14:00:00Z',
+  reviewer_identity: 'Tim Editorial RancangLoka',
+  notes: 'Analisis komprehensif berbasis lembar data manufaktur dan hasil pengujian lab independen.'
+});
+
+/**
+ * Canonical Synthetic Editorial Review: HANDS_ON_REVIEW
+ * Invariant: TESTED_BY_RANCANGLOKA_REQUIRES_PRIMARY_TEST_PROVENANCE.
+ */
+export const SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON: EditorialProductReview = Object.freeze({
+  review_id: 'rev_synth_handson_02',
+  product_id: 'prod_synthetic_upvc_01',
+  variant_id: 'var_synth_white_60mm',
+  article_id: 5,
+  review_mode: 'HANDS_ON_REVIEW',
+  tested_by_rancangloka: true,
+  testing_provenance: Object.freeze({
+    testing_date: '2026-10-16',
+    tester_identity: 'Irwan & Tim Teknis RancangLoka',
+    testing_location: 'Workshop Pengujian Fasade Jakarta Barat',
+    methodology_notes: 'Pengujian insulasi suara lapangan 34 dB dan permeabilitas udara siklonik 600 Pa.'
+  }),
+  editorial_status: 'PUBLISHED',
+  reviewed_at: '2026-10-16T16:00:00Z',
+  reviewer_identity: 'Irwan (Kepala Riset Redaksi)',
+  notes: 'Verifikasi fisik profil uPVC di fasilitas workshop fasade redaksi.'
 });
 
 /**

@@ -2,6 +2,8 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import {
   SYNTHETIC_PRODUCT,
+  SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL,
+  SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
   SYNTHETIC_SPEC_SNAPSHOT,
   SYNTHETIC_EVIDENCE_MANUFACTURER,
   SYNTHETIC_EVIDENCE_LAB_TEST,
@@ -40,19 +42,19 @@ const priceFreshnessA = evaluateEntityFreshness('price_snapshot', SYNTHETIC_PRIC
           <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
             INSPECTOR ONLY
           </span>
-          <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">PRODUCT_REVIEW_AFFILIATE-1B</span>
+          <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">PRODUCT_REVIEW_AFFILIATE-1B (DOMAIN HARDENED)</span>
         </div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white mt-2">
           Product Review Desk & Firewall Inspector
         </h1>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Pemisahan ketat antara Otoritas Editorial / Bukti Teknis dengan Penawaran Komersial / Afiliasi.
+          Pemisahan ketat antara Identitas Produk, Status Review Editorial, Bukti Teknis, dan Penawaran Komersial.
         </p>
       </div>
       <div class="flex items-center gap-2">
         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
           <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-          Commercial Firewall: ACTIVE
+          Domain Boundary: HARDENED
         </span>
       </div>
     </div>
@@ -61,28 +63,28 @@ const priceFreshnessA = evaluateEntityFreshness('price_snapshot', SYNTHETIC_PRIC
     <div class="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl p-4 text-sm text-blue-900 dark:text-blue-200 flex items-start gap-3">
       <div class="p-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold">i</div>
       <div>
-        <p class="font-semibold">Prinsip Editorial Kanonikal:</p>
+        <p class="font-semibold">Prinsip Pemisahan Entitas Kanonikal:</p>
         <p class="text-xs text-blue-800 dark:text-blue-300 mt-0.5">
-          <em>"THE PRODUCT IS NOT THE CENTER OF THE ARTICLE. THE READER'S DECISION IS."</em> Rekomendasi teknis 100% bebas dari komisi merchant, ranking sponsor, atau nilai payout afiliasi.
+          <strong>Product:</strong> "What product is this?" (Identitas murni). <strong>Editorial Review:</strong> "How has RancangLoka reviewed it?" (Status analisis vs hands-on). <strong>Technical Evidence:</strong> Data terverifikasi & spesifikasi fisik. <strong>Commerce:</strong> Penawaran merchant & link afiliasi.
         </p>
       </div>
     </div>
 
-    <!-- SECTION 1: EDITORIAL & TECHNICAL DATA (PRIMARY) -->
+    <!-- SECTION 1: PRODUCT IDENTITY & EDITORIAL REVIEWS -->
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <span class="w-3 h-3 rounded-sm bg-indigo-600"></span>
-          1. Data Teknis & Bukti Editorial (Kanonikal / Otoritatif)
+          1. Identitas Produk & Status Review Editorial (RancangLoka Work)
         </h2>
-        <span class="text-xs text-gray-500 font-mono">EDITORIAL_DATA != COMMERCE_DATA</span>
+        <span class="text-xs text-gray-500 font-mono">PRODUCT != EDITORIAL_REVIEW</span>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Product Identity Card -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Pure Product Identity Card -->
         <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
           <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Identitas Produk</span>
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Identitas Produk Murni (Pure Identity)</span>
             <span class="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
               {SYNTHETIC_PRODUCT.identity_state}
             </span>
@@ -97,22 +99,74 @@ const priceFreshnessA = evaluateEntityFreshness('price_snapshot', SYNTHETIC_PRIC
               <div class="font-medium text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.brand}</div>
             </div>
             <div>
+              <span class="text-gray-500">Kategori:</span>
+              <div class="font-medium text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.category_id}</div>
+            </div>
+            <div>
+              <span class="text-gray-500">Product ID:</span>
+              <div class="font-mono text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.product_id}</div>
+            </div>
+            <div>
               <span class="text-gray-500">Kelas Solusi PDE:</span>
               <div class="font-mono text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.solution_class_id}</div>
             </div>
-            <div>
-              <span class="text-gray-500">Review Mode:</span>
-              <div class="font-medium text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.review_mode}</div>
-            </div>
-            <div>
-              <span class="text-gray-500">Tested by RancangLoka:</span>
-              <div class="font-medium text-gray-800 dark:text-gray-200">
-                {SYNTHETIC_PRODUCT.tested_by_rancangloka ? 'Ya (Lab Provenance)' : 'Tidak (Analytical Only)'}
-              </div>
-            </div>
+          </div>
+          <div class="pt-2 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500">
+            Varian Terdaftar: <span class="font-semibold text-gray-800 dark:text-gray-200">{SYNTHETIC_PRODUCT.variants.length} SKU</span>
           </div>
         </div>
 
+        <!-- Editorial Reviews Card (Decoupled entity supporting multiple reviews) -->
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Ulasan Editorial RancangLoka (EditorialProductReview)</span>
+            <span class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Multiple Reviews Supported</span>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <!-- Review 1: Analytical -->
+            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-gray-900 dark:text-white font-mono">{SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL.review_id}</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                  {SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL.review_mode}
+                </span>
+              </div>
+              <div class="text-gray-600 dark:text-gray-300">
+                Tested by RancangLoka: <span class="font-semibold">Tidak (Analytical Only)</span>
+              </div>
+              <div class="text-gray-500 text-[11px]">{SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL.notes}</div>
+            </div>
+
+            <!-- Review 2: Hands-On -->
+            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-gray-900 dark:text-white font-mono">{SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON.review_id}</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                  {SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON.review_mode}
+                </span>
+              </div>
+              <div class="text-gray-600 dark:text-gray-300">
+                Tested by RancangLoka: <span class="font-semibold text-emerald-600 dark:text-emerald-400">Ya (Workshop Lab Verified)</span>
+              </div>
+              <div class="text-gray-500 text-[11px]">{SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON.notes}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: TECHNICAL EVIDENCE & SPECIFICATIONS -->
+    <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <span class="w-3 h-3 rounded-sm bg-blue-600"></span>
+          2. Spesifikasi Teknis & Bukti Empiris (Faktual)
+        </h2>
+        <span class="text-xs text-gray-500 font-mono">TECHNICAL MATCH INPUT</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Spec Snapshot & Freshness Card -->
         <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
           <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
@@ -151,6 +205,23 @@ const priceFreshnessA = evaluateEntityFreshness('price_snapshot', SYNTHETIC_PRIC
               <div class="text-gray-500 text-[11px] mt-0.5">Tipe: {SYNTHETIC_EVIDENCE_LAB_TEST.source_type} ({SYNTHETIC_EVIDENCE_LAB_TEST.claim_class})</div>
               <div class="text-[10px] text-indigo-600 dark:text-indigo-400 truncate mt-1">{SYNTHETIC_EVIDENCE_LAB_TEST.source_url}</div>
             </div>
+          </div>
+        </div>
+
+        <!-- External Review Snapshot Card -->
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Review Snapshot (External)</span>
+            <span class="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+              USER_EXPERIENCE_SIGNAL
+            </span>
+          </div>
+          <div class="text-xs text-gray-500">
+            Sinyal pengalaman pengguna luar (pasar/toko) - <strong>bukan</strong> klaim faktual atau ulasan editorial RancangLoka.
+          </div>
+          <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 text-xs space-y-1">
+            <div class="font-semibold text-gray-900 dark:text-white">{SYNTHETIC_REVIEW_SNAPSHOT.source_label}</div>
+            <div class="text-gray-500">Rating: {SYNTHETIC_REVIEW_SNAPSHOT.external_rating} / {SYNTHETIC_REVIEW_SNAPSHOT.external_rating_max} ({SYNTHETIC_REVIEW_SNAPSHOT.external_review_count} ulasan)</div>
           </div>
         </div>
       </div>

@@ -33,6 +33,7 @@ import assert from 'node:assert/strict';
 
 import {
   validateProduct,
+  validateEditorialProductReview,
   validateVariant,
   validateOffer,
   validateAffiliateDestination,
@@ -46,6 +47,9 @@ import {
   scanForForbiddenReviewCommerceFields,
   FORBIDDEN_TECHNICAL_MATCH_COMMERCE_FIELDS,
   SYNTHETIC_PRODUCT,
+  SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL,
+  SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
+  SYNTHETIC_EVIDENCE_PRIMARY_TEST,
   SYNTHETIC_VARIANT_1,
   SYNTHETIC_VARIANT_2,
   SYNTHETIC_OFFER_MERCHANT_A,
@@ -58,159 +62,163 @@ import {
   SYNTHETIC_EVIDENCE_LAB_TEST,
   SYNTHETIC_AFFILIATE_DESTINATION_A,
   SYNTHETIC_AFFILIATE_DESTINATION_B,
-  SYNTHETIC_ARTICLE_PRODUCT_BINDING
+  SYNTHETIC_ARTICLE_PRODUCT_BINDING,
+  assembleTechnicalMatchInput
 } from '../src/lib/product-review/index.ts';
 
-console.log('--- PRODUCT REVIEW AFFILIATE-1A TEST SUITE STARTING ---');
+console.log('--- PRODUCT REVIEW AFFILIATE-1A/1B DOMAIN HARDENING TEST SUITE STARTING ---');
 
 // ----------------------------------------------------------------------------
-// Test A: Product validates
+// Test A: Product validates without review_mode
 // ----------------------------------------------------------------------------
-console.log('Testing Test A: Product validates...');
+console.log('Testing Proof A: Product validates without review_mode...');
 const resA = validateProduct(SYNTHETIC_PRODUCT);
 assert.equal(resA.valid, true, `Product should validate: ${JSON.stringify(resA.issues)}`);
-console.log('✓ Test A PASS');
+assert.equal(SYNTHETIC_PRODUCT.review_mode, undefined, 'Product must not have review_mode');
+assert.equal(SYNTHETIC_PRODUCT.tested_by_rancangloka, undefined, 'Product must not have tested_by_rancangloka');
+console.log('✓ Proof A PASS');
 
 // ----------------------------------------------------------------------------
-// Test B: Variant validates
+// Test B: Product identity hash/equality does not include review mode
 // ----------------------------------------------------------------------------
-console.log('Testing Test B: Variant validates...');
-const resB1 = validateVariant(SYNTHETIC_VARIANT_1);
-assert.equal(resB1.valid, true, `Variant 1 should validate: ${JSON.stringify(resB1.issues)}`);
-const resB2 = validateVariant(SYNTHETIC_VARIANT_2);
-assert.equal(resB2.valid, true, `Variant 2 should validate: ${JSON.stringify(resB2.issues)}`);
-console.log('✓ Test B PASS');
+console.log('Testing Proof B: Product identity equality does not include review mode...');
+const productBase = { ...SYNTHETIC_PRODUCT };
+const productWithArbitraryReviewContext = { ...SYNTHETIC_PRODUCT };
+// Pure product identity fields
+const identityFields = ['product_id', 'canonical_name', 'brand', 'category_id', 'solution_class_id'];
+for (const f of identityFields) {
+  assert.equal(productBase[f], productWithArbitraryReviewContext[f]);
+}
+assert.ok(!('review_mode' in productBase), 'review_mode must not be in Product identity');
+assert.ok(!('tested_by_rancangloka' in productBase), 'tested_by_rancangloka must not be in Product identity');
+console.log('✓ Proof B PASS');
 
 // ----------------------------------------------------------------------------
-// Test C: Offer validates
+// Test C: Analytical EditorialProductReview validates independently
 // ----------------------------------------------------------------------------
-console.log('Testing Test C: Offer validates...');
-const resC1 = validateOffer(SYNTHETIC_OFFER_MERCHANT_A);
-assert.equal(resC1.valid, true, `Offer A should validate: ${JSON.stringify(resC1.issues)}`);
-const resC2 = validateOffer(SYNTHETIC_OFFER_MERCHANT_B);
-assert.equal(resC2.valid, true, `Offer B should validate: ${JSON.stringify(resC2.issues)}`);
-console.log('✓ Test C PASS');
+console.log('Testing Proof C: Analytical EditorialProductReview validates independently...');
+const resC = validateEditorialProductReview(SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL);
+assert.equal(resC.valid, true, `Analytical review should validate: ${JSON.stringify(resC.issues)}`);
+assert.equal(SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL.review_mode, 'ANALYTICAL_REVIEW');
+assert.equal(SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL.tested_by_rancangloka, false);
+console.log('✓ Proof C PASS');
 
 // ----------------------------------------------------------------------------
-// Test D: Evidence source validates
+// Test D: Analytical review cannot claim Tested by RancangLoka
 // ----------------------------------------------------------------------------
-console.log('Testing Test D: Evidence source validates...');
-const resD1 = validateEvidenceSource(SYNTHETIC_EVIDENCE_MANUFACTURER);
-assert.equal(resD1.valid, true, `Manufacturer source should validate: ${JSON.stringify(resD1.issues)}`);
-const resD2 = validateEvidenceSource(SYNTHETIC_EVIDENCE_LAB_TEST);
-assert.equal(resD2.valid, true, `Lab test source should validate: ${JSON.stringify(resD2.issues)}`);
-console.log('✓ Test D PASS');
-
-// ----------------------------------------------------------------------------
-// Test E: Spec snapshot validates
-// ----------------------------------------------------------------------------
-console.log('Testing Test E: Spec snapshot validates...');
-const resE = validateSpecSnapshot(SYNTHETIC_SPEC_SNAPSHOT);
-assert.equal(resE.valid, true, `Spec snapshot should validate: ${JSON.stringify(resE.issues)}`);
-console.log('✓ Test E PASS');
-
-// ----------------------------------------------------------------------------
-// Test F: Price snapshot validates
-// ----------------------------------------------------------------------------
-console.log('Testing Test F: Price snapshot validates...');
-const resF1 = validatePriceSnapshot(SYNTHETIC_PRICE_SNAPSHOT_A);
-assert.equal(resF1.valid, true, `Price snapshot A should validate: ${JSON.stringify(resF1.issues)}`);
-const resF2 = validatePriceSnapshot(SYNTHETIC_PRICE_SNAPSHOT_B);
-assert.equal(resF2.valid, true, `Price snapshot B should validate: ${JSON.stringify(resF2.issues)}`);
-console.log('✓ Test F PASS');
-
-// ----------------------------------------------------------------------------
-// Test G: Review snapshot validates
-// ----------------------------------------------------------------------------
-console.log('Testing Test G: Review snapshot validates...');
-const resG = validateReviewSnapshot(SYNTHETIC_REVIEW_SNAPSHOT);
-assert.equal(resG.valid, true, `Review snapshot should validate: ${JSON.stringify(resG.issues)}`);
-console.log('✓ Test G PASS');
-
-// ----------------------------------------------------------------------------
-// Test H: ArticleProductBinding validates
-// ----------------------------------------------------------------------------
-console.log('Testing Test H: ArticleProductBinding validates...');
-const resH = validateArticleProductBinding(SYNTHETIC_ARTICLE_PRODUCT_BINDING);
-assert.equal(resH.valid, true, `Binding should validate: ${JSON.stringify(resH.issues)}`);
-console.log('✓ Test H PASS');
-
-// ----------------------------------------------------------------------------
-// Test I: ANALYTICAL_REVIEW cannot claim Tested by RancangLoka
-// ----------------------------------------------------------------------------
-console.log('Testing Test I: ANALYTICAL_REVIEW cannot claim Tested by RancangLoka...');
-const invalidAnalyticalProduct = {
-  ...SYNTHETIC_PRODUCT,
-  review_mode: 'ANALYTICAL_REVIEW',
-  tested_by_rancangloka: true // FORBIDDEN without primary test evidence
+console.log('Testing Proof D: Analytical review cannot claim Tested by RancangLoka...');
+const invalidAnalyticalReview = {
+  ...SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL,
+  tested_by_rancangloka: true // FORBIDDEN: Analytical review cannot claim tested
 };
-const resI = validateProduct(invalidAnalyticalProduct);
-assert.equal(resI.valid, false, 'ANALYTICAL_REVIEW with tested_by_rancangloka=true must fail validation');
+const resD = validateEditorialProductReview(invalidAnalyticalReview);
+assert.equal(resD.valid, false, 'Analytical review with tested_by_rancangloka=true must fail validation');
 assert.ok(
-  resI.issues.some(iss => iss.code === 'INVALID_REVIEW_MODE_TESTED_FLAG'),
+  resD.issues.some(iss => iss.code === 'INVALID_REVIEW_MODE_TESTED_FLAG'),
   'Must report INVALID_REVIEW_MODE_TESTED_FLAG'
 );
-console.log('✓ Test I PASS');
+console.log('✓ Proof D PASS');
 
 // ----------------------------------------------------------------------------
-// Test J: HANDS_ON_REVIEW requires primary testing provenance
+// Test E: Hands-on review without primary test evidence fails
 // ----------------------------------------------------------------------------
-console.log('Testing Test J: HANDS_ON_REVIEW requires primary testing provenance...');
-const invalidHandsOnProduct = {
-  ...SYNTHETIC_PRODUCT,
-  review_mode: 'HANDS_ON_REVIEW',
-  tested_by_rancangloka: false // Missing tested flag
+console.log('Testing Proof E: Hands-on review without primary test evidence fails...');
+const handsOnWithoutTestedFlag = {
+  ...SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
+  tested_by_rancangloka: false
 };
-const resJ1 = validateProduct(invalidHandsOnProduct);
-assert.equal(resJ1.valid, false, 'HANDS_ON_REVIEW without tested flag must fail');
+const resE1 = validateEditorialProductReview(handsOnWithoutTestedFlag);
+assert.equal(resE1.valid, false);
+assert.ok(resE1.issues.some(iss => iss.code === 'MISSING_TESTED_FLAG'));
 
 const handsOnWithoutProvenance = {
-  ...SYNTHETIC_PRODUCT,
-  review_mode: 'HANDS_ON_REVIEW',
-  tested_by_rancangloka: true,
-  testing_provenance: undefined // Missing provenance
+  ...SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
+  testing_provenance: undefined
 };
-const resJ2 = validateProduct(handsOnWithoutProvenance);
-assert.equal(resJ2.valid, false, 'HANDS_ON_REVIEW without provenance must fail');
-assert.ok(
-  resJ2.issues.some(iss => iss.code === 'MISSING_TESTING_PROVENANCE'),
-  'Must report MISSING_TESTING_PROVENANCE'
+const resE2 = validateEditorialProductReview(handsOnWithoutProvenance);
+assert.equal(resE2.valid, false);
+assert.ok(resE2.issues.some(iss => iss.code === 'MISSING_TESTING_PROVENANCE'));
+
+// Hands-on passed with secondary evidence sources only (no primary test)
+const resE3 = validateEditorialProductReview(
+  SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
+  [SYNTHETIC_EVIDENCE_MANUFACTURER, SYNTHETIC_EVIDENCE_LAB_TEST] // None is RANCANGLOKA_PRIMARY_TEST
 );
-
-// Valid HANDS_ON_REVIEW with proper provenance and primary test evidence source
-const validHandsOnProduct = {
-  ...SYNTHETIC_PRODUCT,
-  review_mode: 'HANDS_ON_REVIEW',
-  tested_by_rancangloka: true,
-  testing_provenance: {
-    testing_date: '2026-10-14',
-    tester_identity: 'Irwan & RancangLoka Editorial Lab',
-    testing_location: 'Workshop Pengujian Fasade Jakarta Barat',
-    methodology_notes: 'Pengujian insulasi termal menggunakan thermo-gun terkalibrasi dan semprotan air 600Pa'
-  },
-  evidence_sources: [
-    ...SYNTHETIC_PRODUCT.evidence_sources,
-    {
-      source_id: 'src_primary_test_01',
-      source_type: 'RANCANGLOKA_PRIMARY_TEST',
-      source_url: 'https://rancangloka.id/lab/reports/2026-10-nh-kus-x1-test.pdf',
-      publisher: 'RancangLoka Editorial Lab',
-      retrieved_at: '2026-10-14T17:00:00Z',
-      evidence_scope: 'Physical acoustic & thermal chamber measurement',
-      claim_class: 'VERIFIED_FACT',
-      source_fidelity: 'PRIMARY_DOCUMENT',
-      product_identity_reference: 'prod_synthetic_upvc_01'
-    }
-  ]
-};
-const resJ3 = validateProduct(validHandsOnProduct);
-assert.equal(resJ3.valid, true, `Valid HANDS_ON_REVIEW should pass: ${JSON.stringify(resJ3.issues)}`);
-console.log('✓ Test J PASS');
+assert.equal(resE3.valid, false);
+assert.ok(resE3.issues.some(iss => iss.code === 'MISSING_PRIMARY_TEST_SOURCE'));
+console.log('✓ Proof E PASS');
 
 // ----------------------------------------------------------------------------
-// Test K: User reviews remain USER_EXPERIENCE_SIGNAL
+// Test F: Hands-on review with valid primary test provenance passes
 // ----------------------------------------------------------------------------
-console.log('Testing Test K: User reviews remain USER_EXPERIENCE_SIGNAL...');
+console.log('Testing Proof F: Hands-on review with valid primary test provenance passes...');
+const resF = validateEditorialProductReview(
+  SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
+  [SYNTHETIC_EVIDENCE_MANUFACTURER, SYNTHETIC_EVIDENCE_PRIMARY_TEST]
+);
+assert.equal(resF.valid, true, `Valid hands-on review should pass: ${JSON.stringify(resF.issues)}`);
+console.log('✓ Proof F PASS');
+
+// ----------------------------------------------------------------------------
+// Test G: One Product can have multiple EditorialProductReviews
+// ----------------------------------------------------------------------------
+console.log('Testing Proof G: One Product can have multiple EditorialProductReviews...');
+const reviewsForProduct = [
+  SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL,
+  SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON
+];
+assert.equal(reviewsForProduct.length, 2);
+assert.equal(reviewsForProduct[0].product_id, SYNTHETIC_PRODUCT.product_id);
+assert.equal(reviewsForProduct[1].product_id, SYNTHETIC_PRODUCT.product_id);
+assert.notEqual(reviewsForProduct[0].review_id, reviewsForProduct[1].review_id);
+assert.equal(reviewsForProduct[0].review_mode, 'ANALYTICAL_REVIEW');
+assert.equal(reviewsForProduct[1].review_mode, 'HANDS_ON_REVIEW');
+console.log('✓ Proof G PASS');
+
+// ----------------------------------------------------------------------------
+// Test H: Adding a second review does not alter Product identity
+// ----------------------------------------------------------------------------
+console.log('Testing Proof H: Adding a second review does not alter Product identity...');
+const productBefore = JSON.stringify(SYNTHETIC_PRODUCT);
+// Simulate adding hands-on review to existing product
+const newReview = { ...SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON, review_id: 'rev_synth_handson_second_iteration' };
+const resNewReview = validateEditorialProductReview(newReview, [SYNTHETIC_EVIDENCE_PRIMARY_TEST]);
+assert.equal(resNewReview.valid, true);
+// Product remains completely untouched
+assert.equal(JSON.stringify(SYNTHETIC_PRODUCT), productBefore);
+console.log('✓ Proof H PASS');
+
+// ----------------------------------------------------------------------------
+// Test I: Changing review mode does not alter technical match input
+// ----------------------------------------------------------------------------
+console.log('Testing Proof I: Changing review mode does not alter technical match input...');
+const matchInput1 = assembleTechnicalMatchInput({
+  product: SYNTHETIC_PRODUCT,
+  variant: SYNTHETIC_VARIANT_1,
+  specSnapshot: SYNTHETIC_SPEC_SNAPSHOT,
+  evidenceSources: [SYNTHETIC_EVIDENCE_MANUFACTURER, SYNTHETIC_EVIDENCE_LAB_TEST]
+});
+
+// Technical match input does not contain review_mode or tested_by_rancangloka
+assert.equal(matchInput1.review_mode, undefined, 'Technical match input must not contain review_mode');
+assert.equal(matchInput1.tested_by_rancangloka, undefined, 'Technical match input must not contain tested_by_rancangloka');
+assert.equal(matchInput1.testing_provenance, undefined, 'Technical match input must not contain testing_provenance');
+
+// Even if an external caller attempts to pass review_mode or change review state
+const matchInput2 = assembleTechnicalMatchInput({
+  product: SYNTHETIC_PRODUCT,
+  variant: SYNTHETIC_VARIANT_1,
+  specSnapshot: SYNTHETIC_SPEC_SNAPSHOT,
+  evidenceSources: [SYNTHETIC_EVIDENCE_MANUFACTURER, SYNTHETIC_EVIDENCE_LAB_TEST, SYNTHETIC_EVIDENCE_PRIMARY_TEST]
+});
+assert.equal(matchInput1.canonical_name, matchInput2.canonical_name);
+assert.equal(matchInput1.product_id, matchInput2.product_id);
+console.log('✓ Proof I PASS');
+
+// ----------------------------------------------------------------------------
+// Test J: ReviewSnapshot remains USER_EXPERIENCE_SIGNAL and not EditorialProductReview
+// ----------------------------------------------------------------------------
+console.log('Testing Proof J: ReviewSnapshot remains USER_EXPERIENCE_SIGNAL...');
 const userReviewSource = {
   source_id: 'src_synth_marketplace_reviews',
   source_type: 'USER_REVIEW_AGGREGATE',
@@ -218,53 +226,68 @@ const userReviewSource = {
   publisher: 'Ulasan Pembeli Terverifikasi (Fiktif)',
   retrieved_at: '2026-10-16T12:00:00Z',
   evidence_scope: 'Pengalaman pembeli setelah 6 bulan pemakaian',
-  claim_class: 'USER_EXPERIENCE_SIGNAL', // Required claim class
+  claim_class: 'USER_EXPERIENCE_SIGNAL',
   source_fidelity: 'USER_OBSERVATION',
   product_identity_reference: 'prod_synthetic_upvc_01'
 };
-const resK = validateEvidenceSource(userReviewSource);
-assert.equal(resK.valid, true);
+const resJ = validateEvidenceSource(userReviewSource);
+assert.equal(resJ.valid, true);
 assert.equal(userReviewSource.claim_class, 'USER_EXPERIENCE_SIGNAL');
-assert.notEqual(userReviewSource.claim_class, 'VERIFIED_FACT', 'User reviews cannot be classified as VERIFIED_FACT');
-console.log('✓ Test K PASS');
+assert.notEqual(userReviewSource.claim_class, 'VERIFIED_FACT');
+// Verify ReviewSnapshot is distinct from EditorialProductReview
+const reviewSnapshotValidation = validateReviewSnapshot(SYNTHETIC_REVIEW_SNAPSHOT);
+assert.equal(reviewSnapshotValidation.valid, true);
+assert.ok('external_review_count' in SYNTHETIC_REVIEW_SNAPSHOT);
+assert.ok(!('review_mode' in SYNTHETIC_REVIEW_SNAPSHOT));
+console.log('✓ Proof J PASS');
 
 // ----------------------------------------------------------------------------
-// Test L: Changing affiliate commission does not affect technical identity
+// Test K: ArticleProductBinding remains structurally separate from EditorialReview
 // ----------------------------------------------------------------------------
-console.log('Testing Test L: Changing affiliate commission does not affect technical identity...');
-const initialProductJson = JSON.stringify(SYNTHETIC_PRODUCT);
-
-// Alter affiliate destination metadata/commission rate
-const modifiedAffiliateDestination = {
-  ...SYNTHETIC_AFFILIATE_DESTINATION_A,
-  tracking_metadata: {
-    ...SYNTHETIC_AFFILIATE_DESTINATION_A.tracking_metadata,
-    commission_bracket: 'tier_premium_99',
-    payout_rate: '0.25'
-  }
-};
-// Product technical identity remains 100% deep equal
-assert.equal(JSON.stringify(SYNTHETIC_PRODUCT), initialProductJson);
-assert.equal(SYNTHETIC_PRODUCT.canonical_name, 'Kusen Jendela uPVC Multi-Chamber Seri X1');
-assert.equal(SYNTHETIC_PRODUCT.solution_class_id, 'sol_upvc_multi_chamber');
-console.log('✓ Test L PASS');
+console.log('Testing Proof K: ArticleProductBinding remains structurally separate...');
+const resK = validateArticleProductBinding(SYNTHETIC_ARTICLE_PRODUCT_BINDING);
+assert.equal(resK.valid, true);
+assert.ok('article_id' in SYNTHETIC_ARTICLE_PRODUCT_BINDING);
+assert.ok('product_id' in SYNTHETIC_ARTICLE_PRODUCT_BINDING);
+assert.ok('editorial_role' in SYNTHETIC_ARTICLE_PRODUCT_BINDING);
+assert.ok(!('review_mode' in SYNTHETIC_ARTICLE_PRODUCT_BINDING), 'Binding must not own review_mode');
+assert.ok(!('tested_by_rancangloka' in SYNTHETIC_ARTICLE_PRODUCT_BINDING), 'Binding must not own tested flag');
+console.log('✓ Proof K PASS');
 
 // ----------------------------------------------------------------------------
-// Test M: Changing affiliate destination does not affect evidence source
+// Test L: Commerce disclosure remains structurally separate
 // ----------------------------------------------------------------------------
-console.log('Testing Test M: Changing affiliate destination does not affect evidence source...');
+console.log('Testing Proof L: Commerce disclosure remains structurally separate...');
+assert.ok('commercial_disclosure' in SYNTHETIC_ARTICLE_PRODUCT_BINDING);
+assert.ok(!('commercial_disclosure' in SYNTHETIC_PRODUCT), 'Product must not contain commercial disclosure');
+assert.ok(!('commercial_disclosure' in SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL), 'Editorial review must not contain commercial disclosure');
+console.log('✓ Proof L PASS');
+
+// ----------------------------------------------------------------------------
+// Test M: Variant, Offer, Spec, Price validation remains green
+// ----------------------------------------------------------------------------
+console.log('Testing Proof M: Standard entities validate cleanly...');
+assert.equal(validateVariant(SYNTHETIC_VARIANT_1).valid, true);
+assert.equal(validateVariant(SYNTHETIC_VARIANT_2).valid, true);
+assert.equal(validateOffer(SYNTHETIC_OFFER_MERCHANT_A).valid, true);
+assert.equal(validateOffer(SYNTHETIC_OFFER_MERCHANT_B).valid, true);
+assert.equal(validateEvidenceSource(SYNTHETIC_EVIDENCE_MANUFACTURER).valid, true);
+assert.equal(validateEvidenceSource(SYNTHETIC_EVIDENCE_LAB_TEST).valid, true);
+assert.equal(validateSpecSnapshot(SYNTHETIC_SPEC_SNAPSHOT).valid, true);
+assert.equal(validatePriceSnapshot(SYNTHETIC_PRICE_SNAPSHOT_A).valid, true);
+assert.equal(validatePriceSnapshot(SYNTHETIC_PRICE_SNAPSHOT_B).valid, true);
+assert.equal(validateAffiliateDestination(SYNTHETIC_AFFILIATE_DESTINATION_A).valid, true);
+assert.equal(validateAffiliateDestination(SYNTHETIC_AFFILIATE_DESTINATION_B).valid, true);
+console.log('✓ Proof M PASS');
+// Swapping merchant affiliate destination does not affect evidence source
 const originalEvidenceUrl = SYNTHETIC_EVIDENCE_MANUFACTURER.source_url;
-
-// Simulate swapping merchant affiliate link from Involve Asia to Shopee or direct partner
 const newAffiliateDestination = {
   ...SYNTHETIC_AFFILIATE_DESTINATION_A,
   provider: 'direct_merchant_partner',
   affiliate_destination_url: 'https://outbound.rancangloka.id/c/new-merchant-link'
 };
-// Evidence source remains unchanged and independent
 assert.equal(SYNTHETIC_EVIDENCE_MANUFACTURER.source_url, originalEvidenceUrl);
 assert.notEqual(SYNTHETIC_EVIDENCE_MANUFACTURER.source_url, newAffiliateDestination.affiliate_destination_url);
-console.log('✓ Test M PASS');
 
 // ----------------------------------------------------------------------------
 // Test N: Changing price does not affect product/spec identity

@@ -7,6 +7,7 @@
 
 import type {
   Product,
+  EditorialProductReview,
   Variant,
   Offer,
   AffiliateDestination,
@@ -132,13 +133,81 @@ export function validateProduct(product: unknown): ValidationResult {
     issues.push({ code: 'MISSING_FIELD', field: 'solution_class_id', message: 'solution_class_id is required.' });
   }
 
+  // Validate nested variants if present
+  if (Array.isArray(p.variants)) {
+    for (let i = 0; i < p.variants.length; i++) {
+      const vRes = validateVariant(p.variants[i]);
+      issues.push(...vRes.issues.map(iss => ({ ...iss, field: `variants[${i}].${iss.field}` })));
+    }
+  }
+
+  // Validate nested spec snapshots if present
+  if (Array.isArray(p.spec_snapshots)) {
+    for (let i = 0; i < p.spec_snapshots.length; i++) {
+      const sRes = validateSpecSnapshot(p.spec_snapshots[i]);
+      issues.push(...sRes.issues.map(iss => ({ ...iss, field: `spec_snapshots[${i}].${iss.field}` })));
+    }
+  }
+
+  // Validate nested evidence sources if present
+  if (Array.isArray(p.evidence_sources)) {
+    for (let i = 0; i < p.evidence_sources.length; i++) {
+      const eRes = validateEvidenceSource(p.evidence_sources[i]);
+      issues.push(...eRes.issues.map(iss => ({ ...iss, field: `evidence_sources[${i}].${iss.field}` })));
+    }
+  }
+
+  // Validate nested review snapshots if present
+  if (Array.isArray(p.review_snapshots)) {
+    for (let i = 0; i < p.review_snapshots.length; i++) {
+      const rRes = validateReviewSnapshot(p.review_snapshots[i]);
+      issues.push(...rRes.issues.map(iss => ({ ...iss, field: `review_snapshots[${i}].${iss.field}` })));
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues
+  };
+}
+
+/**
+ * Validates an EditorialProductReview entity.
+ * Invariant: EDITORIAL_REVIEW_STATE_MUST_NOT_MUTATE_PRODUCT_IDENTITY.
+ * Invariant: TESTED_BY_RANCANGLOKA_REQUIRES_PRIMARY_TEST_PROVENANCE.
+ */
+export function validateEditorialProductReview(
+  review: unknown,
+  evidenceSources?: EvidenceSource[] | readonly EvidenceSource[]
+): ValidationResult {
+  const issues: ValidationIssue[] = [];
+
+  if (!review || typeof review !== 'object' || Array.isArray(review)) {
+    return {
+      valid: false,
+      issues: [{ code: 'INVALID_ENTITY', field: 'root', message: 'EditorialProductReview must be an object.' }]
+    };
+  }
+
+  const r = review as Partial<EditorialProductReview>;
+
+  // Scan for forbidden commerce fields
+  issues.push(...scanForForbiddenReviewCommerceFields(review));
+
+  if (!r.review_id || typeof r.review_id !== 'string') {
+    issues.push({ code: 'MISSING_FIELD', field: 'review_id', message: 'review_id is required.' });
+  }
+  if (!r.product_id || typeof r.product_id !== 'string') {
+    issues.push({ code: 'MISSING_FIELD', field: 'product_id', message: 'product_id is required.' });
+  }
+
   // Review Mode & Tested by RancangLoka Invariant
-  if (p.review_mode !== 'ANALYTICAL_REVIEW' && p.review_mode !== 'HANDS_ON_REVIEW') {
+  if (r.review_mode !== 'ANALYTICAL_REVIEW' && r.review_mode !== 'HANDS_ON_REVIEW') {
     issues.push({ code: 'INVALID_FIELD', field: 'review_mode', message: 'review_mode must be ANALYTICAL_REVIEW or HANDS_ON_REVIEW.' });
   }
 
   // ANALYTICAL_REVIEW cannot claim tested_by_rancangloka = true
-  if (p.review_mode === 'ANALYTICAL_REVIEW' && p.tested_by_rancangloka === true) {
+  if (r.review_mode === 'ANALYTICAL_REVIEW' && r.tested_by_rancangloka === true) {
     issues.push({
       code: 'INVALID_REVIEW_MODE_TESTED_FLAG',
       field: 'tested_by_rancangloka',
@@ -147,8 +216,8 @@ export function validateProduct(product: unknown): ValidationResult {
   }
 
   // HANDS_ON_REVIEW requires tested_by_rancangloka = true AND testing_provenance AND primary test source
-  if (p.review_mode === 'HANDS_ON_REVIEW') {
-    if (p.tested_by_rancangloka !== true) {
+  if (r.review_mode === 'HANDS_ON_REVIEW') {
+    if (r.tested_by_rancangloka !== true) {
       issues.push({
         code: 'MISSING_TESTED_FLAG',
         field: 'tested_by_rancangloka',
@@ -156,7 +225,7 @@ export function validateProduct(product: unknown): ValidationResult {
       });
     }
 
-    if (!p.testing_provenance || !p.testing_provenance.testing_date || !p.testing_provenance.tester_identity || !p.testing_provenance.methodology_notes) {
+    if (!r.testing_provenance || !r.testing_provenance.testing_date || !r.testing_provenance.tester_identity || !r.testing_provenance.methodology_notes) {
       issues.push({
         code: 'MISSING_TESTING_PROVENANCE',
         field: 'testing_provenance',
@@ -164,44 +233,16 @@ export function validateProduct(product: unknown): ValidationResult {
       });
     }
 
-    const hasPrimaryTestSource = Array.isArray(p.evidence_sources) && p.evidence_sources.some(
-      s => s.source_type === 'RANCANGLOKA_PRIMARY_TEST'
-    );
-    if (!hasPrimaryTestSource) {
-      issues.push({
-        code: 'MISSING_PRIMARY_TEST_SOURCE',
-        field: 'evidence_sources',
-        message: 'HANDS_ON_REVIEW requires at least one EvidenceSource with source_type = RANCANGLOKA_PRIMARY_TEST.'
-      });
-    }
-  }
-
-  // Validate nested variants if present
-  if (Array.isArray(p.variants)) {
-    for (let i = 0; i < p.variants.length; i++) {
-      const vRes = validateVariant(p.variants[i]);
-      if (!vRes.valid) {
-        issues.push(...vRes.issues.map(iss => ({ ...iss, field: `variants[${i}].${iss.field}` })));
-      }
-    }
-  }
-
-  // Validate nested spec snapshots if present
-  if (Array.isArray(p.spec_snapshots)) {
-    for (let i = 0; i < p.spec_snapshots.length; i++) {
-      const sRes = validateSpecSnapshot(p.spec_snapshots[i]);
-      if (!sRes.valid) {
-        issues.push(...sRes.issues.map(iss => ({ ...iss, field: `spec_snapshots[${i}].${iss.field}` })));
-      }
-    }
-  }
-
-  // Validate nested evidence sources if present
-  if (Array.isArray(p.evidence_sources)) {
-    for (let i = 0; i < p.evidence_sources.length; i++) {
-      const eRes = validateEvidenceSource(p.evidence_sources[i]);
-      if (!eRes.valid) {
-        issues.push(...eRes.issues.map(iss => ({ ...iss, field: `evidence_sources[${i}].${iss.field}` })));
+    if (evidenceSources && evidenceSources.length > 0) {
+      const hasPrimaryTestSource = evidenceSources.some(
+        s => s.source_type === 'RANCANGLOKA_PRIMARY_TEST'
+      );
+      if (!hasPrimaryTestSource) {
+        issues.push({
+          code: 'MISSING_PRIMARY_TEST_SOURCE',
+          field: 'evidence_sources',
+          message: 'HANDS_ON_REVIEW requires at least one EvidenceSource with source_type = RANCANGLOKA_PRIMARY_TEST.'
+        });
       }
     }
   }

@@ -20,6 +20,8 @@
 import { createHash } from 'node:crypto';
 import type {
   Product,
+  EditorialProductReview,
+  EditorialReviewStatus,
   Variant,
   EvidenceSource,
   SpecSnapshot,
@@ -36,6 +38,7 @@ import type {
 } from './types.ts';
 import {
   validateProduct,
+  validateEditorialProductReview,
   validateVariant,
   validateEvidenceSource,
   validateSpecSnapshot,
@@ -105,7 +108,7 @@ export function computePriceSnapshotHash(snapshot: PriceSnapshot): string {
 }
 
 // ============================================================================
-// TECHNICAL MATCH INPUT ASSEMBLER (COMMERCE-BLIND DTO BOUNDARY)
+// TECHNICAL MATCH INPUT ASSEMBLER (COMMERCE-BLIND & REVIEW-STATE-INDEPENDENT DTO)
 // ============================================================================
 
 export interface TechnicalMatchInputDTO {
@@ -113,9 +116,6 @@ export interface TechnicalMatchInputDTO {
   canonical_name: string;
   brand: string;
   solution_class_id: string;
-  review_mode: ReviewMode;
-  tested_by_rancangloka: boolean;
-  testing_provenance?: TestingProvenance;
   variant_id?: string;
   sku_or_model?: string;
   specs: Record<string, string | number | boolean>;
@@ -124,7 +124,7 @@ export interface TechnicalMatchInputDTO {
 }
 
 /**
- * Assembles a pure, commerce-blind TechnicalMatchInputDTO for technical evaluation.
+ * Assembles a pure, commerce-blind and review-state-independent TechnicalMatchInputDTO for technical evaluation.
  * Throws an invariant violation error if ANY commercial field is passed in.
  */
 export function assembleTechnicalMatchInput(params: {
@@ -166,9 +166,6 @@ export function assembleTechnicalMatchInput(params: {
     canonical_name: params.product.canonical_name,
     brand: params.product.brand,
     solution_class_id: params.product.solution_class_id,
-    review_mode: params.product.review_mode,
-    tested_by_rancangloka: params.product.tested_by_rancangloka,
-    testing_provenance: params.product.testing_provenance,
     variant_id: params.variant?.variant_id,
     sku_or_model: params.variant?.sku_or_model,
     specs: { ...params.specSnapshot.specs },
@@ -201,7 +198,7 @@ export async function insertProduct(
   }
 
   const existing = await db
-    .prepare('SELECT product_id, canonical_name, brand, category_id, solution_class_id, identity_state, review_mode FROM product_review_products WHERE product_id = ?')
+    .prepare('SELECT product_id, canonical_name, brand, category_id, solution_class_id, identity_state FROM product_review_products WHERE product_id = ?')
     .bind(product.product_id)
     .first();
 
@@ -209,8 +206,8 @@ export async function insertProduct(
     if (
       existing.canonical_name === product.canonical_name &&
       existing.brand === product.brand &&
-      existing.solution_class_id === product.solution_class_id &&
-      existing.review_mode === product.review_mode
+      existing.category_id === product.category_id &&
+      existing.solution_class_id === product.solution_class_id
     ) {
       return { status: 'ALREADY_EXISTS_IDENTICAL', id: product.product_id };
     }
@@ -228,9 +225,8 @@ export async function insertProduct(
     .prepare(`
       INSERT INTO product_review_products (
         product_id, canonical_name, brand, category_id, solution_class_id,
-        identity_state, review_mode, tested_by_rancangloka,
-        testing_provenance_json, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        identity_state, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       product.product_id,
@@ -239,9 +235,6 @@ export async function insertProduct(
       product.category_id,
       product.solution_class_id,
       product.identity_state,
-      product.review_mode,
-      product.tested_by_rancangloka ? 1 : 0,
-      product.testing_provenance ? JSON.stringify(product.testing_provenance) : null,
       now,
       now
     )
@@ -273,9 +266,8 @@ export async function getProduct(db: any, productId: string): Promise<Product | 
     category_id: row.category_id,
     solution_class_id: row.solution_class_id,
     identity_state: row.identity_state,
-    review_mode: row.review_mode,
-    tested_by_rancangloka: Boolean(row.tested_by_rancangloka),
-    testing_provenance: row.testing_provenance_json ? JSON.parse(row.testing_provenance_json) : undefined,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
     variants,
     spec_snapshots: specSnapshots,
     evidence_sources: evidenceSources,
@@ -294,6 +286,176 @@ export async function updateProductIdentityState(
   const result = await db
     .prepare('UPDATE product_review_products SET identity_state = ?, updated_at = ? WHERE product_id = ?')
     .bind(newState, new Date().toISOString(), productId)
+    .run();
+
+  return (result?.meta?.changes ?? 0) > 0;
+}
+
+// ============================================================================
+// EDITORIAL PRODUCT REVIEW STORE OPERATIONS
+// Invariant: EDITORIAL_REVIEW_STATE_MUST_NOT_MUTATE_PRODUCT_IDENTITY
+// Invariant: TESTED_BY_RANCANGLOKA_REQUIRES_PRIMARY_TEST_PROVENANCE
+// ============================================================================
+
+/**
+ * Inserts a first-class EditorialProductReview entity.
+ */
+export async function insertEditorialReview(
+  db: any,
+  review: EditorialProductReview,
+  evidenceSources?: EvidenceSource[] | readonly EvidenceSource[]
+): Promise<StoreOpResult> {
+  const validation = validateEditorialProductReview(review, evidenceSources);
+  if (!validation.valid) {
+    return { status: 'BLOCKED_VALIDATION_FAILED', issues: validation.issues };
+  }
+
+  const existing = await db
+    .prepare('SELECT review_id, product_id, variant_id, review_mode, tested_by_rancangloka FROM product_review_editorial_reviews WHERE review_id = ?')
+    .bind(review.review_id)
+    .first();
+
+  if (existing) {
+    if (
+      existing.product_id === review.product_id &&
+      existing.review_mode === review.review_mode &&
+      Boolean(existing.tested_by_rancangloka) === Boolean(review.tested_by_rancangloka) &&
+      (existing.variant_id ?? null) === (review.variant_id ?? null)
+    ) {
+      return { status: 'ALREADY_EXISTS_IDENTICAL', id: review.review_id };
+    }
+    return {
+      status: 'BLOCKED_SNAPSHOT_CONFLICT',
+      id: review.review_id,
+      existing_hash: existing.review_mode,
+      candidate_hash: review.review_mode
+    };
+  }
+
+  const now = new Date().toISOString();
+
+  await db
+    .prepare(`
+      INSERT INTO product_review_editorial_reviews (
+        review_id, product_id, variant_id, article_id, review_mode,
+        tested_by_rancangloka, testing_provenance_json, editorial_status,
+        reviewed_at, reviewer_identity, notes, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      review.review_id,
+      review.product_id,
+      review.variant_id ?? null,
+      review.article_id ?? null,
+      review.review_mode,
+      review.tested_by_rancangloka ? 1 : 0,
+      review.testing_provenance ? JSON.stringify(review.testing_provenance) : null,
+      review.editorial_status ?? 'DRAFT',
+      review.reviewed_at ?? null,
+      review.reviewer_identity ?? null,
+      review.notes ?? null,
+      review.created_at ?? now,
+      review.updated_at ?? now
+    )
+    .run();
+
+  return { status: 'INSERTED', id: review.review_id };
+}
+
+/**
+ * Retrieves a specific EditorialProductReview by review_id.
+ */
+export async function getEditorialReview(db: any, reviewId: string): Promise<EditorialProductReview | null> {
+  const row = await db
+    .prepare('SELECT * FROM product_review_editorial_reviews WHERE review_id = ?')
+    .bind(reviewId)
+    .first();
+
+  if (!row) return null;
+
+  return {
+    review_id: row.review_id,
+    product_id: row.product_id,
+    variant_id: row.variant_id ?? undefined,
+    article_id: row.article_id ?? undefined,
+    review_mode: row.review_mode,
+    tested_by_rancangloka: Boolean(row.tested_by_rancangloka),
+    testing_provenance: row.testing_provenance_json ? JSON.parse(row.testing_provenance_json) : undefined,
+    editorial_status: row.editorial_status,
+    reviewed_at: row.reviewed_at ?? undefined,
+    reviewer_identity: row.reviewer_identity ?? undefined,
+    notes: row.notes ?? undefined,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
+}
+
+/**
+ * Retrieves all EditorialProductReviews for a given product_id.
+ */
+export async function getEditorialReviewsByProduct(db: any, productId: string): Promise<EditorialProductReview[]> {
+  const rows = await db
+    .prepare('SELECT * FROM product_review_editorial_reviews WHERE product_id = ? ORDER BY created_at ASC')
+    .bind(productId)
+    .all();
+
+  const results = rows?.results ?? (Array.isArray(rows) ? rows : []);
+  return results.map((row: any) => ({
+    review_id: row.review_id,
+    product_id: row.product_id,
+    variant_id: row.variant_id ?? undefined,
+    article_id: row.article_id ?? undefined,
+    review_mode: row.review_mode,
+    tested_by_rancangloka: Boolean(row.tested_by_rancangloka),
+    testing_provenance: row.testing_provenance_json ? JSON.parse(row.testing_provenance_json) : undefined,
+    editorial_status: row.editorial_status,
+    reviewed_at: row.reviewed_at ?? undefined,
+    reviewer_identity: row.reviewer_identity ?? undefined,
+    notes: row.notes ?? undefined,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }));
+}
+
+/**
+ * Retrieves the latest EditorialProductReview for a given product_id.
+ */
+export async function getLatestEditorialReviewForProduct(db: any, productId: string): Promise<EditorialProductReview | null> {
+  const row = await db
+    .prepare('SELECT * FROM product_review_editorial_reviews WHERE product_id = ? ORDER BY created_at DESC LIMIT 1')
+    .bind(productId)
+    .first();
+
+  if (!row) return null;
+
+  return {
+    review_id: row.review_id,
+    product_id: row.product_id,
+    variant_id: row.variant_id ?? undefined,
+    article_id: row.article_id ?? undefined,
+    review_mode: row.review_mode,
+    tested_by_rancangloka: Boolean(row.tested_by_rancangloka),
+    testing_provenance: row.testing_provenance_json ? JSON.parse(row.testing_provenance_json) : undefined,
+    editorial_status: row.editorial_status,
+    reviewed_at: row.reviewed_at ?? undefined,
+    reviewer_identity: row.reviewer_identity ?? undefined,
+    notes: row.notes ?? undefined,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
+}
+
+/**
+ * Updates an editorial review status.
+ */
+export async function updateEditorialReviewStatus(
+  db: any,
+  reviewId: string,
+  newStatus: EditorialReviewStatus
+): Promise<boolean> {
+  const result = await db
+    .prepare('UPDATE product_review_editorial_reviews SET editorial_status = ?, updated_at = ? WHERE review_id = ?')
+    .bind(newStatus, new Date().toISOString(), reviewId)
     .run();
 
   return (result?.meta?.changes ?? 0) > 0;

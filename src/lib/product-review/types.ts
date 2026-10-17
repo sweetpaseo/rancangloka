@@ -161,8 +161,10 @@ export interface PriceSnapshot {
 }
 
 /**
- * ReviewSnapshot captures external customer reviews.
- * Permanent rule: User reviews are USER_EXPERIENCE_SIGNAL, not VERIFIED_FACT.
+ * ReviewSnapshot captures external customer reviews from marketplaces/dealers.
+ * Permanent distinction: ReviewSnapshot != EditorialProductReview.
+ * ReviewSnapshot represents external USER_EXPERIENCE_SIGNAL, not VERIFIED_FACT,
+ * and is strictly distinct from RancangLoka's own EditorialProductReview.
  * Marketplace star ratings are external metadata, NOT RancangLoka scores.
  */
 export interface ReviewSnapshot {
@@ -199,7 +201,41 @@ export interface Variant {
 }
 
 /**
- * Product represents canonical product identity independent from merchant offers.
+ * Editorial review status lifecycle.
+ */
+export type EditorialReviewStatus =
+  | 'DRAFT'
+  | 'REVIEWED'
+  | 'PUBLISHED'
+  | 'ARCHIVED';
+
+/**
+ * EditorialProductReview represents RancangLoka's own editorial assessment of a product.
+ * Independent of physical Product identity.
+ * Permanent invariant: EDITORIAL_REVIEW_STATE_MUST_NOT_MUTATE_PRODUCT_IDENTITY.
+ * Permanent invariant: TESTED_BY_RANCANGLOKA_REQUIRES_PRIMARY_TEST_PROVENANCE.
+ */
+export interface EditorialProductReview {
+  review_id: string;
+  product_id: string;
+  variant_id?: string;
+  article_id?: number;
+  review_mode: ReviewMode;
+  tested_by_rancangloka: boolean;
+  testing_provenance?: TestingProvenance;
+  editorial_status: EditorialReviewStatus;
+  reviewed_at?: string;
+  reviewer_identity?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Product represents canonical product identity independent from merchant offers
+ * and independent from RancangLoka editorial review state.
+ * Permanent invariant: PRODUCT_REPRESENTS_PURE_MANUFACTURED_IDENTITY.
+ * EDITORIAL_REVIEW_STATE_MUST_NOT_MUTATE_PRODUCT_IDENTITY.
  */
 export interface Product {
   product_id: string;
@@ -209,12 +245,11 @@ export interface Product {
   /** Must reference a valid PDE solution_class_id */
   solution_class_id: string;
   identity_state: ProductIdentityState;
-  review_mode: ReviewMode;
-  tested_by_rancangloka: boolean;
-  testing_provenance?: TestingProvenance;
-  variants: Variant[] | readonly Variant[];
-  spec_snapshots: SpecSnapshot[] | readonly SpecSnapshot[];
-  evidence_sources: EvidenceSource[] | readonly EvidenceSource[];
+  created_at?: string;
+  updated_at?: string;
+  variants?: Variant[] | readonly Variant[];
+  spec_snapshots?: SpecSnapshot[] | readonly SpecSnapshot[];
+  evidence_sources?: EvidenceSource[] | readonly EvidenceSource[];
   review_snapshots?: ReviewSnapshot[] | readonly ReviewSnapshot[];
 }
 

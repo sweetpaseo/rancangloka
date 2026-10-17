@@ -62,27 +62,27 @@ Ulasan marketplace atau testimoni pembeli diklasifikasikan sebagai **`USER_EXPER
 
 ---
 
-## 4. Model Entitas Inti (Core Entities)
+## 4. Model Entitas Inti & Pemisahan Domain Bersih (Core Entities & Clean Domain Boundaries)
 
-Arsitektur data dirancang dengan pemisahan peran yang bersih guna mencegah ledakan entitas (*entity explosion*):
+Arsitektur data dirancang dengan pemisahan tanggung jawab yang tegas:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                           PRODUCT                           │
-│  (Identitas Kanonikal: Brand, Nama Produk, Solution Class) │
+│     (Identitas Fisik Murni: Brand, Nama Produk, Kategori)   │
 └──────┬───────────────────────┬──────────────────────────────┘
        │                       │
        ▼                       ▼
-┌──────────────┐       ┌────────────────────────┐
-│   VARIANT    │       │     SPEC SNAPSHOT      │
-│ (SKU / Warna)│       │ (Spesifikasi Terversi) │
-└──────┬───────┘       └────────────────────────┘
-       │
-       ▼
-┌──────────────┐       ┌────────────────────────┐
-│    OFFER     │◄──────┤     PRICE SNAPSHOT     │
-│ (Listing Toko│       │   (Harga Volatil)      │
-└──────┬───────┘       └────────────────────────┘
+┌──────────────┐       ┌────────────────────────┐       ┌─────────────────────────────────┐
+│   VARIANT    │       │     SPEC SNAPSHOT      │       │     EDITORIAL PRODUCT REVIEW    │
+│ (SKU / Warna)│       │ (Spesifikasi Terversi) │       │(Ulasan RancangLoka: Mode & Lab) │
+└──────┬───────┘       └────────────────────────┘       └─────────────────────────────────┘
+       │                                                                  │
+       ▼                                                                  ▼
+┌──────────────┐       ┌────────────────────────┐       ┌─────────────────────────────────┐
+│    OFFER     │◄──────┤     PRICE SNAPSHOT     │       │     ARTICLE PRODUCT BINDING     │
+│ (Listing Toko│       │   (Harga Volatil)      │       │ (Konteks Artikel + Disclosure)  │
+└──────┬───────┘       └────────────────────────┘       └─────────────────────────────────┘
        │
        ▼
 ┌───────────────────────────┐
@@ -91,15 +91,30 @@ Arsitektur data dirancang dengan pemisahan peran yang bersih guna mencegah ledak
 └───────────────────────────┘
 ```
 
-1. **`Product`:** Identitas kanonikal produk independen dari toko (`product_id`, `brand`, `canonical_name`, `solution_class_id`, `identity_state`, `review_mode`).
-2. **`Variant`:** Konfigurasi fisik, dimensi, atau sub-tipe spesifik (`variant_id`, `sku_or_model`, `variant_name`).
-3. **`Offer`:** Penawaran komersial dari merchant tertentu (`offer_id`, `merchant_id`, `listing_title`, `listing_url`, `current_availability`). Perubahan toko penjual tidak mengubah identitas `Product`.
-4. **`AffiliateDestination`:** Metadata teknis pelacakan komersial keluar (`destination_id`, `provider`, `affiliate_destination_url`, `is_active`). Bebas dari skor editorial.
-5. **`SpecSnapshot`:** Rekaman terversi spesifikasi teknis (`specs`, `source_fidelity`, `captured_at`). Nilai numerik hanya dicatat jika benar-benar disediakan sumber terverifikasi.
-6. **`PriceSnapshot`:** Rekaman berkala harga pasar (`observed_price`, `currency`, `availability`, `captured_at`).
-7. **`ReviewSnapshot`:** Rekaman sinyal ulasan eksternal (`external_review_count`, `recurring_themes`).
-8. **`EvidenceSource`:** Dokumen acuan bukti (`source_type`, `source_url`, `publisher`, `claim_class`, `source_fidelity`).
-9. **`ArticleProductBinding`:** Pengikatan produk ke artikel dengan peran editorial (`PRIMARY_SUBJECT`, `ALTERNATIVE`, `EXAMPLE`, `MATCHED_PRODUCT`, `RELATED_PRODUCT`) dan pengungkapan komersial (`CommercialDisclosure`).
+### Pembedaan Semantik Permanen:
+1. **`Product != EditorialProductReview`:**
+   - **`Product`:** Menjawab *"What product is this?"* (Identitas fisik produk murni: `product_id`, `canonical_name`, `brand`, `category_id`, `solution_class_id`, `identity_state`). Dilarang memuat `review_mode`, `tested_by_rancangloka`, atau `testing_provenance`.
+   - **`EditorialProductReview`:** Menjawab *"How has RancangLoka reviewed this product?"* (Entitas ulasan editorial: `review_id`, `product_id`, `variant_id?`, `article_id?`, `review_mode`, `tested_by_rancangloka`, `testing_provenance`, `editorial_status`). Mendukung banyak ulasan historis (misal: Analytical Review hari ini, Hands-on Review di masa depan) tanpa mengubah identitas fisik Product.
+2. **`ReviewSnapshot != EditorialProductReview`:**
+   - **`ReviewSnapshot`:** Sinyal pengalaman pengguna luar dari toko/pasar (`USER_EXPERIENCE_SIGNAL` seperti rating marketplace atau ulasan pembeli).
+   - **`EditorialProductReview`:** Pekerjaan ulasan dan pengujian independen dari redaksi RancangLoka sendiri.
+3. **`ArticleProductBinding != EditorialProductReview`:**
+   - **`ArticleProductBinding`:** Relasi penempatan produk di dalam artikel spesifik (`article_id`, `product_id`, `editorial_role`, `section_anchor`).
+   - **`EditorialProductReview`:** Status penilaian dan metodologi ulasan redaksional atas produk tersebut.
+4. **`CommercialDisclosure != EditorialProductReview`:**
+   - **`CommercialDisclosure`:** Pengungkapan transparansi komersial (`has_affiliate_links`, `is_sponsored_content`, dll.).
+   - Bebas dari penilaian teknis dan tidak mempengaruhi identitas produk maupun evaluasi hands-on.
+
+1. **`Product`:** Identitas kanonikal produk independen dari toko (`product_id`, `brand`, `canonical_name`, `category_id`, `solution_class_id`, `identity_state`).
+2. **`EditorialProductReview`:** Entitas kelas satu ulasan redaksi RancangLoka (`review_id`, `product_id`, `review_mode`, `tested_by_rancangloka`, `testing_provenance`, `editorial_status`).
+3. **`Variant`:** Konfigurasi fisik, dimensi, atau sub-tipe spesifik (`variant_id`, `sku_or_model`, `variant_name`).
+4. **`Offer`:** Penawaran komersial dari merchant tertentu (`offer_id`, `merchant_id`, `listing_title`, `listing_url`, `current_availability`). Perubahan toko penjual tidak mengubah identitas `Product`.
+5. **`AffiliateDestination`:** Metadata teknis pelacakan komersial keluar (`destination_id`, `provider`, `affiliate_destination_url`, `is_active`). Bebas dari skor editorial.
+6. **`SpecSnapshot`:** Rekaman terversi spesifikasi teknis (`specs`, `source_fidelity`, `captured_at`). Nilai numerik hanya dicatat jika benar-benar disediakan sumber terverifikasi.
+7. **`PriceSnapshot`:** Rekaman berkala harga pasar (`observed_price`, `currency`, `availability`, `captured_at`).
+8. **`ReviewSnapshot`:** Rekaman sinyal ulasan eksternal (`external_review_count`, `recurring_themes`).
+9. **`EvidenceSource`:** Dokumen acuan bukti (`source_type`, `source_url`, `publisher`, `claim_class`, `source_fidelity`).
+10. **`ArticleProductBinding`:** Pengikatan produk ke artikel dengan peran editorial (`PRIMARY_SUBJECT`, `ALTERNATIVE`, `EXAMPLE`, `MATCHED_PRODUCT`, `RELATED_PRODUCT`) dan pengungkapan komersial (`CommercialDisclosure`).
 
 ---
 
@@ -199,7 +214,8 @@ Roadmap canonical untuk inisiatif `PRODUCT_REVIEW_AFFILIATE_1`:
 ### A. Batasan Skema Relasional vs JSON (`db/migrations/0036_product_review_desk.sql`)
 Arsitektur database dirancang seimbang menghindari ekstrim tabel terlalu banyak maupun satu blob JSON raksasa:
 - **Relasional Otoritatif:**
-  - `product_review_products`: Identitas kanonikal produk editorial, review mode, status tested by rancangloka, dan lifecycle state.
+  - `product_review_products`: Identitas kanonikal produk fisik murni (`product_id`, `canonical_name`, `brand`, `category_id`, `solution_class_id`, `identity_state`). Bebas dari state review editorial.
+  - `product_review_editorial_reviews`: State ulasan editorial RancangLoka (`review_id`, `product_id`, `variant_id`, `article_id`, `review_mode`, `tested_by_rancangloka`, `testing_provenance_json`, `editorial_status`). Mendukung banyak ulasan per produk.
   - `product_review_variants`: Identitas SKU fisik dan varian teknis.
   - `product_review_evidence_sources`: Provenansi sumber bukti, tipe, fidelitas, dan claim class.
   - `product_review_offers`: Penawaran komersial per merchant listing.
@@ -248,5 +264,5 @@ Seluruh 26 skenario pengujian (A sampai Z) terbukti 100% lulus:
 ---
 
 *Status Milestone Sebelumnya: `PRODUCT_REVIEW_AFFILIATE_1A_PASS`*
-*Status Milestone Saat Ini: `PRODUCT_REVIEW_AFFILIATE_1B_PASS`*
+*Status Milestone Saat Ini: `PRODUCT_REVIEW_AFFILIATE_1B_PASS` (Termasuk `PRODUCT_REVIEW_AFFILIATE_1B_DOMAIN_HARDENING`)*
 *Status Sesi: `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1C`*

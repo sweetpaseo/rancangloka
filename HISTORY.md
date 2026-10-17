@@ -13,6 +13,31 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1B-DOMAIN-HARDENING: Pre-1C Domain Model Hardening 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T13:05:00+07:00
+- **Status Operasional:** `PRODUCT_DECISION_ENGINE_1_COMPLETE` | `PRODUCT_REVIEW_AFFILIATE_1A_PASS` | `PRODUCT_REVIEW_AFFILIATE_1B_PASS` | `PRODUCT_REVIEW_AFFILIATE_1B_DOMAIN_HARDENING_PASS` | `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1C`
+- **Next Milestone:** `PRODUCT_REVIEW_AFFILIATE_1C` (Admin Product Review Desk & Editorial Inspector)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic, ZERO WORKER DEPLOYMENT)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — ZERO PRODUCTION WRITES (Migration 0036 strictly pending remotely, verified 0 product_review_* tables in production)
+- **Poin Kunci Rekayasa & Domain Hardening:**
+  1. *Pemisahan Bersih Product Identity vs Editorial Review State:*
+     - Invarian `EDITORIAL_REVIEW_STATE_MUST_NOT_MUTATE_PRODUCT_IDENTITY`: Entitas `Product` (`product_review_products`) dimurnikan hanya untuk identitas fisik manufaktur (`product_id`, `canonical_name`, `brand`, `category_id`, `solution_class_id`, `identity_state`).
+     - Entitas baru kelas satu: `EditorialProductReview` (`product_review_editorial_reviews`) yang memiliki `review_id`, `product_id`, `variant_id?`, `article_id?`, `review_mode`, `tested_by_rancangloka`, `testing_provenance`, `editorial_status`.
+  2. *Dukungan Multi-Review per Produk:*
+     - Satu produk kanonikal dapat memiliki ulasan berganda secara historis (misal: `ANALYTICAL_REVIEW` pada rilis awal, lalu `HANDS_ON_REVIEW` setelah pengujian workshop) tanpa mengubah `product_id` atau identitas kanonikal.
+  3. *Penegakan Invarian Provenansi Pengujian Primer:*
+     - Invarian `TESTED_BY_RANCANGLOKA_REQUIRES_PRIMARY_TEST_PROVENANCE`: `ANALYTICAL_REVIEW` dilarang mengklaim `tested_by_rancangloka = true`. `HANDS_ON_REVIEW` mewajibkan `tested_by_rancangloka = true`, `testing_provenance` lengkap, dan minimal satu `EvidenceSource` dengan tipe `RANCANGLOKA_PRIMARY_TEST`.
+  4. *Independensi Input Pencocokan Teknis (`assembleTechnicalMatchInput`):*
+     - Sepenuhnya independen dari `review_mode`, `tested_by_rancangloka`, dan `testing_provenance`. Mode review adalah provenansi kerja redaksi, bukan spesifikasi fisik material.
+  5. *Revisi Pre-Production Migrasi 0036 (`0036_product_review_desk.sql`):*
+     - Divalidasi secara read-only bahwa migrasi 0036 belum pernah diterapkan ke produksi. Migrasi 0036 direvisi secara aman sebelum penggunaan produksi pertama dengan memisahkan tabel `product_review_editorial_reviews`.
+  6. *Validasi Komprehensif Lulus 100%:*
+     - `test-product-review-contract.js`: 22/22 kasus uji lulus (Bukti A-O).
+     - `test-product-review-persistence.js`: 26/26 kasus uji lulus.
+     - Seluruh regresi PDE (14 contract, 22 evaluator, 13 admin, 27 persistence, 16 boundary) tetap 100% hijau.
+     - TypeScript `tsc --noEmit` dan `npm run build` sukses 0 error.
+
 ### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1B: Product Review Desk Persistence Foundation 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T12:40:00+07:00

@@ -12,7 +12,8 @@
 -- 5. SNAPSHOTS_ARE_APPEND_ORIENTED_OBSERVATIONS
 -- ============================================================================
 
--- 1. Table: product_review_products (Canonical editorial product identities)
+-- 1. Table: product_review_products (Canonical editorial product identities - pure identity)
+-- Permanent Invariant: EDITORIAL_REVIEW_STATE_MUST_NOT_MUTATE_PRODUCT_IDENTITY
 CREATE TABLE IF NOT EXISTS product_review_products (
   product_id TEXT PRIMARY KEY,
   canonical_name TEXT NOT NULL CHECK(length(canonical_name) > 0),
@@ -20,16 +21,40 @@ CREATE TABLE IF NOT EXISTS product_review_products (
   category_id TEXT NOT NULL CHECK(length(category_id) > 0),
   solution_class_id TEXT NOT NULL CHECK(length(solution_class_id) > 0),
   identity_state TEXT NOT NULL CHECK(identity_state IN ('CURRENT', 'IDENTITY_CHANGED', 'VARIANT_CHANGED', 'LISTING_AMBIGUOUS', 'DISCONTINUED', 'UNAVAILABLE')),
-  review_mode TEXT NOT NULL CHECK(review_mode IN ('ANALYTICAL_REVIEW', 'HANDS_ON_REVIEW')),
-  tested_by_rancangloka INTEGER NOT NULL DEFAULT 0 CHECK(tested_by_rancangloka IN (0, 1)),
-  testing_provenance_json TEXT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_pr_products_solution_class ON product_review_products(solution_class_id);
 CREATE INDEX IF NOT EXISTS idx_pr_products_identity_state ON product_review_products(identity_state);
-CREATE INDEX IF NOT EXISTS idx_pr_products_review_mode ON product_review_products(review_mode);
+
+-- 1b. Table: product_review_editorial_reviews (RancangLoka editorial review state & provenance)
+-- Permanent Invariant: EDITORIAL_REVIEW_STATE_MUST_NOT_MUTATE_PRODUCT_IDENTITY
+-- Permanent Invariant: TESTED_BY_RANCANGLOKA_REQUIRES_PRIMARY_TEST_PROVENANCE
+CREATE TABLE IF NOT EXISTS product_review_editorial_reviews (
+  review_id TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL,
+  variant_id TEXT NULL,
+  article_id INTEGER NULL,
+  review_mode TEXT NOT NULL CHECK(review_mode IN ('ANALYTICAL_REVIEW', 'HANDS_ON_REVIEW')),
+  tested_by_rancangloka INTEGER NOT NULL DEFAULT 0 CHECK(tested_by_rancangloka IN (0, 1)),
+  testing_provenance_json TEXT NULL,
+  editorial_status TEXT NOT NULL DEFAULT 'DRAFT' CHECK(editorial_status IN ('DRAFT', 'REVIEWED', 'PUBLISHED', 'ARCHIVED')),
+  reviewed_at TEXT NULL,
+  reviewer_identity TEXT NULL,
+  notes TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (product_id) REFERENCES product_review_products(product_id),
+  FOREIGN KEY (variant_id) REFERENCES product_review_variants(variant_id),
+  FOREIGN KEY (article_id) REFERENCES articles(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pr_ed_reviews_product ON product_review_editorial_reviews(product_id);
+CREATE INDEX IF NOT EXISTS idx_pr_ed_reviews_mode ON product_review_editorial_reviews(review_mode);
+CREATE INDEX IF NOT EXISTS idx_pr_ed_reviews_status ON product_review_editorial_reviews(editorial_status);
+CREATE INDEX IF NOT EXISTS idx_pr_ed_reviews_article ON product_review_editorial_reviews(article_id);
 
 -- 2. Table: product_review_variants (Physical SKU & configurations)
 CREATE TABLE IF NOT EXISTS product_review_variants (
