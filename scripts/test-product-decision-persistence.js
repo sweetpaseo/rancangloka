@@ -27,6 +27,10 @@
  * U. No commerce fields persist.
  * V. No numeric overall score is introduced.
  * W. No production connection required for tests.
+ * X. Canonical Article 5 evidence hash is 142759... and no binding contains 23d1...
+ * Y. Changing Article 5 evidence hash alters model_payload_hash.
+ * Z. Fake 23d1... evidence triggers NEEDS_RECALIBRATION and blocks activation.
+ * AA. Remote APPLY is strictly blocked during preparation phase in activation utility.
  * ============================================================================
  */
 
@@ -34,6 +38,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { spawnSync } from 'node:child_process';
 
 import { DECISION_MODEL_PILOT_KUSEN } from '../src/lib/product-decision/pilot-kusen.ts';
 import {
@@ -48,7 +53,12 @@ import {
   activateDecisionModelVersion
 } from '../src/lib/product-decision/store.ts';
 import { evaluateDecision } from '../src/lib/product-decision/evaluator.ts';
-import { scanForForbiddenFields } from '../src/lib/product-decision/contracts.ts';
+import {
+  scanForForbiddenFields,
+  extractAllModelBindings,
+  computeEvidenceSnapshotHash,
+  deriveEvidenceFreshness
+} from '../src/lib/product-decision/contracts.ts';
 
 function createD1TestDb() {
   const sqlite = new DatabaseSync(':memory:');
@@ -526,6 +536,118 @@ async function runTests() {
   test('W. Tests execute 100% offline via in-memory SQLite with zero production connection', () => {
     assert.ok(process.env.CF_PAGES === undefined || process.env.NODE_ENV !== 'production');
     assert.ok(db.raw !== null);
+  });
+
+  // --------------------------------------------------------------------------
+  // Test X: Canonical Article 5 evidence identity & zero 23d1... presence
+  // --------------------------------------------------------------------------
+  test('X. Canonical Article 5 evidence hash is 142759... and no binding contains 23d1...', () => {
+    const canonicalHash = '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277';
+    const staticBindings = extractAllModelBindings(staticModel);
+    assert.ok(staticBindings.length > 0);
+    for (const b of staticBindings) {
+      if (b.article_id === 5) {
+        assert.equal(b.published_content_hash, canonicalHash);
+        assert.equal(b.source_fidelity, 'NORMALIZED_HASH_VERIFIED');
+        assert.equal(b.publication_version_key, 'receipt:rcpt_bbae85b48e1b2f8d');
+        assert.ok(!b.published_content_hash.includes('23d1'));
+      }
+    }
+
+    // Check serialized row
+    const serializedBindings = JSON.parse(serializedRow.evidence_bindings_json);
+    for (const b of serializedBindings) {
+      if (b.article_id === 5) {
+        assert.equal(b.published_content_hash, canonicalHash);
+        assert.ok(!b.published_content_hash.includes('23d1'));
+      }
+    }
+    assert.ok(!serializedRow.evidence_bindings_json.includes('23d1'));
+
+    // Check reloaded model
+    const reloadedBindings = extractAllModelBindings(reloadedModel);
+    for (const b of reloadedBindings) {
+      if (b.article_id === 5) {
+        assert.equal(b.published_content_hash, canonicalHash);
+        assert.ok(!b.published_content_hash.includes('23d1'));
+      }
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Test Y: Evidence identity changes model_payload_hash
+  // --------------------------------------------------------------------------
+  test('Y. Changing Article 5 evidence hash alters model_payload_hash', () => {
+    const origHash = computeModelPayloadHash(staticModel);
+
+    // Clone and alter Article 5 evidence hash in evaluations and tradeoffs
+    const mutatedModel = JSON.parse(JSON.stringify(staticModel));
+    mutatedModel.constraints = staticModel.constraints;
+    mutatedModel.evaluations[0].evidence_binding.published_content_hash = 'MUTATED_EVIDENCE_HASH_23D1';
+
+    const mutatedBindings = extractAllModelBindings(mutatedModel);
+    mutatedModel.evidence_snapshot_hash = computeEvidenceSnapshotHash(mutatedBindings);
+
+    const mutatedPayloadHash = computeModelPayloadHash(mutatedModel);
+    assert.notEqual(mutatedPayloadHash, origHash);
+  });
+
+  // --------------------------------------------------------------------------
+  // Test Z: Fake 23d1... evidence blocks activation
+  // --------------------------------------------------------------------------
+  await testAsync('Z. Fake 23d1... evidence triggers NEEDS_RECALIBRATION and blocks activation', async () => {
+    const fakeModel = JSON.parse(JSON.stringify(staticModel));
+    fakeModel.model_version = 'v1.3.0';
+    fakeModel.constraints = staticModel.constraints;
+    fakeModel.evaluations[0].evidence_binding.published_content_hash = '23d1d528cb9e688407fc24fc0b38bc3fb5fbd33da78c2eecbf3c16e86ef5696d';
+    const fakeBindings = extractAllModelBindings(fakeModel);
+    fakeModel.evidence_snapshot_hash = computeEvidenceSnapshotHash(fakeBindings);
+
+    const fakeInsert = await insertDecisionModelVersion(db, fakeModel, 'VALIDATED');
+
+    const authoritativeMap = new Map([
+      ['receipt:rcpt_bbae85b48e1b2f8d', {
+        published_content_hash: '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277'
+      }]
+    ]);
+
+    const freshness = deriveEvidenceFreshness(fakeBindings, authoritativeMap);
+    assert.equal(freshness, 'NEEDS_RECALIBRATION');
+
+    const actFake = await activateDecisionModelVersion(db, {
+      version_key: fakeInsert.version_key,
+      actor: 'Chief Editor',
+      authoritativeEvidenceMap: authoritativeMap
+    });
+
+    assert.equal(actFake.ok, false);
+    assert.equal(actFake.status, 'BLOCKED_EVIDENCE_STALE');
+  });
+
+  // --------------------------------------------------------------------------
+  // Test AA: Remote APPLY safety gate in activation utility
+  // --------------------------------------------------------------------------
+  test('AA. Remote APPLY is strictly blocked during preparation phase in activation utility', () => {
+    const scriptPath = path.resolve(process.cwd(), 'scripts/activate-product-decision-pilot.js');
+
+    // Run without confirm flag
+    const resNoConfirm = spawnSync(process.execPath, [scriptPath, '--remote', '--apply'], {
+      encoding: 'utf-8'
+    });
+    assert.equal(resNoConfirm.status, 1);
+    assert.ok(resNoConfirm.stderr.includes('[BLOCKED]') || resNoConfirm.stdout.includes('[BLOCKED]'));
+
+    // Run with confirm flag
+    const resWithConfirm = spawnSync(
+      process.execPath,
+      [scriptPath, '--remote', '--apply', '--confirm-production-pde-activation'],
+      { encoding: 'utf-8' }
+    );
+    assert.equal(resWithConfirm.status, 1);
+    assert.ok(
+      resWithConfirm.stderr.includes('[BLOCKED_PREPARATION_PHASE]') ||
+      resWithConfirm.stdout.includes('[BLOCKED_PREPARATION_PHASE]')
+    );
   });
 
   console.log('================================================================');
