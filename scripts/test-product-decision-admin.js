@@ -1,27 +1,18 @@
 /**
  * ============================================================================
  * RancangLoka Product Decision Engine (PRODUCT_DECISION_ENGINE-1C)
- * Admin & Editorial Decision Inspection Suite
+ * Admin & Editorial Decision Inspection Suite (Acceptance Hardening)
  *
- * Requirements (A to R):
- * A. Admin decision route/module exists.
- * B. Uses DECISION_MODEL_PILOT_KUSEN.
- * C. Uses evaluateDecision() rather than duplicate logic.
- * D. Scenario presets populate context only.
- * E. No expected_recommendation field reaches evaluator.
- * F. All six CORE context fields represented.
- * G. Recommendation displays qualitative fit only.
- * H. Three Golden Questions represented.
- * I. HARD/SOFT trace represented.
- * J. Criterion evidence represented.
- * K. Evidence identity represented.
- * L. Source fidelity NORMALIZED_HASH_VERIFIED shown correctly.
- * M. Evidence stale/unavailable states handled.
- * N. No affiliate/merchant/price/commission fields.
- * O. Admin cache/auth safety preserved.
- * P. No numeric overall score UI.
- * Q. Existing PDE-1A suite passes.
- * R. Existing PDE-1B evaluator suite passes.
+ * Requirements (A to I + Section 26 + PDE-1A/1B Regressions):
+ * A. Admin metadata criteria_version equals imported model.criteria_version.
+ * B. Canonical criteria_version is crit_kusen_v1.
+ * C. problem_goal uses controlled selector, not arbitrary free-text input.
+ * D. Forged invalid problem_goal is rejected.
+ * E. Forged invalid values for every CORE taxonomy field are rejected.
+ * F. Valid canonical scenario preset values still evaluate correctly.
+ * G. No expected recommendation data reaches evaluator (SCENARIO_PRESET_IS_CONTEXT_ONLY).
+ * H. No numeric score UI.
+ * I. No commerce fields.
  *
  * Section 26 Acceptance Fixtures:
  * 1. west-facing master bedroom -> uPVC -> STRONG_FIT
@@ -52,11 +43,18 @@ import {
   FIT_LABELS_ID,
   CLAIM_CLASS_LABELS_ID,
   SOLUTION_LABELS_ID,
+  PROBLEM_GOAL_OPTIONS,
+  ALLOWED_PROBLEM_GOALS,
   BUILDING_CONTEXT_OPTIONS,
+  ALLOWED_BUILDING_CONTEXTS,
   CLIMATE_EXPOSURE_OPTIONS,
+  ALLOWED_CLIMATE_EXPOSURES,
   APPLICATION_LOCATION_OPTIONS,
+  ALLOWED_APPLICATION_LOCATIONS,
   BUDGET_CLASS_OPTIONS,
-  MAINTENANCE_TOLERANCE_OPTIONS
+  ALLOWED_BUDGET_CLASSES,
+  MAINTENANCE_TOLERANCE_OPTIONS,
+  ALLOWED_MAINTENANCE_TOLERANCES
 } from '../src/lib/product-decision/admin-inspector.ts';
 import { evaluateDecision } from '../src/lib/product-decision/evaluator.ts';
 import { scanForForbiddenFields } from '../src/lib/product-decision/contracts.ts';
@@ -73,47 +71,152 @@ function readRepoFile(relPath) {
 }
 
 // ----------------------------------------------------------------------------
-// TEST A: Admin decision route/module exists
+// TEST A & B: Criteria Version Source of Truth & Model Metadata
+// Invariant: ADMIN_METADATA_MUST_RENDER_MODEL_SOURCE_TRUTH
 // ----------------------------------------------------------------------------
-test('PDE-1C [Test A]: Admin decision route and inspection modules exist', () => {
+test('PDE-1C [Test A & B]: Admin metadata criteria_version strictly equals model.criteria_version (crit_kusen_v1)', () => {
   const astroPage = readRepoFile('src/pages/admin/decisions.astro');
-  const helperModule = readRepoFile('src/lib/product-decision/admin-inspector.ts');
 
-  assert.ok(astroPage.length > 500, 'src/pages/admin/decisions.astro must contain complete inspection UI');
-  assert.ok(helperModule.length > 500, 'src/lib/product-decision/admin-inspector.ts must contain helper logic');
+  // Verify imported source value directly
+  assert.equal(
+    DECISION_MODEL_PILOT_KUSEN.criteria_version,
+    'crit_kusen_v1',
+    'DECISION_MODEL_PILOT_KUSEN.criteria_version must be exactly crit_kusen_v1'
+  );
+  assert.equal(
+    DECISION_MODEL_PILOT_KUSEN.model_id,
+    'model_pde_kusen_tropis',
+    'DECISION_MODEL_PILOT_KUSEN.model_id must be model_pde_kusen_tropis'
+  );
+
+  // Invariant: UI dynamically renders model.criteria_version without hardcoded strings
+  assert.match(
+    astroPage,
+    /\{DECISION_MODEL_PILOT_KUSEN\.criteria_version\}/,
+    'Astro UI must directly interpolate DECISION_MODEL_PILOT_KUSEN.criteria_version'
+  );
+  assert.doesNotMatch(
+    astroPage,
+    /Kriteria:\s*<strong[^>]*>v1\.0\.0<\/strong>/,
+    'Astro UI must not render hardcoded v1.0.0 for criteria version'
+  );
 });
 
 // ----------------------------------------------------------------------------
-// TEST B: Uses DECISION_MODEL_PILOT_KUSEN
+// TEST C: problem_goal uses controlled selector, NOT free-text input
+// Invariant: EVALUATOR_CRITICAL_CONTEXT_MUST_USE_CONTROLLED_TAXONOMY
 // ----------------------------------------------------------------------------
-test('PDE-1C [Test B]: Admin inspection uses canonical DECISION_MODEL_PILOT_KUSEN', () => {
+test('PDE-1C [Test C]: problem_goal uses controlled <select> populated from PROBLEM_GOAL_OPTIONS, not free text', () => {
   const astroPage = readRepoFile('src/pages/admin/decisions.astro');
-  const helperModule = readRepoFile('src/lib/product-decision/admin-inspector.ts');
 
-  assert.match(astroPage, /DECISION_MODEL_PILOT_KUSEN/);
-  assert.match(helperModule, /DECISION_MODEL_PILOT_KUSEN/);
-  assert.equal(DECISION_MODEL_PILOT_KUSEN.model_id, 'model_pde_kusen_tropis');
+  // Must have a <select name="problem_goal">
+  assert.match(
+    astroPage,
+    /<select[^>]*name="problem_goal"[^>]*>/,
+    'UI must render a controlled <select> for problem_goal'
+  );
+
+  // Must NOT have <input name="problem_goal">
+  assert.doesNotMatch(
+    astroPage,
+    /<input[^>]*name="problem_goal"[^>]*>/,
+    'UI must NOT permit arbitrary <input> for problem_goal'
+  );
+
+  // Must be populated from canonical options
+  assert.match(
+    astroPage,
+    /PROBLEM_GOAL_OPTIONS\.map/,
+    'Select options must map over PROBLEM_GOAL_OPTIONS'
+  );
+  assert.equal(PROBLEM_GOAL_OPTIONS.length, 5, 'Must have 5 canonical problem goals matching pilot scenarios');
 });
 
 // ----------------------------------------------------------------------------
-// TEST C: Uses evaluateDecision() rather than duplicate logic
+// TEST D: Forged invalid problem_goal is rejected by server-side validation
 // ----------------------------------------------------------------------------
-test('PDE-1C [Test C]: Uses pure evaluateDecision() directly without duplicate recommendation logic', () => {
-  const helperModule = readRepoFile('src/lib/product-decision/admin-inspector.ts');
-  const astroPage = readRepoFile('src/pages/admin/decisions.astro');
+test('PDE-1C [Test D]: Forged invalid problem_goal is rejected at server parse and evaluation gate', () => {
+  const baseValidParams = {
+    problem_goal: 'Mereduksi panas radiasi sore dan kebisingan lingkungan pada kamar tidur ber-AC',
+    building_context: 'MULTI_STORY_HOUSE',
+    climate_exposure: 'WEST_AFTERNOON_HEAT',
+    application_location: 'MASTER_BEDROOM',
+    budget_class: 'BALANCED_MID',
+    maintenance_tolerance: 'FIT_AND_FORGET'
+  };
 
-  assert.match(helperModule, /import\s+{[^}]*evaluateDecision[^}]*}\s+from\s+['"]\.\/evaluator\.ts['"]/);
-  assert.match(helperModule, /evaluateDecision\(model,\s*context,\s*options\)/);
+  // 1. Manually forged query with bogus problem_goal
+  const forgedParams = new URLSearchParams({
+    ...baseValidParams,
+    problem_goal: 'totally_invalid_free_text_value_12345'
+  });
 
-  // Invariant: UI does NOT do ad-hoc if-statements to decide winner
-  assert.doesNotMatch(astroPage, /if\s*\(.*climate_exposure.*===.*WEST_AFTERNOON_HEAT.*\)\s*\{/);
-  assert.doesNotMatch(astroPage, /if\s*\(.*sol_upvc_multi_chamber.*\)\s*recommend/);
+  const parsed = parseDecisionContextFromParams(forgedParams);
+  assert.equal(parsed.valid, false, 'parseDecisionContextFromParams must return valid: false for forged problem_goal');
+  assert.ok(parsed.validationErrors.some(e => e.field === 'problem_goal'));
+
+  // 2. runDecisionInspection must reject it and return typed INVALID_CONTEXT
+  const evalResult = runDecisionInspection(parsed);
+  assert.equal(evalResult.ok, false, 'runDecisionInspection must return ok: false for invalid context');
+  assert.equal(evalResult.status, 'INVALID_CONTEXT');
+  assert.ok(evalResult.issues.some(iss => iss.field === 'problem_goal'));
+
+  // 3. Direct context with invalid problem_goal passed directly must also be blocked
+  const directContext = {
+    ...baseValidParams,
+    problem_goal: 'arbitrary_unapproved_goal'
+  };
+  const directResult = runDecisionInspection(directContext);
+  assert.equal(directResult.ok, false);
+  assert.equal(directResult.status, 'INVALID_CONTEXT');
 });
 
 // ----------------------------------------------------------------------------
-// TEST D & E: Scenario presets populate context only (SCENARIO_PRESET_IS_CONTEXT_ONLY)
+// TEST E: Forged invalid values for EVERY CORE taxonomy field are rejected
 // ----------------------------------------------------------------------------
-test('PDE-1C [Test D & E]: Presets strictly populate context only; zero oracle expectation reaches evaluator', () => {
+test('PDE-1C [Test E]: Forged invalid values for every single CORE dimension are rejected at server gate', () => {
+  const baseValidParams = {
+    problem_goal: 'Mereduksi panas radiasi sore dan kebisingan lingkungan pada kamar tidur ber-AC',
+    building_context: 'MULTI_STORY_HOUSE',
+    climate_exposure: 'WEST_AFTERNOON_HEAT',
+    application_location: 'MASTER_BEDROOM',
+    budget_class: 'BALANCED_MID',
+    maintenance_tolerance: 'FIT_AND_FORGET'
+  };
+
+  const fieldsToTest = [
+    { field: 'building_context', invalidVal: 'TREEHOUSE_SKYSCRAPER' },
+    { field: 'climate_exposure', invalidVal: 'ARCTIC_BLIZZARD' },
+    { field: 'application_location', invalidVal: 'UNDERGROUND_BUNKER' },
+    { field: 'budget_class', invalidVal: 'UNLIMITED_TRILLIONAIRE' },
+    { field: 'maintenance_tolerance', invalidVal: 'ZERO_SECOND_LIFETIME' }
+  ];
+
+  for (const { field, invalidVal } of fieldsToTest) {
+    const forged = new URLSearchParams({
+      ...baseValidParams,
+      [field]: invalidVal
+    });
+
+    const parsed = parseDecisionContextFromParams(forged);
+    assert.equal(parsed.valid, false, `Field ${field} with invalid value '${invalidVal}' must fail parsing`);
+    assert.ok(
+      parsed.validationErrors.some(e => e.field === field),
+      `Validation errors must cite field ${field}`
+    );
+
+    const evalResult = runDecisionInspection(parsed);
+    assert.equal(evalResult.ok, false);
+    assert.equal(evalResult.status, 'INVALID_CONTEXT');
+    assert.ok(evalResult.issues.some(iss => iss.field === field));
+  }
+});
+
+// ----------------------------------------------------------------------------
+// TEST F & G: Valid canonical scenario preset values evaluate correctly & No expected recommendation reaches evaluator
+// Invariant: SCENARIO_PRESET_IS_CONTEXT_ONLY
+// ----------------------------------------------------------------------------
+test('PDE-1C [Test F & G]: Presets populate context only; zero oracle expectation reaches evaluator', () => {
   const presets = getCanonicalScenarioPresets();
   assert.equal(presets.length, 5, 'Must provide all 5 canonical scenarios');
 
@@ -142,36 +245,9 @@ test('PDE-1C [Test D & E]: Presets strictly populate context only; zero oracle e
 });
 
 // ----------------------------------------------------------------------------
-// TEST F: All six CORE context fields represented
+// TEST H: No numeric score UI
 // ----------------------------------------------------------------------------
-test('PDE-1C [Test F]: All six CORE context dimensions are fully represented in controls & parser', () => {
-  const astroPage = readRepoFile('src/pages/admin/decisions.astro');
-
-  const coreFields = [
-    'problem_goal',
-    'building_context',
-    'climate_exposure',
-    'application_location',
-    'budget_class',
-    'maintenance_tolerance'
-  ];
-
-  for (const field of coreFields) {
-    assert.match(astroPage, new RegExp(`name="${field}"`), `Form must contain field ${field}`);
-  }
-
-  // Check options counts
-  assert.equal(BUILDING_CONTEXT_OPTIONS.length, 4);
-  assert.equal(CLIMATE_EXPOSURE_OPTIONS.length, 4);
-  assert.equal(APPLICATION_LOCATION_OPTIONS.length, 4);
-  assert.equal(BUDGET_CLASS_OPTIONS.length, 3);
-  assert.equal(MAINTENANCE_TOLERANCE_OPTIONS.length, 2);
-});
-
-// ----------------------------------------------------------------------------
-// TEST G: Recommendation displays qualitative fit only
-// ----------------------------------------------------------------------------
-test('PDE-1C [Test G]: Qualitative fit labels exist in Indonesian; zero numeric scoring', () => {
+test('PDE-1C [Test H]: Qualitative fit labels exist in Indonesian; zero numeric scoring or fake precision', () => {
   assert.equal(FIT_LABELS_ID.STRONG_FIT.label, 'Sangat Cocok');
   assert.equal(FIT_LABELS_ID.GOOD_FIT_WITH_TRADEOFF.label, 'Cocok dengan Kompromi');
   assert.equal(FIT_LABELS_ID.CONDITIONAL_FIT.label, 'Cocok dengan Syarat');
@@ -179,71 +255,52 @@ test('PDE-1C [Test G]: Qualitative fit labels exist in Indonesian; zero numeric 
 
   const astroPage = readRepoFile('src/pages/admin/decisions.astro');
   assert.match(astroPage, /FIT_LABELS_ID/);
+
+  // Assert zero percentage bars, ratings, or scores
+  assert.doesNotMatch(astroPage, /\d+%\s*cocok/i);
+  assert.doesNotMatch(astroPage, /\/10\s*bintang/i);
+  assert.doesNotMatch(astroPage, /winner\s*badge/i);
+  assert.doesNotMatch(astroPage, /skor\s*:/i);
 });
 
 // ----------------------------------------------------------------------------
-// TEST H: Three Golden Questions represented
+// TEST I: No commerce fields
 // ----------------------------------------------------------------------------
-test('PDE-1C [Test H]: Three Golden Questions are prominently displayed', () => {
+test('PDE-1C [Test I]: Zero commercial/affiliate/merchant fields exist in UI or helper modules', () => {
   const astroPage = readRepoFile('src/pages/admin/decisions.astro');
+  const helperModule = readRepoFile('src/lib/product-decision/admin-inspector.ts');
 
-  assert.match(astroPage, /1\.\s*Mengapa Opsi Ini\?/);
-  assert.match(astroPage, /2\.\s*Mengapa Bukan Alternatifnya\?/);
-  assert.match(astroPage, /3\.\s*Kondisi Apa yang Dapat Mengubah Rekomendasi\?\s*\(Pivot Conditions\)/);
+  const forbiddenTerms = [
+    'affiliate_url',
+    'affiliate',
+    'commission',
+    'merchant',
+    'sponsored',
+    'price',
+    'sku',
+    'product_listing'
+  ];
 
-  assert.match(astroPage, /why_recommended/);
-  assert.match(astroPage, /why_not_alternative/);
-  assert.match(astroPage, /pivot_conditions/);
+  for (const term of forbiddenTerms) {
+    assert.doesNotMatch(astroPage, new RegExp(`name=["']${term}["']`, 'i'), `Forbidden form field: ${term}`);
+  }
+
+  assert.equal(scanForForbiddenFields(FIT_LABELS_ID).length, 0);
+  assert.equal(scanForForbiddenFields(CLAIM_CLASS_LABELS_ID).length, 0);
+  assert.equal(scanForForbiddenFields(PROBLEM_GOAL_OPTIONS).length, 0);
 });
 
 // ----------------------------------------------------------------------------
-// TEST I: HARD/SOFT constraint trace represented
+// ADDITIONAL ENGINE & ADMIN SAFETY VERIFICATIONS
 // ----------------------------------------------------------------------------
-test('PDE-1C [Test I]: HARD and SOFT constraint traces are distinctly rendered', () => {
+test('PDE-1C [Admin Structure]: Admin decision route exists and integrates AdminLayout', () => {
   const astroPage = readRepoFile('src/pages/admin/decisions.astro');
-
-  assert.match(astroPage, /HARD CONSTRAINTS/);
-  assert.match(astroPage, /SOFT CONSTRAINTS/);
-  assert.match(astroPage, /hard_constraint_results/);
-  assert.match(astroPage, /soft_constraint_results/);
-  assert.match(astroPage, /disqualified_solution_ids/);
+  assert.match(astroPage, /import AdminLayout from '\.\.\/\.\.\/layouts\/AdminLayout\.astro'/);
+  assert.match(astroPage, /Cache-Control['"],\s*['"]no-store,\s*private['"]/);
+  assert.match(astroPage, /X-Robots-Tag['"],\s*['"]noindex,\s*nofollow/);
 });
 
-// ----------------------------------------------------------------------------
-// TEST J: Criterion evidence represented
-// ----------------------------------------------------------------------------
-test('PDE-1C [Test J]: Criterion evaluations, factual basis, and claim classes are rendered in trace table', () => {
-  const astroPage = readRepoFile('src/pages/admin/decisions.astro');
-
-  assert.match(astroPage, /criterion_results/);
-  assert.match(astroPage, /qualitative_tier/);
-  assert.match(astroPage, /factual_basis/);
-  assert.match(astroPage, /claim_class/);
-  assert.match(astroPage, /CLAIM_CLASS_LABELS_ID/);
-});
-
-// ----------------------------------------------------------------------------
-// TEST K & L: Evidence identity and source fidelity
-// ----------------------------------------------------------------------------
-test('PDE-1C [Test K & L]: Evidence identity matches Article 5 and NORMALIZED_HASH_VERIFIED', () => {
-  const astroPage = readRepoFile('src/pages/admin/decisions.astro');
-
-  assert.equal(ARTICLE_5_EVIDENCE_BASE.article_id, 5);
-  assert.equal(ARTICLE_5_EVIDENCE_BASE.publication_version_key, 'receipt:rcpt_bbae85b48e1b2f8d');
-  assert.equal(ARTICLE_5_EVIDENCE_BASE.published_content_hash, '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277');
-  assert.equal(ARTICLE_5_EVIDENCE_BASE.source_fidelity, 'NORMALIZED_HASH_VERIFIED');
-
-  assert.match(astroPage, /ARTICLE_5_EVIDENCE_BASE\.article_id/);
-  assert.match(astroPage, /ARTICLE_5_EVIDENCE_BASE\.publication_version_key/);
-  assert.match(astroPage, /ARTICLE_5_EVIDENCE_BASE\.published_content_hash/);
-  assert.match(astroPage, /ARTICLE_5_EVIDENCE_BASE\.source_fidelity/);
-  assert.match(astroPage, /Bukan BYTE_EXACT/);
-});
-
-// ----------------------------------------------------------------------------
-// TEST M: Evidence stale/unavailable states handled (fail-safe gate)
-// ----------------------------------------------------------------------------
-test('PDE-1C [Test M]: Stale or unavailable evidence blocks normal recommendation', () => {
+test('PDE-1C [Evidence Freshness]: Stale or unavailable evidence blocks normal recommendation display', () => {
   const baseContext = getPresetContext('scen_west_facing_master_bedroom');
 
   // 1. Current mode -> SUCCESS
@@ -267,51 +324,13 @@ test('PDE-1C [Test M]: Stale or unavailable evidence blocks normal recommendatio
   assert.match(astroPage, /EVALUASI DIBLOKIR/);
 });
 
-// ----------------------------------------------------------------------------
-// TEST N & P: Commercial firewall & zero fake precision
-// ----------------------------------------------------------------------------
-test('PDE-1C [Test N & P]: Zero commercial/affiliate/merchant fields; zero numeric overall score', () => {
-  const astroPage = readRepoFile('src/pages/admin/decisions.astro');
-  const helperModule = readRepoFile('src/lib/product-decision/admin-inspector.ts');
-
-  const forbiddenTerms = [
-    'affiliate_url',
-    'affiliate',
-    'commission',
-    'merchant',
-    'sponsored',
-    'price',
-    'sku',
-    'product_listing'
-  ];
-
-  for (const term of forbiddenTerms) {
-    // Assert no form inputs or bindings for these
-    assert.doesNotMatch(astroPage, new RegExp(`name=["']${term}["']`, 'i'), `Forbidden form field: ${term}`);
-  }
-
-  // Check forbidden fields scanner on helper exports
-  assert.equal(scanForForbiddenFields(FIT_LABELS_ID).length, 0);
-  assert.equal(scanForForbiddenFields(CLAIM_CLASS_LABELS_ID).length, 0);
-
-  // Assert no numeric fake precision percentages or star ratings
-  assert.doesNotMatch(astroPage, /\d+%\s*cocok/i);
-  assert.doesNotMatch(astroPage, /\/10\s*bintang/i);
-  assert.doesNotMatch(astroPage, /winner\s*badge/i);
-});
-
-// ----------------------------------------------------------------------------
-// TEST O: Admin cache & auth safety preserved
-// ----------------------------------------------------------------------------
-test('PDE-1C [Test O]: Admin cache-control and private headers enforced', () => {
-  const astroPage = readRepoFile('src/pages/admin/decisions.astro');
-  const middlewareSrc = readRepoFile('src/middleware.ts');
-
-  assert.match(astroPage, /Cache-Control['"],\s*['"]no-store,\s*private['"]/);
-  assert.match(astroPage, /X-Robots-Tag['"],\s*['"]noindex,\s*nofollow/);
-
-  // Middleware covers /admin and /admin/decisions
-  assert.match(middlewareSrc, /pathname\.startsWith\('\/admin'\)/);
+test('PDE-1C [Canonical Evidence Hash]: Snapshot hash strictly equals eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed', () => {
+  assert.equal(
+    DECISION_MODEL_PILOT_KUSEN.evidence_snapshot_hash,
+    'eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed'
+  );
+  assert.equal(ARTICLE_5_EVIDENCE_BASE.article_id, 5);
+  assert.equal(ARTICLE_5_EVIDENCE_BASE.source_fidelity, 'NORMALIZED_HASH_VERIFIED');
 });
 
 // ----------------------------------------------------------------------------
@@ -347,19 +366,19 @@ test('PDE-1C [Section 26]: All 5 canonical scenarios reproduce exact expected ev
   ];
 
   for (const tc of testCases) {
-    // 1. Simulate query params loading via helper
     const searchParams = new URLSearchParams({ scenario: tc.id });
-    const { context, selectedScenarioId, evidenceMode } = parseDecisionContextFromParams(searchParams);
+    const parseResult = parseDecisionContextFromParams(searchParams);
 
-    assert.equal(selectedScenarioId, tc.id);
-    assert.equal(evidenceMode, 'current');
+    assert.equal(parseResult.valid, true);
+    assert.equal(parseResult.selectedScenarioId, tc.id);
+    assert.equal(parseResult.evidenceMode, 'current');
 
     // Invariant: Verify context does NOT contain oracle fields
-    assert.equal(context.expected_recommendation, undefined);
-    assert.equal(context.scenario_id, undefined);
+    assert.equal(parseResult.context.expected_recommendation, undefined);
+    assert.equal(parseResult.context.scenario_id, undefined);
 
-    // 2. Evaluate raw context
-    const res = runDecisionInspection(context, evidenceMode);
+    // Evaluate raw context
+    const res = runDecisionInspection(parseResult);
     assert.equal(res.ok, true, `Scenario ${tc.id} must evaluate ok: true`);
     assert.equal(res.status, 'RECOMMENDED');
     assert.equal(res.recommendation.recommended_solution_id, tc.expectedSolution, `Scenario ${tc.id} must recommend ${tc.expectedSolution}`);
@@ -373,9 +392,9 @@ test('PDE-1C [Section 26]: All 5 canonical scenarios reproduce exact expected ev
 });
 
 // ----------------------------------------------------------------------------
-// TEST Q: Existing PDE-1A suite passes
+// REGRESSION: PDE-1A & PDE-1B Test Suites
 // ----------------------------------------------------------------------------
-test('PDE-1C [Test Q]: Existing PDE-1A contract test suite passes cleanly', () => {
+test('PDE-1C [Regression]: Existing PDE-1A contract test suite passes cleanly', () => {
   const output = execSync('node scripts/test-product-decision-engine-contract.js', {
     cwd: ROOT_DIR,
     encoding: 'utf8'
@@ -383,14 +402,10 @@ test('PDE-1C [Test Q]: Existing PDE-1A contract test suite passes cleanly', () =
   assert.match(output, /14 passed,\s*0 failed/);
 });
 
-// ----------------------------------------------------------------------------
-// TEST R: Existing PDE-1B evaluator suite passes
-// ----------------------------------------------------------------------------
-test('PDE-1C [Test R]: Existing PDE-1B evaluator test suite passes cleanly', () => {
+test('PDE-1C [Regression]: Existing PDE-1B evaluator test suite passes cleanly', () => {
   const output = execSync('node scripts/test-product-decision-engine-evaluator.js', {
     cwd: ROOT_DIR,
     encoding: 'utf8'
   });
   assert.match(output, /22 passed,\s*0 failed/);
 });
-

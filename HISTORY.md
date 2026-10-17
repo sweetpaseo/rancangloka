@@ -85,7 +85,7 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
      - Tipe Bukti Kriteria: `BOOLEAN`, `ORDINAL`, `QUALITATIVE_CATEGORY`, `MEASURED_VALUE` (hanya jika data riil tersedia di naskah).
      - Pemindai Batas Afiliasi/Komersial: `scanForForbiddenFields` memindai rekursif terhadap 18 kata kunci komersial/skor semu (`affiliate_url`, `commission`, `merchant`, `winner_score`, dll).
   4. *Fixture Pilot Artikel 5 (Kusen Aluminium vs uPVC):*
-     - `model_id`: `dp_kusen_aluminium_vs_upvc_tropis`, `model_version: v1.0.0`, `criteria_version: v1.0.0`.
+     - `model_id`: `model_pde_kusen_tropis`, `model_version: v1.0.0`, `criteria_version: crit_kusen_v1`.
      - 2 Solution Classes: `sol_aluminium_standar` dan `sol_upvc_multi_chamber`.
      - 7 Kriteria Otoritatif Artikel 5: konduktivitas termal bingkai, kekakuan struktural bentang lebar, ketahanan rembes air sudut, insulasi akustik, ketahanan korosi pesisir, stabilitas muai-panjang termal, ketebalan profil visual (*sightlines*).
      - 5 Skenario Deterministik dengan Pivot Conditions: kamar tidur lantai 2 hadap barat, pintu geser kaca masif 3.6m, fasad pesisir terpaan hujan, renovasi anggaran ketat, rumah tinggal rendah perawatan.

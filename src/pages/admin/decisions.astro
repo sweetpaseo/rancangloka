@@ -11,6 +11,7 @@ import {
   FIT_LABELS_ID,
   CLAIM_CLASS_LABELS_ID,
   SOLUTION_LABELS_ID,
+  PROBLEM_GOAL_OPTIONS,
   BUILDING_CONTEXT_OPTIONS,
   CLIMATE_EXPOSURE_OPTIONS,
   APPLICATION_LOCATION_OPTIONS,
@@ -25,11 +26,12 @@ Astro.response.headers.set('Cache-Control', 'no-store, private');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
 
 // Parse Context & Invariants: Presets populate context parameters only
-const { context, selectedScenarioId, evidenceMode } = parseDecisionContextFromParams(Astro.url.searchParams);
+const parseResult = parseDecisionContextFromParams(Astro.url.searchParams);
+const { context, selectedScenarioId, evidenceMode } = parseResult;
 const presets = getCanonicalScenarioPresets();
 
-// Execute pure deterministic evaluator
-const result = runDecisionInspection(context, evidenceMode, DECISION_MODEL_PILOT_KUSEN);
+// Execute pure deterministic evaluator with server-side validation gate
+const result = runDecisionInspection(parseResult, evidenceMode, DECISION_MODEL_PILOT_KUSEN);
 
 // Helper for solution Indonesian labels
 const getSolutionName = (id?: string) => {
@@ -217,17 +219,20 @@ const activeFreshness = freshnessStatusMap[evidenceMode];
           <!-- 1. Problem Goal -->
           <div class="lg:col-span-3 space-y-1">
             <label for="problem_goal" class="block text-xs font-outfit font-bold text-slate-800">
-              1. Tujuan Masalah Utama (Problem Goal) <span class="text-rose-500">*</span>
+              1. Sasaran Masalah Utama (Problem Goal) <span class="text-rose-500">*</span>
             </label>
-            <input
-              type="text"
+            <select
               id="problem_goal"
               name="problem_goal"
               required
-              value={context.problem_goal}
-              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30 focus:border-[#0066ee]"
-              placeholder="Contoh: Mereduksi panas radiasi sore dan kebisingan pada kamar tidur ber-AC"
-            />
+              class="w-full text-xs font-outfit bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30"
+            >
+              {PROBLEM_GOAL_OPTIONS.map(opt => (
+                <option value={opt.value} selected={context.problem_goal === opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <!-- 2. Building Context -->

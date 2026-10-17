@@ -877,5 +877,42 @@ Seleksi solusi rekomendasi dijalankan murni berdasarkan komputasi deterministik 
 
 ---
 
-*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1B_PASS`*  
-*Milestone Berikutnya: `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1C` (Admin / Editorial Inspection UI)*
+## 25. Implementasi PDE-1C: Admin / Editorial Decision Inspector & Invarian Taksonomi Terkendali
+
+Tonggak **`PRODUCT_DECISION_ENGINE-1C`** mengimplementasikan antarmuka inspeksi keputusan editorial internal pada rute `/admin/decisions` ([src/pages/admin/decisions.astro](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/pages/admin/decisions.astro)) dan modul pembantu inspeksi [src/lib/product-decision/admin-inspector.ts](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/product-decision/admin-inspector.ts).
+
+### 25.1 Invarian Sumber Kebenaran Metadata Model
+> **INVARIAN PERMANEN:**
+> **`ADMIN_METADATA_MUST_RENDER_MODEL_SOURCE_TRUTH`**
+> Seluruh metadata model keputusan pada antarmuka admin (seperti `model_id`, `model_version`, `criteria_version`, dan `evidence_snapshot_hash`) wajib bersumber langsung dari definisi model otoritatif (`DECISION_MODEL_PILOT_KUSEN`). Dilarang keras menuliskan nilai versi kriteria secara statis/hardcoded pada komponen UI. Nilai kanonikal terverifikasi adalah `criteria_version = 'crit_kusen_v1'`.
+
+### 25.2 Invarian Taksonomi Terkendali untuk Dimensi Konteks
+> **INVARIAN PERMANEN:**
+> **`EVALUATOR_CRITICAL_CONTEXT_MUST_USE_CONTROLLED_TAXONOMY`**
+> Seluruh 6 dimensi konteks wajib (CORE) tidak boleh menggunakan input teks bebas (free-text). `problem_goal` dan 5 dimensi lainnya wajib menggunakan kontrol semantik terkendali (`<select>`) yang dipetakan dari himpunan taksonomi kanonikal model. Validasi sisi server (`parseDecisionContextFromParams` & `runDecisionInspection`) wajib menolak query palsu atau nilai di luar taksonomi sebelum evaluasi dijalankan.
+
+### 25.3 Invarian Presets Konteks Murni
+> **INVARIAN PERMANEN:**
+> **`SCENARIO_PRESET_IS_CONTEXT_ONLY`**
+> Pintasan 5 skenario pilot kanonikal hanya mengisi form parameter konteks. Pintasan dilarang menyuntikkan `scenario_id`, `expected_recommendation`, atau `expected_fit` ke dalam modul evaluasi runtime `evaluateDecision()`.
+
+### 25.4 Batas Nol Basis Data (Zero Database Boundary)
+- Modul PDE-1C bekerja 100% pada model statis in-memory dan runtime deterministik.
+- Mutasi Cloudflare D1: **0**.
+- Mutasi Cloudflare R2: **0**.
+- Deploy Worker: **0**.
+
+### 25.5 Hasil Pengujian PDE-1C
+- **Test Suite PDE-1C (`scripts/test-product-decision-admin.js`):** **13/13 PASSED, 0 FAILED**.
+  - **Tes A & B:** Metadata `criteria_version` terbukti identik dengan sumber model (`crit_kusen_v1`).
+  - **Tes C:** `problem_goal` menggunakan `<select>` terkendali tanpa `<input>` teks bebas.
+  - **Tes D & E:** Nilai palsu/forged pada `problem_goal` dan seluruh dimensi CORE ditolak di gerbang server (`INVALID_CONTEXT`).
+  - **Tes F & G:** Presets skenario murni konteks dan 5 skenario pilot mereproduksi hasil rekomendasi secara tepat.
+  - **Tes H & I:** Bebas skor numerik semu dan bebas atribut komersial/afiliasi.
+  - **Regresi PDE-1A & PDE-1B:** 14/14 PASS dan 22/22 PASS.
+  - **Pemeriksaan Tipe & Build:** `npx tsc --noEmit` **0 ERRORS**, `npm run build` **SUKSES**.
+
+---
+
+*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1C_PASS`*
+*Milestone Berikutnya: `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1D` (Controlled D1 Migration & Pilot Activation)*
