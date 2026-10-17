@@ -13,6 +13,59 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1C & 1D-A: Admin Inspector & D1 Persistence Preparation 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T08:30:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1A_FULLY_CLOSED` | `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `PRODUCT_DECISION_ENGINE_1_PLAN_PASS` | `PRODUCT_DECISION_ENGINE_1A_PASS` | `PRODUCT_DECISION_ENGINE_1B_PASS` | `PRODUCT_DECISION_ENGINE_1B_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1B_CLOSED` | `PRODUCT_DECISION_ENGINE_1C_PASS` | `PRODUCT_DECISION_ENGINE_1C_CLOSED` | `PRODUCT_DECISION_ENGINE_1D_PREP_PASS` | `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`
+- **Next Milestone:** `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION` (Controlled D1 Migration & Production Activation)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`)
+- **Commits Kunci:**
+  - `6eb24a6` `feat(product): add editorial decision inspector` (Rute admin Astro SSR `/admin/decisions`, kontrol visual inspeksi model dan simulator interaktif)
+  - `d29fe93` `fix(product): harden decision inspector source truth` (Menegakkan invarian metadata model bersumber langsung dari fixture otoritatif `criteria_version = 'crit_kusen_v1'`)
+  - `636d86a` `feat(product): prepare decision model persistence` (Migrasi 0035, persistensi D1 `store.ts`, predicate engine, utility aktivasi dry-run, dan 23 tes persistensi)
+- **Poin Kunci Rekayasa & Keamanan:**
+  1. *Admin / Editorial Inspection UI (PDE-1C, `/admin/decisions`):*
+     - Invarian `ADMIN_METADATA_MUST_RENDER_MODEL_SOURCE_TRUTH`: Seluruh metadata model dirender dinamis dari `DECISION_MODEL_PILOT_KUSEN` (zero hardcoding, `criteria_version = 'crit_kusen_v1'`).
+     - Invarian `EVALUATOR_CRITICAL_CONTEXT_MUST_USE_CONTROLLED_TAXONOMY`: Seluruh 6 dimensi CORE menggunakan `<select>` terkendali yang dipetakan dari taksonomi model; input teks bebas ditiadakan dan forge validation ditegakkan di sisi server.
+     - Invarian `SCENARIO_PRESET_IS_CONTEXT_ONLY`: Pintasan 5 skenario pilot murni mengisi formulir konteks tanpa menyuntikkan ekspektasi oracle ke evaluator runtime.
+     - Suite Pengujian Admin (`scripts/test-product-decision-admin.js`): **13/13 PASS, 0 FAILED**.
+  2. *Lapisan Persistensi Cloudflare D1 Minimal & Aditif (PDE-1D-A):*
+     - Migrasi terverifikasi dari kebenaran repositori: `db/migrations/0035_product_decision_engine.sql`.
+     - Tabel master `decision_models` menyimpan kunci versi kanonikal `${model_id}@${model_version}@${criteria_version}`, metadata masalah, relasi FK ke `articles(id)`, status siklus hidup, hash bukti, dan kolom JSON terstruktur (`solution_classes_json`, `criteria_json`, `evaluations_json`, `constraints_json`, `scenarios_json`, `evidence_bindings_json`).
+     - Tabel audit append-only `decision_model_activations` mencatat setiap aksi aktivasi, supersesi, dan deaktivasi manusia.
+     - Invarian single-active ditegakkan di level mesin basis data: `CREATE UNIQUE INDEX idx_decision_models_active_unique ON decision_models(model_id) WHERE status = 'ACTIVE';`.
+  3. *Serialisasi Predikat Batasan & Keamanan Runtime Edge:*
+     - Tipe deklaratif `ConstraintPredicate` dan `ConstraintRule` mendukung operator murni `EQUALS`, `NOT_EQUALS`, `INCLUDES`, `IN`.
+     - Fungsi `evaluateConstraintPredicate` mengevaluasi batasan secara deterministik tanpa `eval()` atau `new Function()`, menjamin keamanan mutlak di Cloudflare Workers edge.
+     - Rehidrasi otomatis: Deserialisasi membangun kembali fungsi `applies_when` murni sehingga runtime evaluator mengeksekusi batasan tanpa perubahan antarmuka.
+  4. *Integritas Round-Trip Persistensi (`MODEL_PERSISTENCE_ROUND_TRIP_MUST_PRESERVE_DECISION_SEMANTICS`):*
+     - Model pilot diserialisasi ke D1, dibaca kembali, dan dideserialisasi.
+     - Seluruh identitas model, snapshot hash (`eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed`), 2 solusi, 7 kriteria, 3 batasan, 14 evaluasi, tradeoffs, evidence bindings, dan 5 skenario terpreservasi 100%.
+     - Evaluasi seluruh 5 konteks kanonikal menghasilkan rekomendasi, fit taxonomy, dan trace yang byte-for-byte identik antara model statis dan model hasil reload D1.
+  5. *Idempotensi & Deteksi Konflik Semantik Versi:*
+     - Fungsi `computeModelPayloadHash` menghitung SHA-256 dari representasi kanonikal model.
+     - Re-insert payload identik menghasilkan `ALREADY_EXISTS_IDENTICAL` (idempoten).
+     - Re-insert payload termodifikasi di bawah version key yang sama diblokir dengan `BLOCKED_VERSION_CONFLICT`.
+  6. *Gerbang Bukti Otoritatif (Evidence Freshness Guard):*
+     - Aktivasi model memeriksa kesegaran bukti via `deriveEvidenceFreshness`.
+     - Hash bukti basi memblokir aktivasi (`BLOCKED_EVIDENCE_STALE`); bukti tidak ditemukan memblokir aktivasi (`BLOCKED_EVIDENCE_UNAVAILABLE`).
+  7. *Utilitas Aktivasi Terkendali (`scripts/activate-product-decision-pilot.js`):*
+     - Default mode: `DRY RUN (NO_MUTATION)`.
+     - Remote apply pada fase persiapan diblokir mutlak dengan pesan `[BLOCKED_PREPARATION_PHASE]`.
+  8. *Hasil Pengujian Otomatis PDE-1D-A (`scripts/test-product-decision-persistence.js`):*
+     - **23/23 PASS, 0 FAILED** (mencakup tes A hingga W).
+     - Regresi PDE-1A (14/14), PDE-1B (22/22), PDE-1C (13/13), PDE-1D-A (23/23): **Total 72/72 PASS**.
+     - Pemeriksaan tipe: `npx tsc --noEmit` (0 errors).
+     - Build SSR: `npm run build` (sukses dalam 6.69s).
+  9. *Status Keselamatan Produksi:*
+     - 0 mutasi database Cloudflare D1 produksi.
+     - 0 mutasi Cloudflare R2.
+     - 0 worker deployments.
+     - 0 git pushes.
+  10. *Kesiapan Sesi Berikutnya:*
+      - Ekosistem siap secara aman untuk: **`PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`** (eksekusi migrasi D1 0035 remote secara terkendali dan aktivasi model pilot oleh Chief Editor).
+
 ### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1B: Pure Deterministic Evaluator Runtime & Anti-Replay Invariant Acceptance 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T00:30:00+07:00

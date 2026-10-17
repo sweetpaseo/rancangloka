@@ -1,11 +1,11 @@
 # 🛑 RancangLoka & Hermes — Offline Master Checkpoint
-**Tanggal / Waktu:** 2026-10-17T00:30:00+07:00  
-**Status Sesi:** `READY_FOR_OFFLINE`  
-**Current Development State:** `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1C`  
-**Branch:** `feat/jev-lokamedia-integration`  
-**Git HEAD:** `6a24194` (`fix(product): remove golden-answer dependency from decision evaluator`)  
-**Previous Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (2026-10-16T04:01:26Z / 10:54:38 WIB)  
-**Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (2026-10-16T08:38:18Z / 15:38:18 WIB)  
+**Tanggal / Waktu:** 2026-10-17T08:30:00+07:00
+**Status Sesi:** `READY_FOR_OFFLINE`
+**Current Development State:** `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`
+**Branch:** `feat/jev-lokamedia-integration`
+**Git HEAD:** `636d86a` (`feat(product): prepare decision model persistence`)
+**Previous Production Worker:** `624b040f-52ed-4fde-8b6b-fd4d3d413586` (2026-10-16T04:01:26Z / 10:54:38 WIB)
+**Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (2026-10-16T08:38:18Z / 15:38:18 WIB)
 **Status Operasional:**
 - `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED`
 - `CONTENT_PROTECTION_1A_FULLY_CLOSED`
@@ -17,55 +17,31 @@
 - `PRODUCT_DECISION_ENGINE_1B_PASS`
 - `PRODUCT_DECISION_ENGINE_1B_ACCEPTANCE_PASS`
 - `PRODUCT_DECISION_ENGINE_1B_CLOSED`
-- `READY_TO_IMPLEMENT_PRODUCT_DECISION_ENGINE_1C`
+- `PRODUCT_DECISION_ENGINE_1C_PASS`
+- `PRODUCT_DECISION_ENGINE_1C_CLOSED`
+- `PRODUCT_DECISION_ENGINE_1D_PREP_PASS`
+- `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`
 
 ---
 
 ## 1. Status Ringkasan Ekosistem (Executive Summary — 17 Oktober 2026 Closeout)
 
-Sesi rekayasa malam ini berhasil mengimplementasikan, memverifikasi, dan mengunci secara definitif tonggak **`PRODUCT_DECISION_ENGINE-1B`** (*Deterministic Evaluator Runtime*), melengkapi arsitektur fondasi data PDE-1A dengan mesin evaluasi murni tanpa efek samping (*pure deterministic runtime*) dan menegakkan invarian keselamatan redaksional permanen anti-replay.
-
-### 1. Fondasi Evaluator Deterministik Murni (`src/lib/product-decision/evaluator.ts`)
-- **Fungsi Utama:** `evaluateDecision(model: DecisionModelDefinition, context: DecisionContext, options?: EvaluatorOptions): EvaluationResult`.
-- **Pure & Side-Effect Free:**
-  - Zero I/O, zero database access, zero network calls, zero Cloudflare/browser globals.
-  - Bebas dari `Date.now()`, `Math.random()`, dan UUID generator. Seluruh array keluaran terurut stabil secara kanonikal.
-- **Enam Invarian Utama yang Ditegakkan:**
-  1. `THE_READER_DECISION_IS_PRIMARY`: Menilai konteks dan masalah hunian pembaca, bukan katalog produk.
-  2. `SOLUTION_CLASS_PRECEDES_PRODUCT_SELECTION`: Menentukan arsitektur material/sistem terlebih dahulu sebelum produk/merek konkret.
-  3. `NO_COMMERCE_FIELDS`: Firewall komersial mutlak; tidak menerima atau mengeluarkan field afiliasi, komisi, merchant, atau ranking berbayar.
-  4. `NO_FAKE_NUMERIC_PRECISION`: Taksonomi kualitatif murni (`STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, `CONDITIONAL_FIT`, `POOR_FIT`); dilarang membuat skor angka komposit semu (seperti `8.7/10` atau `94% fit`).
-  5. `PURE_DETERMINISTIC_RUNTIME`: Input model dan konteks yang sama selalu menghasilkan byte-equivalent deep equality.
-  6. `GENERIC_DOMAIN_SEPARATION`: Berkas evaluator memuat 0 string spesifik domain (`aluminium`, `upvc`, `window`, `kusen`, `article 5`, `scen_`).
-
-### 2. Audit Sumber Data Otoritatif & Rekonsiliasi Pelaporan
-- **Verifikasi Integritas Fixture:**
-  `git diff 9bc1f48..4ea0caf -- src/lib/product-decision/pilot-kusen.ts` menghasilkan `EMPTY`. Berkas pilot tidak pernah berubah sejak komit `9bc1f48`.
-- **Akar Penyebab Perbedaan Pelaporan Kriteria:**
-  Diklasifikasikan secara definitif sebagai **`WARMUP_REPORT_TRANSCRIPTION_ERROR`**. Laporan warmup memparafrase nama kriteria secara manual/konseptual dari catatan arsitektur awal, sedangkan laporan PDE-1B membaca identifier literal dari berkas sumber.
-- **Identitas Otoritatif Sumber Programatik:**
-  - `model_id`: `'model_pde_kusen_tropis'`
-  - `model_version`: `'v1.0.0'`
-  - `criteria_version`: `'crit_kusen_v1'`
-  - `problem_id`: `'dp_kusen_jendela_tropis'`
-  - Solution IDs: `['sol_aluminium_standar', 'sol_upvc_multi_chamber']`
-  - Criterion IDs: `crit_thermal_insulation`, `crit_structural_rigidity`, `crit_corner_water_tightness`, `crit_acoustic_attenuation`, `crit_coastal_corrosion_resistance`, `crit_thermal_expansion_stability`, `crit_slim_sightlines`.
-  - Authoritative Evidence Snapshot Hash: `eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed`.
-
-### 3. Invarian Permanen Anti-Replay & Mekanisme Seleksi Nyata
-- **Invarian:** **`GOLDEN_EXPECTATIONS_MUST_NOT_DRIVE_RUNTIME_DECISIONS`**
-  Seluruh field `expected_recommendation` pada skenario adalah data oracle untuk *test runner*. Runtime `evaluateDecision()` dilarang membaca field ekspektasi tersebut untuk menentukan rekomendasi.
-- **Mekanisme Seleksi Nyata (Multi-Factor Selection Mechanics):**
-  1. *HARD Constraints:* Mendiskualifikasi solusi dari kelayakan (`is_eligible = false`, `fit = 'POOR_FIT'`).
-  2. *SOFT Constraints:* Menghitung dampak kompromi pada solusi yang terdampak tanpa menggugurkannya.
-  3. *Contextual Tradeoffs:* Menghitung jumlah kompromi teknis yang terpicu oleh dimensi konteks aktif.
-  4. *Qualitative Criteria Evaluations:* Mengevaluasi tier performa solusi terhadap kriteria relevan dengan prioritas konteks pembaca (isolasi termal, korosi garam pesisir, sambungan sudut kedap air, kekakuan bentang lebar, atau garis pandang ramping).
-  5. *Derivasi Fit Deterministik:*
-     - Rekomendasi tanpa batasan lunak aktif dan unggul pada kriteria relevan -> `STRONG_FIT`.
-     - Rekomendasi dengan batasan lunak aktif atau kompromi kontekstual -> `GOOD_FIT_WITH_TRADEOFF`.
-     - Solusi alternatif dengan kendala struktural, anggaran, atau paparan agresif -> `CONDITIONAL_FIT`.
-     - Solusi yang didiskualifikasi batasan keras -> `POOR_FIT`.
-  6. *3 Pertanyaan Emas:* Merangkum penjelasan *Mengapa Opsi Ini?*, *Mengapa Bukan Alternatif?*, dan *Kondisi Pembalik (Pivot Conditions)* secara terstruktur.
+Sesi rekayasa hari ini berhasil menyelesaikan dua tonggak utama:
+1. **`PRODUCT_DECISION_ENGINE-1C` (Admin / Editorial Decision Inspector):**
+   - Menghadirkan antarmuka inspeksi keputusan redaksional internal di rute `/admin/decisions`.
+   - Menegakkan invarian `ADMIN_METADATA_MUST_RENDER_MODEL_SOURCE_TRUTH` di mana metadata versi model (`criteria_version = 'crit_kusen_v1'`, `model_id`, `model_version`, `evidence_snapshot_hash`) dirender dinamis langsung dari sumber otoritatif `DECISION_MODEL_PILOT_KUSEN` tanpa hardcoding.
+   - Menegakkan invarian `EVALUATOR_CRITICAL_CONTEXT_MUST_USE_CONTROLLED_TAXONOMY` di mana 6 dimensi CORE menggunakan kontrol semantik terkendali (`<select>`), meniadakan input teks bebas dan memvalidasi integritas nilai di sisi server.
+   - Menegakkan invarian `SCENARIO_PRESET_IS_CONTEXT_ONLY` di mana tombol preset 5 skenario pilot hanya mengisi form parameter konteks tanpa menyuntikkan ekspektasi oracle ke evaluator runtime.
+2. **`PRODUCT_DECISION_ENGINE-1D-A` (D1 Schema & Pilot Persistence Preparation):**
+   - Merancang dan mengimplementasikan lapisan persistensi D1 minimal dan aditif tanpa mengubah arsitektur evaluator deterministik murni.
+   - Migrasi terpilih: `db/migrations/0035_product_decision_engine.sql` (tabel `decision_models` dan `decision_model_activations`).
+   - Batas relasional vs JSON terstruktur: Relasional untuk identitas, masalah, status, hash, dan timestamp; JSON terstruktur untuk solusi, kriteria, evaluasi, batasan, skenario, dan evidence bindings.
+   - Invarian `MODEL_PERSISTENCE_ROUND_TRIP_MUST_PRESERVE_DECISION_SEMANTICS`: Model diserialisasi ke D1, dibaca kembali, dan dideserialisasi; hasil evaluasi pada seluruh 5 konteks kanonikal terbukti 100% byte-for-byte identik dengan model statis.
+   - Predikat batasan deklaratif murni (`ConstraintPredicate`, `ConstraintRule`) dengan operator deterministik (`EQUALS`, `NOT_EQUALS`, `INCLUDES`, `IN`) bebas dari `eval()` atau `new Function()`, menjamin keamanan mutlak Cloudflare Workers edge runtime.
+   - Invarian single-active ditegakkan di level database via partial unique index `idx_decision_models_active_unique` pada `(model_id) WHERE status = 'ACTIVE'`.
+   - Deteksi konflik versi (`BLOCKED_VERSION_CONFLICT`) vs idempotensi (`ALREADY_EXISTS_IDENTICAL`) via stable payload hash `computeModelPayloadHash`.
+   - Gerbang kesegaran bukti via `deriveEvidenceFreshness` memblokir aktivasi jika bukti basi (`BLOCKED_EVIDENCE_STALE`) atau hilang (`BLOCKED_EVIDENCE_UNAVAILABLE`).
+   - Utilitas aktivasi `scripts/activate-product-decision-pilot.js` dengan mode default `DRY RUN (NO_MUTATION)` dan pemblokiran remote apply pada fase persiapan.
 
 ---
 
@@ -73,29 +49,31 @@ Sesi rekayasa malam ini berhasil mengimplementasikan, memverifikasi, dan mengunc
 
 Seluruh suite pengujian lokal dieksekusi dari direktori `rancangloka-astro/`:
 
-1. **Test Suite PDE-1B (`scripts/test-product-decision-engine-evaluator.js`):** **22/22 PASSED, 0 FAILED**
-   - **Tes A & B:** 5 skenario pilot mereproduksi rekomendasi dan fit secara tepat.
-   - **Tes C:** Determinisme byte-exact deep equality pada eksekusi berulang.
-   - **Tes D:** Independensi pembungkus skenario.
-   - **Tes E:** 5 pengujian perturbasi konteks membuktikan luaran berubah responsif.
-   - **Tes F:** 3 pengujian batas pivot membuktikan transisi solusi deterministik.
-   - **Tes G & H:** Pembuktian perilaku batasan HARD vs SOFT.
-   - **Tes I, J, K:** Penolakan konteks cacat, pemblokiran bukti basi (`EVALUATION_BLOCKED_EVIDENCE_STALE`), dan bukti hilang (`EVALUATION_BLOCKED_EVIDENCE_UNAVAILABLE`).
-   - **Tes L, M, N, O, P, Q, R, S, T:** Firewall komersial, ketiadaan skor numerik, integritas evidence bindings, 3 Pertanyaan Emas, zero domain words, preservasi tipe kualitatif, ketiadaan timestamp/UUID acak, determinisme urutan array, dan penanganan diskualifikasi total.
-   - **Tes U (Mutated Oracle Test):** Membuktikan bahwa memutasi/mengacak nilai `expected_recommendation` skenario pada model klon tidak mengubah hasil evaluasi runtime sama sekali (`SCENARIO_EXPECTATION_REPLAY_DETECTED = NEGATIVE`).
-   - **Tes V (Scenario-Free Proof):** Membuktikan bahwa mengevaluasi `DecisionContext` murni tanpa menyertakan metadata skenario menghasilkan rekomendasi dan jejak yang identik.
-   - **Tes W (Criteria Material Participation):** Membuktikan bahwa membalik tier evaluasi kriteria relevan pada model klon secara langsung mengubah pemilihan rekomendasi solusi.
-
-2. **Regresi Suite PDE-1A (`scripts/test-product-decision-engine-contract.js`):** **14/14 PASSED, 0 FAILED**
-3. **Pemeriksaan Tipe TypeScript:** `npx tsc --noEmit` **0 ERRORS**.
-4. **Kompilasi Astro SSR Cloudflare:** `npm run build` **SUKSES** (selesai dalam 6.77s).
-5. **Git Whitespace Check:** `git diff --check` **0 ERRORS**.
+1. **Test Suite PDE-1D-A (`scripts/test-product-decision-persistence.js`):** **23/23 PASSED, 0 FAILED**
+   - Tes A: Migrasi 0035 diaplikasikan bersih pada SQLite in-memory test DB.
+   - Tes B: Model pilot terserialisasi ke structured row.
+   - Tes C: Model pilot tersimpan aman ke D1 test.
+   - Tes D - L: Round-trip mempreservasi identitas model, snapshot hash, 2 solusi, 7 kriteria, 3 batasan, 14 evaluasi, tradeoffs, evidence bindings, dan 5 skenario.
+   - Tes M: Golden expectation tidak mempengaruhi evaluasi runtime.
+   - Tes N: 5 konteks kanonikal menghasilkan rekomendasi dan trace 100% identik sebelum vs sesudah persistensi.
+   - Tes O & P: Idempotensi (`ALREADY_EXISTS_IDENTICAL`) dan proteksi konflik versi (`BLOCKED_VERSION_CONFLICT`).
+   - Tes Q & R: Penolakan status invalid via CHECK constraint dan penegakan single active via partial unique index.
+   - Tes S & T: Bukti basi dan bukti tidak tersedia memblokir aktivasi.
+   - Tes U & V: Bebas atribut komersial/afiliasi dan bebas skor numerik semu.
+   - Tes W: Eksekusi 100% offline tanpa koneksi remote/produksi.
+2. **Test Suite PDE-1C (`scripts/test-product-decision-admin.js`):** **13/13 PASSED, 0 FAILED**
+3. **Test Suite PDE-1B (`scripts/test-product-decision-engine-evaluator.js`):** **22/22 PASSED, 0 FAILED**
+4. **Test Suite PDE-1A (`scripts/test-product-decision-engine-contract.js`):** **14/14 PASSED, 0 FAILED**
+5. **Total Uji Regresi PDE:** **72/72 PASSED, 0 FAILED**
+6. **Pemeriksaan Tipe TypeScript:** `npx tsc --noEmit` **0 ERRORS**.
+7. **Kompilasi Astro SSR Cloudflare:** `npm run build` **SUKSES** (selesai dalam 6.69s).
+8. **Git Whitespace Check:** `git diff --check` **0 ERRORS**.
 
 ---
 
 ## 3. Status Keselamatan Produksi & Lingkungan Edge
 
-- **Database Cloudflare D1 (`rancangloka_db`):** 0 mutasi skema, 0 mutasi data pada sesi ini.
+- **Database Cloudflare D1 (`rancangloka_db`):** 0 mutasi skema remote, 0 mutasi data produksi pada sesi ini.
 - **Penyimpanan R2 (`rancangloka-media`):** 0 mutasi aset.
 - **Cloudflare Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` aktif melayani 100% lalu lintas produksi tanpa interupsi.
 - **Invarian Keselamatan Editorial:**
@@ -113,18 +91,14 @@ Seluruh suite pengujian lokal dieksekusi dari direktori `rancangloka-astro/`:
 
 > **PERINGATAN PENGEMBANGAN SESI BERIKUTNYA:**  
 > Sesi selanjutnya **WAJIB LANGSUNG DIMULAI DARI**:  
-> **`PRODUCT_DECISION_ENGINE_1C: ADMIN / EDITORIAL INSPECTION UI`**
+> **`PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`**
 
-**Prinsip & Batasan PDE-1C:**
-- **Editorial-First Inspection:** Panel visual di dalam rute admin Astro SSR (misal: `/admin/decision-engine` atau sub-rute terkait) khusus untuk Chief Editor, Irwan, Joko, dan Rina menginspeksi dan menguji model keputusan sebelum rilis publik.
-- **Read-Only / Local Interactive Simulator:**
-  - Menampilkan metadata model pilot Artikel 5 (`model_pde_kusen_tropis`), status kesegaran Publication DNA, kriteria, batasan, dan kelas solusi.
-  - Menyediakan simulator interaktif di sisi klien (in-memory DOM state) yang mengevaluasi input 6 dimensi CORE pembaca melalui fungsi `evaluateDecision()`.
-  - Menampilkan struktur jejak lengkap ([EvaluationTrace](file:///c:/Users/Fanto/Desktop/antigravity/rancangloka/rancangloka-astro/src/lib/product-decision/types.ts)), rincian solusi yang lolos/gugur, evaluasi batasan, jawaban 3 Pertanyaan Emas, dan pengikatan bukti otoritatif.
-- **Dilarang:**
-  - Mengubah logika seleksi evaluator PDE-1B yang telah terkunci dan teruji.
-  - Membuka endpoint publik atau mengubah halaman publik Artikel 5 sebelum PDE-1C diverifikasi.
-  - Melakukan migrasi database D1 produksi sebelum otorisasi eksplisit.
+**Langkah Terkendali Fase Aktivasi:**
+1. Verifikasi konektivitas remote Cloudflare D1 (`wrangler d1 execute rancangloka_db --remote ...`).
+2. Terapkan migrasi `0035_product_decision_engine.sql` ke database remote produksi D1.
+3. Jalankan seeding dan aktivasi terkendali model pilot `model_pde_kusen_tropis@v1.0.0@crit_kusen_v1` via workflow persetujuan manusia.
+4. Verifikasi status `ACTIVE` dan keterikatan bukti Article 5 di database produksi.
+5. Hubungkan antarmuka admin `/admin/decisions` untuk membaca model `ACTIVE` dari D1 dengan fallback terkendali ke static fixture.
 
 ---
 
@@ -133,7 +107,7 @@ Seluruh suite pengujian lokal dieksekusi dari direktori `rancangloka-astro/`:
 *Klasifikasi:*
 - `PRODUCT_DECISION_ENGINE_1_PLAN_PASS`
 - `PRODUCT_DECISION_ENGINE_1A_PASS`
-- `PRODUCT_DECISION_ENGINE_1B_PASS`
-- `PRODUCT_DECISION_ENGINE_1B_ACCEPTANCE_PASS`
 - `PRODUCT_DECISION_ENGINE_1B_CLOSED`
-- `NEXT_SESSION_PRODUCT_DECISION_ENGINE_1C`
+- `PRODUCT_DECISION_ENGINE_1C_CLOSED`
+- `PRODUCT_DECISION_ENGINE_1D_PREP_PASS`
+- `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`
