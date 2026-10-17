@@ -13,6 +13,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1A: Product Review Desk Architecture + Pure Data Contract 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T11:45:00+07:00
+- **Status Operasional:** `PRODUCT_DECISION_ENGINE_1_COMPLETE` | `PRODUCT_REVIEW_AFFILIATE_1A_PASS` | `READY_FOR_PRODUCT_REVIEW_AFFILIATE_1B`
+- **Next Milestone:** `PRODUCT_REVIEW_AFFILIATE_1B` (Product Review Desk Persistence & Engine Core)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic, ZERO WORKER DEPLOYMENT)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — ZERO MIGRATION / ZERO MUTATION
+- **Poin Kunci Rekayasa & Arsitektur Data Contract:**
+  1. *Prinsip Utama Produk & Keputusan Pembaca:*
+     - *THE PRODUCT IS NOT THE CENTER OF THE ARTICLE. THE READER'S DECISION IS.*
+     - Pipeline searah: Reader Context -> PDE Solution Class Decision -> Product Review Desk -> Product Match -> Offer / Affiliate Destination.
+     - Invarian mutlak: `AFFILIATE_REVENUE_CANNOT_AFFECT_RECOMMENDATION`. Peringkat rekomendasi tidak pernah ditentukan oleh penawaran komersial atau komisi.
+  2. *Pemisahan Eksplisit Mode Review (`ReviewMode`):*
+     - `ANALYTICAL_REVIEW` (Default) vs `HANDS_ON_REVIEW`.
+     - Label "Tested by RancangLoka" HANYA boleh disematkan jika `review_mode = 'HANDS_ON_REVIEW'` dan terdapat bukti pengujian primer terverifikasi (`RANCANGLOKA_PRIMARY_TEST`). Dilarang disimpulkan dari klaim pabrikan, merchant, atau AI.
+  3. *Integritas Sinyal Ulasan Pengguna:*
+     - Ulasan pembeli/marketplace diklasifikasikan strictly sebagai `USER_EXPERIENCE_SIGNAL` dan BUKAN `VERIFIED_FACT`. Rating bintang marketplace tidak dapat dikonversi menjadi skor kecocokan teknis RancangLoka.
+  4. *Entitas Generik & Identitas Produk Independen:*
+     - Entitas inti murni: `Product`, `Variant`, `Offer`, `AffiliateDestination`, `PriceSnapshot`, `SpecSnapshot`, `ReviewSnapshot`, `EvidenceSource`, `ArticleProductBinding`.
+     - Identitas produk (`Product`) terpisah penuh dari penawaran pedagang (`Offer`). Pergantian seller/merchant tidak mengubah identitas produk kanonikal.
+  5. *Pencegahan Pergeseran Identitas (Identity Drift):*
+     - Taksonomi status: `CURRENT`, `IDENTITY_CHANGED`, `VARIANT_CHANGED`, `LISTING_AMBIGUOUS`, `DISCONTINUED`, `UNAVAILABLE`.
+     - Perubahan judul/spek listing marketplace tidak mengubah kanonikal produk secara diam-diam (`validateIdentityDrift`).
+  6. *Pemisahan Permanen URL Sumber Bukti vs URL Afiliasi:*
+     - Invarian mutlak: `SOURCE_URL_IS_NOT_AFFILIATE_DESTINATION`. `source_url` (bukti teknis/manual) dan `affiliate_destination_url` (tujuan komersial berpelacak) berada pada objek terpisah.
+  7. *Snapshot Spesifikasi & Harga Terdokumentasi:*
+     - Invarian `PRICE_IS_NOT_IMMUTABLE_EDITORIAL_PROSE`: Harga dinamis pasar tidak disematkan ke dalam naskah editorial yang abadi.
+     - `SpecSnapshot` dan `PriceSnapshot` berversi dengan stempel waktu capture dan sumber fidelitas. Nilai numerik palsu dilarang keras.
+  8. *Tembok Pemisah Komersial & Evaluasi Kecocokan Teknis:*
+     - Pemindai rekursif `scanForForbiddenReviewCommerceFields` mendeteksi dan menolak field komersial (`commission`, `payout`, `affiliate_priority`, dll.) dari objek evaluasi teknis.
+     - Evaluator kecocokan teknis (`evaluateTechnicalProductMatch`) mengonsumsi kontrak handoff PDE tanpa data komersial, menghasilkan status kualitatif (`MATCH`, `MATCH_WITH_TRADEOFF`, `CONDITIONAL_MATCH`, `NOT_MATCH`, `INSUFFICIENT_EVIDENCE`), tanpa skor angka (No 92/100 or 4.8/5).
+  9. *Verifikasi Pengujian Komprehensif (22/22 Lulus):*
+     - Seluruh pengujian A-V pada `scripts/test-product-review-contract.js` lulus 100%. Regresi PDE eksisting tetap 100% hijau. Nol dependensi D1/Astro/Cloudflare/network pada kontrak.
+
 ### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1E: Future Boundary & Public Integration Architecture 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T11:25:00+07:00
