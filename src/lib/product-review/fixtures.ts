@@ -176,10 +176,49 @@ export const SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL: EditorialProductReview = Obj
   article_id: 5,
   review_mode: 'ANALYTICAL_REVIEW',
   tested_by_rancangloka: false,
-  editorial_status: 'REVIEWED',
+  editorial_status: 'PUBLISHED',
   reviewed_at: '2026-10-15T14:00:00Z',
   reviewer_identity: 'Tim Editorial RancangLoka',
   notes: 'Analisis komprehensif berbasis lembar data manufaktur dan hasil pengujian lab independen.'
+});
+
+export const SYNTHETIC_EDITORIAL_REVIEW_DRAFT: EditorialProductReview = Object.freeze({
+  review_id: 'rev_synth_draft_01',
+  product_id: 'prod_synthetic_upvc_01',
+  variant_id: 'var_synth_white_60mm',
+  article_id: 5,
+  review_mode: 'ANALYTICAL_REVIEW',
+  tested_by_rancangloka: false,
+  editorial_status: 'DRAFT',
+  reviewed_at: '2026-10-15T14:00:00Z',
+  reviewer_identity: 'Tim Editorial RancangLoka',
+  notes: 'Draft ulasan redaksi masih dalam pengerjaan.'
+});
+
+export const SYNTHETIC_EDITORIAL_REVIEW_REVIEWED: EditorialProductReview = Object.freeze({
+  review_id: 'rev_synth_reviewed_01',
+  product_id: 'prod_synthetic_upvc_01',
+  variant_id: 'var_synth_white_60mm',
+  article_id: 5,
+  review_mode: 'ANALYTICAL_REVIEW',
+  tested_by_rancangloka: false,
+  editorial_status: 'REVIEWED',
+  reviewed_at: '2026-10-15T14:00:00Z',
+  reviewer_identity: 'Tim Editorial RancangLoka',
+  notes: 'Ulasan selesai ditinjau namun belum diterbitkan secara resmi oleh Chief Editor.'
+});
+
+export const SYNTHETIC_EDITORIAL_REVIEW_ARCHIVED: EditorialProductReview = Object.freeze({
+  review_id: 'rev_synth_archived_01',
+  product_id: 'prod_synthetic_upvc_01',
+  variant_id: 'var_synth_white_60mm',
+  article_id: 5,
+  review_mode: 'ANALYTICAL_REVIEW',
+  tested_by_rancangloka: false,
+  editorial_status: 'ARCHIVED',
+  reviewed_at: '2026-10-15T14:00:00Z',
+  reviewer_identity: 'Tim Editorial RancangLoka',
+  notes: 'Ulasan lama yang telah diarsipkan karena siklus produk digantikan model baru.'
 });
 
 /**

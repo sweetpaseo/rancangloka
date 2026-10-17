@@ -1,7 +1,9 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db.ts';
 import {
   getSyntheticProductDeskProjection,
+  getProductionProductDeskProjection,
   PRODUCT_IDENTITY_STATE_CONFIG,
   REVIEW_MODE_CONFIG,
   EDITORIAL_STATUS_CONFIG,
@@ -10,7 +12,8 @@ import {
   EDITORIAL_READINESS_CONFIG,
   SOURCE_FIDELITY_CONFIG,
   SOURCE_TYPE_LABELS,
-  validateHandsOnProvenance
+  validateHandsOnProvenance,
+  type ProductDeskProjection
 } from '../../lib/product-review/admin-inspector.ts';
 
 // 1. Cache & Privacy Defense-in-Depth (Strictly private admin inspection)
@@ -24,11 +27,25 @@ const activeTabParam = url.searchParams.get('tab') || 'overview';
 const emptyModeParam = url.searchParams.get('empty') === '1';
 
 // 3. Assemble projection (Safe SSR, zero external network dependency)
-const projection = getSyntheticProductDeskProjection({
-  productId: productIdParam,
-  activeTab: activeTabParam,
-  forceEmpty: emptyModeParam
-});
+// Permanent Invariant: NO_SILENT_PRODUCT_REVIEW_PRODUCTION_FALLBACK
+// In production or when connected to D1, an empty database MUST display
+// PRODUCTION_D1 empty state rather than falling back to synthetic fixtures.
+const db = await getDb(Astro.locals);
+
+let projection: ProductDeskProjection;
+if (db || import.meta.env.PROD) {
+  projection = await getProductionProductDeskProjection(db, {
+    productId: productIdParam,
+    activeTab: activeTabParam,
+    forceEmpty: emptyModeParam
+  });
+} else {
+  projection = getSyntheticProductDeskProjection({
+    productId: productIdParam,
+    activeTab: activeTabParam,
+    forceEmpty: emptyModeParam
+  });
+}
 
 const {
   data_source,

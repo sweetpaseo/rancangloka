@@ -61,7 +61,51 @@ import {
 } from './admin-inspector.ts';
 
 // ============================================================================
-// 1. READER PRODUCT ELIGIBILITY STATES
+// 1. ARTICLE PRODUCT ROLE CONFIG & READER VISIBILITY
+// ============================================================================
+
+export const ARTICLE_PRODUCT_ROLE_CONFIG: Record<
+  ArticleProductRole,
+  { label: string; readerDescription: string; publicExposureAllowed: boolean }
+> = {
+  MATCHED_PRODUCT: {
+    label: 'Rekomendasi Produk Cocok',
+    readerDescription: 'Produk di pasaran yang karakteristik teknisnya terbukti cocok dengan keputusan arsitektur di atas.',
+    publicExposureAllowed: true
+  },
+  PRIMARY_SUBJECT: {
+    label: 'Subjek Ulasan Utama',
+    readerDescription: 'Produk yang menjadi fokus bedah material mendalam dalam artikel ini.',
+    publicExposureAllowed: true
+  },
+  ALTERNATIVE: {
+    label: 'Alternatif Solusi',
+    readerDescription: 'Produk dari kelas solusi alternatif untuk perbandingan kebutuhan rumah yang berbeda.',
+    publicExposureAllowed: true
+  },
+  EXAMPLE: {
+    label: 'Contoh Material di Pasar',
+    readerDescription: 'Contoh perwujudan material fisik yang beredar di distributor Indonesia.',
+    publicExposureAllowed: true
+  },
+  RELATED_PRODUCT: {
+    label: 'Produk Terkait',
+    readerDescription: 'Komponen hardware atau material pendukung pemasangan.',
+    publicExposureAllowed: false // Private / reserved by default
+  }
+};
+
+/**
+ * Checks whether an ArticleProductRole is reader-visible by default.
+ * Enforces that RELATED_PRODUCT is strictly private unless explicitly promoted.
+ */
+export function isArticleProductRoleReaderVisible(role: ArticleProductRole): boolean {
+  const config = ARTICLE_PRODUCT_ROLE_CONFIG[role];
+  return Boolean(config && config.publicExposureAllowed);
+}
+
+// ============================================================================
+// 2. READER PRODUCT ELIGIBILITY STATES
 // ============================================================================
 
 export type ReaderProductEligibilityState =
@@ -71,7 +115,8 @@ export type ReaderProductEligibilityState =
   | 'BLOCKED_STALE_SPEC'
   | 'BLOCKED_IDENTITY_DRIFT'
   | 'BLOCKED_TECHNICAL_MISMATCH'
-  | 'BLOCKED_EDITORIAL_REVIEW';
+  | 'BLOCKED_EDITORIAL_REVIEW'
+  | 'BLOCKED_ROLE_NOT_READER_VISIBLE';
 
 export interface ReaderEligibilityResult {
   state: ReaderProductEligibilityState;
@@ -91,11 +136,24 @@ export function deriveReaderProductEligibility(params: {
   evidenceSources?: EvidenceSource[] | readonly EvidenceSource[];
   matchResult: ProductMatchResult;
   referenceTime?: string;
+  editorialRole?: ArticleProductRole;
 }): ReaderEligibilityResult {
-  const { product, reviews, specSnapshot, evidenceSources, matchResult } = params;
+  const { product, reviews, specSnapshot, evidenceSources, matchResult, editorialRole } = params;
   const reasons: string[] = [];
 
-  // 1. Identity integrity check (Block on identity drift)
+  // 1. Role visibility check (if editorialRole provided)
+  if (editorialRole && !isArticleProductRoleReaderVisible(editorialRole)) {
+    reasons.push(
+      `Peran editorial '${editorialRole}' tidak diizinkan untuk tayang ke pembaca publik secara default.`
+    );
+    return {
+      state: 'BLOCKED_ROLE_NOT_READER_VISIBLE',
+      is_eligible: false,
+      reasons
+    };
+  }
+
+  // 2. Identity integrity check (Block on identity drift)
   if (product.identity_state !== 'CURRENT') {
     reasons.push(`Identitas produk mengalami pergeseran (${product.identity_state}). Tinjauan redaksi diperlukan.`);
     return {
@@ -105,7 +163,20 @@ export function deriveReaderProductEligibility(params: {
     };
   }
 
-  // 2. Editorial Review check (Block on incomplete review or unverified hands-on claims)
+  // 3. Variant integrity check (if variant specified)
+  if (params.variant && product.variants && product.variants.length > 0) {
+    const variantFound = product.variants.some(v => v.variant_id === params.variant?.variant_id);
+    if (!variantFound) {
+      reasons.push(`Varian '${params.variant.variant_id}' tidak terdaftar pada spesifikasi kanonikal produk.`);
+      return {
+        state: 'BLOCKED_TECHNICAL_MISMATCH',
+        is_eligible: false,
+        reasons
+      };
+    }
+  }
+
+  // 4. Editorial Review check: must exist
   if (!reviews || reviews.length === 0) {
     reasons.push('Produk belum memiliki ulasan editorial resmi dari redaksi RancangLoka.');
     return {
@@ -115,7 +186,23 @@ export function deriveReaderProductEligibility(params: {
     };
   }
 
-  for (const rev of reviews) {
+  // 5. Invariant: UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT
+  // Editorial review must have editorial_status === 'PUBLISHED'
+  const publishedReviews = reviews.filter(rev => rev.editorial_status === 'PUBLISHED');
+  if (publishedReviews.length === 0) {
+    const unapprovedStatus = reviews[reviews.length - 1]?.editorial_status || 'UNKNOWN';
+    reasons.push(
+      `UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT: Ulasan editorial masih berstatus ${unapprovedStatus}. Hanya ulasan PUBLISHED yang berhak tayang ke pembaca.`
+    );
+    return {
+      state: 'BLOCKED_EDITORIAL_REVIEW',
+      is_eligible: false,
+      reasons
+    };
+  }
+
+  // 6. Review provenance check on published review
+  for (const rev of publishedReviews) {
     if (rev.review_mode === 'HANDS_ON_REVIEW') {
       const handsOnCheck = validateHandsOnProvenance(rev, evidenceSources);
       if (!handsOnCheck.valid) {
@@ -129,7 +216,7 @@ export function deriveReaderProductEligibility(params: {
     }
   }
 
-  // 3. Technical Match Check (Block on mismatch)
+  // 7. Technical Match Check (Block on mismatch)
   if (matchResult.match_status === 'NOT_MATCH') {
     reasons.push('Produk tidak cocok dengan kelas solusi teknis yang direkomendasikan untuk pembaca.');
     if (matchResult.disqualified_reasons.length > 0) {
@@ -255,39 +342,8 @@ export interface ReaderProductDTO {
 }
 
 // ============================================================================
-// 3. EDITORIAL ROLE LABELS & COMMERCE CTA HELPERS
+// 4. COMMERCE CTA & AFFILIATE LINK HELPERS
 // ============================================================================
-
-export const ARTICLE_PRODUCT_ROLE_CONFIG: Record<
-  ArticleProductRole,
-  { label: string; readerDescription: string; publicExposureAllowed: boolean }
-> = {
-  MATCHED_PRODUCT: {
-    label: 'Rekomendasi Produk Cocok',
-    readerDescription: 'Produk di pasaran yang karakteristik teknisnya terbukti cocok dengan keputusan arsitektur di atas.',
-    publicExposureAllowed: true
-  },
-  PRIMARY_SUBJECT: {
-    label: 'Subjek Ulasan Utama',
-    readerDescription: 'Produk yang menjadi fokus bedah material mendalam dalam artikel ini.',
-    publicExposureAllowed: true
-  },
-  ALTERNATIVE: {
-    label: 'Alternatif Solusi',
-    readerDescription: 'Produk dari kelas solusi alternatif untuk perbandingan kebutuhan rumah yang berbeda.',
-    publicExposureAllowed: true
-  },
-  EXAMPLE: {
-    label: 'Contoh Material di Pasar',
-    readerDescription: 'Contoh perwujudan material fisik yang beredar di distributor Indonesia.',
-    publicExposureAllowed: true
-  },
-  RELATED_PRODUCT: {
-    label: 'Produk Terkait',
-    readerDescription: 'Komponen hardware atau material pendukung pemasangan.',
-    publicExposureAllowed: false // Private / reserved by default
-  }
-};
 
 /**
  * Helper to construct safe, standardized affiliate link attributes.
@@ -316,13 +372,14 @@ export function getStandardAffiliateCtaText(availability?: string): string {
 }
 
 // ============================================================================
-// 4. FAILURE STATES & TYPED RUNTIME OUTCOMES
+// 5. FAILURE STATES & TYPED RUNTIME OUTCOMES
 // ============================================================================
 
 export type ReaderProductFailureCode =
   | 'NO_BINDING'
   | 'PRODUCT_UNAVAILABLE'
   | 'VARIANT_UNAVAILABLE'
+  | 'ROLE_NOT_READER_VISIBLE'
   | 'IDENTITY_DRIFT'
   | 'SPEC_STALE'
   | 'EVIDENCE_INSUFFICIENT'
@@ -378,8 +435,9 @@ export function assembleReaderProductDTO(params: {
     referenceTime
   } = params;
 
-  // 1. Identify primary editorial review
-  const latestReview = reviews[reviews.length - 1];
+  // 1. Identify primary editorial review (strictly published)
+  const publishedReviews = reviews.filter(rev => rev.editorial_status === 'PUBLISHED');
+  const latestReview = publishedReviews.length > 0 ? publishedReviews[publishedReviews.length - 1] : reviews[reviews.length - 1];
   const isHandsOn = latestReview?.review_mode === 'HANDS_ON_REVIEW' && Boolean(latestReview?.tested_by_rancangloka);
 
   let reviewBasisStatement: string;
@@ -632,7 +690,17 @@ export async function loadReaderProductForArticle(params: {
     };
   }
 
-  // 4. Handle missing product
+  // 4. Handle non-reader-visible editorial role (RELATED_PRODUCT is non-public by default)
+  if (!isArticleProductRoleReaderVisible(binding.editorial_role)) {
+    return {
+      status: 'UNAVAILABLE',
+      code: 'ROLE_NOT_READER_VISIBLE',
+      reason: `Peran editorial '${binding.editorial_role}' tidak diizinkan untuk tayang ke pembaca publik secara default.`,
+      eligibility: 'BLOCKED_ROLE_NOT_READER_VISIBLE'
+    };
+  }
+
+  // 5. Handle missing product
   if (!product) {
     return {
       status: 'UNAVAILABLE',
@@ -641,10 +709,10 @@ export async function loadReaderProductForArticle(params: {
     };
   }
 
-  // 5. Evaluate technical match against PDE handoff
+  // 6. Evaluate technical match against PDE handoff
   const matchResult = evaluateTechnicalProductMatch(pdeHandoff, product, specs);
 
-  // 6. Derive reader product eligibility
+  // 7. Derive reader product eligibility
   const eligibility = deriveReaderProductEligibility({
     product,
     variant,
@@ -652,11 +720,13 @@ export async function loadReaderProductForArticle(params: {
     specSnapshot: specs,
     evidenceSources: evidence,
     matchResult,
-    referenceTime: options.referenceTime
+    referenceTime: options.referenceTime,
+    editorialRole: binding.editorial_role
   });
 
   if (!eligibility.is_eligible) {
     let failureCode: ReaderProductFailureCode = 'TECHNICAL_MISMATCH';
+    if (eligibility.state === 'BLOCKED_ROLE_NOT_READER_VISIBLE') failureCode = 'ROLE_NOT_READER_VISIBLE';
     if (eligibility.state === 'BLOCKED_IDENTITY_DRIFT') failureCode = 'IDENTITY_DRIFT';
     if (eligibility.state === 'BLOCKED_STALE_SPEC') failureCode = 'SPEC_STALE';
     if (eligibility.state === 'BLOCKED_INSUFFICIENT_EVIDENCE') failureCode = 'EVIDENCE_INSUFFICIENT';

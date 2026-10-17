@@ -13,6 +13,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1D-B: Controlled Production Activation & Final Closure 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T14:45:00+07:00
+- **Status Operasional:** `PRODUCT_REVIEW_AFFILIATE_1D_CLOSED` | `PRODUCT_REVIEW_AFFILIATE_1_COMPLETE` (PASS)
+- **Status Kesiapan:** `PRODUCT_REVIEW_INFRASTRUCTURE_PRODUCTION_READY`
+- **Next Operational State:** `READY_FOR_CONTROLLED_REAL_PRODUCT_ONBOARDING`
+- **Active Production Worker:** `dea95d68-1708-4af7-8c02-3ea35c3af5ad` (Deployed & Verified live)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`) — Migration 0036 Applied Successfully (10 `product_review_%` tables present, 35 indexes, exactly 0 product rows)
+- **Poin Kunci Rekayasa & Aktivasi Produksi Terkendali:**
+  1. *Penguatan Gerbang Status Editorial Pembaca:*
+     - Invarian `UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT`: Entri ulasan `DRAFT`, `REVIEWED`, atau `ARCHIVED` diblokir deterministik (`BLOCKED_EDITORIAL_REVIEW`). Hanya ulasan `PUBLISHED` yang berhak berkontribusi ke output DTO pembaca.
+  2. *Penguatan Visibilitas Peran Produk Artikel:*
+     - Kebijakan `isArticleProductRoleReaderVisible`: Peran `RELATED_PRODUCT` diblokir dari perenderan publik secara default (`ROLE_NOT_READER_VISIBLE`).
+  3. *Urutan Evaluasi Kelayakan Pembaca Deterministik (12 Tahap):*
+     - Memastikan komersial tetap berada di hilir (*downstream*) setelah evaluasi teknis, kesegaran spesifikasi, status editorial `PUBLISHED`, dan ketiadaan pergeseran identitas.
+  4. *Aktivasi Skema Produksi Terkendali (Migrasi 0036):*
+     - D1 `rancangloka_db` berhasil menerapkan `0036_product_review_desk.sql`.
+     - Invarian `SCHEMA_ACTIVATION_MUST_NOT_IMPLY_PRODUCT_INGESTION`: Terverifikasi tepat 0 baris produk, 0 varian, 0 ulasan, 0 bukti, 0 penawaran, 0 destinasi afiliasi.
+  5. *Admin Product Review Desk di Produksi (`/admin/product-review`):*
+     - Berhasil terhubung ke D1 Produksi (`PRODUCTION_D1`).
+     - Menampilkan status kosong teratur (*clean empty state*): *"Belum ada produk yang masuk ke Product Review Desk."*
+     - Invarian `NO_SILENT_PRODUCT_REVIEW_PRODUCTION_FALLBACK`: Menjamin tidak ada data sintesis/fixture pengembang yang bocor ke produksi.
+     - Dilindungi Cloudflare Zero Trust Access (302 redirect), `Cache-Control: no-store, private`, `X-Robots-Tag: noindex`.
+  6. *Integritas Publik & DNA Artikel 5–9:*
+     - Nol kartu produk, harga, atau tautan belanja pada halaman publik (Homepage, Artikel 5, Artikel 9).
+     - Hash naskah Artikel 5 (`14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`), receipt (`rcpt_bbae85b48e1b2f8d`), dan artikel 6–9 tetap 100% utuh tanpa perubahan.
+  7. *Verifikasi Regresi Penuh:*
+     - Seluruh 9 test suites Product Review & PDE (total 188 tes) lolos 100%.
+     - `npx tsc --noEmit`, `npm run build`, dan `git diff --check` bersih tanpa error.
+
 ### RANCANGLOKA-PRODUCT-REVIEW-AFFILIATE-1D-A: Article Product Binding, Reader Decision Handoff & Edge Integration Prep 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T14:15:00+07:00

@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   getSyntheticProductDeskProjection,
+  getProductionProductDeskProjection,
   deriveEditorialReadiness,
   validateHandsOnProvenance,
   DATA_SOURCE_CONFIG,
@@ -475,4 +476,41 @@ test('Product Review 1C [Test X]: Tests execute 100% offline with zero remote D1
   assert.ok(proj.products_list.length > 0);
   assert.ok(proj.detail);
   assert.equal(proj.data_source, 'SYNTHETIC_TEST_DATA');
+});
+
+// ----------------------------------------------------------------------------
+// Test Y: Production D1 empty state projection
+// ----------------------------------------------------------------------------
+test('Product Review 1D [Test Y]: Production D1 empty state returns PRODUCTION_D1 and zero products', async () => {
+  // Mock D1 database with 0 rows in product_review_products
+  const mockEmptyD1 = {
+    prepare: (sql) => ({
+      all: async () => ({ results: [] })
+    })
+  };
+
+  const proj = await getProductionProductDeskProjection(mockEmptyD1);
+  assert.equal(proj.data_source, 'PRODUCTION_D1');
+  assert.equal(proj.data_source_meta.source, 'PRODUCTION_D1');
+  assert.equal(proj.is_empty, true);
+  assert.equal(proj.products_list.length, 0);
+  assert.equal(proj.empty_reason, 'Belum ada produk yang masuk ke Product Review Desk.');
+  assert.equal(proj.detail, undefined);
+});
+
+// ----------------------------------------------------------------------------
+// Test Z: NO_SILENT_PRODUCT_REVIEW_PRODUCTION_FALLBACK invariant
+// ----------------------------------------------------------------------------
+test('Product Review 1D [Test Z]: NO_SILENT_PRODUCT_REVIEW_PRODUCTION_FALLBACK enforced in production', async () => {
+  // Even if db is null or errored in production, getProductionProductDeskProjection never returns synthetic fixtures
+  const projNullDb = await getProductionProductDeskProjection(null);
+  assert.equal(projNullDb.data_source, 'PRODUCTION_D1');
+  assert.equal(projNullDb.is_empty, true);
+  assert.equal(projNullDb.products_list.length, 0);
+
+  // Check admin page source code enforces this invariant
+  const page = readRepoFile('src/pages/admin/product-review.astro');
+  assert.match(page, /NO_SILENT_PRODUCT_REVIEW_PRODUCTION_FALLBACK/);
+  assert.match(page, /getProductionProductDeskProjection/);
+  assert.match(page, /import\.meta\.env\.PROD/);
 });

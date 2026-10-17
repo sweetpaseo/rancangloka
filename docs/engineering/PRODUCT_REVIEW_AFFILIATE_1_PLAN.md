@@ -1,8 +1,11 @@
 # 🛍️ RancangLoka Product Review Desk & Affiliate Firewall — Master Architecture & Data Contract Plan
-> **Dokumen Arsitektur & Spesifikasi Kontrak Data:** Milestone `PRODUCT_REVIEW_AFFILIATE_1A`  
-> **Status:** APPROVED & ARCHITECTURALLY CLOSED (`PRODUCT_REVIEW_AFFILIATE_1A_PASS`)  
-> **Target Milestone Berikutnya:** `PRODUCT_REVIEW_AFFILIATE_1B`  
-> **Repositori Otoritatif:** `rancangloka-astro/`  
+> **Dokumen Arsitektur & Spesifikasi Kontrak Data:** Milestone `PRODUCT_REVIEW_AFFILIATE_1` (1A, 1B, 1C, 1D-A, 1D-B)
+> **Status:** APPROVED, PRODUCTION ACTIVATED & FULLY CLOSED (`PRODUCT_REVIEW_AFFILIATE_1_COMPLETE`)
+> **Status Produksi D1:** Migrasi 0036 Berhasil Diterapkan (10 Tabel Terverifikasi, 0 Baris Produk)
+> **Status Worker Edge:** Terpasang & Aktif (`dea95d68-1708-4af7-8c02-3ea35c3af5ad`)
+> **Status Modul Publik:** Non-Aktif (Nol Kebocoran UI/Toko/Harga, Artikel 5–9 Utuh)
+> **Tahap Operasional Berikutnya:** `READY_FOR_CONTROLLED_REAL_PRODUCT_ONBOARDING`
+> **Repositori Otoritatif:** `rancangloka-astro/`
 > **Branch:** `feat/jev-lokamedia-integration`
 
 ---
@@ -423,3 +426,59 @@ Seluruh 22 skenario pengujian (Test A sampai Test V) terbukti 100% lulus:
 - `Test T`: Nol fallback diam-diam pada mode produksi.
 - `Test U`: Mutasi komersial dinamis terbukti 0% memutasi hash atau teks prosa artikel kanonikal.
 - `Test V`: Pengujian 100% offline tanpa dependensi produk riil, merchant, atau jaringan.
+- `Test W`: Ulasan editorial `DRAFT` diblokir mutlak dari DTO pembaca.
+- `Test X`: Ulasan editorial `REVIEWED` (belum terbit) diblokir dari DTO pembaca.
+- `Test Y`: Ulasan editorial `ARCHIVED` diblokir dari DTO pembaca.
+- `Test Z`: Ulasan editorial `PUBLISHED` lolos kualifikasi saat seluruh syarat terpenuhi.
+- `Test AA`: Peran `RELATED_PRODUCT` diblokir mutlak dari perenderan pembaca secara default.
+- `Test AB`: Kebijakan visibilitas peran `isArticleProductRoleReaderVisible` terverifikasi deterministik.
+
+---
+
+## 7. Milestone 1D-B: Aktivasi Produksi Terkendali & Penutupan Final (Controlled Production Activation & Final Closure)
+
+### A. Invarian Status Editorial Pembaca (Reader Editorial Status Invariant)
+- **Invarian Permanen:** `UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT`.
+- Entri ulasan editorial berstatus `DRAFT`, `REVIEWED`, atau `ARCHIVED` diblokir secara deterministik (`BLOCKED_EDITORIAL_REVIEW`).
+- Hanya ulasan berstatus `PUBLISHED` yang berhak berkontribusi ke output DTO pembaca.
+
+### B. Kebijakan Visibilitas Peran Produk Artikel (Article Product Role Visibility)
+- Peran `RELATED_PRODUCT` didefinisikan sebagai private/internal redaksi secara default dan TIDAK dirender ke pembaca.
+- Fungsi pembatas terketik: `isArticleProductRoleReaderVisible(role: ArticleProductRole): boolean`.
+- Peran publik sah: `MATCHED_PRODUCT`, `PRIMARY_SUBJECT`, `ALTERNATIVE`, `EXAMPLE`.
+
+### C. Urutan Evaluasi Kelayakan Pembaca Deterministik (12 Tahap)
+1. Keberadaan ikatan (`binding exists`).
+2. Peran ikatan layak tampil ke publik (`binding role publicly eligible`).
+3. Identitas produk berstatus `CURRENT`.
+4. Varian produk valid.
+5. `EditorialProductReview` terdaftar.
+6. `editorial_status === 'PUBLISHED'`.
+7. Provenansi ulasan valid (termasuk verifikasi lab primer untuk Hands-On).
+8. Bukti teknis otoritatif mencukupi.
+9. Kesegaran spesifikasi kritis dapat diterima.
+10. Kecocokan teknis (`technical_match`) berstatus `STRONG_FIT` atau `MODERATE_FIT`.
+11. DTO aman pembaca dihasilkan (bebas komisi, skor angka, atau data privat).
+12. Data penawaran komersial dilampirkan secara opsional di hilir (*downstream attachment*).
+
+### D. Hasil Audit & Eksekusi Migrasi 0036 di Produksi
+- **Audit Pra-Migrasi:** D1 `rancangloka_db` remote bersih, migrasi `0036_product_review_desk.sql` berstatus `PENDING`, 0 tabel `product_review_%`.
+- **Aplikasi Migrasi:** Sukses diterapkan via Wrangler remote D1:
+  - `product_review_products`
+  - `product_review_variants`
+  - `product_review_editorial_reviews`
+  - `product_review_evidence_sources`
+  - `product_review_spec_snapshots`
+  - `product_review_review_snapshots`
+  - `product_review_offers`
+  - `product_review_price_snapshots`
+  - `product_review_affiliate_destinations`
+  - `product_review_article_bindings`
+- **Total Indeks:** 35 indeks terverifikasi aktif.
+- **Invarian Integritas:** `SCHEMA_ACTIVATION_MUST_NOT_IMPLY_PRODUCT_INGESTION` (tepat 0 baris pada seluruh 10 tabel).
+
+### E. Status Deployment Worker Produksi
+- **Active Worker Version ID:** `dea95d68-1708-4af7-8c02-3ea35c3af5ad`.
+- **Admin Desk (/admin/product-review):** Berhasil terhubung ke D1 Produksi, menampilkan label `PRODUCTION_D1`, status kosong (`Belum ada produk yang masuk ke Product Review Desk.`), dilindungi Cloudflare Access (302 redirect), `Cache-Control: no-store, private`, `X-Robots-Tag: noindex`.
+- **Halaman Publik:** Nol kebocoran kartu produk, harga, tombol belanja, atau modul komersial di halaman publik (Homepage, Artikel 5, Artikel 9).
+- **Integritas Artikel 5–9:** Hash prosa Artikel 5 (`14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277`), receipt (`rcpt_bbae85b48e1b2f8d`), dan artikel 6–9 tetap 100% utuh tanpa mutasi.

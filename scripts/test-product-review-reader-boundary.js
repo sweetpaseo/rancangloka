@@ -39,13 +39,17 @@ import {
   buildReaderAffiliateLink,
   getStandardAffiliateCtaText,
   loadReaderProductForArticle,
-  ARTICLE_PRODUCT_ROLE_CONFIG
+  ARTICLE_PRODUCT_ROLE_CONFIG,
+  isArticleProductRoleReaderVisible
 } from '../src/lib/product-review/reader-runtime.ts';
 
 import {
   SYNTHETIC_PRODUCT,
   SYNTHETIC_VARIANT_1 as SYNTHETIC_VARIANT,
   SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL,
+  SYNTHETIC_EDITORIAL_REVIEW_DRAFT,
+  SYNTHETIC_EDITORIAL_REVIEW_REVIEWED,
+  SYNTHETIC_EDITORIAL_REVIEW_ARCHIVED,
   SYNTHETIC_EDITORIAL_REVIEW_HANDS_ON,
   SYNTHETIC_SPEC_SNAPSHOT,
   SYNTHETIC_EVIDENCE_MANUFACTURER,
@@ -553,4 +557,129 @@ test('V. No real product/merchant/network dependency required', async () => {
   assert.equal(result.status, 'AVAILABLE');
   assert.equal(result.eligibility, 'ELIGIBLE');
   assert.equal(result.dto.product_id, SYNTHETIC_PRODUCT.product_id);
+});
+
+test('W. DRAFT EditorialProductReview is blocked from reader output', () => {
+  const matchResult = evaluateTechnicalProductMatch(SYNTHETIC_PDE_HANDOFF, SYNTHETIC_PRODUCT, SYNTHETIC_SPEC_SNAPSHOT);
+  const eligibility = deriveReaderProductEligibility({
+    product: SYNTHETIC_PRODUCT,
+    variant: SYNTHETIC_VARIANT,
+    reviews: [SYNTHETIC_EDITORIAL_REVIEW_DRAFT],
+    specSnapshot: SYNTHETIC_SPEC_SNAPSHOT,
+    evidenceSources: [SYNTHETIC_EVIDENCE_MANUFACTURER],
+    matchResult,
+    referenceTime: REF_TIME
+  });
+
+  assert.equal(eligibility.is_eligible, false);
+  assert.equal(eligibility.state, 'BLOCKED_EDITORIAL_REVIEW');
+  assert.ok(eligibility.reasons.some(r => r.includes('UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT')));
+  assert.ok(eligibility.reasons.some(r => r.includes('DRAFT')));
+});
+
+test('X. REVIEWED but unpublished review is blocked from reader output', () => {
+  const matchResult = evaluateTechnicalProductMatch(SYNTHETIC_PDE_HANDOFF, SYNTHETIC_PRODUCT, SYNTHETIC_SPEC_SNAPSHOT);
+  const eligibility = deriveReaderProductEligibility({
+    product: SYNTHETIC_PRODUCT,
+    variant: SYNTHETIC_VARIANT,
+    reviews: [SYNTHETIC_EDITORIAL_REVIEW_REVIEWED],
+    specSnapshot: SYNTHETIC_SPEC_SNAPSHOT,
+    evidenceSources: [SYNTHETIC_EVIDENCE_MANUFACTURER],
+    matchResult,
+    referenceTime: REF_TIME
+  });
+
+  assert.equal(eligibility.is_eligible, false);
+  assert.equal(eligibility.state, 'BLOCKED_EDITORIAL_REVIEW');
+  assert.ok(eligibility.reasons.some(r => r.includes('UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT')));
+  assert.ok(eligibility.reasons.some(r => r.includes('REVIEWED')));
+});
+
+test('Y. ARCHIVED review is blocked from reader output', () => {
+  const matchResult = evaluateTechnicalProductMatch(SYNTHETIC_PDE_HANDOFF, SYNTHETIC_PRODUCT, SYNTHETIC_SPEC_SNAPSHOT);
+  const eligibility = deriveReaderProductEligibility({
+    product: SYNTHETIC_PRODUCT,
+    variant: SYNTHETIC_VARIANT,
+    reviews: [SYNTHETIC_EDITORIAL_REVIEW_ARCHIVED],
+    specSnapshot: SYNTHETIC_SPEC_SNAPSHOT,
+    evidenceSources: [SYNTHETIC_EVIDENCE_MANUFACTURER],
+    matchResult,
+    referenceTime: REF_TIME
+  });
+
+  assert.equal(eligibility.is_eligible, false);
+  assert.equal(eligibility.state, 'BLOCKED_EDITORIAL_REVIEW');
+  assert.ok(eligibility.reasons.some(r => r.includes('UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT')));
+  assert.ok(eligibility.reasons.some(r => r.includes('ARCHIVED')));
+});
+
+test('Z. PUBLISHED review is eligible when every other condition passes', () => {
+  const matchResult = evaluateTechnicalProductMatch(SYNTHETIC_PDE_HANDOFF, SYNTHETIC_PRODUCT, SYNTHETIC_SPEC_SNAPSHOT);
+  const eligibility = deriveReaderProductEligibility({
+    product: SYNTHETIC_PRODUCT,
+    variant: SYNTHETIC_VARIANT,
+    reviews: [SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL], // editorial_status: 'PUBLISHED'
+    specSnapshot: SYNTHETIC_SPEC_SNAPSHOT,
+    evidenceSources: [SYNTHETIC_EVIDENCE_MANUFACTURER],
+    matchResult,
+    referenceTime: REF_TIME
+  });
+
+  assert.equal(eligibility.is_eligible, true);
+  assert.equal(eligibility.state, 'ELIGIBLE');
+});
+
+test('AA. RELATED_PRODUCT role is blocked from reader output by default', async () => {
+  const relatedBinding = {
+    ...SYNTHETIC_ARTICLE_PRODUCT_BINDING,
+    editorial_role: 'RELATED_PRODUCT'
+  };
+
+  const matchResult = evaluateTechnicalProductMatch(SYNTHETIC_PDE_HANDOFF, SYNTHETIC_PRODUCT, SYNTHETIC_SPEC_SNAPSHOT);
+  const eligibility = deriveReaderProductEligibility({
+    product: SYNTHETIC_PRODUCT,
+    variant: SYNTHETIC_VARIANT,
+    reviews: [SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL],
+    specSnapshot: SYNTHETIC_SPEC_SNAPSHOT,
+    evidenceSources: [SYNTHETIC_EVIDENCE_MANUFACTURER],
+    matchResult,
+    referenceTime: REF_TIME,
+    editorialRole: 'RELATED_PRODUCT'
+  });
+
+  assert.equal(eligibility.is_eligible, false);
+  assert.equal(eligibility.state, 'BLOCKED_ROLE_NOT_READER_VISIBLE');
+
+  // Verify runtime loadReaderProductForArticle also rejects RELATED_PRODUCT
+  const result = await loadReaderProductForArticle({
+    articleId: 5,
+    pdeHandoff: SYNTHETIC_PDE_HANDOFF,
+    options: {
+      isProduction: false,
+      allowSyntheticFixture: true,
+      referenceTime: REF_TIME,
+      syntheticFixtureOverride: {
+        binding: relatedBinding,
+        product: SYNTHETIC_PRODUCT,
+        variant: SYNTHETIC_VARIANT,
+        reviews: [SYNTHETIC_EDITORIAL_REVIEW_ANALYTICAL],
+        specs: SYNTHETIC_SPEC_SNAPSHOT,
+        evidence: [SYNTHETIC_EVIDENCE_MANUFACTURER]
+      }
+    }
+  });
+
+  assert.equal(result.status, 'UNAVAILABLE');
+  assert.equal(result.code, 'ROLE_NOT_READER_VISIBLE');
+  assert.ok(result.reason.includes('RELATED_PRODUCT'));
+});
+
+test('AB. isArticleProductRoleReaderVisible policy is deterministic across all roles', () => {
+  assert.equal(isArticleProductRoleReaderVisible('MATCHED_PRODUCT'), true);
+  assert.equal(isArticleProductRoleReaderVisible('PRIMARY_SUBJECT'), true);
+  assert.equal(isArticleProductRoleReaderVisible('ALTERNATIVE'), true);
+  assert.equal(isArticleProductRoleReaderVisible('EXAMPLE'), true);
+  assert.equal(isArticleProductRoleReaderVisible('RELATED_PRODUCT'), false);
+  // Unknown or arbitrary role defaults to false
+  assert.equal(isArticleProductRoleReaderVisible('UNKNOWN_ROLE'), false);
 });
