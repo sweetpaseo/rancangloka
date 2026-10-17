@@ -1076,4 +1076,4 @@ Model dibaca kembali dari remote D1 dan dideserialisasi via `deserializeDecision
 ---
 
 *Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACCEPTED` | `PRODUCT_DECISION_ENGINE_1D_CLOSED`*
-*Milestone Berikutnya: `READY_FOR_PRODUCT_DECISION_ENGINE_1E` (Admin Model Switching & Production D1 Read Bridge)*
+*Milestone Berikutnya: `READY_FOR_PRODUCT_DECISION_ENGINE_1E` (Future Boundary & Public Integration Architecture)*

@@ -86,11 +86,19 @@ export function computeModelPayloadHash(model: DecisionModelDefinition): string 
     a.scenario_id.localeCompare(b.scenario_id)
   );
 
+  const canonicalProblem = {
+    problem_id: model.problem.problem_id,
+    canonical_slug: model.problem.canonical_slug,
+    title: model.problem.title,
+    description: model.problem.description,
+    primary_article_id: model.problem.primary_article_id
+  };
+
   const payload = {
     model_id: model.model_id,
     model_version: model.model_version,
     criteria_version: model.criteria_version,
-    problem: model.problem,
+    problem: canonicalProblem,
     solution_classes: canonicalSolutions,
     criteria: canonicalCriteria,
     evaluations: canonicalEvaluations,
@@ -192,8 +200,8 @@ export function deserializeDecisionModel(row: DecisionModelRow): DecisionModelDe
     criteria_version: row.criteria_version,
     problem: {
       problem_id: row.problem_id,
-      title: row.problem_title,
       canonical_slug: row.problem_slug,
+      title: row.problem_title,
       description: row.problem_description,
       primary_article_id: row.primary_article_id
     },

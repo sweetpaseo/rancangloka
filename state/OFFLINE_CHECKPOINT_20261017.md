@@ -109,7 +109,7 @@ Seluruh suite pengujian dieksekusi dari direktori `rancangloka-astro/`:
 
 > **PERINGATAN PENGEMBANGAN SESI BERIKUTNYA:**  
 > Sesi selanjutnya **WAJIB LANGSUNG DIMULAI DARI**:  
-> **`PRODUCT_DECISION_ENGINE_1E`** (Admin Model Switching & Production D1 Read Bridge)
+> **`PRODUCT_DECISION_ENGINE_1E`** (Future Boundary & Public Integration Architecture)
 
 **Langkah Terkendali Fase PDE-1E:**
 1. Hubungkan rute `/admin/decisions` untuk membaca model keputusan aktif langsung dari Cloudflare D1 runtime dengan fallback aman ke static fixture jika offline/dev.
