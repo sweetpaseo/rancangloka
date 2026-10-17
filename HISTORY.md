@@ -13,6 +13,42 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1D: Controlled Production Activation & Parity Verification 2026-10-17
+
+- **Tanggal / Waktu:** 2026-10-17T10:25:00+07:00
+- **Status Operasional:** `CONTENT_PROTECTION_1A_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1A_FULLY_CLOSED` | `CONTENT_PROTECTION_1B_PRODUCTION_ACCEPTED` | `CONTENT_PROTECTION_1B_CORE_CLOSED` | `CONTENT_PROTECTION_1B_C_CLOSED` | `PRODUCT_DECISION_ENGINE_1_PLAN_PASS` | `PRODUCT_DECISION_ENGINE_1A_PASS` | `PRODUCT_DECISION_ENGINE_1B_PASS` | `PRODUCT_DECISION_ENGINE_1B_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1B_CLOSED` | `PRODUCT_DECISION_ENGINE_1C_PASS` | `PRODUCT_DECISION_ENGINE_1C_CLOSED` | `PRODUCT_DECISION_ENGINE_1D_PREP_PASS` | `PRODUCT_DECISION_ENGINE_1D_PREP_ACCEPTANCE_PASS` | `PRODUCT_DECISION_ENGINE_1D_PREP_CLOSED` | `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACCEPTED` | `PRODUCT_DECISION_ENGINE_1D_CLOSED` | `READY_FOR_PRODUCT_DECISION_ENGINE_1E`
+- **Next Milestone:** `PRODUCT_DECISION_ENGINE_1E` (Admin Model Switching & Production D1 Read Bridge)
+- **Active Production Worker:** `8f174086-8679-4f31-aec9-1c64844e8bd9` (100% active production traffic, NO WORKER DEPLOYMENT)
+- **Database D1 Produksi:** `rancangloka_db` (`3a86e9ad-410f-4440-884e-2eb813ec4cf7`)
+- **Commits Kunci:**
+  - `86e4ea8` `feat(product): enable controlled decision model activation` (Utilitas aktivasi terproteksi dengan multi-gate safety flags, format SQL aman terhadap tanda tanya dalam parameter, dan audit logging)
+- **Poin Kunci Rekayasa & Keamanan:**
+  1. *Otorisasi & Keamanan Produksi Ketat:*
+     - Diotorisasi eksplisit oleh Chief Editor untuk lingkup terbatas: rekonsiliasi migrasi, aplikasi migrasi 0035, persistensi model Article 5, aktivasi 1 versi pilot, verifikasi paritas & idempotensi.
+     - Nol deploy Worker, nol mutasi R2, nol mutasi artikel, nol mutasi Publication DNA. Invarian keselamatan (`automation_mode = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`) tetap terkunci.
+  2. *Rekonsiliasi Ledger Migrasi & Aplikasi D1 0035:*
+     - Audit replay migrasi 0034 (`0034_article_publication_dna.sql`) mengonfirmasi 100% idempoten (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`) dengan status `MIGRATION_0034_REPLAY_SAFE = PASS`.
+     - Eksekusi `npx wrangler d1 migrations apply rancangloka_db --remote` merekonsiliasi 0034 dan menerapkan 0035.
+     - Daftar migrasi remote kini melaporkan `✅ No migrations to apply!` (0 migrasi pending).
+     - Skema `decision_models` dan `decision_model_activations` terverifikasi aktif dengan partial unique index `idx_decision_models_active_unique` pada `(model_id) WHERE status = 'ACTIVE'`.
+  3. *Aktivasi Model Keputusan Perdana:*
+     - Dieksekusi melalui `node scripts/activate-product-decision-pilot.js --remote --apply --confirm-production-pde-activation --actor chief_editor`.
+     - Model teraktivasi: `version_key = 'model_pde_kusen_tropis@v1.0.0@crit_kusen_v1'`, `model_id = 'model_pde_kusen_tropis'`, `model_version = 'v1.0.0'`, `criteria_version = 'crit_kusen_v1'`, `status = 'ACTIVE'`, `primary_article_id = 5`, `evidence_snapshot_hash = 'eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed'`, `model_payload_hash = '1b7c9a2024cbc422015e3612a04077d47922f5dcf8a4d2dced5a309e89bfe9a0'`, `activated_by = 'chief_editor'`.
+  4. *Integritas Keterikatan Bukti Article 5:*
+     - Seluruh 4 keterikatan bukti terikat pada Article 5 dengan `published_content_hash = '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277'`, `publication_version_key = 'receipt:rcpt_bbae85b48e1b2f8d'`, `source_fidelity = 'NORMALIZED_HASH_VERIFIED'`.
+     - Nol kemunculan `23d1...` di produksi. Kesegaran bukti: `CURRENT`.
+  5. *Audit Ledger Aktivasi:*
+     - Tercatat entri `ACTIVATE` di tabel `decision_model_activations` dengan `actor = 'chief_editor'`, `rationale = 'Chief Editor authorized production activation (PDE-1D)'`.
+  6. *Bukti Idempotensi Produksi:*
+     - Upaya aktivasi ulang identik menghasilkan `IDEMPOTENCY CONFIRMED: ALREADY_ACTIVE`.
+     - Jumlah baris model tetap 1, jumlah baris aktif tetap 1, jumlah event audit tetap 1.
+  7. *Paritas Keputusan Produksi (100% Deep Parity Pass):*
+     - Model dibaca kembali dari remote D1 dan dievaluasi via `evaluateDecision()` pada seluruh 5 skenario kanonikal.
+     - Hasil rekomendasi, status fit, alternatif, dan trace evaluasi terbukti 100% byte-for-byte identik dengan model statis.
+  8. *Regresi & Integritas Build:*
+     - PDE-1A (14/14), PDE-1B (22/22), PDE-1C (13/13), PDE-1D-A (27/27): Total 76/76 PASS.
+     - `tsc --noEmit` 0 errors, `npm run build` sukses (7.62s), `git diff --check` 0 errors.
+
 ### RANCANGLOKA-PRODUCT-DECISION-ENGINE-1C & 1D-A: Admin Inspector & D1 Persistence Preparation 2026-10-17
 
 - **Tanggal / Waktu:** 2026-10-17T08:30:00+07:00

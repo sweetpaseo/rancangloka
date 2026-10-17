@@ -981,10 +981,99 @@ Aktivasi model (`activateDecisionModelVersion`) memeriksa kesegaran bukti via `d
   - `test-product-decision-engine-contract.js`: 14/14 PASS.
   - `test-product-decision-engine-evaluator.js`: 22/22 PASS.
   - `test-product-decision-admin.js`: 13/13 PASS.
-  - `test-product-decision-persistence.js`: 23/23 PASS.
+  - `test-product-decision-persistence.js`: 27/27 PASS.
 - **Pemeriksaan Tipe & Build:** `npx tsc --noEmit` **0 ERRORS**, `npm run build` **SUKSES**.
 
 ---
 
-*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1D_PREP_PASS`*
-*Milestone Berikutnya: `READY_FOR_PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACTIVATION`*
+## 27. Implementasi PDE-1D: Aktivasi Produksi Terkendali & Verifikasi Idempoten (Controlled Production Activation)
+
+Tonggak **`PRODUCT_DECISION_ENGINE-1D`** berhasil mengeksekusi aktivasi terkendali model keputusan perdana ke basis data produksi Cloudflare D1 (`rancangloka_db`: `3a86e9ad-410f-4440-884e-2eb813ec4cf7`) dengan otorisasi resmi Pemimpin Redaksi (*Chief Editor*).
+
+### 27.1 Otorisasi & Batasan Lingkup Ketat (Safety Invariants)
+- **Aktor Resmi:** `chief_editor`.
+- **Invarian Keselamatan:**
+  - `automation_mode = OFF`, `SOCIAL_AUTOMATION = OFF`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`.
+  - Deployment Worker: **TIDAK ADA** (Worker aktif tetap `8f174086-8679-4f31-aec9-1c64844e8bd9`).
+  - Mutasi R2: **0**.
+  - Mutasi Artikel & Publication DNA: **0**.
+  - Rute / UI Pembaca Publik: **TIDAK TERPENGARUH**.
+
+### 27.2 Rekonsiliasi Ledger Migrasi & Penerapan Skema D1
+- **Audit Replay Migrasi 0034 (`0034_article_publication_dna.sql`):** Seluruh pernyataan DDL terbukti 100% idempoten (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`) tanpa data mutation atau destructive DDL (`MIGRATION_0034_REPLAY_SAFE = PASS`).
+- **Penerapan Migrasi Remote:** `npx wrangler d1 migrations apply rancangloka_db --remote` mengeksekusi penyesuaian ledger 0034 dan menerapkan skema baru 0035.
+- **Status Ledger Wrangler:** `npx wrangler d1 migrations list rancangloka_db --remote` melaporkan `✅ No migrations to apply!` (0 migrasi pending).
+- **Verifikasi Skema Remote:**
+  - Tabel `decision_models` dan `decision_model_activations` terbuat secara resmi.
+  - Partial unique index `idx_decision_models_active_unique` pada `(model_id) WHERE status = 'ACTIVE'` aktif di produksi.
+  - Jumlah baris awal sebelum aktivasi: 0 baris `decision_models`, 0 baris `decision_model_activations`.
+
+### 27.3 Gerbang Keamanan Utilitas Aktivasi (`activate-product-decision-pilot.js`)
+Utilitas aktivasi mewajibkan seluruh gerbang keamanan eksplisit sebelum mutasi produksi:
+- `--remote`
+- `--apply`
+- `--confirm-production-pde-activation`
+- `--actor chief_editor`
+Percobaan tanpa flag lengkap atau tanpa aktor diblokir secara deterministik. Kode utilitas dikomit ke Git (`86e4ea8`) sebelum eksekusi mutasi produksi.
+
+### 27.4 Identitas Model Otoritatif yang Tersimpan & Teraktivasi
+- **Canonical Version Key:** `model_pde_kusen_tropis@v1.0.0@crit_kusen_v1`
+- **Model ID:** `model_pde_kusen_tropis`
+- **Model Version:** `v1.0.0`
+- **Criteria Version:** `crit_kusen_v1`
+- **Problem ID:** `dp_kusen_jendela_tropis`
+- **Primary Article ID:** 5 (`/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`)
+- **Status:** `ACTIVE` (Tepat 1 versi aktif untuk `model_pde_kusen_tropis`)
+- **Evidence Snapshot Hash:** `eed64da134be1b158d0a2985e3b43196f486eb4b86dd1fd9e95a5580655b3eed`
+- **Model Payload Hash:** `1b7c9a2024cbc422015e3612a04077d47922f5dcf8a4d2dced5a309e89bfe9a0`
+- **Activated By:** `chief_editor`
+
+### 27.5 Verifikasi Bukti Keterikatan (Evidence Payload & Freshness)
+- Seluruh 4 keterikatan bukti (`evidence_bindings_json`) terverifikasi mengikat Article 5 dengan:
+  - `published_content_hash = '14275912029058f33a907831c8bf4d081129f7470f572305c861c6d46c5e5277'`
+  - `publication_version_key = 'receipt:rcpt_bbae85b48e1b2f8d'`
+  - `source_fidelity = 'NORMALIZED_HASH_VERIFIED'`
+- String `23d1...` memiliki 0 kemunculan di produksi.
+- Status kesegaran bukti: `CURRENT`.
+
+### 27.6 Audit Ledger Aktivasi (`decision_model_activations`)
+Tercatat tepat 1 entri audit:
+- `activation_id`: `act_0ae68df700be4610`
+- `version_key`: `model_pde_kusen_tropis@v1.0.0@crit_kusen_v1`
+- `action`: `ACTIVATE`
+- `actor`: `chief_editor`
+- `rationale`: `Chief Editor authorized production activation (PDE-1D)`
+- `recorded_at`: `2026-10-17 03:24:19`
+- 0 event supersesi palsu.
+
+### 27.7 Bukti Idempotensi Produksi
+Eksekusi kedua dari perintah aktivasi yang identik menghasilkan laporan:
+`IDEMPOTENCY CONFIRMED: Version model_pde_kusen_tropis@v1.0.0@crit_kusen_v1 is ALREADY_ACTIVE in production.`
+- Baris `decision_models`: Tetap 1.
+- Baris aktif: Tetap 1.
+- Baris `decision_model_activations`: Tetap 1.
+- Nol mutasi duplikat.
+
+### 27.8 Rekonstruksi Model & Paritas Keputusan 5 Skenario (100% Deep Parity Pass)
+Model dibaca kembali dari remote D1 dan dideserialisasi via `deserializeDecisionModel(row)`.
+- Rehidrasi memulihkan utuh: 2 kelas solusi, 7 kriteria, 3 batasan (dengan evaluasi predikat deterministik), 14 evaluasi, 5 skenario fixture, dan 4 evidence bindings.
+- Evaluasi seluruh 5 skenario kanonikal menghasilkan rekomendasi, level fit, alternatif, dan trace evaluasi yang 100% identik byte-for-byte dengan model statis:
+  1. `scen_west_facing_master_bedroom`: `sol_upvc_multi_chamber` (`STRONG_FIT`), alternatif `sol_aluminium_standar` (`GOOD_FIT_WITH_TRADEOFF`).
+  2. `scen_large_living_sliding_door`: `sol_aluminium_standar` (`STRONG_FIT`), alternatif `sol_upvc_multi_chamber` (`CONDITIONAL_FIT`).
+  3. `scen_coastal_rain_exposed_facade`: `sol_upvc_multi_chamber` (`STRONG_FIT`), alternatif `sol_aluminium_standar` (`CONDITIONAL_FIT`).
+  4. `scen_tight_budget_standard_renovation`: `sol_aluminium_standar` (`GOOD_FIT_WITH_TRADEOFF`), alternatif `sol_upvc_multi_chamber` (`CONDITIONAL_FIT`).
+  5. `scen_low_maintenance_family_home`: `sol_upvc_multi_chamber` (`GOOD_FIT_WITH_TRADEOFF`), alternatif `sol_aluminium_standar` (`GOOD_FIT_WITH_TRADEOFF`).
+
+### 27.9 Hasil Regresi Lengkap
+- `test-product-decision-engine-contract.js`: 14/14 PASS.
+- `test-product-decision-engine-evaluator.js`: 22/22 PASS.
+- `test-product-decision-admin.js`: 13/13 PASS.
+- `test-product-decision-persistence.js`: 27/27 PASS.
+- `npx tsc --noEmit`: 0 errors.
+- `npm run build`: SUKSES (Server built in 7.62s).
+- `git diff --check`: 0 errors.
+
+---
+
+*Status Operasional Terkini: `PRODUCT_DECISION_ENGINE_1D_PRODUCTION_ACCEPTED` | `PRODUCT_DECISION_ENGINE_1D_CLOSED`*
+*Milestone Berikutnya: `READY_FOR_PRODUCT_DECISION_ENGINE_1E` (Admin Model Switching & Production D1 Read Bridge)*
