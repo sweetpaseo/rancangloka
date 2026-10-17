@@ -50,9 +50,16 @@ Sesi rekayasa ini berhasil menyelesaikan aktivasi terkendali Product Review Desk
    - Migrasi `0036_product_review_desk.sql` berhasil diterapkan secara resmi ke database produksi D1.
    - 10 tabel `product_review_%` terverifikasi aktif dengan 35 indeks.
    - Invarian `SCHEMA_ACTIVATION_MUST_NOT_IMPLY_PRODUCT_INGESTION`: Tepat 0 baris produk di produksi.
-2. **Kanonikalitas Kosakata Kecocokan Teknis Produk:**
-   - Status kecocokan teknis Product Review (`ProductMatchStatus`) dikunci pada: `MATCH`, `MATCH_WITH_TRADEOFF`, `CONDITIONAL_MATCH`, `NOT_MATCH`, `INSUFFICIENT_EVIDENCE`.
-   - Tidak mencampuradukkan taksonomi fit PDE (`STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, `CONDITIONAL_FIT`, `POOR_FIT`) dengan Product Review.
+2. **Kanonikalitas Kosakata Kecocokan Teknis Produk & Audit Semantik:**
+   - Status kecocokan teknis Product Review (`ProductMatchStatus`) dikunci pada 5 status kanonikal: `MATCH`, `MATCH_WITH_TRADEOFF`, `CONDITIONAL_MATCH`, `NOT_MATCH`, `INSUFFICIENT_EVIDENCE`.
+   - Terverifikasi runtime tidak pernah menggunakan `STRONG_FIT` atau `MODERATE_FIT` sebagai status kecocokan teknis (istilah tersebut murni residu narasi/prosa dokumentasi awal).
+   - Pemisahan domain mutlak: Taksonomi fit solusi PDE (`STRONG_FIT`, `GOOD_FIT_WITH_TRADEOFF`, `CONDITIONAL_FIT`, `POOR_FIT`) vs Taksonomi kecocokan teknis Product Review (`MATCH`, `MATCH_WITH_TRADEOFF`, `CONDITIONAL_MATCH`, `NOT_MATCH`, `INSUFFICIENT_EVIDENCE`).
+   - Pemetaan kelayakan pembaca (`deriveReaderProductEligibility`):
+     - `MATCH` $\to$ `ELIGIBLE`
+     - `MATCH_WITH_TRADEOFF` $\to$ `ELIGIBLE_WITH_TRADEOFF`
+     - `CONDITIONAL_MATCH` $\to$ `ELIGIBLE_WITH_TRADEOFF`
+     - `NOT_MATCH` $\to$ `BLOCKED_TECHNICAL_MISMATCH`
+     - `INSUFFICIENT_EVIDENCE` $\to$ `BLOCKED_INSUFFICIENT_EVIDENCE`
 3. **Penguatan Gerbang Pembaca (Reader Eligibility Gate):**
    - Invarian `UNPUBLISHED_EDITORIAL_REVIEW_MUST_NEVER_REACH_READER_OUTPUT`: Ulasan `DRAFT`, `REVIEWED`, dan `ARCHIVED` diblokir mutlak. Hanya `PUBLISHED` yang berhak berkontribusi ke output DTO pembaca.
    - Peran `RELATED_PRODUCT` diblokir mutlak dari perenderan publik secara default (`ROLE_NOT_READER_VISIBLE`).
