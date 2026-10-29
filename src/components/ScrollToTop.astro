@@ -1,13 +1,19 @@
 ---
 // Desktop-Only Scroll to Top Component (Magazine 2.1 Lemon Linen)
 // Device restriction: Desktop only (hidden on mobile and tablet via hidden lg:flex)
-// Page restriction: Rendered only on article detail pages
+// Page restriction: Rendered only on article detail pages and homepage
+interface Props {
+  context?: 'article' | 'homepage';
+}
+
+const { context = 'article' } = Astro.props;
 ---
 
 <button
   id="scroll-to-top-btn"
   type="button"
   aria-label="Kembali ke atas"
+  data-context={context}
   class="fixed bottom-8 right-8 z-30 hidden lg:flex items-center justify-center w-12 h-12 rounded-full bg-[var(--primary)] text-white shadow-md hover:bg-[var(--deep)] hover:shadow-lg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--primary)] opacity-0 pointer-events-none transition-all duration-300 transform translate-y-3 cursor-pointer"
 >
   <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
@@ -18,27 +24,38 @@
 <script>
   (function initScrollToTop() {
     const btn = document.getElementById('scroll-to-top-btn');
+    if (!btn) return;
+
+    const context = btn.getAttribute('data-context') || 'article';
     const articleBody = document.getElementById('article-body');
-    if (!btn || !articleBody) return;
+    const footer = document.querySelector('footer');
 
     // Check prefers-reduced-motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Boundary check function:
-    // 1. Must have scrolled at least 700px
-    // 2. Bottom of articleBody must be above viewport bottom threshold (not scrolled past into author/CTA/footer)
     let isTicking = false;
 
     function updateVisibility() {
-      if (!articleBody || !btn) return;
+      if (!btn) return;
       const scrollY = window.scrollY || document.documentElement.scrollTop;
-      const bodyRect = articleBody.getBoundingClientRect();
 
-      // The button must hide if:
-      // - scrolled less than 700px
-      // - bottom of articleBody has scrolled above the bottom of the viewport (meaning we've exited the article body into Author, CTA, Related, or Footer)
-      const withinArticleBody = bodyRect.top < window.innerHeight && bodyRect.bottom > 220;
-      const shouldShow = scrollY >= 700 && withinArticleBody;
+      let shouldShow = false;
+
+      if (context === 'article' && articleBody) {
+        // Article detail boundary logic:
+        // 1. Scrolled >= 700px
+        // 2. Within article body (hides before Author Card, Consultation CTA, Related Articles, Footer)
+        const bodyRect = articleBody.getBoundingClientRect();
+        const withinArticleBody = bodyRect.top < window.innerHeight && bodyRect.bottom > 220;
+        shouldShow = scrollY >= 700 && withinArticleBody;
+      } else {
+        // Homepage boundary logic:
+        // 1. Scrolled >= 700px
+        // 2. Hide before entering the footer region (footer top must be below viewport bottom threshold)
+        const footerRect = footer ? footer.getBoundingClientRect() : null;
+        const isBeforeFooter = !footerRect || footerRect.top > (window.innerHeight - 30);
+        shouldShow = scrollY >= 700 && isBeforeFooter;
+      }
 
       if (shouldShow) {
         btn.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');

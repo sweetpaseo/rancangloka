@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 import { getResponsiveImageAttrs } from '../lib/image';
+import ScrollToTop from '../components/ScrollToTop.astro';
 
 const db = await getDb(Astro.locals);
 const [allArticles, categories, siteSettings] = await Promise.all([
@@ -497,4 +498,7 @@ const websiteSchema = {
       </section>
     )}
   </div>
+
+  <!-- Desktop-Only Scroll to Top (Homepage) -->
+  <ScrollToTop context="homepage" />
 </BaseLayout>

@@ -12,6 +12,16 @@ async function verifyScrollToTop() {
   assert.ok(artHtml.includes('id="article-body"'), 'Must have article-body container for boundary check');
   console.log('  ✓ Article page correctly includes desktop-only Scroll to Top.');
 
+  // 1b. Homepage: MUST HAVE scroll-to-top (desktop only, Lemon Linen primary token, data-context="homepage")
+  const homeRes = await fetch('http://localhost:8788/');
+  const homeHtml = await homeRes.text();
+  assert.ok(homeHtml.includes('id="scroll-to-top-btn"'), 'Homepage MUST include scroll-to-top-btn');
+  assert.ok(homeHtml.includes('data-context="homepage"'), 'Homepage must pass context="homepage"');
+  assert.ok(homeHtml.includes('hidden lg:flex'), 'Homepage scroll-to-top must be desktop only');
+  assert.ok(homeHtml.includes('aria-label="Kembali ke atas"'), 'Homepage scroll-to-top must have accessible label');
+  assert.ok(homeHtml.includes('bg-[var(--primary)]'), 'Button must use Lemon Linen primary color token');
+  console.log('  ✓ Homepage correctly includes desktop-only Scroll to Top.');
+
   // 2. HTML Sitemap: MUST NOT HAVE scroll-to-top
   const sitemapRes = await fetch('http://localhost:8788/sitemap');
   const sitemapHtml = await sitemapRes.text();
