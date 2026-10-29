@@ -55,6 +55,7 @@ export interface Article {
   disable_internal_links?: number;
   pillar_role?: 'PILLAR' | 'SUPPORTING' | 'STANDALONE';
   parent_pillar_id?: number | null;
+  faq?: string | any[];
   published_at: string;
   updated_at: string;
 }

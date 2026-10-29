@@ -7,7 +7,9 @@ import RelatedArticles from '../components/RelatedArticles.astro';
 import SocialShareBar from '../components/SocialShareBar.astro';
 import ArticleSupportModule from '../components/ArticleSupportModule.astro';
 import ScrollToTop from '../components/ScrollToTop.astro';
+import EditorialFAQ from '../components/EditorialFAQ.astro';
 import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, getInternalLinkCandidates, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import { extractEditorialFaqs, stripFaqCommentMarkers, type EditorialFaqItem } from '../lib/editorial/faq';
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
 import { getActivePlaneALinks } from '../lib/internal-link/index.ts';
 import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../lib/article/renderer.ts';
@@ -83,6 +85,7 @@ let keyTakeaways: string[] = [];
 let jsonLdSchema: any = null;
 let breadcrumbItems: any[] = [];
 let authorObj: any = null;
+let articleFaqs: EditorialFaqItem[] = [];
 const robotsDirective = article ? getArticleRobotsDirective(article.slug, siteSettings.allow_indexing) : undefined;
 const xRobotsTag = article ? getArticleXRobotsTag(article.slug, siteSettings.allow_indexing) : null;
 if (xRobotsTag) {
@@ -96,6 +99,7 @@ const articleCoverAttrs = article?.featured_image
 const lcpPreload = articleCoverAttrs ? { src: articleCoverAttrs.src, srcset: articleCoverAttrs.srcset, sizes: articleCoverAttrs.sizes } : undefined;
 
 if (article) {
+  articleFaqs = extractEditorialFaqs(article);
   const [fetchedRelated, internalLinkCandidates, fetchedPlaneALinks] = await Promise.all([
     getRelatedArticles(db, article.id, article.category_id, 8, {
       focusKeyword: article.focus_keyword,
@@ -120,7 +124,7 @@ if (article) {
   Astro.response.headers.set('Cache-Control', 'public, max-age=60');
   Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
 
-  let rawContentHtml = article.content_html;
+  let rawContentHtml = stripFaqCommentMarkers(article.content_html || '');
   const isMalformedHtml =
     !rawContentHtml ||
     typeof rawContentHtml !== 'string' ||
@@ -128,7 +132,7 @@ if (article) {
     rawContentHtml.trim().length < 50;
 
   if (isMalformedHtml && article.content_md) {
-    rawContentHtml = await renderArticleMarkdownSafely(article.content_md);
+    rawContentHtml = stripFaqCommentMarkers(await renderArticleMarkdownSafely(article.content_md));
   }
 
   const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(rawContentHtml), {
@@ -443,6 +447,9 @@ if (article) {
 
         <!-- Main Prose Article Body (With In-Article TOC, Dateline, and BACA JUGA) -->
         <div id="article-body" class="prose-magazine text-[var(--ink)]" set:html={processedHtml} />
+
+        <!-- Optional Contextual Editorial FAQ (Zero markup if unapproved/empty) -->
+        <EditorialFAQ faqs={articleFaqs} />
 
         <!-- Plane A Dynamic Support Module -->
         <ArticleSupportModule links={planeALinks} />

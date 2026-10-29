@@ -1,0 +1,88 @@
+---
+/**
+ * RancangLoka Magazine 2.1 — Contextual Editorial FAQ Component
+ * MISSION: RANCANGLOKA_EDITORIAL_FAQ_1
+ * 
+ * Rules:
+ * - Semantic native HTML: <details> and <summary>
+ * - Zero client-side JavaScript dependencies
+ * - Lemon Linen theme tokens and typography (Plus Jakarta Sans)
+ * - Strict optionality: renders null if faqs is empty or undefined
+ * - Full keyboard & screen reader accessibility
+ */
+
+import type { EditorialFaqItem } from '../lib/editorial/faq';
+
+export interface Props {
+  faqs?: EditorialFaqItem[] | null;
+  title?: string;
+  badge?: string;
+}
+
+const {
+  faqs,
+  title = 'Pertanyaan yang Sering Diajukan',
+  badge = 'FAQ EDITORIAL'
+} = Astro.props;
+
+// Strict optionality invariant: if no valid approved items, render nothing
+const items = Array.isArray(faqs) ? faqs.filter(item => item && item.question && item.answer) : [];
+const hasFaqs = items.length > 0;
+---
+
+{hasFaqs && (
+  <section
+    class="editorial-faq my-10 pt-8 border-t border-[var(--line)]"
+    aria-labelledby="editorial-faq-title"
+  >
+    <div class="mb-6">
+      <span class="meta text-xs uppercase tracking-wider font-semibold text-[var(--primary)]">
+        {badge}
+      </span>
+      <h3
+        id="editorial-faq-title"
+        class="font-heading text-xl sm:text-2xl font-bold text-[var(--ink)] mt-1 tracking-tight"
+      >
+        {title}
+      </h3>
+    </div>
+
+    <div class="space-y-3.5" role="list">
+      {items.map((item, index) => (
+        <details
+          class="faq-accordion-item group rounded-xl border border-[var(--line)] bg-[var(--canvas)] hover:border-[var(--primary)]/60 transition-colors p-4 sm:p-5 shadow-xs"
+          role="listitem"
+        >
+          <summary
+            class="flex items-center justify-between gap-4 font-heading font-bold text-[var(--ink)] text-base sm:text-lg cursor-pointer select-none list-none rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+          >
+            <span class="leading-snug">
+              {item.question}
+            </span>
+            <span
+              class="ml-2 flex-shrink-0 text-[var(--muted)] group-hover:text-[var(--primary)] transition-transform duration-200 group-open:rotate-180"
+              aria-hidden="true"
+            >
+              <svg
+                class="w-5 h-5 transition-transform duration-200"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </span>
+          </summary>
+          <div class="faq-answer mt-3.5 pt-3.5 border-t border-[var(--line)] text-sm sm:text-base text-[var(--muted)] leading-relaxed font-sans">
+            <p>{item.answer}</p>
+          </div>
+        </details>
+      ))}
+    </div>
+  </section>
+)}
