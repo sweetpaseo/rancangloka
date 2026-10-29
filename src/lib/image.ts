@@ -103,6 +103,18 @@ export const KNOWN_LOCAL_RESPONSIVE_HASHES = new Set<string>([
   '83951f20ef5db99e829378619fe4379ba92569527ec56fec9137d7c6792dc8d6'
 ]);
 
+import { parseSeoImageFilename } from './media/seo-naming.ts';
+
+export {
+  buildSeoImageFilename,
+  buildResponsiveDerivativeFilename,
+  parseSeoImageFilename,
+  slugifyDescriptor,
+  normalizeImageProvenance,
+  type EditorialImageProvenance,
+  type ImagePlatform
+} from './media/seo-naming.ts';
+
 /**
  * Derives comprehensive responsive image attributes (srcset, sizes, explicit width/height, aspect-ratio)
  * to eliminate Cumulative Layout Shift (CLS = 0) and minimize mobile transfer payload.
@@ -121,7 +133,18 @@ export function getResponsiveImageAttrs(
 
   // Extract base filename without extension to link to verified local variants
   const mediaMatch = cleanUrl.match(/^\/media\/images\/([a-zA-Z0-9_\-]+)\.webp$/);
-  const baseKey = (mediaMatch && KNOWN_LOCAL_RESPONSIVE_HASHES.has(mediaMatch[1])) ? mediaMatch[1] : null;
+  let baseKey: string | null = null;
+  if (mediaMatch) {
+    const rawKey = mediaMatch[1];
+    if (KNOWN_LOCAL_RESPONSIVE_HASHES.has(rawKey)) {
+      baseKey = rawKey;
+    } else {
+      const parsed = parseSeoImageFilename(`${rawKey}.webp`);
+      if (parsed.isSeoFormat) {
+        baseKey = parsed.baseWithoutWidth;
+      }
+    }
+  }
 
   let width = 1200;
   let height = 675;

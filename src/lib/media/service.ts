@@ -21,6 +21,11 @@ import {
   computeCanonicalPreflightHash
 } from '../decision/publication-preflight-state.ts';
 import { ensureFeaturedThumbnailDerivative } from './thumbnail-derivative.ts';
+import {
+  buildSeoImageFilename,
+  normalizeImageProvenance,
+  type EditorialImageProvenance
+} from './seo-naming.ts';
 
 export const MEDIA_TYPE_IMAGE = 'image';
 export const MEDIA_TYPE_VIDEO = 'video'; // Reserved
@@ -85,6 +90,10 @@ export interface MediaUploadParams {
   derivativeId?: string;
   transformId?: string;
   provenanceJson?: string;
+  topic?: string;
+  imageDescription?: string;
+  seoFilename?: string;
+  provenance?: EditorialImageProvenance;
   approvalRecord?: {
     job_id?: string;
     candidate_sha256?: string;
@@ -575,22 +584,25 @@ export async function processMediaUpload(
   }
   if (params.failureInjectionPoint === 'AFTER_SHA') throw new MediaRuntimeError('INJECTED_AFTER_SHA', 'Injected failure after SHA.', 500);
 
-  const storageKey = `media/images/${meta.sha256}.${meta.extension}`;
-  const publicUrl = `/${storageKey}`;
-
-  // 4. Global SHA-256 Deduplication
+  // 4. Global SHA-256 Deduplication & Storage Key Determination
   let assetId: string;
   let deduplicated = false;
+  let storageKey: string;
+  let publicUrl: string;
 
   const existingAsset = await db
-    .prepare('SELECT asset_id, status FROM media_assets WHERE sha256 = ?')
+    .prepare('SELECT asset_id, status, storage_key, public_url FROM media_assets WHERE sha256 = ?')
     .bind(meta.sha256)
     .first();
 
   if (existingAsset && existingAsset.status === STATUS_VALIDATED) {
     assetId = existingAsset.asset_id;
     deduplicated = true;
-    if (params.derivativeId || params.transformId || params.provenanceJson) {
+    publicUrl = existingAsset.public_url || `/media/images/${meta.sha256}.${meta.extension}`;
+    storageKey = existingAsset.storage_key || publicUrl.replace(/^\//, '');
+
+    const finalProvJson = params.provenanceJson || (params.provenance ? JSON.stringify(normalizeImageProvenance(params.provenance)) : null);
+    if (params.derivativeId || params.transformId || finalProvJson) {
       try {
         await db
           .prepare(
@@ -600,11 +612,22 @@ export async function processMediaUpload(
                  provenance_json = COALESCE(provenance_json, ?) 
              WHERE asset_id = ?`
           )
-          .bind(params.derivativeId || null, params.transformId || null, params.provenanceJson || null, assetId)
+          .bind(params.derivativeId || null, params.transformId || null, finalProvJson || null, assetId)
           .run();
       } catch {}
     }
   } else {
+    // Generate descriptive SEO filename for new editorial uploads
+    const filename = params.seoFilename || buildSeoImageFilename({
+      articleSlug: article?.slug,
+      topic: params.topic,
+      description: params.imageDescription || (params.altText ? params.altText.slice(0, 40) : undefined),
+      sha256: meta.sha256,
+      width: meta.width,
+      extension: meta.extension
+    });
+    storageKey = `media/images/${filename}`;
+    publicUrl = `/${storageKey}`;
     assetId = generateRuntimeAssetId();
 
     // R2 Upload (Single global write)
@@ -653,7 +676,7 @@ export async function processMediaUpload(
         'ARTICLE_PUBLIC_DERIVATIVE',
         params.derivativeId || null,
         params.transformId || null,
-        params.provenanceJson || null
+        params.provenanceJson || (params.provenance ? JSON.stringify(normalizeImageProvenance(params.provenance)) : null)
       )
         .run();
   }
