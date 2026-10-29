@@ -200,10 +200,9 @@ export async function importArticleContent(
     }
   }
 
-  // 3. Fallback default image for presentation continuity if image is not provided
-  const fallbackImage = 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80';
-  const featuredImage = normalized.featured_image || fallbackImage;
-  const imageAlt = normalized.image_alt || normalized.title;
+  // 3. Featured image assignment (never assign generic unvetted fallbacks to editorial drafts)
+  const featuredImage = normalized.featured_image || undefined;
+  const imageAlt = normalized.featured_image ? (normalized.image_alt || normalized.title) : undefined;
 
   let persistedArticle: any;
 

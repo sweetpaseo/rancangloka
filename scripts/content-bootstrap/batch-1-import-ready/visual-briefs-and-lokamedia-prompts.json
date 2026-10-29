@@ -1,0 +1,147 @@
+{
+  "batch_id": "EDITORIAL-BATCH-1-20261029",
+  "created_at": "2026-10-29T22:45:00+07:00",
+  "articles": [
+    {
+      "article_code": "ARTICLE_A",
+      "canonical_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+      "title": "Dinding Rembes dan Cat Menggelembung: Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah",
+      "visual_assets": {
+        "hero_image": {
+          "slot": "featured_hero",
+          "aspect_ratio": "16:9",
+          "target_dimensions": "1200x675",
+          "alt_text": "Dinding interior rumah tropis modern yang menunjukkan perbedaan bercak rembesan air pada plesteran dinding dekat lantai dan plafon.",
+          "brief": "Close-to-medium shot of a minimalist contemporary Indonesian living room with subtle, realistic wall moisture damage. Clean terracotta floor tile, soft natural morning daylight from an adjacent open courtyard, highlighting peeling paint and efflorescence salt crystal textures near the floor skirting board contrasted with clean modern wall surfaces.",
+          "lokamedia_prompt": "Editorial interior photography of an authentic modern Indonesian house living room, eye-level shot. A plastered brick wall showing realistic blistering paint texture and fine white salt efflorescence near the skirting board at ground level, contrasting with a clean modern white-sand textured wall above. Warm tropical morning ambient sunlight streaming from a side window, soft shadows, warm natural wood console table nearby, matte ceramic floor tiles. Architectural Digest Indonesia style, 8k resolution, crisp architectural detail, photojournalistic, no exaggerated water spills, no CGI artificial glare.",
+          "provenance_requirements": {
+            "source_type": "ai_generated_operator_reviewed",
+            "provider": "lokamedia_gemini_or_chatgpt",
+            "human_approval_required": true,
+            "crypto_binding": "hmac_sha256_candidate_hash"
+          }
+        },
+        "supporting_images": [
+          {
+            "slot": "inline_diagram_01",
+            "aspect_ratio": "16:9",
+            "target_dimensions": "1200x675",
+            "alt_text": "Diagram infografis teknis tiga zona sumber rembesan dinding: talang atap di zona atas, tempias plesteran di zona tengah, dan rising damp di zona bawah.",
+            "brief": "Technical architectural cross-section diagram showing 3 wall moisture zones: Zone 1 top (gutter/flashing leak), Zone 2 middle (wind-driven rain penetration through exterior plaster cracks), and Zone 3 bottom (rising damp groundwater capillary action through brick above foundation sloof).",
+            "lokamedia_prompt": "Clean architectural cutaway infographic diagram of a 1-story tropical brick wall, technical cross-section style. Neutral warm linen background (#F8F7F2), crisp vector linework with subtle watercolor wash. Three distinct vertical zones labeled with delicate arrows: top zone showing roof gutter rainwater ingress, middle zone showing wind-driven rain penetrating exterior hairline plaster cracks, and bottom zone showing groundwater rising damp capilarity above concrete sloof beam with efflorescence salts. Elegant technical typography, architectural journal quality, no cartoonish elements, clear educational legibility.",
+            "provenance_requirements": {
+              "source_type": "technical_diagram_editorial",
+              "human_approval_required": true
+            }
+          },
+          {
+            "slot": "inline_diagram_02",
+            "aspect_ratio": "4:3",
+            "target_dimensions": "1000x750",
+            "alt_text": "Detail potongan konstruksi balok sloof dengan lapisan trasram kedap air 1 banding 2 sebagai penahan kapilaritas air tanah.",
+            "brief": "Detailed construction cutaway of reinforced concrete sloof beam on foundation, showing the dense 1:2 waterproof mortar (trasram) layer reaching 30 cm above floor finish level, effectively blocking groundwater capillary suction.",
+            "lokamedia_prompt": "Close-up architectural detail cutaway rendering of a tropical residential building base. Reinforced concrete sloof beam resting on stone foundation, with the waterproof cement mortar layer (trasram 1:2 ratio) clearly illustrated with subtle dense gray texture between red clay brick courses. Clean line art overlay with callout lines, warm neutral background, educational textbook fidelity, professional structural engineering illustration.",
+            "provenance_requirements": {
+              "source_type": "technical_diagram_editorial",
+              "human_approval_required": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "article_code": "ARTICLE_B",
+      "canonical_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman",
+      "title": "7 Ide Menata Balkon Rumah Kecil agar Nyaman dan Teduh",
+      "visual_assets": {
+        "hero_image": {
+          "slot": "featured_hero",
+          "aspect_ratio": "16:9",
+          "target_dimensions": "1200x675",
+          "alt_text": "Penataan balkon rumah kecil berukuran 1x2 meter dengan meja gantung pada railing, ubin lantai kayu, dan tanaman hias vertikal yang asri.",
+          "brief": "Eye-level shot of an inviting, compact 1x2.5 meter second-floor residential balcony in suburban Indonesia. Features a slim wooden folding table mounted on black metal railing with a ceramic coffee cup, interlocking acacia wood floor decking, potted green plants on wall trellis, warm late afternoon sunlight, looking cozy and uncluttered.",
+          "lokamedia_prompt": "Architectural photography of a cozy compact balcony (1.2 x 2.4 meters) on the second floor of a modern Indonesian townhouse. Acacia wood interlocking decking tiles on the floor, black powder-coated iron railing with a sleek foldable wooden railing bar table holding a ceramic mug and a book. Lush vertical plants in terracotta wall pots including devil's ivy (sirih gading) and compact sansevieria. Golden hour warm sunlight casting gentle diagonal shadows, clean sliding glass door open to an interior room, no clutter, warm inviting mood, Kinfolk and Livingetc aesthetic, 8k photorealistic.",
+          "provenance_requirements": {
+            "source_type": "ai_generated_operator_reviewed",
+            "provider": "lokamedia_gemini_or_chatgpt",
+            "human_approval_required": true,
+            "crypto_binding": "hmac_sha256_candidate_hash"
+          }
+        },
+        "supporting_images": [
+          {
+            "slot": "inline_diagram_01",
+            "aspect_ratio": "16:9",
+            "target_dimensions": "1200x675",
+            "alt_text": "Denah tampak atas tata letak balkon sempit 1x2 meter memperlihatkan jalur sirkulasi 60 cm dan posisi meja lipat railing.",
+            "brief": "Architectural top-down layout floor plan diagram of a 1x2 meter balcony demonstrating space planning: 60 cm walking clearance corridor, swing arc of glass door, foldable railing table, and wall-hung vertical planters leaving floor drain clear.",
+            "lokamedia_prompt": "Top-down architectural 2D floor plan drawing of a compact 1.2 x 2.5 meter balcony space layout. Warm beige architectural blueprint style with clean fine black lines and soft green watercolor fills for potted plants. Clearly labeled spatial dimensions indicating a 60 cm walking corridor, door swing clearance, foldable railing table, and corner storage bench. Unobstructed floor drain callout in the corner. Professional interior design plan, highly legible, elegant Scandinavian-Indonesian aesthetic.",
+            "provenance_requirements": {
+              "source_type": "technical_diagram_editorial",
+              "human_approval_required": true
+            }
+          },
+          {
+            "slot": "inline_diagram_02",
+            "aspect_ratio": "4:3",
+            "target_dimensions": "1000x750",
+            "alt_text": "Detail anyaman kerei bambu gulung dan lampu lentera LED hangat bertenaga surya pada pagar balkon.",
+            "brief": "Close-up detail shot of natural rolled bamboo blind (kerei bambu) filtering harsh sunset glare, paired with a warm 2700K solar-powered LED lantern on a wooden corner ledge.",
+            "lokamedia_prompt": "Close-up lifestyle architectural photograph of an outdoor balcony privacy screen made of woven natural bamboo blinds (kerei bambu). Soft warm dusk lighting filtering through the bamboo slats, casting gentle linear shadows. A compact modern matte-black solar LED lantern glowing with warm 2700K amber light on a weathered wood railing ledge, small succulent pot in background. Crisp focus, authentic natural materials, high dynamic range.",
+            "provenance_requirements": {
+              "source_type": "ai_generated_operator_reviewed",
+              "human_approval_required": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "article_code": "ARTICLE_C",
+      "canonical_slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap",
+      "title": "Menata Denah Rumah Lebar 5–6 Meter: Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap",
+      "visual_assets": {
+        "hero_image": {
+          "slot": "featured_hero",
+          "aspect_ratio": "16:9",
+          "target_dimensions": "1200x675",
+          "alt_text": "Interior ruang keluarga rumah klaster lebar 6 meter dengan bukaan taman kering dalam (inner court) yang terang dan sejuk.",
+          "brief": "Eye-level wide shot of an open-plan modern Indonesian cluster house (6-meter width). Living room seamlessly connected to dining area, flanked by an open-to-sky inner courtyard with small gravel bed and a single Japanese-Indonesian bonsai/ketapang kencana tree. Soft natural daylight illuminates the center of the house with gentle breeze indicated by sheer linen curtains.",
+          "lokamedia_prompt": "Editorial interior architecture photography of a narrow modern Indonesian row house with a 6-meter facade width. Open-concept living and dining area centered around an internal dry garden courtyard (inner court) with floor-to-ceiling black aluminum sliding doors open. Soft zenithal daylight washing down from the open courtyard sky onto warm microcement floor and light wood dining table. Terrazzo planter with a slender tropical tree (Ketapang Kencana mini), breeze rippling linen curtains. Jakarta modern tropical home, warm neutral palette (#E6E2D8), crisp lines, photorealistic, 8k.",
+          "provenance_requirements": {
+            "source_type": "ai_generated_operator_reviewed",
+            "provider": "lokamedia_gemini_or_chatgpt",
+            "human_approval_required": true,
+            "crypto_binding": "hmac_sha256_candidate_hash"
+          }
+        },
+        "supporting_images": [
+          {
+            "slot": "inline_diagram_01",
+            "aspect_ratio": "16:9",
+            "target_dimensions": "1200x675",
+            "alt_text": "Diagram isometrik 3D perbandingan aliran ventilasi silang rumah kaveling 6x15 meter: kondisi lorong tertutup vs kondisi optimal dengan inner court.",
+            "brief": "3D isometric cutaway diagram comparing two row house scenarios: conventional closed tunnel house (stagnant hot air in living room) vs optimized open layout with inner court and stack void (cool breeze entering front door and exiting via courtyard and roof clerestory).",
+            "lokamedia_prompt": "Axonometric 3D cutaway architectural diagram of a 6x15 meter row house in Indonesia. Split visual comparison: left half shows conventional closed renovation where rear yard is fully roofed trapping stagnant heat; right half shows optimized layout with a central open-to-sky inner court and ventilated stair void. Stylized blue airflow arrows entering front windows and rising upward through the courtyard. Warm architectural model styling on warm linen paper texture, clean graphic design, clear technical annotations.",
+            "provenance_requirements": {
+              "source_type": "technical_diagram_editorial",
+              "human_approval_required": true
+            }
+          },
+          {
+            "slot": "inline_diagram_02",
+            "aspect_ratio": "4:3",
+            "target_dimensions": "1000x750",
+            "alt_text": "Detail penataan partisi roster keramik tanah liat berpori sebagai pembatas ruang keluarga yang tetap mengalirkan udara alami.",
+            "brief": "Architectural photograph of a terracotta breeze block (roster) partition wall dividing living room and kitchen in a narrow house, showing light and airflow passing through the geometric voids while maintaining visual privacy.",
+            "lokamedia_prompt": "Architectural interior photo of a decorative terracotta breeze block (roster bata tanah liat) partition wall in a tropical Indonesian home. Geometric perforations casting sharp graphic shadows on warm polished concrete floor. Beyond the perforated partition, a glimpse of a clean kitchen counter. Warm natural cross-light, authentic Indonesian artisanal construction, warm earthy tones, tactile surface texture, 8k resolution.",
+            "provenance_requirements": {
+              "source_type": "ai_generated_operator_reviewed",
+              "human_approval_required": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

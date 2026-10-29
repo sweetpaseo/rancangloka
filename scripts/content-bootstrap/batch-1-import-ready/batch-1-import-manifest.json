@@ -1,0 +1,88 @@
+{
+  "batch_id": "BATCH_1_INGEST_PREPARATION_20261029",
+  "project": "RancangLoka Magazine 2.1 — Lemon Linen",
+  "timestamp": "2026-10-29T22:45:00+07:00",
+  "safety_invariants": {
+    "auto_publish": "OFF",
+    "target_status": "DRAFT",
+    "jev_mode": "shadow",
+    "production_authority": 0,
+    "production_d1_mutations": 0,
+    "cloudflare_deployments": 0
+  },
+  "articles": [
+    {
+      "code": "ARTICLE_A",
+      "file": "article-01-dinding-rembes.md",
+      "title": "Dinding Rembes dan Cat Menggelembung: Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah",
+      "canonical_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+      "category": "Sistem & Konstruksi Rumah",
+      "category_slug": "sistem-konstruksi-rumah",
+      "category_id": 8,
+      "author": "Tim Riset Materialitas",
+      "author_slug": "tim-riset-materialitas",
+      "focus_keyword": "dinding rembes cat menggelembung",
+      "word_count": 1642,
+      "readiness_score": 94,
+      "audit_status": "PASSED_STRICT_EDITORIAL_AUDIT",
+      "evidence_provenance": [
+        "BRE Digest 245: Rising damp in walls (equilibrium limit & capillary action)",
+        "RILEM Test Method II.4: Water absorption under low pressure (wind-driven rain)",
+        "SNI 03-6861.1-2002: Spesifikasi bahan bangunan bukan logam (mortar & plesteran trasram)"
+      ],
+      "faq_count": 4,
+      "internal_links_count": 4,
+      "hero_image_status": "BRIEFED_PENDING_LOKAMEDIA_CREATION",
+      "supporting_images_count": 2
+    },
+    {
+      "code": "ARTICLE_B",
+      "file": "article-02-menata-balkon.md",
+      "title": "7 Ide Menata Balkon Rumah Kecil agar Nyaman dan Teduh",
+      "canonical_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman",
+      "category": "Eksterior & Lanskap",
+      "category_slug": "eksterior-lanskap",
+      "category_id": 7,
+      "author": "Dewan Redaksi Spasial",
+      "author_slug": "dewan-redaksi-spasial",
+      "focus_keyword": "menata balkon rumah kecil",
+      "word_count": 1395,
+      "readiness_score": 96,
+      "audit_status": "PASSED_STRICT_EDITORIAL_AUDIT",
+      "evidence_provenance": [
+        "Spatial clearance standard: 60 cm minimum walking corridor & 45-50 cm furniture depth on 1x2m balcony",
+        "Material durability benchmarks: powder-coated steel, WPC composite & acacia weatherproofing",
+        "Outdoor electrical & drainage invariants: IP44-IP65 low-voltage solar lighting & unobstructed floor drain"
+      ],
+      "faq_count": 4,
+      "internal_links_count": 3,
+      "hero_image_status": "BRIEFED_PENDING_LOKAMEDIA_CREATION",
+      "supporting_images_count": 2
+    },
+    {
+      "code": "ARTICLE_C",
+      "file": "article-03-menata-denah.md",
+      "title": "Menata Denah Rumah Lebar 5–6 Meter: Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap",
+      "canonical_slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap",
+      "category": "Interior & Tata Ruang",
+      "category_slug": "interior-design",
+      "category_id": 1,
+      "author": "Dewan Redaksi Spasial",
+      "author_slug": "dewan-redaksi-spasial",
+      "focus_keyword": "denah rumah lebar 6 meter",
+      "word_count": 1548,
+      "readiness_score": 95,
+      "audit_status": "PASSED_STRICT_EDITORIAL_AUDIT",
+      "evidence_provenance": [
+        "SNI 03-6572-2001 Pasal 4.3.2: Bukaan ventilasi alami minimum 5% luas lantai ruangan yang dihuni",
+        "Szokolay (2014): Stack effect & thermal buoyancy delta-T and delta-h limits in humid tropics",
+        "Givoni (1998): Wind pressure differential and cross-ventilation dynamics in row houses",
+        "Structural engineering safety warning: Non-structural vs load-bearing brick wall demolition"
+      ],
+      "faq_count": 4,
+      "internal_links_count": 4,
+      "hero_image_status": "BRIEFED_PENDING_LOKAMEDIA_CREATION",
+      "supporting_images_count": 2
+    }
+  ]
+}

@@ -801,8 +801,8 @@ const editorialStandardsReadiness = {
         </div>
       </header>
 
-      <!-- Featured Image Hero -->
-      {article.featured_image && (
+      <!-- Featured Image Hero or Editorial Placeholder -->
+      {article.featured_image ? (
         <figure class="my-8 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800 shadow-sm border border-black/5 dark:border-white/5">
           <img
             src={article.featured_image}
@@ -815,6 +815,27 @@ const editorialStandardsReadiness = {
             </figcaption>
           )}
         </figure>
+      ) : (
+        <div class="my-8 p-6 sm:p-8 rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-700/60 bg-amber-50/60 dark:bg-amber-950/20 text-center">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 mb-3 text-2xl">
+            🖼️
+          </div>
+          <h3 class="text-base font-bold text-amber-900 dark:text-amber-200 tracking-tight">
+            Gambar editorial belum tersedia
+          </h3>
+          <p class="mt-1.5 text-xs text-amber-800/80 dark:text-amber-300/80 max-w-lg mx-auto leading-relaxed">
+            Slot featured image wajib diproduksi melalui LokaMedia dan disetujui Pemimpin Redaksi sebelum artikel dapat dijadwalkan untuk publikasi.
+          </p>
+          <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-200/60 dark:bg-amber-900/40 text-[11px] font-mono font-semibold text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/40">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              Status Media: MEDIA_PENDING
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+              Pipeline: LokaMedia Dual-Control Gate
+            </span>
+          </div>
+        </div>
       )}
 
       <!-- Key Takeaways Box -->

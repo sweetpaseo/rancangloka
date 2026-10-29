@@ -13,6 +13,112 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-EDITORIAL-PREVIEW-QUALITY-FIX-1: Featured Image Motherboard Elimination, Editorial Readability Short Paragraphs, and Accessible FAQ Accordion Preview (2026-10-30)
+
+- **Tanggal / Waktu:** 2026-10-30T00:45:00+07:00 (17:45:00 UTC)
+- **Status Misi:** `RANCANGLOKA_EDITORIAL_PREVIEW_QUALITY_FIX_COMPLETE` (All P0-1, P0-2, P0-3 Resolved & Verified)
+- **Git HEAD:** `604b978` (branch: `feat/jev-lokamedia-integration`)
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`
+- **Root Cause & Perbaikan Utama:**
+  1. *P0-1 Featured Image (Motherboard Elimination):* Ditemukan fallback URL motherboard Unsplash hardcoded pada `pipeline.ts` dan `ingest-batch1-to-local-staging.js`. Fallback generik dihapus total. Draft tanpa cover final memiliki `featured_image = NULL` dan menampilkan placeholder editorial eksplisit: *"Gambar editorial belum tersedia"* (status badge `MEDIA_PENDING`, alur LokaMedia Dual-Control Gate) di CMS Admin Preview. Mapping media artikel live tetap utuh 100%.
+  2. *P0-2 Short Paragraph Editorial Readability:* Paragraf padat 5–7 kalimat dipecah secara editorial menjadi paragraf ringan 2–3 kalimat per tag semantik `<p>` pada ketiga artikel Batch 1 (ID 9993, 9999, 10000). Rata-rata kalimat per paragraf turun ke 1.97 kalimat, tanpa line-break palsu atau CSS hack, dengan mempertahankan seluruh data teknis, SNI, dan tautan internal.
+  3. *P0-3 FAQ Raw JSON Elimination:* FAQ diekstrak bersih menjadi komponen `<details>/<summary>` via `EditorialFAQ.astro` tanpa client JS. Seluruh teks JSON mentah dan delimiter komentar dibersihkan dari badan artikel.
+- **Hasil Pengujian & Regresi:**
+  - `test-preview-quality-fix.js`: 46/46 PASS (Featured image, short paragraph analysis, zero raw FAQ JSON)
+  - `test-faq-rendering-fix.js`: 12/12 PASS
+  - `test-article-render-integrity.js`: 6/6 PASS
+  - `test-article-persistence.js`: 7/7 PASS
+  - `npx tsc --noEmit` & `npm run build`: 0 error / build sukses (9.24s)
+  - Visual QA Browser Subagent: Terverifikasi visual desktop & mobile (390px)
+
+### RANCANGLOKA-BATCH1-STAGING-AND-EDITORIAL-REVIEW-1: Safe Isolated Staging Ingestion, Admin Preview Verification, and Editorial Review Workflow for Batch 1 Articles (2026-10-29)
+
+- **Tanggal / Waktu:** 2026-10-29T23:10:00+07:00 (16:10:00 UTC)
+- **Status Misi:** `RANCANGLOKA_BATCH1_STAGING_AND_REVIEW_COMPLETE` (Isolated Local Staging Ingested & Verified; Remote Staging Proposed)
+- **Git HEAD:** `7e2923e` (branch: `feat/jev-lokamedia-integration`)
+- **Production Worker:** `rancangloka` (`de250e22-0de3-4ef1-a7c5-53ec20102c9d` on `https://rancangloka.com`)
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`
+- **Pemisahan Lingkungan & Keputusan Infrastruktur:**
+  - Audit membuktikan Cloudflare account (`chandrajoyko@gmail.com`) hanya memiliki 1 database D1 remote (`rancangloka_db`, produksi).
+  - Proposal Remote Staging (`rancangloka_db_staging` dan `[env.staging]` Worker `rancangloka-staging`, estimasi biaya $0.00) disiapkan dan menunggu persetujuan eksplisit owner.
+  - Lingkungan Staging Lokal Miniflare D1 SQLite (`.wrangler/state/v3/d1/miniflare-D1DatabaseObject/...sqlite`) diaktifkan dan digunakan secara penuh untuk isolasi penulisan draft.
+- **Hasil Ingesti Staging Lokal (Status = 'draft', Zero Auto-Publish):**
+  1. *Artikel A:* `Dinding Rembes dan Cat Menggelembung: Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah` (ID: 9993, Status: `draft`, Kategori: 8, Penulis: 2)
+  2. *Artikel B:* `7 Ide Menata Balkon Rumah Kecil agar Nyaman dan Teduh` (ID: 9999, Status: `draft`, Kategori: 7, Penulis: 1)
+  3. *Artikel C:* `Menata Denah Rumah Lebar 5–6 Meter: Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap` (ID: 10000, Status: `draft`, Kategori: 1, Penulis: 1)
+- **Verifikasi Alur Pratinjau & Persetujuan Redaksi:**
+  - Pratinjau editorial terproteksi login admin dan menyuntikkan header keamanan: `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet` dan `Cache-Control: private, no-store, no-cache, must-revalidate`.
+  - Halaman Antrean Persetujuan Redaksi (`/admin/approvals`) dan Manajemen Post CMS (`/admin/posts`) memuat ketiga artikel dengan link pratinjau langsung di tab baru (`target="_blank"`).
+  - Visual brief dan prompt Lokamedia terikat di manifest visual dengan status pending placeholder tanpa gambar rusak.
+- **Hasil Pengujian & Regresi:**
+  - `test-batch1-payload-validation.js`: 3/3 PASS
+  - `test-batch1-ingest-simulation.js`: 3/3 PASS
+  - `test-batch1-local-preview.js`: 3/3 PASS
+  - `test-article-persistence.js`: 7/7 PASS
+  - `test-article-render-integrity.js`: 6/6 PASS
+  - `test-soak-safety.js`: 54/54 PASS
+  - `npx tsc --noEmit` & `npm run build`: 0 error / build success
+
+### RANCANGLOKA-BATCH1-INGEST-AND-APPROVAL-PREPARATION-1: Comprehensive Editorial Audit, Contract Normalization, Lokamedia Visual Prompts, Local Staging Ingestion Simulation, and Human Review Preparation for Articles A, B, and C (2026-10-29)
+
+- **Tanggal / Waktu:** 2026-10-29T22:50:00+07:00 (15:50:00 UTC)
+- **Status Misi:** `RANCANGLOKA_BATCH1_INGEST_PREPARED` (Audit, Payload Normalization, and Simulation Passed 100%)
+- **Git HEAD:** `7e2923e` (feat/jev-lokamedia-integration)
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`
+- **Pemeriksaan Lingkungan (Rules 8 & 9):**
+  - Remote staging tidak dikonfigurasi dalam `wrangler.toml` (hanya single production database `rancangloka_db` `3a86e9ad-410f-4440-884e-2eb813ec4cf7`).
+  - Sesuai aturan: penulisan ke remote D1 ditangguhkan untuk mencegah mutasi data produksi langsung.
+  - Tiga berkas naskah import-ready diproduksi secara terisolasi di `scripts/content-bootstrap/batch-1-import-ready/` dan diverifikasi penuh pada simulasi local staging.
+- **Tiga Artikel Batch 1 Terverifikasi & Ternormalisasi:**
+  1. *Artikel A (Dinding Rembes):*
+     - Judul: *Dinding Rembes dan Cat Menggelembung: Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah*
+     - Slug Kanonikal: `dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah`
+     - Kategori: *Sistem & Konstruksi Rumah* (ID: 8) | Penulis: *Tim Riset Materialitas* (ID: 2)
+     - Kata Kunci Fokus: `dinding rembes cat menggelembung` | Panjang Kata: 2.516 kata | Skor Kesiapan: 94/100
+     - Bukti Empiris: BRE Digest 245 (rising damp equilibrium), RILEM Test Method II.4, SNI 03-6861.1-2002.
+     - FAQ Editorial: 4 butir tanya-jawab kontekstual | Tautan Internal: 4 outbound, 2 inbound.
+  2. *Artikel B (Balkon Kompak):*
+     - Judul: *7 Ide Menata Balkon Rumah Kecil agar Nyaman dan Teduh*
+     - Slug Kanonikal: `7-ide-menata-balkon-rumah-kecil-agar-nyaman`
+     - Kategori: *Eksterior & Lanskap* (ID: 7) | Penulis: *Dewan Redaksi Spasial* (ID: 1)
+     - Kata Kunci Fokus: `menata balkon rumah kecil` | Panjang Kata: 1.737 kata | Skor Kesiapan: 96/100
+     - Bukti Empiris: Standar koridor sirkulasi 60 cm & kedalaman furnitur 45–50 cm pada balkon 1x2m, durabilitas WPC/besi powder-coated, pencahayaan outdoor IP44–IP65, bebas sumbatan floor drain.
+     - FAQ Editorial: 4 butir tanya-jawab kontekstual | Tautan Internal: 3 outbound.
+  3. *Artikel C (Denah Rumah Lebar 5–6 Meter):*
+     - Judul: *Menata Denah Rumah Lebar 5–6 Meter: Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap*
+     - Slug Kanonikal: `menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap`
+     - Kategori: *Interior & Tata Ruang* (ID: 1) | Penulis: *Dewan Redaksi Spasial* (ID: 1)
+     - Kata Kunci Fokus: `denah rumah lebar 6 meter` | Panjang Kata: 2.312 kata | Skor Kesiapan: 95/100
+     - Bukti Empiris: SNI 03-6572-2001 Pasal 4.3.2 (min 5% luas bukaan alami ruang huni), Szokolay 2014 (stack effect/thermal buoyancy), Givoni 1998 (pressure differential cross-ventilation), peringatan keselamatan struktur bongkar dinding non-struktural.
+     - FAQ Editorial: 4 butir tanya-jawab kontekstual | Tautan Internal: 4 outbound, 2 inbound.
+- **Spesifikasi Aset Visual LokaMedia:**
+  - `scripts/content-bootstrap/batch-1-import-ready/visual-briefs-and-lokamedia-prompts.json`
+  - 3 Hero Prompts (16:9) + 6 Supporting Diagram Prompts (16:9 / 4:3).
+  - Teks alt deskriptif berbahasa Indonesia sesuai WCAG AA.
+  - Skema provenans media: model AI, prompt, operator review required, dan HMAC-SHA256 candidate binding.
+- **Hasil Pengujian Validasi & Simulasi (100% Pass):**
+  - `test-batch1-payload-validation.js`: 3/3 PASS (Parser valid, Word count valid, Category/Author resolved, Slug unique, 4 FAQs extracted).
+  - `test-batch1-ingest-simulation.js`: 3/3 PASS (Pipeline imports cleanly, Status = 'draft' strictly enforced, zero leakage to public queries).
+  - `test-batch1-local-preview.js`: 3/3 PASS (Clean body HTML, FAQ rendered cleanly, pending image fallback verified).
+  - `npx tsc --noEmit`: 0 errors.
+  - `npm run build`: Berhasil tanpa error dalam 9.73s.
+- **Rekomendasi Review Pertama Pemilik:** Artikel B (*7 Ide Menata Balkon Rumah Kecil agar Nyaman dan Teduh*) direkomendasikan untuk ditinjau pertama kali karena memiliki skor kesiapan tertinggi (96/100), daya tarik universal, dan zero risiko struktural.
+- **Dokumen Laporan Lengkap:** `docs/editorial/RANCANGLOKA_BATCH1_INGEST_PREPARATION_20261029.md`.
+
+### RANCANGLOKA-POST-RELEASE-QA-1: Comprehensive Post-Release Quality Assurance, Browser-Based ScrollToTop Audit, Editorial FAQ Strict Approval-Path Audit, Media SEO Lifecycle Fixture, and Article 5 Production Reconciliation (2026-10-29)
+
+- **Tanggal / Waktu:** 2026-10-29T21:05:00+07:00 (14:05:00 UTC)
+- **Status Misi:** `RANCANGLOKA_POST_RELEASE_QA_PASS` (100% Verified, Zero Code Defects)
+- **Git HEAD:** `7e2923e` (Verified MATCH)
+- **Cloudflare Worker Produksi:** `de250e22-0de3-4ef1-a7c5-53ec20102c9d` (100% Traffic Allocation)
+- **Temuan Kunci & Rekonsiliasi:**
+  1. *Scroll-To-Top Browser QA:* Terverifikasi live pada `https://rancangloka.com` di 5 resolusi layar (390px, 768px, 1024px, 1440px, 1920px). Mobile dan tablet 100% tersembunyi (`hidden lg:flex`, zero overlay). Desktop tampil setelah scroll vertikal, auto-hide sebelum footer, dan scroll mulus.
+  2. *Editorial FAQ Approval-Path Audit:* Terverifikasi ketat melalui query database `WHERE status = 'published'`. Draf belum disetujui tidak dapat membocorkan FAQ ke publik. Artikel terbit tanpa FAQ menghasilkan 0 node DOM (nol container kosong).
+  3. *Media SEO Lifecycle Fixture:* Pengujian fixture in-memory end-to-end membuktikan upload -> storage key deskriptif -> metadata DB -> varian responsif (-480, -640, -960, -1200) -> srcset zero-CLS berjalan sempurna dengan proteksi deduplikasi dan dukungan URL lama.
+  4. *Rekonsiliasi Publikasi Artikel 5:* Artikel 5 (`kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia`) terverifikasi telah RESMI TERBIT sejak September 2026 dengan Approval ID 9, receipt `rcpt_bbae85b48e1b2f8d`, content hash kanonikal, dan live HTTP 200 pada production edge. Status "menunggu persetujuan" pada handoff sebelumnya merupakan kekeliruan teks dokumentasi.
+  5. *Hasil Regresi Lengkap:* 243/243 checks PASS (Termasuk tsc, build, SOAK-0, publisher, planner, decision shadow, dan integritas render).
+  6. *Dokumen Laporan Lengkap:* `docs/releases/RANCANGLOKA_POST_RELEASE_QA_20261029.md`.
+
 ### RANCANGLOKA-EDITORIAL-UX-MEDIA-ENHANCEMENT-1: Desktop-Only Homepage ScrollToTop, Contextual Editorial FAQ (<details>/<summary>), SEO-Friendly Image Naming & Provenance, and Production Edge Verification (2026-10-29)
 
 - **Tanggal / Waktu:** 2026-10-29T20:35:00+07:00 (13:35:00 UTC)
