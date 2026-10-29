@@ -13,6 +13,62 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-EDITORIAL-UX-MEDIA-ENHANCEMENT-1: Desktop-Only Homepage ScrollToTop, Contextual Editorial FAQ (<details>/<summary>), SEO-Friendly Image Naming & Provenance, and Production Edge Verification (2026-10-29)
+
+- **Tanggal / Waktu:** 2026-10-29T20:35:00+07:00 (13:35:00 UTC)
+- **Status Rilis:** `RANCANGLOKA_EDITORIAL_UX_MEDIA_ENHANCEMENT_LIVE_VERIFIED`
+- **Eksekutor:** Antigravity / Dimas
+- **Otorisasi Pemilik:** Explicit Approval: *"APPROVE RANCANGLOKA_EDITORIAL_UX_MEDIA_ENHANCEMENT_1"*
+- **Cloudflare Worker Produksi:** `rancangloka` pada `https://rancangloka.com`
+- **Versi Worker Baru (Aktif Live):** `de250e22-0de3-4ef1-a7c5-53ec20102c9d`
+- **Versi Rollback Tersedia (Standby):** `4a242be8-367f-4e8b-8708-33abc6f6994f` (atau `37ca0736-1e54-4802-9bd0-1e548a883df7`)
+- **Rollback Command:** `npx wrangler rollback 4a242be8-367f-4e8b-8708-33abc6f6994f --name rancangloka -y`
+- **Tiga Komit Implementasi Berurutan (Git HEAD):**
+  1. `52b5bfd`: `feat(ui): extend scroll-to-top to desktop homepage` (Task A)
+  2. `13bcee2`: `feat(editorial): add optional contextual article FAQ` (Task C)
+  3. `6f54db8`: `feat(media): introduce descriptive editorial image filenames` (Task B)
+- **Komponen Rilis Terpasang & Terverifikasi:**
+  1. *Task A — Desktop-Only Homepage ScrollToTop (`RANCANGLOKA_HOMEPAGE_SCROLLTOP_1`):*
+     - Memperluas komponen `ScrollToTop.astro` ke halaman Beranda (`src/pages/index.astro`) dengan props `context="homepage"`.
+     - Tetap dibatasi untuk desktop (`hidden lg:flex`) dan tersembunyi pada mobile/tablet.
+     - Posisi di sudut kanan bawah, warna `#73641E` (`bg-[var(--primary)]`, hover `bg-[var(--deep)]`), ikon panah putih, bayangan halus.
+     - Tampil setelah scroll vertikal bermakna (>= 700px), dan otomatis bersembunyi sebelum memasuki wilayah footer (`footerRect.top > window.innerHeight - 30`).
+     - Lolos pengujian isolasi rute: aktif di Beranda & Artikel, nonaktif di Sitemap, Explore, dan Kategori.
+  2. *Task C — Contextual Editorial FAQ Component (`RANCANGLOKA_EDITORIAL_FAQ_1`):*
+     - Komponen reusable `EditorialFAQ.astro` berbasis HTML semantik murni `<details>` dan `<summary>`.
+     - Zero client-side JavaScript dependency; navigasi keyboard dan screen reader native.
+     - Mengikuti token tema Lemon Linen dan tipografi Plus Jakarta Sans.
+     - Terletak di akhir badan artikel (`#article-body`) sebelum modul dukungan dan footer.
+     - Strict optionality: artikel tanpa FAQ yang disetujui menghasilkan 0 markup DOM (tanpa placeholder kosong).
+     - Parser dan validator kualitas editorial `src/lib/editorial/faq.ts` (rekomendasi 3–5 pertanyaan, anti-slop filter).
+  3. *Task B — SEO-Friendly Image Filenames & Provenance (`RANCANGLOKA_MEDIA_SEO_NAMING_1`):*
+     - Modul format penamaan deskriptif `src/lib/media/seo-naming.ts`: `[topic]-[description]-[shortid](-[width])?.[ext]`.
+     - Hanya berlaku untuk unggahan gambar editorial masa depan; referensi URL hash lama tetap utuh 100%.
+     - Pembersihan slug ASCII huruf kecil, pemisahan spasi dengan tanda hubung, penghapusan karakter tidak aman, normalisasi aksen/Unicode.
+     - Pencegahan tabrakan deterministik dengan short ID 6-karakter dari SHA-256.
+     - Dukungan derivatif responsif (`-480`, `-640`, `-960`, `-1200`) dan WebP/AVIF.
+     - Skema Image Provenance komprehensif membedakan platform pembuat (ChatGPT/OpenAI, Gemini/Nano Banana, Seedream, Qwen, Leonardo, Digen, Manual) dari model dan status tinjauan editorial manusia, tanpa mengarang asal-usul yang tidak diketahui.
+     - Pembaruan `getResponsiveImageAttrs` di `src/lib/image.ts` dan integrasi pipeline upload di `src/lib/media/service.ts`.
+- **Hasil Pengujian Validasi & Build (100% Pass):**
+  - `test-editorial-faq.js`: 6/6 PASS.
+  - `test-media-seo-naming.js`: 9/9 PASS.
+  - `verify-scroll-to-top-isolation.js`: 5/5 PASS.
+  - `test-html-sitemap-directory.js`: 8/8 PASS.
+  - `test-soak-safety.js`: 54/54 PASS.
+  - `test-publication-planner.js`: 67/67 PASS.
+  - `test-publication-publisher.js`: 48/48 PASS.
+  - `test-decision-engine.js`: 23/23 PASS.
+  - `test-article-render-integrity.js`: 6/6 PASS.
+  - `test-article-persistence.js`: 7/7 PASS.
+  - `npx tsc --noEmit`: 0 errors.
+  - `npm run build`: Berhasil tanpa error dalam 9.53s.
+- **Hasil Verifikasi Edge Live (`https://rancangloka.com`):**
+  - Homepage (`/`): HTTP 200, ScrollToTop desktop terpasang (`data-context="homepage"`).
+  - Artikel (`/kusen-aluminium-vs-upvc...`, `/perbedaan-atap-metal...`, dll.): HTTP 200, ScrollToTop aktif (`data-context="article"`), unapproved FAQ container bersih 0 placeholder.
+  - Sitemap (`/sitemap` & `/sitemap.xml`): HTTP 200.
+  - Gambar Lama: HTTP 200 via CDN edge.
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0`.
+
 ### RANCANGLOKA-PRODUCTION-SOURCE-RECOVERY-1: Controlled Local Backup, Source Reconciliation, Regression Validation, and Verified Production Git Baseline (2026-10-29)
 
 - **Tanggal / Waktu:** 2026-10-29T19:45:00+07:00 (12:45:00 UTC)
