@@ -15,7 +15,15 @@ export interface EditorialFaqItem {
 }
 
 const FAQ_COMMENT_REGEX = /<!--\s*(?:EDITORIAL_FAQ_START|FAQ_START)\s*-->([\s\S]*?)<!--\s*(?:EDITORIAL_FAQ_END|FAQ_END)\s*-->/i;
+const FAQ_COMMENT_REGEX_GLOBAL = /<!--\s*(?:EDITORIAL_FAQ_START|FAQ_START)\s*-->([\s\S]*?)<!--\s*(?:EDITORIAL_FAQ_END|FAQ_END)\s*-->/gi;
 const FAQ_JSON_COMMENT_REGEX = /<!--\s*FAQ_JSON:\s*(\[[\s\S]*?\])\s*-->/i;
+const FAQ_JSON_COMMENT_REGEX_GLOBAL = /<!--\s*FAQ_JSON:\s*(\[[\s\S]*?\])\s*-->/gi;
+
+// Leaked HTML paragraphs containing raw FAQ JSON (e.g. from markdown parsed without stripping comments)
+const LEAKED_RAW_FAQ_HTML_REGEX = /<p>\s*\[\s*\{\s*(?:&quot;|")question(?:&quot;|"):[\s\S]*?\]\s*<\/p>/gi;
+
+// Standalone or orphan FAQ delimiters (e.g. if malformed/unpaired)
+const ORPHAN_FAQ_DELIMITERS_REGEX = /<!--\s*(?:EDITORIAL_FAQ_START|FAQ_START|EDITORIAL_FAQ_END|FAQ_END)\s*-->/gi;
 
 /**
  * Extracts and validates editorial FAQ items from an article object or raw markdown/data.
@@ -48,6 +56,27 @@ export function extractEditorialFaqs(article: {
     const jsonCommentMatch = article.content_md.match(FAQ_JSON_COMMENT_REGEX);
     if (jsonCommentMatch && jsonCommentMatch[1]) {
       const parsed = parseFaqPayload(jsonCommentMatch[1].trim());
+      if (parsed.length > 0) return parsed;
+    }
+  }
+
+  // 3. Embedded comment block or leaked JSON in content_html fallback
+  if (article.content_html) {
+    const commentMatch = article.content_html.match(FAQ_COMMENT_REGEX);
+    if (commentMatch && commentMatch[1]) {
+      const parsed = parseFaqPayload(commentMatch[1].trim());
+      if (parsed.length > 0) return parsed;
+    }
+
+    const leakedHtmlMatch = article.content_html.match(/<p>\s*(\[\s*\{\s*(?:&quot;|")question(?:&quot;|"):[\s\S]*?\])\s*<\/p>/i);
+    if (leakedHtmlMatch && leakedHtmlMatch[1]) {
+      // Decode standard HTML entities before parsing
+      const unescaped = leakedHtmlMatch[1]
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&#10;/g, '\n')
+        .replace(/&#13;/g, '\r');
+      const parsed = parseFaqPayload(unescaped.trim());
       if (parsed.length > 0) return parsed;
     }
   }
@@ -97,14 +126,16 @@ export function parseFaqPayload(payload: unknown): EditorialFaqItem[] {
 }
 
 /**
- * Strips raw FAQ comment markers from markdown or HTML content
+ * Strips raw FAQ comment markers and leaked raw FAQ JSON from markdown or HTML content
  * so it never leaks into the rendered body or creates duplicate output.
  */
 export function stripFaqCommentMarkers(content: string): string {
   if (!content) return '';
   return content
-    .replace(FAQ_COMMENT_REGEX, '')
-    .replace(FAQ_JSON_COMMENT_REGEX, '')
+    .replace(FAQ_COMMENT_REGEX_GLOBAL, '')
+    .replace(FAQ_JSON_COMMENT_REGEX_GLOBAL, '')
+    .replace(LEAKED_RAW_FAQ_HTML_REGEX, '')
+    .replace(ORPHAN_FAQ_DELIMITERS_REGEX, '')
     .trim();
 }
 

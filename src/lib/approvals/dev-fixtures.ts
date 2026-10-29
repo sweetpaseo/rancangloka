@@ -12,6 +12,7 @@
  */
 
 import type { ApprovalInboxItem } from './types.ts';
+import { extractEditorialFaqs, type EditorialFaqItem } from '../editorial/faq.ts';
 
 export interface DevLocalBatch1Article {
   id: string;
@@ -21,6 +22,7 @@ export interface DevLocalBatch1Article {
   description: string;
   content_md: string;
   content_html?: string;
+  faq?: EditorialFaqItem[];
   category_id: number;
   category_name: string;
   category_slug: string;
@@ -47,6 +49,87 @@ export interface DevLocalBatch1Article {
 
 export const BATCH_1_DEFINITIONS = [
   {
+    jobId: 'JOB-04-BALKON-COMPACT',
+    canonicalId: undefined,
+    slug: '7-ide-menata-balkon-rumah-kecil-agar-nyaman',
+    title: '7 Ide Menata Balkon Rumah Kecil agar Nyaman dan Teduh',
+    description: 'Balkon sempit 1x2 meter bisa disulap jadi sudut santai yang asri dan sejuk. Simak ide perabot hemat ruang, tanaman vertikal, dan cara cegah tampias hujan.',
+    filePath: 'scripts/content-bootstrap/batch-1-import-ready/article-02-menata-balkon.md',
+    qaScore: 96.0,
+    qaStatus: 'PASS',
+    categoryId: 7,
+    categoryName: 'Eksterior & Lanskap',
+    categorySlug: 'eksterior-lanskap',
+    categoryColor: '#84cc16',
+    authorId: 1,
+    authorName: 'RancangLoka Editorial Desk',
+    authorRole: 'Dewan Redaksi Spasial',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    waitingHours: 1,
+    focusKeyword: 'menata balkon rumah kecil',
+    manifestPath: 'scripts/content-bootstrap/manifests/job-04-balkon-visual-manifest.json',
+    keyTakeaways: [
+      'Balkon kompak 1x2 meter membutuhkan koridor sirkulasi minimal 60 cm dan furnitur berkedalaman maksimal 45–50 cm agar pintu tidak tersangkut.',
+      'Meja lipat gantung railing dan set bistro lipat membebaskan lantai tengah sehingga balkon tetap terasa lapang saat tidak digunakan.',
+      'Pemanfaatan bidang vertikal untuk pot gantung dan teralis tanaman sirih gading menghadirkan nuansa hijau tanpa memakan ruang pijak.',
+      'Saluran pembuangan air (floor drain) wajib dibiarkan bebas hambatan dan gunakan lampu luar ruang bertegangan rendah berstandar IP44–IP65.'
+    ]
+  },
+  {
+    jobId: 'JOB-03-INTERIOR-SPATIAL',
+    canonicalId: undefined,
+    slug: 'menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap',
+    title: 'Menata Denah Rumah Lebar 5–6 Meter: Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap',
+    description: 'Ruang tengah rumah klaster lebar 5–6 meter terasa pengap dan gelap? Pelajari strategi menata sirkulasi dengan inner court, void tangga cerobong, dan sekat bernapas.',
+    filePath: 'scripts/content-bootstrap/batch-1-import-ready/article-03-menata-denah.md',
+    qaScore: 95.0,
+    qaStatus: 'PASS',
+    categoryId: 1,
+    categoryName: 'Interior & Tata Ruang',
+    categorySlug: 'interior-design',
+    categoryColor: '#059669',
+    authorId: 1,
+    authorName: 'RancangLoka Editorial Desk',
+    authorRole: 'Dewan Redaksi Spasial',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    waitingHours: 2,
+    focusKeyword: 'denah rumah lebar 6 meter',
+    manifestPath: 'scripts/content-bootstrap/manifests/job-03-visual-manifest.json',
+    keyTakeaways: [
+      'Efek lorong pada kaveling deret 5–6 meter terjadi karena ketiadaan bukaan outlet di belakang, membuat udara dari jendela depan terperangkap.',
+      'SNI 03-6572-2001 menetapkan luas bukaan ventilasi alami minimal 5% dari luas lantai ruangan yang dihuni ke arah luar ruangan.',
+      'Menyisipkan inner court terbuka atau void tangga dengan clerestory mengaktifkan gaya apung termal (stack effect) untuk membuang panas plafon.',
+      'Dilarang sembarangan membongkar dinding bata pemisah tanpa memastikan dinding tersebut bukan penopang beban balok lantai atau atap.'
+    ]
+  },
+  {
+    jobId: 'JOB-02-MOISTURE-WALL',
+    canonicalId: undefined,
+    slug: 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah',
+    title: 'Dinding Rembes dan Cat Menggelembung: Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah',
+    description: 'Cat dinding rumah menggelembung dan mengelupas berulang? Kenali perbedaan ciri fisik rembesan talang atap, tempias plesteran luar, dan naiknya air tanah.',
+    filePath: 'scripts/content-bootstrap/batch-1-import-ready/article-01-dinding-rembes.md',
+    qaScore: 94.0,
+    qaStatus: 'PASS',
+    categoryId: 8,
+    categoryName: 'Sistem & Konstruksi Rumah',
+    categorySlug: 'sistem-konstruksi-rumah',
+    categoryColor: '#ea580c',
+    authorId: 2,
+    authorName: 'RancangLoka Research Desk',
+    authorRole: 'Editor Spesifikasi & Materialitas',
+    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    waitingHours: 4,
+    focusKeyword: 'dinding rembes cat menggelembung',
+    manifestPath: 'scripts/content-bootstrap/manifests/job-02-visual-manifest.json',
+    keyTakeaways: [
+      'Cat menggelembung adalah gejala visual tekanan uap dan pergerakan air di dalam dinding, bukan penyakit utama yang selesai hanya dengan cat baru.',
+      'Tiga zona ketinggian membedakan sumber air: zona atas (talang/flashing), zona tengah (tempias plesteran luar), dan zona bawah (rising damp air tanah).',
+      'Penanganan rising damp menuntut perbaikan trasram kedap air di atas sloof dan waktu pengeringan dinding bata sebelum pengecatan ulang.',
+      'Mengaplikasikan cat pelapis antibocor di dinding dalam tanpa mengatasi sumber air luar justru menjebak kelembapan dan mempercepat kerusakan plesteran.'
+    ]
+  },
+  {
     jobId: 'JOB-01-ARTICLE-4-REHAB',
     canonicalId: 4,
     slug: 'perbedaan-atap-metal-dan-genteng-beton-untuk-rumah-tropis',
@@ -70,58 +153,6 @@ export const BATCH_1_DEFINITIONS = [
       'Material atap metal memiliki bobot sangat ringan (±5 kg/m²), memangkas beban struktur rangka atap secara signifikan.',
       'Genteng beton memiliki massa jenis tinggi yang unggul meredam kebisingan hujan lebat dan menahan panas radiasi matahari siang.',
       'Ventilasi rongga loteng dan celah insulasi di bawah penutup atap jauh lebih krusial menentukan kenyamanan termal daripada jenis penutup semata.'
-    ]
-  },
-  {
-    jobId: 'JOB-02-MOISTURE-WALL',
-    canonicalId: undefined,
-    slug: 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah',
-    title: 'Dinding Rembes dan Cat Menggelembung: Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah',
-    description: 'Panduan diagnosis sistematis 6 tahap membedakan masalah talang, rembesan plesteran, dan kapilaritas air tanah (rising damp) pada rumah tinggal.',
-    filePath: 'scripts/content-bootstrap/batch-1/job-02-moisture-wall/job-02-moisture-wall-draft.md',
-    qaScore: 89.5,
-    qaStatus: 'PASS',
-    categoryId: 8,
-    categoryName: 'Sistem & Konstruksi Rumah',
-    categorySlug: 'sistem-konstruksi-rumah',
-    categoryColor: '#ea580c',
-    authorId: 2,
-    authorName: 'RancangLoka Research Desk',
-    authorRole: 'Editor Spesifikasi & Material',
-    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    waitingHours: 4,
-    focusKeyword: 'dinding rembes cat menggelembung',
-    manifestPath: 'scripts/content-bootstrap/manifests/job-02-visual-manifest.json',
-    keyTakeaways: [
-      'Cat menggelembung adalah gejala visual tekanan uap air di dalam pori plesteran, bukan sekadar kerusakan permukaan cat.',
-      'Rising damp membutuhkan diagnosis komparatif kelembapan tanah vs instalasi pipa air kotor/bersih yang bocor.',
-      'Perbaikan kosmetik tanpa menangani sumber kelembapan utama dipastikan akan rusak kembali dalam hitungan bulan.'
-    ]
-  },
-  {
-    jobId: 'JOB-03-INTERIOR-SPATIAL',
-    canonicalId: undefined,
-    slug: 'menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap',
-    title: 'Menata Denah Rumah Lebar 5–6 Meter: Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap',
-    description: 'Solusi arsitektur menata sirkulasi udara, pencahayaan alami, dan bukaan ventilasi SNI pada kaveling rumah lebar 5–6 meter tanpa membahayakan struktur.',
-    filePath: 'scripts/content-bootstrap/batch-1/job-03-interior-spatial/job-03-interior-spatial-draft.md',
-    qaScore: 90.5,
-    qaStatus: 'PASS',
-    categoryId: 6,
-    categoryName: 'Kenyamanan Rumah',
-    categorySlug: 'kenyamanan-rumah',
-    categoryColor: '#16a34a',
-    authorId: 1,
-    authorName: 'RancangLoka Editorial Desk',
-    authorRole: 'Dewan Redaksi Spasial',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    waitingHours: 2,
-    focusKeyword: 'denah rumah lebar 5 meter ventilasi',
-    manifestPath: 'scripts/content-bootstrap/manifests/job-03-visual-manifest.json',
-    keyTakeaways: [
-      'Menutup total pekarangan belakang memicu fenomena tunnel effect yang mematikan aliran ventilasi silang ruang tengah.',
-      'SNI 03-6572-2001 mensyaratkan bukaan ventilasi alami minimal 5% dari luas lantai ruangan yang dihuni.',
-      'Inner court atau void vertikal dengan bukaan buang atas menciptakan perbedaan tekanan udara yang menarik udara segar masuk secara pasif.'
     ]
   },
   {
@@ -321,7 +352,8 @@ export async function getDevLocalBatch1Article(slug: string): Promise<DevLocalBa
     created_at: nowIso,
     updated_at: nowIso,
     focus_keyword: def.focusKeyword,
-    visual_manifest: visualManifest
+    visual_manifest: visualManifest,
+    faq: extractEditorialFaqs({ content_md: contentMd })
   };
 }
 

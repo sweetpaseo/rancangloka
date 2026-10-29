@@ -12,6 +12,7 @@
 import { marked } from 'marked';
 import xss from 'xss';
 import { enhanceComparisonMatrices } from './comparison-matrix.ts';
+import { stripFaqCommentMarkers } from '../editorial/faq.ts';
 
 const safeAttrValue = (xss as any).safeAttrValue;
 
@@ -108,7 +109,8 @@ function filterSafeUrl(value: string): string {
 export function sanitizeArticleHtml(rawHtml: string): string {
   if (!rawHtml || typeof rawHtml !== 'string') return '';
 
-  return xss(rawHtml, {
+  const cleanHtml = stripFaqCommentMarkers(rawHtml);
+  return xss(cleanHtml, {
     whiteList: ARTICLE_HTML_WHITELIST,
     stripIgnoreTag: true,
     stripIgnoreTagBody: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'svg'],
@@ -129,7 +131,9 @@ export function sanitizeArticleHtml(rawHtml: string): string {
 export async function renderArticleMarkdownSafely(markdownBody: string): Promise<string> {
   if (!markdownBody || typeof markdownBody !== 'string') return '';
 
-  const parsedHtml = await marked.parse(markdownBody);
+  // Strip recognized FAQ metadata blocks before Markdown conversion to HTML
+  const cleanMarkdown = stripFaqCommentMarkers(markdownBody);
+  const parsedHtml = await marked.parse(cleanMarkdown);
   const enhancedHtml = enhanceComparisonMatrices(parsedHtml);
   return sanitizeArticleHtml(enhancedHtml);
 }

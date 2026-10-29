@@ -5,6 +5,8 @@ import TableOfContents from '../../../components/TableOfContents.astro';
 import AuthorCard from '../../../components/AuthorCard.astro';
 import RelatedArticles from '../../../components/RelatedArticles.astro';
 import SocialShareBar from '../../../components/SocialShareBar.astro';
+import EditorialFAQ from '../../../components/EditorialFAQ.astro';
+import { extractEditorialFaqs, stripFaqCommentMarkers, type EditorialFaqItem } from '../../../lib/editorial/faq.ts';
 import { getDb, getArticleBySlug, getRelatedArticles, getInternalLinkCandidates, getAllArticles, getAllCategories, getSiteSettings } from '../../../lib/db';
 import { extractTableOfContents, processArticleContent } from '../../../lib/seo';
 import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../../../lib/article/renderer.ts';
@@ -64,15 +66,17 @@ let toc: any[] = [];
 let processedHtml = '';
 let keyTakeaways: string[] = [];
 let breadcrumbItems: any[] = [];
+let articleFaqs: EditorialFaqItem[] = [];
 
 if (article) {
+  articleFaqs = extractEditorialFaqs(article);
   const [fetchedRelated, internalLinkCandidates] = await Promise.all([
     article.is_local_fixture ? [] : getRelatedArticles(db, article.id, article.category_id, 3).catch(() => []),
     getInternalLinkCandidates(db, 50).catch(() => [])
   ]);
 
   relatedArticles = fetchedRelated;
-  let rawContentHtml = article.content_html;
+  let rawContentHtml = stripFaqCommentMarkers(article.content_html || '');
   const isMalformedHtml =
     !rawContentHtml ||
     typeof rawContentHtml !== 'string' ||
@@ -840,6 +844,9 @@ const editorialStandardsReadiness = {
 
       <!-- Article Content Body (Sanitized & Safe HTML) -->
       <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-8 leading-relaxed" set:html={processedHtml} />
+
+      <!-- Optional Contextual Editorial FAQ (Zero markup if unapproved/empty) -->
+      <EditorialFAQ faqs={articleFaqs} />
 
       <!-- Author Card Section -->
       <div class="mt-14 pt-8 border-t border-stone/20 dark:border-stone/40">
