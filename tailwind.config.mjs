@@ -5,44 +5,63 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: {
-          DEFAULT: '#F6F5F1',
-          50: '#FAF9F6',
-          100: '#F6F5F1',
-          200: '#EAE8E1',
-          300: '#D9D7D0'
-        },
+        canvas: '#FFFFFF',
+        surface: '#FFFFFF',
+        'section-alt': '#FAF9F6',
+        'neutral-soft': '#F5F5F0',
         ink: {
-          DEFAULT: '#11110F',
-          light: '#222220',
-          muted: '#77766F'
+          DEFAULT: '#3F4030',
+          light: '#525442',
+          muted: '#676957'
+        },
+        muted: '#676957',
+        primary: {
+          DEFAULT: '#73641E',
+          hover: '#584A18',
+          deep: '#584A18',
+          light: '#FFF9E4',
+          dark: '#453A10'
+        },
+        lemon: {
+          DEFAULT: '#F5D95B',
+          soft: '#FFF9E4',
+          wash: '#FFF9E4',
+          warm: '#FAF9F6',
+          accent: '#E6C638'
+        },
+        meta: '#73641E',
+        line: {
+          DEFAULT: '#E8E7E1',
+          dark: '#D5D4CC'
+        },
+        footer: {
+          DEFAULT: '#574D28',
+          ink: '#FFFCF0',
+          line: '#817644'
         },
         stone: {
-          DEFAULT: '#D9D7D0',
-          light: '#E8E6DF',
-          dark: '#B8B5AB'
+          DEFAULT: '#E8E7E1',
+          light: '#FAF9F6',
+          dark: '#D5D4CC'
         },
-        soft: '#EAE8E1',
-        olive: '#6B705C',
         accent: {
-          DEFAULT: '#6B705C',
-          hover: '#585C4B',
-          light: '#EAE8E1',
-          dark: '#11110F'
-        },
-        primary: {
-          DEFAULT: '#11110F',
-          hover: '#0066ee',
-          light: '#F6F5F1',
-          dark: '#080807'
+          DEFAULT: '#73641E',
+          hover: '#584A18',
+          light: '#FFF9E4',
+          dark: '#3F4030'
         }
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-        display: ['"Outfit"', '"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
-        heading: ['"Outfit"', '"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
-        serif: ['"Newsreader"', 'Georgia', 'serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        heading: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        serif: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        brand: ['Georgia', 'serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+      },
+      maxWidth: {
+        editorial: '1180px',
+        prose: '740px'
       },
       aspectRatio: {
         '2/1': '2 / 1',

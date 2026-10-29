@@ -1,6 +1,55 @@
-export const EXTENSION_VERSION = '0.1.18';
-export const STORAGE_SCHEMA_VERSION = 1;
+export const EXTENSION_VERSION = '0.1.24';
+export const STORAGE_SCHEMA_VERSION = 2;
 export const LOKAMEDIA_PROTOCOL_VERSION = 1;
+
+export const BACKEND_ENVIRONMENTS = {
+  LOCAL: {
+    id: 'local',
+    label: 'Local Development',
+    defaultUrl: 'http://localhost:4321',
+    defaultDeviceId: 'dev_local_tokenless'
+  },
+  STAGING: {
+    id: 'staging',
+    label: 'Staging',
+    defaultUrl: 'https://staging.rancangloka.com',
+    defaultDeviceId: 'dev_staging_operator'
+  },
+  PRODUCTION: {
+    id: 'production',
+    label: 'Production',
+    defaultUrl: 'https://rancangloka.com',
+    defaultDeviceId: 'dev_production_operator'
+  }
+};
+
+export function detectEnvironment(url) {
+  if (!url || typeof url !== 'string') return 'local';
+  const clean = url.trim().toLowerCase();
+  if (
+    clean.includes('localhost') ||
+    clean.includes('127.0.0.1') ||
+    clean.includes('0.0.0.0') ||
+    clean.includes('[::1]')
+  ) {
+    return 'local';
+  }
+  if (clean.includes('staging') || clean.includes('preview')) return 'staging';
+  if (clean.includes('rancangloka.com')) return 'production';
+  return 'production';
+}
+
+export function getCanonicalEnvironmentUrl(env) {
+  const norm = String(env || 'local').toUpperCase();
+  return BACKEND_ENVIRONMENTS[norm]?.defaultUrl || BACKEND_ENVIRONMENTS.LOCAL.defaultUrl;
+}
+
+export function isUrlConsistentWithEnvironment(env, url) {
+  if (!url || typeof url !== 'string') return false;
+  const detected = detectEnvironment(url);
+  const norm = String(env || '').toLowerCase();
+  return detected === norm;
+}
 
 export const PROVIDER_OPERATION_TIMEOUT_MS = 120_000;
 export const HEARTBEAT_INTERVAL_MS = 60_000;
@@ -27,7 +76,7 @@ export const STOP_ACTIONS = new Set([
 export const DEFAULT_CONFIG = {
   serverBaseUrl: 'http://localhost:4321',
   deviceToken: '',
-  deviceId: 'dev_local_human_operator_v3',
+  deviceId: 'dev_local_tokenless',
   enabled: false,
   acquisitionProbe: false,
   providerResultProbe: false,

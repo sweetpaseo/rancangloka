@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getDb, getAllCategories, getSiteSettings } from '../lib/db';
 
 const db = await getDb(Astro.locals);
@@ -8,222 +9,127 @@ const [categories, siteSettings] = await Promise.all([
   getSiteSettings(db)
 ]);
 
+const breadcrumbItems = [
+  { name: 'Beranda', url: '/' },
+  { name: 'Komparasi Material', url: '/komparasi' }
+];
+
 const comparisons = [
   {
-    category: 'Sistem Kusen Jendela & Pintu',
-    title: 'Aluminium Powder Coating vs UPVC vs Kayu Jati Solid',
-    description: 'Menilai performa kekedapan suara, insulasi panas tropis, dan ketahanan terhadap cuaca ekstrem.',
-    items: [
-      {
-        name: 'Aluminium Powder Coating',
-        price: '$$',
-        thermal: '★★★☆☆ (Cepat rambat panas)',
-        acoustic: '★★★☆☆ (Standar)',
-        durability: '★★★★★ (Tahan korosi & anti rayap)',
-        maintenance: '★★★★★ (Sangat rendah)',
-        bestFor: 'Hunian modern minimalis dengan budget efisien dan bukaan kaca besar.'
-      },
-      {
-        name: 'UPVC (Double Glazing)',
-        price: '$$$',
-        thermal: '★★★★★ (Potensi insulasi termal tinggi)',
-        acoustic: '★★★★★ (Kedap suara tinggi)',
-        durability: '★★★★☆ (Tahan cuaca & presisi)',
-        maintenance: '★★★★☆ (Rendah)',
-        bestFor: 'Kamar tidur di pinggir jalan raya yang membutuhkan ketenangan akustik dan ruangan full AC.'
-      },
-      {
-        name: 'Kayu Jati / Kamper Solid',
-        price: '$$$$',
-        thermal: '★★★★☆ (Alami sejuk)',
-        acoustic: '★★★★☆ (Solid meredam)',
-        durability: '★★★★☆ (Tahan lama jika oven kering)',
-        maintenance: '★★☆☆☆ (Perlu re-coating berkala)',
-        bestFor: 'Pintu utama prestisius dan villa bernuansa hangat tropis wabi-sabi.'
-      }
-    ]
+    category: 'PENUTUP ATAP TROPIS',
+    title: 'Atap Metal vs Genteng Beton',
+    articleUrl: '/perbedaan-atap-metal-dan-genteng-beton-untuk-rumah-tropis',
+    summary: 'Perbandingan dua material penutup atap paling umum pada perumahan Indonesia, ditinjau dari berat beban struktur, insulasi panas, dan kekedapan suara saat hujan deras.',
+    specs: [
+      { label: 'Berat Beban Sendiri (SNI 1727:2020)', itemA: '0,12 – 0,14 kN/m² (Sangat Ringan)', itemB: '0,50 kN/m² (3–4× Lebih Berat)' },
+      { label: 'Kemiringan Minimum Standar', itemA: '2° – 3° (Sangat fleksibel)', itemB: '20° – 25° (Memerlukan atap curam)' },
+      { label: 'Karakteristik Rambatan Panas', itemA: 'Cepat panas, cepat dingin saat malam', itemB: 'Menyerap panas lambat (thermal lag), melepas panas saat malam' },
+      { label: 'Akustik Suara Hujan Deras', itemA: 'Bising jika tanpa insulasi foil/glasswool', itemB: 'Solid dan senyap secara alami' },
+      { label: 'Kebutuhan Rangka Atap', itemA: 'Cukup baja ringan profil standar C75', itemB: 'Wajib kuda-kuda kokoh dan reng presisi' }
+    ],
+    verdictHandoff: 'Pilih atap metal jika denah rumahmu membutuhkan bentang lebar landai dengan struktur baja ringan hemat biaya. Pilih genteng beton jika hunianmu bertingkat di perumahan beratap curam yang mengutamakan kesenyapan akustik dan ketahanan angin kencang.'
   },
   {
-    category: 'Material Penutup Fasad (Secondary Skin)',
-    title: 'Kisi Kayu Ulin vs Aluminium Louver vs Bata Roster',
-    description: 'Perbandingan pembiasan radiasi matahari sore dan kemudahan perawatan di iklim tropis lembap.',
-    items: [
-      {
-        name: 'Kisi Kayu Ulin (Ironwood)',
-        price: '$$$$',
-        thermal: '★★★★★ (Menyerap panas alami)',
-        acoustic: '★★★☆☆',
-        durability: '★★★★★ (Kayu besi awet 30+ tahun)*',
-        maintenance: '★★★☆☆ (Warna menua jadi abu keperakan)',
-        bestFor: 'Fasad mewah dengan estetika hangat yang menyatu dengan lanskap hijau.'
-      },
-      {
-        name: 'Aluminium Louver Vertikal',
-        price: '$$$',
-        thermal: '★★★★☆ (Reflektif pembias)',
-        acoustic: '★★★☆☆',
-        durability: '★★★★★ (Bebas lapuk & rayap)',
-        maintenance: '★★★★★ (Cukup disemprot air)',
-        bestFor: 'Fasad kontemporer presisi tinggi dengan bobot struktur gantung yang ringan.'
-      },
-      {
-        name: 'Bata Roster Terakota',
-        price: '$',
-        thermal: '★★★★☆ (Pori-pori bernapas)',
-        acoustic: '★★☆☆☆',
-        durability: '★★★★☆ (Kuat jika diaci rapi)',
-        maintenance: '★★★☆☆ (Rentan lumut di musim hujan)',
-        bestFor: 'Pagar semi-transparan dan dinding bernapas ramah kantong.'
-      }
-    ]
+    category: 'SISTEM BUKAAN & KUSEN',
+    title: 'Kusen Aluminium vs UPVC',
+    articleUrl: '/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia',
+    summary: 'Analisis ketahanan cuaca tropis, risiko jembatan termal (thermal bridge), kekedapan suara akustik, dan perawatan jangka panjang.',
+    specs: [
+      { label: 'Konduktivitas Termal', itemA: 'Tinggi (Rambatan panas terasa pada profil dalam)', itemB: 'Sangat Rendah (Bahan plastik polimer non-konduktif)' },
+      { label: 'Kekedapan Suara Jalan', itemA: 'Standar (Sambungan sekrup mekanis)', itemB: 'Tinggi (Sambungan las mati berongga chamber ganda)' },
+      { label: 'Ketahanan Karat & Rayap', itemA: '100% Anti rayap & anti karat', itemB: '100% Anti rayap & tahan uap garam laut' },
+      { label: 'Pilihan Ketebalan Kaca', itemA: 'Kaca tunggal 5–8 mm', itemB: 'Kaca ganda (double glazing) hingga 24 mm' },
+      { label: 'Kebutuhan Perawatan', itemA: 'Sangat rendah (cukup dilap)', itemB: 'Rendah (perlu cek karet seal berkala)' }
+    ],
+    verdictHandoff: 'Pilih kusen aluminium untuk fasad modern minimalis berbukaan besar dengan anggaran efisien. Pilih UPVC jika kamar tidurmu berada persis di pinggir jalan raya bising atau ruangan kamar ber-AC penuh yang butuh insulasi termal maksimal.'
   }
 ];
 ---
 
 <BaseLayout
-  title="Material & Spatial Comparison Engine: Panduan Komparasi Objektif"
-  description="Matriks perbandingan spesifikasi material arsitektural independen: Aluminium vs UPVC, Kayu Ulin vs Louver, dan analisa kecocokan iklim tropis."
+  title="Komparasi Material: Atap, Kusen & Spesifikasi Bangunan"
+  description="Matriks perbandingan spesifikasi teknis materialitas tropis independen: Atap metal vs genteng beton, kusen aluminium vs UPVC, ditinjau secara empiris."
   categories={categories}
   siteSettings={siteSettings}
 >
-  <div class="mx-auto max-w-5xl py-6 sm:py-10">
-    <!-- Header Badge -->
-    <div class="text-center space-y-4 mb-14">
-      <span class="inline-flex items-center gap-2 rounded-full bg-[#0066ee]/10 dark:bg-[#0066ee]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee]">
-        ✦ COMPARISON MATRIX
-      </span>
-      <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-        Komparasi Spesifikasi Material & Sistem
-      </h1>
-      <p class="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
-        Evaluasi independen editorial. Ketahui kelebihan fisik, pertimbangan akustik/termal, estimasi biaya, dan tingkat perawatan material sebelum mengambil keputusan desain.
-      </p>
-
-      <div class="mt-6 rounded-3xl bg-slate-100 dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] p-6 text-left space-y-3 font-mono text-xs max-w-3xl mx-auto shadow-xs">
-        <div class="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-2.5">
-          <span class="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-            <span class="text-[#0066ee]">✦</span> Metodologi Pembobotan Skor (How We Score)
-          </span>
-          <span class="text-[10px] text-slate-400">Standar Redaksi RancangLoka</span>
-        </div>
-        
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px] text-slate-600 dark:text-slate-300 py-1">
-          <div class="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06]">
-            <strong class="text-slate-900 dark:text-white block">Termal (25%)</strong>
-            <span class="text-[10px] text-slate-400">Konduktivitas panas & naungan</span>
-          </div>
-          <div class="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06]">
-            <strong class="text-slate-900 dark:text-white block">Akustik (20%)</strong>
-            <span class="text-[10px] text-slate-400">Peredaman dB & seal ganda</span>
-          </div>
-          <div class="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06]">
-            <strong class="text-slate-900 dark:text-white block">Durabilitas (20%)</strong>
-            <span class="text-[10px] text-slate-400">Kelembapan, UV & rayap</span>
-          </div>
-          <div class="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06]">
-            <strong class="text-slate-900 dark:text-white block">Perawatan (15%)</strong>
-            <span class="text-[10px] text-slate-400">Re-coating & pembersihan</span>
-          </div>
-          <div class="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.06]">
-            <strong class="text-slate-900 dark:text-white block">Biaya (20%)</strong>
-            <span class="text-[10px] text-slate-400">Material & fabrikasi lokal</span>
-          </div>
-        </div>
-
-        <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed pt-1 border-t border-black/[0.04] dark:border-white/[0.06]">
-          *Catatan Otoritas: Rating disusun berdasarkan karakteristik fisik material, SNI 03-6572, standar assembly kaca ISO 10140, dan data awet kayu BPHH. Penilaian bersifat kurasi editorial independen, bukan hasil uji laboratorium sepihak.
-        </p>
-      </div>
+  <div class="editorial-container py-8 md:py-12">
+    <!-- 1. Breadcrumbs -->
+    <div class="crumb mb-6">
+      <Breadcrumbs items={breadcrumbItems} />
     </div>
 
-    <!-- Comparison Tables -->
-    <div class="space-y-16">
+    <!-- 2. Lead Header (Atlas T08) -->
+    <header class="page-hero mb-8">
+      <span class="eyebrow">Matriks & Komparasi Material</span>
+      <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--ink)] leading-[1.12] my-3">
+        Bandingkan Sebelum Membeli
+      </h1>
+      <p class="text-base sm:text-lg text-[var(--muted)] leading-relaxed max-w-[720px]">
+        Setiap material bangunan membawa keunggulan fisik dan trade-off tertentu. Redaksi RancangLoka menyajikan data spesifikasi obyektif agar kamu bisa memilih dengan percaya diri sesuai prioritas rumahmu.
+      </p>
+    </header>
+
+    <!-- 3. Comparison Sections (Atlas T08) -->
+    <div class="space-y-12 my-10">
       {comparisons.map((comp) => (
-        <section class="rounded-[2.5rem] border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 sm:p-10 shadow-lg">
-          <div class="border-b border-black/[0.06] dark:border-white/[0.08] pb-4 mb-8">
-            <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-1">
-              {comp.category}
-            </span>
-            <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              {comp.title}
-            </h2>
-            <p class="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-normal">
-              {comp.description}
-            </p>
+        <section class="p-6 sm:p-10 rounded-xl bg-[var(--surface)] border border-[var(--line)] shadow-xs">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="meta">{comp.category}</span>
+            <span class="text-xs text-[var(--muted)]">· Analisis Dua Pilihan Utama</span>
           </div>
 
-          <!-- Responsive Comparison Grid -->
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {comp.items.map((item, iIdx) => (
-              <div class="apple-card rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-950/60 p-6 flex flex-col justify-between space-y-5">
-                <div>
-                  <div class="flex items-center justify-between mb-3 border-b border-black/[0.04] dark:border-white/[0.06] pb-3">
-                    <span class="font-mono text-xs font-bold text-[#0066ee]">
-                      OPSI 0{iIdx + 1}
-                    </span>
-                    <span class="font-mono text-xs font-bold bg-white dark:bg-slate-800 px-2.5 py-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.08]">
-                      Biaya: {item.price}
-                    </span>
-                  </div>
+          <h2 class="font-serif text-2xl sm:text-3xl font-normal text-[var(--ink)] my-2">
+            {comp.title}
+          </h2>
 
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-mono font-bold uppercase tracking-wider border border-blue-500/20">
-                      🔵 Editorial Assessment
-                    </span>
-                  </div>
+          <p class="text-sm sm:text-base text-[var(--muted)] leading-relaxed mb-6 max-w-[760px]">
+            {comp.summary}
+          </p>
 
-                  <h3 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight mb-4">
-                    {item.name}
-                  </h3>
+          <!-- Responsive Comparison Matrix Table (Atlas T08) -->
+          <div class="overflow-x-auto my-6 border border-[var(--line)] rounded-lg">
+            <table class="w-full min-w-[600px] text-left border-collapse text-xs sm:text-sm">
+              <thead class="bg-[var(--warm)] border-b border-[var(--line)]">
+                <tr>
+                  <th class="p-3.5 sm:p-4 font-bold text-[var(--ink)] w-[32%]">Parameter Uji Teknis</th>
+                  <th class="p-3.5 sm:p-4 font-bold text-[var(--primary)] w-[34%]">Pilihan A</th>
+                  <th class="p-3.5 sm:p-4 font-bold text-[var(--ink)] w-[34%]">Pilihan B</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--line)] bg-white text-[var(--ink)]">
+                {comp.specs.map((spec) => (
+                  <tr class="hover:bg-[var(--canvas)] transition-colors">
+                    <td class="p-3.5 sm:p-4 font-medium text-[var(--muted)]">{spec.label}</td>
+                    <td class="p-3.5 sm:p-4">{spec.itemA}</td>
+                    <td class="p-3.5 sm:p-4">{spec.itemB}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-                  <div class="space-y-3 text-xs text-slate-600 dark:text-slate-300 font-mono">
-                    <div>
-                      <span class="text-slate-400 block text-[10px] uppercase">Insulasi Termal Panas:</span>
-                      <span class="font-semibold text-slate-800 dark:text-slate-200">{item.thermal}</span>
-                    </div>
-                    <div>
-                      <span class="text-slate-400 block text-[10px] uppercase">Peredaman Akustik Suara:</span>
-                      <span class="font-semibold text-slate-800 dark:text-slate-200">{item.acoustic}</span>
-                    </div>
-                    <div>
-                      <span class="text-slate-400 block text-[10px] uppercase">Daya Tahan Cuaca Tropis:</span>
-                      <span class="font-semibold text-slate-800 dark:text-slate-200">{item.durability}</span>
-                    </div>
-                    <div>
-                      <span class="text-slate-400 block text-[10px] uppercase">Kebutuhan Perawatan:</span>
-                      <span class="font-semibold text-slate-800 dark:text-slate-200">{item.maintenance}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 p-3.5 border border-blue-100 dark:border-blue-900/40 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  <strong class="font-bold text-[#0066ee] block text-[10px] uppercase tracking-wider mb-1">
-                    ✦ Rekomendasi Kasus:
-                  </strong>
-                  {item.bestFor}
-                </div>
-              </div>
-            ))}
+          <!-- Warm Decision Handoff Card (Atlas T08) -->
+          <div class="p-5 sm:p-6 rounded-lg bg-[var(--warm)] border border-[var(--line)] mt-6">
+            <strong class="font-serif text-sm sm:text-base text-[var(--ink)] block mb-2">
+              💡 Serah-Terima Keputusan Redaksi:
+            </strong>
+            <p class="text-xs sm:text-sm text-[var(--muted)] leading-relaxed mb-4">
+              {comp.verdictHandoff}
+            </p>
+            <a href={comp.articleUrl} class="btn text-xs">
+              Baca Kajian Lengkap & Data Rinci →
+            </a>
           </div>
         </section>
       ))}
     </div>
 
-    <!-- Bottom CTA to Problem Solver -->
-    <div class="mt-16 text-center rounded-3xl bg-slate-900 text-white p-8 sm:p-10 border border-slate-800">
-      <h3 class="text-xl font-bold tracking-tight mb-2">
-        Masih Ragu Memilih Material yang Tepat?
-      </h3>
-      <p class="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto mb-6">
-        Gunakan alat diagnosis masalah ruang untuk mencocokkan kondisi denah rumah Anda secara otomatis.
+    <!-- 4. Monetary Silence & Evidence Reminder -->
+    <div class="soft-note my-10">
+      <b>Kebijakan Bukti & Monetary Silence:</b>
+      <p class="mt-1 text-xs sm:text-sm">
+        RancangLoka tidak mencantumkan estimasi harga palsu atau angka perkiraan sepihak. Biaya material bangunan selalu dipengaruhi oleh ongkos kirim regional, jarak gudang distributor, ketebalan profil, dan keahlian tukang di kota Anda.
       </p>
-      <a
-        href="/solusi"
-        class="inline-flex items-center gap-2 rounded-2xl bg-[#0066ee] hover:bg-blue-600 px-6 py-3 text-xs sm:text-sm font-bold text-white transition shadow-lg shadow-blue-500/25"
-      >
-        <span>Buka Design Problem Solver</span>
-        <span>→</span>
-      </a>
     </div>
   </div>
 </BaseLayout>

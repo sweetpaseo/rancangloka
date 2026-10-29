@@ -116,6 +116,7 @@ export const DEFAULT_EDITORIAL_TIMEOUT_MS = 120000; // 120 seconds
 export const DEFAULT_EDITORIAL_MAX_TOKENS = 8000; // 8000 tokens completion headroom
 export const DEFAULT_EDITORIAL_TEMPERATURE = 0.6;
 export const DEFAULT_EDITORIAL_MODEL = 'google/gemini-2.0-flash-001';
+export const DEFAULT_SUMOPOD_EDITORIAL_MODEL = 'gpt-5.6-luna';
 export const DEFAULT_EDITORIAL_MAX_RETRIES = 2; // Up to 3 total attempts for transient failures
 
 /**
@@ -156,6 +157,7 @@ function sanitizeHeaders(headers: Record<string, string>): Record<string, string
 export class EditorialLlmProvider {
   readonly providerName: EditorialLlmProviderName;
   readonly modelName: string;
+  readonly hasCustomFetchFn: boolean;
   private readonly endpoint: string;
   private readonly apiKey: string;
   private readonly timeoutMs: number;
@@ -165,6 +167,7 @@ export class EditorialLlmProvider {
   private readonly fetchFn: typeof fetch;
 
   constructor(options: EditorialLlmOptions = {}) {
+    this.hasCustomFetchFn = Boolean(options.fetchFn);
     const env = typeof process !== 'undefined' ? process.env || {} : {};
 
     // 1. Determine Provider
@@ -193,7 +196,7 @@ export class EditorialLlmProvider {
     this.modelName =
       options.model ||
       env.EDITORIAL_LLM_MODEL ||
-      (detectedProvider === 'sumopod' ? 'gpt-5-nano' : DEFAULT_EDITORIAL_MODEL);
+      (detectedProvider === 'sumopod' ? DEFAULT_SUMOPOD_EDITORIAL_MODEL : DEFAULT_EDITORIAL_MODEL);
 
     // 5. Operational Bounds
     this.timeoutMs = options.timeoutMs ?? (env.EDITORIAL_LLM_TIMEOUT_MS ? Number(env.EDITORIAL_LLM_TIMEOUT_MS) : DEFAULT_EDITORIAL_TIMEOUT_MS);

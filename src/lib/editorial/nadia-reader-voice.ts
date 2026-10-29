@@ -60,6 +60,13 @@ import {
   INVARIANT_TESTED_BY_RANCANGLOKA_RESERVED
 } from './premium-editorial-depth-guard.ts';
 
+import {
+  evaluateVoice3L4Assessment,
+  type Voice3L4AssessmentResult,
+  type L4EvaluationOptions,
+  type L4DimensionResult
+} from './nadia-voice-l4.ts';
+
 export {
   evaluateWarmAdvisoryTone,
   INVARIANT_WARM_ADVISORY_TONE,
@@ -75,13 +82,17 @@ export {
   INVARIANT_MICRO_PERSONA_SCENARIOS,
   INVARIANT_EVIDENCE_METHOD_TRANSPARENCY,
   INVARIANT_VISUAL_STORYTELLING,
-  INVARIANT_TESTED_BY_RANCANGLOKA_RESERVED
+  INVARIANT_TESTED_BY_RANCANGLOKA_RESERVED,
+  evaluateVoice3L4Assessment
 };
 export type {
   EditorialWarmthChecklist,
   LocalCulturalChecklist,
   LocalCulturalReviewQuestions,
-  PremiumEditorialDepthChecklist
+  PremiumEditorialDepthChecklist,
+  Voice3L4AssessmentResult,
+  L4EvaluationOptions,
+  L4DimensionResult
 };
 
 export const INVARIANT_LANGUAGE_SIMPLIFICATION_MUST_PRESERVE_CLAIM_STRENGTH =
@@ -158,6 +169,7 @@ export interface ReaderVoiceEvaluationResult {
     currentPhrasing: string;
     requestedImprovement: string;
   }>;
+  voice3L4Assessment?: Voice3L4AssessmentResult;
   evaluatedAt: string;
 }
 
@@ -321,6 +333,8 @@ export function evaluateReaderVoice(
     title?: string;
     contentFamily?: ContentFamily | string;
     originalContent?: string;
+    editorialVoiceLevel?: 'L3' | 'L4';
+    enableVoiceL4?: boolean;
   } = {}
 ): ReaderVoiceEvaluationResult {
   const evaluatedAt = new Date().toISOString();
@@ -1017,6 +1031,22 @@ export function evaluateReaderVoice(
     decision = 'READER_VOICE_REVISION_REQUIRED';
   }
 
+  const isVoiceL4 = (options.editorialVoiceLevel === 'L4' || options.enableVoiceL4 === true) ||
+    process.env.HERMES_EDITORIAL_VOICE_LEVEL === 'L4' ||
+    process.env.FEATURE_VOICE_3_L4 === 'true';
+
+  let voice3L4Assessment: Voice3L4AssessmentResult | undefined;
+  if (isVoiceL4) {
+    voice3L4Assessment = evaluateVoice3L4Assessment(content, {
+      topic: options.title,
+      title: options.title,
+      articleType: options.contentFamily
+    });
+    if (voice3L4Assessment.decision === 'VOICE_3_L4_REVISION_REQUIRED' && decision === 'READER_VOICE_PASS') {
+      decision = 'READER_VOICE_REVISION_REQUIRED';
+    }
+  }
+
   return {
     decision,
     overallScore,
@@ -1043,6 +1073,7 @@ export function evaluateReaderVoice(
     aiDetectorAdvisory,
     blockingIssues,
     revisionRequests,
+    voice3L4Assessment,
     evaluatedAt
   };
 }
@@ -1091,5 +1122,286 @@ export function validateNadiaAuthorityBoundaries(proposal: {
   return {
     isAllowed: violations.length === 0,
     violations
+  };
+}
+
+export interface NadiaEditInput {
+  draftMarkdown: string;
+  topic: string;
+  intent?: string;
+  provider?: {
+    generate: (args: {
+      messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+      jobId?: string;
+      taskId?: string;
+    }) => Promise<{
+      success: boolean;
+      content: string | null;
+      latencyMs?: number;
+      error?: string;
+    }>;
+  };
+  taskId?: string;
+  editorialVoiceLevel?: 'L3' | 'L4';
+  enableVoiceL4?: boolean;
+}
+
+export interface NadiaEditResult {
+  refinedMarkdown: string;
+  changesApplied: string[];
+  authorityCheck: {
+    isAllowed: boolean;
+    violations: string[];
+  };
+  readerVoiceEvaluation: ReaderVoiceEvaluationResult;
+  voice3L4Assessment?: Voice3L4AssessmentResult;
+  usedLlm: boolean;
+  latencyMs?: number;
+}
+
+/**
+ * Deterministic language and formatting polish by Nadia.
+ * Fixes literal translationese, awkward expressions, informal colloquialisms,
+ * and escaped markdown syntax without mutating factual claims or numbers.
+ */
+export function applyNadiaDeterministicPolish(content: string): {
+  polishedContent: string;
+  changes: string[];
+} {
+  let text = String(content || '');
+  const changes: string[] = [];
+
+  // 1. Clean literal escaped markdown syntax
+  for (const esc of ESCAPED_MARKDOWN_PATTERNS) {
+    if (esc.pattern.test(text)) {
+      if (esc.name.includes('escaped asterisk')) {
+        text = text.replace(/\\\*/g, '*');
+        changes.push('Pembersihan escaped asterisk (\\*)');
+      } else if (esc.name.includes('thematic break')) {
+        text = text.replace(/\\---/g, '---');
+        changes.push('Pembersihan escaped thematic break (\\---)');
+      } else if (esc.name.includes('underscore')) {
+        text = text.replace(/\\_/g, '_');
+        changes.push('Pembersihan escaped underscore (\\_)');
+      }
+    }
+  }
+
+  // 2. Replace informal colloquial words with polite standard Indonesian
+  const informalReplacements: Array<[RegExp, string, string]> = [
+    [/\bnggak\b/gi, 'tidak', '"nggak" -> "tidak"'],
+    [/\bndak\b/gi, 'tidak', '"ndak" -> "tidak"'],
+    [/\budah\b/gi, 'sudah', '"udah" -> "sudah"'],
+    [/\bpengen\b/gi, 'ingin', '"pengen" -> "ingin"'],
+    [/\bkayak\b/gi, 'seperti', '"kayak" -> "seperti"'],
+    [/\bsoalnya\b/gi, 'karena', '"soalnya" -> "karena"'],
+    [/\btapi\b/g, 'tetapi', '"tapi" -> "tetapi"']
+  ];
+
+  for (const [regex, replacement, desc] of informalReplacements) {
+    if (regex.test(text)) {
+      text = text.replace(regex, replacement);
+      changes.push(desc);
+    }
+  }
+
+  // 3. Translationese & awkward phrase cleanup
+  const awkwardPhrases: Array<[RegExp, string, string]> = [
+    [/ruang kosong yang sulit digunakan/gi, 'ruangan yang terasa terlalu kosong atau kaku', 'penyederhanaan diksi ruang kosong'],
+    [/pertemuannya menekankan/gi, 'perpaduan kedua gaya ini mengutamakan', 'penyederhanaan diksi pertemuan gaya'],
+    [/diberikan melalui nada kayu/gi, 'menggunakan sentuhan kayu alami', 'penyederhanaan diksi nada kayu'],
+    [/nada kayu alami/gi, 'warna kayu alami', 'koreksi istilah warna kayu'],
+    [/memberi penegasan struktural/gi, 'memberi aksen kontras visual', 'koreksi penegasan struktural'],
+    [/tekstur taktil asli/gi, 'tekstur alami yang terasa saat disentuh', 'penyederhanaan tekstur taktil'],
+    [/mengurangi ketenangan visual/gi, 'membuat ruangan terasa penuh dan berantakan', 'penyederhanaan ketenangan visual'],
+    [/sirkulasi pandangan dan kegiatan/gi, 'kelegaan pandangan dan kenyamanan berlalu-lalang', 'penyederhanaan sirkulasi pandangan'],
+    [/menolak kekosongan steril/gi, 'menghindari kesan ruangan yang dingin dan kaku', 'penyederhanaan kekosongan steril'],
+    [/elemen fungsional yang memiliki nilai guna/gi, 'perabot yang memang sering dipakai sehari-hari', 'penyederhanaan elemen fungsional'],
+    [/memiliki ruang bernapas/gi, 'menyisakan jarak agar ruangan terasa plong', 'penyederhanaan ruang bernapas'],
+    [/panduan ini membedah/gi, 'panduan ini membahas', 'penyederhanaan pembuka membedah']
+  ];
+
+  for (const [regex, replacement, desc] of awkwardPhrases) {
+    if (regex.test(text)) {
+      text = text.replace(regex, replacement);
+      changes.push(desc);
+    }
+  }
+
+  // 4. Translationese dictionary lookup
+  for (const [key, replacement] of Object.entries(TRANSLATIONESE_DICTIONARY)) {
+    const reg = new RegExp(`\\b${key}\\b`, 'gi');
+    if (reg.test(text)) {
+      text = text.replace(reg, replacement);
+      changes.push(`Koreksi istilah terjemahan: "${key}" -> "${replacement}"`);
+    }
+  }
+
+  // 5. Post-Substitution Grammar & Repetition Safeguard
+  // Invariant: Do not allow blind word replacement to produce broken grammar or repetitive conjunctions
+  const duplicateConjunctions = [
+    { pattern: /\btetapi\b([^.!?\n]{1,60})\btetapi\b/gi, fix: 'tetapi$1namun', name: 'repetitive "tetapi"' },
+    { pattern: /\bkarena\b([^.!?\n]{1,60})\bkarena\b/gi, fix: 'karena$1mengingat', name: 'repetitive "karena"' },
+    { pattern: /\bnamun\b([^.!?\n]{1,60})\btetapi\b/gi, fix: 'namun$1', name: 'double adversative "namun... tetapi"' }
+  ];
+
+  for (const dup of duplicateConjunctions) {
+    if (dup.pattern.test(text)) {
+      text = text.replace(dup.pattern, dup.fix);
+      changes.push(`Pencegahan repetisi/kerusakan tata bahasa akibat substitusi: ${dup.name}`);
+    }
+  }
+
+  return {
+    polishedContent: text,
+    changes
+  };
+}
+
+/**
+ * Builds the LLM prompt for Nadia's Language & Reader Voice editing pass.
+ */
+export function buildNadiaEditingPrompt(
+  draftMarkdown: string,
+  topic: string,
+  options: { intent?: string } = {}
+): {
+  systemPrompt: string;
+  userPrompt: string;
+} {
+  const systemPrompt = `Anda adalah Nadia, Audience & Language Editor di Dewan Redaksi RancangLoka.
+Peran Anda: Menyunting draf naskah hunian dari Joko agar memiliki suara redaksi Dewan Redaksi RancangLoka V3: santun, jernih, membumi, dan enak dibaca mengalir seperti majalah hunian berkualitas (misal: HGTV / Real Simple), bukan seperti teks terjemahan atau khotbah AI.
+
+PRINSIP PENYUNTINGAN NADIA (EDITORIAL VOICE V3):
+1. ANSWER FIRST: Paragraf pertama (1–3 kalimat awal) WAJIB langsung menjawab pertanyaan inti topik atau menjelaskan topik dengan lugas dan ramah. Dilarang membuka dengan masalah fiktif ("Memilih X sering terasa rumit...") atau drama retoris ("Di sinilah dilema utamanya...").
+2. NATURAL STORYTELLING: Setelah jawaban awal, bawa pembaca masuk ke situasi nyata, ruang nyata (ruang tamu, kamar tidur, dapur), benda nyata, dan kebiasaan harian dengan alur santai.
+3. BAHASA INDONESIA ALAMI (ANTI-TRANSLATIONESE):
+   - Hapus struktur kalimat bahasa Inggris kaku (misal: "pertemuannya menekankan", "ruang kosong yang sulit digunakan", "diberikan melalui nada kayu", "penegasan struktural").
+   - Ganti dengan Bahasa Indonesia wajar yang hidup (misal: "perpaduan kedua gaya ini mengutamakan", "ruangan yang terlalu kosong", "warna kayu alami", "aksen kontras agar tidak monoton").
+4. KATA BAKU SANTUN:
+   - Gunakan "tidak", bukan "nggak" / "ndak".
+   - Gunakan "sudah", bukan "udah".
+   - Gunakan "ingin", bukan "pengen".
+   - Gunakan "seperti", bukan "kayak".
+   - Gunakan "karena", bukan "soalnya".
+   - Gunakan "tetapi" atau "namun", bukan "tapi".
+5. KENYAMANAN PARAGRAF (PARAGRAPH BREATHING):
+   - Rata-rata 30–70 kata per paragraf (1–3 kalimat).
+   - Jangan biarkan paragraf menumpuk lebih dari 90 kata.
+6. BATAS OTORITAS KETAT (STRICT INVARIANTS):
+   - DILARANG mengubah atau menambahkan angka, persentase, satuan, standar SNI, atau klaim teknis.
+   - DILARANG memperkuat klaim ("bisa mengurangi" DILARANG diubah jadi "pasti menghilangkan").
+   - DILARANG mengarang fakta baru.
+   - Otoritas publikasi Anda adalah 0 (hanya menyunting bahasa).
+
+OUTPUT: Kembalikan naskah lengkap hasil suntingan dalam format Markdown bersih, tanpa salam, tanpa obrolan meta, dan tanpa tag pembungkus selain naskah itu sendiri.`;
+
+  const userPrompt = `Topik: "${topic}"
+
+Naskah Draf Joko:
+${draftMarkdown}
+
+Silakan sunting naskah di atas sesuai standar Editorial Voice V3 Dewan Redaksi RancangLoka.`;
+
+  return { systemPrompt, userPrompt };
+}
+
+/**
+ * Executes a controlled language & reader voice edit by Nadia.
+ * Canonical Workflow: Joko Draft -> Nadia Reader Voice Edit -> Rina Editorial QA -> Human Review.
+ */
+export async function executeNadiaReaderVoiceEdit(
+  input: NadiaEditInput
+): Promise<NadiaEditResult> {
+  const startTime = Date.now();
+  let candidateText = input.draftMarkdown;
+  let usedLlm = false;
+  const changesApplied: string[] = [];
+
+  // 1. Attempt LLM Provider Edit if available
+  if (input.provider && typeof input.provider.generate === 'function') {
+    try {
+      const prompts = buildNadiaEditingPrompt(input.draftMarkdown, input.topic, { intent: input.intent });
+      const llmRes = await input.provider.generate({
+        messages: [
+          { role: 'system', content: prompts.systemPrompt },
+          { role: 'user', content: prompts.userPrompt }
+        ],
+        jobId: input.taskId,
+        taskId: input.taskId
+      });
+
+      if (llmRes.success && llmRes.content && llmRes.content.trim().length > 100) {
+        // Strip markdown code fence if wrapped
+        let cleanLlmText = llmRes.content.trim();
+        if (cleanLlmText.startsWith('```markdown')) {
+          cleanLlmText = cleanLlmText.replace(/^```markdown\s*/, '').replace(/```\s*$/, '').trim();
+        } else if (cleanLlmText.startsWith('```')) {
+          cleanLlmText = cleanLlmText.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
+        }
+
+        // Validate authority boundaries: Nadia cannot alter numbers or invent facts
+        const authorityCheck = validateNadiaAuthorityBoundaries({
+          originalContent: input.draftMarkdown,
+          proposedContent: cleanLlmText
+        });
+
+        if (authorityCheck.isAllowed) {
+          candidateText = cleanLlmText;
+          usedLlm = true;
+          changesApplied.push('Penyuntingan bahasa kontekstual LLM oleh Nadia selesai dan lolos verifikasi otoritas');
+        } else {
+          changesApplied.push(`Penyuntingan LLM dibatalkan karena pelanggaran otoritas: ${authorityCheck.violations.join('; ')}`);
+        }
+      }
+    } catch (err: any) {
+      changesApplied.push(`Penyuntingan LLM dilewati karena error provider: ${err?.message || err}`);
+    }
+  }
+
+  // 2. Apply deterministic polish layer (escaped markdown, translationese, informal words)
+  const polishRes = applyNadiaDeterministicPolish(candidateText);
+  candidateText = polishRes.polishedContent;
+  changesApplied.push(...polishRes.changes);
+
+  // 3. Final Authority Boundaries Check
+  const finalAuthorityCheck = validateNadiaAuthorityBoundaries({
+    originalContent: input.draftMarkdown,
+    proposedContent: candidateText
+  });
+
+  // If final text somehow violated authority, fail closed to original draft with deterministic polish only
+  let finalMarkdown = candidateText;
+  if (!finalAuthorityCheck.isAllowed) {
+    const fallbackPolish = applyNadiaDeterministicPolish(input.draftMarkdown);
+    finalMarkdown = fallbackPolish.polishedContent;
+    changesApplied.push('Rollback aman ke draf asli dengan pemolesan deterministik saja demi menjaga batas otoritas');
+  }
+
+  // 4. Evaluate Reader Voice Rubric on the final result
+  const evaluation = evaluateReaderVoice(finalMarkdown, {
+    title: input.topic,
+    contentFamily: input.intent || 'explainer',
+    originalContent: input.draftMarkdown,
+    editorialVoiceLevel: input.editorialVoiceLevel,
+    enableVoiceL4: input.enableVoiceL4
+  });
+
+  if (evaluation.voice3L4Assessment) {
+    if (evaluation.voice3L4Assessment.decision === 'VOICE_3_L4_PASS') {
+      changesApplied.push(`Evaluasi Suara Pembaca L4 lolos: Skor ${evaluation.voice3L4Assessment.overallScore}/100 (Naturalitas: ${evaluation.voice3L4Assessment.dimensions.conversationalNaturalness.score}/100)`);
+    } else {
+      changesApplied.push(`Peringatan Suara Pembaca L4: Naskah memerlukan revisi naturalitas percakapan (${evaluation.voice3L4Assessment.dimensions.conversationalNaturalness.score}/100)`);
+    }
+  }
+
+  return {
+    refinedMarkdown: finalMarkdown,
+    changesApplied,
+    authorityCheck: finalAuthorityCheck,
+    readerVoiceEvaluation: evaluation,
+    voice3L4Assessment: evaluation.voice3L4Assessment,
+    usedLlm,
+    latencyMs: Date.now() - startTime
   };
 }

@@ -585,19 +585,21 @@ export async function transformWatermark({
   let outputBlob;
   let renderedWidth = sourceWidth;
   let renderedHeight = sourceHeight;
+  const targetMime = sourceMeta.mime || sourceBlob.type || 'image/png';
+  let canvasResult = null;
 
   if (canvasProvider) {
     // Custom / test canvas provider
-    const result = await canvasProvider.renderWatermark({
+    canvasResult = await canvasProvider.renderWatermark({
       sourceBlob,
       sourceWidth,
       sourceHeight,
       config: normalizedConfig,
       watermarkAsset
     });
-    outputBlob = result.blob;
-    renderedWidth = result.width ?? sourceWidth;
-    renderedHeight = result.height ?? sourceHeight;
+    outputBlob = canvasResult.blob;
+    renderedWidth = canvasResult.width ?? sourceWidth;
+    renderedHeight = canvasResult.height ?? sourceHeight;
   } else if (typeof globalThis.OffscreenCanvas === 'function' && typeof globalThis.createImageBitmap === 'function') {
     // Native Service Worker / Browser environment
     const canvas = new globalThis.OffscreenCanvas(sourceWidth, sourceHeight);
@@ -667,7 +669,10 @@ export async function transformWatermark({
       ctx.restore();
     }
 
-    outputBlob = await canvas.convertToBlob({ type: 'image/png' });
+    const convertOptions = targetMime === 'image/jpeg' || targetMime === 'image/webp'
+      ? { type: targetMime, quality: 0.92 }
+      : { type: 'image/png' };
+    outputBlob = await canvas.convertToBlob(convertOptions);
   } else {
     throw new Error('TRANSFORM_ERROR: No canvas execution environment available (OffscreenCanvas not found)');
   }
@@ -679,10 +684,12 @@ export async function transformWatermark({
     );
   }
 
+  const outputMime = (canvasResult && canvasResult.mime) || (outputBlob && outputBlob.type) || targetMime;
+
   return {
     transformed: true,
     blob: outputBlob,
-    mime: 'image/png',
+    mime: outputMime,
     width: renderedWidth,
     height: renderedHeight,
     byteSize: outputBlob.size,

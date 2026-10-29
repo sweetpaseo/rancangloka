@@ -879,6 +879,68 @@ async function runAllTests() {
     pass('Rina / Final Editorial QA Explicit Gate Reachability R1 through R6 verified 100%');
   }
 
+  // --- Test Suite 15: Open Review in New Tab & Safe Navigation Verification ---
+  console.log('\n--- Test Suite 15: Open Review in New Tab & Safe Navigation Invariants ---');
+  {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const fileUrl = new URL(import.meta.url);
+    const scriptDir = path.dirname(fileUrl.pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+    const approvalsPagePath = path.resolve(scriptDir, '../src/pages/admin/approvals/index.astro');
+    const adminLayoutPath = path.resolve(scriptDir, '../src/layouts/AdminLayout.astro');
+
+    const approvalsSource = fs.readFileSync(approvalsPagePath, 'utf8');
+    const layoutSource = fs.readFileSync(adminLayoutPath, 'utf8');
+
+    // 1. Verify target="_blank" is present on all item.detailUrl links in approvals/index.astro
+    const linkRegex = /<a[\s\S]*?href=\{item\.detailUrl\}[\s\S]*?>/g;
+    const matches = approvalsSource.match(linkRegex) || [];
+    assert.ok(matches.length >= 4, `Expected at least 4 item.detailUrl links in approvals/index.astro, found ${matches.length}`);
+
+    for (const link of matches) {
+      assert.ok(
+        link.includes('target="_blank"'),
+        `Approval review link must specify target="_blank": ${link}`
+      );
+      assert.ok(
+        link.includes('rel="noopener noreferrer"'),
+        `Approval review link must specify rel="noopener noreferrer": ${link}`
+      );
+      assert.ok(
+        !link.includes('onclick') && !link.includes('window.open'),
+        `Approval review link must use standard anchor navigation without window.open: ${link}`
+      );
+    }
+
+    // 2. Verify bell dropdown review link in AdminLayout.astro
+    const bellLinkRegex = /<a[\s\S]*?href=\{item\.detailUrl\}[\s\S]*?>/g;
+    const bellMatches = layoutSource.match(bellLinkRegex) || [];
+    assert.ok(bellMatches.length >= 1, `Expected item.detailUrl link in AdminLayout.astro bell dropdown, found ${bellMatches.length}`);
+    for (const link of bellMatches) {
+      assert.ok(
+        link.includes('target="_blank"'),
+        `Bell dropdown review link must specify target="_blank": ${link}`
+      );
+      assert.ok(
+        link.includes('rel="noopener noreferrer"'),
+        `Bell dropdown review link must specify rel="noopener noreferrer": ${link}`
+      );
+    }
+
+    // 3. Verify verified slug and review URL preservation across types
+    const { getDevApprovalFixtures } = await import('../src/lib/approvals/dev-fixtures.ts');
+    const devFixtures = getDevApprovalFixtures();
+    for (const fixture of devFixtures) {
+      assert.ok(fixture.detailUrl.startsWith('/admin/preview/'), `Fixture detailUrl must target /admin/preview/: ${fixture.detailUrl}`);
+      assert.ok(!fixture.detailUrl.includes('//'), `detailUrl must not contain double slashes: ${fixture.detailUrl}`);
+    }
+
+    // 4. Keyboard focus rings and accessibility preservation
+    assert.ok(approvalsSource.includes('focus:outline-none focus:ring-2 focus:ring-[#0066ee]/30'), 'Action buttons must preserve visible focus ring indicators for keyboard accessibility');
+
+    pass('Open Review in New Tab (target="_blank" & rel="noopener noreferrer") verified across all review links');
+  }
+
   console.log('\n=============================================================');
   console.log(`✅ ALL ${testCount} SCALABLE APPROVAL INBOX TESTS PASSED!`);
   console.log('=============================================================');

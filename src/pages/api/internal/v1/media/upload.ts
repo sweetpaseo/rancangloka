@@ -116,6 +116,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let idempotencyKey: string | undefined;
   let clientSha256: string | undefined;
   let approvalRecordRaw: string | undefined;
+  let derivativeId: string | undefined;
+  let transformId: string | undefined;
+  let provenanceJson: string | undefined;
   let imageBuffer: ArrayBuffer;
 
   const contentType = request.headers.get('content-type') || '';
@@ -168,6 +171,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const rawApproval = formData.get('approval_record') || formData.get('human_approval');
       if (rawApproval) approvalRecordRaw = String(rawApproval).trim();
 
+      const rawDerivativeId = formData.get('derivative_id');
+      if (rawDerivativeId) derivativeId = String(rawDerivativeId).trim();
+      const rawTransformId = formData.get('transform_id');
+      if (rawTransformId) transformId = String(rawTransformId).trim();
+      const rawProvenance = formData.get('provenance_json') || formData.get('provenance');
+      if (rawProvenance) provenanceJson = String(rawProvenance).trim();
+
       imageBuffer = await file.arrayBuffer();
     } else {
       // Direct binary payload
@@ -205,6 +215,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
       idempotencyKey = url.searchParams.get('idempotency_key') || undefined;
       clientSha256 = url.searchParams.get('client_sha256') || undefined;
       approvalRecordRaw = url.searchParams.get('approval_record') || request.headers.get('x-human-approval') || undefined;
+
+      derivativeId = (request.headers.get('x-rl-derivative-id') || url.searchParams.get('derivative_id') || '').trim() || undefined;
+      transformId = (request.headers.get('x-rl-transform-id') || url.searchParams.get('transform_id') || '').trim() || undefined;
+      provenanceJson = (request.headers.get('x-rl-provenance') || url.searchParams.get('provenance_json') || url.searchParams.get('provenance') || '').trim() || undefined;
 
       imageBuffer = await request.arrayBuffer();
     }
@@ -282,7 +296,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
         idempotencyKey,
         clientSha256,
         approvalRecord: validatedApproval || undefined,
-        deviceId: auth.deviceId || null
+        deviceId: auth.deviceId || null,
+        derivativeId,
+        transformId,
+        provenanceJson
       },
       db,
       bucket

@@ -201,9 +201,13 @@ async function main() {
   });
 
   await test('6. Supported qualitative principle may remain in prose', () => {
-    // In dryrun draft-final.md, "75% hingga 90%" was replaced with "jalur transfer panas paling dominan",
+    // In dryrun draft-final.md, "75% hingga 90%" was replaced with "salah satu jalur utama pemanasan",
     // and air gap 20-25 mm is presented as installation requirement rather than absolute lab cert.
-    assert.ok(draftFinal.includes('jalur transfer panas paling dominan'));
+    assert.ok(
+      draftFinal.includes('salah satu jalur utama pemanasan') ||
+      draftFinal.includes('jalur transfer panas paling dominan'),
+      'Draft final must express the supported physical principle without fabricated numeric claims'
+    );
     assert.ok(!draftFinal.includes('menyumbang 75% hingga 90%'));
   });
 

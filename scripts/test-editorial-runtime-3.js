@@ -261,6 +261,7 @@ Dust accumulation over time can increase emittance and reduce reflectivity.
 
   await test('13. Irwan Evidence Pack provenance is truthful and explicitly recorded', async () => {
     const result = await executeEditorialResearchJob(baseJobInput, {
+      executionType: 'REAL_RUNTIME_EXECUTION',
       crossRefSearchFn: async () => mockCandidates,
       wikiSearchFn: async () => [],
       wikiContentFn: async () => ({ text: mockWikiText, hash: 'testhash123' })

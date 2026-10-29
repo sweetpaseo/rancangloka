@@ -1,9 +1,159 @@
-import { DEFAULT_CONFIG, EXTENSION_VERSION, STORAGE_SCHEMA_VERSION } from './constants.js';
+import {
+  BACKEND_ENVIRONMENTS,
+  DEFAULT_CONFIG,
+  detectEnvironment,
+  getCanonicalEnvironmentUrl,
+  isUrlConsistentWithEnvironment,
+  EXTENSION_VERSION,
+  STORAGE_SCHEMA_VERSION
+} from './constants.js';
 import { AUDIT_RETENTION_DAYS, MAX_AUDIT_EVENTS } from './audit-log.js';
+import { isProviderExecutionInFlight, computeQueueCounters } from './execution-state.js';
+
+export function createDefaultEnvironmentProfile(envId) {
+  const envKey = (envId || 'local').toUpperCase();
+  const envDef = BACKEND_ENVIRONMENTS[envKey] || {
+    id: envId || 'local',
+    label: envId || 'local',
+    defaultUrl: envId === 'production' ? 'https://rancangloka.com' : 'http://localhost:4321',
+    defaultDeviceId: 'dev_local_human_operator_v3'
+  };
+  return {
+    environment: envDef.id,
+    serverBaseUrl: envDef.defaultUrl,
+    deviceToken: '',
+    deviceId: envDef.defaultDeviceId,
+    jobs: {},
+    selectedJobId: null,
+    currentJobId: null,
+    phase4bSingleRun: null,
+    phase4bJobGates: {},
+    jobOperationalStates: {},
+    jobApprovals: {},
+    jobRejections: {}
+  };
+}
+
+export function sanitizeEnvironmentProfiles(state) {
+  state.environmentProfiles ??= {
+    local: createDefaultEnvironmentProfile('local'),
+    staging: createDefaultEnvironmentProfile('staging'),
+    production: createDefaultEnvironmentProfile('production')
+  };
+
+  const validEnvs = ['local', 'staging', 'production'];
+  for (const env of validEnvs) {
+    if (!state.environmentProfiles[env]) {
+      state.environmentProfiles[env] = createDefaultEnvironmentProfile(env);
+    }
+    const prof = state.environmentProfiles[env];
+    prof.environment = env;
+    prof.deviceId ||= BACKEND_ENVIRONMENTS[env.toUpperCase()].defaultDeviceId;
+    prof.deviceToken ??= '';
+    prof.jobs ??= {};
+    prof.selectedJobId ??= null;
+    prof.currentJobId ??= null;
+    prof.phase4bJobGates ??= {};
+    prof.jobOperationalStates ??= {};
+    prof.jobApprovals ??= {};
+    prof.jobRejections ??= {};
+
+    // Invariant: Server base URL must be consistent with its environment type
+    if (!isUrlConsistentWithEnvironment(env, prof.serverBaseUrl)) {
+      if (env === 'local' && detectEnvironment(prof.serverBaseUrl) === 'production') {
+        // Recovery from contaminated local profile: move production token/jobs to production profile if empty
+        const prodProf = state.environmentProfiles.production;
+        if (!prodProf.deviceToken && prof.deviceToken) {
+          prodProf.deviceToken = prof.deviceToken;
+        }
+        if (Object.keys(prodProf.jobs).length === 0 && Object.keys(prof.jobs).length > 0) {
+          prodProf.jobs = clone(prof.jobs);
+          prodProf.selectedJobId = prof.selectedJobId;
+          prodProf.currentJobId = prof.currentJobId;
+          prodProf.phase4bJobGates = clone(prof.phase4bJobGates);
+          prodProf.jobOperationalStates = clone(prof.jobOperationalStates);
+          prodProf.jobApprovals = clone(prof.jobApprovals);
+          prodProf.jobRejections = clone(prof.jobRejections);
+        }
+        // Purge local profile back to pristine local defaults
+        prof.serverBaseUrl = BACKEND_ENVIRONMENTS.LOCAL.defaultUrl;
+        prof.deviceToken = '';
+        prof.jobs = {};
+        prof.selectedJobId = null;
+        prof.currentJobId = null;
+        prof.phase4bSingleRun = null;
+        prof.phase4bJobGates = {};
+        prof.jobOperationalStates = {};
+        prof.jobApprovals = {};
+        prof.jobRejections = {};
+
+        // Also purge any contaminated active local config/jobs
+        if (state.activeEnvironment === 'local' || !state.activeEnvironment) {
+          state.config ??= {};
+          state.config.serverBaseUrl = BACKEND_ENVIRONMENTS.LOCAL.defaultUrl;
+          state.config.deviceToken = '';
+          state.jobs = {};
+          state.selectedJobId = null;
+          state.currentJobId = null;
+          state.phase4bSingleRun = null;
+          state.phase4bJobGates = {};
+          state.jobOperationalStates = {};
+          state.jobApprovals = {};
+          state.jobRejections = {};
+        }
+      } else {
+        prof.serverBaseUrl = getCanonicalEnvironmentUrl(env);
+      }
+    }
+  }
+
+  if (!validEnvs.includes(state.activeEnvironment)) {
+    state.activeEnvironment = detectEnvironment(state.config?.serverBaseUrl) || 'local';
+  }
+
+  const activeProfile = state.environmentProfiles[state.activeEnvironment];
+  state.config ??= { ...DEFAULT_CONFIG };
+
+  // Sync any direct modifications on state.config into the active profile
+  if (state.config.deviceToken !== undefined && state.config.deviceToken !== activeProfile.deviceToken) {
+    activeProfile.deviceToken = state.config.deviceToken;
+  }
+  if (state.config.deviceId && state.config.deviceId !== activeProfile.deviceId) {
+    activeProfile.deviceId = state.config.deviceId;
+  }
+  if (state.config.serverBaseUrl && isUrlConsistentWithEnvironment(state.activeEnvironment, state.config.serverBaseUrl)) {
+    activeProfile.serverBaseUrl = state.config.serverBaseUrl;
+  }
+
+  // Ensure config mirrors active profile
+  state.config.serverBaseUrl = activeProfile.serverBaseUrl;
+  state.config.deviceId = activeProfile.deviceId;
+  state.config.deviceToken = activeProfile.deviceToken || '';
+
+  // Critical Invariant: Local environment must NEVER retain production backend URL
+  if (state.activeEnvironment === 'local' && detectEnvironment(state.config.serverBaseUrl) !== 'local') {
+    state.config.serverBaseUrl = BACKEND_ENVIRONMENTS.LOCAL.defaultUrl;
+    activeProfile.serverBaseUrl = BACKEND_ENVIRONMENTS.LOCAL.defaultUrl;
+  }
+
+  // Critical Invariant: Local tokenless development must consistently use dev_local_tokenless
+  if (state.activeEnvironment === 'local' && !activeProfile.deviceToken) {
+    if (activeProfile.deviceId?.startsWith('lokamedia-prod') || activeProfile.deviceId === 'dev_local_human_operator_v3') {
+      activeProfile.deviceId = 'dev_local_tokenless';
+      state.config.deviceId = 'dev_local_tokenless';
+    }
+  }
+}
 
 const DEFAULT_STATE = {
   schemaVersion: STORAGE_SCHEMA_VERSION,
   config: DEFAULT_CONFIG,
+  activeEnvironment: 'local',
+  environmentProfiles: {
+    local: createDefaultEnvironmentProfile('local'),
+    staging: createDefaultEnvironmentProfile('staging'),
+    production: createDefaultEnvironmentProfile('production')
+  },
   extension_version: EXTENSION_VERSION,
   expected_extension_version: null,
   runtime_extension_version: null,
@@ -42,6 +192,7 @@ const DEFAULT_STATE = {
     transfers: []
   },
   currentJobId: null,
+  selectedJobId: null,
   manualPromotionState: null,
   phase4bSingleRun: null,
   phase4bJobGates: {},
@@ -64,6 +215,51 @@ export function migrateLegacyOperationalState(state) {
   state.jobApprovals ??= {};
   state.jobRejections ??= {};
 
+  // Check if migrating from pre-v0.1.21 where environmentProfiles did NOT exist
+  if (!state.environmentProfiles) {
+    const legacyUrl = state.config?.serverBaseUrl || 'http://localhost:4321';
+    const legacyEnv = detectEnvironment(legacyUrl);
+    state.activeEnvironment = legacyEnv;
+    state.environmentProfiles = {
+      local: createDefaultEnvironmentProfile('local'),
+      staging: createDefaultEnvironmentProfile('staging'),
+      production: createDefaultEnvironmentProfile('production')
+    };
+
+    const targetProf = state.environmentProfiles[legacyEnv];
+    targetProf.serverBaseUrl = legacyUrl;
+    targetProf.deviceToken = state.config?.deviceToken ?? '';
+    targetProf.deviceId = state.config?.deviceId || targetProf.deviceId;
+    targetProf.jobs = clone(state.jobs ?? {});
+    targetProf.selectedJobId = state.selectedJobId ?? null;
+    targetProf.currentJobId = state.currentJobId ?? null;
+    targetProf.phase4bJobGates = clone(state.phase4bJobGates ?? {});
+    targetProf.jobOperationalStates = clone(state.jobOperationalStates ?? {});
+    targetProf.jobApprovals = clone(state.jobApprovals ?? {});
+    targetProf.jobRejections = clone(state.jobRejections ?? {});
+  }
+
+  sanitizeEnvironmentProfiles(state);
+
+  const activeProfile = state.environmentProfiles[state.activeEnvironment];
+  if (Object.keys(state.jobs ?? {}).length === 0 && Object.keys(activeProfile.jobs ?? {}).length > 0) {
+    state.jobs = clone(activeProfile.jobs);
+    state.selectedJobId = activeProfile.selectedJobId;
+    state.currentJobId = activeProfile.currentJobId;
+    state.phase4bJobGates = clone(activeProfile.phase4bJobGates);
+    state.jobOperationalStates = clone(activeProfile.jobOperationalStates);
+    state.jobApprovals = clone(activeProfile.jobApprovals);
+    state.jobRejections = clone(activeProfile.jobRejections);
+  } else {
+    activeProfile.jobs = clone(state.jobs ?? {});
+    activeProfile.selectedJobId = state.selectedJobId ?? null;
+    activeProfile.currentJobId = state.currentJobId ?? null;
+    activeProfile.phase4bJobGates = clone(state.phase4bJobGates ?? {});
+    activeProfile.jobOperationalStates = clone(state.jobOperationalStates ?? {});
+    activeProfile.jobApprovals = clone(state.jobApprovals ?? {});
+    activeProfile.jobRejections = clone(state.jobRejections ?? {});
+  }
+
   if (state.phase4bSingleRun?.job_id) {
     const jobId = state.phase4bSingleRun.job_id;
     state.phase4bJobGates[jobId] ??= { ...state.phase4bSingleRun };
@@ -74,22 +270,26 @@ export function migrateLegacyOperationalState(state) {
     const gate = state.phase4bJobGates[jobId] || (state.phase4bSingleRun?.job_id === jobId ? state.phase4bSingleRun : null);
     const runId = job.run_id || job.result_checkpoint?.run_id || gate?.phase4b_single_run_id || existing.run_id || null;
 
-    const hasCandidate = Boolean(
+    const isRejectedOrDiscarded = job.local_state === 'RESULT_REJECTED' || (job.blob_key === null && job.sha256 === null);
+    const hasCandidate = !isRejectedOrDiscarded && Boolean(
       job.blob_key ||
       job.sha256 ||
+      existing.candidate?.blob_key ||
       existing.candidate?.sha256
     );
 
     const candidate = hasCandidate ? {
       job_id: jobId,
-      run_id: existing.candidate?.run_id || runId,
-      sha256: existing.candidate?.sha256 || job.sha256 || null,
-      width: existing.candidate?.width || job.width || null,
-      height: existing.candidate?.height || job.height || null,
-      size: existing.candidate?.size || job.size || null,
-      mime: existing.candidate?.mime || job.mime || 'image/png',
-      blob_key: existing.candidate?.blob_key || job.blob_key || null,
-      captured_at: existing.candidate?.captured_at || job.captured_at || job.completed_at || null,
+      run_id: job.run_id || existing.candidate?.run_id || runId,
+      sha256: job.sha256 || existing.candidate?.sha256 || null,
+      width: (job.sha256 && job.sha256 === existing.candidate?.sha256) ? (existing.candidate?.width || job.width) : (job.width || existing.candidate?.width || null),
+      height: (job.sha256 && job.sha256 === existing.candidate?.sha256) ? (existing.candidate?.height || job.height) : (job.height || existing.candidate?.height || null),
+      size: (job.sha256 && job.sha256 === existing.candidate?.sha256) ? (existing.candidate?.size || job.size) : (job.size || existing.candidate?.size || null),
+      mime: (job.sha256 && job.sha256 === existing.candidate?.sha256) ? (existing.candidate?.mime || job.mime) : (job.mime || existing.candidate?.mime || 'image/png'),
+      blob_key: job.blob_key || existing.candidate?.blob_key || null,
+      provenance: job.provenance || existing.candidate?.provenance || null,
+      source_provenance: job.source_provenance || existing.candidate?.source_provenance || null,
+      captured_at: job.captured_at || existing.candidate?.captured_at || job.completed_at || null,
       is_uploaded: (job.local_state === 'UPLOAD_COMPLETE' || job.status === 'COMPLETE')
     } : null;
 
@@ -171,13 +371,21 @@ export class ExtensionStorage {
 
   async initialize() {
     const { lokamediaState } = await this.area.get({ lokamediaState: null });
-    if (!lokamediaState || lokamediaState.schemaVersion !== STORAGE_SCHEMA_VERSION) {
+    if (!lokamediaState) {
       await this.saveState(DEFAULT_STATE);
       return clone(DEFAULT_STATE);
     }
-    const merged = { ...clone(DEFAULT_STATE), ...clone(lokamediaState) };
+    const isLegacy = !lokamediaState.environmentProfiles || !lokamediaState.activeEnvironment || (lokamediaState.schemaVersion || 1) < 2;
+    const base = clone(DEFAULT_STATE);
+    if (isLegacy) {
+      delete base.activeEnvironment;
+      delete base.environmentProfiles;
+    }
+    const merged = { ...base, ...clone(lokamediaState) };
+    merged.schemaVersion = STORAGE_SCHEMA_VERSION;
     merged.extension_version = EXTENSION_VERSION;
     migrateLegacyOperationalState(merged);
+    await this.saveState(merged);
     return merged;
   }
 
@@ -199,7 +407,116 @@ export class ExtensionStorage {
 
   async saveConfig(config) {
     return this.update((state) => {
+      if (config.serverBaseUrl !== undefined && config.serverBaseUrl !== null) {
+        if (!isUrlConsistentWithEnvironment(state.activeEnvironment, config.serverBaseUrl)) {
+          throw new Error(`ENVIRONMENT_URL_MISMATCH: Configured URL '${config.serverBaseUrl}' does not match active environment '${state.activeEnvironment}'. Switch environment first.`);
+        }
+      }
       state.config = { ...state.config, ...config };
+      if (state.activeEnvironment && state.environmentProfiles?.[state.activeEnvironment]) {
+        const prof = state.environmentProfiles[state.activeEnvironment];
+        if (config.serverBaseUrl !== undefined) prof.serverBaseUrl = config.serverBaseUrl;
+        if (config.deviceId !== undefined) prof.deviceId = config.deviceId;
+        if (config.deviceToken !== undefined) prof.deviceToken = config.deviceToken;
+      }
+    });
+  }
+
+  async switchEnvironment(targetEnv, customUrl = null) {
+    const validEnvs = ['local', 'staging', 'production'];
+    const normalizedEnv = String(targetEnv || '').toLowerCase();
+    if (!validEnvs.includes(normalizedEnv)) {
+      throw new Error(`Invalid environment: ${targetEnv}. Supported: ${validEnvs.join(', ')}`);
+    }
+
+    return this.update((state) => {
+      if (isProviderExecutionInFlight(state)) {
+        throw new Error('Cannot switch environment while media generation or execution is in flight');
+      }
+
+      if (customUrl && !isUrlConsistentWithEnvironment(normalizedEnv, customUrl)) {
+        throw new Error(`ENVIRONMENT_URL_MISMATCH: Custom URL '${customUrl}' does not match target environment '${normalizedEnv}'`);
+      }
+
+      const isCurrentUrlConsistent = isUrlConsistentWithEnvironment(normalizedEnv, state.config?.serverBaseUrl);
+      if (state.activeEnvironment === normalizedEnv && isCurrentUrlConsistent && !customUrl) {
+        return state;
+      }
+
+      const prevEnv = state.activeEnvironment || 'local';
+      state.environmentProfiles ??= {
+        local: createDefaultEnvironmentProfile('local'),
+        staging: createDefaultEnvironmentProfile('staging'),
+        production: createDefaultEnvironmentProfile('production')
+      };
+
+      // 1. Snapshot current active state into previous environment profile
+      const prevProfile = state.environmentProfiles[prevEnv] || createDefaultEnvironmentProfile(prevEnv);
+      prevProfile.serverBaseUrl = state.config?.serverBaseUrl || prevProfile.serverBaseUrl;
+      prevProfile.deviceId = state.config?.deviceId || prevProfile.deviceId;
+      prevProfile.deviceToken = state.config?.deviceToken ?? prevProfile.deviceToken;
+      prevProfile.jobs = clone(state.jobs || {});
+      prevProfile.selectedJobId = state.selectedJobId || null;
+      prevProfile.currentJobId = state.currentJobId || null;
+      prevProfile.phase4bSingleRun = clone(state.phase4bSingleRun || null);
+      prevProfile.phase4bJobGates = clone(state.phase4bJobGates || {});
+      prevProfile.jobOperationalStates = clone(state.jobOperationalStates || {});
+      prevProfile.jobApprovals = clone(state.jobApprovals || {});
+      prevProfile.jobRejections = clone(state.jobRejections || {});
+      state.environmentProfiles[prevEnv] = prevProfile;
+
+      // 2. Prepare target profile
+      state.environmentProfiles[normalizedEnv] ??= createDefaultEnvironmentProfile(normalizedEnv);
+      const targetProfile = state.environmentProfiles[normalizedEnv];
+      if (customUrl) {
+        targetProfile.serverBaseUrl = customUrl;
+      } else if (!isUrlConsistentWithEnvironment(normalizedEnv, targetProfile.serverBaseUrl)) {
+        targetProfile.serverBaseUrl = getCanonicalEnvironmentUrl(normalizedEnv);
+      }
+
+      // 3. Switch activeEnvironment
+      state.activeEnvironment = normalizedEnv;
+
+      // 4. Restore config and job state from target profile atomically
+      state.config = {
+        ...state.config,
+        serverBaseUrl: targetProfile.serverBaseUrl,
+        deviceId: targetProfile.deviceId,
+        deviceToken: targetProfile.deviceToken || ''
+      };
+      state.jobs = clone(targetProfile.jobs || {});
+      state.selectedJobId = targetProfile.selectedJobId || null;
+      state.currentJobId = targetProfile.currentJobId || null;
+      state.phase4bSingleRun = clone(targetProfile.phase4bSingleRun || null);
+      state.phase4bJobGates = clone(targetProfile.phase4bJobGates || {});
+      state.jobOperationalStates = clone(targetProfile.jobOperationalStates || {});
+      state.jobApprovals = clone(targetProfile.jobApprovals || {});
+      state.jobRejections = clone(targetProfile.jobRejections || {});
+
+      // 5. Reset transient connection and recompute counters
+      state.status.connection = 'offline';
+      state.status.last_error = null;
+      const counters = computeQueueCounters(state);
+      state.counters = { ...state.counters, ...counters };
+
+      // 6. Record audit event
+      const seq = state.auditLog?.nextSequence || 1;
+      state.auditLog ??= { events: [], lastAction: 'Idle', nextSequence: 1 };
+      state.auditLog.events.push({
+        sequence: seq,
+        event_code: 'ENVIRONMENT_SWITCHED',
+        level: 'INFO',
+        timestamp: new Date().toISOString(),
+        details: {
+          from: prevEnv,
+          to: normalizedEnv,
+          serverBaseUrl: state.config.serverBaseUrl
+        }
+      });
+      state.auditLog.nextSequence = seq + 1;
+      state.auditLog.lastAction = `Switched to ${normalizedEnv.toUpperCase()} (${state.config.serverBaseUrl})`;
+
+      return state;
     });
   }
 
@@ -445,6 +762,7 @@ export class ExtensionStorage {
         if (state.jobOperationalStates[jobId]) {
           state.jobOperationalStates[jobId].rejection = clone(record);
           delete state.jobOperationalStates[jobId].approval;
+          delete state.jobOperationalStates[jobId].candidate;
         }
       }
       return { ok: true, rejection: record };

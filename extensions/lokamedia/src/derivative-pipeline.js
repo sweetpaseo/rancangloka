@@ -78,10 +78,10 @@ export function validateDerivativeBinary({
     throw new DerivativePipelineError('Derivative binary is empty (0 bytes)', 'DERIVATIVE_BYTES_EMPTY');
   }
 
-  const supportedMimes = ['image/png', 'image/webp'];
+  const supportedMimes = ['image/png', 'image/webp', 'image/jpeg'];
   if (!supportedMimes.includes(mime)) {
     throw new DerivativePipelineError(
-      `Unsupported derivative MIME type '${mime}'. Expected image/png or image/webp.`,
+      `Unsupported derivative MIME type '${mime}'. Expected image/png, image/webp, or image/jpeg.`,
       'UNSUPPORTED_DERIVATIVE_MIME'
     );
   }

@@ -258,7 +258,7 @@ export function renderMobileComparisonCards(data: ComparisonMatrixData): string 
 
       return `<div class="comparison-card rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4">
   <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-2">
-    <h4 class="font-display font-bold text-base text-slate-900 dark:text-white leading-snug">${cleanTitle}</h4>
+    <h3 class="font-display font-bold text-base text-slate-900 dark:text-white leading-snug">${cleanTitle}</h3>
     <span class="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0 uppercase tracking-wider">Pilihan #${optIdx + 1}</span>
   </div>
 
@@ -273,7 +273,7 @@ export function renderMobileComparisonCards(data: ComparisonMatrixData): string 
   </div>
 
   <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-    <div class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+    <div class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
       Karakteristik Lainnya
     </div>
     <div class="space-y-2.5">

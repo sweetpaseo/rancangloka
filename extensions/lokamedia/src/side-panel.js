@@ -2,14 +2,19 @@ import {
   SIDE_PANEL_BOOT_FLAGS,
   evaluateRunOnceEligibility,
   getJobWorkflowDetails,
+  isVersionCompatible,
   normalizeProviderStatus,
   normalizeServerStatus,
+  resolveAuthoritativeProvider,
+  resolveCurrentJob,
   summarizeCurrentJob,
   summarizeTransfers,
   validateSidePanelElements
 } from './popup-core.js';
 import { isRecoverableResultCheckpoint } from './providers/chatgpt/correlation.js';
-import { PROVIDER_OPERATION_TIMEOUT_MS } from './constants.js';
+import { EXTENSION_VERSION, PROVIDER_OPERATION_TIMEOUT_MS, detectEnvironment } from './constants.js';
+import { isProviderExecutionInFlight } from './execution-state.js';
+import { collectDiagnosticSnapshot, formatDiagnosticSnapshotText } from './diagnostic-snapshot.js';
 
 const boot = new Set([SIDE_PANEL_BOOT_FLAGS.SCRIPT_LOADED]);
 let bound = false;
@@ -36,7 +41,7 @@ function boundedError(error) {
   if (message.includes('Receiving end does not exist')) return 'CONTENT_SCRIPT_UNAVAILABLE';
   if (message.includes('Extension context invalidated')) return 'SERVICE_WORKER_UNAVAILABLE';
   if (message.startsWith('SIDE_PANEL_ELEMENT_MISSING')) return message;
-  return message.replace(/[^\w:.-]/g, '_').slice(0, 80);
+  return message.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 100);
 }
 
 export const TRANSIENT_STALE_STATUS_PATTERNS = [
@@ -107,45 +112,200 @@ function renderTransfers(transfers) {
 }
 
 let currentLoadedBlobKey = null;
+let currentLoadedSha256 = null;
+let currentPreviewObjectUrl = null;
+let activePreviewRequestId = 0;
 
-async function loadPreviewImage(blobKey, preview = null) {
-  if (!blobKey) return;
-  if (currentLoadedBlobKey === blobKey) return;
-  try {
-    const res = await send('GET_BLOB_PREVIEW', { key: blobKey });
-    if (res.ok && res.dataUrl) {
-      currentLoadedBlobKey = blobKey;
-      const img = element('#result-preview-image');
-      img.src = res.dataUrl;
-      img.style.display = 'block';
-      element('#preview-placeholder').style.display = 'none';
-      return;
-    }
-  } catch {}
+export function invalidatePreviewCache() {
   currentLoadedBlobKey = null;
-  const img = element('#result-preview-image');
-  img.style.display = 'none';
-  const placeholder = element('#preview-placeholder');
-  placeholder.style.display = 'block';
-  if (preview?.is_uploaded) {
-    placeholder.textContent = `Asset uploaded and verified (${preview.short_sha256})`;
-  } else if (preview?.available) {
-    placeholder.textContent = `Candidate captured (${preview.short_sha256})`;
-  } else {
-    placeholder.textContent = 'No image candidate captured';
+  currentLoadedSha256 = null;
+  if (currentPreviewObjectUrl) {
+    try { URL.revokeObjectURL(currentPreviewObjectUrl); } catch {}
+    currentPreviewObjectUrl = null;
   }
 }
 
-function renderState(state) {
-  const provider = normalizeProviderStatus(state.provider?.chatgpt ?? {});
+export async function loadPreviewImage(blobKey, preview = null) {
+  const requestId = ++activePreviewRequestId;
+  const targetSha = preview?.sha256 || null;
+  if (!blobKey) {
+    invalidatePreviewCache();
+    const img = element('#result-preview-image');
+    if (img) {
+      if (img.src && img.src.startsWith('blob:')) {
+        try { URL.revokeObjectURL(img.src); } catch {}
+      }
+      img.src = '';
+      img.style.display = 'none';
+    }
+    const placeholder = element('#preview-placeholder');
+    if (placeholder) {
+      placeholder.style.display = 'block';
+      placeholder.textContent = preview?.is_uploaded
+        ? `Asset uploaded and verified (${preview.short_sha256})`
+        : 'No image candidate captured';
+    }
+    return;
+  }
+  if (currentLoadedBlobKey === blobKey && targetSha && currentLoadedSha256 === targetSha) {
+    const existingImg = element('#result-preview-image');
+    if (existingImg && existingImg.style.display === 'block' && existingImg.src) {
+      return;
+    }
+  }
+  try {
+    const res = await send('GET_BLOB_PREVIEW', { key: blobKey });
+    if (requestId !== activePreviewRequestId) {
+      console.info(`[LokaMedia:ImportTrace] [B8:DomPreview] Discarding stale preview response (reqId=${requestId}, active=${activePreviewRequestId})`);
+      return;
+    }
+    if (res.ok && res.dataUrl) {
+      currentLoadedBlobKey = blobKey;
+      currentLoadedSha256 = res.sha256 || targetSha || null;
+      const img = element('#result-preview-image');
+      if (img.src && img.src.startsWith('blob:')) {
+        try { URL.revokeObjectURL(img.src); } catch {}
+      }
+      if (currentPreviewObjectUrl) {
+        try { URL.revokeObjectURL(currentPreviewObjectUrl); } catch {}
+        currentPreviewObjectUrl = null;
+      }
+      img.src = res.dataUrl;
+      img.style.display = 'block';
+      element('#preview-placeholder').style.display = 'none';
+      console.info(`[LokaMedia:ImportTrace] [B8:DomPreview] Applied preview: blobKey=${blobKey} sha=${currentLoadedSha256} naturalDims=${img.naturalWidth || '--'}x${img.naturalHeight || '--'}`);
+      return;
+    }
+  } catch (err) {
+    console.warn('[LokaMedia:Preview] GET_BLOB_PREVIEW failed:', err);
+  }
+  invalidatePreviewCache();
+  const img = element('#result-preview-image');
+  if (img) {
+    if (img.src && img.src.startsWith('blob:')) {
+      try { URL.revokeObjectURL(img.src); } catch {}
+    }
+    img.src = '';
+    img.style.display = 'none';
+  }
+  const placeholder = element('#preview-placeholder');
+  if (placeholder) {
+    placeholder.style.display = 'block';
+    if (preview?.is_uploaded) {
+      placeholder.textContent = `Asset uploaded and verified (${preview.short_sha256})`;
+    } else if (preview?.available) {
+      placeholder.textContent = `Candidate captured (${preview.short_sha256})`;
+    } else {
+      placeholder.textContent = 'No image candidate captured';
+    }
+  }
+}
+
+let lastKnownWindowCtx = null;
+let lastKnownWorkflow = null;
+
+export function hasUnapprovedCandidate(workflow) {
+  return Boolean(
+    workflow?.preview?.available &&
+    !workflow.preview.is_uploaded &&
+    (workflow.preview.blob_key || workflow.preview.sha256)
+  );
+}
+
+export function promptCandidateReplacement(workflow, actionLabel = 'intake') {
+  if (!hasUnapprovedCandidate(workflow)) return true;
+  const dims = workflow.preview?.dimensions || 'dimensions unknown';
+  const sha = workflow.preview?.short_sha256 || 'unknown';
+  const msg = `An unapproved candidate image is currently loaded for this job (${dims}, SHA: ${sha}).\n\nDo you want to replace it with the new ${actionLabel}? The existing candidate will be replaced.`;
+  const confirmed = globalThis.confirm ? globalThis.confirm(msg) : true;
+  if (!confirmed) {
+    console.info(`[LokaMedia:Replace] Candidate replacement cancelled by operator for ${actionLabel}`);
+    return false;
+  }
+  return true;
+}
+
+export async function getSidePanelWindowContext() {
+  if (typeof chrome === 'undefined' || !chrome.windows?.getCurrent) {
+    return lastKnownWindowCtx || { windowId: null, tabId: null, tabUrl: null };
+  }
+  try {
+    const win = await chrome.windows.getCurrent({ populate: false });
+    const winId = win?.id;
+    if (winId != null && win.type === 'normal') {
+      const tabs = await chrome.tabs?.query?.({ active: true, windowId: winId });
+      const activeTab = tabs?.find((t) => t.id != null && t.url && !t.url.startsWith('chrome-extension://'));
+      if (activeTab) {
+        lastKnownWindowCtx = {
+          windowId: winId,
+          tabId: activeTab.id,
+          tabUrl: activeTab.url
+        };
+        return lastKnownWindowCtx;
+      }
+    }
+  } catch {}
+  return lastKnownWindowCtx || { windowId: null, tabId: null, tabUrl: null };
+}
+
+export function getActiveProviderKey(state, windowCtx = null) {
+  const effectiveCtx = windowCtx || lastKnownWindowCtx;
+  return resolveAuthoritativeProvider(state, effectiveCtx).activeProviderKey;
+}
+
+export function renderState(state, windowCtx = null) {
+  const effectiveWindowCtx = windowCtx || lastKnownWindowCtx;
+  const authProvider = resolveAuthoritativeProvider(state, effectiveWindowCtx);
+  const activeProviderKey = authProvider.activeProviderKey;
+  const isGeminiActive = activeProviderKey === 'gemini';
+  const providerLabel = authProvider.providerName;
+  const provider = normalizeProviderStatus(state.provider?.[activeProviderKey] ?? {});
   const server = normalizeServerStatus(state);
   const current = summarizeCurrentJob(state);
   const transfers = summarizeTransfers(state);
-  const workflow = getJobWorkflowDetails(state, state.provider?.chatgpt ?? {});
+  const workflow = getJobWorkflowDetails(state, state.provider?.[activeProviderKey] ?? {}, null, providerLabel);
+  lastKnownWorkflow = workflow;
+  const diag = state.provider?.diagnostics;
 
   // UX-2 Workflow Stage
   element('#workflow-stage').textContent = workflow.stage;
   element('#workflow-guidance').textContent = workflow.guidance;
+
+  // Active Job Selector Dropdown
+  const jobSelector = document.querySelector('#job-selector');
+  if (jobSelector) {
+    const jobsList = Object.values(state.jobs ?? {});
+    const selectedJobId = state.selectedJobId || workflow.job_id || '';
+    const currentOptions = Array.from(jobSelector.options || []).map((o) => o.value);
+    const currentOptionTexts = Array.from(jobSelector.options || []).map((o) => o.textContent);
+    const newJobIds = ['', ...jobsList.map((j) => j.job_id)];
+    const newOptionTexts = ['Auto (Default Precedence)', ...jobsList.map((j) => {
+      const stateBadge = j.local_state || j.status || 'QUEUED';
+      const roleBadge = j.role || j.slot_key || 'media';
+      const titleShort = (j.article_title || j.job_id).slice(0, 30);
+      return `[${stateBadge}] ${titleShort} (${roleBadge})`;
+    })];
+    const optionsDiffer = currentOptions.length !== newJobIds.length ||
+      currentOptions.some((val, idx) => val !== newJobIds[idx]) ||
+      currentOptionTexts.some((text, idx) => text !== newOptionTexts[idx]);
+
+    if (optionsDiffer || jobSelector.value !== selectedJobId) {
+      jobSelector.innerHTML = '<option value="">Auto (Default Precedence)</option>';
+      for (const j of jobsList) {
+        const opt = document.createElement('option');
+        opt.value = j.job_id;
+        const stateBadge = j.local_state || j.status || 'QUEUED';
+        const roleBadge = j.role || j.slot_key || 'media';
+        const titleShort = (j.article_title || j.job_id).slice(0, 30);
+        opt.textContent = `[${stateBadge}] ${titleShort} (${roleBadge})`;
+        if (j.job_id === selectedJobId) {
+          opt.selected = true;
+        }
+        jobSelector.appendChild(opt);
+      }
+      jobSelector.value = selectedJobId;
+    }
+  }
 
   // UX-2 Prompt Preview
   element('#prompt-article-title').textContent = workflow.article_title;
@@ -154,8 +314,20 @@ function renderState(state) {
   element('#prompt-text').value = workflow.prompt;
   element('#copy-prompt').disabled = !workflow.can_copy;
   const sendBtn = element('#send-to-chatgpt');
+  sendBtn.textContent = isGeminiActive ? 'Send to Gemini' : 'Send to ChatGPT';
   sendBtn.disabled = !workflow.can_send;
   sendBtn.title = workflow.send_reason || '';
+
+  const acquireContainer = element('#acquire-lease-container');
+  const acquireBtn = element('#btn-acquire-lease');
+  if (acquireContainer && acquireBtn) {
+    acquireContainer.style.display = 'block';
+    const canAcquire = Boolean(workflow.can_acquire_lease && server === 'online');
+    acquireBtn.disabled = !canAcquire;
+    acquireBtn.title = server !== 'online'
+      ? 'RancangLoka server is offline'
+      : (workflow.acquire_lease_reason || (canAcquire ? 'Acquire active lease for current job from server' : 'Job lease is not available for acquisition'));
+  }
 
   // UX-2 Generating State
   const genCard = element('#generating-card');
@@ -171,51 +343,97 @@ function renderState(state) {
 
   // UX-2 Result Review
   element('#capture-latest').disabled = !workflow.can_capture_latest;
+  element('#capture-latest').title = workflow.can_capture_latest
+    ? 'Capture latest image from bound provider tab'
+    : (workflow.job_id ? 'Bind tab or select incomplete job to capture' : 'No active media job selected');
+
+  const pasteBtn = document.querySelector('#paste-image');
+  if (pasteBtn) {
+    pasteBtn.disabled = !workflow.can_paste_image;
+    pasteBtn.title = workflow.can_paste_image
+      ? 'Paste image from clipboard (Ctrl+V)'
+      : (workflow.job_id ? 'Job is already complete' : 'No active media job selected');
+  }
+
   element('#reject-result').disabled = !workflow.can_reject;
+  element('#reject-result').title = workflow.can_reject
+    ? 'Reset this image (discard current unapproved candidate)'
+    : (workflow.preview?.is_uploaded
+        ? 'Cannot reset an already uploaded or completed asset'
+        : 'No unapproved candidate loaded to reset');
   element('#approve-upload').disabled = !workflow.can_approve_upload;
   element('#assign-featured').disabled = !workflow.can_assign_featured;
-  element('#btn-select-file').disabled = !workflow.can_select_fallback_file;
 
+  const provenanceEl = element('#result-provenance');
   if (workflow.preview?.available) {
     element('#result-dimensions').textContent = workflow.preview.dimensions || '--';
     element('#result-mime').textContent = workflow.preview.mime || '--';
     element('#result-size').textContent = workflow.preview.size || '--';
     element('#result-sha256').textContent = workflow.preview.short_sha256 || '--';
+    if (provenanceEl) {
+      provenanceEl.textContent = workflow.preview.source_provenance || workflow.preview.provenance || '--';
+    }
+    console.info(`[LokaMedia:ImportTrace] [B6:RenderState] jobId=${workflow.job_id} renderedBlobKey=${workflow.preview.blob_key} renderedSha=${workflow.preview.sha256} renderedDims=${workflow.preview.dimensions}`);
 
     if (workflow.preview.blob_key) {
       void loadPreviewImage(workflow.preview.blob_key, workflow.preview);
     } else {
       currentLoadedBlobKey = null;
-      element('#result-preview-image').style.display = 'none';
+      const img = element('#result-preview-image');
+      if (img) { img.src = ''; img.style.display = 'none'; }
       const placeholder = element('#preview-placeholder');
-      placeholder.style.display = 'block';
-      placeholder.textContent = workflow.preview.is_uploaded
-        ? `Asset uploaded and verified (${workflow.preview.short_sha256})`
-        : `Candidate captured (${workflow.preview.short_sha256})`;
+      if (placeholder) {
+        placeholder.style.display = 'block';
+        placeholder.textContent = workflow.preview.is_uploaded
+          ? `Asset uploaded and verified (${workflow.preview.short_sha256})`
+          : `Candidate captured (${workflow.preview.short_sha256})`;
+      }
     }
   } else {
     element('#result-dimensions').textContent = '--';
     element('#result-mime').textContent = '--';
     element('#result-size').textContent = '--';
     element('#result-sha256').textContent = '--';
+    if (provenanceEl) provenanceEl.textContent = '--';
 
     currentLoadedBlobKey = null;
-    element('#result-preview-image').style.display = 'none';
+    const img = element('#result-preview-image');
+    if (img) { img.src = ''; img.style.display = 'none'; }
     const placeholder = element('#preview-placeholder');
-    placeholder.style.display = 'block';
-    placeholder.textContent = 'No image candidate captured';
+    if (placeholder) {
+      placeholder.style.display = 'block';
+      placeholder.textContent = 'No image candidate captured';
+    }
   }
 
-  element('#connection-chatgpt').textContent = provider.auth === 'ready' && provider.dom === 'supported' ? 'ready' : provider.tab;
+  // Update dynamic connection label & status
+  const connLabel = document.querySelector('#connection-provider-label') || document.querySelector('#connection-chatgpt')?.previousElementSibling;
+  if (connLabel) {
+    connLabel.textContent = providerLabel;
+  }
+  const isProviderReady = provider.target_bound && provider.tab === 'connected' && provider.auth === 'ready' && provider.dom === 'supported';
+  element('#connection-chatgpt').textContent = isProviderReady ? 'ready' : provider.tab;
   element('#connection-rancangloka').textContent = server;
   element('#current-article').textContent = current.article;
   element('#current-slot').textContent = current.slot;
   element('#current-operation').textContent = current.operation;
   element('#current-elapsed').textContent = current.elapsed;
   element('#queue-total').textContent = String(state.counters.totalJobs ?? 0);
-  element('#queue-active').textContent = String(state.counters.active ?? 0);
+  const queueActiveEl = element('#queue-active');
+  const executingCount = state.counters.executing ?? state.counters.active ?? 0;
+  const reviewCount = state.counters.awaitingReview ?? 0;
+  queueActiveEl.textContent = String(executingCount);
+  if (queueActiveEl.parentElement) {
+    queueActiveEl.parentElement.title = `Executing: ${executingCount}, Awaiting Review: ${reviewCount}`;
+  }
   element('#queue-waiting').textContent = String(state.counters.waiting ?? 0);
   element('#queue-complete').textContent = String(state.counters.complete ?? 0);
+
+  // Update Provider Card
+  const selectedNameEl = document.querySelector('#provider-selected-name');
+  if (selectedNameEl) {
+    selectedNameEl.textContent = providerLabel;
+  }
   element('#provider-tab').textContent = provider.tab;
   element('#provider-target').textContent = provider.target;
   element('#provider-bound-tab').textContent = provider.bound_tab_id ? String(provider.bound_tab_id) : 'none';
@@ -225,6 +443,30 @@ function renderState(state) {
   element('#provider-composer').textContent = provider.composer;
   element('#provider-images').textContent = String(provider.images);
   element('#provider-lane').textContent = provider.lane;
+
+  const bindBtn = element('#bind-tab');
+  if (bindBtn) {
+    bindBtn.textContent = `Bind Current ${providerLabel} Tab`;
+  }
+  const activeEnv = state.activeEnvironment || detectEnvironment(state.config?.serverBaseUrl || 'http://localhost:4321');
+  const isTokenlessLocal = (activeEnv === 'local' || detectEnvironment(state.config?.serverBaseUrl) === 'local') && !state.config?.deviceToken;
+  const envBadge = element('#environment-badge');
+  if (envBadge) {
+    envBadge.textContent = isTokenlessLocal ? 'LOCAL DEV — TOKENLESS' : activeEnv.toUpperCase();
+    envBadge.className = `env-badge env-${activeEnv}`;
+  }
+  const sysEnv = element('#system-environment');
+  if (sysEnv) {
+    sysEnv.textContent = isTokenlessLocal ? 'LOCAL DEV — TOKENLESS' : activeEnv.toUpperCase();
+  }
+  const envSelector = element('#environment-selector');
+  if (envSelector && !configDraftDirty) {
+    envSelector.value = activeEnv;
+  }
+  const httpTargetEl = element('#system-http-target');
+  if (httpTargetEl) {
+    httpTargetEl.textContent = state.config?.serverBaseUrl || '--';
+  }
   element('#system-server').textContent = server;
   element('#system-backpressure').textContent = server === 'backpressure' ? 'on' : 'off';
 
@@ -282,9 +524,9 @@ function renderConfigForm(state, { force = false } = {}) {
   if (configDraftDirty && !force) return;
   element('#server').value = state.config.serverBaseUrl ?? '';
   element('#enabled').checked = Boolean(state.config.enabled);
-  if (state.config.deviceToken) element('#token').value = state.config.deviceToken;
+  element('#token').value = state.config.deviceToken ?? '';
   const devIdEl = document.querySelector('#device-id');
-  if (devIdEl) devIdEl.value = state.config.deviceId ?? 'dev_local_human_operator_v3';
+  if (devIdEl) devIdEl.value = state.config.deviceId ?? 'dev_local_tokenless';
   configInitialized = true;
 }
 
@@ -302,16 +544,16 @@ function findRecoverableJob(state = {}) {
   }) || null;
 }
 
-function getRuntimeVersion() {
+export function getRuntimeVersion() {
   try {
-    return chrome.runtime?.getManifest?.()?.version || null;
+    return chrome?.runtime?.getManifest?.()?.version || null;
   } catch {
     return null;
   }
 }
 
 export function renderVersionHeader(state) {
-  const runtimeVersion = getRuntimeVersion() || state.runtime_extension_version || '0.1.12';
+  const runtimeVersion = getRuntimeVersion() || state.runtime_extension_version || EXTENSION_VERSION;
   const expectedVersion = state.expected_extension_version ?? null;
   const versionEl = element('#extension-version');
   const server = normalizeServerStatus(state);
@@ -319,7 +561,7 @@ export function renderVersionHeader(state) {
 
   let isCurrent = false;
   if (expectedVersion) {
-    isCurrent = runtimeVersion === expectedVersion;
+    isCurrent = isVersionCompatible(runtimeVersion, expectedVersion);
     if (isCurrent) {
       versionEl.textContent = isServerOnline
         ? `Extension v${runtimeVersion} — CURRENT`
@@ -363,7 +605,7 @@ function renderRunOnce(state, current, provider, server, transfers = []) {
     return;
   }
 
-  const runtimeVersion = getRuntimeVersion() || state.runtime_extension_version || '0.1.12';
+  const runtimeVersion = getRuntimeVersion() || state.runtime_extension_version || EXTENSION_VERSION;
   const expectedVersion = state.expected_extension_version ?? null;
 
   const eligibility = evaluateRunOnceEligibility({
@@ -387,16 +629,17 @@ function renderRunOnce(state, current, provider, server, transfers = []) {
   reasonEl.dataset.state = eligibility.eligible ? 'ok' : 'disabled';
 }
 
-async function refresh({ quiet = false } = {}) {
-  const response = await send('STATUS');
-  renderState(response.state);
+export async function refresh({ quiet = false } = {}) {
+  const windowCtx = await getSidePanelWindowContext();
+  const response = await send('STATUS', { windowContext: windowCtx });
+  renderState(response.state, windowCtx);
   if (!quiet) setStatus(`Ready: ${Array.from(boot).join(', ')}`);
 }
 
 async function saveConfig() {
   const currentConfig = (await send('STATUS')).state?.config || {};
   const devIdInput = document.querySelector('#device-id');
-  const deviceId = devIdInput?.value?.trim() || currentConfig.deviceId || 'dev_local_human_operator_v3';
+  const deviceId = devIdInput?.value?.trim() || currentConfig.deviceId || 'dev_local_tokenless';
   await send('SAVE_CONFIG', {
     config: {
       ...currentConfig,
@@ -407,32 +650,54 @@ async function saveConfig() {
     }
   });
   configDraftDirty = false;
-  const response = await send('STATUS');
-  renderState(response.state);
-  renderConfigForm(response.state, { force: true });
+  await refresh();
+  renderConfigForm((await send('STATUS')).state, { force: true });
   setStatus('Saved');
+}
+
+async function switchBackendEnvironment() {
+  const envSelector = element('#environment-selector');
+  const targetEnv = envSelector?.value || 'local';
+  setStatus(`Switching to ${targetEnv.toUpperCase()} backend...`);
+  configDraftDirty = false;
+  const response = await send('SWITCH_ENVIRONMENT', { environment: targetEnv }, { timeoutMs: 15000 });
+  if (response.ok) {
+    setStatus(`Switched to ${targetEnv.toUpperCase()}`);
+    if (response.state) {
+      renderState(response.state);
+      renderConfigForm(response.state, { force: true });
+    }
+  } else {
+    setStatus(boundedError(response.error || response.message || 'Environment switch failed'), true);
+  }
 }
 
 async function providerCheck() {
   boot.add(SIDE_PANEL_BOOT_FLAGS.PROVIDER_CHECK_AVAILABLE);
   setStatus('Checking provider...');
-  const response = await send('READ_ONLY_PROVIDER_DIAGNOSTIC', {}, { timeoutMs: 5000 });
-  if (response.state) renderState(response.state);
+  const windowCtx = await getSidePanelWindowContext();
+  const response = await send('READ_ONLY_PROVIDER_DIAGNOSTIC', {
+    windowContext: windowCtx,
+    windowId: windowCtx.windowId,
+    tabId: windowCtx.tabId
+  }, { timeoutMs: 5000 });
+  if (response.state) renderState(response.state, windowCtx);
   else await refresh();
   setStatus(response.ok ? 'Provider check complete' : boundedError(response.error), !response.ok);
 }
 
 async function bindCurrentTab() {
-  setStatus('Binding current ChatGPT tab...');
-  let activeTabId = null;
-  try {
-    const tabs = await chrome.tabs?.query?.({ active: true, lastFocusedWindow: true });
-    if (tabs?.[0]?.id != null) activeTabId = tabs[0].id;
-  } catch {}
-  const response = await send('BIND_PROVIDER_TAB', { tabId: activeTabId }, { timeoutMs: 5000 });
-  if (response.state) renderState(response.state);
+  setStatus('Detecting active provider tab in window...');
+  const windowCtx = await getSidePanelWindowContext();
+  const response = await send('BIND_PROVIDER_TAB', {
+    tabId: windowCtx.tabId,
+    windowId: windowCtx.windowId,
+    windowContext: windowCtx
+  }, { timeoutMs: 5000 });
+  if (response.state) renderState(response.state, windowCtx);
   else await refresh();
-  setStatus(response.ok ? 'ChatGPT tab bound (LOCKED)' : (response.message || boundedError(response.error)), !response.ok);
+  const providerLabel = response.provider === 'GEMINI_BROWSER' ? 'Gemini' : response.provider === 'CHATGPT_BROWSER' ? 'ChatGPT' : 'Provider';
+  setStatus(response.ok ? `${providerLabel} tab bound (LOCKED)` : (response.message || boundedError(response.error)), !response.ok);
 }
 
 async function runOnce() {
@@ -472,14 +737,91 @@ async function copyPrompt() {
   setStatus('Prompt copied to clipboard');
 }
 
-async function sendToChatGpt() {
+async function sendToProvider() {
   const button = element('#send-to-chatgpt');
   button.disabled = true;
-  setStatus('Sending prompt to locked ChatGPT tab...');
+  let actionError = null;
   try {
-    const response = await send('SEND_TO_CHATGPT', {}, { timeoutMs: PROVIDER_OPERATION_TIMEOUT_MS });
+    const windowCtx = await getSidePanelWindowContext();
+    const statusRes = await send('STATUS', { windowContext: windowCtx });
+    const auth = resolveAuthoritativeProvider(statusRes.state || {}, windowCtx);
+    const currentJob = resolveCurrentJob(statusRes.state || {});
+    const providerLabel = auth.providerName || (auth.activeProviderKey === 'gemini' ? 'Gemini' : 'ChatGPT');
+    setStatus(`Sending prompt to locked ${providerLabel} tab...`);
+    const response = await send('SEND_TO_PROVIDER', {
+      provider: auth.activeProviderId,
+      jobId: currentJob?.job_id || null
+    }, { timeoutMs: PROVIDER_OPERATION_TIMEOUT_MS });
+    if (response.state) renderState(response.state, windowCtx);
+    if (!response.ok) {
+      actionError = boundedError(response.error);
+      setStatus(actionError, true);
+    } else {
+      setStatus(`Prompt submitted to ${providerLabel}`);
+    }
+  } catch (err) {
+    actionError = boundedError(err);
+    setStatus(actionError, true);
+  } finally {
+    await refresh({ quiet: true });
+    await refreshAudit();
+    if (actionError) setStatus(actionError, true);
+  }
+}
+const sendToChatGpt = sendToProvider;
+
+async function acquireJobLease() {
+  const btn = element('#btn-acquire-lease');
+  btn.disabled = true;
+  setStatus('Acquiring job lease from server...');
+  let actionError = null;
+  try {
+    const windowCtx = await getSidePanelWindowContext();
+    const statusRes = await send('STATUS', { windowContext: windowCtx });
+    const currentJob = resolveCurrentJob(statusRes.state || {});
+    const targetJobId = currentJob?.job_id || null;
+    const response = await send('ACQUIRE_JOB_LEASE', { jobId: targetJobId });
+    if (response.ok) {
+      setStatus('Job lease acquired successfully.');
+      if (response.state) renderState(response.state, windowCtx);
+      else await refresh();
+    } else {
+      actionError = boundedError(response.error || response.code || 'Failed to acquire lease');
+      setStatus(actionError, true);
+    }
+  } catch (err) {
+    actionError = boundedError(err);
+    setStatus(actionError, true);
+  } finally {
+    btn.disabled = false;
+    await refresh({ quiet: true });
+    await refreshAudit();
+    if (actionError) setStatus(actionError, true);
+  }
+}
+
+async function captureLatestImage() {
+  const button = element('#capture-latest');
+  button.disabled = true;
+  try {
+    const statusRes = await send('STATUS');
+    const auth = resolveAuthoritativeProvider(statusRes.state || {});
+    const workflow = getJobWorkflowDetails(statusRes.state || {}, statusRes.state?.provider?.[auth.activeProviderKey] || {}, null, auth.providerName);
+    const targetJobId = workflow.job_id || statusRes.state?.selectedJobId || statusRes.state?.currentJobId;
+    if (!targetJobId) {
+      throw new Error('NO_ACTIVE_JOB: Please select an active media job first.');
+    }
+
+    if (!promptCandidateReplacement(workflow, 'capture')) {
+      setStatus('Capture cancelled; existing candidate preserved', false);
+      button.disabled = !workflow.can_capture_latest;
+      return;
+    }
+
+    setStatus('Capturing latest assistant image from locked tab...');
+    const response = await send('CAPTURE_LATEST_IMAGE', { jobId: targetJobId }, { timeoutMs: 30000 });
     if (response.state) renderState(response.state);
-    setStatus(response.ok ? 'Prompt submitted to ChatGPT' : boundedError(response.error), !response.ok);
+    setStatus(response.ok ? 'Latest image captured' : boundedError(response.error), !response.ok);
   } catch (err) {
     setStatus(boundedError(err), true);
   } finally {
@@ -488,14 +830,339 @@ async function sendToChatGpt() {
   }
 }
 
-async function captureLatestImage() {
-  const button = element('#capture-latest');
-  button.disabled = true;
-  setStatus('Capturing latest assistant image from locked tab...');
+export function detectImageMime(file, headerBytes) {
+  if (headerBytes && headerBytes.length >= 4) {
+    // PNG: 89 50 4E 47
+    if (headerBytes[0] === 0x89 && headerBytes[1] === 0x50 && headerBytes[2] === 0x4E && headerBytes[3] === 0x47) {
+      return 'image/png';
+    }
+    // JPEG: FF D8 FF
+    if (headerBytes[0] === 0xFF && headerBytes[1] === 0xD8 && headerBytes[2] === 0xFF) {
+      return 'image/jpeg';
+    }
+    // WebP: RIFF....WEBP
+    if (headerBytes.length >= 12 &&
+        headerBytes[0] === 0x52 && headerBytes[1] === 0x49 && headerBytes[2] === 0x46 && headerBytes[3] === 0x46 &&
+        headerBytes[8] === 0x57 && headerBytes[9] === 0x45 && headerBytes[10] === 0x42 && headerBytes[11] === 0x50) {
+      return 'image/webp';
+    }
+  }
+
+  const rawType = (file?.type || '').toLowerCase();
+  if (rawType === 'image/png') return 'image/png';
+  if (rawType === 'image/jpeg' || rawType === 'image/jpg' || rawType === 'image/pjpeg') return 'image/jpeg';
+  if (rawType === 'image/webp') return 'image/webp';
+
+  const ext = (file?.name || '').split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'jpg' || ext === 'jpeg' || ext === 'jfif') return 'image/jpeg';
+  if (ext === 'webp') return 'image/webp';
+
+  return null;
+}
+
+export function extractImageDimensionsFromBytes(arrayBuffer, mime) {
+  if (!arrayBuffer || arrayBuffer.byteLength < 16) return null;
+  const u8 = new Uint8Array(arrayBuffer);
+  const view = new DataView(arrayBuffer);
+
+  // 1. PNG: 89 50 4E 47 0D 0A 1A 0A -> IHDR at offset 12..15 -> width @ 16, height @ 20 (big-endian 32-bit)
+  if (u8.length >= 24 &&
+      u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47 &&
+      u8[4] === 0x0D && u8[5] === 0x0A && u8[6] === 0x1A && u8[7] === 0x0A) {
+    if (u8[12] === 0x49 && u8[13] === 0x48 && u8[14] === 0x44 && u8[15] === 0x52) { // "IHDR"
+      const width = view.getUint32(16, false);
+      const height = view.getUint32(20, false);
+      if (width > 0 && height > 0) return { width, height };
+    }
+    return null;
+  }
+
+  // 2. JPEG: FF D8 FF -> SOF markers
+  if (u8.length >= 4 && u8[0] === 0xFF && u8[1] === 0xD8) {
+    let offset = 2;
+    while (offset < u8.length - 1) {
+      if (u8[offset] !== 0xFF) {
+        offset++;
+        continue;
+      }
+      const marker = u8[offset + 1];
+      if (marker === 0xFF || marker === 0x00) {
+        offset++;
+        continue;
+      }
+      if (marker === 0xD8 || marker === 0xD9 || (marker >= 0xD0 && marker <= 0xD7)) {
+        offset += 2;
+        continue;
+      }
+      if (offset + 4 > u8.length) break;
+      const length = view.getUint16(offset + 2, false);
+      const isSof = (marker >= 0xC0 && marker <= 0xC3) ||
+                    (marker >= 0xC5 && marker <= 0xC7) ||
+                    (marker >= 0xC9 && marker <= 0xCB) ||
+                    (marker >= 0xCD && marker <= 0xCF);
+      if (isSof && offset + 9 <= u8.length) {
+        const height = view.getUint16(offset + 5, false);
+        const width = view.getUint16(offset + 7, false);
+        if (width > 0 && height > 0) return { width, height };
+      }
+      offset += 2 + length;
+    }
+    return null;
+  }
+
+  // 3. WebP: "RIFF" .... "WEBP"
+  if (u8.length >= 16 &&
+      u8[0] === 0x52 && u8[1] === 0x49 && u8[2] === 0x46 && u8[3] === 0x46 &&
+      u8[8] === 0x57 && u8[9] === 0x45 && u8[10] === 0x42 && u8[11] === 0x50) {
+    const chunkType = String.fromCharCode(u8[12], u8[13], u8[14], u8[15]);
+
+    // Extended WebP: VP8X
+    if (chunkType === 'VP8X' && u8.length >= 30) {
+      const width = 1 + (u8[24] | (u8[25] << 8) | (u8[26] << 16));
+      const height = 1 + (u8[27] | (u8[28] << 8) | (u8[29] << 16));
+      if (width > 0 && height > 0) return { width, height };
+    }
+
+    // Lossy WebP: VP8
+    if (chunkType === 'VP8 ' && u8.length >= 30) {
+      if (u8[23] === 0x9D && u8[24] === 0x01 && u8[25] === 0x2A) {
+        const width = (view.getUint16(26, true) & 0x3fff);
+        const height = (view.getUint16(28, true) & 0x3fff);
+        if (width > 0 && height > 0) return { width, height };
+      }
+    }
+
+    // Lossless WebP: VP8L
+    if (chunkType === 'VP8L' && u8.length >= 25) {
+      if (u8[20] === 0x2F) {
+        const u32 = view.getUint32(21, true);
+        const width = 1 + (u32 & 0x3FFF);
+        const height = 1 + ((u32 >>> 14) & 0x3FFF);
+        if (width > 0 && height > 0) return { width, height };
+      }
+    }
+    return null;
+  }
+
+  return null;
+}
+
+export async function decodeImageDimensions(arrayBuffer, mime) {
+  // Method 1: Deterministic binary header decoding directly from verified raw bytes
   try {
-    const response = await send('CAPTURE_LATEST_IMAGE', {}, { timeoutMs: 30000 });
-    if (response.state) renderState(response.state);
-    setStatus(response.ok ? 'Latest image captured' : boundedError(response.error), !response.ok);
+    const headerDims = extractImageDimensionsFromBytes(arrayBuffer, mime);
+    if (headerDims && headerDims.width > 0 && headerDims.height > 0) {
+      console.info(`[LokaMedia:Import] Decoded dimensions via binary header: ${headerDims.width}x${headerDims.height}`);
+      return headerDims;
+    }
+  } catch (hdrErr) {
+    console.warn('[LokaMedia:Import] Binary header parsing error:', hdrErr?.message || hdrErr);
+  }
+
+  // Method 2: createImageBitmap with 1000ms timeout
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const blob = new Blob([arrayBuffer], { type: mime || 'image/png' });
+      const bmpPromise = createImageBitmap(blob);
+      const bmpTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('BITMAP_TIMEOUT')), 1000));
+      const bmp = await Promise.race([bmpPromise, bmpTimeout]);
+      const width = bmp.width;
+      const height = bmp.height;
+      bmp.close?.();
+      if (width > 0 && height > 0) {
+        console.info(`[LokaMedia:Import] Decoded dimensions via createImageBitmap: ${width}x${height}`);
+        return { width, height };
+      }
+    } catch (bmpErr) {
+      console.warn('[LokaMedia:Import] createImageBitmap failed or timed out:', bmpErr?.message || bmpErr);
+    }
+  }
+
+  // Method 3: HTML Image with data: URL (CSP-safe, no blob: URL leakage) with 2000ms timeout
+  if (typeof Image !== 'undefined') {
+    try {
+      const u8 = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunk = 8192;
+      for (let i = 0; i < u8.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+      }
+      const dataUrl = `data:${mime || 'image/png'};base64,${btoa(binary)}`;
+      const dims = await new Promise((resolve, reject) => {
+        const img = new Image();
+        const timeoutId = setTimeout(() => {
+          img.onload = null;
+          img.onerror = null;
+          reject(new Error('IMG_DECODE_TIMEOUT'));
+        }, 2000);
+        img.onload = () => {
+          clearTimeout(timeoutId);
+          const w = img.naturalWidth || img.width;
+          const h = img.naturalHeight || img.height;
+          if (w > 0 && h > 0) resolve({ width: w, height: h });
+          else reject(new Error('ZERO_DIMENSIONS'));
+        };
+        img.onerror = () => {
+          clearTimeout(timeoutId);
+          reject(new Error('DECODE_FAILED'));
+        };
+        img.src = dataUrl;
+      });
+      if (dims && dims.width > 0 && dims.height > 0) {
+        console.info(`[LokaMedia:Import] Decoded dimensions via dataUrl Image: ${dims.width}x${dims.height}`);
+        return dims;
+      }
+    } catch (imgErr) {
+      console.warn('[LokaMedia:Import] dataUrl Image decode failed or timed out:', imgErr?.message || imgErr);
+    }
+  }
+
+  // STRICT REQUIREMENT: Never fabricate or default dimensions. Fail closed!
+  throw new Error('IMAGE_DIMENSIONS_DECODE_FAILED: Could not decode verified image dimensions from file bytes');
+}
+
+export async function readFileAsArrayBuffer(file) {
+  if (typeof file.arrayBuffer === 'function') {
+    try {
+      const buf = await file.arrayBuffer();
+      if (buf && buf.byteLength !== undefined) {
+        return buf;
+      }
+    } catch (bufErr) {
+      console.warn('[LokaMedia:Import] file.arrayBuffer() failed, falling back to FileReader:', bufErr?.message || bufErr);
+    }
+  }
+
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('FILE_READ_FAILED: FileReader failed to read file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+export async function ingestCandidatePipeline({ targetJobId, arrayBuffer, mime, width, height, size, provenance, opId = null }) {
+  const verifiedWidth = Number(width);
+  const verifiedHeight = Number(height);
+  if (!Number.isFinite(verifiedWidth) || !Number.isFinite(verifiedHeight) || verifiedWidth <= 0 || verifiedHeight <= 0) {
+    throw new Error('INVALID_DIMENSIONS: Verified image dimensions are required');
+  }
+
+  const digest = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  const sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+
+  // Encode binary to base64 string to avoid huge array serialization across chrome.runtime.sendMessage
+  const u8 = new Uint8Array(arrayBuffer);
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < u8.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+  }
+  const base64Bytes = btoa(binary);
+
+  const effectiveOpId = opId || `op_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  console.info(`[LokaMedia:ImportTrace] [B2:SidePanelIPC] opId=${effectiveOpId} jobId=${targetJobId} sourceSha=${sha256} payloadLen=${base64Bytes.length} encoding=base64`);
+
+  const label = provenance === 'MANUAL_CLIPBOARD' ? 'clipboard image' : 'file candidate';
+  setStatus(`Ingesting ${label} (${size || u8.length} bytes)...`);
+
+  console.info(`[LokaMedia:Import] Runtime message dispatched: INGEST_MANUAL_CANDIDATE (jobId: ${targetJobId})`);
+  const response = await send('INGEST_MANUAL_CANDIDATE', {
+    jobId: targetJobId,
+    opId: effectiveOpId,
+    bytes: base64Bytes,
+    mime,
+    width: verifiedWidth,
+    height: verifiedHeight,
+    size: size || u8.length,
+    sha256,
+    provenance
+  }, { timeoutMs: 30000 });
+
+  const retJob = response.state?.jobs?.[targetJobId];
+  const retCand = response.state?.jobOperationalStates?.[targetJobId]?.candidate;
+  console.info(`[LokaMedia:ImportTrace] [B6:SidePanelResponse] opId=${effectiveOpId} ok=${response?.ok} returnedJobBlobKey=${retJob?.blob_key} returnedJobSha=${retJob?.sha256} returnedOpBlobKey=${retCand?.blob_key} returnedOpSha=${retCand?.sha256}`);
+
+  if (response.ok) {
+    invalidatePreviewCache();
+  }
+  if (response.state) renderState(response.state);
+  if (response.ok) {
+    const okMsg = provenance === 'MANUAL_CLIPBOARD'
+      ? 'Clipboard image candidate saved & watermarked'
+      : 'File candidate saved & watermarked';
+    setStatus(okMsg);
+  } else {
+    const errText = response.error === 'JOB_LEASE_EXPIRED'
+      ? "JOB_LEASE_EXPIRED: Lease expired. Click 'Acquire Job Lease' above to renew."
+      : boundedError(response.error);
+    setStatus(errText, true);
+  }
+  console.info('[LokaMedia:Import] Result Review refreshed');
+  return response;
+}
+
+export async function handlePasteImage() {
+  const button = element('#paste-image');
+  button.disabled = true;
+  setStatus('Reading image from clipboard...');
+  try {
+    const statusRes = await send('STATUS');
+    const auth = resolveAuthoritativeProvider(statusRes.state || {});
+    const workflow = getJobWorkflowDetails(statusRes.state || {}, statusRes.state?.provider?.[auth.activeProviderKey] || {}, null, auth.providerName);
+    const targetJobId = workflow.job_id || statusRes.state?.selectedJobId || statusRes.state?.currentJobId;
+    if (!targetJobId) {
+      throw new Error('NO_ACTIVE_JOB: Please select an active media job first.');
+    }
+
+    if (!promptCandidateReplacement(workflow, 'clipboard image')) {
+      setStatus('Paste cancelled; existing candidate preserved', false);
+      button.disabled = !workflow.can_paste_image;
+      return;
+    }
+
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      throw new Error('CLIPBOARD_API_UNAVAILABLE: Clipboard access unavailable in this context. Use "Paste Image" (Ctrl+V) or "Capture Latest Image".');
+    }
+
+    let items;
+    try {
+      items = await navigator.clipboard.read();
+    } catch (readErr) {
+      if (readErr.name === 'NotAllowedError') {
+        throw new Error('CLIPBOARD_PERMISSION_DENIED: Clipboard read permission was denied. Use "Paste Image" (Ctrl+V) or "Capture Latest Image".');
+      }
+      throw readErr;
+    }
+
+    let imageBlob = null;
+    for (const item of items) {
+      for (const type of ['image/png', 'image/jpeg', 'image/webp']) {
+        if (item.types.includes(type)) {
+          imageBlob = await item.getType(type);
+          break;
+        }
+      }
+      if (imageBlob) break;
+    }
+
+    if (!imageBlob) {
+      throw new Error('NO_IMAGE_ON_CLIPBOARD: No image found on clipboard. Right-click the generated visual and choose "Copy image", then click "Paste Image" (or press Ctrl+V).');
+    }
+
+    const arrayBuffer = await imageBlob.arrayBuffer();
+    const { width, height } = await decodeImageDimensions(arrayBuffer, imageBlob.type || 'image/png');
+
+    await ingestCandidatePipeline({
+      targetJobId,
+      arrayBuffer,
+      mime: imageBlob.type || 'image/png',
+      width,
+      height,
+      size: arrayBuffer.byteLength,
+      provenance: 'MANUAL_CLIPBOARD'
+    });
   } catch (err) {
     setStatus(boundedError(err), true);
   } finally {
@@ -520,14 +1187,49 @@ async function approveAndUpload() {
   }
 }
 
-async function rejectResult() {
+export async function rejectResult() {
   const button = element('#reject-result');
   button.disabled = true;
-  setStatus('Rejecting result (zero uploads)...');
   try {
-    const response = await send('REJECT_RESULT', {}, { timeoutMs: 15000 });
+    const statusRes = await send('STATUS');
+    const auth = resolveAuthoritativeProvider(statusRes.state || {});
+    const workflow = getJobWorkflowDetails(statusRes.state || {}, statusRes.state?.provider?.[auth.activeProviderKey] || {}, null, auth.providerName);
+    const targetJobId = workflow.job_id || statusRes.state?.selectedJobId || statusRes.state?.currentJobId;
+    if (!targetJobId) {
+      throw new Error('NO_ACTIVE_JOB: Please select an active media job first.');
+    }
+
+    if (workflow.preview?.is_uploaded) {
+      throw new Error('CANNOT_MUTATE_COMPLETED_JOB: Cannot discard an already uploaded or completed asset.');
+    }
+
+    const confirmed = globalThis.confirm
+      ? globalThis.confirm('Reset this image? The current unapproved candidate will be discarded. Your media job and previously uploaded assets will remain unchanged.')
+      : true;
+    if (!confirmed) {
+      console.info('[LokaMedia:Reject] Reset cancelled by operator');
+      setStatus('Reset cancelled; existing candidate preserved', false);
+      button.disabled = !workflow.can_reject;
+      return;
+    }
+
+    setStatus('Resetting image (zero uploads)...');
+    const response = await send('REJECT_RESULT', { jobId: targetJobId }, { timeoutMs: 15000 });
+
+    currentLoadedBlobKey = null;
+    const img = element('#result-preview-image');
+    if (img) {
+      img.src = '';
+      img.style.display = 'none';
+    }
+    const placeholder = element('#preview-placeholder');
+    if (placeholder) {
+      placeholder.style.display = 'block';
+      placeholder.textContent = 'No image candidate captured';
+    }
+
     if (response.state) renderState(response.state);
-    setStatus(response.ok ? 'Result rejected (zero uploads)' : boundedError(response.error), !response.ok);
+    setStatus(response.ok ? 'Image reset (candidate discarded, media job preserved)' : boundedError(response.error), !response.ok);
   } catch (err) {
     setStatus(boundedError(err), true);
   } finally {
@@ -536,44 +1238,14 @@ async function rejectResult() {
   }
 }
 
-function selectLocalFile() {
-  element('#local-file-input').click();
+// Import File feature retired by owner decision (2026-10-22).
+// Paste Image remains the primary manual fallback for candidate intake.
+export function selectLocalFile() {
+  setStatus('Import File retired by owner decision; use Paste Image (Ctrl+V)', false);
 }
 
-async function handleLocalFileChosen(event) {
-  const file = event.target?.files?.[0];
-  if (!file) return;
-  setStatus(`Reading local file: ${file.name}...`);
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const digest = await crypto.subtle.digest('SHA-256', arrayBuffer);
-    const sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
-    const bytesArray = Array.from(new Uint8Array(arrayBuffer));
-
-    const statusRes = await send('STATUS');
-    const workflow = getJobWorkflowDetails(statusRes.state || {}, statusRes.state?.provider?.chatgpt || {});
-    if (!workflow.job_id || !workflow.can_select_fallback_file) {
-      throw new Error('NO_ACTIVE_JOB_FOR_LOCAL_FILE: Fallback file requires an active incomplete generation job');
-    }
-
-    const response = await send('SAVE_LOCAL_FILE_CANDIDATE', {
-      jobId: workflow.job_id,
-      bytes: bytesArray,
-      mime: file.type,
-      width: 1792,
-      height: 1024,
-      size: file.size,
-      sha256
-    });
-
-    if (response.state) renderState(response.state);
-    setStatus(response.ok ? 'Local file candidate saved' : boundedError(response.error), !response.ok);
-  } catch (err) {
-    setStatus(boundedError(err), true);
-  } finally {
-    event.target.value = '';
-    await refresh({ quiet: true });
-  }
+export async function handleLocalFileChosen() {
+  setStatus('Import File retired by owner decision; use Paste Image (Ctrl+V)', false);
 }
 
 function assignFeatured() {
@@ -584,6 +1256,85 @@ async function copyAuditLog() {
   const response = await send('AUDIT_COPY_TEXT');
   await navigator.clipboard?.writeText(response.text);
   setStatus('Audit copied');
+}
+
+async function copyDiagnosticSnapshot() {
+  const button = element('#btn-copy-diagnostic-snapshot');
+  button.disabled = true;
+  button.textContent = 'Collecting snapshot...';
+  const statusEl = document.querySelector('#snapshot-status');
+  const fallbackBox = document.querySelector('#snapshot-fallback-container');
+  const fallbackText = document.querySelector('#snapshot-fallback-text');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = 'Collecting fresh read-only state...';
+  }
+  try {
+    const windowCtx = await getSidePanelWindowContext();
+    let res = null;
+    try {
+      res = await send('GET_DIAGNOSTIC_SNAPSHOT', { windowContext: windowCtx }, { timeoutMs: 5000 });
+    } catch {
+      const stateRes = await send('STATUS', { windowContext: windowCtx }, { timeoutMs: 3000 }).catch(() => ({}));
+      const snapshot = await collectDiagnosticSnapshot({
+        state: stateRes?.state || {},
+        windowContext: windowCtx,
+        doc: document,
+        manifestVersion: getRuntimeVersion()
+      });
+      res = { ok: true, snapshot, text: formatDiagnosticSnapshotText(snapshot) };
+    }
+
+    if (!res?.text) {
+      throw new Error(res?.error || 'SNAPSHOT_COLLECTION_FAILED');
+    }
+
+    const text = res.text;
+    if (fallbackText) fallbackText.value = text;
+
+    let copied = false;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch (clipErr) {
+        console.warn('Clipboard writeText failed', clipErr);
+      }
+    }
+
+    if (copied) {
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#15803d';
+        statusEl.textContent = 'Diagnostic snapshot copied to clipboard (ready to paste into ChatGPT)';
+      }
+      if (fallbackBox) fallbackBox.style.display = 'none';
+      setStatus('Diagnostic snapshot copied', false);
+    } else {
+      if (fallbackBox) fallbackBox.style.display = 'block';
+      if (fallbackText) {
+        fallbackText.focus();
+        fallbackText.select();
+      }
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#b45309';
+        statusEl.textContent = 'Clipboard write blocked by browser. Please copy from text box below:';
+      }
+      setStatus('Copy snapshot manually below', false);
+    }
+  } catch (err) {
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.style.color = '#b91c1c';
+      statusEl.textContent = `Snapshot error: ${err.message || err}`;
+    }
+    setStatus('Snapshot collection failed', true);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Copy Diagnostic Snapshot';
+  }
 }
 
 async function exportAuditJson() {
@@ -608,6 +1359,32 @@ function bindSidePanel() {
   if (bound) return;
   const validation = validateSidePanelElements(document);
   if (!validation.ok) throw new Error(`SIDE_PANEL_DOM_BIND_FAILED:${validation.missing.join(',')}`);
+
+  const runtimeVer = getRuntimeVersion();
+  const versionBadge = element('#extension-version');
+  if (versionBadge && runtimeVer) {
+    versionBadge.textContent = `Extension v${runtimeVer}`;
+  }
+  const runtimeDisplay = element('#runtime-version-display');
+  if (runtimeDisplay && runtimeVer) {
+    runtimeDisplay.textContent = `v${runtimeVer}`;
+  }
+
+  const jobSelector = element('#job-selector');
+  if (jobSelector) {
+    jobSelector.addEventListener('change', async (e) => {
+      const jobId = e.target.value || null;
+      await send('SELECT_JOB', { jobId });
+      await refresh();
+    });
+  }
+
+  const copyDiagBtn = element('#btn-copy-diagnostic-snapshot');
+  if (copyDiagBtn) {
+    copyDiagBtn.addEventListener('click', () => {
+      void copyDiagnosticSnapshot().catch((err) => setStatus(boundedError(err), true));
+    });
+  }
   element('#enabled').addEventListener('change', () => {
     markConfigDirty();
     setStatus(element('#enabled').checked ? 'Enabled selected; save required' : 'Paused selected; save required');
@@ -619,6 +1396,12 @@ function bindSidePanel() {
   element('#save').addEventListener('click', () => {
     void saveConfig().catch((error) => setStatus(boundedError(error), true));
   });
+  const switchEnvBtn = document.querySelector('#btn-switch-environment');
+  if (switchEnvBtn) {
+    switchEnvBtn.addEventListener('click', () => {
+      void switchBackendEnvironment().catch((err) => setStatus(boundedError(err), true));
+    });
+  }
   element('#diagnostic').addEventListener('click', () => {
     void providerCheck().catch((error) => setStatus(boundedError(error), true));
   });
@@ -631,24 +1414,44 @@ function bindSidePanel() {
   element('#copy-prompt').addEventListener('click', () => {
     void copyPrompt().catch((error) => setStatus(boundedError(error), true));
   });
+  const acquireBtn = element('#btn-acquire-lease');
+  if (acquireBtn) {
+    acquireBtn.addEventListener('click', () => {
+      void acquireJobLease().catch((error) => setStatus(boundedError(error), true));
+    });
+  }
   element('#send-to-chatgpt').addEventListener('click', () => {
     void sendToChatGpt().catch((error) => setStatus(boundedError(error), true));
   });
   element('#capture-latest').addEventListener('click', () => {
     void captureLatestImage().catch((error) => setStatus(boundedError(error), true));
   });
+  const pasteBtn = document.querySelector('#paste-image');
+  if (pasteBtn) {
+    pasteBtn.addEventListener('click', () => {
+      void handlePasteImage().catch((error) => setStatus(boundedError(error), true));
+    });
+  }
   element('#approve-upload').addEventListener('click', () => {
     void approveAndUpload().catch((error) => setStatus(boundedError(error), true));
   });
   element('#reject-result').addEventListener('click', () => {
     void rejectResult().catch((error) => setStatus(boundedError(error), true));
   });
-  element('#btn-select-file').addEventListener('click', () => {
-    selectLocalFile();
-  });
-  element('#local-file-input').addEventListener('change', (e) => {
-    void handleLocalFileChosen(e).catch((error) => setStatus(boundedError(error), true));
-  });
+
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+        const activeEl = document.activeElement;
+        const tag = activeEl?.tagName?.toLowerCase();
+        if (tag === 'textarea' || (tag === 'input' && activeEl?.type === 'text')) {
+          return;
+        }
+        e.preventDefault?.();
+        void handlePasteImage().catch((error) => setStatus(boundedError(error), true));
+      }
+    });
+  }
   element('#assign-featured').addEventListener('click', () => {
     assignFeatured();
   });
@@ -1058,6 +1861,43 @@ if (typeof document !== 'undefined') {
     globalThis.addEventListener?.('pagehide', () => {
       if (refreshTimer) clearInterval(refreshTimer);
     });
+
+    if (typeof chrome !== 'undefined' && chrome.tabs?.onActivated) {
+      try {
+        chrome.tabs.onActivated.addListener(() => {
+          void refresh({ quiet: true }).catch(() => {});
+        });
+      } catch {}
+    }
+    if (typeof chrome !== 'undefined' && chrome.tabs?.onUpdated) {
+      try {
+        chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+          if (changeInfo.status === 'complete' || changeInfo.url) {
+            void refresh({ quiet: true }).catch(() => {});
+          }
+        });
+      } catch {}
+    }
+    if (typeof chrome !== 'undefined' && chrome.windows?.onFocusChanged) {
+      try {
+        chrome.windows.onFocusChanged.addListener(() => {
+          void refresh({ quiet: true }).catch(() => {});
+        });
+      } catch {}
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', () => {
+        void refresh({ quiet: true }).catch(() => {});
+      });
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          void refresh({ quiet: true }).catch(() => {});
+        }
+      });
+    }
   } catch (error) {
     setStatus(boundedError(error), true);
   }

@@ -985,7 +985,7 @@ export async function getAllArticles(
       }
 
       const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-      const orderSql = `ORDER BY a.published_at ${orderDirection}`;
+      const orderSql = `ORDER BY a.published_at ${orderDirection}, a.id ${orderDirection}`;
 
       // Push limit and offset in SQL
       const query = `${selectColumns} ${whereSql} ${orderSql} LIMIT ? OFFSET ?`;
@@ -1014,7 +1014,7 @@ export async function getAllArticles(
 
   if (options?.q) {
     const qLower = options.q.toLowerCase();
-    combined = combined.filter(a =>
+    combined = combined.filter((a) =>
       a.title.toLowerCase().includes(qLower) ||
       (a.description && a.description.toLowerCase().includes(qLower)) ||
       (a.category_name && a.category_name.toLowerCase().includes(qLower))
@@ -1022,32 +1022,323 @@ export async function getAllArticles(
   }
 
   if (options?.category && options.category !== 'all') {
-    combined = combined.filter(a => a.category_slug === options.category || String(a.category_id) === options.category);
+    combined = combined.filter((a) => a.category_slug === options.category || String(a.category_id) === options.category);
   }
 
-  if (options?.sort === 'oldest') {
-    combined.sort((a, b) => new Date(a.published_at || 0).getTime() - new Date(b.published_at || 0).getTime());
-  }
+  combined.sort((a, b) => {
+    const diff = options?.sort === 'oldest'
+      ? (new Date(a.published_at || 0).getTime() - new Date(b.published_at || 0).getTime())
+      : (new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime());
+    if (diff !== 0) return diff;
+    return options?.sort === 'oldest' ? ((a.id || 0) - (b.id || 0)) : ((b.id || 0) - (a.id || 0));
+  });
 
   return combined.slice(offset, offset + limit);
 }
 
-export async function getTotalArticlesCount(db: any, status = 'published'): Promise<number> {
+export async function getTotalArticlesCount(
+  db: any,
+  status = 'published',
+  options?: { includeQuarantined?: boolean }
+): Promise<number> {
+  const quarantinedSlugs = Object.keys(QUARANTINE_REGISTRY);
   if (db && typeof db.prepare === 'function') {
     try {
       if (status === 'all') {
-        const row = await db.prepare('SELECT COUNT(*) as count FROM articles').first();
+        let query = 'SELECT COUNT(*) as count FROM articles';
+        const bindings: any[] = [];
+        if (!options?.includeQuarantined && quarantinedSlugs.length > 0) {
+          query += ` WHERE slug NOT IN (${quarantinedSlugs.map(() => '?').join(', ')})`;
+          bindings.push(...quarantinedSlugs);
+        }
+        const row = bindings.length > 0
+          ? await db.prepare(query).bind(...bindings).first()
+          : await db.prepare(query).first();
         return Number(row?.count || 0);
       } else {
-        const row = await db.prepare('SELECT COUNT(*) as count FROM articles WHERE status = ?').bind(status).first();
+        let query = 'SELECT COUNT(*) as count FROM articles WHERE status = ?';
+        const bindings: any[] = [status];
+        if (status === 'published' && !options?.includeQuarantined && quarantinedSlugs.length > 0) {
+          query += ` AND slug NOT IN (${quarantinedSlugs.map(() => '?').join(', ')})`;
+          bindings.push(...quarantinedSlugs);
+        }
+        const row = await db.prepare(query).bind(...bindings).first();
         return Number(row?.count || 0);
       }
     } catch {
       // fallback
     }
   }
-  const filtered = inMemoryArticles.filter(a => status === 'all' || a.status === status);
+  let filtered = inMemoryArticles.filter((a) => status === 'all' || a.status === status);
+  if (status === 'published' && !options?.includeQuarantined) {
+    filtered = filtered.filter((a) => isPubliclyDiscoverable(a));
+  }
   return filtered.length;
+}
+
+export interface SitemapPageLastmod {
+  page: number;
+  lastmod: string | null;
+}
+
+/**
+ * Computes deterministic lastmod timestamps for paginated post sitemaps.
+ * Efficiently queries only modification timestamps across all published articles,
+ * correctly chunking into pages of pageSize (default 1000) with zero N+1 queries.
+ */
+export async function getPostSitemapPageLastmods(
+  db: any,
+  pageSize = 1000
+): Promise<SitemapPageLastmod[]> {
+  if (db && typeof db.prepare === 'function') {
+    try {
+      const quarantinedSlugs = Object.keys(QUARANTINE_REGISTRY);
+      let query = `
+        SELECT 
+          id,
+          slug,
+          CASE
+            WHEN updated_at IS NOT NULL AND updated_at != '' AND published_at IS NOT NULL AND published_at != ''
+              THEN (CASE WHEN updated_at > published_at THEN updated_at ELSE published_at END)
+            WHEN updated_at IS NOT NULL AND updated_at != ''
+              THEN updated_at
+            ELSE published_at
+          END as mod_date
+        FROM articles
+        WHERE status = 'published'
+      `;
+      const bindings: any[] = [];
+      if (quarantinedSlugs.length > 0) {
+        query += ` AND slug NOT IN (${quarantinedSlugs.map(() => '?').join(', ')})`;
+        bindings.push(...quarantinedSlugs);
+      }
+      query += ' ORDER BY published_at DESC, id DESC';
+
+      const { results } = await db.prepare(query).bind(...bindings).all();
+      if (results) {
+        const rows = results as Array<{ mod_date: string }>;
+        const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+        const pages: SitemapPageLastmod[] = [];
+        for (let p = 1; p <= totalPages; p++) {
+          const chunk = rows.slice((p - 1) * pageSize, p * pageSize);
+          const timestamps = chunk
+            .map((r) => new Date(r.mod_date).getTime())
+            .filter((t) => !isNaN(t));
+          const lastmod = timestamps.length > 0 ? new Date(Math.max(...timestamps)).toISOString() : null;
+          pages.push({ page: p, lastmod });
+        }
+        return pages;
+      }
+    } catch (e) {
+      console.warn('D1 getPostSitemapPageLastmods fallback:', e);
+    }
+  }
+
+  // In-memory fallback
+  const valid = inMemoryArticles
+    .filter((a) => a.status === 'published' && isPubliclyDiscoverable(a))
+    .sort((a, b) => {
+      const diff = new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime();
+      if (diff !== 0) return diff;
+      return (b.id || 0) - (a.id || 0);
+    });
+
+  const totalPages = Math.max(1, Math.ceil(valid.length / pageSize));
+  const pages: SitemapPageLastmod[] = [];
+  for (let p = 1; p <= totalPages; p++) {
+    const chunk = valid.slice((p - 1) * pageSize, p * pageSize);
+    const timestamps = chunk
+      .map((a) => {
+        const u = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const pub = a.published_at ? new Date(a.published_at).getTime() : 0;
+        const max = Math.max(u, pub);
+        return max > 0 ? max : NaN;
+      })
+      .filter((t) => !isNaN(t));
+    const lastmod = timestamps.length > 0 ? new Date(Math.max(...timestamps)).toISOString() : null;
+    pages.push({ page: p, lastmod });
+  }
+  return pages;
+}
+
+export interface CategorySitemapData {
+  categoryMods: Map<number, string>;
+  latestOverallMod: string | null;
+}
+
+/**
+ * Computes deterministic modification dates for categories based on published article membership.
+ * Executes a single SQL GROUP BY query to avoid N+1 queries.
+ */
+export async function getCategorySitemapData(
+  db: any
+): Promise<CategorySitemapData> {
+  const categoryMods = new Map<number, string>();
+  let latestOverallMod: string | null = null;
+
+  if (db && typeof db.prepare === 'function') {
+    try {
+      const quarantinedSlugs = Object.keys(QUARANTINE_REGISTRY);
+      let query = `
+        SELECT 
+          category_id, 
+          MAX(
+            CASE
+              WHEN updated_at IS NOT NULL AND updated_at != '' AND published_at IS NOT NULL AND published_at != ''
+                THEN (CASE WHEN updated_at > published_at THEN updated_at ELSE published_at END)
+              WHEN updated_at IS NOT NULL AND updated_at != ''
+                THEN updated_at
+              ELSE published_at
+            END
+          ) as latest_mod
+        FROM articles
+        WHERE status = 'published' AND category_id IS NOT NULL
+      `;
+      const bindings: any[] = [];
+      if (quarantinedSlugs.length > 0) {
+        query += ` AND slug NOT IN (${quarantinedSlugs.map(() => '?').join(', ')})`;
+        bindings.push(...quarantinedSlugs);
+      }
+      query += ' GROUP BY category_id';
+
+      const { results } = await db.prepare(query).bind(...bindings).all();
+      if (results) {
+        let maxTime = 0;
+        for (const row of results as Array<{ category_id: number; latest_mod: string }>) {
+          if (row.category_id && row.latest_mod) {
+            const iso = new Date(row.latest_mod).toISOString();
+            categoryMods.set(row.category_id, iso);
+            const t = new Date(iso).getTime();
+            if (t > maxTime) maxTime = t;
+          }
+        }
+        if (maxTime > 0) {
+          latestOverallMod = new Date(maxTime).toISOString();
+        }
+        return { categoryMods, latestOverallMod };
+      }
+    } catch (e) {
+      console.warn('D1 getCategorySitemapData fallback:', e);
+    }
+  }
+
+  // In-memory fallback
+  const valid = inMemoryArticles.filter((a) => a.status === 'published' && isPubliclyDiscoverable(a));
+  let maxTime = 0;
+  for (const a of valid) {
+    if (a.category_id) {
+      const u = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const pub = a.published_at ? new Date(a.published_at).getTime() : 0;
+      const t = Math.max(u, pub);
+      if (t > 0) {
+        const existing = categoryMods.get(a.category_id);
+        const existingT = existing ? new Date(existing).getTime() : 0;
+        if (t > existingT) {
+          categoryMods.set(a.category_id, new Date(t).toISOString());
+        }
+        if (t > maxTime) maxTime = t;
+      }
+    }
+  }
+  if (maxTime > 0) {
+    latestOverallMod = new Date(maxTime).toISOString();
+  }
+  return { categoryMods, latestOverallMod };
+}
+
+/**
+ * Computes deterministic latest modification date for the page sitemap.
+ */
+export async function getPageSitemapLatestMod(db: any): Promise<string | null> {
+  if (db && typeof db.prepare === 'function') {
+    try {
+      const row = await db.prepare("SELECT MAX(updated_at) as max_mod FROM pages WHERE status = 'published'").first();
+      if (row?.max_mod) {
+        return new Date(row.max_mod).toISOString();
+      }
+    } catch (e) {
+      console.warn('D1 getPageSitemapLatestMod fallback:', e);
+    }
+  }
+
+  const valid = inMemoryPages.filter((p) => p.status === 'published');
+  const timestamps = valid
+    .map((p) => new Date(p.updated_at).getTime())
+    .filter((t) => !isNaN(t));
+  return timestamps.length > 0 ? new Date(Math.max(...timestamps)).toISOString() : null;
+}
+
+/**
+ * Scalably retrieves published articles eligible for news sitemap published within the cutoff window.
+ * Eliminates arbitrary limit=50 sampling while strictly enforcing the 48h news window and quarantine gates.
+ */
+export async function getEligibleNewsArticles(
+  db: any,
+  cutoffMs: number
+): Promise<Article[]> {
+  const quarantinedSlugs = Object.keys(QUARANTINE_REGISTRY);
+  const cutoffIso = new Date(cutoffMs).toISOString();
+
+  if (db && typeof db.prepare === 'function') {
+    try {
+      let query = `
+        SELECT a.id, a.slug, a.title, a.description, a.featured_image, a.image_alt,
+               a.category_id, a.author_id, a.status, a.views, a.reading_time_minutes,
+               a.key_takeaways, a.focus_keyword, a.content_hash, a.is_featured,
+               a.is_trending, a.is_sponsored, a.disable_internal_links,
+               a.published_at, a.updated_at,
+               '' as content_md, '' as content_html,
+               c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
+               au.name as author_name, au.avatar as author_avatar, au.role as author_role
+        FROM articles a
+        LEFT JOIN categories c ON a.category_id = c.id
+        LEFT JOIN authors au ON a.author_id = au.id
+        WHERE a.status = 'published' AND a.published_at >= ?
+      `;
+      const bindings: any[] = [cutoffIso];
+      if (quarantinedSlugs.length > 0) {
+        query += ` AND a.slug NOT IN (${quarantinedSlugs.map(() => '?').join(', ')})`;
+        bindings.push(...quarantinedSlugs);
+      }
+      query += ` ORDER BY a.published_at DESC`;
+
+      const res = await db.prepare(query).bind(...bindings).all();
+      if (res?.results) {
+        const rawArticles = (res.results as Article[]).map(sanitizeArticle);
+        return rawArticles.filter((a) => {
+          const isNews = Boolean(
+            (a as any).is_news === 1 ||
+            (a as any).is_news === true ||
+            (a as any).schema_type === 'NewsArticle' ||
+            a.category_slug === 'news' ||
+            a.category_slug === 'berita'
+          );
+          if (!isNews) return false;
+          const pubTime = new Date(a.published_at).getTime();
+          return !isNaN(pubTime) && pubTime >= cutoffMs && isPubliclyDiscoverable(a);
+        });
+      }
+    } catch (e) {
+      console.warn('D1 getEligibleNewsArticles fallback to in-memory:', e);
+    }
+  }
+
+  return inMemoryArticles
+    .filter((a) => {
+      if (a.status !== 'published' || !isPubliclyDiscoverable(a)) return false;
+      const isNews = Boolean(
+        (a as any).is_news === 1 ||
+        (a as any).is_news === true ||
+        (a as any).schema_type === 'NewsArticle' ||
+        a.category_slug === 'news' ||
+        a.category_slug === 'berita'
+      );
+      if (!isNews) return false;
+      const pubTime = new Date(a.published_at).getTime();
+      return !isNaN(pubTime) && pubTime >= cutoffMs;
+    })
+    .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+    .map(sanitizeArticle);
 }
 
 export interface InternalLinkCandidate {
@@ -1193,39 +1484,285 @@ export async function getArticleById(db: any, id: number): Promise<Article | nul
   return null;
 }
 
-export async function getRelatedArticles(db: any, currentId: number, categoryId: number, limit = 4): Promise<Article[]> {
+const ID_EDITORIAL_STOPWORDS = new Set([
+  'dan', 'atau', 'untuk', 'yang', 'di', 'ke', 'dari', 'pada', 'dengan',
+  'ini', 'itu', 'cara', 'tips', 'panduan', 'analisis', 'perbedaan', 'vs',
+  'mana', 'cocok', 'agar', 'tidak', 'lebih', 'bisa', 'saat', 'dalam',
+  'memilih', 'menilai', 'mengenal', 'membedakan', 'penyebab', 'adalah',
+  'sebagai', 'secara', 'apa', 'kapan', 'bagaimana', 'oleh', 'karena',
+  'tentang', 'bagi', 'sudah', 'akan', 'hanya', 'antara', 'bukan', 'serta',
+  'dapat', 'menjadi', 'terhadap', 'hingga', 'prinsip'
+]);
+
+const EDITORIAL_DOMAIN_CLUSTERS = [
+  {
+    name: 'roof_weather_envelope',
+    terms: new Set(['atap', 'genteng', 'metal', 'beton', 'talang', 'rembes', 'bocor', 'kelembapan', 'tiris', 'hujan', 'tempias'])
+  },
+  {
+    name: 'openings_facade_shading',
+    terms: new Set(['kusen', 'aluminium', 'upvc', 'jendela', 'pintu', 'shading', 'overhang', 'louver', 'pencahayaan', 'skylight', 'bukaan'])
+  },
+  {
+    name: 'structure_masonry',
+    terms: new Set(['dinding', 'plesteran', 'retak', 'struktural', 'sloof', 'kolom', 'pondasi'])
+  },
+  {
+    name: 'interior_flooring_ventilation',
+    terms: new Set(['lantai', 'keramik', 'popping', 'ventilasi', 'dapur', 'exhaust', 'plafon', 'gypsum'])
+  }
+];
+
+const CATEGORY_AFFINITY_FAMILIES: Record<number, Set<number>> = {
+  3: new Set([3, 8, 5]), // Arsitektur & Renovasi -> Sistem/Konstruksi, Material
+  8: new Set([8, 3, 5]),
+  5: new Set([5, 3, 8, 4]),
+  4: new Set([4, 5, 3]), // Lifestyle/Material -> Material, Arsitektur
+  1: new Set([1, 6]),
+  6: new Set([6, 1]),
+  2: new Set([2])
+};
+
+const DISTINCTIVE_MATERIAL_TERMS = new Set([
+  'kusen', 'aluminium', 'upvc', 'atap', 'genteng', 'metal', 'beton',
+  'talang', 'rembes', 'bocor', 'keramik', 'lantai', 'popping', 'shading',
+  'louver', 'ventilasi', 'dapur', 'exhaust', 'pencahayaan', 'skylight',
+  'jendela', 'pintu', 'retak', 'plesteran', 'sloof', 'kolom', 'plafon', 'gypsum'
+]);
+
+function extractEditorialTokens(text: string): string[] {
+  if (!text) return [];
+  const clean = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
+  return clean.split(/\s+/).filter(w => w.length >= 3 && !ID_EDITORIAL_STOPWORDS.has(w));
+}
+
+function getArticleDistinctiveTokens(art: Partial<Article>): string[] {
+  const tokens = extractEditorialTokens((art.title || '') + ' ' + (art.focus_keyword || ''));
+  return tokens.filter(t => DISTINCTIVE_MATERIAL_TERMS.has(t));
+}
+
+function areEditorialTopicsNearDuplicate(tokensA: string[], tokensB: string[]): boolean {
+  if (!tokensA.length || !tokensB.length) return false;
+  const setB = new Set(tokensB);
+  let matches = 0;
+  for (const t of tokensA) {
+    if (setB.has(t)) matches++;
+  }
+  return matches >= 2;
+}
+
+function scoreCandidateRelevance(
+  source: { title?: string; focus_keyword?: string | null; description?: string; category_id?: number },
+  cand: Article
+): number {
+  let score = 0;
+  const srcCatId = source.category_id || 0;
+  const candCatId = cand.category_id || 0;
+
+  // 1. Category Score
+  if (candCatId === srcCatId) {
+    score += 25;
+  } else if (CATEGORY_AFFINITY_FAMILIES[srcCatId]?.has(candCatId)) {
+    score += 12;
+  }
+
+  // 2. Direct Token Matches
+  const srcTokens = extractEditorialTokens((source.title || '') + ' ' + (source.focus_keyword || '') + ' ' + (source.description || ''));
+  const srcUnique = new Set(srcTokens);
+
+  const candTitleTokens = extractEditorialTokens(cand.title + ' ' + (cand.focus_keyword || ''));
+  const candDescTokens = extractEditorialTokens(cand.description || '');
+
+  for (const t of candTitleTokens) {
+    if (srcUnique.has(t)) {
+      if (['rumah', 'tropis', 'indonesia', 'ruang', 'desain'].includes(t)) {
+        score += 3;
+      } else {
+        score += 15;
+      }
+    }
+  }
+
+  for (const t of candDescTokens) {
+    if (srcUnique.has(t)) {
+      if (!['rumah', 'tropis', 'indonesia', 'ruang', 'desain'].includes(t)) {
+        score += 6;
+      }
+    }
+  }
+
+  // 3. Domain Cluster Semantic Association
+  for (const cluster of EDITORIAL_DOMAIN_CLUSTERS) {
+    let srcHas = false;
+    let candHas = false;
+    for (const t of srcTokens) {
+      if (cluster.terms.has(t)) { srcHas = true; break; }
+    }
+    for (const t of candTitleTokens.concat(candDescTokens)) {
+      if (cluster.terms.has(t)) { candHas = true; break; }
+    }
+    if (srcHas && candHas) {
+      score += 20;
+    }
+  }
+
+  // 4. Recency tie-breaker (max 2 pts)
+  const pubTime = cand.published_at ? new Date(cand.published_at).getTime() : 0;
+  const recencyBonus = (pubTime / 1800000000000) * 2;
+  score += recencyBonus;
+
+  return score;
+}
+
+function selectDiverseRecommendations(
+  source: { title?: string; focus_keyword?: string | null; description?: string; category_id?: number },
+  candidates: Article[],
+  limit: number
+): Article[] {
+  const srcDistinctive = getArticleDistinctiveTokens(source as Partial<Article>);
+
+  const scored = candidates.map(cand => {
+    const candDistinctive = getArticleDistinctiveTokens(cand);
+    const isNearDuplicateOfSource = areEditorialTopicsNearDuplicate(srcDistinctive, candDistinctive);
+    const score = scoreCandidateRelevance(source, cand);
+    return { cand, score, distinctive: candDistinctive, isNearDuplicateOfSource };
+  });
+
+  // Primary candidates: exclude near-duplicates of the current article
+  const primaryCandidates = scored.filter(item => !item.isNearDuplicateOfSource);
+  primaryCandidates.sort((a, b) => b.score - a.score || b.cand.id - a.cand.id);
+
+  const selected: Article[] = [];
+  const selectedDistinctiveLists: string[][] = [];
+
+  for (const item of primaryCandidates) {
+    let duplicateWithSelected = false;
+    for (const prevList of selectedDistinctiveLists) {
+      if (areEditorialTopicsNearDuplicate(item.distinctive, prevList)) {
+        duplicateWithSelected = true;
+        break;
+      }
+    }
+
+    if (duplicateWithSelected) {
+      continue; // Skip near-duplicate within recommendations
+    }
+
+    selected.push(item.cand);
+    selectedDistinctiveLists.push(item.distinctive);
+    if (selected.length >= limit) break;
+  }
+
+  // Fallback if needed
+  if (selected.length < limit) {
+    const secondaryCandidates = scored.filter(item => item.isNearDuplicateOfSource);
+    secondaryCandidates.sort((a, b) => b.score - a.score || b.cand.id - a.cand.id);
+    for (const item of secondaryCandidates) {
+      let duplicateWithSelected = false;
+      for (const prevList of selectedDistinctiveLists) {
+        if (areEditorialTopicsNearDuplicate(item.distinctive, prevList)) {
+          duplicateWithSelected = true;
+          break;
+        }
+      }
+      if (!duplicateWithSelected) {
+        selected.push(item.cand);
+        selectedDistinctiveLists.push(item.distinctive);
+        if (selected.length >= limit) break;
+      }
+    }
+  }
+
+  return selected;
+}
+
+export async function getRelatedArticles(
+  db: any,
+  currentId: number,
+  categoryId: number,
+  limit = 4,
+  options?: {
+    focusKeyword?: string;
+    excludeIds?: number[];
+    title?: string;
+    slug?: string;
+    description?: string;
+  }
+): Promise<Article[]> {
+  const excludeSet = new Set<number>([currentId, ...(options?.excludeIds || [])]);
+
+  // Source metadata context
+  let sourceMeta = {
+    title: options?.title || '',
+    focus_keyword: options?.focusKeyword || '',
+    description: options?.description || '',
+    category_id: categoryId
+  };
+
   if (db) {
     try {
-      const { results } = await db
+      // If title missing, query current article's meta in 1 quick read
+      if (!sourceMeta.title) {
+        const currentMetaRes = await db
+          .prepare(`SELECT title, focus_keyword, description, category_id FROM articles WHERE id = ?`)
+          .bind(currentId)
+          .first();
+        if (currentMetaRes) {
+          sourceMeta = {
+            title: (currentMetaRes.title as string) || sourceMeta.title,
+            focus_keyword: (currentMetaRes.focus_keyword as string) || sourceMeta.focus_keyword,
+            description: (currentMetaRes.description as string) || sourceMeta.description,
+            category_id: (currentMetaRes.category_id as number) || categoryId
+          };
+        }
+      }
+
+      // Single efficient query for all published candidates, ordered by recency
+      const res = await db
         .prepare(`
           SELECT a.*, c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
                  au.name as author_name, au.avatar as author_avatar, au.role as author_role
           FROM articles a
           LEFT JOIN categories c ON a.category_id = c.id
           LEFT JOIN authors au ON a.author_id = au.id
-          WHERE a.id != ? AND a.category_id = ? AND a.status = 'published'
+          WHERE a.id != ? AND a.status = 'published'
           ORDER BY a.published_at DESC
         `)
-        .bind(currentId, categoryId)
+        .bind(currentId)
         .all();
-      if (results && results.length > 0) {
-        const filtered = (results as Article[]).map(sanitizeArticle).filter((a) => isPubliclyDiscoverable(a));
-        if (filtered.length > 0) return filtered.slice(0, limit);
+
+      if (res?.results && res.results.length > 0) {
+        const candidates = (res.results as Article[])
+          .map(sanitizeArticle)
+          .filter(a => !excludeSet.has(a.id) && isPubliclyDiscoverable(a));
+
+        if (candidates.length > 0) {
+          return selectDiverseRecommendations(sourceMeta, candidates, limit);
+        }
       }
     } catch (e) {
-      console.warn('D1 Query fallback:', e);
+      console.warn('D1 getRelatedArticles fallback:', e);
     }
   }
-  const related = inMemoryArticles
-    .filter(a => a.id !== currentId && a.category_id === categoryId && a.status === 'published')
-    .filter((a) => isPubliclyDiscoverable(a));
-  if (related.length < limit) {
-    const others = inMemoryArticles
-      .filter(a => a.id !== currentId && a.category_id !== categoryId && a.status === 'published')
-      .filter((a) => isPubliclyDiscoverable(a));
-    return [...related, ...others].slice(0, limit).map(sanitizeArticle);
+
+  // In-memory fallback
+  if (!sourceMeta.title) {
+    const inMem = inMemoryArticles.find(a => a.id === currentId);
+    if (inMem) {
+      sourceMeta = {
+        title: inMem.title,
+        focus_keyword: inMem.focus_keyword || '',
+        description: inMem.description || '',
+        category_id: inMem.category_id || categoryId
+      };
+    }
   }
-  return related.slice(0, limit).map(sanitizeArticle);
+
+  const inMemCandidates = inMemoryArticles
+    .filter(a => !excludeSet.has(a.id) && a.status === 'published' && isPubliclyDiscoverable(a))
+    .map(sanitizeArticle);
+
+  return selectDiverseRecommendations(sourceMeta, inMemCandidates, limit);
 }
 
 export async function getAllCategories(db: any): Promise<Category[]> {
@@ -2440,5 +2977,3 @@ export async function insertHermesArticleAndReceipt(
     receipt: persistedReceipt
   };
 }
-
-

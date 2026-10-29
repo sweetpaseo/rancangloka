@@ -36,6 +36,7 @@ export interface StructuredDiscoveryQuery {
   category: ResearchQuestionCategory | string;
   target_provider: 'CROSSREF' | 'WIKIPEDIA' | 'OPEN_WEB' | 'ALL';
   concepts: ConceptDecomposition;
+  entity_profile?: EntityPinnedTopicProfile;
   variants: DiscoveryQueryVariant[];
   derived_from_concepts: string[];
 }
@@ -45,12 +46,29 @@ export interface ResearchDiscoveryQueryPlan {
   pass_number: number;
   topic: string;
   decomposition: ConceptDecomposition;
+  entity_profile?: EntityPinnedTopicProfile;
   planned_queries: StructuredDiscoveryQuery[];
   metrics: {
     total_queries: number;
     id_query_count: number;
     en_query_count: number;
     max_query_length: number;
+  };
+}
+
+export interface EntityPinnedTopicProfile {
+  topic: string;
+  primary_article_entity: string;
+  material_or_building_system: string;
+  reader_problem: string;
+  research_question: string;
+  evidence_requirement: string;
+  geographic_applicability: 'TROPICAL_HUMID' | 'UNIVERSAL_PHYSICS';
+  controlled_scholarly_anchor: string;
+  controlled_physical_systems: string[];
+  controlled_concepts: {
+    id_terms: string[];
+    en_terms: string[];
   };
 }
 
@@ -259,8 +277,18 @@ export function renderProviderSpecificQuery(
   if (targetProvider === 'CROSSREF') {
     let sanitized = sanitizeBibliographicTerms(rawTerms);
     const words = sanitized.split(' ').filter(w => w.length > 2);
-    const dedupedWords = Array.from(new Set(words)).slice(0, 5);
-    let result = dedupedWords.join(' ').trim();
+    let dedupedWords = Array.from(new Set(words));
+
+    // Anchor enforcement: Ensure query is not unanchored
+    const anchorTokens = domainContext
+      ? domainContext.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+      : [];
+    const hasAnchor = anchorTokens.some(tok => sanitized.toLowerCase().includes(tok));
+    if (domainContext && !hasAnchor) {
+      dedupedWords = [...anchorTokens.slice(0, 3), ...dedupedWords];
+    }
+
+    let result = dedupedWords.slice(0, 5).join(' ').trim();
     if (!result || result.length < 5) {
       result = (domainContext ? `${domainContext} ` : '') + 'materials engineering';
     }
@@ -357,6 +385,220 @@ export function deriveEnglishConceptEquivalents(concepts: ConceptDecomposition):
 }
 
 /**
+ * Extracts a structured, entity-pinned topic profile separating the 6 key dimensions:
+ * 1. Primary article entity
+ * 2. Material or building system
+ * 3. Reader problem
+ * 4. Research question
+ * 5. Evidence requirement
+ * 6. Geographic applicability
+ */
+export function extractEntityPinnedTopicProfile(topic: string, requirements?: string[]): EntityPinnedTopicProfile {
+  const lower = topic.toLowerCase();
+  const decomp = decomposeTopicConcepts(topic);
+  const enDecomp = deriveEnglishConceptEquivalents(decomp);
+
+  // 1. Window Condensation & Dew Point (Evaluated before general glass terms to avoid misprofiling)
+  if (/(?:ber)?kondensasi|embun|dew point/i.test(lower)) {
+    return {
+      topic,
+      primary_article_entity: 'jendela dan bukaan berkondensasi',
+      material_or_building_system: 'fenestration thermal envelope and condensation resistance',
+      reader_problem: 'kondensasi permukaan kaca dan kusen akibat kelembapan tinggi dan suhu permukaan di bawah titik embun',
+      research_question: 'Apa mekanisme fisik kondensasi pada bukaan hunian tropis dan efektivitas pemutus termal (thermal break) serta ventilasi?',
+      evidence_requirement: 'Konduktivitas termal profil, titik embun (dew point), U-factor, relative humidity, dan psychrometric design',
+      geographic_applicability: 'TROPICAL_HUMID',
+      controlled_scholarly_anchor: 'window frame condensation thermal break',
+      controlled_physical_systems: ['surface condensation dew point', 'polyamide thermal break', 'thermal transmittance U-factor', 'interior relative humidity'],
+      controlled_concepts: {
+        id_terms: ['jendela berkondensasi', 'titik embun', 'thermal break', 'kelembapan'],
+        en_terms: ['window condensation', 'dew point', 'thermal break', 'relative humidity']
+      }
+    };
+  }
+
+  // 2. Thermal Bridge (Building Envelope / Concrete Substrates vs Aluminium Fenestration)
+  if (/(?:thermal bridge|jembatan termal)/i.test(lower)) {
+    const isConcreteOrMasonry = /\b(?:beton|dak|balok|dinding|tembok|slab|concrete|masonry)\b/i.test(lower);
+    if (isConcreteOrMasonry) {
+      return {
+        topic,
+        primary_article_entity: 'thermal bridge dinding dan balok beton',
+        material_or_building_system: 'reinforced concrete and masonry building envelope thermal bridging',
+        reader_problem: 'kebocoran panas konduktif dan titik dingin melalui elemen struktur beton tanpa insulasi',
+        research_question: 'Bagaimana mekanisme transmisi panas linear pada pertemuan dak/balok beton dan efektivitas insulasi eksterior serta pemutus termal struktural?',
+        evidence_requirement: 'Transmitansi termal linear Psi balok beton, insulasi eksternal (EIFS), thermal break struktural, dan pencegahan kondensasi',
+        geographic_applicability: 'UNIVERSAL_PHYSICS',
+        controlled_scholarly_anchor: 'concrete thermal bridge linear transmittance insulation',
+        controlled_physical_systems: ['concrete thermal bridge', 'linear thermal transmittance Psi', 'exterior wall insulation', 'structural thermal break'],
+        controlled_concepts: {
+          id_terms: ['thermal bridge beton', 'balok beton', 'insulasi eksterior', 'transmitansi linear'],
+          en_terms: ['concrete thermal bridge', 'reinforced concrete', 'exterior insulation', 'linear transmittance Psi']
+        }
+      };
+    }
+
+    return {
+      topic,
+      primary_article_entity: 'thermal bridge kusen aluminium',
+      material_or_building_system: 'building envelope aluminium fenestration',
+      reader_problem: 'kebocoran panas konduktif dan titik dingin profil logam',
+      research_question: 'Bagaimana mekanisme transmisi panas linear pada profil aluminium dan mitigasi thermal break?',
+      evidence_requirement: 'Transmitansi termal linear Psi, pemutus poliamida, simulasi THERM, dan termografi inframerah',
+      geographic_applicability: 'UNIVERSAL_PHYSICS',
+      controlled_scholarly_anchor: 'thermal bridge fenestration linear transmittance',
+      controlled_physical_systems: ['polyamide thermal break', 'linear thermal transmittance Psi', 'frame heat conduction', 'infrared thermography'],
+      controlled_concepts: {
+        id_terms: ['thermal bridge', 'profil aluminium', 'penghambat panas', 'konduktivitas'],
+        en_terms: ['thermal bridge', 'aluminium profile', 'thermal break', 'linear transmittance']
+      }
+    };
+  }
+
+  // 3. Ceramic Floor Popping & Movement Joints
+  if (/\b(?:popping|meledak|terangkat|keramik|tile|lantai)\b/i.test(lower)) {
+    return {
+      topic,
+      primary_article_entity: 'ubin keramik lantai terangkat (popping)',
+      material_or_building_system: 'tiled floor screed and mortar bed system',
+      reader_problem: 'keramik terangkat meledak akibat pemuaian termal dan ketiadaan dilatasi',
+      research_question: 'Mengapa keramik lantai terangkat meledak dan bagaimana peranan nat serta movement joint?',
+      evidence_requirement: 'Tegangan geser mortar semen, muai susut termal/kelembapan, dan standar celah dilatasi (movement joint)',
+      geographic_applicability: 'TROPICAL_HUMID',
+      controlled_scholarly_anchor: 'ceramic tile tenting buckling debonding',
+      controlled_physical_systems: ['thinset mortar shear bond', 'thermal moisture expansion', 'movement expansion joint', 'concrete substrate shrinkage'],
+      controlled_concepts: {
+        id_terms: ['keramik lantai', 'keramik popping', 'sambungan dilatasi', 'mortar semen'],
+        en_terms: ['ceramic tile flooring', 'tile tenting debonding', 'movement expansion joint', 'thinset mortar']
+      }
+    };
+  }
+
+  // 4. Fenestration & Architectural Glass
+  if (/\b(?:kaca|glass|tempered|laminated)\b/i.test(lower)) {
+    return {
+      topic,
+      primary_article_entity: 'kaca laminated dan kaca tempered',
+      material_or_building_system: 'architectural safety glass and glazing systems',
+      reader_problem: 'karakteristik keamanan pecah, ketahanan benturan, dan isolasi suara',
+      research_question: 'Bagaimana perbandingan karakteristik mekanis, mitigasi benturan, dan batas kegagalan kaca laminated vs tempered?',
+      evidence_requirement: 'Standar pengujian benturan (impact), tegangan termal, transmisi akustik STC, dan interlayer PVB/EVA',
+      geographic_applicability: 'TROPICAL_HUMID',
+      controlled_scholarly_anchor: 'laminated tempered architectural glass',
+      controlled_physical_systems: ['laminated safety glass PVB', 'tempered toughened glass', 'acoustic sound transmission STC', 'impact resistance fracture'],
+      controlled_concepts: {
+        id_terms: ['kaca laminated', 'kaca tempered', 'ketahanan benturan', 'isolasi suara'],
+        en_terms: ['laminated glass PVB', 'tempered glass', 'impact resistance', 'acoustic sound STC']
+      }
+    };
+  }
+
+  // 5. Moisture & Walls
+  if (/\b(?:dinding|tembok|rembes|lembab|lembap)\b/i.test(lower)) {
+    return {
+      topic,
+      primary_article_entity: 'dinding tembok rembes dan berjamur',
+      material_or_building_system: 'masonry wall and waterproofing envelope',
+      reader_problem: 'kelembapan rembesan air kapiler dan pertumbuhan jamur',
+      research_question: 'Bagaimana mekanisme pergerakan air kapiler pada dinding dan batasan cat pelapis waterproofing?',
+      evidence_requirement: 'Daya kapilaritas pasangan bata, tekanan uap air, dan permeabilitas membran waterproofing',
+      geographic_applicability: 'TROPICAL_HUMID',
+      controlled_scholarly_anchor: 'masonry wall dampness capillary moisture',
+      controlled_physical_systems: ['capillary suction rising damp', 'vapor diffusion', 'waterproofing membrane', 'efflorescence'],
+      controlled_concepts: {
+        id_terms: ['dinding tembok', 'kelembapan rembesan', 'pelapis waterproofing', 'daya kapilaritas'],
+        en_terms: ['masonry wall', 'moisture dampness', 'waterproofing membrane', 'capillary suction']
+      }
+    };
+  }
+
+  // 6. Generic Building Science Fallback
+  const idEntities = decomp.problem_entities.slice(0, 2);
+  const enEntities = enDecomp.enEntities.slice(0, 2);
+  return {
+    topic,
+    primary_article_entity: idEntities.join(' ') || 'elemen bangunan',
+    material_or_building_system: enEntities.join(' ') || 'building system',
+    reader_problem: decomp.symptoms[0] || 'gangguan performa fisik',
+    research_question: 'Investigate physical causes, diagnostic boundaries, and mitigation effectiveness',
+    evidence_requirement: 'Empirical building science testing specifications and institutional guidelines',
+    geographic_applicability: 'UNIVERSAL_PHYSICS',
+    controlled_scholarly_anchor: enEntities.join(' ') || 'building materials engineering',
+    controlled_physical_systems: enDecomp.enMechanisms.concat(enDecomp.enInterventions),
+    controlled_concepts: {
+      id_terms: idEntities,
+      en_terms: enEntities
+    }
+  };
+}
+
+/**
+ * Normalizes and anchors caller-supplied queries to prevent unanchored drift or out-of-domain searches.
+ */
+export function normalizeAndAnchorCallerQuery(
+  rawQuery: string,
+  topic: string,
+  profile: EntityPinnedTopicProfile
+): {
+  normalizedQuery: string;
+  action: 'ACCEPTED' | 'ANCHORED' | 'REJECTED';
+  reason: string;
+} {
+  const clean = String(rawQuery || '').trim();
+  const lower = clean.toLowerCase();
+
+  // 1. Reject empty or ultra-short queries
+  if (clean.length < 3) {
+    return {
+      normalizedQuery: '',
+      action: 'REJECTED',
+      reason: 'EMPTY_OR_TOO_SHORT: Caller query is under 3 characters.'
+    };
+  }
+
+  // 2. Reject out-of-domain generic searches (medical, apparel, clinical AI, politics, gambling, spam)
+  const isOutOfDomain = /\b(?:patient|hospital|clinical|therapy|disease|vaccine|chemotherapy|spondylodiscitis|skeletal atrophy|paralysis|ehr|electronic health records|mensurations|garment|fashion|election|political candidate|judi|slot|gacor|togel|casino|betting|poker|crypto|bitcoin|forex|porno|viagra)\b/i.test(lower);
+  if (isOutOfDomain) {
+    return {
+      normalizedQuery: '',
+      action: 'REJECTED',
+      reason: 'OUT_OF_DOMAIN_REJECTION: Caller query contains out-of-domain concepts.'
+    };
+  }
+
+  // 3. Sanitize generic editorial intent words
+  const sanitized = sanitizeBibliographicTerms(clean);
+
+  // 4. Check whether query contains domain anchor tokens
+  const anchorTokens = [
+    ...profile.controlled_scholarly_anchor.toLowerCase().split(/\s+/),
+    ...profile.primary_article_entity.toLowerCase().split(/\s+/),
+    ...profile.material_or_building_system.toLowerCase().split(/\s+/)
+  ].filter(w => w.length > 2);
+
+  const hasAnchor = anchorTokens.some(tok => lower.includes(tok));
+
+  if (!hasAnchor) {
+    // Unanchored query: Anchor it by prepending scholarly anchor
+    const anchored = `${profile.controlled_scholarly_anchor} ${sanitized}`.trim();
+    const finalQuery = truncateAtWordBoundary(anchored, MAX_QUERY_LENGTH);
+    return {
+      normalizedQuery: finalQuery,
+      action: 'ANCHORED',
+      reason: `UNANCHORED_QUERY: Prepend controlled anchor "${profile.controlled_scholarly_anchor}".`
+    };
+  }
+
+  // Query is already anchored
+  const finalQuery = truncateAtWordBoundary(sanitized, MAX_QUERY_LENGTH);
+  return {
+    normalizedQuery: finalQuery,
+    action: 'ACCEPTED',
+    reason: 'VALID_ANCHORED_QUERY: Query contains domain concepts and is well-bounded.'
+  };
+}
+
+/**
  * ResearchDiscoveryQueryPlanner
  * Main orchestrator for generating structured, compact, bilingual query plans.
  */
@@ -367,6 +609,7 @@ export class ResearchDiscoveryQueryPlanner {
   static planQueries(input: QueryPlannerInput): ResearchDiscoveryQueryPlan {
     const decomposition = decomposeTopicConcepts(input.topic);
     const enConcepts = deriveEnglishConceptEquivalents(decomposition);
+    const profile = extractEntityPinnedTopicProfile(input.topic, input.contentFamily ? [input.contentFamily] : undefined);
     const passNum = input.passNumber || 1;
     const missingCats = input.missingResearchCategories || [];
 
@@ -411,7 +654,9 @@ export class ResearchDiscoveryQueryPlanner {
         },
         {
           language: 'en',
-          query: finalEnQuery,
+          query: params.targetProvider === 'CROSSREF'
+            ? renderProviderSpecificQuery(finalEnQuery, 'CROSSREF', 'en', primaryEntityEn)
+            : finalEnQuery,
           intent: `${params.intent} (English technical)`,
           target_provider: params.targetProvider
         }
@@ -464,6 +709,7 @@ export class ResearchDiscoveryQueryPlanner {
         category: params.category,
         target_provider: params.targetProvider,
         concepts: decomposition,
+        entity_profile: profile,
         variants,
         derived_from_concepts: [...cleanIdWords]
       };
@@ -471,8 +717,8 @@ export class ResearchDiscoveryQueryPlanner {
       plannedQueries.push(queryItem);
     };
 
-    const primaryEntityId = decomposition.problem_entities.slice(0, 2).join(' ') || 'bangunan';
-    const primaryEntityEn = enConcepts.enEntities.slice(0, 2).join(' ') || 'building';
+    const primaryEntityId = profile.controlled_concepts.id_terms.slice(0, 2).join(' ') || decomposition.problem_entities.slice(0, 2).join(' ') || 'bangunan';
+    const primaryEntityEn = profile.controlled_scholarly_anchor || enConcepts.enEntities.slice(0, 2).join(' ') || 'building';
 
     const primarySymptomId = decomposition.symptoms[0] || 'kerusakan';
     const primarySymptomEn = enConcepts.enSymptoms[0] || 'failure';
@@ -599,6 +845,7 @@ export class ResearchDiscoveryQueryPlanner {
       pass_number: passNum,
       topic: input.topic,
       decomposition,
+      entity_profile: profile,
       planned_queries: plannedQueries,
       metrics: {
         total_queries: totalQueries,

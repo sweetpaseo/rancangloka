@@ -1,294 +1,155 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import { getResponsiveImageAttrs } from '../lib/image';
 
 const db = await getDb(Astro.locals);
-const [articles, categories, siteSettings] = await Promise.all([
-  getAllArticles(db, 30, 0, 'published'),
+const [allArticles, categories, siteSettings] = await Promise.all([
+  getAllArticles(db, 60, 0, 'published'),
   getAllCategories(db),
   getSiteSettings(db)
 ]);
 
-const exploreEntities = [
-  {
-    id: 'e1',
-    title: 'Secondary Skin Fasad Kayu Ulin',
-    problem: 'panas',
-    space: 'fasad',
-    material: 'kayu',
-    budget: 'mid',
-    summary: 'Mereduksi radiasi langsung matahari sore melalui pembiasan bayangan pasif dan menjaga suhu dinding tetap dingin.',
-    specs: 'Kayu Ulin Grade 1 • Rangka Aluminium Hollow Hitam • Jarak kisi 8 cm',
-    link: '/search?q=secondary+skin'
-  },
-  {
-    id: 'e2',
-    title: 'Void Vertikal 5 Meter & Efek Cerobong Atap',
-    problem: 'sempit',
-    space: 'keluarga',
-    material: 'beton',
-    budget: 'mid',
-    summary: 'Menciptakan kontinuitas visual vertikal hunian tipe 36/60 dan mendorong pelepasan udara hangat ke luar rumah.',
-    specs: 'Tinggi plafon 5.2m • Bukaan kisi ventilasi atas • Skylight kaca laminated 8mm',
-    link: '/search?q=void'
-  },
-  {
-    id: 'e3',
-    title: 'Inner Courtyard (Taman Kering) Tengah Denah',
-    problem: 'gelap',
-    space: 'keluarga',
-    material: 'batu',
-    budget: 'low',
-    summary: 'Menyediakan pasokan cahaya matahari alami dan sirkulasi udara bagi rumah yang terhimpit dinding tetangga.',
-    specs: 'Lahan 2x2 meter • Batu koral sikat & andesit • Tanaman peneduh indoor',
-    link: '/search?q=taman'
-  },
-  {
-    id: 'e4',
-    title: 'Kusen Jendela UPVC Double Glazing Akustik',
-    problem: 'bising',
-    space: 'kamar',
-    material: 'upvc',
-    budget: 'high',
-    summary: 'Mereduksi transmisi kebisingan jalan raya secara signifikan pada sistem kaca ganda berongga kedap udara.',
-    specs: 'Rangka UPVC multi-chamber • Kaca ganda 6mm + 12mm air gap + 6mm • Seal EPDM',
-    link: '/komparasi'
-  },
-  {
-    id: 'e5',
-    title: 'Plafon Kisi Kayu Jati Alami & Layered Light',
-    problem: 'panas',
-    space: 'kamar',
-    material: 'kayu',
-    budget: 'mid',
-    summary: 'Meredam pantulan gema akustik sekaligus menghadirkan tekstur taktil alami yang hangat pada ruang tidur.',
-    specs: 'Kayu Jati Perhutani • Lampu cove 2700K warm white • Finishing matte water-based',
-    link: '/search?q=plafon'
-  },
-  {
-    id: 'e6',
-    title: 'Dinding Bata Roster Terakota Fasad',
-    problem: 'panas',
-    space: 'fasad',
-    material: 'terakota',
-    budget: 'low',
-    summary: 'Solusi selubung bernapas yang efisien untuk memecah terpaan angin dan membiaskan sinar matahari langsung.',
-    specs: 'Bata terakota bakar 20x20 cm • Pembesian angkur struktur • Coating water repellent',
-    link: '/search?q=terakota'
-  }
+const currentCategorySlug = Astro.url.searchParams.get('category') || '';
+const searchQuery = (Astro.url.searchParams.get('q') || '').toLowerCase().trim();
+
+let displayedArticles = allArticles;
+
+if (currentCategorySlug) {
+  displayedArticles = displayedArticles.filter((a) => a.category_slug === currentCategorySlug);
+}
+
+if (searchQuery) {
+  displayedArticles = displayedArticles.filter((a) => {
+    const titleMatch = a.title.toLowerCase().includes(searchQuery);
+    const descMatch = (a.description || '').toLowerCase().includes(searchQuery);
+    return titleMatch || descMatch;
+  });
+}
+
+const breadcrumbItems = [
+  { name: 'Beranda', url: '/' },
+  { name: 'Eksplorasi Arsip', url: '/explore' }
 ];
+
+function getSafeImage(url?: string, idx = 0) {
+  if (url && url.length > 5 && !url.includes('[object')) return url;
+  const fallbacks = [
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800&auto=format&fit=crop&q=80'
+  ];
+  return fallbacks[idx % fallbacks.length];
+}
 ---
 
 <BaseLayout
-  title="Design Explorer: Panduan Riset Spasial, Masalah, & Materialitas"
-  description="Alat eksplorasi arsitektur multi-dimensi RancangLoka: Hubungkan masalah rumah, ruang, material, dan estimasi budget untuk menemukan solusi desain terbaik."
+  title="Eksplorasi Seluruh Kajian & Panduan Hunian"
+  description="Telusuri seluruh artikel, panduan perbaikan, dan komparasi spesifikasi material bangunan untuk rumah di Indonesia."
   categories={categories}
   siteSettings={siteSettings}
 >
-  <div class="mx-auto max-w-6xl py-6 sm:py-10">
-    <!-- Header Badge -->
-    <div class="text-center space-y-4 mb-12">
-      <span class="inline-flex items-center gap-2 rounded-full bg-[#0066ee]/10 dark:bg-[#0066ee]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee]">
-        ✦ RANCANGLOKA DESIGN EXPLORER
-      </span>
-      <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-        Eksplorasi Ide, Material, & Solusi Ruang
+  <div class="editorial-container py-8 md:py-12">
+    <!-- 1. Breadcrumbs -->
+    <div class="crumb mb-6">
+      <Breadcrumbs items={breadcrumbItems} />
+    </div>
+
+    <!-- 2. Explore Lead (Atlas T03) -->
+    <header class="page-hero mb-8">
+      <span class="eyebrow">Arsip & Eksplorasi</span>
+      <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--ink)] leading-[1.12] my-3">
+        Jelajahi Seluruh Tulisan
       </h1>
-      <p class="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
-        Filter solusi arsitektur secara terpadu berdasarkan tantangan spesifik, zona ruangan, atau pilihan materialitas.
+      <p class="text-base sm:text-lg text-[var(--muted)] leading-relaxed max-w-[720px]">
+        Kumpulan panduan teknis, kajian material bangunan, dan inspirasi tata ruang yang disusun independen untuk pemilik rumah di Indonesia.
       </p>
-    </div>
+    </header>
 
-    <!-- Multi-Dimensional Filter Control Panel -->
-    <div class="rounded-3xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm mb-12 space-y-6">
-      <!-- 1. Masalah / Tantangan -->
-      <div>
-        <span class="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-2.5">
-          1. Tantangan Utama Ruang:
-        </span>
-        <div class="flex flex-wrap gap-2" id="filter-problem">
-          <button type="button" data-filter="all" class="filter-btn active-filter rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Semua Masalah
-          </button>
-          <button type="button" data-filter="panas" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            ☀️ Panas & Gerah
-          </button>
-          <button type="button" data-filter="sempit" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            📦 Lahan Sempit 36/60
-          </button>
-          <button type="button" data-filter="gelap" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            🌑 Kurang Cahaya
-          </button>
-          <button type="button" data-filter="bising" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            🔊 Bising Suara
-          </button>
-        </div>
-      </div>
-
-      <!-- 2. Ruang Spesifik -->
-      <div class="border-t border-black/[0.04] dark:border-white/[0.06] pt-4">
-        <span class="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-2.5">
-          2. Zona Ruang:
-        </span>
-        <div class="flex flex-wrap gap-2" id="filter-space">
-          <button type="button" data-filter="all" class="filter-btn active-filter rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Semua Ruang
-          </button>
-          <button type="button" data-filter="fasad" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Fasad Depan
-          </button>
-          <button type="button" data-filter="keluarga" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Ruang Keluarga & Void
-          </button>
-          <button type="button" data-filter="kamar" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Kamar Tidur
-          </button>
-        </div>
-      </div>
-
-      <!-- 3. Material Utama -->
-      <div class="border-t border-black/[0.04] dark:border-white/[0.06] pt-4">
-        <span class="text-xs font-mono font-bold uppercase tracking-widest text-slate-400 block mb-2.5">
-          3. Preferensi Material:
-        </span>
-        <div class="flex flex-wrap gap-2" id="filter-material">
-          <button type="button" data-filter="all" class="filter-btn active-filter rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Semua Material
-          </button>
-          <button type="button" data-filter="kayu" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Kayu Ulin / Jati
-          </button>
-          <button type="button" data-filter="upvc" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            UPVC Profil
-          </button>
-          <button type="button" data-filter="batu" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Batu Alam / Andesit
-          </button>
-          <button type="button" data-filter="terakota" class="filter-btn rounded-full px-4 py-1.5 text-xs font-semibold font-mono transition">
-            Bata Roster Terakota
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Explorer Results Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="explorer-grid">
-      {exploreEntities.map((item) => (
-        <article
-          class="explore-card apple-card rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 sm:p-7 flex flex-col justify-between space-y-4 hover:border-[#0066ee]/40 transition duration-500 shadow-sm"
-          data-problem={item.problem}
-          data-space={item.space}
-          data-material={item.material}
-          data-budget={item.budget}
+    <!-- 3. Filter & Category Chips -->
+    <div class="chips my-6">
+      <b>Filter:</b>
+      <a
+        href="/explore"
+        class={!currentCategorySlug ? 'selected' : ''}
+      >
+        Semua Topik ({allArticles.length})
+      </a>
+      {categories.map((c) => (
+        <a
+          href={`/explore?category=${c.slug}`}
+          class={currentCategorySlug === c.slug ? 'selected' : ''}
         >
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#0066ee] bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-md">
-                {item.space.toUpperCase()}
-              </span>
-              <span class="text-xs font-mono text-slate-400">
-                Solusi Spasial
-              </span>
-            </div>
-
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-snug mb-2">
-              {item.title}
-            </h2>
-
-            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal mb-4">
-              {item.summary}
-            </p>
-
-            <div class="rounded-xl bg-slate-50 dark:bg-slate-950/70 p-3 text-[11px] font-mono text-slate-500 dark:text-slate-400 border border-black/[0.03] dark:border-white/[0.04]">
-              <strong class="text-slate-700 dark:text-slate-300 block mb-0.5">Spesifikasi:</strong>
-              {item.specs}
-            </div>
-          </div>
-
-          <div class="pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between text-xs font-mono">
-            <span class="text-slate-400">Kategori: {item.material.toUpperCase()}</span>
-            <a
-              href={item.link}
-              class="font-bold text-[#0066ee] hover:underline"
-            >
-              Lihat Studi Kasus →
-            </a>
-          </div>
-        </article>
+          {c.name}
+        </a>
       ))}
+      <a href="/solusi" class="font-bold text-[var(--primary)] border-[var(--lemon)]">✦ Problem Solver</a>
+      <a href="/komparasi">Tabel Komparasi</a>
     </div>
+
+    <!-- 4. Result Count & Active Filter Notice -->
+    <div class="flex items-center justify-between text-xs text-[var(--muted)] pb-4 border-b border-[var(--line)] mb-8">
+      <div>
+        Menampilkan <b class="text-[var(--ink)]">{displayedArticles.length}</b> artikel
+        {currentCategorySlug && <span> dalam kategori <b class="text-[var(--primary)]">{currentCategorySlug}</b></span>}
+        {searchQuery && <span> dengan kata kunci "<b class="text-[var(--primary)]">{searchQuery}</b>"</span>}
+      </div>
+      {(currentCategorySlug || searchQuery) && (
+        <a href="/explore" class="text-[var(--primary)] font-bold hover:underline">
+          Reset Filter ✕
+        </a>
+      )}
+    </div>
+
+    <!-- 5. Articles Grid (Atlas T03 Story Cards) -->
+    {displayedArticles.length > 0 ? (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-8">
+        {displayedArticles.map((art, idx) => {
+          const rawImg = getSafeImage(art.featured_image, idx);
+          const cardAttrs = getResponsiveImageAttrs(rawImg, art.image_alt || art.title, { slotType: 'card' });
+          return (
+            <a class="story group" href={`/${art.slug}`} aria-label={art.title}>
+              {cardAttrs && (
+                <div class="story-img">
+                  <img
+                    src={cardAttrs.src}
+                    srcset={cardAttrs.srcset}
+                    sizes={cardAttrs.sizes}
+                    alt={cardAttrs.alt}
+                    width={cardAttrs.width}
+                    height={cardAttrs.height}
+                    loading="lazy"
+                    decoding="async"
+                    style={cardAttrs.style}
+                  />
+                </div>
+              )}
+              <div class="story-pad">
+                <span class="meta">{art.category_name || 'KAJIAN'}</span>
+                <h3>{art.title}</h3>
+                <p>{art.description || 'Kajian teknis dan panduan praktis untuk kenyamanan rumah tinggal.'}</p>
+                <small>{art.reading_time_minutes || 5} menit baca · Redaksi</small>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    ) : (
+      <!-- Empty State -->
+      <div class="my-14 p-10 text-center rounded-lg bg-[var(--warm)] border border-[var(--line)] max-w-lg mx-auto">
+        <span class="text-3xl block mb-3">📰</span>
+        <h3 class="font-serif text-xl font-bold text-[var(--ink)] mb-2">
+          Tidak ada artikel yang cocok
+        </h3>
+        <p class="text-sm text-[var(--muted)] mb-6">
+          Tidak ditemukan artikel dengan kriteria filter saat ini.
+        </p>
+        <a href="/explore" class="btn">
+          Lihat Seluruh Artikel
+        </a>
+      </div>
+    )}
   </div>
-
-  <style>
-    .filter-btn {
-      background-color: rgba(0, 0, 0, 0.04);
-      color: #64748b;
-      border: 1px solid transparent;
-    }
-    :global(.dark) .filter-btn {
-      background-color: rgba(255, 255, 255, 0.05);
-      color: #94a3b8;
-    }
-    .filter-btn.active-filter {
-      background-color: #0066ee !important;
-      color: #ffffff !important;
-      border-color: #0066ee !important;
-    }
-  </style>
-
-  <script>
-    let activeProblem = 'all';
-    let activeSpace = 'all';
-    let activeMaterial = 'all';
-
-    const problemBtns = document.querySelectorAll('#filter-problem .filter-btn');
-    const spaceBtns = document.querySelectorAll('#filter-space .filter-btn');
-    const materialBtns = document.querySelectorAll('#filter-material .filter-btn');
-    const cards = document.querySelectorAll('.explore-card');
-
-    function applyFilters() {
-      cards.forEach((card) => {
-        const cardProblem = card.getAttribute('data-problem');
-        const cardSpace = card.getAttribute('data-space');
-        const cardMaterial = card.getAttribute('data-material');
-
-        const matchProblem = activeProblem === 'all' || cardProblem === activeProblem;
-        const matchSpace = activeSpace === 'all' || cardSpace === activeSpace;
-        const matchMaterial = activeMaterial === 'all' || cardMaterial === activeMaterial;
-
-        if (matchProblem && matchSpace && matchMaterial) {
-          (card as HTMLElement).style.display = 'flex';
-        } else {
-          (card as HTMLElement).style.display = 'none';
-        }
-      });
-    }
-
-    problemBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        problemBtns.forEach((b) => b.classList.remove('active-filter'));
-        btn.classList.add('active-filter');
-        activeProblem = btn.getAttribute('data-filter') || 'all';
-        applyFilters();
-      });
-    });
-
-    spaceBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        spaceBtns.forEach((b) => b.classList.remove('active-filter'));
-        btn.classList.add('active-filter');
-        activeSpace = btn.getAttribute('data-filter') || 'all';
-        applyFilters();
-      });
-    });
-
-    materialBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        materialBtns.forEach((b) => b.classList.remove('active-filter'));
-        btn.classList.add('active-filter');
-        activeMaterial = btn.getAttribute('data-filter') || 'all';
-        applyFilters();
-      });
-    });
-  </script>
 </BaseLayout>

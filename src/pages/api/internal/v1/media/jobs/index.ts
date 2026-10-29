@@ -43,11 +43,23 @@ export const GET: APIRoute = async ({ request, url, locals }) => {
   const db = (await getDb(locals)) || env.DB || (locals as any)?.db;
 
   if (!db) {
+    if (import.meta.env.DEV) {
+      console.warn('[MEDIA_JOBS_API] locals.runtime.env.DB is unavailable (dev HMR reload window).');
+    }
     return errorResponse(500, 'DATABASE_UNAVAILABLE', 'Koneksi database D1 tidak tersedia.');
   }
 
-  // Authenticate device
-  const auth = await authenticateDeviceRequest(request, db, env);
+  // Authenticate device with safe classification of unexpected exceptions
+  let auth;
+  try {
+    auth = await authenticateDeviceRequest(request, db, env);
+  } catch (authErr: any) {
+    if (import.meta.env.DEV) {
+      console.error('[MEDIA_JOBS_API] Unexpected authentication exception:', authErr?.message || authErr);
+    }
+    return errorResponse(500, 'AUTH_INTERNAL_ERROR', 'Terjadi kesalahan internal saat memverifikasi autentikasi perangkat.');
+  }
+
   if (!auth.authenticated) {
     return errorResponse(auth.statusCode || 401, 'AUTHENTICATION_REQUIRED', auth.error || 'Autentikasi perangkat gagal.');
   }
@@ -68,7 +80,10 @@ export const GET: APIRoute = async ({ request, url, locals }) => {
       jobs
     });
   } catch (err: any) {
-    return errorResponse(500, 'INTERNAL_ERROR', err.message || 'Gagal mengambil daftar pekerjaan media.');
+    if (import.meta.env.DEV) {
+      console.error('[MEDIA_JOBS_API] Unexpected error in listMediaJobs:', err?.message || err);
+    }
+    return errorResponse(500, 'INTERNAL_ERROR', 'Gagal mengambil daftar pekerjaan media.');
   }
 };
 

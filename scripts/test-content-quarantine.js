@@ -143,7 +143,8 @@ await test('public search JSON excludes quarantine and returns Article 5', async
 });
 await test('robots.txt allows crawling every quarantined URL', () => {
   const robots = fs.readFileSync('public/robots.txt', 'utf8');
-  const denied = [...robots.matchAll(/^Disallow:\s*(\S+)/gm)].map(m => m[1]);
+  const userAgentBlock = robots.split(/User-agent:\s*/i).find(s => s.trim().startsWith('*')) || '';
+  const denied = [...userAgentBlock.matchAll(/^Disallow:\s*(\S+)/gm)].map(m => m[1]);
   for (const slug of [...expected, a6]) assert.ok(denied.every(p => !('/' + slug).startsWith(p)));
 });
 await test('removing registry entry restores same-slug eligibility without changing content', () => {

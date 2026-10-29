@@ -1,21 +1,24 @@
 import type { APIRoute } from 'astro';
-import { getDb, getAllCategories, getSiteSettings } from '../lib/db';
+import { getDb, getAllCategories, getSiteSettings, getCategorySitemapData } from '../lib/db';
 
 export const GET: APIRoute = async ({ locals }) => {
   const db = await getDb(locals);
-  const [categories, settings] = await Promise.all([
+  const [categories, settings, catData] = await Promise.all([
     getAllCategories(db),
-    getSiteSettings(db)
+    getSiteSettings(db),
+    getCategorySitemapData(db)
   ]);
 
   const siteUrl = settings.site_url || 'https://rancangloka.com';
-  const now = new Date().toISOString();
+  const homepageMod = catData.latestOverallMod;
+  const homepageModTag = homepageMod ? `\n    <lastmod>${homepageMod}</lastmod>` : '';
 
   const urls = categories
     .map((c) => {
+      const catMod = catData.categoryMods.get(c.id);
+      const lastmodTag = catMod ? `\n    <lastmod>${catMod}</lastmod>` : '';
       return `  <url>
-    <loc>${siteUrl}/category/${c.slug}</loc>
-    <lastmod>${now}</lastmod>
+    <loc>${siteUrl}/category/${c.slug}</loc>${lastmodTag}
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>`;
@@ -23,11 +26,9 @@ export const GET: APIRoute = async ({ locals }) => {
     .join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet type="text/xsl" href="/main-sitemap.xsl"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${siteUrl}</loc>
-    <lastmod>${now}</lastmod>
+    <loc>${siteUrl}</loc>${homepageModTag}
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>

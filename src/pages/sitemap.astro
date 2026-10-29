@@ -1,0 +1,496 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import {
+  getDb,
+  getAllCategories,
+  getSiteSettings,
+  getAllArticles,
+  getTotalArticlesCount,
+  getPostSitemapPageLastmods,
+  getPageSitemapLatestMod,
+  getCategorySitemapData,
+  getEligibleNewsArticles
+} from '../lib/db';
+import { isPubliclyDiscoverable } from '../lib/quarantine';
+
+const db = await getDb(Astro.locals);
+
+// Scalable pagination support: 100 articles per directory view
+const PAGE_SIZE = 100;
+const pageParam = Astro.url.searchParams.get('p');
+let requestedPage = pageParam ? parseInt(pageParam, 10) : 1;
+if (isNaN(requestedPage) || requestedPage < 1) requestedPage = 1;
+
+const fortyEightHoursAgo = Date.now() - 48 * 3600 * 1000;
+
+// Execute parallel metadata queries - zero N+1 queries, zero full markdown/HTML article bodies
+const [
+  categories,
+  siteSettings,
+  totalPublishedArticles,
+  postPages,
+  pageLastmod,
+  categoryData,
+  newsArticles
+] = await Promise.all([
+  getAllCategories(db),
+  getSiteSettings(db),
+  getTotalArticlesCount(db, 'published'),
+  getPostSitemapPageLastmods(db, 1000),
+  getPageSitemapLatestMod(db),
+  getCategorySitemapData(db),
+  getEligibleNewsArticles(db, fortyEightHoursAgo)
+]);
+
+const totalPages = Math.max(1, Math.ceil(totalPublishedArticles / PAGE_SIZE));
+const currentPage = Math.min(requestedPage, totalPages);
+const offset = (currentPage - 1) * PAGE_SIZE;
+
+// Retrieve only necessary metadata (id, slug, title, category_id, published_at, updated_at)
+// db.ts getAllArticles projects empty strings for content_md and content_html
+const rawArticles = await getAllArticles(db, PAGE_SIZE, offset, 'published');
+const articles = rawArticles.filter(a => isPubliclyDiscoverable(a));
+
+const siteUrl = siteSettings.site_url || 'https://rancangloka.com';
+const canonicalUrl = currentPage === 1 ? `${siteUrl}/sitemap` : `${siteUrl}/sitemap?p=${currentPage}`;
+
+const breadcrumbItems = [
+  { name: 'Beranda', url: '/' },
+  { name: 'Peta Situs', url: '/sitemap' }
+];
+
+// Group articles by actual categories
+const articlesByCategory: Record<number, typeof articles> = {};
+for (const cat of categories) {
+  articlesByCategory[cat.id] = articles.filter(a => a.category_id === cat.id);
+}
+
+// Compute accurate lastmod timestamps for XML Sitemaps (no fabrication)
+const postSitemapMod = postPages[0]?.lastmod || null;
+const categorySitemapMod = categoryData.latestOverallMod || null;
+const pageSitemapMod = pageLastmod || null;
+
+const newsDates = newsArticles
+  .map((a) => {
+    const u = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+    const pub = a.published_at ? new Date(a.published_at).getTime() : 0;
+    return Math.max(u, pub);
+  })
+  .filter((t) => t > 0 && !isNaN(t));
+const newsSitemapMod = newsDates.length > 0 ? new Date(Math.max(...newsDates)).toISOString() : null;
+
+const allSitemapMods = [postSitemapMod, categorySitemapMod, pageSitemapMod, newsSitemapMod]
+  .filter(Boolean)
+  .map((m) => new Date(m!).getTime())
+  .filter((t) => !isNaN(t));
+const indexSitemapMod = allSitemapMods.length > 0 ? new Date(Math.max(...allSitemapMods)).toISOString() : null;
+
+// Verified Public Canonical Pages (routes verified in codebase)
+const institutionalPages = [
+  { name: 'Beranda', url: '/', desc: 'Wajah utama publikasi independen, liputan terdepan, dan kurasi hunian terkini.', type: 'Laman Utama' },
+  { name: 'Eksplorasi Arsip', url: '/explore', desc: 'Katalog arsip seluruh publikasi editorial dengan filter kategori komprehensif.', type: 'Direktori Konten' },
+  { name: 'Indeks Solusi Masalah Rumah', url: '/solusi', desc: 'Navigasi kurasi pemecahan masalah spasial hunian tropis dan kenyamanan ruang.', type: 'Problem Solver' },
+  { name: 'Komparasi Material Bangunan', url: '/komparasi', desc: 'Matriks perbandingan spesifikasi teknis materialitas tropis independen.', type: 'Kajian Teknis' },
+  { name: 'Metodologi & Standar Riset', url: '/metodologi', desc: 'Transparansi pengujian material, rekayasa iklim tropis, dan objektivitas kurasi.', type: 'Transparansi' },
+  { name: 'Standar Editorial & Etika', url: '/editorial-standards', desc: 'Pedoman penulisan, integritas, dan independensi tanpa sponsor terselubung.', type: 'Etika Editorial' },
+  { name: 'Tentang RancangLoka', url: '/tentang-kami', desc: 'Mengenal visi independensi kurasi editorial arsitektur dan tata ruang Indonesia.', type: 'Institusional' },
+  { name: 'Hubungi Redaksi & Kontak', url: '/kontak', desc: 'Saluran komunikasi resmi pembaca, kemitraan, dan permohonan liputan.', type: 'Komunikasi' },
+  { name: 'Pedoman Media Siber', url: '/pedoman-media-siber', desc: 'Kepatuhan standar jurnalistik, kebijakan koreksi terbuka, dan hak jawab.', type: 'Legal & Regulasi' },
+  { name: 'Kebijakan Privasi', url: '/kebijakan-privasi', desc: 'Perlindungan data pribadi, kebijakan kuki (cookies), dan privasi pengunjung.', type: 'Kebijakan Privasi' }
+];
+
+const xmlSitemaps = [
+  {
+    name: 'Indeks Sitemap Utama',
+    loc: '/sitemap.xml',
+    format: 'XML Sitemap Index',
+    target: 'Googlebot, Bingbot, IndexNow',
+    desc: 'Indeks hierarkis utama yang merangkum seluruh berkas peta situs spesifik.',
+    lastmod: indexSitemapMod
+  },
+  {
+    name: 'Sitemap Artikel & Panduan',
+    loc: '/post-sitemap.xml',
+    format: 'XML Urlset',
+    target: 'Googlebot, Bingbot',
+    desc: 'Seluruh naskah kajian arsitektur, renovasi, dan panduan material terbit.',
+    lastmod: postSitemapMod
+  },
+  {
+    name: 'Sitemap Kategori & Topik',
+    loc: '/category-sitemap.xml',
+    format: 'XML Urlset',
+    target: 'Googlebot, Bingbot',
+    desc: 'Indeks seluruh arsip taksonomi dan kategori liputan spasial.',
+    lastmod: categorySitemapMod
+  },
+  {
+    name: 'Sitemap Laman Statis',
+    loc: '/page-sitemap.xml',
+    format: 'XML Urlset',
+    target: 'Googlebot, Bingbot',
+    desc: 'Dokumentasi kelembagaan, metodologi, standar editorial, dan laman legal.',
+    lastmod: pageSitemapMod
+  },
+  {
+    name: 'Sitemap Google News',
+    loc: '/sitemap-news.xml',
+    format: 'XML News Urlset',
+    target: 'Google News Bot',
+    desc: 'Artikel mutakhir yang memenuhi syarat kelayakan berita dalam jendela 48 jam.',
+    lastmod: newsSitemapMod
+  }
+];
+
+function formatDateIndo(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
+    });
+  } catch {
+    return '';
+  }
+}
+
+function formatUtcTimestamp(dateStr?: string | null): string {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+  } catch {
+    return '—';
+  }
+}
+---
+
+<BaseLayout
+  title="Peta Situs RancangLoka — Direktori Konten & Panduan Hunian"
+  description="Peta situs resmi RancangLoka. Temukan seluruh artikel arsitektur, panduan material bangunan, indeks kategori, halaman kelembagaan, dan direktori sitemap XML mesin pencari."
+  canonicalUrl={canonicalUrl}
+  categories={categories}
+  siteSettings={siteSettings}
+>
+  <div class="editorial-container py-6 sm:py-10">
+    <!-- Breadcrumb Navigation -->
+    <Breadcrumbs items={breadcrumbItems} />
+
+    <!-- A. Page Header -->
+    <header class="my-8 rounded-2xl bg-warm p-8 sm:p-12 border border-line">
+      <div class="max-w-3xl">
+        <span class="eyebrow bg-lemon/40 text-deep border border-deep/20 px-3 py-1 rounded-full mb-3 inline-block">
+          ✦ DIREKTORI KONTEN & PETA SITUS
+        </span>
+        <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-ink leading-tight">
+          Peta Situs RancangLoka
+        </h1>
+        <p class="mt-3 text-sm sm:text-base text-muted leading-relaxed">
+          Direktori konten resmi untuk membantu pembaca menemukan naskah panduan, komparasi material, kategori ruang, dan laman institusional, sekaligus menyediakan struktur penjelajahan internal yang rapi bagi mesin pencari.
+        </p>
+      </div>
+    </header>
+
+    <!-- Quick Navigation Anchor Chips -->
+    <nav aria-label="Navigasi Pintas Bagian" class="mb-10 flex flex-wrap items-center gap-2 p-4 rounded-xl border border-line bg-surface text-xs">
+      <span class="font-bold text-ink mr-1 font-mono uppercase tracking-wider text-[11px]">
+        Lompat Ke:
+      </span>
+      <a href="#kategori-topik" class="px-3 py-1 rounded-full bg-neutral-soft hover:bg-lemon hover:text-deep text-ink font-medium transition">
+        Kategori Liputan
+      </a>
+      <a href="#direktori-artikel" class="px-3 py-1 rounded-full bg-neutral-soft hover:bg-lemon hover:text-deep text-ink font-medium transition">
+        Daftar Artikel ({totalPublishedArticles})
+      </a>
+      <a href="#halaman-utama" class="px-3 py-1 rounded-full bg-neutral-soft hover:bg-lemon hover:text-deep text-ink font-medium transition">
+        Halaman Utama & Legal
+      </a>
+      <a href="#xml-sitemap" class="px-3 py-1 rounded-full bg-neutral-soft hover:bg-lemon hover:text-deep text-ink font-medium transition">
+        Berkas XML Sitemap
+      </a>
+    </nav>
+
+    <!-- B. Browse by Category -->
+    <section id="kategori-topik" class="mb-12">
+      <div class="flex items-center justify-between mb-4 pb-2 border-b border-line">
+        <h2 class="font-serif text-xl sm:text-2xl font-bold text-ink flex items-center gap-2.5">
+          <span class="w-2.5 h-6 bg-lemon rounded-xs inline-block" aria-hidden="true"></span>
+          Jelajahi Berdasarkan Kategori
+        </h2>
+        <span class="text-xs font-mono text-meta font-semibold">
+          {categories.length} Kategori
+        </span>
+      </div>
+      <p class="text-xs sm:text-sm text-muted mb-6 leading-relaxed">
+        Pilih kategori liputan untuk membuka arsip kurasi kanonikal sesuai aspek ruang, material, atau rekayasa hunian.
+      </p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {categories.map((cat) => {
+          const count = articlesByCategory[cat.id]?.length || 0;
+          return (
+            <a
+              href={`/category/${cat.slug}`}
+              class="group block p-4 rounded-xl border border-line bg-surface hover:border-primary hover:bg-warm/40 transition shadow-2xs"
+            >
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <span class="font-serif font-bold text-sm text-ink group-hover:text-primary transition">
+                  {cat.name}
+                </span>
+                <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-neutral-soft text-muted font-semibold group-hover:bg-lemon group-hover:text-deep transition">
+                  {count}
+                </span>
+              </div>
+              {cat.description && (
+                <p class="text-[11px] text-muted line-clamp-2 leading-relaxed">
+                  {cat.description}
+                </p>
+              )}
+              <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-primary mt-2 group-hover:translate-x-1 transition-transform">
+                Buka Arsip <span aria-hidden="true">→</span>
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+
+    <!-- C. Published Articles Directory -->
+    <section id="direktori-artikel" class="mb-14">
+      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between mb-6 pb-3 border-b border-line gap-2">
+        <div>
+          <h2 class="font-serif text-2xl font-bold text-ink flex items-center gap-2.5">
+            <span class="w-2.5 h-6 bg-lemon rounded-xs inline-block" aria-hidden="true"></span>
+            Direktori Artikel Terbit
+          </h2>
+          <p class="text-xs sm:text-sm text-muted mt-1">
+            Daftar seluruh panduan dan kajian hunian yang telah terverifikasi dan berstatus terbit kanonikal.
+          </p>
+        </div>
+        <span class="text-xs font-mono text-meta font-semibold self-start sm:self-auto">
+          Total: {totalPublishedArticles} Artikel
+        </span>
+      </div>
+
+      <div class="space-y-8">
+        {categories.map((cat) => {
+          const catArticles = articlesByCategory[cat.id] || [];
+          return (
+            <article id={`kategori-${cat.slug}`} class="rounded-xl border border-line bg-surface p-6 sm:p-7 shadow-2xs">
+              <div class="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-line pb-3 mb-4 gap-2">
+                <div>
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2 h-2 rounded-full" style={`background-color: ${cat.color_badge || '#73641E'};`} aria-hidden="true"></span>
+                    <h3 class="font-serif text-lg sm:text-xl font-bold text-ink">
+                      <a href={`/category/${cat.slug}`} class="hover:text-primary transition">
+                        {cat.name}
+                      </a>
+                    </h3>
+                  </div>
+                  {cat.description && (
+                    <p class="text-xs text-muted mt-1 max-w-2xl">{cat.description}</p>
+                  )}
+                </div>
+                <a
+                  href={`/category/${cat.slug}`}
+                  class="text-xs font-semibold text-primary hover:text-deep transition self-start sm:self-auto inline-flex items-center gap-1"
+                >
+                  <span>Arsip Kategori ({catArticles.length})</span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              </div>
+
+              {catArticles.length > 0 ? (
+                <ul class="divide-y divide-line/60 text-xs sm:text-sm">
+                  {catArticles.map((art) => {
+                    const pubDate = formatDateIndo(art.published_at);
+                    return (
+                      <li class="py-3 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 group">
+                        <a
+                          href={`/${art.slug}`}
+                          class="text-ink group-hover:text-primary transition font-medium flex items-start gap-2.5 max-w-3xl"
+                        >
+                          <span class="text-lemon mt-1 flex-shrink-0" aria-hidden="true">▪</span>
+                          <span class="leading-relaxed group-hover:underline">{art.title}</span>
+                        </a>
+                        <div class="flex items-center gap-3 sm:flex-shrink-0 text-xs text-muted font-mono pl-5 sm:pl-0">
+                          {pubDate && (
+                            <time datetime={art.published_at || ''} class="text-[11px] text-muted">
+                              {pubDate}
+                            </time>
+                          )}
+                          {art.reading_time_minutes ? (
+                            <span class="text-[10px] px-2 py-0.5 rounded-sm bg-neutral-soft text-muted">
+                              {art.reading_time_minutes} mnt
+                            </span>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p class="text-xs text-muted italic py-2">
+                  Belum ada naskah terbit pada kategori ini.
+                </p>
+              )}
+            </article>
+          );
+        })}
+      </div>
+
+      <!-- Server-Rendered Pagination Controls -->
+      {totalPages > 1 && (
+        <nav aria-label="Navigasi Halaman Direktori" class="flex items-center justify-between border-t border-line pt-6 mt-8">
+          {currentPage > 1 ? (
+            <a
+              href={currentPage === 2 ? '/sitemap' : `/sitemap?p=${currentPage - 1}`}
+              class="px-4 py-2 rounded-lg border border-line bg-surface text-xs font-semibold text-ink hover:bg-warm transition"
+            >
+              ← Halaman Sebelumnya
+            </a>
+          ) : <div />}
+          <span class="text-xs font-mono text-muted">
+            Halaman {currentPage} dari {totalPages}
+          </span>
+          {currentPage < totalPages ? (
+            <a
+              href={`/sitemap?p=${currentPage + 1}`}
+              class="px-4 py-2 rounded-lg border border-line bg-surface text-xs font-semibold text-ink hover:bg-warm transition"
+            >
+              Halaman Berikutnya →
+            </a>
+          ) : <div />}
+        </nav>
+      )}
+    </section>
+
+    <!-- D. Important Pages (Halaman Utama & Kelembagaan) -->
+    <section id="halaman-utama" class="mb-14">
+      <div class="mb-6 pb-3 border-b border-line">
+        <h2 class="font-serif text-2xl font-bold text-ink flex items-center gap-2.5">
+          <span class="w-2.5 h-6 bg-lemon rounded-xs inline-block" aria-hidden="true"></span>
+          Halaman Utama & Kelembagaan
+        </h2>
+        <p class="text-xs sm:text-sm text-muted mt-1">
+          Akses navigasi terstruktur menuju laman operasional, metodologi evaluasi, dan kepatuhan redaksional RancangLoka.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {institutionalPages.map((page) => (
+          <div class="p-5 rounded-xl border border-line bg-surface flex flex-col justify-between shadow-2xs hover:border-primary/50 transition">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-lemon-soft text-deep font-bold border border-lemon/40">
+                  {page.type}
+                </span>
+                <code class="text-[11px] font-mono text-muted">
+                  {page.url}
+                </code>
+              </div>
+              <a href={page.url} class="font-serif text-base font-bold text-ink hover:text-primary transition block mb-1.5">
+                {page.name}
+              </a>
+              <p class="text-xs text-muted leading-relaxed">
+                {page.desc}
+              </p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-line/60">
+              <a
+                href={page.url}
+                class="text-xs font-semibold text-primary hover:text-deep transition inline-flex items-center gap-1"
+              >
+                <span>Kunjungi Halaman</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- E. XML Sitemap Directory -->
+    <section id="xml-sitemap" class="mb-12 rounded-2xl border border-line bg-warm/60 p-6 sm:p-8">
+      <div class="max-w-3xl mb-6">
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="w-2.5 h-6 bg-lemon rounded-xs inline-block" aria-hidden="true"></span>
+          <h2 class="font-serif text-xl sm:text-2xl font-bold text-ink">
+            Direktori Berkas XML Sitemap (Mesin Pencari)
+          </h2>
+        </div>
+        <p class="text-xs sm:text-sm text-muted leading-relaxed">
+          Berkas XML Sitemap di bawah ini dibuat otomatis sesuai protokol standar <a href="https://www.sitemaps.org" target="_blank" rel="noopener noreferrer" class="text-primary underline">Sitemaps.org</a> tanpa ketergantungan XSLT peramban. Berkas ini ditujukan untuk memandu perayap web seperti Googlebot dan Bingbot dalam memetakan seluruh indeks konten secara deterministik.
+        </p>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-line bg-surface shadow-2xs">
+        <table class="w-full text-left text-xs sm:text-sm border-collapse">
+          <thead>
+            <tr class="border-b border-line bg-neutral-soft/60 text-ink font-semibold font-mono text-[11px] uppercase tracking-wider">
+              <th scope="col" class="py-3 px-4 sm:px-6">URL Berkas Sitemap</th>
+              <th scope="col" class="py-3 px-4">Tipe & Cakupan</th>
+              <th scope="col" class="py-3 px-4 hidden md:table-cell">Target Konsumsi</th>
+              <th scope="col" class="py-3 px-4 sm:px-6 text-right">Terakhir Diperbarui</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line/60">
+            {xmlSitemaps.map((item) => (
+              <tr class="hover:bg-warm/40 transition">
+                <td class="py-3.5 px-4 sm:px-6">
+                  <a
+                    href={item.loc}
+                    class="font-mono text-xs font-bold text-primary hover:text-deep underline flex items-center gap-1.5"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span>{item.loc}</span>
+                    <svg class="w-3.5 h-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                  <div class="text-[11px] text-muted mt-0.5">{item.name}</div>
+                </td>
+                <td class="py-3.5 px-4 text-xs">
+                  <span class="inline-block px-2 py-0.5 rounded bg-neutral-soft text-ink font-mono text-[10px] font-semibold border border-line mb-1">
+                    {item.format}
+                  </span>
+                  <p class="text-[11px] text-muted line-clamp-1">{item.desc}</p>
+                </td>
+                <td class="py-3.5 px-4 hidden md:table-cell text-xs text-muted font-mono">
+                  {item.target}
+                </td>
+                <td class="py-3.5 px-4 sm:px-6 text-right font-mono text-xs text-ink whitespace-nowrap">
+                  {item.lastmod ? (
+                    <time datetime={item.lastmod} title={item.lastmod}>
+                      {formatUtcTimestamp(item.lastmod)}
+                    </time>
+                  ) : (
+                    <span class="text-muted" title="Tidak ada pembaruan terkini atau menunggu publikasi naskah">
+                      —
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-muted gap-2">
+        <p>
+          💡 Waktu pembaruan dihitung secara deterministik berbasis stempel modifikasi aktual naskah (bukan waktu permintaan).
+        </p>
+        <a href="/rss.xml" class="text-primary hover:text-deep font-semibold underline inline-flex items-center gap-1">
+          <span>RSS Feed Kanal (/rss.xml)</span>
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </section>
+  </div>
+</BaseLayout>

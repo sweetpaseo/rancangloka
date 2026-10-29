@@ -30,7 +30,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const body = await request.json().catch(() => ({}));
     validateProtocolVersion(body.protocol_version);
-    const lease = await acquireMediaJobLease(db, auth.deviceId || 'media_device');
+    const targetJobId = body.job_id || body.target_job_id || null;
+    const lease = await acquireMediaJobLease(db, auth.deviceId || 'media_device', { targetJobId });
     if (!lease.acquired || !lease.job) {
       return json(200, {
         status: 'no_work',

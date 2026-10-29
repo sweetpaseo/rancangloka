@@ -157,7 +157,7 @@
   });
 
   // Global toggle save function attached to window
-  (window as any).toggleSaveBookmark = function(item: BookmarkItem) {
+  window.toggleSaveBookmark = function(item: BookmarkItem) {
     const items = getBookmarks();
     const existingIndex = items.findIndex(i => i.slug === item.slug);
 

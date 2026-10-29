@@ -1,0 +1,585 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+
+const db = await getDb(Astro.locals);
+const [articles, categories, siteSettings] = await Promise.all([
+  getAllArticles(db, 10, 0, 'published'),
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+
+const featured = articles[0] || {
+  title: "Perbedaan Atap Metal dan Genteng Beton untuk Rumah Tropis",
+  description: "Bukan sekadar soal harga atau tampilan. Di iklim tropis dengan panas terik dan tempias hujan deras, pilihan material atap menentukan kenyamanan termal ruangan di bawahnya bertahun-tahun ke depan.",
+  category_name: "Material & Konstruksi",
+  reading_time_minutes: 6,
+  author_name: "Dewan Redaksi",
+  author_role: "Editor Spesifikasi & Desain",
+  published_at: "2026-10-28"
+};
+
+const secondaryStory1 = articles[1] || {
+  title: "Merancang Void dan Tangga Terbuka untuk Rumah Lebar 5 Meter",
+  category_name: "Desain Spasial",
+  reading_time_minutes: 5
+};
+
+const secondaryStory2 = articles[2] || {
+  title: "5 Cara Mengurangi Silau Matahari Barat Tanpa Menutup Tirai Sepanjang Hari",
+  category_name: "Pencahayaan Alami",
+  reading_time_minutes: 4
+};
+---
+
+<BaseLayout
+  title="Fresh Editorial Typography Exploration — Local Preview"
+  description="Perbandingan visual dan teknis 3 arah: Option A (Current Baseline), Option B (Fresh Editorial Plus Jakarta Sans), dan Option C (Lifestyle Magazine Outfit)."
+  categories={categories}
+  siteSettings={siteSettings}
+  noindex={true}
+>
+  <div class="editorial-container py-8 max-w-[1360px]">
+    <!-- Breadcrumb & Header Title -->
+    <div class="mb-8 border-b border-[var(--line)] pb-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="eyebrow">Eksplorasi Tipografi Redaksional · Dimas / Antigravity</span>
+          <h1 class="font-sans text-3xl sm:text-4xl font-extrabold text-[var(--ink)] tracking-tight mt-1 mb-2">
+            Fresh Editorial Typography Exploration
+          </h1>
+          <p class="text-sm sm:text-base text-[var(--muted)] max-w-3xl leading-relaxed">
+            Inspirasi energi editorial <strong>HGTV.com</strong> yang muda, segar, ramah, dan santai untuk <strong>RancangLoka Magazine 2.1</strong>.
+            Format perbandingan lokal 3 arah tanpa perubahan branding atau aset hak cipta pihak ketiga.
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300">
+            <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+            LOCAL PREVIEW ONLY
+          </span>
+          <a
+            href="/"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[var(--ink)] border border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--lemon-soft)] transition-colors"
+          >
+            ← Kembali ke Homepage
+          </a>
+        </div>
+      </div>
+
+      <!-- Quick Option Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        <!-- Option A -->
+        <div class="p-4 rounded-xl border-2 border-stone-300 bg-white shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-stone-100 text-stone-800">
+              OPTION A
+            </span>
+            <span class="text-[11px] font-mono text-stone-500">Baseline</span>
+          </div>
+          <h3 class="font-serif text-lg text-stone-900 font-normal">Current Editorial</h3>
+          <p class="text-xs text-stone-600 mt-1 leading-relaxed">
+            <strong>Newsreader / Georgia serif</strong> untuk headline dan kartu. <strong>Plus Jakarta Sans</strong> untuk body text. Gaya majalah arsitektur klasik terbitan cetak.
+          </p>
+          <div class="mt-3 pt-2.5 border-t border-stone-200 text-[11px] font-mono text-stone-500 flex justify-between">
+            <span>Font: Newsreader 400</span>
+            <span class="text-emerald-700 font-semibold">Aktif saat ini</span>
+          </div>
+        </div>
+
+        <!-- Option B -->
+        <div class="p-4 rounded-xl border-2 border-emerald-500 bg-emerald-50/30 shadow-xs relative overflow-hidden">
+          <div class="absolute -right-8 -top-8 w-20 h-20 bg-emerald-200/50 rounded-full blur-xl pointer-events-none"></div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-600 text-white">
+              OPTION B · HGTV-INSPIRED
+            </span>
+            <span class="text-[11px] font-mono text-emerald-700 font-bold">0 KB Extra Download</span>
+          </div>
+          <h3 class="font-sans text-lg text-emerald-950 font-bold">Fresh Editorial</h3>
+          <p class="text-xs text-emerald-900/80 mt-1 leading-relaxed">
+            <strong>Plus Jakarta Sans</strong> menyeluruh untuk headline (bold 700–800), kartu, navigasi, dan body. Muda, energik, kasual, sangat mudah dibaca di layar HP, bebas kesan kaku/akademis.
+          </p>
+          <div class="mt-3 pt-2.5 border-t border-emerald-200 text-[11px] font-mono text-emerald-700 flex justify-between">
+            <span>Font: Plus Jakarta Sans</span>
+            <span class="font-bold text-emerald-800">Direkomendasikan</span>
+          </div>
+        </div>
+
+        <!-- Option C -->
+        <div class="p-4 rounded-xl border-2 border-blue-400 bg-blue-50/30 shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-blue-600 text-white">
+              OPTION C
+            </span>
+            <span class="text-[11px] font-mono text-blue-700">+28 KB woff2</span>
+          </div>
+          <h3 class="font-sans text-lg text-blue-950 font-semibold" style="font-family: 'Outfit', sans-serif;">Lifestyle Magazine</h3>
+          <p class="text-xs text-blue-900/80 mt-1 leading-relaxed">
+            <strong>Outfit</strong> geometris modern untuk headline & kartu (bobot 600–700 proporsional). <strong>Plus Jakarta Sans</strong> untuk body. Gaya publikasi desain kontemporer modern.
+          </p>
+          <div class="mt-3 pt-2.5 border-t border-blue-200 text-[11px] font-mono text-blue-700 flex justify-between">
+            <span>Font: Outfit + PJ Sans</span>
+            <span>Lifestyle Modern</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HGTV.com Live Inspection Findings Summary -->
+    <div class="mb-10 bg-slate-50 border border-slate-200 rounded-xl p-5 text-xs text-slate-700">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="h-2 w-2 rounded-full bg-blue-600"></span>
+        <h4 class="font-bold text-slate-900 uppercase tracking-wider text-[11px] font-mono">
+          Data Hasil Inspeksi Tipografi Aktual HGTV.com (Live DevTools Telemetry)
+        </h4>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-500 font-mono text-[10px] uppercase">
+              <th class="py-2 pr-4">Elemen</th>
+              <th class="py-2 pr-4">Computed Font Family</th>
+              <th class="py-2 pr-4">Weight</th>
+              <th class="py-2 pr-4">Size / Line Height</th>
+              <th class="py-2 pr-4">Letter Spacing</th>
+              <th class="py-2">Status Temuan</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
+            <tr>
+              <td class="py-2 font-bold text-slate-900">Main Headlines (H2/Hero)</td>
+              <td class="py-2 text-slate-600">Gotham SSm, Gotham SSm Fallback, Helvetica</td>
+              <td class="py-2 font-bold text-blue-700">200 (Light Display)</td>
+              <td class="py-2">38px / 45.6px (1.2)</td>
+              <td class="py-2">normal</td>
+              <td class="py-2 text-emerald-700 font-bold">✓ Terverifikasi DevTools</td>
+            </tr>
+            <tr>
+              <td class="py-2 font-bold text-slate-900">Card Titles (H3)</td>
+              <td class="py-2 text-slate-600">Gotham SSm, Gotham SSm Fallback, Helvetica</td>
+              <td class="py-2 font-bold text-blue-700">200 / 400–600</td>
+              <td class="py-2">18.5px–26px / 1.2</td>
+              <td class="py-2">normal</td>
+              <td class="py-2 text-emerald-700 font-bold">✓ Terverifikasi DevTools</td>
+            </tr>
+            <tr>
+              <td class="py-2 font-bold text-slate-900">Navigation Links</td>
+              <td class="py-2 text-slate-600">Gotham SSm, Gotham SSm Fallback, Helvetica</td>
+              <td class="py-2 font-bold text-blue-700">400–600</td>
+              <td class="py-2">14px–16px / 1.1–1.2</td>
+              <td class="py-2">0.02em</td>
+              <td class="py-2 text-emerald-700 font-bold">✓ Terverifikasi DevTools</td>
+            </tr>
+            <tr>
+              <td class="py-2 font-bold text-slate-900">Body Text</td>
+              <td class="py-2 text-slate-600">Gotham SSm, Gotham SSm Fallback, Helvetica</td>
+              <td class="py-2 font-bold text-blue-700">300 / 400</td>
+              <td class="py-2">16px / 24px (1.5)</td>
+              <td class="py-2">normal</td>
+              <td class="py-2 text-emerald-700 font-bold">✓ Terverifikasi DevTools</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3 text-[11px] text-slate-500 leading-relaxed font-sans">
+        <strong>Pembedaan Fakta vs Inferensi:</strong> Secara teknis, HGTV menggunakan satu jenis font geometris sans-serif (Gotham SSm) secara konsisten di seluruh judul dan teks bodi, mengandalkan bobot tipis-lebar (200 display) untuk judul besar dan bobot jelas (400–600) untuk teks bodi/navigasi. Secara inferensi editorial visual, pendekatan sans-serif yang konsisten dan ramah inilah yang memberikan impresi muda, kasual, dan tidak mengintimidasi pembaca hunian sehari-hari.
+      </p>
+    </div>
+
+    <!-- SECTION 1: SPECIMEN COMPARISON MATRIX (Side-by-Side 3 Columns) -->
+    <div class="mb-16">
+      <div class="flex items-center justify-between mb-4 border-b border-[var(--line)] pb-2">
+        <h2 class="text-xl font-sans font-bold text-[var(--ink)] flex items-center gap-2">
+          <span>1. Specimen Tipografi Side-by-Side</span>
+        </h2>
+        <span class="text-xs font-mono text-[var(--muted)]">Konten & skala identik di ketiga varian</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Column A: CURRENT -->
+        <div class="p-6 rounded-2xl border-2 border-stone-300 bg-white space-y-8" data-typography="current">
+          <div class="border-b border-stone-200 pb-3 flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-stone-100 text-stone-800">
+              VARIAN A: CURRENT
+            </span>
+            <span class="text-xs font-mono text-stone-500">Newsreader 400 Serif</span>
+          </div>
+
+          <!-- Masthead Sample -->
+          <div>
+            <span class="text-[11px] font-mono text-stone-400 uppercase tracking-widest block mb-2">Masthead Lead H1</span>
+            <div class="lead">
+              <span class="eyebrow">The Living Edit · Edisi Tropis</span>
+              <h1 class="font-serif">Rumah yang lebih baik,<br /><em>dimulai dari ide sederhana.</em></h1>
+            </div>
+          </div>
+
+          <!-- Article H1 Sample -->
+          <div class="pt-4 border-t border-stone-100">
+            <span class="text-[11px] font-mono text-stone-400 uppercase tracking-widest block mb-2">Judul Artikel H1</span>
+            <h1 class="font-serif text-2xl sm:text-3xl text-[var(--ink)] leading-[1.15]">
+              {featured.title}
+            </h1>
+          </div>
+
+          <!-- Mosaic Card H3 Sample -->
+          <div class="pt-4 border-t border-stone-100">
+            <span class="text-[11px] font-mono text-stone-400 uppercase tracking-widest block mb-2">Mosaic Card H3</span>
+            <div class="p-5 rounded-xl bg-slate-950 text-white">
+              <span class="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-widest block mb-1">
+                ✦ PILIHAN REDAKSI · MATERIAL
+              </span>
+              <h3 class="font-serif text-xl sm:text-2xl font-normal leading-snug">
+                {secondaryStory1.title}
+              </h3>
+            </div>
+          </div>
+
+          <!-- Story Card H3 Sample -->
+          <div class="pt-4 border-t border-stone-100">
+            <span class="text-[11px] font-mono text-stone-400 uppercase tracking-widest block mb-2">Story Card H3 & Deskripsi</span>
+            <div class="p-4 rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+              <span class="eyebrow text-[10px]">PENCAHAYAAN ALAMI</span>
+              <h3 class="font-serif text-lg text-[var(--ink)] font-normal mt-1 mb-2 leading-snug">
+                {secondaryStory2.title}
+              </h3>
+              <p class="text-xs text-[var(--muted)] leading-relaxed">
+                Panduan praktis menyeimbangkan sirkulasi udara dan shading tanpa membuat interior temaram.
+              </p>
+            </div>
+          </div>
+
+          <!-- Section H2 Sample -->
+          <div class="pt-4 border-t border-stone-100">
+            <span class="text-[11px] font-mono text-stone-400 uppercase tracking-widest block mb-2">Subheading H2 Artikel</span>
+            <h2 class="font-serif text-xl sm:text-2xl text-[var(--ink)] font-normal leading-snug">
+              Performa Radiasi Panas Sore Hari pada Iklim Tropis Lembap
+            </h2>
+          </div>
+
+          <!-- Prose Sample -->
+          <div class="pt-4 border-t border-stone-100">
+            <span class="text-[11px] font-mono text-stone-400 uppercase tracking-widest block mb-2">Body Prose Pembaca</span>
+            <p class="text-sm text-stone-700 leading-relaxed font-sans">
+              Banyak pemilik rumah mengira atap metal selalu membuat ruangan di bawahnya terasa seperti oven. Anggapan ini wajar, terutama jika kita mengingat seng tipis zaman dulu. Namun pada atap metal modern dengan lapisan aluzinc dan insulasi foil double-sided, transmisi radiasi panas dapat ditekan secara signifikan.
+            </p>
+          </div>
+        </div>
+
+        <!-- Column B: FRESH EDITORIAL -->
+        <div class="p-6 rounded-2xl border-2 border-emerald-500 bg-white space-y-8 shadow-md" data-typography="fresh">
+          <div class="border-b border-emerald-100 pb-3 flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-600 text-white">
+              VARIAN B: FRESH EDITORIAL
+            </span>
+            <span class="text-xs font-mono text-emerald-700 font-semibold">PJ Sans 700-800 Bold</span>
+          </div>
+
+          <!-- Masthead Sample -->
+          <div>
+            <span class="text-[11px] font-mono text-emerald-600 uppercase tracking-widest block mb-2">Masthead Lead H1</span>
+            <div class="lead">
+              <span class="eyebrow">The Living Edit · Edisi Tropis</span>
+              <h1 class="font-sans font-extrabold">Rumah yang lebih baik,<br /><em>dimulai dari ide sederhana.</em></h1>
+            </div>
+          </div>
+
+          <!-- Article H1 Sample -->
+          <div class="pt-4 border-t border-emerald-50">
+            <span class="text-[11px] font-mono text-emerald-600 uppercase tracking-widest block mb-2">Judul Artikel H1</span>
+            <h1 class="font-sans text-2xl sm:text-3xl text-[var(--ink)] font-extrabold leading-[1.15] tracking-tight">
+              {featured.title}
+            </h1>
+          </div>
+
+          <!-- Mosaic Card H3 Sample -->
+          <div class="pt-4 border-t border-emerald-50">
+            <span class="text-[11px] font-mono text-emerald-600 uppercase tracking-widest block mb-2">Mosaic Card H3</span>
+            <div class="p-5 rounded-xl bg-slate-950 text-white">
+              <span class="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-widest block mb-1">
+                ✦ PILIHAN REDAKSI · MATERIAL
+              </span>
+              <h3 class="font-sans text-xl sm:text-2xl font-bold leading-snug tracking-tight">
+                {secondaryStory1.title}
+              </h3>
+            </div>
+          </div>
+
+          <!-- Story Card H3 Sample -->
+          <div class="pt-4 border-t border-emerald-50">
+            <span class="text-[11px] font-mono text-emerald-600 uppercase tracking-widest block mb-2">Story Card H3 & Deskripsi</span>
+            <div class="p-4 rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+              <span class="eyebrow text-[10px]">PENCAHAYAAN ALAMI</span>
+              <h3 class="font-sans text-lg text-[var(--ink)] font-bold mt-1 mb-2 leading-snug tracking-tight">
+                {secondaryStory2.title}
+              </h3>
+              <p class="text-xs text-[var(--muted)] leading-relaxed">
+                Panduan praktis menyeimbangkan sirkulasi udara dan shading tanpa membuat interior temaram.
+              </p>
+            </div>
+          </div>
+
+          <!-- Section H2 Sample -->
+          <div class="pt-4 border-t border-emerald-50">
+            <span class="text-[11px] font-mono text-emerald-600 uppercase tracking-widest block mb-2">Subheading H2 Artikel</span>
+            <h2 class="font-sans text-xl sm:text-2xl text-[var(--ink)] font-bold leading-snug tracking-tight">
+              Performa Radiasi Panas Sore Hari pada Iklim Tropis Lembap
+            </h2>
+          </div>
+
+          <!-- Prose Sample -->
+          <div class="pt-4 border-t border-emerald-50">
+            <span class="text-[11px] font-mono text-emerald-600 uppercase tracking-widest block mb-2">Body Prose Pembaca</span>
+            <p class="text-sm text-stone-700 leading-relaxed font-sans">
+              Banyak pemilik rumah mengira atap metal selalu membuat ruangan di bawahnya terasa seperti oven. Anggapan ini wajar, terutama jika kita mengingat seng tipis zaman dulu. Namun pada atap metal modern dengan lapisan aluzinc dan insulasi foil double-sided, transmisi radiasi panas dapat ditekan secara signifikan.
+            </p>
+          </div>
+        </div>
+
+        <!-- Column C: LIFESTYLE MAGAZINE -->
+        <div class="p-6 rounded-2xl border-2 border-blue-400 bg-white space-y-8" data-typography="lifestyle">
+          <div class="border-b border-blue-100 pb-3 flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-blue-600 text-white">
+              VARIAN C: LIFESTYLE
+            </span>
+            <span class="text-xs font-mono text-blue-700">Outfit 600-700 SemiBold</span>
+          </div>
+
+          <!-- Masthead Sample -->
+          <div>
+            <span class="text-[11px] font-mono text-blue-600 uppercase tracking-widest block mb-2">Masthead Lead H1</span>
+            <div class="lead">
+              <span class="eyebrow">The Living Edit · Edisi Tropis</span>
+              <h1 class="font-sans font-bold" style="font-family: 'Outfit', sans-serif;">Rumah yang lebih baik,<br /><em>dimulai dari ide sederhana.</em></h1>
+            </div>
+          </div>
+
+          <!-- Article H1 Sample -->
+          <div class="pt-4 border-t border-blue-50">
+            <span class="text-[11px] font-mono text-blue-600 uppercase tracking-widest block mb-2">Judul Artikel H1</span>
+            <h1 class="font-sans text-2xl sm:text-3xl text-[var(--ink)] font-bold leading-[1.15]" style="font-family: 'Outfit', sans-serif;">
+              {featured.title}
+            </h1>
+          </div>
+
+          <!-- Mosaic Card H3 Sample -->
+          <div class="pt-4 border-t border-blue-50">
+            <span class="text-[11px] font-mono text-blue-600 uppercase tracking-widest block mb-2">Mosaic Card H3</span>
+            <div class="p-5 rounded-xl bg-slate-950 text-white">
+              <span class="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-widest block mb-1">
+                ✦ PILIHAN REDAKSI · MATERIAL
+              </span>
+              <h3 class="font-sans text-xl sm:text-2xl font-semibold leading-snug" style="font-family: 'Outfit', sans-serif;">
+                {secondaryStory1.title}
+              </h3>
+            </div>
+          </div>
+
+          <!-- Story Card H3 Sample -->
+          <div class="pt-4 border-t border-blue-50">
+            <span class="text-[11px] font-mono text-blue-600 uppercase tracking-widest block mb-2">Story Card H3 & Deskripsi</span>
+            <div class="p-4 rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+              <span class="eyebrow text-[10px]">PENCAHAYAAN ALAMI</span>
+              <h3 class="font-sans text-lg text-[var(--ink)] font-semibold mt-1 mb-2 leading-snug" style="font-family: 'Outfit', sans-serif;">
+                {secondaryStory2.title}
+              </h3>
+              <p class="text-xs text-[var(--muted)] leading-relaxed">
+                Panduan praktis menyeimbangkan sirkulasi udara dan shading tanpa membuat interior temaram.
+              </p>
+            </div>
+          </div>
+
+          <!-- Section H2 Sample -->
+          <div class="pt-4 border-t border-blue-50">
+            <span class="text-[11px] font-mono text-blue-600 uppercase tracking-widest block mb-2">Subheading H2 Artikel</span>
+            <h2 class="font-sans text-xl sm:text-2xl text-[var(--ink)] font-semibold leading-snug" style="font-family: 'Outfit', sans-serif;">
+              Performa Radiasi Panas Sore Hari pada Iklim Tropis Lembap
+            </h2>
+          </div>
+
+          <!-- Prose Sample -->
+          <div class="pt-4 border-t border-blue-50">
+            <span class="text-[11px] font-mono text-blue-600 uppercase tracking-widest block mb-2">Body Prose Pembaca</span>
+            <p class="text-sm text-stone-700 leading-relaxed font-sans">
+              Banyak pemilik rumah mengira atap metal selalu membuat ruangan di bawahnya terasa seperti oven. Anggapan ini wajar, terutama jika kita mengingat seng tipis zaman dulu. Namun pada atap metal modern dengan lapisan aluzinc dan insulasi foil double-sided, transmisi radiasi panas dapat ditekan secara signifikan.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: MOBILE VIEWPORT COMPARISON (Side-by-Side 390px iPhone Viewport) -->
+    <div class="mb-16">
+      <div class="flex items-center justify-between mb-4 border-b border-[var(--line)] pb-2">
+        <div>
+          <h2 class="text-xl font-sans font-bold text-[var(--ink)]">
+            2. Perbandingan Mobile Viewport (Lebar Layar 390px)
+          </h2>
+          <p class="text-xs text-[var(--muted)] mt-0.5">
+            Mengevaluasi kerapatan baris, pemotongan kata (line wrap), dan kenyamanan membaca judul panjang pada layar smartphone.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Mobile A -->
+        <div class="flex flex-col items-center">
+          <span class="text-xs font-mono font-bold text-stone-700 mb-2">A. CURRENT (Newsreader Serif)</span>
+          <div class="w-full max-w-[390px] rounded-3xl border-4 border-stone-800 bg-white p-4 shadow-xl overflow-hidden min-h-[580px]" data-typography="current">
+            <div class="lead mb-4">
+              <span class="eyebrow text-[9px]">The Living Edit</span>
+              <h1 class="font-serif text-2xl font-normal leading-tight text-[var(--ink)]">
+                Rumah yang lebih baik,<br /><em>dimulai dari ide sederhana.</em>
+              </h1>
+            </div>
+
+            <!-- Lead Card Mockup -->
+            <div class="relative rounded-lg overflow-hidden bg-slate-900 text-white p-4 min-h-[160px] flex flex-col justify-end mb-4">
+              <span class="text-[9px] font-mono text-amber-300 font-bold uppercase mb-1">✦ PILIHAN REDAKSI</span>
+              <h3 class="font-serif text-lg leading-snug font-normal">
+                {featured.title}
+              </h3>
+            </div>
+
+            <!-- Feed Card Mockup -->
+            <div class="p-3 rounded-lg border border-stone-200 bg-stone-50/50 mb-3">
+              <span class="text-[9px] font-mono text-[var(--primary)] font-bold">MATERIAL & STRUKTUR</span>
+              <h3 class="font-serif text-sm font-normal text-[var(--ink)] mt-1 mb-1 leading-snug">
+                {secondaryStory1.title}
+              </h3>
+              <p class="text-[11px] text-[var(--muted)] line-clamp-2">
+                Studi void vertikal dan sirkulasi alami pada denah hunian kompak 5x12 meter.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile B -->
+        <div class="flex flex-col items-center">
+          <span class="text-xs font-mono font-bold text-emerald-800 mb-2">B. FRESH EDITORIAL (Plus Jakarta Sans)</span>
+          <div class="w-full max-w-[390px] rounded-3xl border-4 border-emerald-700 bg-white p-4 shadow-xl overflow-hidden min-h-[580px]" data-typography="fresh">
+            <div class="lead mb-4">
+              <span class="eyebrow text-[9px]">The Living Edit</span>
+              <h1 class="font-sans text-2xl font-extrabold leading-tight text-[var(--ink)] tracking-tight">
+                Rumah yang lebih baik,<br /><em>dimulai dari ide sederhana.</em>
+              </h1>
+            </div>
+
+            <!-- Lead Card Mockup -->
+            <div class="relative rounded-lg overflow-hidden bg-slate-900 text-white p-4 min-h-[160px] flex flex-col justify-end mb-4">
+              <span class="text-[9px] font-mono text-amber-300 font-bold uppercase mb-1">✦ PILIHAN REDAKSI</span>
+              <h3 class="font-sans text-lg leading-snug font-bold tracking-tight">
+                {featured.title}
+              </h3>
+            </div>
+
+            <!-- Feed Card Mockup -->
+            <div class="p-3 rounded-lg border border-emerald-100 bg-emerald-50/20 mb-3">
+              <span class="text-[9px] font-mono text-[var(--primary)] font-bold">MATERIAL & STRUKTUR</span>
+              <h3 class="font-sans text-sm font-bold text-[var(--ink)] mt-1 mb-1 leading-snug tracking-tight">
+                {secondaryStory1.title}
+              </h3>
+              <p class="text-[11px] text-[var(--muted)] line-clamp-2">
+                Studi void vertikal dan sirkulasi alami pada denah hunian kompak 5x12 meter.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile C -->
+        <div class="flex flex-col items-center">
+          <span class="text-xs font-mono font-bold text-blue-800 mb-2">C. LIFESTYLE (Outfit + PJ Sans)</span>
+          <div class="w-full max-w-[390px] rounded-3xl border-4 border-blue-700 bg-white p-4 shadow-xl overflow-hidden min-h-[580px]" data-typography="lifestyle">
+            <div class="lead mb-4">
+              <span class="eyebrow text-[9px]">The Living Edit</span>
+              <h1 class="font-sans text-2xl font-bold leading-tight text-[var(--ink)]" style="font-family: 'Outfit', sans-serif;">
+                Rumah yang lebih baik,<br /><em>dimulai dari ide sederhana.</em>
+              </h1>
+            </div>
+
+            <!-- Lead Card Mockup -->
+            <div class="relative rounded-lg overflow-hidden bg-slate-900 text-white p-4 min-h-[160px] flex flex-col justify-end mb-4">
+              <span class="text-[9px] font-mono text-amber-300 font-bold uppercase mb-1">✦ PILIHAN REDAKSI</span>
+              <h3 class="font-sans text-lg leading-snug font-semibold" style="font-family: 'Outfit', sans-serif;">
+                {featured.title}
+              </h3>
+            </div>
+
+            <!-- Feed Card Mockup -->
+            <div class="p-3 rounded-lg border border-blue-100 bg-blue-50/20 mb-3">
+              <span class="text-[9px] font-mono text-[var(--primary)] font-bold">MATERIAL & STRUKTUR</span>
+              <h3 class="font-sans text-sm font-semibold text-[var(--ink)] mt-1 mb-1 leading-snug" style="font-family: 'Outfit', sans-serif;">
+                {secondaryStory1.title}
+              </h3>
+              <p class="text-[11px] text-[var(--muted)] line-clamp-2">
+                Studi void vertikal dan sirkulasi alami pada denah hunian kompak 5x12 meter.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: TECHNICAL PERFORMANCE & FONT BUDGET MATRIX -->
+    <div class="mb-12 bg-white border border-[var(--line)] rounded-2xl p-6 shadow-xs">
+      <h2 class="text-lg font-sans font-bold text-[var(--ink)] mb-4 flex items-center gap-2">
+        <span>3. Audit Anggaran Kinerja Web (Font Payload & CLS Analysis)</span>
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-[var(--ink)]">
+        <div class="p-4 rounded-xl bg-stone-50 border border-stone-200">
+          <h4 class="font-bold text-stone-900 mb-2 font-mono">OPTION A (Current)</h4>
+          <ul class="space-y-1.5 text-stone-600">
+            <li>• Font Families: <strong>2</strong> (Newsreader + PJ Sans)</li>
+            <li>• Font Download: <strong>~83 KB</strong> (woff2 total)</li>
+            <li>• Render-Blocking: <strong>1 CSS request</strong> (display=swap)</li>
+            <li>• CLS Risk: <strong>0.000</strong> (Preconnected + font-display)</li>
+            <li>• Karakter: Klasik, tenang, formal cetak</li>
+          </ul>
+        </div>
+
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-300">
+          <h4 class="font-bold text-emerald-950 mb-2 font-mono">OPTION B (Fresh Editorial) ⭐</h4>
+          <ul class="space-y-1.5 text-emerald-900/80">
+            <li>• Font Families: <strong>1</strong> (Plus Jakarta Sans tunggal)</li>
+            <li>• Font Download: <strong>~45 KB</strong> (Hemat ~38 KB jika Newsreader dicabut!)</li>
+            <li>• Render-Blocking: <strong>0 tambahan</strong> (Menggunakan font aktif)</li>
+            <li>• CLS Risk: <strong>0.000</strong> (Satu metrik geometri sans)</li>
+            <li>• Karakter: <strong>Muda, ramah, energik, modern</strong></li>
+          </ul>
+        </div>
+
+        <div class="p-4 rounded-xl bg-blue-50 border border-blue-300">
+          <h4 class="font-bold text-blue-950 mb-2 font-mono">OPTION C (Lifestyle)</h4>
+          <ul class="space-y-1.5 text-blue-900/80">
+            <li>• Font Families: <strong>2</strong> (Outfit + PJ Sans)</li>
+            <li>• Font Download: <strong>~73 KB</strong> (Outfit ~28 KB woff2)</li>
+            <li>• Render-Blocking: <strong>1 CSS request</strong> (display=swap)</li>
+            <li>• CLS Risk: <strong>0.000</strong> (Swap-safe geometry)</li>
+            <li>• Karakter: Scandinavian modern, santai, lega</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Live Switcher Notice -->
+    <div class="text-center p-6 rounded-2xl bg-[var(--lemon-soft)] border border-[var(--lemon)] text-xs text-[var(--ink)]">
+      <span class="font-bold text-sm block mb-1">💡 Ingin Menguji Langsung di Halaman Beranda Nyata?</span>
+      <p class="max-w-xl mx-auto text-[var(--muted)] mb-3">
+        Gunakan tombol <strong>"Aa Typo"</strong> di pojok kiri bawah layar Anda saat menjelajahi beranda atau artikel mana pun untuk beralih instan antara Varian A, B, dan C.
+      </p>
+      <div class="flex justify-center gap-3">
+        <a href="/?typo=current" class="px-3 py-1.5 rounded-lg bg-white border border-stone-300 text-stone-800 font-bold hover:bg-stone-50">
+          Uji Homepage Varian A
+        </a>
+        <a href="/?typo=fresh" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700">
+          Uji Homepage Varian B (Fresh)
+        </a>
+        <a href="/?typo=lifestyle" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700">
+          Uji Homepage Varian C (Lifestyle)
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

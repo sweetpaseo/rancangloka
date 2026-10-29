@@ -662,10 +662,118 @@ export function resolveEvidenceScope(item: any): EvidenceScope {
  * These patterns exist ONLY as secondary diagnostic warnings, NOT as primary evidence proofs.
  */
 export const JURISDICTION_SPECIFIC_PATTERNS = [
-  /\b(?:UK Building Regulations|Building Regulations 2010|Homes \(Fitness for Human Habitation\) Act|Awaab's Law|Section 11 Landlord and Tenant Act|Housing Health and Safety Rating System|HHSRS|Approved Document [A-Z]|Part [A-Z] regulations)\b/i,
-  /\b(?:IRC\b|International Residential Code|IBC\b|International Building Code|ASHRAE Standard|OSHA regulations|Title 24 California|HUD Guidelines)\b/i,
-  /\b(?:BCA\b|Building Code of Australia|National Construction Code|NCC\b|AS\/NZS \d+)\b/i
+  /\b(?:UK Building Regulations|Building Regulations 2010|Homes \(Fitness for Human Habitation\) Act|Awaab's Law|Section 11 Landlord and Tenant Act|Housing Health and Safety Rating System|HHSRS|Approved Documents?|Document [A-Z]|Part [A-Z] regulations|England and Wales|Scotland and Northern Ireland)\b/i,
+  /\b(?:IRC\b|International Residential Code|IBC\b|International Building Code|ASHRAE Standard\s+90\.1|ASHRAE\s+90\.1|OSHA regulations|Title 24 California|HUD Guidelines|R-38\s+US\s+units)\b/i,
+  /\b(?:BCA\b|Building Code of Australia|National Construction Code|NCC\b|AS\/NZS \d+|Australia\s+follow\s+the\s+climate\s+of\s+the\s+building\s+location)\b/i,
+  /\b(?:SNiP\b|Gosstroy|Soviet\b|Russia(?:n)?\s+(?:gas|heating|subsidies|building))\b/i,
+  /\b(?:Wärmeschutzverordnung|EnEV\b|Energieeinsparverordnung|GEG\b|German\s+(?:energy\s+code|requirements\s+of\s+building\s+energy))\b/i,
+  /\b(?:Bouwbesluit|building\s+decree\s+\(Bouwbesluit\)|Netherlands\s+makes\s+a\s+clear\s+distinction)\b/i,
+  /\b(?:New\s+Zealand.*?Building\s+Code|Clause\s+H1|H1\s+Energy\s+Efficiency)\b/i,
+  /\b(?:China\s+has\s+various\s+climatic\s+characters|five\s+climate\s+zones\s+in\s+China|GB\s+50176)\b/i
 ];
+
+export const HISTORICAL_TRIVIA_PATTERNS = [
+  /\b(?:Samuel\s+Stephens\s+Kistle(?:r)?|discovered\s+by\s+Samuel|first\s+discovered\s+in\s+1931)\b/i,
+  /\b(?:supercritical\s+drying\s+process\s+of\s+lyogels)\b/i
+];
+
+export const REFERENCE_STUB_PATTERNS = [
+  /^See\s+.*?\s+for discussion of/i,
+  /^Main article:/i
+];
+
+export function isHistoricalTrivia(text: string): boolean {
+  if (!text) return false;
+  return HISTORICAL_TRIVIA_PATTERNS.some(pat => pat.test(text));
+}
+
+export function isReferenceStub(text: string): boolean {
+  if (!text) return false;
+  return REFERENCE_STUB_PATTERNS.some(pat => pat.test(text.trim()));
+}
+
+export type EditorialClaimRelevance = 'DIRECTLY_RELEVANT' | 'SUPPORTING_CONTEXT' | 'OUT_OF_SCOPE' | 'INSUFFICIENT_EVIDENCE';
+
+/**
+ * 4-Tier Semantic Topic Relevance Classifier for Indonesian Residential Media.
+ * Distinguishes general physical-science evidence from foreign statutory codes and historical trivia.
+ */
+export function classifyClaimEditorialRelevance(
+  claim: any,
+  topicContext?: {
+    topic?: string;
+    articleFamily?: string;
+    targetJurisdiction?: string;
+    isForeignComparisonTopic?: boolean;
+    articleContext?: string;
+  }
+): {
+  relevance: EditorialClaimRelevance;
+  reason: string;
+  isAllowedForAuthoring: boolean;
+} {
+  const statement = (claim.statement || claim.claim_text || claim.text || '').trim();
+  const relevanceStr = (claim.relevance || '').toLowerCase();
+
+  // 1. Reference stub or insufficient proposition length
+  if (isReferenceStub(statement) || statement.length < 50 || claim.is_insufficient) {
+    return {
+      relevance: 'INSUFFICIENT_EVIDENCE',
+      reason: 'Reference stub or insufficient proposition length (< 50 chars).',
+      isAllowedForAuthoring: false
+    };
+  }
+
+  // 2. Historical discovery trivia
+  if (isHistoricalTrivia(statement)) {
+    return {
+      relevance: 'OUT_OF_SCOPE',
+      reason: 'Historical discovery trivia unrelated to building specifications.',
+      isAllowedForAuthoring: false
+    };
+  }
+
+  // 3. Foreign statutory building regulations
+  if (isJurisdictionSpecific(statement) || isJurisdictionSpecific(relevanceStr)) {
+    const isComparison = topicContext?.isForeignComparisonTopic === true ||
+      topicContext?.targetJurisdiction === 'UK' ||
+      Boolean(topicContext?.articleContext && /\b(?:UK|Inggris|United Kingdom|komparasi|studi banding|luar negeri)\b/i.test(topicContext.articleContext));
+
+    if (isComparison) {
+      return {
+        relevance: 'SUPPORTING_CONTEXT',
+        reason: 'Foreign statutory building code permitted as explicit international comparison context.',
+        isAllowedForAuthoring: true
+      };
+    }
+
+    return {
+      relevance: 'OUT_OF_SCOPE',
+      reason: 'Foreign statutory building code or regional regulation not applicable to Indonesian residential guidelines.',
+      isAllowedForAuthoring: false
+    };
+  }
+
+  // 4. Topic-specific direct relevance
+  const isDirectFenestration =
+    /\b(?:thermal bridge|cold bridge|heat bridge|conduction|thermal break|polyamide|curtain wall|window-to-wall|door-to-wall|junction|voids or compressed|thermally broken|solar radiation|shading|retrofit|deconstructed|profil kusen)\b/i.test(statement) ||
+    relevanceStr.includes('thermal bridge') || relevanceStr.includes('fenestration') || relevanceStr.includes('window');
+
+  if (isDirectFenestration) {
+    return {
+      relevance: 'DIRECTLY_RELEVANT',
+      reason: 'Directly addresses thermal bridge mechanisms, envelope junctions, materials, or mitigations.',
+      isAllowedForAuthoring: true
+    };
+  }
+
+  // 5. General building physics / supporting context
+  return {
+    relevance: 'SUPPORTING_CONTEXT',
+    reason: 'General building physics or insulation material context.',
+    isAllowedForAuthoring: true
+  };
+}
 
 export function isJurisdictionSpecific(text: string): boolean {
   if (!text) return false;
@@ -996,6 +1104,7 @@ export function isHistoricalRoofPack(
 ): boolean {
   if (!evidencePack) return false;
   if (options?.legacyRoofFixtures) return true;
+  if (evidencePack.is_historical_roof_pack === false) return false;
   if (evidencePack.is_historical_roof_pack === true) return true;
   if (typeof evidencePack.milestone === 'string' && /EDITORIAL-RUNTIME-3/i.test(evidencePack.milestone)) {
     return true;
@@ -1058,6 +1167,27 @@ export function auditEvidencePackProvenance(
 
   const claims = evidencePack.claim_inventory;
   summary.total_claims = claims.length;
+
+  // Enforce pack-scoped claim identity uniqueness within the pack
+  const seenClaimIds = new Set<string>();
+  const duplicateClaimIds: string[] = [];
+  for (const c of claims) {
+    if (c && c.claim_id) {
+      if (seenClaimIds.has(c.claim_id)) {
+        duplicateClaimIds.push(c.claim_id);
+      }
+      seenClaimIds.add(c.claim_id);
+    }
+  }
+  if (duplicateClaimIds.length > 0) {
+    summary.unverified_claims.push(
+      `DUPLICATE_CLAIM_IDS_IN_PACK: Paket bukti memuat ID klaim duplikat: [${Array.from(new Set(duplicateClaimIds)).join(', ')}]. Setiap klaim wajib unik.`
+    );
+    summary.requires_provenance_failure = true;
+    summary.audit_reasons.push(
+      `Paket bukti memuat ID klaim duplikat: [${Array.from(new Set(duplicateClaimIds)).join(', ')}].`
+    );
+  }
 
   const verifiedSourceIdSet = new Set<string>();
   let claimSourceRelCount = 0;
@@ -2155,6 +2285,28 @@ export function generateAuthorSafeClaims(
       }
     }
 
+    // Topic-scoped relevance check (Milestone: EVIDENCE-INTEGRITY-P1)
+    const editorialRelevance = classifyClaimEditorialRelevance(claim, {
+      topic: options?.topic,
+      targetJurisdiction: options?.targetJurisdiction,
+      isForeignComparisonTopic: options?.isForeignComparisonTopic,
+      articleContext: options?.articleContext
+    });
+    if (editorialRelevance.relevance === 'OUT_OF_SCOPE' || editorialRelevance.relevance === 'INSUFFICIENT_EVIDENCE') {
+      result.push({
+        claim_id: claim.claim_id,
+        statement: claim.statement,
+        support_level: (claim.evidence_status as ClaimSupportLevel) || 'SUPPORTED',
+        applicability: editorialRelevance.relevance === 'OUT_OF_SCOPE' ? 'JURISDICTION_SPECIFIC' : 'UNKNOWN_SCOPE',
+        allowed_for_authoring: false,
+        jurisdiction_blocked: editorialRelevance.relevance === 'OUT_OF_SCOPE',
+        source_provenance_blocked: editorialRelevance.relevance === 'INSUFFICIENT_EVIDENCE',
+        evidence_passage_ids: claim.evidence_passage_ids,
+        qualification_required: `${editorialRelevance.relevance}: ${editorialRelevance.reason}`
+      });
+      continue;
+    }
+
     if (isRecommendation) {
       const derivedIds = claim.derived_from_claim_ids || [];
       const hasBlockedDerived = derivedIds.some(did => {
@@ -2350,6 +2502,8 @@ export interface EvaluationOptions {
   enforceReaderVoiceGate?: boolean;
   // Dimas Warm Advisory Tone & Decision Handoff Integration (RANCANGLOKA_WARM_ADVISORY_TONE_1)
   warmthChecklist?: any;
+  // Global Home Improvement Scope (EDITORIAL-EXPERIENCE-V3)
+  isGlobalScope?: boolean;
 }
 
 /**
@@ -2724,6 +2878,23 @@ export function evaluateHumanWritingQuality(
     strongAreas.push('Pembuka langsung menyentuh konteks spesifik pembaca rumah');
   }
 
+  // 1b. Early Answer & Homeowner-First Storytelling Check (HGTV / BHG)
+  const openingSection = paragraphs.slice(0, 3).join(' ');
+  const questionCount = (openingSection.match(/\?/g) || []).length;
+  const hasEarlyAnswer = /\b(?:jawaban langsung|jawaban singkat|pada dasarnya|pilihan paling masuk akal|jika Anda|rekomendasi awal|kesimpulannya|langkah pertama)\b/i.test(openingSection);
+
+  if (questionCount > 2 && !hasEarlyAnswer && (articleIntent === 'COMPARISON' || articleIntent === 'PROBLEM_SOLVING')) {
+    issues.push({
+      code: 'EXCESSIVE_RHETORICAL_QUESTIONS',
+      category: 'GENERIC_OPENING',
+      severity: 'WARNING',
+      description: 'Bagian pembuka memuat rentetan pertanyaan retoris tanpa segera memberikan jawaban atau arah keputusan awal yang jelas bagi pemilik rumah.',
+      penalty: 5,
+      occurrences: [openingSection.slice(0, 100) + '...']
+    });
+    dimReader = Math.max(0, dimReader - 3);
+  }
+
   // --------------------------------------------------------------------------
   // 2. Repetitive Transitional Phrases (Impacts: Sentence Rhythm & Editorial Voice)
   // --------------------------------------------------------------------------
@@ -2995,6 +3166,37 @@ export function evaluateHumanWritingQuality(
     dimRhythm = Math.max(0, dimRhythm - Math.min(10, sourceEchoes.length * 3));
   }
 
+  // 6b. Raw LaTeX Math Syntax Check (EDITORIAL-EXPERIENCE-V3)
+  const latexMatches = cleanMd.match(/(?:\$[^$\n]+\$|\\text\{[^}]+\}|\\approx\b|\\frac\{[^}]+\}\{[^}]+\})/g);
+  if (latexMatches && latexMatches.length > 0) {
+    issues.push({
+      code: 'RAW_LATEX_SYNTAX_DETECTED',
+      category: 'MECHANICAL_AI_STYLE',
+      severity: 'CRITICAL',
+      description: `Ditemukan sintaks matematika LaTeX mentah (${latexMatches.slice(0, 3).join(', ')}). Seluruh rumus dan satuan wajib ditulis dalam teks Indonesia biasa yang langsung terbaca di browser.`,
+      penalty: Math.min(20, latexMatches.length * 6),
+      occurrences: latexMatches
+    });
+    dimVoice = Math.max(0, dimVoice - 5);
+    dimReader = Math.max(0, dimReader - 5);
+  }
+
+  // 6c. Public Body Scaffolding & Internal Evidence Hygiene
+  const cleanliness = auditPublicBodyCleanliness(cleanMd);
+  if (!cleanliness.passed) {
+    for (const v of cleanliness.violations) {
+      issues.push({
+        code: 'INTERNAL_SCAFFOLDING_LEAK',
+        category: 'MECHANICAL_AI_STYLE',
+        severity: 'CRITICAL',
+        description: v.detail,
+        penalty: 10,
+        occurrences: [v.snippet]
+      });
+      dimVoice = Math.max(0, dimVoice - 4);
+    }
+  }
+
   // --------------------------------------------------------------------------
   // 7. Local Indonesian Context & Climate Reality (Impacts: Contextual Relevance)
   // --------------------------------------------------------------------------
@@ -3007,7 +3209,15 @@ export function evaluateHumanWritingQuality(
     }
   }
 
-  if (localContextMatches < 2) {
+  // Global Home Improvement Scope Awareness (EDITORIAL-EXPERIENCE-V3):
+  // Global architectural styles, international interior design, and universal DIY topics
+  // are not penalized for lack of tropical-specific markers if they explicitly cover international concepts.
+  const isGlobalTopic = Boolean(
+    options.isGlobalScope ||
+    /\b(?:skandinavia|scandinavian|japandi|mediterania|mediterranean|mid-century|modern farmhouse|craftsman|eropa|amerika|global|gaya internasional|minimalis jepang|industrial loft|country house|art deco)\b/i.test(cleanMd)
+  );
+
+  if (!isGlobalTopic && localContextMatches < 2) {
     issues.push({
       code: 'LACK_OF_LOCAL_CONTEXT',
       category: 'LACK_OF_LOCAL_CONTEXT',
@@ -3018,6 +3228,8 @@ export function evaluateHumanWritingQuality(
     dimContext = Math.max(0, dimContext - 7);
   } else if (localContextMatches >= 4) {
     strongAreas.push(`Kontekstual kuat terhadap kondisi tropis Indonesia (${foundLocalMarkers.slice(0, 4).join(', ')})`);
+  } else if (isGlobalTopic) {
+    strongAreas.push('Topik berwawasan perbaikan hunian global dalam bahasa Indonesia alami');
   }
 
   // --------------------------------------------------------------------------

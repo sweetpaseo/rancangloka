@@ -44,10 +44,18 @@ import {
   parseGroundedDraftEnvelope,
   validateClaimGrounding,
   auditEditorialRefinement,
+  crossLingualStemMatch,
   type GroundedDraftEnvelope,
   type GroundingAuditResult,
-  type EditorialRefinementAudit
+  type EditorialRefinementAudit,
+  type AuthorClaimUsageDeclaration
 } from './claim-grounding.ts';
+
+import {
+  AssertionReconciliationEngine,
+  tokenizeText,
+  type AssertionReconciliationResult
+} from './assertion-reconciliation.ts';
 
 import {
   evaluateAuthorSafeEvidenceGate
@@ -68,17 +76,41 @@ import {
   type VisualBrief
 } from './visual-brief.ts';
 
+import {
+  executeNadiaReaderVoiceEdit,
+  type NadiaEditResult,
+  type Voice3L4AssessmentResult
+} from './nadia-reader-voice.ts';
+
+import {
+  compileEditorialBrief,
+  type EditorialBrief
+} from './editorial-planner.ts';
+
+import {
+  verifySourceContentIntegrity,
+  auditAssertionCoverage,
+  computeArticleContentHash,
+  type AssertionCoverageAuditResult
+} from './source-provenance-verifier.ts';
+
 import type { MediaJobRecord } from '../media/jobs-service.ts';
 
 export type EditorialRuntimeEventType =
   | 'EDITORIAL_JOB_STARTED'
+  | 'EDITORIAL_PLAN_COMPILED'
   | 'JOKO_PROMPT_BUILT'
   | 'JOKO_LLM_REQUEST_STARTED'
   | 'JOKO_LLM_RESPONSE_RECEIVED'
   | 'JOKO_LLM_REQUEST_FAILED'
   | 'JOKO_DRAFT_CREATED'
+  | 'ASSERTION_RECONCILIATION_COMPLETED'
   | 'GROUNDING_AUDIT_COMPLETED'
   | 'GROUNDING_VIOLATION_HALT'
+  | 'SOURCE_PROVENANCE_INTEGRITY_FAILED'
+  | 'NADIA_EDIT_STARTED'
+  | 'NADIA_EDIT_COMPLETED'
+  | 'NADIA_EDIT_SKIPPED'
   | 'RINA_QA_STARTED'
   | 'RINA_QA_COMPLETED'
   | 'EDITORIAL_REPAIR_REQUESTED'
@@ -87,6 +119,7 @@ export type EditorialRuntimeEventType =
   | 'PROMPT_DOMAIN_LEAK_DETECTED'
   | 'VISUAL_BRIEFS_GENERATED'
   | 'VISUAL_BRIEFS_DISPATCHED'
+  | 'AUTHORING_EXECUTION_REQUIRES_AUTHORIZATION'
   | 'HUMAN_REVIEW_REQUIRED';
 
 export interface EditorialRuntimeEvent {
@@ -118,12 +151,16 @@ export interface EditorialJobInput {
   intentProfile?: ArticleIntentProfile;
   evidencePack: EvidencePackInput;
   visitorContext?: JokoVisitorContextInput;
+  editorialBrief?: EditorialBrief;
   maxRetries?: number;
   operatorAuth: {
     authorizedBy: string;
     timestamp?: string;
   };
   db?: any;
+  editorialVoiceLevel?: 'L3' | 'L4';
+  enableVoiceL4?: boolean;
+  expectedContentHash?: string;
 }
 
 export interface EditorialAttemptRecord {
@@ -137,8 +174,11 @@ export interface EditorialAttemptRecord {
     totalTokens: number;
   };
   draftText: string;
+  rawEnvelope?: GroundedDraftEnvelope;
   draftEnvelope?: GroundedDraftEnvelope;
   groundingAudit?: GroundingAuditResult;
+  assertionReconciliation?: AssertionReconciliationResult;
+  nadiaResult?: NadiaEditResult;
   qaResult: HumanWritingQualityResult;
 }
 
@@ -153,6 +193,9 @@ export type FinalEditorialDecision =
   | 'HUMAN_WRITING_REWRITE'
   | 'HUMAN_REVIEW_REQUIRED'
   | 'EVIDENCE_GROUNDING_REVIEW_REQUIRED'
+  | 'EVIDENCE_PROVENANCE_INTEGRITY_REJECTED'
+  | 'HUMAN_OR_AUTHORIZED_SEMANTIC_REVIEW_REQUIRED'
+  | 'AUTHORING_EXECUTION_REQUIRES_AUTHORIZATION'
   | 'TOPIC_EVIDENCE_ALIGNMENT_FAIL'
   | 'RESEARCH_COVERAGE_INSUFFICIENT'
   | 'RESEARCH_COVERAGE_QUALITY_INSUFFICIENT'
@@ -176,9 +219,12 @@ export interface EditorialJobResult {
   publicationStatus: 'DRAFT';
   humanStopGateStatus: 'HUMAN_REVIEW_REQUIRED' | 'OPERATOR_INTERVENTION_REQUIRED';
   finalDraft: string | null;
+  rawEnvelope?: GroundedDraftEnvelope | null;
   draftEnvelope?: GroundedDraftEnvelope | null;
   groundingAudit?: GroundingAuditResult | null;
+  assertionReconciliation?: AssertionReconciliationResult | null;
   refinementAudit?: EditorialRefinementAudit | null;
+  editorialBrief?: EditorialBrief | null;
   totalAttempts: number;
   authorProvenance: EditorialAuthorRuntimeProvenance | null;
   qaResult: HumanWritingQualityResult | null;
@@ -187,6 +233,8 @@ export interface EditorialJobResult {
   premiumDepthCheck?: PremiumEditorialDepthChecklist | null;
   visualBriefs?: VisualBrief[];
   dispatchedMediaJobs?: MediaJobRecord[];
+  voice3L4Assessment?: Voice3L4AssessmentResult | null;
+  editorialVoiceLevel?: 'L3' | 'L4';
   error?: string;
   errorCategory?: string;
 }
@@ -194,6 +242,13 @@ export interface EditorialJobResult {
 export interface EditorialRuntimeOptions {
   llmOptions?: EditorialLlmOptions;
   providerInstance?: EditorialLlmProvider;
+  nadiaProviderInstance?: EditorialLlmProvider;
+  enableNadiaLlmEdit?: boolean;
+  editorialVoiceLevel?: 'L3' | 'L4';
+  enableVoiceL4?: boolean;
+  allowPaidExecution?: boolean;
+  expectedContentHash?: string;
+  allowTestAdapter?: boolean;
 }
 
 /**
@@ -238,6 +293,45 @@ export async function executeEditorialDraftJob(
     `Operator ${input.operatorAuth.authorizedBy} memulai tugas penulisan editorial '${input.topic}'.`,
     { authorizedBy: input.operatorAuth.authorizedBy }
   );
+
+  // 1a. Source Provenance & Content Integrity Verification (Task B & D)
+  if (Array.isArray(input.evidencePack.sources) && input.evidencePack.sources.length > 0) {
+    for (const src of input.evidencePack.sources) {
+      const integrity = verifySourceContentIntegrity({
+        sourceId: src.source_id,
+        sourceText: (src as any).full_text || (src as any).source_text || (src as any).text || (src as any).passage_text,
+        expectedChecksum: (src as any).content_hash || (src as any).sha256 || (src as any).expected_checksum,
+        sourceAuthenticity: (src as any).source_authenticity || ((src as any).is_local_fixture ? 'LOCAL_FIXTURE_ONLY' : 'AUTHENTIC_EXTERNAL_PRIMARY'),
+        sourceTextAccessibility: (src as any).source_text_accessibility,
+        isLocalFixtureOnly: Boolean((src as any).is_local_fixture_only || (src as any).is_local_fixture),
+        ingestionReceipt: (src as any).ingestion_receipt || (src as any).ingestionReceipt,
+        allowTestAdapter: options.allowTestAdapter
+      });
+      if (!integrity.valid) {
+        addTraceEvent(
+          'SOURCE_PROVENANCE_INTEGRITY_FAILED',
+          'evidence_researcher_lead',
+          `Sumber rujukan '${src.source_id}' gagal verifikasi integritas: [${integrity.status}] ${integrity.reason}`,
+          { sourceId: src.source_id, status: integrity.status, reason: integrity.reason }
+        );
+        return {
+          jobId: `job_${taskId}`,
+          taskId,
+          status: 'BLOCKED',
+          finalDecision: 'EVIDENCE_PROVENANCE_INTEGRITY_REJECTED',
+          publicationStatus: 'DRAFT',
+          humanStopGateStatus: 'OPERATOR_INTERVENTION_REQUIRED',
+          finalDraft: null,
+          totalAttempts: 0,
+          authorProvenance: null,
+          qaResult: null,
+          attempts: [],
+          traceEvents,
+          error: `SOURCE_PROVENANCE_INTEGRITY_FAILED: ${src.source_id} (${integrity.status}: ${integrity.reason})`
+        };
+      }
+    }
+  }
 
   // 1b. Pre-writing Research Gate Verification:
   // EVIDENCE_PACK_MUST_ADDRESS_REQUESTED_TOPIC
@@ -349,14 +443,39 @@ export async function executeEditorialDraftJob(
     };
   }
 
+  const editorialVoiceLevel: 'L3' | 'L4' =
+    input.editorialVoiceLevel ||
+    options.editorialVoiceLevel ||
+    (input.enableVoiceL4 || options.enableVoiceL4 ? 'L4' : 'L3');
+  const enableVoiceL4 = editorialVoiceLevel === 'L4';
+
   const basePromptContext: JokoPromptContext = {
     topic: input.topic,
     requestedTitle: input.requestedTitle || input.topic,
     intentProfile: intent,
     evidencePack: input.evidencePack,
     authorSafeClaims,
-    visitorContext: input.visitorContext
+    visitorContext: input.visitorContext,
+    editorialVoiceLevel,
+    enableVoiceL4
   };
+
+  // 3b. Editorial Planner: Compile Reader-Focused Editorial Brief
+  const editorialBrief = input.editorialBrief || compileEditorialBrief(basePromptContext);
+  basePromptContext.editorialBrief = editorialBrief;
+
+  addTraceEvent(
+    'EDITORIAL_PLAN_COMPILED',
+    'editorial_planner',
+    `Editorial Planner menyusun brief terfokus-pembaca (${editorialBrief.outline.length} bab, tipe: ${editorialBrief.article_family}).`,
+    {
+      articleFamily: editorialBrief.article_family,
+      sectionsCount: editorialBrief.outline.length,
+      verifiedEvidenceCount: editorialBrief.verified_evidence.length,
+      practicalGuidelinesCount: editorialBrief.practical_guidelines.length,
+      optionalExamplesCount: editorialBrief.optional_design_examples.length
+    }
+  );
 
   let currentDraft: string | null = null;
   let lastQaResult: HumanWritingQualityResult | null = null;
@@ -378,11 +497,12 @@ export async function executeEditorialDraftJob(
     addTraceEvent(
       'JOKO_PROMPT_BUILT',
       'content_writer_primary',
-      `Prompt Joko berhasil dikompilasi (Percobaan ${attempt}, ${compiledPrompt.metadata.safeClaimsCount} klaim aman, intensi ${compiledPrompt.metadata.intent}).`,
+      `Prompt Joko berhasil dikompilasi (Percobaan ${attempt}, ${compiledPrompt.metadata.safeClaimsCount} klaim aman, intensi ${compiledPrompt.metadata.intent}, voice: ${compiledPrompt.metadata.editorialVoiceLevel || editorialVoiceLevel}).`,
       {
         attempt,
         hasRevisionContext: compiledPrompt.metadata.hasRevisionContext,
-        safeClaimsCount: compiledPrompt.metadata.safeClaimsCount
+        safeClaimsCount: compiledPrompt.metadata.safeClaimsCount,
+        editorialVoiceLevel: compiledPrompt.metadata.editorialVoiceLevel || editorialVoiceLevel
       }
     );
 
@@ -403,6 +523,24 @@ export async function executeEditorialDraftJob(
     }
 
     // 5. Request Generation from LLM Provider
+    // Invariant: External/paid LLM calls require explicit operator authorization
+    const isCustomMock = Boolean((provider as any).hasCustomFetchFn);
+    const isLiveExternalProvider = (provider.providerName === 'sumopod' || provider.providerName === 'openrouter') && !isCustomMock;
+    const hasPaidAuth = Boolean(options.allowPaidExecution || process.env.AUTHORIZE_PAID_EDITORIAL_LLM === 'true');
+    if (isLiveExternalProvider && !hasPaidAuth) {
+      addTraceEvent(
+        'AUTHORING_EXECUTION_REQUIRES_AUTHORIZATION',
+        'pipeline_supervisor',
+        `Panggilan LLM eksternal/berbayar (${provider.providerName}) membutuhkan otorisasi eksplisit operator. Eksekusi ditangguhkan.`,
+        { provider: provider.providerName, model: provider.modelName, attempt }
+      );
+      finalStatus = 'BLOCKED';
+      finalDecision = 'AUTHORING_EXECUTION_REQUIRES_AUTHORIZATION';
+      stopGateStatus = 'OPERATOR_INTERVENTION_REQUIRED';
+      shouldContinue = false;
+      break;
+    }
+
     addTraceEvent(
       'JOKO_LLM_REQUEST_STARTED',
       'content_writer_primary',
@@ -457,8 +595,191 @@ export async function executeEditorialDraftJob(
       { attempt, draftLength: currentDraft.length, declaredClaims: envelope.claim_usage.length }
     );
 
+    // 5. Nadia Reader Voice Language Edit
+    // Canonical Sequence: Joko Draft -> Nadia Reader Voice Edit -> Rina Editorial QA -> Human Review
+    addTraceEvent(
+      'NADIA_EDIT_STARTED',
+      'audience_language_editor',
+      `Nadia memulai penyuntingan bahasa dan kenyamanan membaca draf Joko (Percobaan ${attempt}, voice: ${editorialVoiceLevel}).`,
+      { attempt, originalLength: currentDraft.length, editorialVoiceLevel }
+    );
+
+    const nadiaProvider = options.nadiaProviderInstance || (options.enableNadiaLlmEdit ? provider : undefined);
+
+    const nadiaResult = await executeNadiaReaderVoiceEdit({
+      draftMarkdown: currentDraft,
+      topic: input.topic,
+      intent: intent.primary_intent,
+      provider: nadiaProvider,
+      taskId,
+      editorialVoiceLevel,
+      enableVoiceL4
+    });
+
+    if (nadiaResult.authorityCheck.isAllowed) {
+      currentDraft = nadiaResult.refinedMarkdown;
+      addTraceEvent(
+        'NADIA_EDIT_COMPLETED',
+        'audience_language_editor',
+        `Nadia menyelesaikan penyuntingan: ${nadiaResult.changesApplied.length} perbaikan bahasa diterapkan (${currentDraft.length} karakter).`,
+        {
+          attempt,
+          changesApplied: nadiaResult.changesApplied,
+          readerVoiceScore: nadiaResult.readerVoiceEvaluation.overallScore,
+          readerVoiceDecision: nadiaResult.readerVoiceEvaluation.decision,
+          usedLlm: nadiaResult.usedLlm,
+          editorialVoiceLevel,
+          voice3L4Decision: nadiaResult.voice3L4Assessment?.decision
+        }
+      );
+    } else {
+      addTraceEvent(
+        'NADIA_EDIT_SKIPPED',
+        'audience_language_editor',
+        `Penyuntingan bahasa Nadia dibatalkan karena terdeteksi potensi pelanggaran batas otoritas: ${nadiaResult.authorityCheck.violations.join('; ')}. Menggunakan draf asli Joko.`,
+        { violations: nadiaResult.authorityCheck.violations }
+      );
+    }
+
+    // 6. Rina Deterministic QA & Factual Grounding
+    addTraceEvent(
+      'RINA_QA_STARTED',
+      'editorial_qa_primary',
+      `Rina memulai evaluasi kualitas tulisan manusia dan ketercakupan bukti secara deterministik (Percobaan ${attempt}).`,
+      { attempt }
+    );
+
+    // Reconcile Article Assertions across 5-tier taxonomy:
+    // VERIFIED_FACT | SUPPORTED_PRACTICAL_GUIDANCE | OPTIONAL_DESIGN_EXAMPLE | EDITORIAL_INTERPRETATION | UNSUPPORTED_CLAIM
+    const reconciliationEngine = new AssertionReconciliationEngine();
+    const reconciliation = reconciliationEngine.reconcile({
+      article_markdown: currentDraft,
+      claim_usage: envelope.claim_usage,
+      authorSafeClaims,
+      evidencePack: input.evidencePack,
+      editorialBrief
+    });
+
+    // Reconcile and repair claim_usage declarations where genuine source support exists
+    // (preserving original raw envelope in attempt history)
+    const reconciledUsages: AuthorClaimUsageDeclaration[] = [];
+    let repairedCount = 0;
+
+    // A. Reconcile existing declarations: repair mismatched claim IDs or excerpts where deterministic reconciliation proved valid support
+    for (const usage of envelope.claim_usage) {
+      const cleanUsage = (usage.article_excerpt || '').replace(/[.…]+$/, '').trim();
+      const normUsage = cleanUsage.toLowerCase();
+      const matchingEntry = reconciliation.entries.find(e => {
+        const normSpan = e.article_span.toLowerCase();
+        if (normSpan.includes(normUsage) || normUsage.includes(normSpan)) return true;
+        // Token overlap check for slight paraphrasing or prefix truncations
+        const uTokens = tokenizeText(cleanUsage);
+        const sTokens = tokenizeText(e.article_span);
+        if (uTokens.length >= 3 && sTokens.length >= 3) {
+          const shared = uTokens.filter(t => sTokens.includes(t) || crossLingualStemMatch(t, sTokens[0]));
+          return shared.length / uTokens.length >= 0.6;
+        }
+        return false;
+      });
+
+      if (
+        matchingEntry &&
+        matchingEntry.classification === 'EVIDENCE_BACKED' &&
+        matchingEntry.supporting_claim_ids &&
+        matchingEntry.supporting_claim_ids.length > 0
+      ) {
+        reconciledUsages.push({
+          ...usage,
+          claim_id: matchingEntry.supporting_claim_ids[0],
+          article_excerpt: matchingEntry.article_span
+        });
+        if (matchingEntry.supporting_claim_ids[0] !== usage.claim_id) {
+          repairedCount++;
+        }
+      } else if (
+        matchingEntry &&
+        matchingEntry.classification === 'EDITORIAL_INFERENCE' &&
+        matchingEntry.supporting_claim_ids &&
+        matchingEntry.supporting_claim_ids.length > 0
+      ) {
+        reconciledUsages.push({
+          ...usage,
+          claim_id: matchingEntry.supporting_claim_ids[0],
+          article_excerpt: matchingEntry.article_span,
+          usage_type: 'EDITORIAL_INFERENCE'
+        });
+      } else if (
+        matchingEntry &&
+        (matchingEntry.classification === 'SUPPORTED_PRACTICAL_GUIDANCE' ||
+         matchingEntry.classification === 'OPTIONAL_DESIGN_EXAMPLE' ||
+         matchingEntry.classification === 'NON_CLAIM_PROSE')
+      ) {
+        // Spurious declaration on non-claim craft guidance or design prose: omit from claim_usage
+        // (the sentence is legitimately governed by practical guidance / design policies and does not require claim declarations)
+      } else {
+        // Keep unknown / unrecognized / unresolved declarations so grounding audit catches invalid claims
+        reconciledUsages.push({ ...usage });
+      }
+    }
+
+    // B. Reconcile missing claims: for any EVIDENCE_BACKED span with verified claim support not yet declared
+    for (const entry of reconciliation.entries) {
+      if (
+        entry.classification === 'EVIDENCE_BACKED' &&
+        entry.supporting_claim_ids &&
+        entry.supporting_claim_ids.length > 0
+      ) {
+        for (const cid of entry.supporting_claim_ids) {
+          const alreadyDeclared = reconciledUsages.some(
+            u => u.claim_id === cid && u.article_excerpt === entry.article_span
+          );
+          if (!alreadyDeclared) {
+            reconciledUsages.push({
+              claim_id: cid,
+              article_excerpt: entry.article_span,
+              usage_type: 'DIRECT_PARAPHRASE'
+            });
+            repairedCount++;
+          }
+        }
+      }
+    }
+
+    const reconciledEnvelope: GroundedDraftEnvelope = {
+      ...envelope,
+      claim_usage: reconciledUsages
+    };
+
+    addTraceEvent(
+      'ASSERTION_RECONCILIATION_COMPLETED',
+      'content_writer_primary',
+      `Rekonsiliasi asersi selesai: ${reconciliation.metrics.total_article_spans} asersi dianalisis (${reconciliation.metrics.evidence_backed_count} fakta terverifikasi, ${reconciliation.metrics.practical_guidance_count} panduan praktis, ${reconciliation.metrics.optional_design_example_count} contoh desain, ${reconciliation.metrics.editorial_inference_count} interpretasi redaksi, ${reconciliation.unresolved_spans.length} belum terselesaikan).`,
+      {
+        attempt,
+        metrics: reconciliation.metrics,
+        repairedClaimUsages: repairedCount,
+        unresolvedCount: reconciliation.unresolved_spans.length,
+        taxonomyBreakdown: {
+          verifiedFacts: reconciliation.metrics.evidence_backed_count,
+          practicalGuidance: reconciliation.metrics.practical_guidance_count,
+          optionalDesignExamples: reconciliation.metrics.optional_design_example_count,
+          editorialInterpretations: reconciliation.metrics.editorial_inference_count,
+          nonClaimProse: reconciliation.metrics.non_claim_prose_count,
+          unsupportedClaims: reconciliation.unresolved_spans.length
+        }
+      }
+    );
+
+    const effectiveEnvelope = enableVoiceL4 ? reconciledEnvelope : envelope;
+
     // Validate Claim Grounding against Evidence Pack & Safe Claims
-    const groundingAudit = validateClaimGrounding(envelope, input.evidencePack, authorSafeClaims);
+    const groundingAudit = validateClaimGrounding(effectiveEnvelope, input.evidencePack, authorSafeClaims, {
+      editorialBrief,
+      isHistoricalRoof: isHistoricalRoofPack(input.evidencePack),
+      enableVoiceL4,
+      expectedContentHash: input.expectedContentHash || options.expectedContentHash,
+      allowTestAdapter: options.allowTestAdapter
+    });
     addTraceEvent(
       'GROUNDING_AUDIT_COMPLETED',
       'content_writer_primary',
@@ -476,16 +797,44 @@ export async function executeEditorialDraftJob(
 
     // If critical grounding violations occur (e.g. prohibited elements or unsupported candidates declared), halt immediately
     if (!groundingAudit.isValid) {
+      const hasUncertain = groundingAudit.errors.some(e => e.includes('UNCERTAIN')) ||
+        Boolean(groundingAudit.assertionLedger && (groundingAudit.assertionLedger.uncertain_count || 0) > 0);
+      const uncertainClaimsFromUsages = (reconciledEnvelope?.claim_usage || [])
+        .filter(u => u.entailment_status === 'CLAIM_USAGE_ENTAILMENT_MISMATCH')
+        .map(u => u.claim_id);
+      const uncertainClaimsFromErrors = groundingAudit.errors
+        .filter(e => e.includes('UNCERTAIN'))
+        .map(e => {
+          const match = e.match(/'(CLM-\d+)'/) || e.match(/\b(CLM-\d+)\b/);
+          return match ? match[1] : null;
+        })
+        .filter((c): c is string => Boolean(c));
+      const uncertainClaims = Array.from(new Set([...uncertainClaimsFromUsages, ...uncertainClaimsFromErrors]));
+
       addTraceEvent(
         'GROUNDING_VIOLATION_HALT',
         'editorial_qa_primary',
         `Pelanggaran ketercakupan bukti terdeteksi (${groundingAudit.errors.join('; ')}). Naskah dihentikan untuk review operator.`,
-        { errors: groundingAudit.errors, status: groundingAudit.status }
+        {
+          errors: groundingAudit.errors,
+          status: groundingAudit.status,
+          hasUncertain,
+          uncertainClaims
+        }
       );
       finalStatus = 'BLOCKED';
-      finalDecision = 'EVIDENCE_GROUNDING_REVIEW_REQUIRED';
+      finalDecision = hasUncertain
+        ? 'HUMAN_OR_AUTHORIZED_SEMANTIC_REVIEW_REQUIRED'
+        : 'EVIDENCE_GROUNDING_REVIEW_REQUIRED';
       stopGateStatus = 'OPERATOR_INTERVENTION_REQUIRED';
       shouldContinue = false;
+
+      const blockedQa = evaluateHumanWritingQuality(currentDraft, {
+        articleId,
+        taskId,
+        evidencePack: input.evidencePack
+      });
+      lastQaResult = blockedQa;
 
       attempts.push({
         attemptNumber: attempt,
@@ -494,24 +843,15 @@ export async function executeEditorialDraftJob(
         llmLatencyMs: llmResult.latencyMs,
         tokenUsage: llmResult.usage,
         draftText: currentDraft,
-        draftEnvelope: envelope,
+        rawEnvelope: envelope,
+        draftEnvelope: effectiveEnvelope,
         groundingAudit,
-        qaResult: evaluateHumanWritingQuality(currentDraft, {
-          articleId,
-          taskId,
-          evidencePack: input.evidencePack
-        })
+        assertionReconciliation: reconciliation,
+        nadiaResult,
+        qaResult: blockedQa
       });
       break;
     }
-
-    // 6. Execute Rina Deterministic QA
-    addTraceEvent(
-      'RINA_QA_STARTED',
-      'editorial_qa_primary',
-      `Rina memulai evaluasi kualitas tulisan manusia secara deterministik (Percobaan ${attempt}).`,
-      { attempt }
-    );
 
     const qaResult = evaluateHumanWritingQuality(currentDraft, {
       articleId,
@@ -542,8 +882,11 @@ export async function executeEditorialDraftJob(
       llmLatencyMs: llmResult.latencyMs,
       tokenUsage: llmResult.usage,
       draftText: currentDraft,
-      draftEnvelope: envelope,
+      rawEnvelope: envelope,
+      draftEnvelope: effectiveEnvelope,
       groundingAudit,
+      assertionReconciliation: reconciliation,
+      nadiaResult,
       qaResult
     });
 
@@ -690,18 +1033,23 @@ export async function executeEditorialDraftJob(
     finalDecision,
     publicationStatus: 'DRAFT',
     humanStopGateStatus: stopGateStatus,
-    finalDraft: currentDraft,
+    finalDraft: currentDraft || lastAttempt?.draftText || lastAttempt?.draftEnvelope?.article_markdown || null,
+    rawEnvelope: lastAttempt?.rawEnvelope || null,
     draftEnvelope: lastAttempt?.draftEnvelope || null,
     groundingAudit: lastAttempt?.groundingAudit || null,
+    assertionReconciliation: lastAttempt?.assertionReconciliation || null,
     refinementAudit,
+    editorialBrief,
     premiumDepthCheck,
     visualBriefs,
     dispatchedMediaJobs,
     totalAttempts: attempts.length,
     authorProvenance,
-    qaResult: lastQaResult,
+    qaResult: lastQaResult || lastAttempt?.qaResult || null,
     attempts,
     traceEvents,
+    voice3L4Assessment: lastAttempt?.nadiaResult?.voice3L4Assessment || null,
+    editorialVoiceLevel,
     error: lastLlmResult?.error,
     errorCategory: lastLlmResult?.errorCategory
   };

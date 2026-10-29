@@ -6,6 +6,7 @@ import AuthorCard from '../components/AuthorCard.astro';
 import RelatedArticles from '../components/RelatedArticles.astro';
 import SocialShareBar from '../components/SocialShareBar.astro';
 import ArticleSupportModule from '../components/ArticleSupportModule.astro';
+import ScrollToTop from '../components/ScrollToTop.astro';
 import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, getInternalLinkCandidates, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
 import { getActivePlaneALinks } from '../lib/internal-link/index.ts';
@@ -13,6 +14,7 @@ import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../lib/article
 import { renderMediaSlotAnchors } from '../lib/media/renderer.ts';
 import { getQuarantineRedirect, getArticleRobotsDirective, getArticleXRobotsTag } from '../lib/quarantine';
 import { getArticleCacheTags } from '../lib/cache/index.ts';
+import { getResponsiveImageAttrs } from '../lib/image';
 
 const { slug } = Astro.params;
 
@@ -30,6 +32,37 @@ let [article, page, categories, siteSettings] = await Promise.all([
   getAllCategories(db),
   getSiteSettings(db)
 ]);
+
+// In local development, allow rendering Batch 1 fixtures (e.g. Article 4 & C) if not seeded in local in-memory DB
+if (!article && !page && Boolean((import.meta as any).env?.DEV)) {
+  try {
+    const { getDevLocalBatch1Article } = await import('../lib/approvals/dev-fixtures.ts');
+    const devFixture = await getDevLocalBatch1Article(slug || '');
+    if (devFixture) {
+      const nowIso = new Date().toISOString();
+      article = {
+        ...devFixture,
+        published_at: devFixture.created_at || nowIso,
+        updated_at: devFixture.updated_at || nowIso,
+        status: 'published' // Render as published article for local preview
+      } as any;
+    }
+  } catch (err) {
+    console.warn('[DEV] Could not load Batch 1 dev fixture for slug:', slug, err);
+  }
+}
+
+function safeDateIso(dateStr?: string): string {
+  if (!dateStr) return new Date().toISOString();
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+function safeDateLocal(dateStr?: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
 
 let notFoundArticles: any[] = [];
@@ -56,9 +89,20 @@ if (xRobotsTag) {
   Astro.response.headers.set('X-Robots-Tag', xRobotsTag);
 }
 
+// Compute Responsive Cover Image Attributes & LCP Preload
+const articleCoverAttrs = article?.featured_image
+  ? getResponsiveImageAttrs(article.featured_image, article.image_alt || article.title, { slotType: 'article-cover', isPriority: true })
+  : null;
+const lcpPreload = articleCoverAttrs ? { src: articleCoverAttrs.src, srcset: articleCoverAttrs.srcset, sizes: articleCoverAttrs.sizes } : undefined;
+
 if (article) {
   const [fetchedRelated, internalLinkCandidates, fetchedPlaneALinks] = await Promise.all([
-    getRelatedArticles(db, article.id, article.category_id, 6),
+    getRelatedArticles(db, article.id, article.category_id, 8, {
+      focusKeyword: article.focus_keyword,
+      title: article.title,
+      slug: article.slug,
+      description: article.description
+    }),
     getInternalLinkCandidates(db, 50),
     getActivePlaneALinks(db, article.id).catch(() => [])
   ]);
@@ -87,7 +131,14 @@ if (article) {
     rawContentHtml = await renderArticleMarkdownSafely(article.content_md);
   }
 
-  const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(rawContentHtml));
+  const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(rawContentHtml), {
+    articleSlug: article.slug,
+    contentMd: article.content_md,
+    manifest: article.visual_manifest,
+    autoLoadManifest: true,
+    isDev: false,
+    allowUnapprovedInPreview: false
+  });
   toc = extractTableOfContents(safeArticleHtml);
   processedHtml = processArticleContent(
     safeArticleHtml,
@@ -97,6 +148,14 @@ if (article) {
     siteSettings,
     toc
   );
+
+  // Enforce single semantic H1 on page:
+  // Strips any duplicate H1 from rendered markdown body without altering canonical DB markdown or hash
+  processedHtml = processedHtml.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
+
+  // Normalize comparison card headings (h4 -> h3) for accessibility heading hierarchy compliance
+  processedHtml = processedHtml.replace(/<h4(\s+class="font-display[^"]*")/gi, '<h3$1').replace(/<\/h4>/gi, '</h3>');
+  processedHtml = processedHtml.replace(/text-slate-400(\s+dark:text-slate-500">[\s\S]*?Karakteristik Lainnya)/gi, 'text-slate-600$1');
 
   if (article.key_takeaways) {
     try {
@@ -196,6 +255,7 @@ if (article) {
     description={article ? article.description : page!.description}
     ogImage={article ? article.featured_image : page!.featured_image || siteSettings.seo_default_og_image}
     canonicalUrl={`${siteUrl}/${article ? article.slug : page!.slug}`}
+    preloadImage={lcpPreload}
     categories={categories}
     siteSettings={siteSettings}
     isArticlePage={!isStaticPage}
@@ -206,69 +266,68 @@ if (article) {
     articleAuthor={article ? (authorObj.slug ? `${siteUrl}/author/${authorObj.slug}` : `${siteUrl}/author/redaksi`) : undefined}
     articleSection={article?.category_name}
   >
-  <!-- Apple-Style Dynamic Reading Progress Bar (Top) -->
-  <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-[#0066ee] z-50 transition-all duration-100 ease-out" style="width: 0%;"></div>
+  <!-- Dynamic Reading Progress Bar (Top) -->
+  <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-[var(--lemon)] z-50 transition-all duration-100 ease-out" style="width: 0%;"></div>
 
   <!-- 🅰️ RENDER AS STATIC PAGE -->
   {isStaticPage && page && (
-    <div class="rl-mobile-grid max-w-3xl mx-auto py-4">
-      <div class="mb-6">
+    <div class="editorial-container max-w-[900px] py-8">
+      <div class="crumb mb-6">
         <Breadcrumbs items={breadcrumbItems} />
       </div>
 
-      <header class="mb-8 border-b border-black/[0.05] dark:border-white/[0.08] pb-6">
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.2]">
+      <header class="mb-8 border-b border-[var(--line)] pb-6">
+        <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--ink)] leading-[1.15]">
           {page.title}
         </h1>
         {page.description && (
-          <p class="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p class="mt-4 text-base sm:text-lg text-[var(--muted)] leading-relaxed">
             {page.description}
           </p>
         )}
       </header>
 
       {page.featured_image && (
-        <div class="my-8 overflow-hidden rounded-[2rem] bg-slate-100 dark:bg-slate-800 aspect-[16/10] shadow-[0_10px_30px_rgba(0,0,0,0.06)] border border-black/[0.04] dark:border-white/[0.06]">
+        <div class="my-8 overflow-hidden rounded-lg bg-[var(--warm)] aspect-[16/10] border border-[var(--line)]">
           <img src={page.featured_image} alt={page.title} class="h-full w-full object-cover" />
         </div>
       )}
 
       <!-- Page Content -->
-      <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-6" set:html={processedHtml} />
+      <div class="prose-magazine text-[var(--ink)] mt-6" set:html={processedHtml} />
 
-      <!-- Optional Interactive Contact Form for template === 'contact' -->
+      <!-- Interactive Contact Form for template === 'contact' (Atlas T10) -->
       {page.template === 'contact' && (
-        <div class="mt-10 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
-          <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-            <span>✉️</span>
+        <div class="mt-10 rounded-lg bg-[var(--warm)] border border-[var(--line)] p-6 sm:p-8">
+          <h3 class="font-serif text-xl font-bold text-[var(--ink)] mb-2">
             Kirim Pesan ke Redaksi
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Tim redaksi RancangLoka akan merespons pesan Anda dalam 1x24 jam kerja.</p>
+          <p class="text-xs text-[var(--muted)] mb-6">Tim redaksi RancangLoka akan merespons pesan Anda dalam 1x24 jam kerja.</p>
 
           <form id="contact-form" class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nama Lengkap</label>
-                <input type="text" required placeholder="Nama Anda" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+                <label class="block text-xs font-semibold text-[var(--ink)] mb-1">Nama Lengkap</label>
+                <input type="text" required placeholder="Nama Anda" class="w-full rounded border border-[var(--line)] bg-white px-3.5 py-2.5 text-xs text-[var(--ink)] focus:outline-none focus:border-[var(--primary)]" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Alamat Email</label>
-                <input type="email" required placeholder="email@domain.com" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+                <label class="block text-xs font-semibold text-[var(--ink)] mb-1">Alamat Email</label>
+                <input type="email" required placeholder="email@domain.com" class="w-full rounded border border-[var(--line)] bg-white px-3.5 py-2.5 text-xs text-[var(--ink)] focus:outline-none focus:border-[var(--primary)]" />
               </div>
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Subjek Pesan</label>
-              <input type="text" required placeholder="Topik: Kemitraan Media / Rilis Karya / Pertanyaan" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+              <label class="block text-xs font-semibold text-[var(--ink)] mb-1">Subjek Pesan</label>
+              <input type="text" required placeholder="Topik: Kemitraan Media / Rilis Karya / Pertanyaan Teknis" class="w-full rounded border border-[var(--line)] bg-white px-3.5 py-2.5 text-xs text-[var(--ink)] focus:outline-none focus:border-[var(--primary)]" />
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Isi Pesan</label>
-              <textarea rows="4" required placeholder="Tuliskan pesan atau detail kolaborasi Anda di sini..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+              <label class="block text-xs font-semibold text-[var(--ink)] mb-1">Isi Pesan</label>
+              <textarea rows="4" required placeholder="Tuliskan pesan atau pertanyaan Anda di sini..." class="w-full rounded border border-[var(--line)] bg-white p-3.5 text-xs text-[var(--ink)] focus:outline-none focus:border-[var(--primary)]"></textarea>
             </div>
 
-            <button type="submit" class="rounded-xl bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-primary-hover transition shadow-sm">
-              Kirim Pesan Sekarang 🚀
+            <button type="submit" class="btn">
+              Kirim Pesan Sekarang ↗
             </button>
           </form>
         </div>
@@ -279,199 +338,202 @@ if (article) {
   <!-- 🅱️ RENDER AS MAGAZINE ARTICLE -->
   {!isStaticPage && article && (
 
-  <article class="rl-mobile-grid max-w-4xl mx-auto py-6 overflow-x-clip lg:overflow-x-visible">
+  <article class="editorial-container max-w-[1080px] py-8">
     <!-- 1. Breadcrumbs -->
-    <div class="mb-6">
+    <div class="crumb mb-6">
       <Breadcrumbs items={breadcrumbItems} />
     </div>
 
-    <!-- 2. Header Metadata & Headline -->
-    <header class="mb-10">
-      <div class="flex flex-wrap items-center gap-3 mb-5">
-        <a
-          href={`/category/${article.category_slug || 'all'}`}
-          class="border border-stone dark:border-stone/30 px-3 py-1 text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-ink dark:text-paper hover:bg-stone/10 transition"
-        >
-          {article.category_name || 'SPATIAL STUDY'}
-        </a>
-
+    <!-- 2. Editorial Article Header (Atlas T05) -->
+    <header class="mb-8 max-w-[830px]">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="eyebrow">{article.category_name || 'ARSITEKTUR & HUNIAN'}</span>
         {article.is_sponsored === 1 && (
-          <span class="border border-accent px-2.5 py-1 text-[10px] font-mono font-bold text-accent uppercase tracking-wider">
-            ✦ SPONSORED STUDY
+          <span class="border border-[var(--primary)] px-2 py-0.5 text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider rounded">
+            ✦ SPONSORED
           </span>
         )}
-
-        <span class="text-xs font-mono text-muted dark:text-stone/70">
-          ⏱️ {article.reading_time_minutes} MIN READ
-        </span>
-
-        <!-- Save Inspiration Button -->
-        <button
-          id="article-bookmark-btn"
-          type="button"
-          class="sm:ml-auto inline-flex max-w-full items-center gap-1.5 border border-stone dark:border-stone/30 hover:border-ink dark:hover:border-paper px-3.5 py-1 text-xs font-mono font-medium text-ink dark:text-paper transition"
-          data-slug={article.slug}
-          data-title={article.title}
-          data-image={article.featured_image}
-          data-category={article.category_name}
-        >
-          <span>✦</span>
-          <span id="bookmark-btn-text">Save Inspiration</span>
-        </button>
       </div>
 
-      <h1 class="rl-safe-wrap font-serif text-3xl sm:text-5xl md:text-[56px] lg:text-[60px] font-normal text-ink dark:text-paper leading-[1.08] sm:leading-[1.04]">
+      <h1 class="font-sans text-3xl sm:text-4xl md:text-[42px] font-bold text-[var(--ink)] leading-[1.15] tracking-tight my-4">
         {article.title}
       </h1>
 
       {article.description && (
-        <p class="mt-6 text-lg sm:text-xl text-muted dark:text-stone leading-relaxed font-normal">
+        <p class="text-base sm:text-lg text-[var(--muted)] leading-relaxed max-w-[760px] mb-6">
           {article.description}
         </p>
       )}
 
-      <!-- Author and Content Freshness Line -->
-      <div class="mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-y border-stone dark:border-stone/20 py-4 text-xs font-mono text-muted dark:text-stone/80">
+      <!-- Author and Metadata Byline (Atlas T05) -->
+      <div class="flex flex-wrap items-center justify-between gap-4 py-3.5 border-y border-[var(--line)] text-xs text-[var(--muted)]">
         <div class="flex items-center gap-3">
           <img
-            src={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+            src={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'}
             alt={article.author_name || 'Redaksi'}
-            class="h-9 w-9 rounded-full object-cover grayscale"
+            class="h-9 w-9 rounded-full object-cover border border-[var(--line)]"
           />
           <div>
-            <span class="font-bold text-ink dark:text-paper block uppercase tracking-wider">{article.author_name || 'Dewan Redaksi Spasial'}</span>
-            <span class="text-[10px] text-muted dark:text-stone/60">{article.author_role || 'Editor Spesifikasi & Tata Ruang'}</span>
+            <span class="font-bold text-[var(--ink)] block">{article.author_name || 'Dewan Redaksi'}</span>
+            <span class="text-[11px] text-[var(--muted)]">{article.author_role || 'Editor Spesifikasi & Desain'}</span>
           </div>
         </div>
 
-        <div class="text-left sm:text-right text-[11px]">
+        <div class="flex items-center gap-3 sm:gap-4 text-[11px]">
+          <span>⏱️ {article.reading_time_minutes || 5} menit baca</span>
+          <span>·</span>
           <div>
-            Diterbitkan <time itemprop="datePublished" datetime={new Date(article.published_at).toISOString()}>{new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</time>
+            Diterbitkan <time itemprop="datePublished" datetime={safeDateIso(article.published_at)}>{safeDateLocal(article.published_at)}</time>
           </div>
           {article.updated_at && article.published_at && (new Date(article.updated_at).getTime() - new Date(article.published_at).getTime() > 60000) && (
-            <div class="text-[10px] text-muted/80 dark:text-stone/60 mt-0.5">
-              Diperbarui <time itemprop="dateModified" datetime={new Date(article.updated_at).toISOString()}>{new Date(article.updated_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</time>
-            </div>
+            <span class="hidden sm:inline">
+              (Diperbarui <time itemprop="dateModified" datetime={safeDateIso(article.updated_at)}>{safeDateLocal(article.updated_at)}</time>)
+            </span>
           )}
         </div>
       </div>
     </header>
 
-    <!-- 2.5 TL;DR Quick Decision Summary (Quiet Luxury Box) -->
-    <div class="my-8 bg-soft dark:bg-stone/10 border border-stone dark:border-stone/30 p-5 sm:p-6 md:p-8">
-      <div class="flex items-center gap-2 mb-2 text-xs font-mono font-bold uppercase tracking-[0.14em] text-accent">
-        <span>✦</span>
-        <span>EXECUTIVE SUMMARY · KEY TAKEAWAYS</span>
+    <!-- 3. Featured Cover Image (Atlas T05) -->
+    {article.featured_image && (
+      <figure class="my-8 rounded-lg overflow-hidden border border-[var(--line)] bg-[var(--warm)] max-w-[1000px]">
+        {articleCoverAttrs ? (
+          <img
+            src={articleCoverAttrs.src}
+            srcset={articleCoverAttrs.srcset}
+            sizes={articleCoverAttrs.sizes}
+            alt={articleCoverAttrs.alt}
+            width={articleCoverAttrs.width}
+            height={articleCoverAttrs.height}
+            class="w-full max-h-[520px] object-cover"
+            fetchpriority="high"
+            loading="eager"
+            decoding="async"
+            style={articleCoverAttrs.style}
+          />
+        ) : (
+          <img
+            src={article.featured_image}
+            alt={article.image_alt || article.title}
+            class="w-full max-h-[520px] object-cover"
+            fetchpriority="high"
+            loading="eager"
+            decoding="async"
+          />
+        )}
+        {(article.image_alt || article.title) && (
+          <figcaption class="p-3 text-xs text-[var(--muted)] bg-[var(--warm)] border-t border-[var(--line)] text-center">
+            {article.image_alt || article.title}
+          </figcaption>
+        )}
+      </figure>
+    )}
+
+    <!-- 4. Main Editorial Layout: Prose + Sticky Aside (Atlas T05) -->
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,740px)_250px] gap-10 justify-center mt-8">
+      <!-- Left Column: Core Reading Body -->
+      <div class="min-w-0">
+        <!-- Key Takeaways Box (if available) -->
+        {article.description && (
+          <div class="soft-note mb-8">
+            <b>Ringkasan Utama:</b>
+            <p class="mt-1 text-sm">{article.description}</p>
+          </div>
+        )}
+
+        <!-- Main Prose Article Body (With In-Article TOC, Dateline, and BACA JUGA) -->
+        <div id="article-body" class="prose-magazine text-[var(--ink)]" set:html={processedHtml} />
+
+        <!-- Plane A Dynamic Support Module -->
+        <ArticleSupportModule links={planeALinks} />
+
+        <!-- Social Share Bar -->
+        <SocialShareBar title={article.title} siteSettings={siteSettings} />
+
+        <!-- E-E-A-T Author Card -->
+        <AuthorCard
+          authorName={article.author_name}
+          authorAvatar={article.author_avatar}
+          authorRole={article.author_role}
+        />
+
       </div>
-      <p class="text-xs sm:text-sm text-ink/90 dark:text-paper/90 leading-relaxed font-normal">
-        {article.description}
-      </p>
+
+      <!-- Right Column: Sticky Aside with Table of Contents & Quick Action (Atlas T05) -->
+      <aside class="hidden lg:block">
+        <div class="sticky top-24 space-y-6">
+          {toc && toc.length >= 2 && (
+            <div class="p-5 rounded-lg bg-[var(--warm)] border border-[var(--line)]">
+              <strong class="font-serif text-sm text-[var(--ink)] block mb-3 pb-2 border-b border-[var(--line)]">
+                Daftar Isi Kajian
+              </strong>
+              <nav class="space-y-2 text-xs" aria-label="Daftar Isi">
+                {toc.map((item) => (
+                  <a
+                    href={`#${item.id}`}
+                    class={`block text-[var(--muted)] hover:text-[var(--primary)] transition-colors ${
+                      item.level === 3 ? 'pl-3 text-[11px]' : 'font-medium'
+                    }`}
+                  >
+                    {item.text}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          )}
+
+          <!-- Quick Action Card -->
+          <div class="p-5 rounded-lg bg-white border border-[var(--line)] text-xs text-[var(--muted)] space-y-3 shadow-xs">
+            <span class="meta block">SIMPAN & BAGIKAN</span>
+            <p class="text-[11px] leading-relaxed">
+              Simpan kajian ini untuk referensi saat renovasi atau konsultasi dengan tukang.
+            </p>
+            <button
+              id="article-bookmark-btn"
+              type="button"
+              class="w-full btn btn-secondary text-center justify-center text-xs"
+              data-slug={article.slug}
+              data-title={article.title}
+              data-image={article.featured_image}
+              data-category={article.category_name}
+            >
+              <span>🔖</span>
+              <span id="bookmark-btn-text">Simpan Inspirasi</span>
+            </button>
+          </div>
+        </div>
+      </aside>
     </div>
-
-    <!-- 3. Featured Cover Image (0px Sharp Architectural Monolith) -->
-    <div class="group relative my-8 max-w-full overflow-hidden bg-stone/20 aspect-[16/10] border border-stone dark:border-stone/20 cursor-pointer">
-      <img
-        src={article.featured_image}
-        alt={article.image_alt || article.title}
-        class="article-cover-img h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.015]"
-        fetchpriority="high"
-        loading="eager"
-        onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80'"
-      />
-      <div class="pointer-events-none absolute bottom-4 right-4 rounded-full bg-slate-950/75 backdrop-blur-md px-4 py-1.5 text-xs font-mono font-bold text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-2 shadow-xl transform translate-y-1 group-hover:translate-y-0">
-        <span>✦</span>
-        <span>Inspeksi Gambar Resolusi Penuh</span>
-      </div>
-    </div>
-
-    <!-- 6. Main Prose Article Body (With In-Article TOC, Dateline, and BACA JUGA) -->
-    <div class="prose-magazine text-slate-800 dark:text-slate-200 mt-6" set:html={processedHtml} />
-
-    <!-- 6.5 Plane A Dynamic Support Module ("Artikel Pendukung untuk Keputusan Ini") -->
-    <ArticleSupportModule links={planeALinks} />
-
-    <!-- 6.6 Social Share Bar -->
-    <SocialShareBar title={article.title} siteSettings={siteSettings} />
-
-    <!-- 7. E-E-A-T Author Card -->
-    <AuthorCard
-      authorName={article.author_name}
-      authorAvatar={article.author_avatar}
-      authorRole={article.author_role}
-    />
-
-    <!-- 7.5 Next Action Loop: Practical Spatial Decision Next Steps -->
-    <div class="my-10 rounded-2xl sm:rounded-3xl bg-slate-900 text-white p-5 sm:p-9 border border-slate-800 shadow-xl">
-      <div class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] mb-2">
-        <span>✦</span>
-        <span>LANGKAH KEPUTUSAN DESAIN SELANJUTNYA</span>
-      </div>
-      <h3 class="text-xl font-bold tracking-tight mb-3">
-        Ingin Menerapkan Pendekatan Serupa Pada Rumah Anda?
-      </h3>
-      <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal mb-6">
-        Jangan berhenti hanya membaca. Gunakan alat riset keputusan ruang kami untuk mencocokkan denah rumah Anda atau membandingkan spesifikasi materialitasnya secara presisi.
-      </p>
-      <div class="flex flex-wrap gap-3">
-        <a
-          href="/solusi"
-          class="rounded-2xl bg-[#0066ee] hover:bg-blue-600 px-5 py-2.5 text-xs font-mono font-bold text-white transition shadow-md"
-        >
-          ✦ Buka Problem Solver →
-        </a>
-        <a
-          href="/komparasi"
-          class="rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 px-5 py-2.5 text-xs font-mono font-bold text-white transition"
-        >
-          Bandingkan Material →
-        </a>
-        <a
-          href="/explore"
-          class="rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 px-5 py-2.5 text-xs font-mono font-bold text-white transition"
-        >
-          Design Explorer →
-        </a>
-      </div>
-    </div>
-
-    <!-- Desktop Floating Action Capsule (Medium / Substack Style) -->
-    <aside class="hidden xl:flex fixed left-8 2xl:left-12 top-1/2 -translate-y-1/2 flex-col items-center gap-3 z-30 rounded-full border border-black/[0.08] bg-white/80 p-2 shadow-xl backdrop-blur-xl dark:border-white/[0.1] dark:bg-slate-900/80">
-      <!-- Quick Bookmark -->
-      <button
-        type="button"
-        id="floating-bookmark-btn"
-        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-        title="Simpan Inspirasi"
-      >
-        <span id="floating-bookmark-icon" class="text-base">🔖</span>
-      </button>
-
-      <!-- Copy Link -->
-      <button
-        type="button"
-        id="floating-copy-btn"
-        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-        title="Salin Tautan Artikel"
-      >
-        <span id="floating-copy-icon" class="text-base">🔗</span>
-      </button>
-
-      <!-- Scroll to Top -->
-      <button
-        type="button"
-        id="floating-top-btn"
-        class="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-        title="Kembali ke Atas"
-      >
-        <span class="text-xs font-black">↑</span>
-      </button>
-    </aside>
   </article>
 
   <!-- 8. Full-Width Breakout Related Articles Grid (Organik Only) -->
   {article.is_sponsored !== 1 && relatedArticles.length > 0 && (
     <RelatedArticles articles={relatedArticles} />
   )}
+
+  <!-- 9. Next Action Loop / Decision Conversion CTA (Atlas T05) -->
+  <section class="editorial-container my-10 sm:my-14">
+    <div class="p-6 sm:p-10 rounded-2xl bg-[var(--wash)] border border-[var(--line)]">
+      <span class="meta">PANDUAN KEPUTUSAN</span>
+      <h3 class="font-heading text-xl sm:text-2xl font-bold text-[var(--ink)] my-2">
+        Ingin Menerapkan Solusi Serupa Pada Rumahmu?
+      </h3>
+      <p class="text-sm text-[var(--muted)] leading-relaxed mb-5 max-w-2xl">
+        Gunakan fitur Problem Solver kami untuk mencocokkan keluhan hunian atau bandingkan spesifikasi materialnya secara presisi.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a href="/solusi" class="btn">
+          ✦ Buka Problem Solver →
+        </a>
+        <a href="/komparasi" class="btn btn-secondary">
+          Bandingkan Material
+        </a>
+        <a href="/explore" class="btn btn-secondary">
+          Jelajahi Arsip
+        </a>
+      </div>
+    </div>
+  </section>
   )}
 
   <!-- Reading Progress & Bookmark Script -->
@@ -495,8 +557,8 @@ if (article) {
       const image = bookmarkBtn?.getAttribute('data-image') || '';
       const category = bookmarkBtn?.getAttribute('data-category') || '';
 
-      if (typeof (window as any).toggleSaveBookmark === 'function') {
-        const isSaved = (window as any).toggleSaveBookmark({ slug, title, image, category });
+      if (typeof window.toggleSaveBookmark === 'function') {
+        const isSaved = window.toggleSaveBookmark({ slug, title, image, category });
         const textSpan = document.getElementById('bookmark-btn-text');
         const floatIcon = document.getElementById('floating-bookmark-icon');
         if (textSpan) textSpan.innerText = isSaved ? 'Tersimpan ✓' : 'Simpan Inspirasi';
@@ -522,11 +584,10 @@ if (article) {
       }
     });
 
-    // Floating Scroll Top
-    const floatTopBtn = document.getElementById('floating-top-btn');
-    floatTopBtn?.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   </script>
+
+  <!-- Desktop-Only Scroll to Top Component (Bounded to Article Body) -->
+  <ScrollToTop />
 </BaseLayout>
 )}

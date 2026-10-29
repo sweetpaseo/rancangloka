@@ -107,7 +107,17 @@ export class ReconciliationManager {
     const jobs = await this.storage.listJobs();
     const reconciled = [];
     for (const job of jobs.filter((item) => !TERMINAL_STATUSES.has(item.status) || item.local_state !== 'COMPLETE')) {
-      reconciled.push(await this.reconcileJob(job));
+      try {
+        reconciled.push(await this.reconcileJob(job));
+      } catch (err) {
+        // Individual job reconcile failure (e.g. JOB_NOT_FOUND for local fixture/canary or network issue)
+        // must not crash entire reconciliation sequence or mutate/delete the local job.
+        reconciled.push({
+          job_id: job.job_id,
+          reconciled: false,
+          error: err?.code || err?.message || 'RECONCILE_FAILED'
+        });
+      }
     }
     return reconciled;
   }

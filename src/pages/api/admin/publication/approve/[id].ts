@@ -8,6 +8,18 @@ import {
 
 export const GET: APIRoute = async ({ params, locals }) => {
   try {
+    const rawId = String(params.id || '');
+    if (rawId.startsWith('fixture-') || rawId.includes('fixture')) {
+      return new Response(JSON.stringify({
+        status: 'error',
+        code: 'FIXTURE_ACTION_PROHIBITED',
+        message: 'FIXTURE_ACTION_PROHIBITED: Local preview fixtures cannot be queried for approval history.'
+      }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const articleId = parseInt(params.id || '', 10);
     if (isNaN(articleId)) {
       return new Response(JSON.stringify({ status: 'error', message: 'Invalid article ID' }), {
@@ -33,6 +45,18 @@ export const GET: APIRoute = async ({ params, locals }) => {
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
   try {
+    const rawId = String(params.id || '');
+    if (rawId.startsWith('fixture-') || rawId.includes('fixture')) {
+      return new Response(JSON.stringify({
+        status: 'error',
+        code: 'FIXTURE_ACTION_PROHIBITED',
+        message: 'FIXTURE_ACTION_PROHIBITED: Local preview fixtures cannot be officially approved or mutated.'
+      }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const articleId = parseInt(params.id || '', 10);
     if (isNaN(articleId)) {
       return new Response(JSON.stringify({ status: 'error', message: 'Invalid article ID' }), {
@@ -81,6 +105,18 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
 export const DELETE: APIRoute = async ({ params, request, locals }) => {
   try {
+    const rawId = String(params.id || '');
+    if (rawId.startsWith('fixture-') || rawId.includes('fixture')) {
+      return new Response(JSON.stringify({
+        status: 'error',
+        code: 'FIXTURE_ACTION_PROHIBITED',
+        message: 'FIXTURE_ACTION_PROHIBITED: Local preview fixtures cannot be mutated or revoked.'
+      }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const articleId = parseInt(params.id || '', 10);
     if (isNaN(articleId)) {
       return new Response(JSON.stringify({ status: 'error', message: 'Invalid article ID' }), {

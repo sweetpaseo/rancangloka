@@ -1,26 +1,49 @@
-import { LOKAMEDIA_PROTOCOL_VERSION } from './constants.js';
+import { LOKAMEDIA_PROTOCOL_VERSION, detectEnvironment } from './constants.js';
 
 function normalizeBaseUrl(url) {
   return String(url ?? '').replace(/\/+$/, '');
 }
 
 export class ApiClient {
-  constructor({ baseUrl, deviceToken, fetchImpl = globalThis.fetch } = {}) {
+  constructor({ baseUrl, deviceToken, environment = null, fetchImpl = globalThis.fetch } = {}) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
     this.deviceToken = deviceToken;
+    this.environment = environment ? String(environment).toLowerCase() : null;
     this.fetchImpl = fetchImpl === globalThis.fetch ? globalThis.fetch.bind(globalThis) : fetchImpl;
+  }
+
+  assertEnvironmentConsistency() {
+    if (this.environment) {
+      const detected = detectEnvironment(this.baseUrl);
+      if (this.environment !== detected) {
+        const error = new Error(`ENVIRONMENT_URL_MISMATCH: Configured environment is '${this.environment}' but target URL is '${this.baseUrl}' (${detected})`);
+        error.code = 'ENVIRONMENT_URL_MISMATCH';
+        error.status = 400;
+        throw error;
+      }
+    }
+  }
+
+  authHeaders(extra = {}) {
+    const isTokenlessDev = (!this.deviceToken && (this.environment === 'local' || detectEnvironment(this.baseUrl) === 'local'));
+    return {
+      ...(this.deviceToken ? { Authorization: `Bearer ${this.deviceToken}` } : {}),
+      ...(isTokenlessDev ? { 'X-RL-Dev-Mode': 'tokenless', 'X-RL-Device-Id': 'dev_local_tokenless' } : {}),
+      ...extra
+    };
   }
 
   headers(extra = {}) {
     return {
       'Content-Type': 'application/json',
       'X-LokaMedia-Protocol': String(LOKAMEDIA_PROTOCOL_VERSION),
-      ...(this.deviceToken ? { Authorization: `Bearer ${this.deviceToken}` } : {}),
+      ...this.authHeaders(),
       ...extra
     };
   }
 
   async request(path, options = {}) {
+    this.assertEnvironmentConsistency();
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, options);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -33,11 +56,16 @@ export class ApiClient {
     return payload;
   }
 
-  nextJob(deviceId) {
+  nextJob(deviceId, options = {}) {
+    const jobId = typeof options === 'string' ? options : (options?.jobId || options?.job_id || null);
     return this.request('/api/internal/v1/media/jobs/next', {
       method: 'POST',
       headers: this.headers(),
-      body: JSON.stringify({ protocol_version: LOKAMEDIA_PROTOCOL_VERSION, device_id: deviceId })
+      body: JSON.stringify({
+        protocol_version: LOKAMEDIA_PROTOCOL_VERSION,
+        device_id: deviceId,
+        ...(jobId ? { job_id: jobId } : {})
+      })
     });
   }
 
@@ -107,11 +135,30 @@ export class ApiClient {
     if (approval) {
       form.set('approval_record', typeof approval === 'string' ? approval : JSON.stringify(approval));
     }
-    form.set('file', new Blob([blobRecord.bytes], { type: blobRecord.mime }), 'lokamedia.png');
+    const derivativeId = job.derivative_id || blobRecord.derivative_id;
+    if (derivativeId) {
+      form.set('derivative_id', derivativeId);
+    }
+    const transformId = job.transform_id || blobRecord.transform_id;
+    if (transformId) {
+      form.set('transform_id', transformId);
+    }
+    const provenance = job.provenance_json || blobRecord.provenance_json || (job.original_sha256 || blobRecord.source_sha256 ? {
+      source_sha256: job.original_sha256 || blobRecord.source_sha256,
+      watermark_settings_version: job.watermark_settings_version || blobRecord.watermark_settings_version,
+      watermark_engine_version: job.watermark_engine_version || blobRecord.watermark_engine_version,
+      derivative_id: derivativeId,
+      transform_id: transformId
+    } : null);
+    if (provenance) {
+      form.set('provenance_json', typeof provenance === 'string' ? provenance : JSON.stringify(provenance));
+    }
+    const ext = blobRecord.mime === 'image/jpeg' ? 'jpg' : (blobRecord.mime === 'image/webp' ? 'webp' : 'png');
+    form.set('file', new Blob([blobRecord.bytes], { type: blobRecord.mime }), `lokamedia.${ext}`);
 
     const response = await this.fetchImpl(`${this.baseUrl}/api/internal/v1/media/upload`, {
       method: 'POST',
-      headers: this.deviceToken ? { Authorization: `Bearer ${this.deviceToken}` } : {},
+      headers: this.authHeaders(),
       body: form
     });
     const payload = await response.json().catch(() => ({}));
@@ -200,7 +247,7 @@ export class ApiClient {
       `${this.baseUrl}/api/internal/v1/media/derivatives/${encodeURIComponent(derivativeId)}/upload`,
       {
         method: 'POST',
-        headers: this.deviceToken ? { Authorization: `Bearer ${this.deviceToken}` } : {},
+        headers: this.authHeaders(),
         body: form
       }
     );
@@ -266,7 +313,7 @@ export class ApiClient {
 
     const response = await this.fetchImpl(`${this.baseUrl}/api/internal/v1/media/assets/upload`, {
       method: 'POST',
-      headers: this.deviceToken ? { Authorization: `Bearer ${this.deviceToken}` } : {},
+      headers: this.authHeaders(),
       body: form
     });
 

@@ -7,224 +7,180 @@ interface Props {
 }
 
 const { categories = [], siteSettings = {} } = Astro.props;
-const siteTitle = siteSettings.site_title || 'RANCANGLOKA';
-const siteTagline = siteSettings.site_tagline || 'JURNAL KURASI ARSITEKTUR, DESAIN INTERIOR & RUANG TROPIS';
+const siteTitle = siteSettings.site_title || 'RancangLoka.';
 
-const todayFormatted = new Intl.DateTimeFormat('id-ID', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric'
-}).format(new Date());
+// 7 Approved HGTV-style editorial categories as fallback or canonical alignment
+const defaultCategories = [
+  { name: 'Inspirasi', slug: 'inspirasi' },
+  { name: 'Ruang', slug: 'ruang' },
+  { name: 'Renovasi', slug: 'renovasi' },
+  { name: 'Taman & Outdoor', slug: 'taman-outdoor' },
+  { name: 'Material', slug: 'material' },
+  { name: 'Smart Home', slug: 'smart-home' },
+  { name: 'Belanja Cerdas', slug: 'belanja-cerdas' }
+];
+
+const navCategories = categories.length > 0 ? categories : defaultCategories;
+const currentPath = Astro.url.pathname;
 ---
 
-<header class="w-full bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 transition-colors">
-  <!-- 1. Top Utility Row (Kompas.id Style: Menu, Cari, Edisi, Bookmark, Theme, Subscribe) -->
-  <div class="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-10 items-center justify-between text-xs">
-      <!-- Left: Menu, Cari, Edisi -->
-      <div class="flex items-center gap-4 sm:gap-6 text-slate-700 dark:text-slate-300">
-        <button
-          id="kompas-menu-toggle"
-          class="flex items-center gap-1.5 font-bold hover:text-[#003366] dark:hover:text-blue-400 transition"
-          aria-label="Buka Menu"
-        >
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-          <span class="hidden sm:inline">Menu</span>
-        </button>
-
-        <button
-          data-search-trigger
-          class="flex items-center gap-1.5 font-bold hover:text-[#003366] dark:hover:text-blue-400 transition"
-          aria-label="Pencarian"
-        >
-          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span class="hidden sm:inline">Cari</span>
-        </button>
-
-        <span class="hidden md:flex items-center gap-1.5 font-semibold text-[#003366] dark:text-blue-400 text-[11px]">
-          <span class="h-2 w-2 rounded-full bg-[#003366] dark:bg-blue-400 animate-pulse"></span>
-          Edisi Digital
-        </span>
-      </div>
-
-      <!-- Right: Date, Bookmark, Theme Switcher, Subscribe Button -->
-      <div class="flex items-center gap-3 sm:gap-4 text-slate-600 dark:text-slate-400 text-xs">
-        <span class="hidden lg:inline text-[11px] font-medium text-slate-500 dark:text-slate-400">
-          {todayFormatted}
-        </span>
-
-        <!-- Bookmark -->
-        <button
-          data-bookmark-trigger
-          class="relative p-1.5 hover:text-[#003366] dark:hover:text-white transition"
-          aria-label="Koleksi Tersimpan"
-          title="Koleksi Tersimpan"
-        >
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-          </svg>
-          <span class="bookmark-badge hidden absolute -top-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[#003366] text-white px-1 text-[8px] font-bold">
-            0
-          </span>
-        </button>
-
-        <!-- Theme Switcher -->
-        <button
-          class="theme-toggle-btn p-1.5 hover:text-[#003366] dark:hover:text-white transition"
-          aria-label="Mode Gelap/Terang"
-          title="Mode Gelap/Terang"
-        >
-          <svg class="h-4 w-4 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <svg class="h-4 w-4 block dark:hidden text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-        </button>
-
-        <!-- Newsletter Subscribe Button (Kompas Blue Pill) -->
-        <a
-          href="#newsletter-section"
-          class="rounded-md bg-[#003366] hover:bg-[#002244] dark:bg-blue-600 dark:hover:bg-blue-700 px-3 py-1 text-[11px] font-bold text-white transition shadow-2xs"
-        >
-          Berlangganan
-        </a>
-      </div>
-    </div>
-  </div>
-
-  <!-- 2. Centered Grand Masthead Row (Kompas.id Style) -->
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 md:py-6 flex flex-col md:flex-row items-center justify-between gap-4">
-    <!-- Left Sublinks (Desktop) -->
-    <div class="hidden md:flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
-      <a href="/metodologi" class="hover:text-[#003366] dark:hover:text-white transition">Metodologi</a>
-      <span>·</span>
-      <a href="/editorial-standards" class="hover:text-[#003366] dark:hover:text-white transition">Integritas</a>
-    </div>
-
-    <!-- Center Masthead Logo -->
-    <a href="/" class="group flex flex-col items-center text-center">
-      <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#003366] dark:text-white uppercase transition group-hover:opacity-90">
+<header class="w-full bg-white border-t-[5px] border-[var(--lemon)] border-b border-[var(--line)] sticky top-0 z-40 shadow-[0_4px_16px_rgba(85,72,27,0.04)]">
+  <!-- Main Nav Bar -->
+  <div class="editorial-container flex items-center justify-between gap-4 h-16 py-2.5 md:py-3">
+    <!-- Brand Logo -->
+    <a href="/" class="flex items-center gap-2.5 group flex-shrink-0" aria-label="RancangLoka Beranda">
+      <span class="grid place-items-center w-8 h-8 rounded-md border-2 border-[var(--lemon)] -rotate-6 bg-white shadow-xs group-hover:rotate-0 transition-transform duration-300" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linejoin="round" class="w-5 h-5 rotate-6 group-hover:rotate-0 text-[var(--primary)] transition-transform duration-300">
+          <path d="M2 16 16 4l14 12M8 13v15h16V13M13 28V17h7v11" />
+        </svg>
+      </span>
+      <span class="font-brand text-2xl font-black tracking-tight text-[var(--primary)] group-hover:text-[var(--deep)] transition-colors">
         {siteTitle}
-      </h1>
-      <span class="text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 mt-1">
-        {siteTagline}
       </span>
     </a>
 
-    <!-- Right Sublinks (Desktop) -->
-    <div class="hidden md:flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
-      <a href="/solusi" class="hover:text-[#003366] dark:hover:text-white transition font-semibold text-[#003366] dark:text-blue-400">✦ Problem Solver</a>
-      <span>·</span>
-      <a href="/komparasi" class="hover:text-[#003366] dark:hover:text-white transition">Material Matrix</a>
+    <!-- Desktop Categories Nav -->
+    <nav class="hidden lg:flex items-center gap-6 text-[13.5px] font-medium text-[var(--ink)]" aria-label="Navigasi Utama">
+      <a
+        href="/category/inspirasi"
+        class={`py-1 transition-colors hover:text-[var(--primary)] ${
+          currentPath.startsWith('/category/inspirasi') ? 'text-[var(--primary)] font-bold border-b-2 border-[var(--lemon)]' : 'text-[var(--muted)]'
+        }`}
+      >
+        Inspirasi
+      </a>
+      <a
+        href="/category/renovasi"
+        class={`py-1 transition-colors hover:text-[var(--primary)] ${
+          currentPath.startsWith('/category/renovasi') ? 'text-[var(--primary)] font-bold border-b-2 border-[var(--lemon)]' : 'text-[var(--muted)]'
+        }`}
+      >
+        Renovasi
+      </a>
+      <a
+        href="/category/material"
+        class={`py-1 transition-colors hover:text-[var(--primary)] ${
+          currentPath.startsWith('/category/material') ? 'text-[var(--primary)] font-bold border-b-2 border-[var(--lemon)]' : 'text-[var(--muted)]'
+        }`}
+      >
+        Material
+      </a>
+      <a
+        href="/komparasi"
+        class={`py-1 transition-colors hover:text-[var(--primary)] ${
+          currentPath === '/komparasi' ? 'text-[var(--primary)] font-bold border-b-2 border-[var(--lemon)]' : 'text-[var(--muted)]'
+        }`}
+      >
+        Komparasi
+      </a>
+      <a
+        href="/solusi"
+        class={`py-1 transition-colors hover:text-[var(--primary)] ${
+          currentPath === '/solusi' ? 'text-[var(--primary)] font-bold border-b-2 border-[var(--lemon)]' : 'text-[var(--primary)] font-semibold'
+        }`}
+      >
+        ✦ Solusi
+      </a>
+      <a
+        href="/explore"
+        class={`py-1 transition-colors hover:text-[var(--primary)] ${
+          currentPath === '/explore' ? 'text-[var(--primary)] font-bold border-b-2 border-[var(--lemon)]' : 'text-[var(--muted)]'
+        }`}
+      >
+        Eksplorasi
+      </a>
+    </nav>
+
+    <!-- Right Controls: Search & Mobile Menu Button -->
+    <div class="flex items-center gap-3">
+      <!-- Search Input Trigger Button (Opens Modal or navigates to /search) -->
+      <a
+        href="/search"
+        data-search-trigger
+        class="hidden sm:inline-flex items-center gap-2 text-xs text-[var(--muted)] hover:text-[var(--ink)] bg-[var(--warm)] border border-[var(--line)] rounded-full px-3.5 py-1.5 transition hover:border-[var(--lemon)] whitespace-nowrap cursor-pointer"
+        aria-label="Pencarian Ide Rumah"
+      >
+        <svg class="w-3.5 h-3.5 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <span>Cari ide rumah...</span>
+      </a>
+
+      <!-- Mobile Search Icon Button -->
+      <a
+        href="/search"
+        data-search-trigger
+        class="sm:hidden p-2 text-[var(--ink)] hover:text-[var(--primary)] transition rounded-md"
+        aria-label="Cari"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </a>
+
+      <!-- Mobile Menu Toggle Button -->
+      <button
+        id="theme-mobile-menu-toggle"
+        type="button"
+        class="lg:hidden p-2 text-[var(--ink)] hover:text-[var(--primary)] transition rounded-md"
+        aria-label="Buka Menu Navigasi"
+        aria-expanded="false"
+      >
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
     </div>
   </div>
 
-  <!-- 3. Category Navigation Bar (Clean Border & Active Line) -->
-  <nav class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center gap-6 overflow-x-auto no-scrollbar py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-        <a
-          href="/"
-          class={`pb-1 whitespace-nowrap transition border-b-2 ${
-            Astro.url.pathname === '/' || Astro.url.pathname === ''
-              ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
-              : 'border-transparent hover:text-[#003366] dark:hover:text-white'
-          }`}
-        >
-          Beranda
-        </a>
-
-        {categories.map((cat) => {
-          const isCatActive = Astro.url.pathname === `/category/${cat.slug}` || Astro.url.pathname === `/category/${cat.slug}/`;
-          return (
-            <a
-              href={`/category/${cat.slug}`}
-              class={`pb-1 whitespace-nowrap transition border-b-2 ${
-                isCatActive
-                  ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
-                  : 'border-transparent hover:text-[#003366] dark:hover:text-white'
-              }`}
-            >
-              {cat.name}
-            </a>
-          );
-        })}
-
-        <a
-          href="/solusi"
-          class={`pb-1 whitespace-nowrap transition border-b-2 ${
-            Astro.url.pathname === '/solusi'
-              ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
-              : 'border-transparent hover:text-[#003366] dark:hover:text-white'
-          }`}
-        >
-          Problem Solver
-        </a>
-
-        <a
-          href="/komparasi"
-          class={`pb-1 whitespace-nowrap transition border-b-2 ${
-            Astro.url.pathname === '/komparasi'
-              ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
-              : 'border-transparent hover:text-[#003366] dark:hover:text-white'
-          }`}
-        >
-          Komparasi Material
-        </a>
-
-        <a
-          href="/explore"
-          class={`pb-1 whitespace-nowrap transition border-b-2 ${
-            Astro.url.pathname === '/explore'
-              ? 'border-[#003366] text-[#003366] dark:border-blue-400 dark:text-blue-400 font-bold'
-              : 'border-transparent hover:text-[#003366] dark:hover:text-white'
-          }`}
-        >
-          Arsip Lengkap
-        </a>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Slide-out Menu Panel -->
-  <div id="kompas-menu-panel" class="hidden border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-6 py-8">
-    <div class="mx-auto max-w-7xl grid grid-cols-2 md:grid-cols-4 gap-8 text-xs">
+  <!-- Mobile Collapsible Menu Drawer -->
+  <div id="theme-mobile-menu" class="hidden lg:hidden border-t border-[var(--line)] bg-[var(--surface)] px-5 py-6">
+    <div class="grid grid-cols-2 gap-6 text-sm">
       <div>
-        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-3">Kategori Liputan</span>
-        <ul class="space-y-2">
-          {categories.map((c) => (
-            <li><a href={`/category/${c.slug}`} class="hover:text-[#003366] dark:hover:text-blue-400 font-medium">{c.name}</a></li>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-[var(--meta)] block mb-3">Kategori</span>
+        <ul class="space-y-2.5 font-medium text-[var(--ink)]">
+          {navCategories.map((c) => (
+            <li>
+              <a href={`/category/${c.slug}`} class="hover:text-[var(--primary)] block transition-colors">
+                {c.name}
+              </a>
+            </li>
           ))}
         </ul>
       </div>
       <div>
-        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-3">Alat & Riset</span>
-        <ul class="space-y-2 font-medium">
-          <li><a href="/solusi" class="hover:text-[#003366] dark:hover:text-blue-400">Problem Solver</a></li>
-          <li><a href="/komparasi" class="hover:text-[#003366] dark:hover:text-blue-400">Komparasi Material</a></li>
-          <li><a href="/explore" class="hover:text-[#003366] dark:hover:text-blue-400">Eksplorasi Arsip</a></li>
-        </ul>
-      </div>
-      <div>
-        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-3">Redaksi & Standar</span>
-        <ul class="space-y-2 font-medium">
-          <li><a href="/editorial-standards" class="hover:text-[#003366] dark:hover:text-blue-400">Standar Editorial</a></li>
-          <li><a href="/metodologi" class="hover:text-[#003366] dark:hover:text-blue-400">Metodologi Riset</a></li>
-          <li><a href="/tentang-kami" class="hover:text-[#003366] dark:hover:text-blue-400">Tentang RancangLoka</a></li>
-          <li><a href="/kontak" class="hover:text-[#003366] dark:hover:text-blue-400">Hubungi Kami</a></li>
-        </ul>
-      </div>
-      <div>
-        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-3">Sindikasi</span>
-        <ul class="space-y-2 font-medium">
-          <li><a href="/rss.xml" class="hover:text-[#003366] dark:hover:text-blue-400">RSS Feed</a></li>
-          <li><a href="/sitemap.xml" class="hover:text-[#003366] dark:hover:text-blue-400">Sitemap Index</a></li>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-[var(--meta)] block mb-3">Fitur & Tools</span>
+        <ul class="space-y-2.5 font-medium text-[var(--ink)]">
+          <li>
+            <a href="/solusi" class="hover:text-[var(--primary)] font-bold text-[var(--primary)] block transition-colors">
+              ✦ Problem Solver
+            </a>
+          </li>
+          <li>
+            <a href="/komparasi" class="hover:text-[var(--primary)] block transition-colors">
+              Komparasi Material
+            </a>
+          </li>
+          <li>
+            <a href="/explore" class="hover:text-[var(--primary)] block transition-colors">
+              Jelajahi Arsip
+            </a>
+          </li>
+          <li>
+            <a href="/editorial-standards" class="hover:text-[var(--primary)] block transition-colors">
+              Standar Editorial
+            </a>
+          </li>
+          <li>
+            <a href="/metodologi" class="hover:text-[var(--primary)] block transition-colors">
+              Metodologi
+            </a>
+          </li>
+          <li>
+            <a href="/kontak" class="hover:text-[var(--primary)] block transition-colors">
+              Kontak Kami
+            </a>
+          </li>
         </ul>
       </div>
     </div>
@@ -232,9 +188,12 @@ const todayFormatted = new Intl.DateTimeFormat('id-ID', {
 </header>
 
 <script>
-  const toggleBtn = document.getElementById('kompas-menu-toggle');
-  const panel = document.getElementById('kompas-menu-panel');
-  toggleBtn?.addEventListener('click', () => {
-    panel?.classList.toggle('hidden');
+  const mobileToggle = document.getElementById('theme-mobile-menu-toggle');
+  const mobileMenu = document.getElementById('theme-mobile-menu');
+
+  mobileToggle?.addEventListener('click', () => {
+    const isExpanded = mobileToggle.getAttribute('aria-expanded') === 'true';
+    mobileToggle.setAttribute('aria-expanded', String(!isExpanded));
+    mobileMenu?.classList.toggle('hidden');
   });
 </script>

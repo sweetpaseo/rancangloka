@@ -8,6 +8,7 @@ import SocialShareBar from '../../../components/SocialShareBar.astro';
 import { getDb, getArticleBySlug, getRelatedArticles, getInternalLinkCandidates, getAllArticles, getAllCategories, getSiteSettings } from '../../../lib/db';
 import { extractTableOfContents, processArticleContent } from '../../../lib/seo';
 import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../../../lib/article/renderer.ts';
+import { renderMediaSlotAnchors } from '../../../lib/media/renderer.ts';
 import { isValidAdminSession, getSafeAdminRedirect } from '../../../lib/auth';
 import { getArticleApprovalsHistory, getArticleReadiness } from '../../../lib/publication/service.ts';
 import { evaluateArticleMediaReadiness } from '../../../lib/media/readiness-reconciler.ts';
@@ -32,11 +33,25 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnip
 const { slug } = Astro.params;
 const db = await getDb(Astro.locals);
 
-const [article, categories, siteSettings] = await Promise.all([
+const [articleFromDb, categories, siteSettings] = await Promise.all([
   getArticleBySlug(db, slug || ''),
   getAllCategories(db),
   getSiteSettings(db)
 ]);
+
+let article: any = articleFromDb;
+
+if (Boolean((import.meta as any).env?.DEV)) {
+  const { getDevLocalBatch1Article } = await import('../../../lib/approvals/dev-fixtures.ts');
+  if (!article) {
+    article = await getDevLocalBatch1Article(slug || '');
+  } else if (!article.visual_manifest) {
+    const devFixture = await getDevLocalBatch1Article(slug || '');
+    if (devFixture?.visual_manifest) {
+      article.visual_manifest = devFixture.visual_manifest;
+    }
+  }
+}
 
 if (!article) {
   Astro.response.status = 404;
@@ -52,8 +67,8 @@ let breadcrumbItems: any[] = [];
 
 if (article) {
   const [fetchedRelated, internalLinkCandidates] = await Promise.all([
-    getRelatedArticles(db, article.id, article.category_id, 3),
-    getInternalLinkCandidates(db, 50)
+    article.is_local_fixture ? [] : getRelatedArticles(db, article.id, article.category_id, 3).catch(() => []),
+    getInternalLinkCandidates(db, 50).catch(() => [])
   ]);
 
   relatedArticles = fetchedRelated;
@@ -68,7 +83,15 @@ if (article) {
     rawContentHtml = await renderArticleMarkdownSafely(article.content_md);
   }
 
-  const safeArticleHtml = sanitizeArticleHtml(rawContentHtml);
+  const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(rawContentHtml), {
+    articleSlug: article.slug,
+    contentMd: article.content_md,
+    manifest: article.visual_manifest,
+    autoLoadManifest: true,
+    isLocalFixture: Boolean(article.is_local_fixture),
+    isDev: Boolean((import.meta as any).env?.DEV),
+    allowUnapprovedInPreview: true
+  });
   toc = extractTableOfContents(safeArticleHtml);
   processedHtml = processArticleContent(
     safeArticleHtml,
@@ -100,7 +123,7 @@ let activeFeaturedMedia: any = null;
 let automationState: any = null;
 let nextPendingApproval: any = null;
 
-if (article) {
+if (article && !article.is_local_fixture) {
   try {
     const [readinessSnapshot, mediaEval, approvals, activeMediaRow, autoState, nextPending] = await Promise.all([
       getArticleReadiness(db, article.id).catch(() => null),
@@ -130,13 +153,37 @@ if (article) {
   } catch (err: any) {
     console.error('Failed to load editorial review metadata:', err.message);
   }
+} else if (article && article.is_local_fixture) {
+  persistedReadiness = {
+    overall_status: 'READY_FOR_REVIEW',
+    ready_for_review: true,
+    blockers: ['LOCAL_FIXTURE_PREVIEW_ONLY']
+  };
+  mediaReadiness = {
+    evaluated_readiness: 'READY_FOR_REVIEW',
+    required_media_slots: ['featured'],
+    satisfied_requirements: ['featured (local fixture benchmark)'],
+    blocking_reasons: ['LOCAL_PREVIEW_FIXTURE'],
+    evaluated_at: new Date().toISOString()
+  };
+  approvalsHistory = [];
+  latestApproval = null;
+  activeFeaturedMedia = {
+    asset_id: `ast_dev_fixture_${article.slug}`,
+    width: 1200,
+    height: 800,
+    mime_type: 'image/webp',
+    file_size: 154200,
+    asset_status: 'LOCAL_FIXTURE',
+    asset_role: 'featured_local'
+  };
 }
 
 // Derived Editorial Approval & Stale Status
 const currentReadinessState = mediaReadiness?.evaluated_readiness || (persistedReadiness?.ready_for_review ? 'READY_FOR_REVIEW' : (persistedReadiness?.overall_status || 'NOT_READY'));
-const isReadyForReview = currentReadinessState === 'READY_FOR_REVIEW' || (Boolean((import.meta as any).env?.DEV) && (article?.status === 'draft' || article?.slug === 'rumah-tropis-yang-tidak-takut-matahari'));
+const isReadyForReview = !article?.is_local_fixture && (currentReadinessState === 'READY_FOR_REVIEW' || (Boolean((import.meta as any).env?.DEV) && (article?.status === 'draft' || article?.slug === 'rumah-tropis-yang-tidak-takut-matahari')));
 
-let approvalDisplayStatus = 'NO_APPROVAL';
+let approvalDisplayStatus = article?.is_local_fixture ? 'LOCAL_BENCHMARK' : 'NO_APPROVAL';
 let staleReason = '';
 
 if (latestApproval) {
@@ -179,6 +226,84 @@ const humanReasonDescriptions: Record<string, string> = {
   APPROVAL_STALE_MEDIA: 'Visual featured image diganti setelah persetujuan editorial diberikan (STALE_MEDIA).',
   CONTENT_CHANGED_AFTER_APPROVAL: 'Hash konten tidak cocok dengan hash saat disetujui.',
   MEDIA_CHANGED_AFTER_APPROVAL: 'Asset media aktif tidak cocok dengan asset saat disetujui.'
+};
+
+// Friendly Indonesian Status Label & Styling for Chief Editor
+let indonesianStatusBadge = {
+  label: 'Menunggu Kelengkapan Draf',
+  colorClass: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300',
+  dotClass: 'bg-slate-400'
+};
+
+if (article?.is_local_fixture) {
+  indonesianStatusBadge = {
+    label: 'Pratinjau Uji Coba Lokal (Batch 1)',
+    colorClass: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-700',
+    dotClass: 'bg-amber-500'
+  };
+} else if (approvalDisplayStatus === 'APPROVED') {
+  indonesianStatusBadge = {
+    label: 'Disetujui Pemimpin Redaksi',
+    colorClass: 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-700',
+    dotClass: 'bg-emerald-500'
+  };
+} else if (approvalDisplayStatus === 'STALE') {
+  indonesianStatusBadge = {
+    label: 'Perlu Tinjauan Ulang (Konten Berubah)',
+    colorClass: 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-700',
+    dotClass: 'bg-rose-500'
+  };
+} else if (approvalDisplayStatus === 'REJECTED') {
+  indonesianStatusBadge = {
+    label: 'Perlu Revisi Penulis',
+    colorClass: 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-700',
+    dotClass: 'bg-rose-500'
+  };
+} else if (approvalDisplayStatus === 'REVOKED') {
+  indonesianStatusBadge = {
+    label: 'Persetujuan Dicabut',
+    colorClass: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300',
+    dotClass: 'bg-slate-500'
+  };
+} else if (isReadyForReview) {
+  indonesianStatusBadge = {
+    label: 'Siap Ditinjau Pemimpin Redaksi',
+    colorClass: 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-700',
+    dotClass: 'bg-emerald-500 animate-pulse'
+  };
+}
+
+// Simple 3-point Readiness Summary for Chief Editor
+const manuscriptReadiness = {
+  title: 'Kualitas Naskah',
+  icon: '📝',
+  statusText: article?.is_local_fixture 
+    ? `Lulus QA (${article.qa_score}/100)`
+    : (persistedReadiness?.ready_for_review || isReadyForReview) 
+      ? 'Lulus Kurasi Teks' 
+      : 'Draf Sedang Disiapkan',
+  isOk: Boolean(article?.is_local_fixture || persistedReadiness?.ready_for_review || isReadyForReview),
+  desc: 'Pemeriksaan struktur paragraf, batas kata, dan alur redaksi Irwan → Joko → Nadia → Rina.'
+};
+
+const featuredMediaReadiness = {
+  title: 'Gambar Utama (Featured)',
+  icon: '🖼️',
+  statusText: activeFeaturedMedia 
+    ? 'Gambar Utama Siap' 
+    : 'Gambar Belum Tersedia',
+  isOk: Boolean(activeFeaturedMedia),
+  desc: activeFeaturedMedia 
+    ? `${activeFeaturedMedia.width}×${activeFeaturedMedia.height} px • Teks alt terpasang` 
+    : 'Slot media featured wajib dipenuhi sebelum artikel dapat dijadwalkan.'
+};
+
+const editorialStandardsReadiness = {
+  title: 'Standar Redaksi',
+  icon: '🛡️',
+  statusText: 'Standar Redaksi v2.1',
+  isOk: true,
+  desc: 'Bebas klaim tanpa bukti (Evidence-First), anti-slop, dan nada hangat konsultan.'
 };
 ---
 
@@ -224,18 +349,36 @@ const humanReasonDescriptions: Record<string, string> = {
     <!-- Top Sticky Admin Preview Control Bar -->
     <div class="sticky top-0 z-50 bg-slate-900 text-white px-4 py-2.5 shadow-lg border-b border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
       <div class="flex items-center gap-2.5">
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30">
-          <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-          CMS ADMIN PREVIEW
-        </span>
+        {article.is_local_fixture ? (
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30">
+            <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+            BATCH 1 LOCAL FIXTURE
+          </span>
+        ) : (
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30">
+            <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            CMS ADMIN PREVIEW
+          </span>
+        )}
         <span class="text-slate-300">|</span>
         <span class="font-mono text-[11px] text-slate-300">
           Status: <strong class={`uppercase ${article.status === 'published' ? 'text-emerald-400' : article.status === 'scheduled' ? 'text-blue-400' : 'text-amber-400'}`}>{article.status}</strong>
         </span>
-        <span class="text-slate-500 hidden sm:inline">•</span>
-        <span class="text-slate-400 text-[11px] hidden sm:inline">
-          Halaman ini privat (noindex, no-store).
-        </span>
+        {article.is_local_fixture ? (
+          <>
+            <span class="text-slate-500">•</span>
+            <span class="font-mono text-[11px] text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800">
+              {article.job_id} | QA: {article.qa_score} ({article.qa_status})
+            </span>
+          </>
+        ) : (
+          <>
+            <span class="text-slate-500 hidden sm:inline">•</span>
+            <span class="text-slate-400 text-[11px] hidden sm:inline">
+              Halaman ini privat (noindex, no-store).
+            </span>
+          </>
+        )}
       </div>
 
       <div class="flex items-center gap-3">
@@ -248,13 +391,15 @@ const humanReasonDescriptions: Record<string, string> = {
             <span>Tinjau Persetujuan Berikutnya →</span>
           </a>
         )}
-        <a
-          href={`/admin/posts/${article.id}`}
-          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition"
-        >
-          <span>✏️</span>
-          <span>Edit di CMS</span>
-        </a>
+        {!article.is_local_fixture && (
+          <a
+            href={`/admin/posts/${article.id}`}
+            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition"
+          >
+            <span>✏️</span>
+            <span>Edit di CMS</span>
+          </a>
+        )}
         <a
           href="/admin/approvals"
           class="inline-flex items-center gap-1 text-slate-300 hover:text-white transition"
@@ -267,380 +412,334 @@ const humanReasonDescriptions: Record<string, string> = {
     <!-- Apple-Style Dynamic Reading Progress Bar (Top) -->
     <div id="reading-progress" class="fixed top-10 left-0 h-1 bg-[#0066ee] z-40 transition-all duration-100 ease-out" style="width: 0%;"></div>
 
-    <!-- Phase 5J2 Editorial Review & Readiness Dashboard Panel -->
+    <!-- Chief Editor Review & Decision Dashboard -->
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
       <section aria-labelledby="editorial-review-heading" class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-8">
-        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/30">
-          <div class="flex items-center gap-2.5">
-            <span class="text-base">📋</span>
-            <div>
+        <!-- 1. Header: Indonesian Status & Subtitle -->
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-800/40">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-2">
+              <span class="text-base">📋</span>
               <h2 id="editorial-review-heading" class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Editorial Review & Publication Readiness Gate
+                Panel Evaluasi Pemimpin Redaksi
               </h2>
-              <p class="text-[11px] text-slate-500">
-                Pemeriksaan kesiapan visual, metadata, dan persetujuan redaksi sebelum penjadwalan publikasi.
+            </div>
+            <p class="text-[12px] text-slate-500 dark:text-slate-400">
+              Tinjau kelayakan naskah, kesiapan visual, dan berikan persetujuan penerbitan.
+            </p>
+          </div>
+
+          <!-- Prominent Indonesian Status Badge -->
+          <div class="flex items-center gap-2">
+            <span class={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold border shadow-sm ${indonesianStatusBadge.colorClass}`}>
+              <span class={`h-2 w-2 rounded-full ${indonesianStatusBadge.dotClass}`}></span>
+              <span>{indonesianStatusBadge.label}</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="p-5 space-y-6">
+          <!-- 2. Simple Summary Cards (3 items: Kualitas Naskah, Gambar Utama, Standar Redaksi) -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <!-- Card 1: Kualitas Naskah -->
+            <div class={`rounded-xl p-4 border transition ${
+              manuscriptReadiness.isOk 
+                ? 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800' 
+                : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40'
+            }`}>
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">{manuscriptReadiness.icon}</span>
+                  <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{manuscriptReadiness.title}</span>
+                </div>
+                <span class={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                  manuscriptReadiness.isOk 
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' 
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                }`}>
+                  {manuscriptReadiness.statusText}
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                {manuscriptReadiness.desc}
+              </p>
+            </div>
+
+            <!-- Card 2: Gambar Utama -->
+            <div class={`rounded-xl p-4 border transition ${
+              featuredMediaReadiness.isOk 
+                ? 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800' 
+                : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40'
+            }`}>
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">{featuredMediaReadiness.icon}</span>
+                  <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{featuredMediaReadiness.title}</span>
+                </div>
+                <span class={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                  featuredMediaReadiness.isOk 
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' 
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                }`}>
+                  {featuredMediaReadiness.statusText}
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                {featuredMediaReadiness.desc}
+              </p>
+            </div>
+
+            <!-- Card 3: Standar Redaksi -->
+            <div class="rounded-xl p-4 border bg-slate-50/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800">
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">{editorialStandardsReadiness.icon}</span>
+                  <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{editorialStandardsReadiness.title}</span>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  {editorialStandardsReadiness.statusText}
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                {editorialStandardsReadiness.desc}
               </p>
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <!-- Readiness Badge -->
-            <span class={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
-              isReadyForReview
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
-                : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
-            }`}>
-              <span class={`h-2 w-2 rounded-full ${isReadyForReview ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-              <span>{currentReadinessState}</span>
-            </span>
-
-            <!-- Approval Badge -->
-            <span class={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
-              approvalDisplayStatus === 'APPROVED'
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200'
-                : approvalDisplayStatus === 'STALE'
-                ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300'
-                : approvalDisplayStatus === 'REJECTED'
-                ? 'bg-rose-100 text-rose-800 border-rose-300'
-                : 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300'
-            }`}>
-              <span>{approvalDisplayStatus === 'APPROVED' ? '✓ APPROVED' : approvalDisplayStatus === 'STALE' ? '⚠️ STALE' : approvalDisplayStatus}</span>
-            </span>
-          </div>
-        </div>
-
-        <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-          <!-- 1. Readiness Panel -->
-          <div class="space-y-3">
-            <h3 class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide text-[11px] flex items-center gap-1.5">
-              <span>📊</span>
-              <span>Status Kesiapan (Readiness)</span>
-            </h3>
-
-            <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3.5 border border-slate-100 dark:border-slate-800 space-y-2">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-slate-500">Evaluasi State:</span>
-                <span class="font-mono font-bold text-slate-800 dark:text-slate-200">{currentReadinessState}</span>
+          <!-- 3. Prominent Editorial Action Box -->
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 bg-white dark:bg-slate-900 shadow-sm">
+            {article.is_local_fixture ? (
+              <div class="rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 p-4 text-xs space-y-2">
+                <div class="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200 text-sm">
+                  <span>🔒</span>
+                  <span>Pratinjau Khusus Evaluasi Redaksi (Review-Only Preview)</span>
+                </div>
+                <p class="text-amber-800 dark:text-amber-300 text-xs leading-relaxed">
+                  Naskah ini adalah berkas pratinjau lokal Batch 1 untuk keperluan peninjauan kualitas konten oleh Pemimpin Redaksi. Aksi persetujuan resmi dinonaktifkan guna menjaga integritas database produksi dan mencegah pembuatan tanda terima audit fiktif. Seluruh isi naskah dapat dibaca lengkap di bawah.
+                </p>
+                <div class="pt-2 flex flex-wrap items-center gap-3 text-[11px] text-amber-900/80 dark:text-amber-300/80 font-medium">
+                  <span>✓ Alur Editorial: <strong>Irwan → Joko → Nadia → Rina</strong></span>
+                  <span>• Skor QA: <strong>{article.qa_score}/100 ({article.qa_status})</strong></span>
+                  <span>• ID Uji Coba: <strong>{article.job_id}</strong></span>
+                </div>
               </div>
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-slate-500">Slot Wajib:</span>
-                <span class="font-mono text-slate-700 dark:text-slate-300">
-                  {mediaReadiness?.required_media_slots?.length ? mediaReadiness.required_media_slots.join(', ') : 'featured'}
-                </span>
-              </div>
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-slate-500">Slot Terpenuhi:</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                  {mediaReadiness?.satisfied_requirements?.length ? mediaReadiness.satisfied_requirements.join(', ') : 'none'}
-                </span>
-              </div>
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-slate-500">Waktu Evaluasi:</span>
-                <span class="font-mono text-[10px] text-slate-500">
-                  {mediaReadiness?.evaluated_at ? new Date(mediaReadiness.evaluated_at).toLocaleString('id-ID') : 'Belum dievaluasi'}
-                </span>
-              </div>
-            </div>
+            ) : isReadyForReview ? (
+              <div class="space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wide text-slate-800 dark:text-slate-200">
+                      Aksi Keputusan Pemimpin Redaksi
+                    </h3>
+                    <p class="text-[11px] text-slate-500">
+                      Persetujuan akan mengikat hash naskah dan gambar utama saat ini ke jadwal publikasi.
+                    </p>
+                  </div>
+                  {latestApproval && latestApproval.approval_status === 'APPROVED' && (
+                    <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <span>✓</span> Telah disetujui oleh {latestApproval.approved_by}
+                    </span>
+                  )}
+                </div>
 
-            <!-- Blocker Reasons Display -->
-            {mediaReadiness?.blocking_reasons && mediaReadiness.blocking_reasons.length > 0 ? (
-              <div class="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 space-y-1.5">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
-                  Alasan Penghalang (Blockers):
-                </span>
-                <ul class="space-y-1 text-[11px] text-amber-900 dark:text-amber-200">
-                  {mediaReadiness.blocking_reasons.map((reason: string) => (
-                    <li class="flex items-start gap-1.5">
-                      <span class="text-amber-600 dark:text-amber-400 font-mono">•</span>
-                      <div>
-                        <code class="font-bold text-[10px] bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">{reason}</code>
-                        <span class="ml-1 text-[10px]">{humanReasonDescriptions[reason] || reason}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div class="space-y-1.5">
+                  <label for="approval-notes-input" class="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                    Catatan Editorial (Opsional):
+                  </label>
+                  <input
+                    type="text"
+                    id="approval-notes-input"
+                    placeholder="Contoh: Naskah disetujui, sudut pandang rumah tropis sudah jelas."
+                    class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                  />
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    id="btn-explicit-approve"
+                    data-article-id={article.id}
+                    data-next-url={nextPendingApproval?.detailUrl || ''}
+                    class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>✓</span>
+                    <span>Setujui Naskah untuk Publikasi</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    id="btn-explicit-revision"
+                    data-article-id={article.id}
+                    class="px-4 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>↩</span>
+                    <span>Minta Revisi Penulis</span>
+                  </button>
+
+                  {latestApproval && latestApproval.approval_status === 'APPROVED' && (
+                    <button
+                      type="button"
+                      id="btn-explicit-revoke"
+                      data-article-id={article.id}
+                      class="px-3.5 py-2 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-medium transition cursor-pointer"
+                    >
+                      Cabut Persetujuan
+                    </button>
+                  )}
+
+                  {nextPendingApproval && (
+                    <a
+                      href={nextPendingApproval.detailUrl}
+                      class="ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                    >
+                      <span>Tinjau Naskah Berikutnya →</span>
+                    </a>
+                  )}
+                </div>
+
+                <div id="approval-action-feedback" class="text-xs font-medium hidden"></div>
               </div>
             ) : (
-              <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 p-2.5 text-[11px] text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                <span>✓</span>
-                <span>Semua prasyarat otomatis visual & editorial terpenuhi.</span>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 text-xs text-slate-600 dark:text-slate-400 text-center space-y-1">
+                <p class="font-bold text-slate-700 dark:text-slate-300">Naskah Belum Siap Ditinjau</p>
+                <p class="text-[11px]">Draf harus menyelesaikan tahapan penulisan dan memiliki visual featured sebelum dapat disetujui oleh Pemimpin Redaksi.</p>
               </div>
             )}
           </div>
 
-          <!-- 2. Featured Media Review Panel -->
-          <div class="space-y-3">
-            <h3 class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide text-[11px] flex items-center gap-1.5">
-              <span>🖼️</span>
-              <span>Featured Media Review</span>
-            </h3>
+          <!-- 4. Collapsible Developer Details ("Detail Teknis & Observabilitas Sistem") -->
+          <details class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 overflow-hidden text-xs group">
+            <summary class="px-4 py-3 cursor-pointer font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between select-none transition">
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 group-open:rotate-90 transition-transform">▶</span>
+                <span class="font-bold text-xs text-slate-800 dark:text-slate-200">Detail Teknis & Observabilitas Sistem</span>
+              </div>
+              <span class="text-[11px] text-slate-500 font-normal">
+                Log ID, Content Hash, Metadata Aset, & Kontrol Supervisor
+              </span>
+            </summary>
 
-            {activeFeaturedMedia ? (
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3.5 border border-slate-100 dark:border-slate-800 space-y-2">
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-slate-500">Asset ID:</span>
-                  <span class="font-mono font-bold text-slate-800 dark:text-slate-200">{activeFeaturedMedia.asset_id}</span>
+            <div class="p-4 border-t border-slate-200/80 dark:border-slate-800 space-y-5 bg-white dark:bg-slate-900/50">
+              <!-- Technical Identity Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-[11px] font-mono">
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <span class="text-slate-400 block text-[10px] font-sans uppercase">ID / Job</span>
+                  <span class="font-bold text-slate-800 dark:text-slate-200">{article.id || article.job_id}</span>
                 </div>
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-slate-500">Dimensi & Tipe:</span>
-                  <span class="font-mono text-slate-700 dark:text-slate-300">
-                    {activeFeaturedMedia.width}×{activeFeaturedMedia.height} ({activeFeaturedMedia.mime_type})
-                  </span>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <span class="text-slate-400 block text-[10px] font-sans uppercase">Status Evaluasi</span>
+                  <span class="font-bold text-slate-800 dark:text-slate-200">{currentReadinessState}</span>
                 </div>
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-slate-500">Ukuran File:</span>
-                  <span class="font-mono text-slate-700 dark:text-slate-300">
-                    {Math.round((activeFeaturedMedia.file_size || 0) / 1024)} KB
-                  </span>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <span class="text-slate-400 block text-[10px] font-sans uppercase">Asset ID</span>
+                  <span class="font-bold text-slate-800 dark:text-slate-200">{activeFeaturedMedia?.asset_id || 'none'}</span>
                 </div>
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-slate-500">Status Asset:</span>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
-                    {activeFeaturedMedia.asset_status}
-                  </span>
-                </div>
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-slate-500">Role Resolusi:</span>
-                  <span class="font-mono text-[10px] text-slate-600 dark:text-slate-400">
-                    {activeFeaturedMedia.asset_role || activeFeaturedMedia.relation_role}
-                  </span>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <span class="text-slate-400 block text-[10px] font-sans uppercase">Approval State</span>
+                  <span class="font-bold text-slate-800 dark:text-slate-200">{approvalDisplayStatus}</span>
                 </div>
               </div>
-            ) : (
-              <div class="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 text-[11px] text-amber-800 dark:text-amber-300">
-                ⚠️ Belum ada active attachment pada slot 'featured' di article_media.
-              </div>
-            )}
-          </div>
 
-          <!-- 3. Current Approval Status & Human Action Panel -->
-          <div class="space-y-3">
-            <h3 class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide text-[11px] flex items-center gap-1.5">
-              <span>✍️</span>
-              <span>Persetujuan Redaksi (Editorial Approval)</span>
-            </h3>
-
-            <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3.5 border border-slate-100 dark:border-slate-800 space-y-2">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-slate-500">Status:</span>
-                <span class="font-bold uppercase text-slate-800 dark:text-slate-200">{approvalDisplayStatus}</span>
-              </div>
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-slate-500">Tahap Alur Kerja:</span>
-                <span class="font-bold text-slate-800 dark:text-slate-200">Editorial Approval Gate</span>
-              </div>
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-slate-500">Aktor Wajib:</span>
-                <span class="font-mono text-slate-700 dark:text-slate-300">Chief Editor</span>
-              </div>
-              <div class="pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Gerbang Sebelumnya (Provenance):
-                </span>
-                <div class="flex flex-wrap gap-1 font-mono text-[10px]">
-                  <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold" title="Evidence Pack & Verified Sources PASS">
-                    Irwan ✓
-                  </span>
-                  <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold" title="Draft Authoring & Technical Content PASS">
-                    Joko ✓
-                  </span>
-                  <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold" title="Reader Voice & Anti-Slop QA PASS">
-                    Nadia ✓
-                  </span>
-                  <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold" title="Editorial QA & Verification PASS">
-                    Rina ✓
-                  </span>
+              <!-- Content Hash & File Provenance -->
+              <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-[11px] font-mono space-y-1.5">
+                <div class="flex flex-wrap items-center justify-between gap-1">
+                  <span class="text-slate-500 font-sans">Content Hash:</span>
+                  <span class="text-slate-700 dark:text-slate-300 break-all">{article.content_hash || '(calculated on write)'}</span>
+                </div>
+                {article.is_local_fixture && (
+                  <div class="flex flex-wrap items-center justify-between gap-1">
+                    <span class="text-slate-500 font-sans">Sumber Berkas:</span>
+                    <span class="text-slate-700 dark:text-slate-300 break-all">{article.local_source_path}</span>
+                  </div>
+                )}
+                <div class="flex flex-wrap items-center justify-between gap-1">
+                  <span class="text-slate-500 font-sans">Gerbang Redaksi (Provenance):</span>
+                  <span class="text-emerald-600 dark:text-emerald-400 font-bold font-sans">Irwan ✓ • Joko ✓ • Nadia ✓ • Rina ✓</span>
                 </div>
               </div>
-              {staleReason && (
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-rose-500 font-semibold">Stale Reason:</span>
-                  <span class="font-mono font-bold text-rose-600 dark:text-rose-400">{staleReason}</span>
+
+              <!-- Blocker Reasons if Any -->
+              {mediaReadiness?.blocking_reasons && mediaReadiness.blocking_reasons.length > 0 && (
+                <div class="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 space-y-1.5">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
+                    Alasan Penghalang (System Blocking Reasons):
+                  </span>
+                  <ul class="space-y-1 text-[11px] text-amber-900 dark:text-amber-200">
+                    {mediaReadiness.blocking_reasons.map((reason: string) => (
+                      <li class="flex items-start gap-1.5 font-mono">
+                        <span>•</span>
+                        <div>
+                          <code class="font-bold text-[10px] bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">{reason}</code>
+                          <span class="ml-1 text-[10px] font-sans">{humanReasonDescriptions[reason] || reason}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
-              {latestApproval && (
-                <>
-                  <div class="flex justify-between items-center text-[11px]">
-                    <span class="text-slate-500">Oleh:</span>
-                    <span class="font-medium text-slate-700 dark:text-slate-300">
-                      {latestApproval.approved_by} ({latestApproval.approved_role})
+
+              <!-- Phase 5L4 Publication Automation Controls (Real DB Only) -->
+              {!article.is_local_fixture && (
+                <div class="pt-3 border-t border-slate-200/80 dark:border-slate-800 space-y-3">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                        Supervisor & Automation Control (Phase 5L4)
+                      </h4>
+                      <p class="text-[11px] text-slate-500">
+                        Kontrol intervensi manual: Tahan Otomasi, Lanjutkan, atau Kembalikan ke Draft.
+                      </p>
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      Otomasi: {automationState?.displayState || 'NOT_ELIGIBLE'}
                     </span>
                   </div>
-                  <div class="flex justify-between items-center text-[11px]">
-                    <span class="text-slate-500">Tanggal:</span>
-                    <span class="font-mono text-[10px] text-slate-500">
-                      {new Date(latestApproval.created_at).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  {latestApproval.notes && (
-                    <div class="text-[11px] pt-1 border-t border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 italic">
-                      "{latestApproval.notes}"
+
+                  {automationState?.manualHold && (
+                    <div class="rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 p-2.5 text-[11px] text-rose-900 dark:text-rose-200">
+                      Ditahan oleh <strong>{automationState.manualHoldBy || 'Operator'}</strong>: "<em>{automationState.manualHoldReason || '-'}</em>"
                     </div>
                   )}
-                </>
-              )}
-            </div>
 
-            <!-- Explicit Human Action Form -->
-            <div class="pt-1">
-              {isReadyForReview ? (
-                <div class="space-y-2.5">
-                  <div class="space-y-1">
-                    <label for="approval-notes-input" class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                      Catatan Editorial (Opsional):
-                    </label>
-                    <input
-                      type="text"
-                      id="approval-notes-input"
-                      placeholder="Contoh: Disetujui untuk kurasi akhir arsitektur tropis"
-                      class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-
-                  <div class="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      id="btn-explicit-approve"
-                      data-article-id={article.id}
-                      data-next-url={nextPendingApproval?.detailUrl || ''}
-                      class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>✓</span>
-                      <span>Setujui untuk Publication Planning</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      id="btn-explicit-revision"
-                      data-article-id={article.id}
-                      class="w-full py-2 px-3 rounded-lg border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>↩</span>
-                      <span>Minta Revisi</span>
-                    </button>
-
-                    {latestApproval && latestApproval.approval_status === 'APPROVED' && (
+                  <div class="flex flex-wrap items-center gap-2">
+                    {automationState?.manualHold ? (
                       <button
                         type="button"
-                        id="btn-explicit-revoke"
+                        id="btn-resume-automation"
                         data-article-id={article.id}
-                        class="w-full py-2 px-3 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-[11px] font-semibold transition"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer"
                       >
-                        Cabut Persetujuan (Revoke)
+                        <span>▶️</span>
+                        <span>Lanjutkan Otomasi</span>
+                      </button>
+                    ) : article.status !== 'published' ? (
+                      <button
+                        type="button"
+                        id="btn-hold-automation"
+                        data-article-id={article.id}
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition cursor-pointer"
+                      >
+                        <span>⏸️</span>
+                        <span>Tahan Otomasi</span>
+                      </button>
+                    ) : null}
+
+                    {article.status !== 'published' && (
+                      <button
+                        type="button"
+                        id="btn-return-draft-hold"
+                        data-article-id={article.id}
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold transition cursor-pointer"
+                      >
+                        <span>↩️</span>
+                        <span>Kembalikan ke Draft & Tahan</span>
                       </button>
                     )}
-
-                    {latestApproval && latestApproval.approval_status === 'APPROVED' && nextPendingApproval && (
-                      <div class="mt-1 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800 flex items-center justify-between text-xs">
-                        <span class="text-amber-800 dark:text-amber-300 font-medium">Siap meninjau item berikutnya?</span>
-                        <a
-                          href={nextPendingApproval.detailUrl}
-                          class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-200 hover:underline"
-                        >
-                          <span>Tinjau Persetujuan Berikutnya →</span>
-                        </a>
-                      </div>
-                    )}
                   </div>
-                  <div id="approval-action-feedback" class="text-[11px] font-medium hidden"></div>
-                </div>
-              ) : (
-                <div class="rounded-xl bg-slate-100 dark:bg-slate-800/80 p-3 text-[11px] text-slate-500 text-center space-y-1">
-                  <p class="font-bold text-slate-700 dark:text-slate-300">Kontrol Persetujuan Dinonaktifkan</p>
-                  <p>Artikel harus mencapai status <code>READY_FOR_REVIEW</code> sebelum dapat disetujui oleh editor.</p>
+                  <div id="automation-action-feedback" class="text-[11px] font-medium hidden"></div>
                 </div>
               )}
             </div>
-          </div>
-        </div>
-
-        <!-- Phase 5L4: Publication Automation & Supervisor Control Surface -->
-        <div class="border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-5 space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-              <span class="text-sm">🤖</span>
-              <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                  Automation & Hands-Off Supervisor Controls (Phase 5L4)
-                </h3>
-                <p class="text-[11px] text-slate-500">
-                  Kontrol intervensi manual redaksi: Tahan Otomasi, Lanjutkan, atau Kembalikan ke Draft.
-                </p>
-              </div>
-            </div>
-
-            <!-- Auto Schedule Status Badge -->
-            <div class="flex items-center gap-2">
-              <span class="text-[11px] font-semibold text-slate-500">Status Otomasi:</span>
-              <span class={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                automationState?.displayState === 'HELD'
-                  ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-200'
-                  : automationState?.displayState === 'PUBLISHED'
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                  : automationState?.displayState === 'SCHEDULED'
-                  ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
-                  : automationState?.displayState === 'PLANNED'
-                  ? 'bg-blue-100 text-blue-800 border-blue-300'
-                  : automationState?.displayState === 'GLOBAL_AUTO_SCHEDULE_OFF'
-                  ? 'bg-amber-100 text-amber-800 border-amber-300'
-                  : 'bg-slate-100 text-slate-800 border-slate-300'
-              }`}>
-                <span>{automationState?.displayState || 'NOT_ELIGIBLE'}</span>
-              </span>
-            </div>
-          </div>
-
-          <!-- Metadata info banner if held -->
-          {automationState?.manualHold && (
-            <div class="rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 p-3.5 text-xs text-rose-900 dark:text-rose-200 space-y-1">
-              <div class="font-bold flex items-center gap-1.5">
-                <span>⏸️</span>
-                <span>Artikel Ditahan Manual (HELD) — Penjadwalan otomatis diblokir sepenuhnya.</span>
-              </div>
-              <div class="text-[11px] text-rose-700 dark:text-rose-300">
-                Ditahan oleh <strong>{automationState.manualHoldBy || 'Operator'}</strong> pada {automationState.manualHoldAt ? new Date(automationState.manualHoldAt).toLocaleString('id-ID') : '-'}.
-                {automationState.manualHoldReason && <span> Alasan: "<em>{automationState.manualHoldReason}</em>"</span>}
-              </div>
-            </div>
-          )}
-
-          <!-- Action Buttons Bar -->
-          <div class="flex flex-wrap items-center gap-3 pt-1">
-            {automationState?.manualHold ? (
-              <button
-                type="button"
-                id="btn-resume-automation"
-                data-article-id={article.id}
-                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition"
-              >
-                <span>▶️</span>
-                <span>Lanjutkan Otomasi (Resume Automation)</span>
-              </button>
-            ) : article.status !== 'published' ? (
-              <button
-                type="button"
-                id="btn-hold-automation"
-                data-article-id={article.id}
-                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-sm transition"
-              >
-                <span>⏸️</span>
-                <span>Tahan Otomasi (Hold Automation)</span>
-              </button>
-            ) : null}
-
-            {article.status !== 'published' && (
-              <button
-                type="button"
-                id="btn-return-draft-hold"
-                data-article-id={article.id}
-                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold shadow-sm transition"
-              >
-                <span>↩️</span>
-                <span>Kembalikan ke Draft & Tahan (Return to Draft & Hold)</span>
-              </button>
-            )}
-          </div>
-          <div id="automation-action-feedback" class="text-[11px] font-medium hidden"></div>
+          </details>
         </div>
       </section>
     </div>
@@ -782,6 +881,18 @@ const humanReasonDescriptions: Record<string, string> = {
                 : 'bg-emerald-50 text-emerald-700 border border-emerald-200 block'
             );
             feedbackEl.classList.remove('hidden');
+          }
+
+          var revisionBtn = document.getElementById('btn-explicit-revision');
+          if (revisionBtn) {
+            revisionBtn.addEventListener('click', function() {
+              var reason = window.prompt('Masukkan catatan permohonan revisi untuk penulis / desainer:', '');
+              if (reason === null) return;
+              if (notesInput && reason) {
+                notesInput.value = 'Minta Revisi: ' + reason;
+              }
+              showFeedback('Catatan permohonan revisi dicatat: "' + (reason || 'Perlu perbaikan draf') + '". Silakan koordinasikan dengan tim penulis atau buka CMS untuk penyuntingan.', false);
+            });
           }
 
           var isApproveInFlight = false;

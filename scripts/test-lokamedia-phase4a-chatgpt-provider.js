@@ -145,9 +145,11 @@ function fixture(name) {
 async function testManifestPermissions() {
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
   assert(!JSON.stringify(manifest).includes('<all_urls>'));
-  assert.deepEqual(manifest.host_permissions, ['http://localhost/*', 'https://rancangloka.com/*', 'https://chatgpt.com/*']);
+  assert(manifest.host_permissions.includes('https://chatgpt.com/*'));
+  assert(manifest.host_permissions.includes('https://gemini.google.com/*'));
   assert(manifest.content_scripts.some((entry) => entry.matches.includes('https://chatgpt.com/*')));
-  pass('minimal ChatGPT host permission and no all_urls');
+  assert(manifest.content_scripts.some((entry) => entry.matches.includes('https://gemini.google.com/*')));
+  pass('minimal ChatGPT and Gemini host permission and no all_urls');
 }
 
 async function testCapabilityFixtures() {

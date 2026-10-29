@@ -83,6 +83,10 @@ export class ChatGptTabController {
 
     await this.storage.update((state) => {
       state.provider ??= {};
+      state.provider.active_provider_id = 'CHATGPT_BROWSER';
+      if (state.provider.gemini) {
+        state.provider.gemini.target_state = 'UNBOUND';
+      }
       state.provider.chatgpt ??= {};
       state.provider.chatgpt.provider_tab_id = tab.id;
       state.provider.chatgpt.bound_tab_id = tab.id;
@@ -168,9 +172,16 @@ export class ChatGptTabController {
       next.provider.chatgpt.provider_tab_id = null;
       next.provider.chatgpt.tab_status = reason;
       next.provider.chatgpt.target_state = 'CLOSED';
+      next.provider.chatgpt.auth_state = 'UNKNOWN';
+      next.provider.chatgpt.dom_status = 'UNKNOWN';
       next.provider.chatgpt.composer_status = 'unavailable';
+      next.provider.chatgpt.capabilities = {};
+      next.provider.chatgpt.visible_image_candidates = 0;
       next.provider.chatgpt.prompt_submission_enabled = false;
       next.provider.chatgpt.updated_at = new Date().toISOString();
+      if (next.provider.active_provider_id === 'CHATGPT_BROWSER') {
+        next.provider.active_provider_id = null;
+      }
     });
   }
 

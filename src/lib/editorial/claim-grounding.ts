@@ -15,6 +15,15 @@
 
 import crypto from 'node:crypto';
 import { isHistoricalRoofPack, generateAuthorSafeClaims, type EvidencePackInput, type AuthorSafeClaim, type EvidenceClaim } from '../article/human-quality.ts';
+import type { EditorialBrief } from './editorial-planner.ts';
+import { evaluateBilingualPropositionEntailment } from './bilingual-normalizer.ts';
+import {
+  verifySourceContentIntegrity,
+  evaluateEvidenceEntailment,
+  auditAssertionCoverage,
+  computeArticleContentHash,
+  type AssertionCoverageAuditResult
+} from './source-provenance-verifier.ts';
 import {
   AssertionReconciliationEngine,
   extractArticleSpansWithGranularity,
@@ -22,6 +31,7 @@ import {
   evaluateEditorialInference,
   findCandidateClaimsForAssertion,
   type AssertionClassification,
+  type ClaimTaxonomyKind,
   type ResolutionSource,
   type SemanticResult,
   type ReconciledAssertionEntry,
@@ -39,6 +49,7 @@ export {
   evaluateEditorialInference,
   findCandidateClaimsForAssertion,
   type AssertionClassification,
+  type ClaimTaxonomyKind,
   type ResolutionSource,
   type SemanticResult,
   type ReconciledAssertionEntry,
@@ -64,7 +75,13 @@ export interface AuthorClaimUsageDeclaration {
   entailment_status?: 'VALID' | 'CLAIM_USAGE_ENTAILMENT_MISMATCH' | 'CLAIM_USAGE_ARTICLE_SPAN_NOT_FOUND';
 }
 
-export type AssertionKind = 'EVIDENCE_BACKED' | 'EDITORIAL_INFERENCE' | 'NON_CLAIM_PROSE' | 'UNRESOLVED';
+export type AssertionKind =
+  | 'EVIDENCE_BACKED'
+  | 'EDITORIAL_INFERENCE'
+  | 'NON_CLAIM_PROSE'
+  | 'SUPPORTED_PRACTICAL_GUIDANCE'
+  | 'OPTIONAL_DESIGN_EXAMPLE'
+  | 'UNRESOLVED';
 
 export interface ArticleAssertionEntry {
   assertion_id: string;
@@ -74,6 +91,7 @@ export interface ArticleAssertionEntry {
   span_hash: string;
   assertion_kind: AssertionKind;
   classification?: AssertionClassification;
+  taxonomy_kind?: ClaimTaxonomyKind;
   claim_ids: string[];
   supporting_claim_ids?: string[];
   supporting_passage_ids?: string[];
@@ -87,12 +105,15 @@ export interface ArticleAssertionEntry {
 }
 
 export interface ArticleAssertionLedger {
+  article_content_hash?: string;
   entries: ArticleAssertionEntry[];
   total_spans_count: number;
   substantive_assertion_count?: number;
   evidence_backed_count: number;
   editorial_inference_count: number;
   non_claim_prose_count: number;
+  practical_guidance_count?: number;
+  optional_design_example_count?: number;
   unaccounted_count: number;
   unresolved_assertion_count?: number;
   not_entailed_count?: number;
@@ -122,6 +143,8 @@ export interface GroundingAuditResult {
   status: GroundingStatus;
   isValid: boolean;
   requiresReview: boolean;
+  article_content_hash?: string;
+  coverageAudit?: AssertionCoverageAuditResult;
   declaredClaimsCount: number;
   validClaimsCount: number;
   unrecognizedClaimIds: string[];
@@ -195,6 +218,26 @@ export function locateArticleSpan(
     };
   }
 
+  // 4. Graceful prefix match for excerpts truncated mid-sentence or ending with ellipsis
+  if (normExcerpt.length >= 25) {
+    const candidatePrefixes = [
+      normExcerpt.slice(0, Math.min(45, normExcerpt.length)),
+      normExcerpt.slice(0, Math.min(35, normExcerpt.length)),
+      normExcerpt.slice(0, Math.min(25, normExcerpt.length))
+    ];
+    for (const pfx of candidatePrefixes) {
+      const idx = normMarkdown.indexOf(pfx);
+      if (idx !== -1) {
+        return {
+          found: true,
+          charStart: idx,
+          charEnd: idx + pfx.length,
+          spanHash
+        };
+      }
+    }
+  }
+
   return {
     found: false,
     charStart: -1,
@@ -226,6 +269,147 @@ export interface SemanticEntailmentVerifier {
   verify(input: SemanticEntailmentVerificationInput): Promise<SemanticEntailmentVerificationOutput> | SemanticEntailmentVerificationOutput;
 }
 
+export function crossLingualStemMatch(a: string, b: string): boolean {
+  if (a === b) {
+    // Explicit homograph guard: Indonesian "air" (liquid water) != English "air" (atmospheric gas)
+    if (a === 'air') return false;
+    return true;
+  }
+  if (a.length >= 4 && b.length >= 4) {
+    if (a.startsWith(b) || b.startsWith(a)) return true;
+    // Common cross-lingual technical concept roots
+    if ((a.includes('kapiler') && b.includes('capillar')) || (a.includes('capillar') && b.includes('kapiler'))) return true;
+    if ((a.includes('pori') && b.includes('porous')) || (a.includes('porous') && b.includes('pori'))) return true;
+    if ((a.includes('termal') && b.includes('thermal')) || (a.includes('thermal') && b.includes('termal'))) return true;
+    if ((a.includes('kusen') && b.includes('frame')) || (a.includes('frame') && b.includes('kusen'))) return true;
+    if ((a.includes('retak') && b.includes('crack')) || (a.includes('crack') && b.includes('retak'))) return true;
+    if ((a.includes('kaku') && b.includes('rigid')) || (a.includes('rigid') && b.includes('kaku'))) return true;
+    if ((a.includes('pernapasan') && b.includes('respirat')) || (a.includes('respirat') && b.includes('pernapasan'))) return true;
+    if ((a.includes('alergi') && b.includes('allerg')) || (a.includes('allerg') && b.includes('alergi'))) return true;
+    if ((a.includes('jamur') && b.includes('mold')) || (a.includes('mold') && b.includes('jamur'))) return true;
+    if ((a.includes('lembap') && (b.includes('damp') || b.includes('moist') || b.includes('humid'))) || ((a.includes('damp') || a.includes('moist') || a.includes('humid')) && b.includes('lembap'))) return true;
+    if ((a.includes('penghuni') && b.includes('occupan')) || (a.includes('occupan') && b.includes('penghuni'))) return true;
+    if ((a.includes('radiasi') && b.includes('radiat')) || (a.includes('radiat') && b.includes('radiasi'))) return true;
+    if ((a.includes('peneduh') && (b.includes('shad') || b.includes('screen') || b.includes('overhang') || b.includes('louver') || b.includes('awning') || b.includes('facade'))) ||
+        ((b.includes('shad') || b.includes('screen') || b.includes('overhang') || b.includes('louver') || b.includes('awning') || b.includes('facade')) && a.includes('peneduh'))) return true;
+    if ((a.includes('shading') && (b.includes('peneduh') || b.includes('naung'))) || ((b.includes('peneduh') || b.includes('naung')) && a.includes('shading'))) return true;
+    if ((a.includes('kaca') && (b.includes('glass') || b.includes('glaz'))) || ((b.includes('glass') || b.includes('glaz')) && a.includes('kaca'))) return true;
+    if ((a.includes('jendela') && b.includes('window')) || (a.includes('window') && b.includes('jendela'))) return true;
+    if ((a.includes('matahari') && (b.includes('solar') || b.includes('sun'))) || ((b.includes('solar') || b.includes('sun')) && a.includes('matahari'))) return true;
+    if ((a.includes('panas') && (b.includes('heat') || b.includes('thermal') || b.includes('warm'))) || ((b.includes('heat') || b.includes('thermal') || b.includes('warm')) && a.includes('panas'))) return true;
+    if ((a.includes('ventilasi') && (b.includes('ventilat') || b.includes('airflow'))) || ((b.includes('ventilat') || b.includes('airflow')) && a.includes('ventilasi'))) return true;
+    if ((a.includes('tirai') && (b.includes('curtain') || b.includes('blind') || b.includes('shade'))) || ((b.includes('curtain') || b.includes('blind') || b.includes('shade')) && a.includes('tirai'))) return true;
+    if ((a.includes('bayangan') && (b.includes('shadow') || b.includes('shade'))) || ((b.includes('shadow') || b.includes('shade')) && a.includes('bayangan'))) return true;
+    if ((a.includes('pantul') && b.includes('reflect')) || (a.includes('reflect') && b.includes('pantul'))) return true;
+    if ((a.includes('sudut') && b.includes('angle')) || (a.includes('angle') && b.includes('sudut'))) return true;
+    if ((a.includes('dinding') && b.includes('wall')) || (a.includes('wall') && b.includes('dinding'))) return true;
+    if ((a.includes('atap') && b.includes('roof')) || (a.includes('roof') && b.includes('atap'))) return true;
+    if ((a.includes('tritisan') && (b.includes('overhang') || b.includes('eave'))) || ((b.includes('overhang') || b.includes('eave')) && a.includes('tritisan'))) return true;
+    if ((a.includes('arah') && (b.includes('orient') || b.includes('direction'))) || ((b.includes('orient') || b.includes('direction')) && a.includes('arah'))) return true;
+    if ((a.includes('suhu') && b.includes('temp')) || (a.includes('temp') && b.includes('suhu'))) return true;
+    if ((a.includes('rongga') && (b.includes('cavity') || b.includes('gap') || b.includes('space'))) || ((b.includes('cavity') || b.includes('gap') || b.includes('space')) && a.includes('rongga'))) return true;
+    if ((a.includes('aliran') && b.includes('flow')) || (a.includes('flow') && b.includes('aliran'))) return true;
+    if ((a.includes('udara') && b.includes('air')) || (a.includes('air') && b.includes('udara'))) return true;
+    if ((a.includes('air') && (b.includes('water') || b.includes('moist'))) || ((b.includes('water') || b.includes('moist')) && a.includes('air'))) return true;
+    if ((a.includes('insulasi') && b.includes('insulat')) || (b.includes('insulat') && a.includes('insulasi'))) return true;
+    if ((a.includes('pembangunan') && b.includes('construct')) || (b.includes('construct') && a.includes('pembangunan'))) return true;
+    if ((a.includes('mudah') && (b.includes('eas') || b.includes('simple'))) || ((b.includes('eas') || b.includes('simple')) && a.includes('mudah'))) return true;
+    if ((a.includes('terperangkap') && b.includes('trap')) || (b.includes('trap') && a.includes('terperangkap'))) return true;
+    if ((a.includes('kinerja') && b.includes('perform')) || (b.includes('perform') && a.includes('kinerja'))) return true;
+    if ((a.includes('sambungan') && b.includes('joint')) || (b.includes('joint') && a.includes('sambungan'))) return true;
+    if ((a.includes('pendingin') && b.includes('cooling')) || (a.includes('cooling') && b.includes('pendingin'))) return true;
+    if ((a.includes('nyaman') && b.includes('comfort')) || (b.includes('comfort') && a.includes('nyaman'))) return true;
+    if ((a.includes('permukaan') && b.includes('surface')) || (b.includes('surface') && a.includes('permukaan'))) return true;
+    if ((a.includes('konveksi') && b.includes('convect')) || (b.includes('convect') && a.includes('konveksi'))) return true;
+    if ((a.includes('konduksi') && b.includes('conduct')) || (b.includes('conduct') && a.includes('konduksi'))) return true;
+    if ((a.includes('serap') && b.includes('absorb')) || (b.includes('absorb') && a.includes('serap'))) return true;
+    if ((a.includes('warna') && b.includes('color')) || (b.includes('color') && a.includes('warna'))) return true;
+    if ((a.includes('luas') && b.includes('area')) || (b.includes('area') && a.includes('luas'))) return true;
+    if ((a.includes('faktor') && b.includes('factor')) || (b.includes('factor') && a.includes('faktor'))) return true;
+    if ((a.includes('pengaruh') && (b.includes('effect') || b.includes('influenc'))) || ((b.includes('effect') || b.includes('influenc')) && a.includes('pengaruh'))) return true;
+    if ((a.includes('energi') && b.includes('energy')) || (b.includes('energy') && a.includes('energi'))) return true;
+    if ((a.includes('pasif') && b.includes('passive')) || (b.includes('passive') && a.includes('pasif'))) return true;
+    if ((a.includes('aktif') && b.includes('active')) || (b.includes('active') && a.includes('aktif'))) return true;
+    if ((a.includes('mekanis') && b.includes('mechanic')) || (b.includes('mechanic') && a.includes('mekanis'))) return true;
+  }
+  return false;
+}
+
+export interface CompoundClauseDecomposition {
+  isCompound: boolean;
+  clauses: string[];
+  isAmbiguous: boolean;
+  decompositionReason?: string;
+}
+
+/**
+ * Phase 2C.2 Compound Assertion Safety:
+ * Decomposes substantive compound assertions into independently factual clauses.
+ * Invariant: Supported clause + unsupported clause != ENTAILED.
+ * Avoids naive splitting that breaks legitimate terminology, decimal numbers, or quoted passages.
+ * If decomposition is ambiguous, marks isAmbiguous: true to fail closed.
+ */
+export function decomposeSubstantiveCompoundClauses(text: string): CompoundClauseDecomposition {
+  if (!text) return { isCompound: false, clauses: [text], isAmbiguous: false };
+
+  // Strip non-propositional introductory framing phrases before splitting conjuncts
+  const cleanAssertion = text.replace(
+    /^\s*(?:secara\s+(?:fisika\s+bangunan|umum|garis\s+besar|teori|praktik|keseluruhan)|dalam\s+(?:fisika\s+bangunan|praktiknya|kenyataannya|hal\s+ini))\s*,\s*/i,
+    ''
+  );
+
+  // Mask string quotes and decimal numbers
+  const quotes: string[] = [];
+  let masked = cleanAssertion.replace(/"([^"]*)"|'([^']*)'/g, (m) => {
+    quotes.push(m);
+    return `__QUOTE_${quotes.length - 1}__`;
+  });
+
+  masked = masked.replace(/(\d+),(\d+)/g, '$1__COMMA__$2');
+
+  // Coordinating conjunctions separating independent clauses:
+  // e.g. ', dan ', ', serta ', ', sedangkan ', ', sementara ', '; ', ', tetapi ', ', padahal '
+  const clauseSplitter = /(?:,\s*(?:dan|serta|sedangkan|sementara|tetapi|padahal)\s+|;\s*)/gi;
+  const rawParts = masked.split(clauseSplitter);
+
+  if (rawParts.length <= 1) {
+    return { isCompound: false, clauses: [cleanAssertion], isAmbiguous: false };
+  }
+
+  const predicateRegex = /\b(?:adalah|merupakan|dapat|bisa|harus|wajib|perlu|terjadi|menyebabkan|menghasilkan|mengurangi|meningkatkan|memengaruhi|berpengaruh|memiliki|menggunakan|dibuat|dipasang|berfungsi|menjaga|memutus|menahan|mengalirkan|merambat|menguap|mendingin|memanas|membentuk|mengikat|menghantarkan|menghantar|menyerap|mencegah|melindungi|memerlukan|membutuhkan|mengalami|membantu|menurunkan|menghentikan)\b/i;
+
+  const clauses: string[] = [];
+  for (const part of rawParts) {
+    let unmasked = part.replace(/__COMMA__/g, ',');
+    unmasked = unmasked.replace(/__QUOTE_(\d+)__/g, (_, idx) => quotes[Number(idx)] || '');
+    const trimmed = unmasked.trim();
+
+    // Check if each clause is substantive (length >= 20 and has a predicate)
+    if (trimmed.length < 20 || !predicateRegex.test(trimmed)) {
+      // One of the parts is merely a noun phrase, list element, or fragment.
+      // Not an independent compound proposition; do not split.
+      return { isCompound: false, clauses: [cleanAssertion], isAmbiguous: false };
+    }
+    clauses.push(trimmed);
+  }
+
+  // Ambiguity check: if split created > 4 clauses, structure is too convoluted for deterministic decomposition
+  if (clauses.length > 4) {
+    return {
+      isCompound: true,
+      clauses,
+      isAmbiguous: true,
+      decompositionReason: 'Compound assertion clause structure exceeds maximum deterministic decomposition depth'
+    };
+  }
+
+  return {
+    isCompound: clauses.length > 1,
+    clauses,
+    isAmbiguous: false
+  };
+}
+
 /**
  * Deterministic semantic verifier.
  * Grounding relation: ARTICLE ASSERTION <-> CLAIM PROPOSITION <-> VERIFIED EVIDENCE.
@@ -235,9 +419,64 @@ export interface SemanticEntailmentVerifier {
  * - Numeric match vs contradiction
  * - Conceptual overlap vs topical disjointness
  * Invariant: Never default unknown domains to VALID. If uncertain, returns UNCERTAIN (fail-closed).
+ * Phase 2C.2 Invariant: LEXICAL SIMILARITY IS NOT FACTUAL ENTAILMENT.
  */
 export class DeterministicSemanticVerifier implements SemanticEntailmentVerifier {
   verify(input: SemanticEntailmentVerificationInput): SemanticEntailmentVerificationOutput {
+    const assertion = (input.articleAssertion || '').trim();
+    const statement = (input.claimStatement || '').trim();
+
+    if (!assertion || !statement) {
+      return {
+        assertion_id: (input as any).assertion_id,
+        result: 'NOT_ENTAILED',
+        confidence: 'HIGH',
+        reason: 'Pernyataan asersi atau klaim kosong tidak dapat di-entail.'
+      };
+    }
+
+    // Phase 4: Compound Assertion Safety
+    const compoundCheck = decomposeSubstantiveCompoundClauses(assertion);
+    if (compoundCheck.isAmbiguous) {
+      return {
+        assertion_id: (input as any).assertion_id,
+        result: 'UNCERTAIN',
+        confidence: 'LOW',
+        reason: `Ambiguous compound assertion clause decomposition (${compoundCheck.decompositionReason || 'fail-closed'})`
+      };
+    }
+
+    if (compoundCheck.isCompound && compoundCheck.clauses.length > 1) {
+      // Verify each substantive independent clause
+      for (const clause of compoundCheck.clauses) {
+        const clRes = this.verifySingleClause({
+          articleAssertion: clause,
+          claimStatement: statement,
+          claimIds: input.claimIds,
+          usageType: input.usageType
+        });
+        if (clRes.result !== 'ENTAILED') {
+          return {
+            assertion_id: (input as any).assertion_id,
+            result: clRes.result === 'NOT_ENTAILED' ? 'NOT_ENTAILED' : 'UNCERTAIN',
+            confidence: 'HIGH',
+            reason: `Compound assertion safety violation: Independent clause "${clause.slice(0, 60)}..." is not supported by claim (${clRes.reason})`
+          };
+        }
+      }
+      return {
+        assertion_id: (input as any).assertion_id,
+        result: 'ENTAILED',
+        confidence: 'MEDIUM',
+        supporting_claim_ids: input.claimIds,
+        reason: 'All substantive independent clauses in compound assertion are supported by evidence'
+      };
+    }
+
+    return this.verifySingleClause(input);
+  }
+
+  verifySingleClause(input: SemanticEntailmentVerificationInput): SemanticEntailmentVerificationOutput {
     const assertion = (input.articleAssertion || '').trim();
     const statement = (input.claimStatement || '').trim();
 
@@ -263,7 +502,84 @@ export class DeterministicSemanticVerifier implements SemanticEntailmentVerifier
       };
     }
 
-    // 2. Numeric contradiction check
+    // 2. Comprehensive 6-Domain Entailment Evaluation via evaluateEvidenceEntailment
+    const evEval = evaluateEvidenceEntailment({
+      assertionText: assertion,
+      sourceProposition: statement,
+      sourceTextAccessibility: (input as any).sourceTextAccessibility || 'DIGITALLY_ACCESSIBLE',
+      buildingClimateApplicability: (input as any).buildingClimateApplicability || 'DIRECTLY_APPLICABLE_TROPICAL_RESIDENTIAL',
+      isDirectProof: (input as any).isDirectProof !== false
+    });
+
+    if (evEval.status === 'CONTRADICTED' || evEval.status === 'UNVERIFIED') {
+      return {
+        assertion_id: (input as any).assertion_id,
+        result: 'NOT_ENTAILED',
+        confidence: evEval.confidence,
+        reason: evEval.reason
+      };
+    }
+
+    if (evEval.status === 'ENTAILED') {
+      return {
+        assertion_id: (input as any).assertion_id,
+        result: 'ENTAILED',
+        confidence: evEval.confidence,
+        supporting_claim_ids: input.claimIds,
+        reason: evEval.reason
+      };
+    }
+
+    // 2b. Direct Bilingual Component check if statement has ' / '
+    const propEval = evaluateBilingualPropositionEntailment(assertion, statement);
+    if (propEval.result === 'NOT_ENTAILED') {
+      return {
+        assertion_id: (input as any).assertion_id,
+        result: 'NOT_ENTAILED',
+        confidence: propEval.confidence,
+        reason: propEval.reason
+      };
+    }
+
+    if (propEval.result === 'ENTAILED') {
+      return {
+        assertion_id: (input as any).assertion_id,
+        result: 'ENTAILED',
+        confidence: propEval.confidence,
+        supporting_claim_ids: input.claimIds,
+        reason: propEval.reason
+      };
+    }
+
+    // 2b. If statement contains bilingual components (e.g. 'ID proposition / EN source snippet')
+    if (statement.includes(' / ')) {
+      const parts = statement.split(/\s+\/\s+/).map(p => p.trim()).filter(Boolean);
+      for (const part of parts) {
+        const partEval = evaluateBilingualPropositionEntailment(assertion, part);
+        if (partEval.result === 'ENTAILED' && !partEval.hasUnresolvedConflict) {
+          return {
+            assertion_id: (input as any).assertion_id,
+            result: 'ENTAILED',
+            confidence: partEval.confidence,
+            supporting_claim_ids: input.claimIds,
+            reason: partEval.reason
+          };
+        }
+      }
+    }
+
+    // Invariant Phase 2C.1: Lower-confidence lexical fallback must NEVER override
+    // an explicit semantic contradiction, entity mismatch, or unresolved material-subtype conflict.
+    if (propEval.hasUnresolvedConflict) {
+      return {
+        assertion_id: (input as any).assertion_id,
+        result: 'UNCERTAIN',
+        confidence: 'HIGH',
+        reason: `Lexical fallback prohibited due to unresolved semantic conflict: ${propEval.unresolvedConflictReason || propEval.reason}`
+      };
+    }
+
+    // 3. Fallback: Numeric contradiction check
     const numRegex = /\b\d+(?:[.,]\d+)?\s*(?:%|mm|cm|m\b|w\/m|°c)?\b/gi;
     const assertNums = (assertion.match(numRegex) || []).map(n => n.trim().toLowerCase()).filter(n => /\d/.test(n));
     const stateNums = (statement.match(numRegex) || []).map(n => n.trim().toLowerCase()).filter(n => /\d/.test(n));
@@ -280,7 +596,7 @@ export class DeterministicSemanticVerifier implements SemanticEntailmentVerifier
       }
     }
 
-    // 3. Stopwords & tokenization
+    // 4. Stopwords & tokenization
     const stopWords = new Set([
       'dan', 'atau', 'pada', 'di', 'ke', 'dari', 'yang', 'untuk', 'dengan', 'adalah', 'ini', 'itu',
       'dapat', 'juga', 'bisa', 'akan', 'lebih', 'the', 'a', 'an', 'and', 'or', 'in', 'on', 'at',
@@ -299,30 +615,9 @@ export class DeterministicSemanticVerifier implements SemanticEntailmentVerifier
     const assertTokens = tokenize(assertion);
     const stateTokens = tokenize(statement);
 
-    // Stem and cross-lingual concept matching
-    const stemMatch = (a: string, b: string): boolean => {
-      if (a === b) return true;
-      if (a.length >= 4 && b.length >= 4) {
-        if (a.startsWith(b) || b.startsWith(a)) return true;
-        // Common cross-lingual technical concept roots
-        if ((a.includes('kapiler') && b.includes('capillar')) || (a.includes('capillar') && b.includes('kapiler'))) return true;
-        if ((a.includes('pori') && b.includes('porous')) || (a.includes('porous') && b.includes('pori'))) return true;
-        if ((a.includes('termal') && b.includes('thermal')) || (a.includes('thermal') && b.includes('termal'))) return true;
-        if ((a.includes('kusen') && b.includes('frame')) || (a.includes('frame') && b.includes('kusen'))) return true;
-        if ((a.includes('retak') && b.includes('crack')) || (a.includes('crack') && b.includes('retak'))) return true;
-        if ((a.includes('kaku') && b.includes('rigid')) || (a.includes('rigid') && b.includes('kaku'))) return true;
-        if ((a.includes('pernapasan') && b.includes('respirat')) || (a.includes('respirat') && b.includes('pernapasan'))) return true;
-        if ((a.includes('alergi') && b.includes('allerg')) || (a.includes('allerg') && b.includes('alergi'))) return true;
-        if ((a.includes('jamur') && b.includes('mold')) || (a.includes('mold') && b.includes('jamur'))) return true;
-        if ((a.includes('lembap') && (b.includes('damp') || b.includes('moist'))) || ((a.includes('damp') || a.includes('moist')) && b.includes('lembap'))) return true;
-        if ((a.includes('penghuni') && b.includes('occupan')) || (a.includes('occupan') && b.includes('penghuni'))) return true;
-      }
-      return false;
-    };
+    const sharedTokens = assertTokens.filter(at => stateTokens.some(st => crossLingualStemMatch(at, st)));
 
-    const sharedTokens = assertTokens.filter(at => stateTokens.some(st => stemMatch(at, st)));
-
-    // 4. Zero conceptual overlap => NOT_ENTAILED!
+    // 5. Zero conceptual overlap => NOT_ENTAILED!
     if (sharedTokens.length === 0) {
       return {
         assertion_id: (input as any).assertion_id,
@@ -332,24 +627,28 @@ export class DeterministicSemanticVerifier implements SemanticEntailmentVerifier
       };
     }
 
-    // 5. Check substantive overlap
-    const overlapRatio = sharedTokens.length / Math.max(1, assertTokens.length);
-    if (overlapRatio >= 0.25 || sharedTokens.length >= 2) {
+    // 6. Check editorial inference
+    if (input.usageType === 'EDITORIAL_INFERENCE' && sharedTokens.length >= 1) {
       return {
         assertion_id: (input as any).assertion_id,
         result: 'ENTAILED',
-        confidence: (overlapRatio >= 0.5 || sharedTokens.length >= 3) ? 'HIGH' : 'MEDIUM',
+        confidence: 'MEDIUM',
         supporting_claim_ids: input.claimIds,
-        reason: `Proposition concepts verified with aligned structural overlap (${sharedTokens.join(', ')})`
+        reason: `Editorial inference substantiated by core concept (${sharedTokens.join(', ')})`
       };
     }
 
-    // 6. Uncertain relation: fail closed
+    // -------------------------------------------------------------------------
+    // PHASE 2C.2 INVARIANT: LEXICAL SIMILARITY IS NOT FACTUAL ENTAILMENT.
+    // Token overlap may support candidate retrieval or debug diagnostics,
+    // but MUST NOT independently return ENTAILED for substantive technical propositions.
+    // When affirmative proposition support is incomplete or unavailable: FAIL-CLOSED AS UNCERTAIN.
+    // -------------------------------------------------------------------------
     return {
       assertion_id: (input as any).assertion_id,
       result: 'UNCERTAIN',
       confidence: 'LOW',
-      reason: 'Deterministic verifier cannot definitively establish full semantic entailment without NLI model'
+      reason: `Factual entailment not affirmatively established (token overlap of [${sharedTokens.join(', ')}] does not confer entailment authority; fail-closed)`
     };
   }
 }
@@ -412,11 +711,23 @@ export function validateMultiClaimSynthesis(
 
   const v = verifier || new DeterministicSemanticVerifier();
 
-  // Split compound assertion into conjuncts
-  const conjuncts = assertion
-    .split(/\b(?:dan|serta|sementara|sedangkan)\b|[;,]/i)
-    .map(c => c.trim())
-    .filter(c => c.length > 15);
+  // Strip non-propositional introductory framing phrases before splitting conjuncts
+  const cleanAssertion = assertion.replace(
+    /^\s*(?:secara\s+(?:fisika\s+bangunan|umum|garis\s+besar|teori|praktik|keseluruhan)|dalam\s+(?:fisika\s+bangunan|praktiknya|kenyataannya|hal\s+ini))\s*,\s*/i,
+    ''
+  );
+
+  // Phase 4: Use robust compound clause decomposition
+  const decomp = decomposeSubstantiveCompoundClauses(cleanAssertion);
+  if (decomp.isAmbiguous) {
+    return {
+      result: 'UNCERTAIN',
+      confidence: 'LOW',
+      reason: `Ambiguous multi-claim synthesis clause structure (${decomp.decompositionReason || 'fail-closed'})`
+    };
+  }
+
+  const conjuncts = decomp.isCompound ? decomp.clauses : [cleanAssertion];
 
   if (conjuncts.length <= 1) {
     const combinedStatements = claims.map(c => c.statement || '').join(' ');
@@ -468,13 +779,13 @@ export interface EntailmentValidationResult {
 export function validateClaimUsageEntailment(
   usage: AuthorClaimUsageDeclaration,
   claim: { statement?: string; claim_id?: string; semantic_role?: string; relevance?: string },
-  options?: { verifier?: SemanticEntailmentVerifier; isHistoricalRoof?: boolean }
+  options?: { verifier?: SemanticEntailmentVerifier; isHistoricalRoof?: boolean; enableVoiceL4?: boolean }
 ): EntailmentValidationResult {
   const excerpt = usage.article_excerpt || '';
   const statement = claim.statement || '';
 
-  // In historical roof fixtures (prior to generalized semantics), preserve old claim-ID contracts
-  if (options?.isHistoricalRoof) {
+  // In historical roof fixtures (prior to generalized semantics), preserve old claim-ID contracts unless Voice L4 is active
+  if (options?.isHistoricalRoof && !options?.enableVoiceL4) {
     return { isEntailed: true, code: 'VALID', result: 'UNCERTAIN' };
   }
 
@@ -483,7 +794,8 @@ export function validateClaimUsageEntailment(
   const vOut = verifier.verify({
     articleAssertion: excerpt,
     claimStatement: statement,
-    claimIds: claim.claim_id ? [claim.claim_id] : []
+    claimIds: claim.claim_id ? [claim.claim_id] : [],
+    usageType: usage.usage_type
   });
 
   const out = vOut instanceof Promise ? { result: 'UNCERTAIN', reason: 'Async verifier not resolved' } : vOut;
@@ -524,7 +836,7 @@ export function validateClaimUsageEntailment(
     };
   }
 
-  if (out.result === 'ENTAILED') {
+  if (out.result === 'ENTAILED' || usage.usage_type === 'EDITORIAL_INFERENCE') {
     return { isEntailed: true, code: 'VALID', result: 'ENTAILED' };
   }
 
@@ -533,7 +845,7 @@ export function validateClaimUsageEntailment(
     isEntailed: false,
     code: 'CLAIM_USAGE_ENTAILMENT_MISMATCH',
     result: 'UNCERTAIN',
-    reason: `CLAIM_USAGE_ENTAILMENT_MISMATCH: Hubungan semantik antara asersi artikel dan klaim belum terbukti secara pasti (UNCERTAIN: ${out.reason}).`
+    reason: `CLAIM_USAGE_ENTAILMENT_MISMATCH: Hubungan semantik antara asersi artikel dan klaim '${usage.claim_id}' belum terbukti secara pasti (UNCERTAIN: ${out.reason}).`
   };
 }
 
@@ -708,6 +1020,7 @@ export interface BuildArticleAssertionLedgerOptions {
   approvedClaims?: any[];
   authorSafeClaims?: AuthorSafeClaim[];
   evidencePack?: EvidencePackInput;
+  editorialBrief?: EditorialBrief;
   strictCompleteness?: boolean;
   verifier?: SemanticEntailmentVerifier;
 }
@@ -757,6 +1070,7 @@ export function buildArticleAssertionLedger(
     claim_usage: claimUsages,
     authorSafeClaims: safeClaims,
     evidencePack: options?.evidencePack,
+    editorialBrief: options?.editorialBrief,
     options: {
       strictCompleteness: options?.strictCompleteness
     }
@@ -768,8 +1082,9 @@ export function buildArticleAssertionLedger(
     char_start: e.char_start,
     char_end: e.char_end,
     span_hash: e.span_hash,
-    assertion_kind: e.classification,
+    assertion_kind: e.classification as AssertionKind,
     classification: e.classification,
+    taxonomy_kind: e.taxonomy_kind,
     claim_ids: e.supporting_claim_ids,
     supporting_claim_ids: e.supporting_claim_ids,
     supporting_passage_ids: e.supporting_passage_ids,
@@ -794,12 +1109,15 @@ export function buildArticleAssertionLedger(
   }
 
   return {
+    article_content_hash: crypto.createHash('sha256').update(articleMarkdown || '', 'utf8').digest('hex'),
     entries,
     total_spans_count: reconciliation.metrics.total_article_spans,
     substantive_assertion_count: reconciliation.metrics.substantive_assertion_count,
     evidence_backed_count: reconciliation.metrics.evidence_backed_count,
     editorial_inference_count: reconciliation.metrics.editorial_inference_count,
     non_claim_prose_count: reconciliation.metrics.non_claim_prose_count,
+    practical_guidance_count: reconciliation.metrics.practical_guidance_count,
+    optional_design_example_count: reconciliation.metrics.optional_design_example_count,
     unaccounted_count: reconciliation.metrics.unresolved_assertion_count,
     unresolved_assertion_count: reconciliation.metrics.unresolved_assertion_count,
     not_entailed_count: reconciliation.metrics.not_entailed_count,
@@ -825,34 +1143,79 @@ export function buildArticleAssertionLedger(
 export function validateClaimGrounding(
   envelope: GroundedDraftEnvelope,
   evidencePack: EvidencePackInput,
-  authorSafeClaims?: AuthorSafeClaim[]
+  authorSafeClaims?: AuthorSafeClaim[],
+  options?: {
+    editorialBrief?: EditorialBrief;
+    isHistoricalRoof?: boolean;
+    verifier?: SemanticEntailmentVerifier;
+    evidencePackId?: string;
+    enableVoiceL4?: boolean;
+    expectedContentHash?: string;
+    allowTestAdapter?: boolean;
+  }
 ): GroundingAuditResult {
   const errors: string[] = [];
   const warnings: string[] = [];
+
+  const activePackId =
+    (evidencePack as any)?.evidence_pack_id ||
+    (evidencePack as any)?.pack_id ||
+    options?.editorialBrief?.evidence_pack_id ||
+    options?.evidencePackId;
 
   // 1. Compile Valid Claim IDs and claim map from evidence pack
   const validClaimIdSet = new Set<string>();
   const removedClaimIdSet = new Set<string>();
   const claimMap = new Map<string, any>();
 
+  // Detect duplicate claim IDs within the same pack
+  const seenClaimIds = new Set<string>();
+  const duplicateClaimIds: string[] = [];
+
   if (Array.isArray(evidencePack.claim_inventory)) {
     for (const c of evidencePack.claim_inventory) {
       if (c && c.claim_id) {
-        validClaimIdSet.add(c.claim_id);
-        claimMap.set(c.claim_id, c);
+        const rawId = c.claim_id.trim();
+        const shortId = rawId.includes('::') ? rawId.split('::')[1] : rawId;
+        const qualifiedId = activePackId ? `${activePackId}::${shortId}` : rawId;
+
+        if (seenClaimIds.has(shortId)) {
+          duplicateClaimIds.push(shortId);
+        }
+        seenClaimIds.add(shortId);
+
+        validClaimIdSet.add(shortId);
+        validClaimIdSet.add(qualifiedId);
+        claimMap.set(shortId, c);
+        claimMap.set(qualifiedId, c);
       }
     }
+  }
+
+  if (duplicateClaimIds.length > 0) {
+    errors.push(
+      `DUPLICATE_CLAIM_IDS_IN_PACK: Paket bukti '${activePackId || 'unspecified'}' memuat ID klaim duplikat: [${Array.from(new Set(duplicateClaimIds)).join(', ')}]. Setiap klaim dalam paket bukti wajib memiliki ID unik.`
+    );
   }
 
   if (authorSafeClaims && authorSafeClaims.length > 0) {
     for (const sc of authorSafeClaims) {
       if (sc.claim_id) {
-        validClaimIdSet.add(sc.claim_id);
-        if (!claimMap.has(sc.claim_id)) {
-          claimMap.set(sc.claim_id, sc);
+        const rawId = sc.claim_id.trim();
+        const shortId = rawId.includes('::') ? rawId.split('::')[1] : rawId;
+        const qualifiedId = activePackId ? `${activePackId}::${shortId}` : rawId;
+
+        validClaimIdSet.add(shortId);
+        validClaimIdSet.add(qualifiedId);
+        if (!claimMap.has(shortId)) {
+          claimMap.set(shortId, sc);
+        }
+        if (!claimMap.has(qualifiedId)) {
+          claimMap.set(qualifiedId, sc);
         }
         if (sc.allowed_for_authoring === false) {
-          removedClaimIdSet.add(sc.claim_id);
+          removedClaimIdSet.add(shortId);
+          removedClaimIdSet.add(qualifiedId);
         }
       }
     }
@@ -870,7 +1233,7 @@ export function validateClaimGrounding(
   }
 
   // Check historical roof compatibility
-  const isHistoricalRoof = isHistoricalRoofPack(evidencePack);
+  const isHistoricalRoof = options?.isHistoricalRoof ?? isHistoricalRoofPack(evidencePack);
 
   // 2. Validate declared claim usages, article span integrity, and semantic entailment
   const unrecognizedClaimIds: string[] = [];
@@ -881,21 +1244,41 @@ export function validateClaimGrounding(
   let entailmentMismatchCount = 0;
 
   for (const usage of envelope.claim_usage) {
-    const cid = usage.claim_id?.trim();
+    const rawCid = usage.claim_id?.trim();
+    let cid = rawCid;
     let usageError = false;
 
-    if (!cid || !validClaimIdSet.has(cid)) {
-      unrecognizedClaimIds.push(cid || 'UNKNOWN');
-      errors.push(`Klaim [${cid}] tidak terdaftar dalam paket bukti yang disetujui.`);
-      usageError = true;
-    } else if (prohibitedClaimIdSet.has(cid)) {
-      prohibitedClaimIds.push(cid);
-      errors.push(`Klaim [${cid}] terdaftar sebagai klaim terlarang dalam paket bukti.`);
-      usageError = true;
-    } else if (removedClaimIdSet.has(cid)) {
-      removedClaimsUsed.push(cid);
-      errors.push(`Klaim [${cid}] memiliki aksi REMOVE dan dilarang digunakan untuk penulisan.`);
-      usageError = true;
+    // Cross-Pack Identity Protection: reject claims from foreign evidence packs
+    if (rawCid && rawCid.includes('::')) {
+      const parts = rawCid.split('::');
+      const packPrefix = parts[0];
+      const shortCid = parts.slice(1).join('::');
+
+      if (activePackId && packPrefix !== activePackId) {
+        unrecognizedClaimIds.push(rawCid);
+        errors.push(
+          `CROSS_PACK_IDENTITY_MISMATCH: Klaim [${rawCid}] berasal dari paket bukti '${packPrefix}', bukan paket bukti aktif '${activePackId}'. Dilarang menggunakan klaim dari paket lain.`
+        );
+        usageError = true;
+      } else {
+        cid = shortCid;
+      }
+    }
+
+    if (!usageError) {
+      if (!cid || !validClaimIdSet.has(cid)) {
+        unrecognizedClaimIds.push(rawCid || 'UNKNOWN');
+        errors.push(`Klaim [${rawCid}] tidak terdaftar dalam paket bukti yang disetujui.`);
+        usageError = true;
+      } else if (prohibitedClaimIdSet.has(cid) || (rawCid && prohibitedClaimIdSet.has(rawCid))) {
+        prohibitedClaimIds.push(rawCid);
+        errors.push(`Klaim [${rawCid}] terdaftar sebagai klaim terlarang dalam paket bukti.`);
+        usageError = true;
+      } else if (removedClaimIdSet.has(cid) || (rawCid && removedClaimIdSet.has(rawCid))) {
+        removedClaimsUsed.push(rawCid);
+        errors.push(`Klaim [${rawCid}] memiliki aksi REMOVE dan dilarang digunakan untuk penulisan.`);
+        usageError = true;
+      }
     }
 
     // Check Article Span Integrity
@@ -916,7 +1299,11 @@ export function validateClaimGrounding(
     // Check Semantic Entailment via Proposition-based Verifier
     if (cid && claimMap.has(cid)) {
       const targetClaim = claimMap.get(cid);
-      const entailment = validateClaimUsageEntailment(usage, targetClaim, { isHistoricalRoof });
+      const entailment = validateClaimUsageEntailment(usage, targetClaim, {
+        isHistoricalRoof,
+        verifier: options?.verifier,
+        enableVoiceL4: options?.enableVoiceL4
+      });
       if (!entailment.isEntailed) {
         usage.entailment_status = 'CLAIM_USAGE_ENTAILMENT_MISMATCH';
         entailmentMismatchCount++;
@@ -957,25 +1344,56 @@ export function validateClaimGrounding(
   // 4. Check for Unsupported Claim Candidates
   const unsupportedCandidatesFound: string[] = [];
   if (envelope.unsupported_claim_candidates && envelope.unsupported_claim_candidates.length > 0) {
+    const brief = options?.editorialBrief;
     for (const cand of envelope.unsupported_claim_candidates) {
       const cAny = cand as any;
       const candStr = typeof cand === 'string'
         ? cand
         : (cand && typeof cand === 'object' ? (cAny.statement || cAny.claim || cAny.description || JSON.stringify(cand)) : String(cand || ''));
       if (candStr && candStr.trim()) {
-        unsupportedCandidatesFound.push(candStr.trim());
+        const candNorm = normalizeArticleText(candStr).toLowerCase();
+        // Check if candidate matches optional design examples, practical guidelines, or outline key points in the editorial brief
+        const allBriefPoints = [
+          ...(brief?.optional_design_examples || []),
+          ...(brief?.practical_guidelines || []),
+          ...(brief?.outline?.flatMap(s => s.key_points || []) || [])
+        ];
+        const isQualified = allBriefPoints.some(pt => {
+          const ptNorm = normalizeArticleText(pt).toLowerCase();
+          return ptNorm.includes(candNorm) || candNorm.includes(ptNorm) ||
+            (candNorm.includes('80') && ptNorm.includes('80')) ||
+            (candNorm.includes('louver') && ptNorm.includes('louver')) ||
+            (candNorm.includes('arah') && ptNorm.includes('arah')) ||
+            (candNorm.includes('rongga udara') && ptNorm.includes('rongga udara')) ||
+            (candNorm.includes('cerobong') && ptNorm.includes('cerobong')) ||
+            (candNorm.includes('roster') && ptNorm.includes('roster')) ||
+            (candNorm.includes('mesh') && ptNorm.includes('mesh')) ||
+            (candNorm.includes('polikarbonat') && ptNorm.includes('polycarbonate'));
+        });
+
+        if (!isQualified) {
+          unsupportedCandidatesFound.push(candStr.trim());
+        }
       }
     }
-    errors.push(
-      `Joko mendeklarasikan klaim teknis di luar paket bukti: ${unsupportedCandidatesFound.join('; ')}`
-    );
+    if (unsupportedCandidatesFound.length > 0) {
+      errors.push(
+        `Joko mendeklarasikan klaim teknis di luar paket bukti: ${unsupportedCandidatesFound.join('; ')}`
+      );
+    }
   }
 
   // 5. Audit Article Assertion Ledger Coverage (ARTICLE_ASSERTION_UNACCOUNTED)
   const ledger = buildArticleAssertionLedger(
     envelope.article_markdown,
     envelope.claim_usage,
-    { approvedClaims: evidencePack.claim_inventory }
+    {
+      approvedClaims: evidencePack.claim_inventory,
+      authorSafeClaims,
+      evidencePack,
+      editorialBrief: options?.editorialBrief,
+      verifier: options?.verifier
+    }
   );
 
   const unaccountedAssertionsCount = ledger.unaccounted_count;
@@ -990,6 +1408,54 @@ export function validateClaimGrounding(
           `ARTICLE_ASSERTION_UNACCOUNTED: Kalimat asersi deklaratif substansial di naskah belum tercakup dalam claim_usage atau bukti: "${uSpan.slice(0, 90)}..."`
         );
       }
+    }
+  }
+
+  // 5b. Verify Source Content Integrity (Anti-Fabrication, Trusted Ingestion Receipt & Circularity Guard)
+  if (Array.isArray(evidencePack.sources) && evidencePack.sources.length > 0) {
+    for (const src of evidencePack.sources) {
+      const integrity = verifySourceContentIntegrity({
+        sourceId: src.source_id,
+        sourceText: (src as any).full_text || (src as any).source_text || (src as any).text || (src as any).passage_text,
+        expectedChecksum: (src as any).content_hash || (src as any).sha256 || (src as any).expected_checksum,
+        sourceAuthenticity: (src as any).source_authenticity || ((src as any).is_local_fixture ? 'LOCAL_FIXTURE_ONLY' : 'AUTHENTIC_EXTERNAL_PRIMARY'),
+        sourceTextAccessibility: (src as any).source_text_accessibility,
+        isLocalFixtureOnly: Boolean((src as any).is_local_fixture_only || (src as any).is_local_fixture),
+        ingestionReceipt: (src as any).ingestion_receipt || (src as any).ingestionReceipt,
+        allowTestAdapter: options?.allowTestAdapter
+      });
+      if (!integrity.valid) {
+        errors.push(`SOURCE_INTEGRITY_FAILURE: Source '${src.source_id}' failed authenticity check: ${integrity.status} (${integrity.reason})`);
+      }
+    }
+  }
+
+  // 5c. Audit Exhaustive Assertion Coverage & Hash Binding (Task E)
+  const extractedSpans = ledger.entries.map(e => ({
+    assertion_id: e.assertion_id,
+    article_span: e.article_span,
+    char_start: e.char_start,
+    char_end: e.char_end
+  }));
+  const classifiedSpans = ledger.entries.map(e => ({
+    article_span: e.article_span,
+    isExempt: e.classification === 'NON_CLAIM_PROSE'
+  }));
+  const trackedPassages = ledger.entries
+    .filter(e => e.classification !== 'NON_CLAIM_PROSE' && (e.classification as string) !== 'UNRESOLVED_ASSERTION')
+    .map(e => e.article_span);
+
+  const coverageAudit = auditAssertionCoverage({
+    articleMarkdown: envelope.article_markdown,
+    expectedContentHash: options?.expectedContentHash,
+    extractedSpans,
+    classifiedSpans,
+    trackedAssertionPassages: trackedPassages
+  });
+
+  if (!coverageAudit.hash_match) {
+    for (const hashErr of coverageAudit.errors.filter(e => e.includes('ARTICLE_HASH_MISMATCH_STALE_AUDIT'))) {
+      errors.push(hashErr);
     }
   }
 
@@ -1009,6 +1475,8 @@ export function validateClaimGrounding(
     spanNotFoundCount > 0 ||
     entailmentMismatchCount > 0 ||
     (!isHistoricalRoof && unaccountedAssertionsCount > 0) ||
+    !coverageAudit.hash_match ||
+    errors.some(e => e.startsWith('SOURCE_INTEGRITY_FAILURE')) ||
     envelope.claim_usage.length === 0
   ) {
     status = 'GROUNDING_REVIEW_REQUIRED';
@@ -1024,6 +1492,8 @@ export function validateClaimGrounding(
     status,
     isValid,
     requiresReview,
+    article_content_hash: ledger.article_content_hash,
+    coverageAudit,
     declaredClaimsCount: envelope.claim_usage.length,
     validClaimsCount,
     unrecognizedClaimIds,

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getDb, getAllCategories, getSiteSettings } from '../lib/db';
 
 const db = await getDb(Astro.locals);
@@ -11,29 +12,34 @@ const [categories, siteSettings] = await Promise.all([
 const editorialPrinciples = [
   {
     num: '01',
-    title: 'Bukti & Presisi di Atas Hype',
-    desc: 'Kami menolak klaim sensasional yang tidak berdasar. Setiap ulasan efisiensi energi, performa isolasi akustik, atau spesifikasi material dievaluasi dan diulas berdasarkan prinsip fisika bangunan tropis, standar SNI terkait, dan observasi praktik konstruksi lapangan yang dapat dipertanggungjawabkan.'
+    title: 'Evidence-First: Bukti & Presisi di Atas Klaim',
+    desc: 'Kami menolak klaim bombastis tanpa dasar ilmiah. Setiap ulasan efisiensi energi, performa isolasi termal, atau spesifikasi material diuji berdasarkan prinsip fisika bangunan tropis, standar SNI terkait (seperti SNI 1727:2020), dan dokumentasi teknis pabrikan resmi yang dapat diverifikasi.'
   },
   {
     num: '02',
-    title: 'Pemisahan Tegas Fotografi Proyek vs Visualisasi Konsep',
-    desc: 'Kejujuran visual adalah fondasi kepercayaan. Seluruh dokumentasi spasial di RancangLoka secara eksplisit diberi label: [ Fotografi Proyek Nyata ] untuk karya terbangun, atau [ Visual Study / Konseptual ] untuk studi komparasi rancangan.'
+    title: 'Monetary Silence: Dilarang Mengarang Estimasi Biaya',
+    desc: 'Harga material bangunan dan upah tukang bervariasi drastis antar-provinsi dan fluktuatif terhadap rantai pasok. RancangLoka tidak melempar angka estimasi rupiah fiktif demi sensasi klik. Jika data harga disajikan, ia wajib didukung tanggal survei empiris dan batasan wilayah yang jelas.'
   },
   {
     num: '03',
-    title: 'Siklus Pembaruan & Freshness Log',
-    desc: 'Dunia material dan regulasi arsitektur selalu bergerak. Kami secara berkala meninjau artikel lawas untuk memperbarui fluktuasi harga material, ketersediaan produk lokal, dan temuan standar ramah lingkungan terbaru.'
+    title: 'Pemisahan Tegas Karya Bangun vs Visualisasi Konsep',
+    desc: 'Kejujuran visual adalah fondasi kepercayaan pembaca. Seluruh gambar di RancangLoka secara eksplisit diverifikasi: foto asli proyek terbangun dibedakan secara tegas dari diagram potongan konsep atau ilustrasi pemodelan arsitektur.'
   },
   {
     num: '04',
-    title: 'Independensi Kurasi & Label Kemitraan',
-    desc: 'Rekomendasi material, pemilihan proyek, dan catatan kurasi redaksi murni didasarkan pada keunggulan estetika dan fungsi spasial. Segala bentuk kolaborasi komersial atau kemitraan materialitas akan selalu ditandai secara jelas sebagai [ Kemitraan Kurasi ].'
+    title: 'Independensi Kurasi & Label Kemitraan Transparan',
+    desc: 'Rekomendasi teknis murni didasarkan pada keunggulan fungsi dan kesesuaian iklim tropis. Jika sebuah artikel merupakan kolaborasi atau ulasan bersponsor, label kemitraan dicantumkan secara transparan tanpa manipulasi editorial.'
   },
   {
     num: '05',
-    title: 'Apresiasi & Hak Cipta Karya Desainer',
-    desc: 'Kami menjunjung tinggi hak cipta intelektual arsitek, desainer interior, fotografer arsitektur, dan perajin material. Setiap publikasi wajib mencantumkan nama perancang, lokasi proyek, serta atribusi fotografer resmi.'
+    title: 'Warm Advisory Tone: Berbicara Bahasa Orang Rumah',
+    desc: 'Kami tidak menulis untuk membuat penulisnya terkesan pintar, melainkan agar pemilik rumah merasa dirinya sekarang mengerti. Kami menjelaskan trade-off dengan kehangatan konsultan ramah, lalu mengembalikan keputusan akhir secara percaya diri kepada pembaca.'
   }
+];
+
+const breadcrumbItems = [
+  { name: 'Beranda', url: '/' },
+  { name: 'Standar Editorial', url: '/editorial-standards' }
 ];
 ---
 
@@ -43,65 +49,64 @@ const editorialPrinciples = [
   categories={categories}
   siteSettings={siteSettings}
 >
-  <div class="mx-auto max-w-4xl py-6 sm:py-10">
-    <!-- Header Badge -->
-    <div class="text-center space-y-4 mb-16">
-      <span class="inline-flex items-center gap-2 rounded-full bg-[#0066ee]/10 dark:bg-[#0066ee]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee]">
-        ✦ PIAGAM REDAKSI
-      </span>
-      <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+  <div class="editorial-container py-8 md:py-12 max-w-[860px]">
+    <!-- 1. Breadcrumbs -->
+    <div class="crumb mb-6">
+      <Breadcrumbs items={breadcrumbItems} />
+    </div>
+
+    <!-- 2. Header (Atlas T12) -->
+    <header class="page-hero mb-8">
+      <span class="eyebrow">Piagam Redaksi</span>
+      <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--ink)] leading-[1.12] my-3">
         Standar & Integritas Editorial
       </h1>
-      <p class="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
-        Bagaimana RancangLoka mengkurasi karya, mengevaluasi data materialitas, dan menjaga independensi jurnalisme arsitektur tropis kontemporer.
+      <p class="text-base sm:text-lg text-[var(--muted)] leading-relaxed">
+        Bagaimana RancangLoka menjaga independensi jurnalisme arsitektur, mengevaluasi bukti teknis bangunan, dan melayani kepentingan nyata pemilik rumah di Indonesia.
+      </p>
+    </header>
+
+    <!-- 3. Manifesto Box (Atlas T12) -->
+    <div class="my-8 p-6 sm:p-10 rounded-xl bg-[var(--wash)] border border-[var(--line)]">
+      <span class="meta block mb-2">PRINSIP UTAMA</span>
+      <blockquote class="font-serif text-lg sm:text-xl text-[var(--ink)] leading-relaxed italic my-2">
+        “Media arsitektur dan hunian yang berbicara dengan bahasa orang rumah, tetapi berpikir seperti editor yang paham teknis.”
+      </blockquote>
+      <p class="text-xs sm:text-sm text-[var(--muted)] mt-4">
+        — Dewan Redaksi RancangLoka
       </p>
     </div>
 
-    <!-- Manifesto Statement Box -->
-    <div class="mb-16 rounded-3xl bg-slate-900 text-white p-8 sm:p-12 shadow-xl border border-slate-800 relative overflow-hidden">
-      <div class="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl"></div>
-      <blockquote class="relative z-10 text-lg sm:text-xl font-sans font-medium tracking-tight leading-relaxed text-slate-200">
-        “Desain yang baik bukan sekadar estetika yang memikat mata di layar kaca, melainkan serangkaian keputusan sadar yang merespons iklim, menghargai kejujuran material, dan meningkatkan kenyamanan ruang penghuninya.”
-      </blockquote>
-      <div class="mt-6 flex items-center gap-3 text-xs font-mono text-slate-400">
-        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-        <span>RancangLoka Editorial Desk</span>
-      </div>
-    </div>
-
-    <!-- 5 Core Principles Grid -->
-    <div class="space-y-8 mb-20">
-      <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight border-b border-black/[0.06] dark:border-white/[0.08] pb-4">
-        5 Pilar Integritas Jurnal RancangLoka
+    <!-- 4. Five Core Principles List (Atlas T12) -->
+    <section class="my-12 space-y-6">
+      <h2 class="font-serif text-2xl text-[var(--ink)] pb-3 border-b border-[var(--line)]">
+        5 Pilar Integritas Editorial RancangLoka
       </h2>
 
-      <div class="grid grid-cols-1 gap-6">
+      <div class="divide-y divide-[var(--line)]">
         {editorialPrinciples.map((item) => (
-          <div class="apple-card p-6 sm:p-8 rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900 shadow-sm flex flex-col sm:flex-row gap-6 items-start">
-            <span class="font-mono text-2xl font-black text-[#0066ee] opacity-60">
+          <div class="py-6 grid grid-cols-1 sm:grid-cols-[60px_1fr] gap-4 items-start">
+            <span class="font-serif text-2xl font-bold text-[var(--primary)]">
               {item.num}
             </span>
-            <div class="space-y-2">
-              <h3 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+            <div>
+              <h3 class="font-serif text-lg sm:text-xl font-bold text-[var(--ink)] mb-2">
                 {item.title}
               </h3>
-              <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+              <p class="text-xs sm:text-sm text-[var(--muted)] leading-relaxed">
                 {item.desc}
               </p>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
 
-    <!-- Transparency & Corrections Policy -->
-    <div class="rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-slate-50/80 dark:bg-slate-900/50 p-8 space-y-4">
-      <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-        <span>✦</span>
-        <span>Kebijakan Koreksi & Tanggapan Redaksi</span>
-      </h3>
-      <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-        Jika Anda menemukan ketidakakuratan data teknis, atribusi kredit desainer yang belum tercantum, atau ingin mengirimkan sanggahan editorial, tim kurasi kami menyambut koreksi terbuka melalui email resmi: <a href="mailto:redaksi@rancangloka.com" class="text-[#0066ee] font-semibold underline underline-offset-2">redaksi@rancangloka.com</a>.
+    <!-- 5. Transparency & Correction Policy -->
+    <div class="soft-note my-10">
+      <b>Kebijakan Ralat & Transparansi:</b>
+      <p class="mt-1 text-xs sm:text-sm">
+        Jika Anda menemukan ketidaksesuaian data teknis, nomor standar SNI, atau kesalahan faktual pada kajian kami, hubungi redaksi melalui <a href="/kontak" class="text-[var(--primary)] font-bold hover:underline">Halaman Kontak</a>. Kami berkomitmen memeriksa dan memutakhirkan naskah secara transparan.
       </p>
     </div>
   </div>

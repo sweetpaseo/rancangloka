@@ -230,8 +230,8 @@ export function injectTableOfContents(html: string, toc: TableOfContentItem[]): 
         h2Index++;
         const num = h2Index.toString().padStart(2, '0');
         return `<li class="flex items-start gap-3 group/item py-0.5">
-          <span class="font-mono text-[11px] font-extrabold text-[#0066ee] bg-[#0066ee]/10 px-1.5 py-0.5 rounded-md mt-0.5">${num}</span>
-          <a href="#${item.id}" class="text-slate-700 dark:text-slate-300 font-semibold group-hover/item:text-[#0066ee] group-hover/item:translate-x-1 transition-all line-clamp-1">${item.text}</a>
+          <span class="font-mono text-[11px] font-extrabold text-[#0050d0] bg-[#0050d0]/10 px-1.5 py-0.5 rounded-md mt-0.5">${num}</span>
+          <a href="#${item.id}" class="text-slate-700 dark:text-slate-300 font-semibold group-hover/item:text-[#0050d0] group-hover/item:translate-x-1 transition-all line-clamp-1">${item.text}</a>
         </li>`;
       } else {
         return `<li class="ml-9 flex items-center gap-2 group/item text-xs text-slate-500 dark:text-slate-400 py-0.5">
@@ -247,11 +247,11 @@ export function injectTableOfContents(html: string, toc: TableOfContentItem[]): 
   <details class="group" open>
     <summary class="flex cursor-pointer items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm list-none">
       <span class="flex items-center gap-2.5">
-        <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-[#0066ee]/10 text-[#0066ee] text-xs">📑</span>
+        <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-[#0050d0]/10 text-[#0050d0] text-xs">📑</span>
         <span class="tracking-tight">Daftar Isi & Navigasi Bab</span>
       </span>
-      <span class="text-xs text-slate-400 font-medium group-open:hidden">Buka +</span>
-      <span class="text-xs text-slate-400 font-medium hidden group-open:inline">Tutup −</span>
+      <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold group-open:hidden">Buka +</span>
+      <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold hidden group-open:inline">Tutup −</span>
     </summary>
     <nav class="mt-4 border-t border-black/[0.04] dark:border-white/[0.06] pt-3">
       <ul class="space-y-1.5 text-xs sm:text-sm">

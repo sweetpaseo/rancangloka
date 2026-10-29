@@ -844,10 +844,10 @@ test('N: Article B Production Target Dry-Run Proof (Zero Production Mutation)', 
   assert.equal(finalArticleB.content_hash, 'content_hash_article_b_production_target');
 });
 
-// TEST O: Version alignment at 0.1.18
-test('O: Version alignment at 0.1.18 across constants, manifest, and server expectation', () => {
+// TEST O: Version alignment at 0.1.22
+test('O: Version alignment at 0.1.22 across constants, manifest, and server expectation', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'extensions', 'lokamedia', 'manifest.json'), 'utf8'));
-  assert.equal(manifest.version, '0.1.18');
-  assert.equal(EXTENSION_VERSION, '0.1.18');
-  assert.equal(EXPECTED_LOKAMEDIA_EXTENSION_VERSION, '0.1.18');
+  assert.equal(manifest.version, '0.1.22');
+  assert.equal(EXTENSION_VERSION, '0.1.22');
+  assert.equal(EXPECTED_LOKAMEDIA_EXTENSION_VERSION, '0.1.22');
 });

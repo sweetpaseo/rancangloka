@@ -1545,11 +1545,11 @@ test('R.5: Exact real-browser symptom reproduction: candidate card visibility, g
 });
 
 // ---------------------------------------------------------------------------
-// TEST: Version alignment at 0.1.18
+// TEST: Version alignment at 0.1.19
 // ---------------------------------------------------------------------------
-test('Version alignment at 0.1.18 across constants and manifest', () => {
+test('Version alignment at 0.1.22 across constants and manifest', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
-  assert.equal(manifest.version, '0.1.18');
-  assert.equal(EXTENSION_VERSION, '0.1.18');
-  assert.equal(EXPECTED_LOKAMEDIA_EXTENSION_VERSION, '0.1.18');
+  assert.equal(manifest.version, '0.1.22');
+  assert.equal(EXTENSION_VERSION, '0.1.22');
+  assert.equal(EXPECTED_LOKAMEDIA_EXTENSION_VERSION, '0.1.22');
 });

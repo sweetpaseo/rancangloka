@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "RancangLoka LokaMedia",
-  "version": "0.1.18",
+  "version": "0.1.24",
   "description": "Durable operator extension core for server-authoritative LokaMedia jobs.",
-  "permissions": ["storage", "alarms", "tabs", "scripting", "sidePanel"],
-  "host_permissions": ["http://localhost/*", "https://rancangloka.com/*", "https://chatgpt.com/*"],
+  "permissions": ["storage", "alarms", "tabs", "scripting", "sidePanel", "clipboardRead"],
+  "host_permissions": ["http://localhost/*", "https://rancangloka.com/*", "https://chatgpt.com/*", "https://gemini.google.com/*", "https://*.googleusercontent.com/*"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
@@ -13,6 +13,11 @@
     {
       "matches": ["https://chatgpt.com/*"],
       "js": ["src/providers/chatgpt/content-script.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["src/providers/gemini/content-script.js"],
       "run_at": "document_idle"
     }
   ],

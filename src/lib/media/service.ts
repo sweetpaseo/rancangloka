@@ -82,6 +82,9 @@ export interface MediaUploadParams {
   idempotencyKey?: string;
   clientSha256?: string;
   deviceId?: string | null;
+  derivativeId?: string;
+  transformId?: string;
+  provenanceJson?: string;
   approvalRecord?: {
     job_id?: string;
     candidate_sha256?: string;
@@ -554,6 +557,9 @@ export async function processMediaUpload(
     if (job.status === 'SUPERSEDED') throw new MediaRuntimeError('JOB_SUPERSEDED', 'Media job sudah digantikan.', 409);
     if (MEDIA_JOB_TERMINAL_STATES.has(job.status)) throw new MediaRuntimeError('JOB_TERMINAL', 'Media job sudah terminal.', 409);
     if (job.lease_owner && params.deviceId && job.lease_owner !== params.deviceId) throw new MediaRuntimeError('LEASE_NOT_OWNER', 'Perangkat bukan pemilik lease.', 403);
+    if (job.lease_expires_at && new Date(job.lease_expires_at).getTime() <= Date.now()) {
+      throw new MediaRuntimeError('JOB_LEASE_EXPIRED', 'Lease media job sudah kedaluwarsa. Perbarui lease sebelum mengunggah.', 409);
+    }
   }
 
   if (params.failureInjectionPoint === 'AFTER_VALIDATION') throw new MediaRuntimeError('INJECTED_AFTER_VALIDATION', 'Injected failure after validation.', 500);
@@ -584,6 +590,20 @@ export async function processMediaUpload(
   if (existingAsset && existingAsset.status === STATUS_VALIDATED) {
     assetId = existingAsset.asset_id;
     deduplicated = true;
+    if (params.derivativeId || params.transformId || params.provenanceJson) {
+      try {
+        await db
+          .prepare(
+            `UPDATE media_assets 
+             SET derivative_id = COALESCE(derivative_id, ?), 
+                 transform_id = COALESCE(transform_id, ?), 
+                 provenance_json = COALESCE(provenance_json, ?) 
+             WHERE asset_id = ?`
+          )
+          .bind(params.derivativeId || null, params.transformId || null, params.provenanceJson || null, assetId)
+          .run();
+      } catch {}
+    }
   } else {
     assetId = generateRuntimeAssetId();
 
@@ -606,14 +626,15 @@ export async function processMediaUpload(
       }
     }
 
-    // Insert media_assets with status VALIDATED
+    // Insert media_assets with status VALIDATED and derivative provenance
     await db
       .prepare(
         `
         INSERT INTO media_assets (
           asset_id, media_type, source_type, storage_key, public_url,
-          mime_type, width, height, file_size, sha256, alt_text, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          mime_type, width, height, file_size, sha256, alt_text, status,
+          role, derivative_id, transform_id, provenance_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `
       )
       .bind(
@@ -628,7 +649,11 @@ export async function processMediaUpload(
         meta.fileSize,
         meta.sha256,
         params.altText,
-        STATUS_VALIDATED
+        STATUS_VALIDATED,
+        'ARTICLE_PUBLIC_DERIVATIVE',
+        params.derivativeId || null,
+        params.transformId || null,
+        params.provenanceJson || null
       )
         .run();
   }

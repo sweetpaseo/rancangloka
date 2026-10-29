@@ -1,58 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,wght@1,400;1,600&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
+@import './fonts.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --color-paper: #F8F7F4;
-    --color-ink: #18181B;
-    --color-stone: #E4E4E7;
-    --color-muted: #71717A;
-    --color-soft: #F4F4F5;
-    --color-accent: #6B705C;
-    --color-surface: #F8F7F4;
-    --color-surface-card: #FFFFFF;
-    --color-text-main: #18181B;
-    --color-text-muted: #71717A;
-    --color-border: #E4E4E7;
-  }
+    --canvas: #FFFFFF;
+    --surface: #FFFFFF;
+    --section-alt: #FAF9F6;
+    --neutral-soft: #F5F5F0;
+    --ink: #3F4030;
+    --muted: #676957;
+    --primary: #73641E;
+    --deep: #584A18;
+    --lemon: #F5D95B;
+    --lemon-soft: #FFF9E4;
+    --wash: #FFF9E4;
+    --warm: #FAF9F6;
+    --meta: #73641E;
+    --line: #E8E7E1;
+    --footer: #574D28;
+    --footer-ink: #FFFCF0;
+    --footer-line: #817644;
+    --max: 1180px;
 
-  .dark {
-    --color-paper: #09090B;
-    --color-ink: #F4F4F5;
-    --color-stone: #27272A;
-    --color-muted: #A1A1AA;
-    --color-soft: #18181B;
-    --color-accent: #8E9480;
-    --color-surface: #09090B;
-    --color-surface-card: #121215;
-    --color-text-main: #F4F4F5;
-    --color-text-muted: #A1A1AA;
-    --color-border: #27272A;
+    /* Semantic Aliases */
+    --color-paper: var(--canvas);
+    --color-ink: var(--ink);
+    --color-stone: var(--line);
+    --color-muted: var(--muted);
+    --color-soft: var(--neutral-soft);
+    --color-accent: var(--primary);
+    --color-surface: var(--surface);
+    --color-surface-card: var(--surface);
+    --color-text-main: var(--ink);
+    --color-text-muted: var(--muted);
+    --color-border: var(--line);
   }
 
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 95px;
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
     letter-spacing: -0.012em;
-    background-color: var(--color-paper);
-    color: var(--color-ink);
+    background-color: var(--canvas);
+    color: var(--ink);
   }
 
   body {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
+    background-color: var(--canvas);
+    color: var(--ink);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: clip;
+    font-size: 16px;
+    line-height: 1.6;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-    letter-spacing: -0.025em;
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.028em;
+    font-weight: 700;
+    color: var(--ink);
+    overflow-wrap: anywhere;
   }
 }
 
@@ -81,31 +92,33 @@
   }
 }
 
-/* Modern Architectural Editorial Typography for Article Reading */
+/* Modern Architectural Editorial Typography for Article Reading (V3 First Slice) */
 .prose-magazine {
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 1.125rem;
-  line-height: 1.82;
-  color: #27272a;
-  max-width: 100%;
+  line-height: 1.86;
+  color: #1f2937;
+  max-width: 46.5rem; /* ~744px - Golden measure for longform editorial reading */
+  margin-left: auto;
+  margin-right: auto;
   overflow-wrap: anywhere;
 }
 
 .dark .prose-magazine {
-  color: #e4e4e7;
+  color: #e5e7eb;
 }
 
 /* 1. Signature Editorial Drop Cap (First paragraph initial letter) */
 .prose-magazine > p:first-of-type::first-letter {
   font-family: 'Outfit', sans-serif;
-  font-size: 3.4rem;
+  font-size: 3.5rem;
   font-weight: 800;
   float: left;
-  line-height: 0.8;
-  margin-right: 0.75rem;
-  margin-top: 0.2rem;
-  color: #18181b;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  line-height: 0.82;
+  margin-right: 0.85rem;
+  margin-top: 0.25rem;
+  color: #111827;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 
 .dark .prose-magazine > p:first-of-type::first-letter {
@@ -114,8 +127,9 @@
 }
 
 .prose-magazine p {
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.85rem;
   font-weight: 400;
+  letter-spacing: -0.011em;
 }
 
 .prose-magazine img,
@@ -134,7 +148,7 @@
 
 .prose-magazine strong {
   font-weight: 700;
-  color: #18181b;
+  color: #111827;
 }
 
 .dark .prose-magazine strong {
@@ -144,32 +158,50 @@
 /* 2. Enhanced Headings Rhythm */
 .prose-magazine h2 {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.85rem;
+  font-size: 1.875rem;
   font-weight: 800;
   margin-top: 3.5rem;
   margin-bottom: 1.25rem;
   letter-spacing: -0.025em;
-  line-height: 1.25;
-  color: #18181b;
-  padding-bottom: 0.5rem;
+  line-height: 1.28;
+  color: #111827;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .dark .prose-magazine h2 {
-  color: #ffffff;
+  color: #f9fafb;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 .prose-magazine h3 {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   font-size: 1.35rem;
   font-weight: 700;
-  margin-top: 2.25rem;
-  margin-bottom: 0.75rem;
+  margin-top: 2.35rem;
+  margin-bottom: 0.85rem;
   letter-spacing: -0.02em;
-  color: #27272a;
+  line-height: 1.35;
+  color: #1f2937;
 }
 
 .dark .prose-magazine h3 {
-  color: #f4f4f5;
+  color: #f3f4f6;
+}
+
+.prose-magazine h4 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.65rem;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  color: #374151;
+}
+
+.dark .prose-magazine h4 {
+  color: #e5e7eb;
 }
 
 /* 3. Editorial Article Lists (Scoped to Article Body Container) */
@@ -219,7 +251,7 @@
 
 /* 4. Luxury Editorial Pull-Quotes / Blockquotes */
 .prose-magazine blockquote {
-  font-family: 'Newsreader', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', Georgia, serif;
   font-style: italic;
   position: relative;
   border-left: 3px solid var(--color-accent, #6B705C);
@@ -234,25 +266,90 @@
   letter-spacing: -0.01em;
 }
 
+.dark .prose-magazine blockquote {
+  border-left-color: #8E9480;
+  background: rgba(142, 148, 128, 0.08);
+  color: #f4f4f5;
+}
+
+/* 5. V3 Editorial Embedded Media Slot Presentation */
+.prose-magazine figure.rl-media-slot,
+figure.rl-media-slot {
+  margin-top: 2.75rem;
+  margin-bottom: 2.75rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  background-color: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.dark .prose-magazine figure.rl-media-slot,
+.dark figure.rl-media-slot {
+  background-color: #18181b;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+}
+
+figure.rl-media-slot:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.03);
+}
+
+figure.rl-media-slot img {
+  border-radius: 0.75rem 0.75rem 0 0;
+  transition: transform 0.4s ease;
+}
+
+figure.rl-media-slot figcaption {
+  padding: 0.875rem 1.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #64748b;
+  background: #f8fafc;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.dark figure.rl-media-slot figcaption {
+  color: #94a3b8;
+  background: #18181b;
+  border-top-color: rgba(255, 255, 255, 0.05);
+}
+
 @media (max-width: 639px) {
   .prose-magazine {
-    font-size: 1rem;
-    line-height: 1.78;
+    font-size: 1.0625rem;
+    line-height: 1.8;
   }
 
   .prose-magazine > p:first-of-type::first-letter {
-    font-size: 2.8rem;
-    margin-right: 0.6rem;
+    font-size: 2.75rem;
+    margin-right: 0.65rem;
   }
 
   .prose-magazine h2 {
     font-size: 1.55rem;
-    line-height: 1.25;
-    margin-top: 2.6rem;
+    line-height: 1.28;
+    margin-top: 2.75rem;
+    padding-bottom: 0.5rem;
   }
 
   .prose-magazine h3 {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
+    margin-top: 2rem;
+  }
+
+  .prose-magazine figure.rl-media-slot,
+  figure.rl-media-slot {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    border-radius: 0.75rem;
+  }
+
+  figure.rl-media-slot figcaption {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
   }
 
   .prose-magazine blockquote {
@@ -261,12 +358,6 @@
     font-size: 1.05rem;
     border-radius: 0 0.9rem 0.9rem 0;
   }
-}
-
-.dark .prose-magazine blockquote {
-  border-left-color: #8E9480;
-  background: rgba(142, 148, 128, 0.08);
-  color: #f4f4f5;
 }
 
 /* Luxury Architectural Cards & Doppelrand (Double-Bezel) Architecture */
@@ -376,3 +467,708 @@
     max-width: none;
   }
 }
+
+/* ==========================================================================
+   Complete Theme Atlas V2 (Lemon Linen RL-LIVING-LEMON-2.0) Core Utilities
+   ========================================================================== */
+
+.editorial-container {
+  max-width: var(--max, 1180px);
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 24px);
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  color: var(--meta);
+  text-transform: uppercase;
+}
+.eyebrow::before {
+  content: '— ';
+  color: var(--lemon);
+}
+
+.lead {
+  display: block;
+  max-width: 980px;
+  margin-bottom: 20px;
+}
+.lead .eyebrow {
+  margin-bottom: 8px;
+  letter-spacing: 0.14em;
+}
+.lead h1 {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.1rem, 3.6vw, 3.15rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: var(--ink);
+}
+.lead h1 em {
+  color: var(--primary);
+  font-style: normal;
+}
+
+.mosaic {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  grid-template-rows: 210px 210px;
+  gap: 14px;
+}
+.mosaic > a {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: var(--section-alt);
+  border: 1px solid var(--line);
+}
+.mosaic-large {
+  grid-row: span 2;
+}
+.mosaic > a img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mosaic > a:hover img {
+  transform: scale(1.025);
+}
+.mosaic > a::after {
+  content: '';
+  position: absolute;
+  inset: 25% 0 0;
+  background: linear-gradient(transparent, rgba(38, 45, 32, 0.88));
+  pointer-events: none;
+}
+.mosaic > a.has-no-image::after {
+  display: none;
+}
+.mosaic > a.has-no-image {
+  background: var(--section-alt);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 24px;
+}
+.mosaic > a.has-no-image > div {
+  position: static;
+  color: var(--ink);
+}
+.mosaic > a.has-no-image span {
+  color: var(--primary);
+}
+.mosaic > a.has-no-image h3 {
+  color: var(--ink);
+}
+.mosaic > a > div {
+  position: absolute;
+  z-index: 2;
+  bottom: 22px;
+  left: 24px;
+  right: 24px;
+  color: white;
+}
+.mosaic > a span {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  color: #F9E7A7;
+  text-transform: uppercase;
+}
+.mosaic > a h3 {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.25rem, 1.6vw, 1.55rem);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  margin: 6px 0 0;
+  color: white;
+}
+.mosaic .mosaic-large h3 {
+  font-size: clamp(1.65rem, 2.3vw, 2.25rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+
+.mosaic-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.mosaic-two > a {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: var(--section-alt);
+  border: 1px solid var(--line);
+  min-height: 380px;
+}
+.mosaic-two > a img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mosaic-two > a:hover img {
+  transform: scale(1.025);
+}
+.mosaic-two > a::after {
+  content: '';
+  position: absolute;
+  inset: 25% 0 0;
+  background: linear-gradient(transparent, rgba(38, 45, 32, 0.88));
+  pointer-events: none;
+}
+.mosaic-two > a > div {
+  position: absolute;
+  z-index: 2;
+  bottom: 22px;
+  left: 24px;
+  right: 24px;
+  color: white;
+}
+.mosaic-two > a span {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  color: #F9E7A7;
+  text-transform: uppercase;
+}
+.mosaic-two > a h3 {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.35rem, 1.8vw, 1.65rem);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  margin: 6px 0 0;
+  color: white;
+}
+
+.mosaic-single > a {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: var(--section-alt);
+  border: 1px solid var(--line);
+  min-height: 420px;
+}
+.mosaic-single > a img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mosaic-single > a:hover img {
+  transform: scale(1.02);
+}
+.mosaic-single > a::after {
+  content: '';
+  position: absolute;
+  inset: 25% 0 0;
+  background: linear-gradient(transparent, rgba(38, 45, 32, 0.88));
+  pointer-events: none;
+}
+.mosaic-single > a > div {
+  position: absolute;
+  z-index: 2;
+  bottom: 24px;
+  left: 28px;
+  right: 28px;
+  color: white;
+}
+.mosaic-single > a span {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  color: #F9E7A7;
+  text-transform: uppercase;
+}
+.mosaic-single > a h3 {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.65rem, 2.5vw, 2.25rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  margin: 8px 0 0;
+  color: white;
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 20px 0 28px;
+}
+.chips b {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.chips a, .chips span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 7px 14px;
+  background: var(--surface);
+  color: var(--ink);
+  transition: all 0.2s ease;
+}
+.chips a:hover {
+  background: var(--wash);
+  border-color: var(--lemon);
+}
+.chips span.selected, .chips a.selected {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.room {
+  height: 170px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--warm);
+  display: block;
+}
+.room img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.room:hover img {
+  transform: scale(1.04);
+}
+.room::after {
+  content: '';
+  position: absolute;
+  inset: 30% 0 0;
+  background: linear-gradient(transparent, rgba(41, 40, 25, 0.85));
+  pointer-events: none;
+}
+.room strong {
+  position: absolute;
+  color: #fff;
+  bottom: 16px;
+  left: 18px;
+  z-index: 2;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.story {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.story:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(85, 72, 27, 0.06);
+}
+.story-img {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--warm);
+}
+.story-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+.story:hover .story-img img {
+  transform: scale(1.03);
+}
+.story-pad {
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.story h3 {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1.24;
+  letter-spacing: -0.02em;
+  margin: 8px 0 10px;
+  color: var(--ink);
+}
+.story p {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0 0 14px;
+  flex: 1;
+}
+.story small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.feature-band {
+  margin-top: 40px;
+  background: var(--section-alt);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--lemon);
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 28px;
+  padding: 34px;
+  border-radius: 10px;
+  align-items: center;
+}
+.feature-band h2 {
+  font: 400 clamp(1.8rem, 2.5vw, 2.35rem) / 1.15 Georgia, serif;
+  margin: 8px 0 10px;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+}
+.feature-band p {
+  font-size: 0.92rem;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.problem-items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.problem-items a, .problem-items span {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--ink);
+  transition: all 0.2s ease;
+  display: block;
+}
+.problem-items a:hover {
+  background: #FFFFFF;
+  border-color: var(--primary);
+  box-shadow: 0 4px 14px rgba(63, 64, 48, 0.06);
+  transform: translateY(-1px);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+  background: var(--primary);
+  padding: 12px 18px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  transition: background 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+.btn:hover {
+  background: var(--deep);
+  color: white;
+}
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-secondary:hover {
+  background: var(--warm);
+  color: var(--ink);
+}
+
+.meta {
+  display: inline-block;
+  font-size: 0.65rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--meta);
+  font-weight: 900;
+}
+
+.soft-note {
+  background: var(--warm);
+  border-left: 4px solid var(--lemon);
+  border-radius: 4px;
+  padding: 16px 20px;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 24px 0;
+}
+.soft-note b {
+  color: var(--ink);
+}
+
+.page-frame {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(85, 72, 27, 0.04);
+}
+
+@media (max-width: 1020px) {
+  .mosaic {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 320px 180px;
+  }
+  .mosaic-large {
+    grid-column: span 2;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 730px) {
+  .feature-band {
+    grid-template-columns: 1fr;
+    padding: 22px;
+  }
+  .problem-items {
+    grid-template-columns: 1fr 1fr;
+  }
+  .mosaic {
+    grid-template-rows: 280px 160px;
+  }
+  .mosaic > a h3 {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .mosaic {
+    grid-template-columns: 1fr;
+    grid-template-rows: 260px 150px 150px;
+  }
+  .mosaic-large {
+    grid-column: span 1;
+  }
+  .problem-items {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   RancangLoka Fresh Editorial Typography Exploration
+   Variants:
+   - data-typography="fresh" | .typography-fresh (Plus Jakarta Sans Unified)
+   - data-typography="lifestyle" | .typography-lifestyle (Outfit Headings + Plus Jakarta Sans Body)
+   - data-typography="current" | .typography-current (Newsreader Serif Headings + Plus Jakarta Sans Body)
+   ========================================================================== */
+
+/* VARIANT B: FRESH EDITORIAL (Plus Jakarta Sans Unified, HGTV Energy) */
+html[data-typography="fresh"],
+[data-typography="fresh"],
+.typography-fresh {
+  --font-heading: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+html[data-typography="fresh"] h1,
+html[data-typography="fresh"] h2,
+html[data-typography="fresh"] h3,
+html[data-typography="fresh"] h4,
+html[data-typography="fresh"] h5,
+html[data-typography="fresh"] h6,
+html[data-typography="fresh"] .font-serif,
+[data-typography="fresh"] h1,
+[data-typography="fresh"] h2,
+[data-typography="fresh"] h3,
+[data-typography="fresh"] h4,
+[data-typography="fresh"] h5,
+[data-typography="fresh"] h6,
+[data-typography="fresh"] .font-serif,
+.typography-fresh h1,
+.typography-fresh h2,
+.typography-fresh h3,
+.typography-fresh h4,
+.typography-fresh h5,
+.typography-fresh h6,
+.typography-fresh .font-serif {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  letter-spacing: -0.028em;
+  font-weight: 700;
+}
+
+html[data-typography="fresh"] .lead h1,
+[data-typography="fresh"] .lead h1,
+.typography-fresh .lead h1 {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 800;
+  font-size: clamp(2.1rem, 3.6vw, 3.15rem);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+html[data-typography="fresh"] .mosaic > a h3,
+[data-typography="fresh"] .mosaic > a h3,
+.typography-fresh .mosaic > a h3 {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 700;
+  font-size: clamp(1.25rem, 1.6vw, 1.55rem);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+html[data-typography="fresh"] .mosaic .mosaic-large h3,
+[data-typography="fresh"] .mosaic .mosaic-large h3,
+.typography-fresh .mosaic .mosaic-large h3 {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 800;
+  font-size: clamp(1.65rem, 2.3vw, 2.25rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+
+html[data-typography="fresh"] .story h3,
+[data-typography="fresh"] .story h3,
+.typography-fresh .story h3 {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 700;
+  font-size: 1.2rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+html[data-typography="fresh"] .feature-band h3,
+[data-typography="fresh"] .feature-band h3,
+.typography-fresh .feature-band h3 {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 800;
+  font-size: clamp(1.4rem, 2vw, 1.85rem);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+}
+
+html[data-typography="fresh"] .prose-magazine h2,
+html[data-typography="fresh"] .prose-magazine h3,
+[data-typography="fresh"] .prose-magazine h2,
+[data-typography="fresh"] .prose-magazine h3,
+.typography-fresh .prose-magazine h2,
+.typography-fresh .prose-magazine h3 {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+
+
+/* VARIANT C: LIFESTYLE MAGAZINE (Outfit Display Headings + Plus Jakarta Sans Body) */
+html[data-typography="lifestyle"],
+[data-typography="lifestyle"],
+.typography-lifestyle {
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+html[data-typography="lifestyle"] h1,
+html[data-typography="lifestyle"] h2,
+html[data-typography="lifestyle"] h3,
+html[data-typography="lifestyle"] h4,
+html[data-typography="lifestyle"] h5,
+html[data-typography="lifestyle"] h6,
+html[data-typography="lifestyle"] .font-serif,
+[data-typography="lifestyle"] h1,
+[data-typography="lifestyle"] h2,
+[data-typography="lifestyle"] h3,
+[data-typography="lifestyle"] h4,
+[data-typography="lifestyle"] h5,
+[data-typography="lifestyle"] h6,
+[data-typography="lifestyle"] .font-serif,
+.typography-lifestyle h1,
+.typography-lifestyle h2,
+.typography-lifestyle h3,
+.typography-lifestyle h4,
+.typography-lifestyle h5,
+.typography-lifestyle h6,
+.typography-lifestyle .font-serif {
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+
+html[data-typography="lifestyle"] .lead h1,
+[data-typography="lifestyle"] .lead h1,
+.typography-lifestyle .lead h1 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 700;
+  font-size: clamp(2.25rem, 3.8vw, 3.35rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+html[data-typography="lifestyle"] .mosaic > a h3,
+[data-typography="lifestyle"] .mosaic > a h3,
+.typography-lifestyle .mosaic > a h3 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 600;
+  font-size: clamp(1.35rem, 1.8vw, 1.65rem);
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+}
+
+html[data-typography="lifestyle"] .mosaic .mosaic-large h3,
+[data-typography="lifestyle"] .mosaic .mosaic-large h3,
+.typography-lifestyle .mosaic .mosaic-large h3 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 700;
+  font-size: clamp(1.75rem, 2.4vw, 2.35rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+html[data-typography="lifestyle"] .story h3,
+[data-typography="lifestyle"] .story h3,
+.typography-lifestyle .story h3 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.24;
+  letter-spacing: -0.015em;
+}
+
+html[data-typography="lifestyle"] .feature-band h3,
+[data-typography="lifestyle"] .feature-band h3,
+.typography-lifestyle .feature-band h3 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 700;
+  font-size: clamp(1.45rem, 2.1vw, 1.95rem);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+}
+
+html[data-typography="lifestyle"] .prose-magazine h2,
+html[data-typography="lifestyle"] .prose-magazine h3,
+[data-typography="lifestyle"] .prose-magazine h2,
+[data-typography="lifestyle"] .prose-magazine h3,
+.typography-lifestyle .prose-magazine h2,
+.typography-lifestyle .prose-magazine h3 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+

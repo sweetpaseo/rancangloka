@@ -38,13 +38,34 @@ import {
   type DnsLookupFn
 } from './discovery-network-safety.ts';
 import { evaluateCandidateDomainConsistency } from './discovery-providers.ts';
+import {
+  evaluateSourceIngestionQuality,
+  checkResearchReadiness,
+  isCrawlerOrScraperContamination,
+  isAncientHistoryTrivia,
+  STRICT_OUT_OF_DOMAIN_PATTERNS,
+  CRAWLER_NAVIGATION_PATTERNS,
+  type SourceQualityDecisionType,
+  type SourceQualityDecision,
+  type ResearchReadinessEvaluation
+} from './source-ingestion-gate.ts';
+
 export {
   validateSafeUrl,
   isPrivateOrBlockedHost,
   validateSafeUrlAndDns,
   resolveHostAddresses,
   createPinnedDispatcher,
-  type DnsLookupFn
+  type DnsLookupFn,
+  evaluateSourceIngestionQuality,
+  checkResearchReadiness,
+  isCrawlerOrScraperContamination,
+  isAncientHistoryTrivia,
+  STRICT_OUT_OF_DOMAIN_PATTERNS,
+  CRAWLER_NAVIGATION_PATTERNS,
+  type SourceQualityDecisionType,
+  type SourceQualityDecision,
+  type ResearchReadinessEvaluation
 };
 
 export interface DiscoveredSourceCandidate {
@@ -122,6 +143,15 @@ export function isPreRejectedCandidate(candidate: DiscoveredSourceCandidate): { 
   if (/\b(?:expert-advice-blog\.xyz|content-farm|seo-article-directory)\b/i.test(url)) {
     return { rejected: true, reason: 'PRE_RETRIEVAL_DISALLOWED_DOMAIN: Content farm' };
   }
+
+  // Pre-retrieval strict out-of-domain filter (medical, clinical, apparel, software repo)
+  const metaText = `${candidate.title} ${candidate.snippet || ''} ${candidate.publisher || ''}`;
+  for (const pat of STRICT_OUT_OF_DOMAIN_PATTERNS) {
+    if (pat.test(metaText)) {
+      return { rejected: true, reason: `PRE_RETRIEVAL_OUT_OF_DOMAIN: Matched negative domain pattern ${pat.source}` };
+    }
+  }
+
   return { rejected: false };
 }
 
@@ -298,6 +328,7 @@ export interface RetrievedDocument {
   source_role?: SourceRole;
   topic_relevance?: string;
   cleaning_result?: any;
+  source_decision?: SourceQualityDecision;
 }
 
 export type GeneralEvidenceRole =
@@ -330,6 +361,7 @@ export interface ExtractedPassage {
   section_or_heading?: string; // backward compatibility
   exact_text: string;
   exact_or_normalized_excerpt?: string;
+  original_passage?: string; // Phase 1: Separately preserved source chunk
   relevance: string;
   claim_relationship: 'DIRECT_SUPPORT' | 'CONTEXTUAL_BACKGROUND' | 'CONTRAST_LIMITATION';
   content_hash?: string;
@@ -337,6 +369,8 @@ export interface ExtractedPassage {
   semantic_role?: EvidenceSemanticRole;
   limitations?: string;
   extracted_at?: string;
+  is_insufficient?: boolean; // Flagged when passage is an incomplete fragment or reference stub
+  is_truncated?: boolean;
 }
 
 export interface DiscoveryOptions {
@@ -683,6 +717,96 @@ Aluminium frames offer superior structural stiffness and fire resistance, with a
 }
 
 /**
+ * Sentence-boundary-aware excerpt extractor (Milestone: EVIDENCE-INTEGRITY-P1).
+ * Invariants:
+ * 1. NEVER cut a proposition mid-sentence.
+ * 2. Protect abbreviations (e.g., i.e., vs., al., etc., approx., SNI 1727:2020) and decimals (0.3, 15.8) from premature splitting.
+ * 3. Flag reference stubs or incomplete fragments as is_insufficient.
+ * 4. Retain original chunk for separate provenance preservation.
+ */
+export function extractSentenceBoundaryExcerpt(
+  chunk: string,
+  options?: { maxChars?: number; minChars?: number }
+): {
+  excerpt: string;
+  isInsufficient: boolean;
+  isTruncated: boolean;
+  originalPassage: string;
+} {
+  const trimmed = (chunk || '').replace(/\s+/g, ' ').trim();
+  const maxChars = options?.maxChars ?? 800;
+  const minChars = options?.minChars ?? 50;
+
+  if (!trimmed || trimmed.length < minChars) {
+    return {
+      excerpt: trimmed,
+      isInsufficient: true,
+      isTruncated: false,
+      originalPassage: chunk
+    };
+  }
+
+  // Detect reference stubs
+  if (/^See\s+.*?\s+for discussion of/i.test(trimmed) || /^Main article:/i.test(trimmed)) {
+    return {
+      excerpt: trimmed,
+      isInsufficient: true,
+      isTruncated: false,
+      originalPassage: chunk
+    };
+  }
+
+  // Tokenize sentences while protecting decimals, units, and abbreviations
+  const protectedText = trimmed
+    .replace(/(\d+)\.(\d+)/g, '$1__DECIMAL__$2')
+    .replace(/\b(e\.g\.|i\.e\.|vs\.|al\.|etc\.|approx\.|SNI\s+\d+:\d+)/gi, (m) => m.replace(/\./g, '__DOT__'));
+
+  const rawSentences = protectedText.split(/(?<=[.!?])\s+(?=[A-Z0-9"“'‘])/);
+
+  const cleanSentences = rawSentences.map(s =>
+    s.replace(/__DECIMAL__/g, '.').replace(/__DOT__/g, '.').trim()
+  ).filter(Boolean);
+
+  if (cleanSentences.length === 0) {
+    return { excerpt: trimmed, isInsufficient: true, isTruncated: false, originalPassage: chunk };
+  }
+
+  // Identify sentences ending with valid punctuation
+  const completeSentences = cleanSentences.filter(s => /[.!?]$/.test(s));
+  const candidates = completeSentences.length > 0 ? completeSentences : cleanSentences;
+
+  let accumulated: string[] = [];
+  let currentLen = 0;
+  let isTruncated = false;
+
+  for (let i = 0; i < candidates.length; i++) {
+    const s = candidates[i];
+    const nextLen = currentLen + (currentLen > 0 ? 1 : 0) + s.length;
+    if (nextLen <= maxChars || accumulated.length === 0) {
+      accumulated.push(s);
+      currentLen = nextLen;
+    } else {
+      isTruncated = true;
+      break;
+    }
+  }
+
+  if (candidates.length < rawSentences.length) {
+    isTruncated = true;
+  }
+
+  const excerpt = accumulated.join(' ');
+  const endsWithPunct = /[.!?]$/.test(excerpt);
+
+  return {
+    excerpt,
+    isInsufficient: excerpt.length < minChars || (!endsWithPunct && candidates.length === 1 && trimmed.length < 100),
+    isTruncated,
+    originalPassage: chunk
+  };
+}
+
+/**
  * Generalized dynamic passage extractor for arbitrary building science documents.
  * Extracts substantive passages and assigns generalized semantic evidence roles.
  */
@@ -713,8 +837,13 @@ export function extractDynamicPassagesFromText(
       return;
     }
 
+    // Ignore crawler navigation or scraper junk
+    if (isCrawlerOrScraperContamination(chunk).isContaminated) {
+      return;
+    }
+
     // Ignore non-substantive sections
-    if (/\b(?:External links|References|See also|Further reading|History)\b/i.test(heading)) {
+    if (/\b(?:External links|References|See also|Further reading|History|Volumes Antigos|Submissões|Informações)\b/i.test(heading)) {
       return;
     }
 
@@ -738,7 +867,8 @@ export function extractDynamicPassagesFromText(
       semanticRole = 'MAINTENANCE';
     }
 
-    const excerpt = chunk.slice(0, 500).trim();
+    const extracted = extractSentenceBoundaryExcerpt(chunk, { maxChars: 800, minChars: 50 });
+    const excerpt = extracted.excerpt;
     const excerptHash = crypto.createHash('sha256').update(excerpt, 'utf8').digest('hex');
     const canonicalKey = `${sourceId}::${heading}::${excerptHash}`;
 
@@ -751,12 +881,16 @@ export function extractDynamicPassagesFromText(
         section_or_heading: heading,
         exact_text: excerpt,
         exact_or_normalized_excerpt: excerpt,
+        original_passage: extracted.originalPassage,
+        is_insufficient: extracted.isInsufficient,
+        is_truncated: extracted.isTruncated,
         extracted_at: new Date().toISOString(),
         relevance: `${semanticRole}: Bukti terverifikasi dari ${documentTitle} (${heading}).`,
         claim_relationship: (semanticRole === 'LIMITATION' || semanticRole === 'RISK') ? 'CONTRAST_LIMITATION' : 'DIRECT_SUPPORT',
         content_hash: excerptHash,
         supports_claim_ids: [],
-        semantic_role: semanticRole
+        semantic_role: semanticRole,
+        limitations: extracted.isInsufficient ? 'INSUFFICIENT_FRAGMENT_OR_STUB' : undefined
       });
     }
   };
@@ -881,7 +1015,8 @@ export function extractPassagesFromText(
 
     if (matchedClaims.length === 0) return;
 
-    const excerpt = chunk.slice(0, 500).trim();
+    const extracted = extractSentenceBoundaryExcerpt(chunk, { maxChars: 800, minChars: 50 });
+    const excerpt = extracted.excerpt;
     const excerptHash = crypto.createHash('sha256').update(excerpt, 'utf8').digest('hex');
     const canonicalKey = `${sourceId}::${heading}::${excerptHash}`;
 
@@ -895,6 +1030,9 @@ export function extractPassagesFromText(
       if (!existing.semantic_role) {
         existing.semantic_role = semanticRole;
       }
+      if (!existing.original_passage) {
+        existing.original_passage = extracted.originalPassage;
+      }
     } else {
       const canonicalIndex = passageByHash.size + 1;
       passageByHash.set(canonicalKey, {
@@ -904,12 +1042,16 @@ export function extractPassagesFromText(
         section_or_heading: heading,
         exact_text: excerpt,
         exact_or_normalized_excerpt: excerpt,
+        original_passage: extracted.originalPassage,
+        is_insufficient: extracted.isInsufficient,
+        is_truncated: extracted.isTruncated,
         extracted_at: new Date().toISOString(),
         relevance: derivePassageRelevance(matchedClaims),
         claim_relationship: matchedClaims.includes('CLM-007A') ? 'CONTRAST_LIMITATION' : 'DIRECT_SUPPORT',
         content_hash: excerptHash,
         supports_claim_ids: matchedClaims,
-        semantic_role: semanticRole
+        semantic_role: semanticRole,
+        limitations: extracted.isInsufficient ? 'INSUFFICIENT_FRAGMENT_OR_STUB' : undefined
       });
     }
   };

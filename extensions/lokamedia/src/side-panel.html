@@ -11,7 +11,8 @@
       <header class="topbar">
         <div>
           <strong>LokaMedia</strong>
-          <span id="extension-version" class="version-badge">Extension v0.1.15 — CURRENT</span>
+          <span id="extension-version" class="version-badge">Extension</span>
+          <span id="environment-badge" class="env-badge env-local">LOCAL</span>
         </div>
         <span id="panel-status" role="status" aria-live="polite">Starting...</span>
       </header>
@@ -21,6 +22,12 @@
         <div class="stage-banner">
           <span>Active Stage:</span>
           <strong id="workflow-stage">WAITING</strong>
+        </div>
+        <div class="status-row" style="margin-top: 6px;">
+          <span>Active Job</span>
+          <select id="job-selector" style="font-size: 11px; max-width: 190px; text-overflow: ellipsis; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface);">
+            <option value="">Auto (Default Precedence)</option>
+          </select>
         </div>
         <div id="workflow-guidance" class="workflow-guidance">Waiting for eligible media job or provider connection.</div>
       </section>
@@ -34,7 +41,10 @@
         <textarea id="prompt-text" readonly placeholder="No prompt loaded..."></textarea>
         <div class="workflow-actions" style="margin-top: 8px; display: flex; gap: 6px;">
           <button id="copy-prompt" type="button" style="flex: 1;">Copy Prompt</button>
-          <button id="send-to-chatgpt" type="button" class="btn-primary" style="flex: 1;" disabled>Send to ChatGPT</button>
+          <button id="send-to-chatgpt" type="button" class="btn-primary" style="flex: 1;" disabled>Send to Provider</button>
+        </div>
+        <div id="acquire-lease-container" style="margin-top: 6px;">
+          <button id="btn-acquire-lease" type="button" class="btn-secondary" style="width: 100%;" disabled>Acquire Job Lease</button>
         </div>
       </section>
 
@@ -56,17 +66,21 @@
         <div class="status-row"><span>MIME Type</span><strong id="result-mime">--</strong></div>
         <div class="status-row"><span>File Size</span><strong id="result-size">--</strong></div>
         <div class="status-row"><span>SHA-256</span><strong id="result-sha256">--</strong></div>
+        <div class="status-row"><span>Provenance</span><strong id="result-provenance">--</strong></div>
         <div class="workflow-actions" style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+          <div class="result-action-row">
+            <button id="capture-latest" type="button" class="btn-compact" title="Capture latest image from bound provider tab" disabled>
+              <span>📸</span> Capture Latest Image
+            </button>
+            <button id="paste-image" type="button" class="btn-compact" title="Paste image from clipboard (Ctrl+V)" disabled>
+              <span>📋</span> Paste Image
+            </button>
+          </div>
           <div style="display: flex; gap: 6px;">
-            <button id="capture-latest" type="button" style="flex: 1;" disabled>Capture Latest Image</button>
-            <button id="reject-result" type="button" class="btn-danger" style="flex: 1;" disabled>Reject Result</button>
+            <button id="reject-result" type="button" class="btn-danger" style="flex: 1;" disabled>Reset Image</button>
+            <button id="approve-upload" type="button" class="btn-primary" style="flex: 1;" disabled>Approve &amp; Upload</button>
           </div>
-          <button id="approve-upload" type="button" class="btn-primary" style="width: 100%;" disabled>Approve &amp; Upload</button>
-          <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
-            <input type="file" id="local-file-input" accept="image/png,image/jpeg,image/webp" style="display: none;">
-            <button id="btn-select-file" type="button" style="width: 100%;" disabled>Select Fallback for Active Job</button>
-          </div>
-          <button id="assign-featured" type="button" style="width: 100%; margin-top: 4px;" disabled>Assign as Featured</button>
+          <button id="assign-featured" type="button" style="width: 100%; margin-top: 4px; display: none;" disabled>Assign as Featured</button>
         </div>
       </section>
 
@@ -124,7 +138,7 @@
 
       <section>
         <h2>Connection</h2>
-        <div class="status-row"><span>ChatGPT</span><strong id="connection-chatgpt">unknown</strong></div>
+        <div class="status-row"><span id="connection-provider-label">Provider</span><strong id="connection-chatgpt">unknown</strong></div>
         <div class="status-row"><span>RancangLoka</span><strong id="connection-rancangloka">offline</strong></div>
       </section>
 
@@ -151,6 +165,7 @@
 
       <section>
         <h2>Provider</h2>
+        <div class="status-row"><span>Selected</span><strong id="provider-selected-name">ChatGPT</strong></div>
         <div class="status-row"><span>Tab</span><strong id="provider-tab">missing</strong></div>
         <div class="status-row"><span>Target</span><strong id="provider-target">NOT BOUND</strong></div>
         <div class="status-row"><span>Bound Tab</span><strong id="provider-bound-tab">none</strong></div>
@@ -165,10 +180,22 @@
 
       <section>
         <h2>System</h2>
+        <div class="status-row"><span>Environment</span><strong id="system-environment">LOCAL</strong></div>
+        <div class="status-row"><span>HTTP Target</span><strong id="system-http-target" style="font-family: monospace; font-size: 10px; word-break: break-all;">--</strong></div>
         <div class="status-row"><span>Server</span><strong id="system-server">offline</strong></div>
         <div class="status-row"><span>Backpressure</span><strong id="system-backpressure">off</strong></div>
         <div class="status-row"><span>Last error</span><strong id="system-error">none</strong></div>
         <div class="status-row"><span>Last action</span><strong id="last-action">Idle</strong></div>
+      </section>
+
+      <section class="diagnostics-support-card">
+        <h2>Diagnostics &amp; Support</h2>
+        <button id="btn-copy-diagnostic-snapshot" type="button" class="btn-primary" style="width: 100%; font-weight: 600; padding: 7px;">Copy Diagnostic Snapshot</button>
+        <div id="snapshot-status" style="font-size: 11px; color: var(--muted); margin-top: 4px; display: none;"></div>
+        <div id="snapshot-fallback-container" style="display: none; margin-top: 8px;">
+          <label for="snapshot-fallback-text" style="font-size: 10px; display: block; margin-bottom: 2px;">Manual Snapshot Text:</label>
+          <textarea id="snapshot-fallback-text" readonly rows="8" style="width: 100%; font-family: monospace; font-size: 10px; box-sizing: border-box;"></textarea>
+        </div>
       </section>
 
       <section class="controls">
@@ -181,11 +208,23 @@
       <details>
         <summary>Configuration</summary>
         <div class="runtime-meta">
-          <span>Runtime: <strong id="runtime-version-display">v0.1.18</strong></span>
+          <span>Runtime: <strong id="runtime-version-display">--</strong></span>
           <span>Boot: <strong id="runtime-boot-id">--</strong></span>
         </div>
+        <div class="env-switch-card" style="margin: 8px 0; padding: 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface);">
+          <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Target Backend Environment</label>
+          <div style="display: flex; gap: 4px;">
+            <select id="environment-selector" style="flex: 1; font-size: 11px; padding: 3px;">
+              <option value="local">LOCAL (localhost:4321)</option>
+              <option value="staging">STAGING (staging.rancangloka.com)</option>
+              <option value="production">PRODUCTION (rancangloka.com)</option>
+            </select>
+            <button id="btn-switch-environment" type="button" style="font-size: 11px; padding: 3px 8px;">Switch</button>
+          </div>
+          <small style="font-size: 10px; color: var(--muted); display: block; margin-top: 4px;">Separates device credentials and job state per environment.</small>
+        </div>
         <label>Server <input id="server" type="url"></label>
-        <label>Device token <input id="token" type="password" autocomplete="off"></label>
+        <label>Device token <input id="token" type="password" autocomplete="off" placeholder="Optional for local development"></label>
         <label>Device ID <input id="device-id" type="text" placeholder="dev_local_human_operator_v3"></label>
         <button id="save">Save</button>
       </details>

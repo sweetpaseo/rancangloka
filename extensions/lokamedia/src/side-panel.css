@@ -55,6 +55,34 @@ main {
   font-weight: 600;
 }
 
+.env-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+
+.env-badge.env-local {
+  background: #e6f4ea;
+  color: #137333;
+  border: 1px solid #ceead6;
+}
+
+.env-badge.env-staging {
+  background: #fef7e0;
+  color: #b06000;
+  border: 1px solid #feefc3;
+}
+
+.env-badge.env-production {
+  background: #fce8e6;
+  color: #c5221f;
+  border: 1px solid #fad2cf;
+}
+
 .run-once-reason {
   font-size: 11px;
   color: var(--muted);
@@ -308,6 +336,31 @@ button:disabled {
   border-radius: 4px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.result-action-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.result-action-row .btn-compact {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-action-row .btn-compact span {
+  flex-shrink: 0;
 }
 
 @media (max-width: 290px) {

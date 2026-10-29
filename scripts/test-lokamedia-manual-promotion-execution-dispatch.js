@@ -587,8 +587,8 @@ async function runTests() {
     assert.equal(DEFAULT_CONFIG.deviceId, 'dev_local_human_operator_v3', 'DEFAULT_CONFIG.deviceId must be dev_local_human_operator_v3');
 
     const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
-    assert.equal(manifest.version, '0.1.18');
-    assert.equal(EXTENSION_VERSION, '0.1.18');
+    assert.equal(manifest.version, '0.1.22');
+    assert.equal(EXTENSION_VERSION, '0.1.22');
 
     // Verify storage initialization defaults
     const storage = ExtensionStorage.memory();

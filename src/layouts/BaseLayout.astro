@@ -13,7 +13,7 @@ interface Props {
   description?: string;
   ogImage?: string;
   canonicalUrl?: string;
-  preloadImage?: string;
+  preloadImage?: string | { src: string; srcset?: string; sizes?: string };
   categories?: Category[];
   siteSettings?: Record<string, string>;
   isArticlePage?: boolean;
@@ -57,8 +57,8 @@ const currentCanonical = canonicalUrl || Astro.url.href;
 const metaDesc = description || siteSettings.site_description || 'Inspirasi Desain Interior, Arsitektur & Smart Living';
 
 // Dynamic CSS Variables from Site Settings (Titanium Monochrome & Electric Sapphire)
-const primaryColor = siteSettings.theme_primary_color || '#111215';
-const accentColor = siteSettings.theme_accent_color || '#0066ee';
+const primaryColor = siteSettings.theme_primary_color || '#584A18';
+const accentColor = siteSettings.theme_accent_color || '#73641E';
 
 // Smart Webmaster Meta Tag Extraction
 function cleanMetaCode(raw?: string) {
@@ -85,39 +85,35 @@ const customHeadScripts = siteSettings.custom_head_scripts || '';
     <meta name="generator" content="RancangLoka Custom Publishing Engine 2026" />
     <meta name="author" content="RancangLoka Editorial Team" />
     <meta name="robots" content={noindex || siteSettings.allow_indexing === 'false' ? 'noindex, nofollow, noarchive, nosnippet' : (robotsDirective || 'index, follow, max-image-preview:large')} />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230f172a'/><text x='50%' y='68%' font-family='system-ui, -apple-system, sans-serif' font-weight='900' font-size='62' fill='%23ffffff' text-anchor='middle'>R</text></svg>" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2373641E'/><rect x='8' y='8' width='84' height='84' rx='16' fill='none' stroke='%23F5D95B' stroke-width='6'/><text x='50%' y='68%' font-family='Georgia, serif' font-weight='700' font-size='56' fill='%23FFFDF4' text-anchor='middle'>R</text></svg>" />
     {!noindex && <link rel="canonical" href={currentCanonical} />}
     <link rel="alternate" type="application/rss+xml" title={`${siteTitle} RSS Feed`} href="/rss.xml" />
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 
-    <!-- Resource Preconnects for Ultra-Fast Asset Delivery -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://images.unsplash.com" />
-
-    <!-- LCP Image Preload Hint for Sub-Second Rendering -->
-    {preloadImage && (
-      <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />
-    )}
-
-    <!-- Non-Blocking Lightweight Google Fonts Loading: Modern Architectural Editorial (Outfit, Plus Jakarta Sans, Newsreader & JetBrains Mono) -->
+    <!-- Self-Hosted Editorial Typography: Plus Jakarta Sans Variable -->
     <link
       rel="preload"
-      as="style"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,wght@1,400;1,600&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      href="/fonts/plus-jakarta-sans-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,wght@1,400;1,600&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-      media="print"
-      onload="this.media='all'"
-    />
-    <noscript>
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,wght@1,400;1,600&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-      />
-    </noscript>
+
+    <!-- LCP Image Preload Hint for Sub-Second Rendering (Responsive srcset-aware) -->
+    {preloadImage && (
+      typeof preloadImage === 'string' ? (
+        <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />
+      ) : (
+        <link
+          rel="preload"
+          as="image"
+          href={preloadImage.src}
+          imagesrcset={preloadImage.srcset}
+          imagesizes={preloadImage.sizes}
+          fetchpriority="high"
+        />
+      )
+    )}
 
     <!-- SEO Meta Tags -->
     <title>{fullTitle}</title>
@@ -159,24 +155,6 @@ const customHeadScripts = siteSettings.custom_head_scripts || '';
       <Fragment set:html={customHeadScripts} />
     )}
 
-    <!-- Dynamic Theme Colors Injected into Head (Anti-FOUC) -->
-    <style define:vars={{ primaryColor, accentColor }}>
-      :root {
-        --color-primary: var(--primaryColor);
-        --color-accent: var(--accentColor);
-      }
-    </style>
-
-    <!-- Anti-FOUC Theme Immediate Execution (Default Elegant Light) -->
-    <script is:inline>
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    </script>
-
     <!-- JSON-LD Structured Data Schema -->
     {jsonLdSchema && (
       <script type="application/ld+json" set:html={JSON.stringify(jsonLdSchema)} />
@@ -196,7 +174,7 @@ const customHeadScripts = siteSettings.custom_head_scripts || '';
     )}
   </head>
 
-  <body class="min-h-screen flex flex-col bg-paper text-ink dark:bg-paper dark:text-ink">
+  <body class="min-h-screen flex flex-col bg-[var(--canvas)] text-[var(--ink)] font-sans antialiased selection:bg-[#FFF2BF] selection:text-[#584A18]">
     <!-- Header -->
     <Header categories={categories} siteSettings={siteSettings} />
 

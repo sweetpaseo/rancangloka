@@ -269,6 +269,7 @@ export interface EligibilityResult {
 export interface LeaseOptions {
   leaseSeconds?: number;
   now?: Date;
+  targetJobId?: string | null;
 }
 
 export interface ReconcileResult {
@@ -846,6 +847,83 @@ export async function acquireMediaJobLease(
 ): Promise<{ acquired: boolean; job?: MediaJobRecord; code?: string; retry_after_ms?: number }> {
   const now = options.now || new Date();
   const leaseSeconds = options.leaseSeconds || MEDIA_JOB_LEASE_SECONDS;
+  const targetJobId = options.targetJobId || null;
+
+  if (targetJobId) {
+    const job = await getMediaJobById(db, targetJobId);
+    if (!job) {
+      return { acquired: false, code: 'JOB_NOT_FOUND' };
+    }
+
+    const status = normalizeJobStatus(job.status);
+    if (isTerminalJobState(status)) {
+      return { acquired: false, code: 'JOB_TERMINAL' };
+    }
+
+    // Check if job already has completed result or attachment
+    const latestReceipt = await getLatestReceiptForJob(db, targetJobId);
+    if (latestReceipt && ['ATTACHMENT_CONFIRMED', 'UPLOAD_RECEIVED', 'ASSET_EXISTS'].includes(latestReceipt.receipt_type)) {
+      return { acquired: false, code: 'JOB_ALREADY_HAS_RESULT' };
+    }
+
+    const expiresMs = parseTime(job.lease_expires_at);
+    const isLeaseActive = Boolean(job.lease_owner && expiresMs > now.getTime());
+
+    // Never steal an unexpired lease
+    if (isLeaseActive) {
+      if (job.lease_owner !== deviceId) {
+        return { acquired: false, code: 'LEASE_HELD_BY_ANOTHER_DEVICE' };
+      }
+      return { acquired: true, job };
+    }
+
+    // If job is LEASED but expired, recover it through official lifecycle transitions
+    if (status === JOB_STATUS_LEASED) {
+      await recoverExpiredLease(db, targetJobId, now);
+      await transitionMediaJob(db, targetJobId, JOB_STATUS_QUEUED);
+    } else if (status === JOB_STATUS_RECOVERING) {
+      await transitionMediaJob(db, targetJobId, JOB_STATUS_QUEUED);
+    } else if (status !== JOB_STATUS_QUEUED && status !== JOB_STATUS_WAITING_RETRY) {
+      return { acquired: false, code: 'STATUS_NOT_SCHEDULABLE' };
+    }
+
+    // Acquire new lease for the active device
+    const freshJob = await getMediaJobById(db, targetJobId);
+    if (!freshJob) return { acquired: false, code: 'JOB_NOT_FOUND' };
+
+    const leaseExpiresAt = makeLeaseExpiry(now, leaseSeconds);
+    const res = await db
+      .prepare(
+        `
+        UPDATE media_jobs
+        SET status = 'LEASED',
+            lease_owner = ?,
+            lease_expires_at = ?,
+            heartbeat_at = ?,
+            job_revision = job_revision + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE job_id = ?
+          AND job_revision = ?
+          AND status IN ('QUEUED', 'WAITING_RETRY')
+      `
+      )
+      .bind(deviceId, leaseExpiresAt, iso(now), freshJob.job_id, freshJob.job_revision)
+      .run();
+
+    const changed = Number(res?.meta?.changes ?? res?.changes ?? 0);
+    if (changed === 1) {
+      await appendMediaJobEvent(db, {
+        job_id: targetJobId,
+        event_type: 'JOB_PROGRESS',
+        stage: 'LEASED',
+        attempt: freshJob.attempt,
+        safe_payload: { action: 'LEASE_ACQUIRED', device_id: deviceId }
+      });
+      return { acquired: true, job: (await getMediaJobById(db, targetJobId))! };
+    }
+
+    return { acquired: false, code: 'LEASE_CONFLICT', retry_after_ms: 1000 };
+  }
 
   for (let i = 0; i < 3; i++) {
     const candidate = await chooseNextMediaJob(db, now);
@@ -1144,6 +1222,8 @@ export function publicLeasePayload(job: MediaJobRecord): Record<string, any> {
     aspect_ratio: job.aspect_ratio,
     target_width: job.target_width,
     target_height: job.target_height,
+    status: job.status,
+    lease_owner: job.lease_owner,
     lease_expires_at: job.lease_expires_at,
     attempt: job.attempt
   };

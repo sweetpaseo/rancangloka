@@ -1,282 +1,309 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getDb, getAllCategories, getSiteSettings } from '../lib/db';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { getDb, getAllCategories, getSiteSettings, getAllArticles } from '../lib/db';
 
 const db = await getDb(Astro.locals);
-const [categories, siteSettings] = await Promise.all([
+const [categories, siteSettings, articles] = await Promise.all([
   getAllCategories(db),
-  getSiteSettings(db)
+  getSiteSettings(db),
+  getAllArticles(db, 20, 0, 'published')
 ]);
+
+const activeProblem = Astro.url.searchParams.get('problem') || 'panas';
 
 const problems = [
   {
     id: 'panas',
     icon: '☀️',
-    title: 'Rumah Terlalu Panas & Pengap di Siang Hari',
-    summary: 'Radiasi matahari barat menembus dinding kaca dan panas terjebak di plafon atas.',
-    causes: [
-      'Bukaan kaca utama menghadap langsung ke arah lintasan matahari barat tanpa kanopi penangkal.',
-      'Ketiadaan rongga ventilasi silang (*cross-ventilation*) sehingga udara hangat terperangkap di plafon.',
-      'Penggunaan atap seng/asbes tanpa insulasi peredam panas berstandar aluminium foil.'
+    badge: 'IKLIM & SUHU',
+    title: 'Rumah Panas & Pengap di Siang dan Sore Hari',
+    summary: 'Radiasi matahari sore barat menembus bukaan dan panas terperangkap di bawah plafon atau atap.',
+    symptoms: [
+      'Dinding barat masih terasa hangat saat disentuh jam 8 malam.',
+      'Lantai atas jauh lebih panas dibanding lantai bawah.',
+      'Ruang tetap pengap meski kipas angin menyala kencang.'
     ],
-    solutions: [
+    causes: [
+      'Bukaan kaca utama menghadap langsung ke lintasan matahari sore tanpa peneduh luar (overhang/shading).',
+      'Atap metal atau genteng beton tanpa insulasi termal memadai dan tanpa ventilasi celah bubungan.',
+      'Ketiadaan sirkulasi silang (cross-ventilation) sehingga udara panas terjebak di zona atas plafon.'
+    ],
+    steps: [
       {
-        name: 'Pemasangan Secondary Skin Fasad',
-        desc: 'Kisi-kisi kayu ulin atau aluminium louver mereduksi radiasi langsung matahari sore melalui pembiasan bayangan pasif.',
-        link: '/search?q=secondary+skin'
+        stage: 'Langkah Ringan (Tanpa Bongkar)',
+        action: 'Pasang tirai luar / bamboo blind pada sisi luar jendela barat dan buka ventilasi atas saat sore hari.'
       },
       {
-        name: 'Bukaan Sumbu Ventilasi Silang',
-        desc: 'Menciptakan dua jendela yang berhadapan pada zona atas dinding untuk memicu efek pelepasan angin sejuk.',
-        link: '/search?q=ventilasi'
+        stage: 'Langkah Sedang (Modifikasi Ringan)',
+        action: 'Tambahkan louver kisi peneduh luar (secondary skin) dan insulasi aluminium foil bubble di bawah reng atap.'
       },
       {
-        name: 'Kaca Rendah Emisi (Low-E Glass)',
-        desc: 'Mengurangi rambatan radiasi infra merah ke dalam ruang tamu tanpa meredupkan intensitas cahaya alami.',
-        link: '/search?q=kaca'
+        stage: 'Renovasi Struktural',
+        action: 'Ciptakan bukaan ventilasi silang berhadapan dan buat efek cerobong (stack effect) melalui bukaan void atas.'
       }
+    ],
+    relevantLinks: [
+      { title: 'Perbedaan Atap Metal dan Genteng Beton untuk Rumah Tropis', url: '/perbedaan-atap-metal-dan-genteng-beton-untuk-rumah-tropis' },
+      { title: 'Memilih Sistem Shading Luar Rumah Tropis', url: '/memilih-sistem-shading-luar-rumah-tropis' },
+      { title: 'Ventilasi Alami Rumah Tropis Tanpa AC', url: '/search?q=ventilasi' }
     ]
   },
   {
     id: 'sempit',
     icon: '📦',
-    title: 'Lahan Mungil (Tipe 36/60) Terasa Sempit & Sesak',
-    summary: 'Terlalu banyak sekat dinding masif yang memecah ruang keluarga dan menghalangi jarak pandang.',
-    causes: [
-      'Dinding bata pemisah antara ruang tamu, dapur, dan ruang makan membuat koridor terasa sempit.',
-      'Plafon rendah standar 2.6 meter tanpa bukaan vertikal penambah sirkulasi udara.',
-      'Furnitur bervolume tebal dengan penyimpanan terbuka yang menimbulkan kekacauan visual (*visual clutter*).'
+    badge: 'TATA RUANG',
+    title: 'Ruangan Terasa Sempit, Padat & Pengap',
+    summary: 'Banyak sekat dinding masif yang memecah jarak pandang dan menghalangi aliran cahaya alami.',
+    symptoms: [
+      'Koridor antar-ruang terasa gelap dan terhimpit.',
+      'Barang sehari-hari cepat menumpuk di meja dan lantai.',
+      'Ruang tamu dan ruang makan tidak leluasa untuk aktivitas keluarga.'
     ],
-    solutions: [
+    causes: [
+      'Terlalu banyak dinding partisi permanen pada denah berdimensi kompak (tipe 36–60).',
+      'Plafon standar rendah (2,6 m) tanpa kontinuitas visual vertikal.',
+      'Furnitur berdimensi bulky yang memblokir jalur sirkulasi alami manusia.'
+    ],
+    steps: [
       {
-        name: 'Konsep Tata Ruang Bebas Sekat (Open Plan)',
-        desc: 'Membongkar dinding masif non-struktural dan menggantinya dengan partisi kayu dua sisi terbuka.',
-        link: '/search?q=open+space'
+        stage: 'Langkah Ringan',
+        action: 'Ganti partisi masif dengan rak buku semi-terbuka dua sisi atau partisi kisi kayu tipis.'
       },
       {
-        name: 'Bukaan Void Vertikal 5 Meter',
-        desc: 'Menghilangkan sebagian lantai atas untuk menciptakan efek cerobong udara dan ilusi ruang ganda.',
-        link: '/search?q=void'
+        stage: 'Langkah Sedang',
+        action: 'Terapkan konsep open-plan antara ruang duduk, makan, dan pantry untuk memanjangkan poros pandang.'
       },
       {
-        name: 'Furnitur Multifungsi Built-in',
-        desc: 'Dipan berlaci dan lemari rata dinding (flush wall) yang menyembunyikan barang dari pandangan mata.',
-        link: '/search?q=furnitur'
+        stage: 'Renovasi Struktural',
+        action: 'Buka void plafon ganda (double height ceiling) di atas area tengah denah untuk kelegaan vertikal.'
       }
+    ],
+    relevantLinks: [
+      { title: 'Eksplorasi Ide & Tata Letak Ruang Keluarga', url: '/category/ruang' },
+      { title: 'Panduan Renovasi Rumah Bertahap', url: '/category/renovasi' }
     ]
   },
   {
-    id: 'gelap',
-    icon: '🌑',
-    title: 'Ruang Dalam Gelap & Boros Listrik Siang Hari',
-    summary: 'Rumah tipe townhouse yang terhimpit dinding tetangga di sisi kiri, kanan, dan belakang.',
-    causes: [
-      'Dinding samping menempel langsung dengan rumah sebelah sehingga tidak memungkinkan adanya jendela konvensional.',
-      'Ruang tengah terletak terlalu jauh dari fasad depan.',
-      'Penggunaan kaca film yang terlalu gelap.'
+    id: 'lembab',
+    icon: '💧',
+    badge: 'REMBES & AIR',
+    title: 'Dinding Lembap, Cat Mengelupas & Tempias Hujan',
+    summary: 'Air hujan meresap dari sambungan luar atau kelembapan tanah naik ke struktur dinding bawah.',
+    symptoms: [
+      'Bercak hitam jamur muncul di sudut plafon atau dasar plin dinding.',
+      'Bau apek tidak hilang meski ruangan diberi pengharum.',
+      'Cat dinding menggelembung dan rontok menjadi serbuk kapur.'
     ],
-    solutions: [
+    causes: [
+      'Kemiringan atap terlalu landai sehingga air hujan meluap balik ke celah genteng saat angin kencang.',
+      'Kurangnya teritisan atap (overhang) penangkal tempias pada bukaan jendela luar.',
+      'Lapisan waterproofing dinding luar retak rambut atau ketiadaan lapisan trasram anti-kapilaritas.'
+    ],
+    steps: [
       {
-        name: 'Skylight Kaca Terlindung (Roof Glazing)',
-        desc: 'Memasukkan cahaya matahari vertikal gratis dari atap langsung menyinari area tangga atau meja makan.',
-        link: '/search?q=skylight'
+        stage: 'Langkah Ringan',
+        action: 'Bersihkan jamur dengan cairan fungisida dan perbaiki sirkulasi udara harian dengan membuka jendela pagi hari.'
       },
       {
-        name: 'Taman Kering Dalam Rumah (Inner Courtyard)',
-        desc: 'Menyediakan kantong hijau terbuka berukuran 2x2 meter di tengah denah sebagai paru-paru cahaya.',
-        link: '/search?q=taman'
+        stage: 'Langkah Sedang',
+        action: 'Tambahkan kanopi tempias minimal 60 cm di atas bukaan dan lapisi dinding luar dengan elastomeric coating.'
       },
       {
-        name: 'Dinding Kaca Buram / Glass Block Modern',
-        desc: 'Membiaskan privasi antar ruang dengan tetap mendistribusikan pendaran cahaya alami secara merata.',
-        link: '/search?q=kaca'
+        stage: 'Renovasi Struktural',
+        action: 'Periksa kemiringan atap (pastikan minimal 20° untuk genteng beton atau gunakan metal sambungan seam untuk atap landai).'
       }
+    ],
+    relevantLinks: [
+      { title: 'Perbedaan Atap Metal dan Genteng Beton (Kemiringan & Risiko Bocor)', url: '/perbedaan-atap-metal-dan-genteng-beton-untuk-rumah-tropis' },
+      { title: 'Kusen Aluminium vs UPVC Terhadap Kebocoran Air Tempias', url: '/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia' }
     ]
   },
   {
     id: 'bising',
     icon: '🔊',
-    title: 'Bising Jalanan Masuk ke Kamar Tidur & Ruang Kerja',
-    summary: 'Suara knalpot kendaraan dan aktivitas luar mengganggu konsentrasi dan kualitas istirahat.',
-    causes: [
-      'Kusen jendela aluminium standar dengan celah karet yang tipis dan kaca tunggal 5mm.',
-      'Pintu kamar berpintu triplek rongga berongga (*hollow core*) tanpa peredam akustik.',
-      'Permukaan dinding dan lantai terlalu licin memantulkan gema suara.'
+    badge: 'AKUSTIK & PRIVASI',
+    title: 'Kamar Terlalu Bising oleh Suara Jalan & Tetangga',
+    summary: 'Gelombang suara frekuensi rendah dan tinggi lolos melalui celah jendela tipis atau dinding tunggal.',
+    symptoms: [
+      'Suara knalpot motor atau obrolan luar terdengar jelas di tempat tidur.',
+      'Suara tetangga tembus melalui dinding kopel perumahan.',
+      'Ruang kerja di rumah tidak tenang untuk rapat daring.'
     ],
-    solutions: [
+    causes: [
+      'Kusen jendela berongga tanpa seal karet kedap udara (weatherstripping).',
+      'Kaca jendela tunggal tipis (3–5 mm) yang bergetar mentransmisikan suara jalan raya.',
+      'Ketiadaan peredam lunak pada bidang reflektif kamar (gorden, karpet, panel dinding).'
+    ],
+    steps: [
       {
-        name: 'Kusen Jendela UPVC Double Glazing',
-        desc: 'Rangka UPVC dengan kaca ganda kedap udara mampu mereduksi kebisingan hingga ~35–40 dB* (*bergantung konfigurasi kaca & kerapatan seal).',
-        link: '/search?q=jendela'
+        stage: 'Langkah Ringan',
+        action: 'Pasang karet seal spons/EPDM di sekeliling daun jendela dan gunakan gorden kain tebal berlapis.'
       },
       {
-        name: 'Pintu Kayu Solid & Drop Seal Karet',
-        desc: 'Pintu kayu jati/kamper utuh dengan segel otomatis di bawah pintu untuk memblokir celah suara bawah.',
-        link: '/search?q=kayu'
+        stage: 'Langkah Sedang',
+        action: 'Ganti kaca jendela dengan kaca laminasi minimal 6 mm atau kusen sistem kedap suara UPVC multi-chamber.'
       },
       {
-        name: 'Layering Tirai Tebal & Karpet Serat Alami',
-        desc: 'Bahan wol dan linen berpori menyerap frekuensi suara pantul di dalam ruangan tidur.',
-        link: '/search?q=interior'
+        stage: 'Renovasi Struktural',
+        action: 'Buat dinding ganda partisi gipsum berongga rockwool (air gap 5 cm) pada sisi dinding yang berbatasan langsung.'
       }
+    ],
+    relevantLinks: [
+      { title: 'Kusen Aluminium vs UPVC: Analisa Performa Akustik', url: '/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia' },
+      { title: 'Kajian Kebisingan Atap Metal Saat Hujan Deras', url: '/perbedaan-atap-metal-dan-genteng-beton-untuk-rumah-tropis' }
     ]
   }
+];
+
+const selectedProblemData = problems.find((p) => p.id === activeProblem) || problems[0];
+
+const breadcrumbItems = [
+  { name: 'Beranda', url: '/' },
+  { name: 'Problem Solver', url: '/solusi' }
 ];
 ---
 
 <BaseLayout
-  title="Design Problem Solver: Diagnosis Masalah Ruang & Solusi Arsitektural"
-  description="Alat diagnosis interaktif RancangLoka: Terjemahkan masalah rumah Anda (panas, sempit, gelap, bising) menjadi solusi materialitas dan rekayasa spasial presisi."
+  title="Problem Solver: Diagnosa Masalah Hunian Berbasis Bukti"
+  description="Identifikasi keluhan rumah: panas, sempit, lembap, atau bising. Kenali akar penyebab fisik dan langkah perbaikan bertahap yang masuk akal."
   categories={categories}
   siteSettings={siteSettings}
 >
-  <div class="mx-auto max-w-5xl py-6 sm:py-10">
-    <!-- Header Badge -->
-    <div class="text-center space-y-4 mb-14">
-      <span class="inline-flex items-center gap-2 rounded-full bg-[#0066ee]/10 dark:bg-[#0066ee]/20 px-4 py-1 text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee]">
-        ✦ DESIGN PROBLEM SOLVER
-      </span>
-      <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-        Apa Masalah Hunian yang Sedang Anda Hadapi?
+  <div class="editorial-container py-8 md:py-12">
+    <!-- 1. Breadcrumbs -->
+    <div class="crumb mb-6">
+      <Breadcrumbs items={breadcrumbItems} />
+    </div>
+
+    <!-- 2. Lead Header (Atlas T07) -->
+    <header class="page-hero mb-8">
+      <span class="eyebrow">Diagnosa & Solusi Hunian</span>
+      <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--ink)] leading-[1.12] my-3">
+        Ada Masalah di Rumahmu?
       </h1>
-      <p class="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
-        Pilih tantangan hunian Anda di bawah ini untuk melihat kemungkinan akar penyebab, strategi spasial, dan opsi materialitas yang relevan.
+      <p class="text-base sm:text-lg text-[var(--muted)] leading-relaxed max-w-[720px]">
+        Mulai dari gejala fisik yang kamu rasakan sehari-hari. Redaksi RancangLoka menguraikan akar penyebab arsitektural dan panduan solusi bertahap: dari langkah tanpa bongkar hingga renovasi struktural.
       </p>
+    </header>
+
+    <!-- 3. Symptom Selector Chips / Choices (Atlas T07) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 my-8">
+      {problems.map((p) => {
+        const isActive = p.id === selectedProblemData.id;
+        return (
+          <a
+            href={`/solusi?problem=${p.id}`}
+            class={`p-5 rounded-lg border transition text-center block ${
+              isActive
+                ? 'bg-[var(--wash)] border-[var(--lemon)] shadow-xs'
+                : 'bg-[var(--surface)] border-[var(--line)] hover:bg-[var(--warm)]'
+            }`}
+          >
+            <span class="text-3xl block mb-2">{p.icon}</span>
+            <strong class="font-serif text-sm sm:text-base text-[var(--ink)] block">
+              {p.id === 'panas' && 'Panas & Pengap'}
+              {p.id === 'sempit' && 'Ruangan Sempit'}
+              {p.id === 'lembab' && 'Dinding Lembap'}
+              {p.id === 'bising' && 'Kamar Bising'}
+            </strong>
+            <span class="text-[11px] text-[var(--muted)] mt-1 block">
+              {p.badge}
+            </span>
+          </a>
+        );
+      })}
     </div>
 
-    <!-- Interactive Problem Cards Navigation -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12" id="problem-selector">
-      {problems.map((p, idx) => (
-        <button
-          type="button"
-          data-target={p.id}
-          class={`problem-tab text-left p-5 rounded-2xl border transition-all duration-300 ${
-            idx === 0
-              ? 'border-[#0066ee] bg-blue-50/70 dark:bg-slate-900 shadow-md ring-2 ring-[#0066ee]/30'
-              : 'border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/60 hover:border-[#0066ee]/40'
-          }`}
-        >
-          <span class="text-2xl block mb-2">{p.icon}</span>
-          <h3 class="text-sm font-bold text-slate-900 dark:text-white leading-snug">
-            {p.title}
-          </h3>
-        </button>
-      ))}
-    </div>
+    <!-- 4. Active Problem Diagnostic Sheet (Atlas T07) -->
+    <section class="my-10 p-6 sm:p-10 rounded-xl bg-[var(--surface)] border border-[var(--line)] shadow-xs">
+      <!-- Badge & Title -->
+      <div class="flex items-center gap-3 mb-2">
+        <span class="meta">{selectedProblemData.badge}</span>
+        <span class="text-xs text-[var(--muted)]">· Analisis Gejala Spasial</span>
+      </div>
 
-    <!-- Problem Breakdown Panels -->
-    <div class="space-y-10">
-      {problems.map((p, idx) => (
-        <div
-          id={`panel-${p.id}`}
-          class={`problem-panel rounded-[2.5rem] border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-slate-900 p-8 sm:p-12 shadow-xl ${
-            idx === 0 ? 'block' : 'hidden'
-          }`}
-        >
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-6 mb-8 gap-4">
-            <div>
-              <span class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] block mb-1">
-                ANALISIS MASALAH
+      <h2 class="font-serif text-2xl sm:text-3xl font-normal text-[var(--ink)] leading-snug my-2">
+        {selectedProblemData.title}
+      </h2>
+
+      <p class="text-base text-[var(--muted)] leading-relaxed mb-8 max-w-[760px]">
+        {selectedProblemData.summary}
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-[var(--line)]">
+        <!-- Gejala Nyata di Lapangan -->
+        <div class="p-5 rounded-lg bg-[var(--warm)] border border-[var(--line)]">
+          <strong class="font-serif text-base text-[var(--ink)] block mb-3">
+            🔍 Gejala yang Terlihat / Terasa:
+          </strong>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-[var(--ink)] pl-4 list-disc">
+            {selectedProblemData.symptoms.map((sym) => (
+              <li class="leading-relaxed">{sym}</li>
+            ))}
+          </ul>
+        </div>
+
+        <!-- Akar Penyebab Teknis -->
+        <div class="p-5 rounded-lg bg-[var(--warm)] border border-[var(--line)]">
+          <strong class="font-serif text-base text-[var(--ink)] block mb-3">
+            ⚙️ Akar Penyebab Arsitektural:
+          </strong>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-[var(--ink)] pl-4 list-disc">
+            {selectedProblemData.causes.map((cause) => (
+              <li class="leading-relaxed">{cause}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Panduan Langkah Solusi Bertahap -->
+      <div class="mt-8 pt-6 border-t border-[var(--line)]">
+        <strong class="font-serif text-lg text-[var(--ink)] block mb-4">
+          🛠️ Solusi Bertahap yang Masuk Akal:
+        </strong>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {selectedProblemData.steps.map((step, idx) => (
+            <div class="p-5 rounded-lg border border-[var(--line)] bg-[var(--canvas)]">
+              <span class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--lemon)] text-[var(--deep)] mb-2">
+                Tahap {idx + 1}
               </span>
-              <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                {p.title}
-              </h2>
-            </div>
-            <span class="text-3xl sm:text-4xl">{p.icon}</span>
-          </div>
-
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <!-- Left: Root Causes (5 cols) -->
-            <div class="lg:col-span-5 rounded-3xl bg-slate-50 dark:bg-slate-950 p-6 sm:p-7 border border-black/[0.04] dark:border-white/[0.06] flex flex-col justify-between space-y-4">
-              <div>
-                <h3 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
-                  <span class="text-amber-500">✦</span>
-                  <span>KEMUNGKINAN PENYEBAB UMUM</span>
-                </h3>
-                <ul class="space-y-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                  {p.causes.map((cause) => (
-                    <li class="flex items-start gap-2.5">
-                      <span class="text-amber-500 font-bold mt-0.5">•</span>
-                      <span class="leading-relaxed">{cause}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <p class="text-[10px] font-mono text-slate-400 border-t border-black/[0.04] dark:border-white/[0.06] pt-3">
-                *Validasi orientasi dan bukaan eksisting di lokasi diperlukan untuk diagnosis teknis definitif.
+              <h4 class="font-serif text-sm font-bold text-[var(--ink)] mb-2">
+                {step.stage}
+              </h4>
+              <p class="text-xs text-[var(--muted)] leading-relaxed">
+                {step.action}
               </p>
             </div>
+          ))}
+        </div>
+      </div>
 
-            <!-- Right: Architectural Solutions (7 cols) -->
-            <div class="lg:col-span-7 space-y-4">
-              <h3 class="text-xs font-mono font-bold uppercase tracking-widest text-[#0066ee] mb-2 flex items-center gap-1.5">
-                <span>✦</span>
-                <span>REKOMENDASI SOLUSI SPASIAL & MATERIAL</span>
-              </h3>
-
-              {p.solutions.map((sol, sIdx) => (
-                <div class="p-5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-slate-50/50 dark:bg-slate-800/40 hover:border-[#0066ee]/40 transition group">
-                  <div class="flex items-center justify-between mb-1.5">
-                    <h4 class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#0066ee] transition">
-                      <span class="font-mono text-xs text-[#0066ee] mr-1.5">0{sIdx + 1}</span>
-                      {sol.name}
-                    </h4>
-                    <a
-                      href={sol.link}
-                      class="text-xs font-mono font-bold text-[#0066ee] hover:underline"
-                    >
-                      Eksplorasi →
-                    </a>
-                  </div>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
-                    {sol.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
+      <!-- Rekomendasi Kajian Relevan -->
+      {selectedProblemData.relevantLinks.length > 0 && (
+        <div class="mt-8 pt-6 border-t border-[var(--line)]">
+          <span class="meta block mb-2">BACAAN KAJIAN MENDALAM DARI REDAKSI:</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            {selectedProblemData.relevantLinks.map((link) => (
+              <a
+                href={link.url}
+                class="p-4 rounded-lg bg-[var(--warm)] border border-[var(--line)] hover:border-[var(--primary)] transition flex items-center justify-between gap-3 text-xs font-semibold text-[var(--ink)] group"
+              >
+                <span class="group-hover:text-[var(--primary)] transition-colors">{link.title}</span>
+                <span class="text-[var(--primary)] group-hover:translate-x-1 transition-transform">→</span>
+              </a>
+            ))}
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </section>
 
-    <!-- Editorial Disclaimer Box -->
-    <div class="mt-12 rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/60 p-6 sm:p-8 text-xs text-slate-500 dark:text-slate-400 space-y-2 font-mono">
-      <div class="flex items-center gap-2 font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
-        <span class="text-[#0066ee]">✦</span> Catatan Editorial & Batasan Asesmen
-      </div>
-      <p class="leading-relaxed font-normal">
-        Diagnosis dan rekomendasi di halaman ini merupakan panduan konseptual awal berdasarkan prinsip fisika bangunan tropis, bukan pengganti pemeriksaan arsitek, insinyur struktur, atau kontraktor berlisensi di lokasi proyek aktual. Kondisi orientasi lahan, iklim mikro, dan struktur eksisting dapat menghasilkan diagnosis teknis yang berbeda.
+    <!-- 5. Decision Handoff Footer Note (Warm Advisory Tone) -->
+    <div class="soft-note my-10">
+      <b>Prinsip Redaksi RancangLoka:</b>
+      <p class="mt-1 text-xs sm:text-sm">
+        Setiap rumah memiliki orientasi matahari, hembusan angin lokal, dan kondisi fisik yang berbeda. Jangan terburu-buru merombak total sebelum memverifikasi arah datangnya panas atau jalur air hujan di hunianmu.
       </p>
     </div>
   </div>
-
-  <script>
-    const tabs = document.querySelectorAll('.problem-tab');
-    const panels = document.querySelectorAll('.problem-panel');
-
-    tabs.forEach((tab) => {
-      tab.addEventListener('click', () => {
-        const target = tab.getAttribute('data-target');
-
-        // Reset all tabs
-        tabs.forEach((t) => {
-          t.className = 'problem-tab text-left p-5 rounded-2xl border transition-all duration-300 border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-slate-900/60 hover:border-[#0066ee]/40';
-        });
-
-        // Set active tab
-        tab.className = 'problem-tab text-left p-5 rounded-2xl border transition-all duration-300 border-[#0066ee] bg-blue-50/70 dark:bg-slate-900 shadow-md ring-2 ring-[#0066ee]/30';
-
-        // Toggle panels
-        panels.forEach((p) => {
-          if (p.id === `panel-${target}`) {
-            p.classList.remove('hidden');
-            p.classList.add('block');
-          } else {
-            p.classList.add('hidden');
-            p.classList.remove('block');
-          }
-        });
-      });
-    });
-  </script>
 </BaseLayout>

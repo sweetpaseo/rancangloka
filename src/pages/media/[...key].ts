@@ -101,19 +101,43 @@ export const GET: APIRoute = async ({ params, locals }) => {
       }
     }
 
+    // Graceful fallback for responsive width derivatives: if specific *-480.webp, *-640.webp, *-960.webp
+    // is requested on R2 but not yet present, fall back to the canonical full-size .webp image.
+    let isDerivativeFallback = false;
+    if (!object && /-(?:480|640|960)\.webp$/i.test(exactKey)) {
+      const canonicalKey = exactKey.replace(/-(?:480|640|960)\.webp$/i, '.webp');
+      object = await bucket.get(canonicalKey);
+      if (object) {
+        exactKey = canonicalKey;
+        isDerivativeFallback = true;
+      }
+    }
+
     if (!object) {
       return new Response('Image not found', { status: 404 });
     }
 
     const headers = new Headers();
-    object.writeHttpMetadata(headers);
-    headers.set('etag', object.httpEtag);
-    if (isThumbnailFallback) {
-      // THUMBNAIL MISS WITH ORIGINAL FALLBACK:
-      // MUST NOT use one-year immutable caching under thumbnail URL to prevent cache poisoning.
+    try {
+      if (typeof object.writeHttpMetadata === 'function') {
+        object.writeHttpMetadata(headers);
+      }
+    } catch {
+      // Miniflare RPC proxy throws DevalueError when passing Headers instances.
+      // Fallback to reading object.httpMetadata directly.
+      if (object.httpMetadata?.contentType) {
+        headers.set('content-type', object.httpMetadata.contentType);
+      }
+    }
+    if (object.httpEtag) {
+      headers.set('etag', object.httpEtag);
+    }
+    if (isThumbnailFallback || isDerivativeFallback) {
+      // DERIVATIVE MISS WITH ORIGINAL FALLBACK:
+      // MUST NOT use one-year immutable caching under derivative URL to prevent cache poisoning.
       // Use no-cache, must-revalidate so clients revalidate once the derivative is uploaded.
       headers.set('Cache-Control', 'no-cache, must-revalidate');
-      headers.set('X-RL-Thumbnail-Fallback', 'true');
+      headers.set('X-RL-Derivative-Fallback', 'true');
     } else {
       headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     }
@@ -142,3 +166,13 @@ export const GET: APIRoute = async ({ params, locals }) => {
     return new Response('Error retrieving media', { status: 500 });
   }
 };
+
+export const HEAD: APIRoute = async (context) => {
+  const res = await GET(context);
+  return new Response(null, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: res.headers
+  });
+};
+

@@ -59,7 +59,12 @@ import {
   type CachedSnapshotProvenance,
   type SourceDiversityMetrics,
   type CandidateLifecycleRecord,
-  type CandidateLifecycleState
+  type CandidateLifecycleState,
+  evaluateSourceIngestionQuality,
+  checkResearchReadiness,
+  isAncientHistoryTrivia,
+  type SourceQualityDecision,
+  type ResearchReadinessEvaluation
 } from './source-discovery.ts';
 
 import {
@@ -89,6 +94,8 @@ import {
 
 import {
   ResearchDiscoveryQueryPlanner,
+  normalizeAndAnchorCallerQuery,
+  extractEntityPinnedTopicProfile,
   type ResearchDiscoveryQueryPlan,
   type StructuredDiscoveryQuery,
   type DiscoveryQueryVariant,
@@ -125,6 +132,10 @@ import {
 export type IrwanRuntimeEventType =
   | 'RESEARCH_JOB_STARTED'
   | 'IRWAN_QUERY_PLANNED'
+  | 'CALLER_QUERY_ACCEPTED'
+  | 'CALLER_QUERY_ANCHORED'
+  | 'CALLER_QUERY_REJECTED'
+  | 'CALLER_QUERIES_ALL_REJECTED_FALLBACK'
   | 'SOURCE_DISCOVERED'
   | 'SOURCE_RETRIEVAL_STARTED'
   | 'SOURCE_RETRIEVED'
@@ -222,6 +233,8 @@ export interface IrwanResearchJobResult {
   discoveredSources: DiscoveredSourceCandidate[];
   retrievedDocuments: RetrievedDocument[];
   blockedSources: { source_id: string; title: string; reason: string; legal_status: string }[];
+  sourceDecisions?: SourceQualityDecision[];
+  researchReadiness?: ResearchReadinessEvaluation;
   traceEvents: IrwanRuntimeEvent[];
   candidateLifecycleRecords?: CandidateLifecycleRecord[];
   lifecycleMetrics?: {
@@ -393,9 +406,50 @@ export async function executeGeneralizedResearchJob(
     { plan: pass1QueryPlan }
   );
 
+  const pass1Profile = pass1QueryPlan.entity_profile || extractEntityPinnedTopicProfile(input.topic, (input as any).editorial_family ? [(input as any).editorial_family] : undefined);
   const queries: string[] = [];
+  const callerQueryEvaluations: { rawQuery: string; normalizedQuery: string; action: 'ACCEPTED' | 'ANCHORED' | 'REJECTED'; reason: string }[] = [];
   if (input.searchQueries && input.searchQueries.length > 0) {
-    queries.push(...input.searchQueries);
+    for (const rawQ of input.searchQueries) {
+      const evalRes = normalizeAndAnchorCallerQuery(rawQ, input.topic, pass1Profile);
+      callerQueryEvaluations.push({
+        rawQuery: rawQ,
+        normalizedQuery: evalRes.normalizedQuery,
+        action: evalRes.action,
+        reason: evalRes.reason
+      });
+      if (evalRes.action === 'REJECTED') {
+        addTraceEvent(
+          'CALLER_QUERY_REJECTED',
+          `Kueri pemanggil ditolak: "${rawQ}" (${evalRes.reason})`,
+          { rawQuery: rawQ, reason: evalRes.reason }
+        );
+      } else {
+        if (!queries.includes(evalRes.normalizedQuery)) {
+          queries.push(evalRes.normalizedQuery);
+        }
+        addTraceEvent(
+          evalRes.action === 'ANCHORED' ? 'CALLER_QUERY_ANCHORED' : 'CALLER_QUERY_ACCEPTED',
+          `Kueri pemanggil ${evalRes.action.toLowerCase()}: "${evalRes.normalizedQuery}"`,
+          { rawQuery: rawQ, normalizedQuery: evalRes.normalizedQuery, reason: evalRes.reason }
+        );
+      }
+    }
+    // If all caller queries were rejected, fallback to planned queries
+    if (queries.length === 0) {
+      addTraceEvent(
+        'CALLER_QUERIES_ALL_REJECTED_FALLBACK',
+        `Semua kueri pemanggil ditolak karena tidak relevan atau out-of-domain. Menggunakan kueri terencana.`,
+        {}
+      );
+      for (const pq of pass1QueryPlan.planned_queries) {
+        for (const v of pq.variants) {
+          if (!queries.includes(v.query)) {
+            queries.push(v.query);
+          }
+        }
+      }
+    }
   } else {
     for (const pq of pass1QueryPlan.planned_queries) {
       for (const v of pq.variants) {
@@ -620,25 +674,33 @@ export async function executeGeneralizedResearchJob(
     }
   }
 
-  // Handle caller-supplied custom queries if any
-  if (input.searchQueries && input.searchQueries.length > 0) {
-    for (const q of input.searchQueries) {
-      const [crResults, wikiResults] = await Promise.all([
-        crossRefSearch(q, { fetchFn: options.fetchFn }),
-        wikiSearch(q, { fetchFn: options.fetchFn })
-      ]);
-      for (const c of [...crResults, ...wikiResults]) {
-        normalizedCandidatePool.push({
-          provider: c.discovery_engine === 'CROSSREF_OPEN_API' ? 'CROSSREF' : 'WIKIPEDIA',
-          candidate_id: c.candidate_id,
-          title: c.title,
-          snippet_or_abstract: c.snippet,
-          url: c.url,
-          doi: c.doi,
-          publisher: c.publisher,
-          discovered_at: c.discovered_at,
-          discovery_query_id: 'custom_input'
-        });
+  // Handle caller-supplied custom queries if any (guarded by domain anchoring)
+  if (callerQueryEvaluations.length > 0) {
+    for (const cq of callerQueryEvaluations) {
+      if (cq.action === 'REJECTED') {
+        continue; // Strictly reject out-of-domain generic searches
+      }
+      const q = cq.normalizedQuery;
+      try {
+        const [crResults, wikiResults] = await Promise.all([
+          crossRefSearch(q, { fetchFn: options.fetchFn }),
+          wikiSearch(q, { fetchFn: options.fetchFn })
+        ]);
+        for (const c of [...crResults, ...wikiResults]) {
+          normalizedCandidatePool.push({
+            provider: c.discovery_engine === 'CROSSREF_OPEN_API' ? 'CROSSREF' : 'WIKIPEDIA',
+            candidate_id: c.candidate_id,
+            title: c.title,
+            snippet_or_abstract: c.snippet,
+            url: c.url,
+            doi: c.doi,
+            publisher: c.publisher,
+            discovered_at: c.discovered_at,
+            discovery_query_id: `caller_${cq.action.toLowerCase()}`
+          });
+        }
+      } catch (err: any) {
+        // Log query execution error non-fatally
       }
     }
   }
@@ -731,16 +793,25 @@ export async function executeGeneralizedResearchJob(
 
   const retrievedDocs: RetrievedDocument[] = [];
   const blockedSourcesList: { source_id: string; title: string; reason: string; legal_status: string }[] = [];
+  const sourceDecisionsList: SourceQualityDecision[] = [];
 
   // Helper to attempt candidate retrieval through appropriate engine
   async function attemptCandidateRetrieval(c: DiscoveredSourceCandidate, passNum: number): Promise<RetrievedDocument | null> {
     if (totalRetrievalAttempts >= MAX_TOTAL_RETRIEVAL_ATTEMPTS) {
       return null;
     }
+    const currentRec = lifecycleTracker.getRecord(c.candidate_id);
+    if (currentRec && currentRec.current_state === 'REJECTED_PRE_RETRIEVAL') {
+      return null;
+    }
     totalRetrievalAttempts++;
     lifecycleTracker.transition(c.candidate_id, 'SELECTED_FOR_RETRIEVAL', `Selected for retrieval in Pass ${passNum}`);
     lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_ATTEMPTED', `Retrieval attempted via engine ${c.discovery_engine}`);
     addTraceEvent('SOURCE_RETRIEVAL_STARTED', `Irwan memulai pengambilan dokumen "${c.title}" via [${c.discovery_engine}].`, { candidate_id: c.candidate_id, title: c.title });
+
+    const relevantQuestion = researchQuestions.find(q => q.question_id === c.query)?.question_text ||
+                             researchQuestions[0]?.question_text ||
+                             input.topic;
 
     // Branch 1: Open Technical Doc via openDocHandler
     if (c.candidate_id === `cand_open_${openDocId}` || c.candidate_id.startsWith('cand_open_SRC-')) {
@@ -781,6 +852,30 @@ export async function executeGeneralizedResearchJob(
             return null;
           }
 
+          // Evaluate Source Ingestion Quality
+          const decision = evaluateSourceIngestionQuality({
+            topic: input.topic,
+            researchQuestion: relevantQuestion,
+            sourceId: openDocId,
+            canonicalUrl: doc.canonical_url || doc.url,
+            title: doc.title,
+            publisher: doc.publisher,
+            fullText: doc.text
+          });
+          sourceDecisionsList.push(decision);
+
+          if (decision.decision === 'SOURCE_REJECTED') {
+            lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', decision.rejection_or_escalation_reason || 'Source rejected by Source Ingestion Gate');
+            blockedSourcesList.push({
+              source_id: openDocId,
+              title: doc.title,
+              reason: decision.rejection_or_escalation_reason || 'Source rejected by Source Ingestion Gate',
+              legal_status: 'SOURCE_QUALITY_GATE_REJECTED'
+            });
+            addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Dokumen institusional [${openDocId}] ditolak oleh Source Ingestion Gate: ${decision.rejection_or_escalation_reason}`, { source_id: openDocId, reason: decision.rejection_or_escalation_reason });
+            return null;
+          }
+
           const docPassages = extractDynamicPassagesFromText(openDocId, doc.title, doc.text);
           lifecycleTracker.transition(c.candidate_id, 'RETRIEVAL_SUCCEEDED', `Dokumen institusional berhasil diunduh (${Buffer.byteLength(doc.text, 'utf8')} bytes)`);
           lifecycleTracker.transition(c.candidate_id, 'PASSAGE_EXTRACTED', `Diekstrak ${docPassages.length} passages bukti terverifikasi`);
@@ -810,7 +905,8 @@ export async function executeGeneralizedResearchJob(
             resolved_url: doc.resolved_url || doc.canonical_url,
             snapshot_provenance: (doc as any).snapshot_provenance,
             limitations: `Pedoman institusional sains bangunan resmi (${doc.publisher}).`,
-            is_blocked: false
+            is_blocked: false,
+            source_decision: decision
           };
           retrievedDocs.push(retDoc);
           addTraceEvent('SOURCE_RETRIEVED', `Dokumen resmi institusional "${doc.title}" (${doc.publisher}) berhasil diunduh.`, { source_id: openDocId });
@@ -837,6 +933,31 @@ export async function executeGeneralizedResearchJob(
 
       const cleanText = wikiArticle.text.trim();
       const wikiSrcId = `SRC-OPEN-WIKI-${c.title.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}`;
+
+      // Evaluate Source Ingestion Quality
+      const decision = evaluateSourceIngestionQuality({
+        topic: input.topic,
+        researchQuestion: relevantQuestion,
+        sourceId: wikiSrcId,
+        canonicalUrl: c.url,
+        title: c.title,
+        publisher: 'Wikimedia Foundation',
+        fullText: cleanText
+      });
+      sourceDecisionsList.push(decision);
+
+      if (decision.decision === 'SOURCE_REJECTED') {
+        lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', decision.rejection_or_escalation_reason || 'Wikipedia source rejected by Source Ingestion Gate');
+        blockedSourcesList.push({
+          source_id: wikiSrcId,
+          title: c.title,
+          reason: decision.rejection_or_escalation_reason || 'Wikipedia source rejected by Source Ingestion Gate',
+          legal_status: 'SOURCE_QUALITY_GATE_REJECTED'
+        });
+        addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Dokumen Wikipedia "${c.title}" ditolak oleh Source Ingestion Gate: ${decision.rejection_or_escalation_reason}`);
+        return null;
+      }
+
       const passages = extractDynamicPassagesFromText(wikiSrcId, c.title, cleanText);
 
       if (passages.length === 0) {
@@ -906,7 +1027,8 @@ export async function executeGeneralizedResearchJob(
         requested_url: wikiArticle.requested_url,
         resolved_url: wikiArticle.resolved_url,
         limitations: `Sumber sekunder ensiklopedis: merangkum prinsip fisik untuk ${c.title}.`,
-        is_blocked: false
+        is_blocked: false,
+        source_decision: decision
       };
       retrievedDocs.push(retDoc);
       addTraceEvent('SOURCE_RETRIEVED', `Dokumen ensiklopedis "${c.title}" berhasil diunduh (${Buffer.byteLength(cleanText, 'utf8')} bytes).`, { source_id: wikiSrcId });
@@ -975,6 +1097,32 @@ export async function executeGeneralizedResearchJob(
                 const resolvedOaUrl = oaHttpResult.resolved_url || oaResult.oa_url;
                 const oaIdentity = establishSourceIdentity(resolvedOaUrl, c.publisher);
                 const srcId = `SRC-OA-${c.candidate_id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+                // Evaluate Source Ingestion Quality
+                const decision = evaluateSourceIngestionQuality({
+                  topic: input.topic,
+                  researchQuestion: relevantQuestion,
+                  sourceId: srcId,
+                  canonicalUrl: resolvedOaUrl,
+                  title: c.title,
+                  publisher: oaIdentity.publisher,
+                  abstractOrSnippet: c.snippet,
+                  fullText: cleanOaText
+                });
+                sourceDecisionsList.push(decision);
+
+                if (decision.decision === 'SOURCE_REJECTED') {
+                  lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', decision.rejection_or_escalation_reason || 'OA document rejected by Source Ingestion Gate');
+                  blockedSourcesList.push({
+                    source_id: srcId,
+                    title: c.title,
+                    reason: decision.rejection_or_escalation_reason || 'OA document rejected by Source Ingestion Gate',
+                    legal_status: 'SOURCE_QUALITY_GATE_REJECTED'
+                  });
+                  addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Dokumen OA "${c.title}" ditolak oleh Source Ingestion Gate: ${decision.rejection_or_escalation_reason}`);
+                  return null;
+                }
+
                 const oaPassages = extractDynamicPassagesFromText(srcId, c.title, cleanOaText);
 
                 if (oaPassages.length > 0) {
@@ -1022,7 +1170,8 @@ export async function executeGeneralizedResearchJob(
                     resolved_url: resolvedOaUrl,
                     http_status: oaHttpResult.http_status,
                     limitations: `Dokumen open-access sah (${oaResult.oa_repository_type || 'Repository Institusi'}).`,
-                    is_blocked: false
+                    is_blocked: false,
+                    source_decision: decision
                   };
                   retrievedDocs.push(retDoc);
                   addTraceEvent('SOURCE_RETRIEVED', `Dokumen OA sah "${c.title}" berhasil diunduh.`, { source_id: srcId, oa_url: oaResult.oa_url });
@@ -1085,6 +1234,32 @@ export async function executeGeneralizedResearchJob(
     const resolvedUrl = httpResult.resolved_url || targetUrl;
     const identity = establishSourceIdentity(resolvedUrl, c.publisher);
     const srcId = `SRC-HTTP-${c.candidate_id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    // Evaluate Source Ingestion Quality
+    const decision = evaluateSourceIngestionQuality({
+      topic: input.topic,
+      researchQuestion: relevantQuestion,
+      sourceId: srcId,
+      canonicalUrl: resolvedUrl,
+      title: c.title,
+      publisher: identity.publisher,
+      abstractOrSnippet: c.snippet,
+      fullText: cleanText
+    });
+    sourceDecisionsList.push(decision);
+
+    if (decision.decision === 'SOURCE_REJECTED') {
+      lifecycleTracker.transition(c.candidate_id, 'REJECTED_PRE_RETRIEVAL', decision.rejection_or_escalation_reason || 'HTTP document rejected by Source Ingestion Gate');
+      blockedSourcesList.push({
+        source_id: srcId,
+        title: c.title,
+        reason: decision.rejection_or_escalation_reason || 'HTTP document rejected by Source Ingestion Gate',
+        legal_status: 'SOURCE_QUALITY_GATE_REJECTED'
+      });
+      addTraceEvent('SOURCE_RETRIEVAL_BLOCKED', `Dokumen web "${c.title}" ditolak oleh Source Ingestion Gate: ${decision.rejection_or_escalation_reason}`);
+      return null;
+    }
+
     const passages = extractDynamicPassagesFromText(srcId, c.title, cleanText);
 
     if (passages.length === 0) {
@@ -1166,7 +1341,8 @@ export async function executeGeneralizedResearchJob(
       resolved_url: resolvedUrl,
       http_status: httpResult.http_status,
       limitations: `Dokumen web terverifikasi: ${c.title} (${identity.publisher}).`,
-      is_blocked: false
+      is_blocked: false,
+      source_decision: decision
     };
     retrievedDocs.push(retDoc);
     addTraceEvent('SOURCE_RETRIEVED', `Dokumen web "${c.title}" (${identity.publisher}) berhasil diunduh via HTTP.`, { source_id: srcId });
@@ -1245,10 +1421,11 @@ export async function executeGeneralizedResearchJob(
 
   // Helper to build canonical passages, claim inventory, and author-safe claims from retrieved docs
   function buildEvidenceState(docs: RetrievedDocument[]) {
+    const validDocs = docs.filter(d => !d.is_blocked && d.retrieval_status === 'SOURCE_RETRIEVED_AND_VERIFIED' && (!d.source_decision || d.source_decision.decision !== 'SOURCE_REJECTED'));
     const passageMap = new Map<string, EvidencePassage>();
     let passageSeq = 1;
 
-    for (const doc of docs) {
+    for (const doc of validDocs) {
       for (const p of doc.extracted_passages) {
         const dedupeKey = `${doc.source_id}::${p.locator}::${p.content_hash || p.exact_text}`;
         if (!passageMap.has(dedupeKey)) {
@@ -1347,7 +1524,7 @@ export async function executeGeneralizedResearchJob(
     const builtAuthorSafe = generateAuthorSafeClaims(builtClaims, {
       evidencePassages: builtPassages,
       executionType,
-      retrievedDocuments: docs,
+      retrievedDocuments: validDocs,
       topic: input.topic,
       researchQuestions
     });
@@ -1782,7 +1959,18 @@ export async function executeGeneralizedResearchJob(
     }
   );
 
-  // 7. Alignment & Research Coverage Pre-Writing Gate
+  // 7. Research Readiness Evaluation (Hardening Gate)
+  const readiness = checkResearchReadiness({
+    topic: input.topic,
+    sourceDecisions: sourceDecisionsList,
+    acceptedDocuments: retrievedDocs.filter(d => !d.is_blocked && (!d.source_decision || d.source_decision.decision !== 'SOURCE_REJECTED')),
+    claimInventory,
+    researchQuestions
+  });
+  (evidencePack as any).research_readiness = readiness;
+  (evidencePack as any).source_decisions = sourceDecisionsList;
+
+  // Alignment & Research Coverage Pre-Writing Gate
   const alignmentResult = auditTopicEvidenceAlignment(input.topic, evidencePack, { researchQuestions });
   const qualityGateResult = evaluateAuthorSafeEvidenceGate(evidencePack, input.topic, researchQuestions);
   (evidencePack as any).quality_gate_result = qualityGateResult;
@@ -1805,6 +1993,14 @@ export async function executeGeneralizedResearchJob(
       'RESEARCH_HUMAN_REVIEW_REQUIRED',
       `Paket bukti tertahan pada gerbang kualitas bukti & cakupan pertanyaan riset: [${finalGateStatus}] ${qualityGateResult.production_gate?.reason}`,
       { stopGate: finalGateStatus, reason: qualityGateResult.production_gate?.reason }
+    );
+  } else if (readiness.readiness_status !== 'READY_FOR_AUTHORING') {
+    status = 'BLOCKED';
+    finalGateStatus = readiness.readiness_status;
+    addTraceEvent(
+      'RESEARCH_HUMAN_REVIEW_REQUIRED',
+      `Paket bukti tertahan pada gerbang kesiapan riset: [${finalGateStatus}] ${readiness.block_reason || 'Insufficient accepted sources'}`,
+      { stopGate: finalGateStatus, reason: readiness.block_reason, readiness }
     );
   } else {
     addTraceEvent(
@@ -1834,6 +2030,8 @@ export async function executeGeneralizedResearchJob(
     discoveredSources: discoveredCandidates,
     retrievedDocuments: retrievedDocs,
     blockedSources: blockedSourcesList,
+    sourceDecisions: sourceDecisionsList,
+    researchReadiness: readiness,
     traceEvents,
     candidateLifecycleRecords: lifecycleTracker.getAllRecords(),
     lifecycleMetrics,

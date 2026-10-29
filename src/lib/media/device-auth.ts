@@ -447,7 +447,51 @@ export async function revokeCanaryEphemeralDevice(
 }
 
 /**
- * Validates request credentials against Cloudflare D1 media_devices or environment secrets.
+ * Evaluates whether an incoming request qualifies for Local Development Tokenless Access.
+ *
+ * Strict Security Invariants:
+ * 1. ZERO PRODUCTION LEAK: Bundler statically inlines import.meta.env.DEV as false in production builds.
+ * 2. RUNTIME ENVIRONMENT GUARD: Fails closed if env.ENVIRONMENT or NODE_ENV indicates production.
+ * 3. REMOTE INGRESS GUARD: Rejects if Cloudflare edge headers (cf-ray, cf-connecting-ip) are present.
+ * 4. STRICT LOOPBACK BINDING: URL hostname must strictly match loopback interface (localhost, 127.0.0.1, ::1).
+ * 5. SPOOFING IMMUNITY: Hostname / Origin headers are NEVER accepted as sole proof without (1), (2), and (3).
+ */
+export function isLocalDevLoopbackRequest(request: Request, env: Record<string, any> = {}): boolean {
+  // 1. Production Build Guard: statically inlined by Vite in Astro builds.
+  // In production builds (npm run build), import.meta.env.DEV is false.
+  const isDevBuild = Boolean((import.meta as any).env?.DEV);
+  const isDevNode = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+  if (!isDevBuild && !isDevNode) {
+    return false;
+  }
+
+  // 2. Production Environment Guard: reject if environment is explicitly marked production
+  if (env.ENVIRONMENT === 'production' || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production' && !isDevBuild)) {
+    return false;
+  }
+
+  // 3. Remote Ingress Guard: Cloudflare edge always adds cf-ray / cf-connecting-ip on public traffic
+  if (request.headers.get('cf-ray') || request.headers.get('cf-connecting-ip')) {
+    return false;
+  }
+
+  // 4. Strict Loopback Binding on request URL
+  try {
+    const url = new URL(request.url);
+    const loopbacks = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]']);
+    if (!loopbacks.has(url.hostname)) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates request credentials against Cloudflare D1 media_devices, environment secrets,
+ * or loopback-bound local development tokenless access.
  */
 export async function authenticateDeviceRequest(
   request: Request,
@@ -469,14 +513,6 @@ export async function authenticateDeviceRequest(
     token = mediaKeyHeader.trim();
   }
 
-  if (!token) {
-    return {
-      authenticated: false,
-      error: 'Kredensial perangkat LokaMedia wajib disertakan.',
-      statusCode: 401
-    };
-  }
-
   // Check for forbidden scopes or scopes outside allowed media scopes
   if (FORBIDDEN_SCOPES.has(declaredScope) || !ALLOWED_MEDIA_SCOPES.has(declaredScope)) {
     return {
@@ -486,69 +522,83 @@ export async function authenticateDeviceRequest(
     };
   }
 
-  // 1. Check against D1 media_devices table if db is available
-  if (db) {
-    try {
-      const hashed = await hashToken(token);
-      const row = await db
-        .prepare('SELECT device_id, device_name, scope, status FROM media_devices WHERE token_hash = ? LIMIT 1')
-        .bind(hashed)
-        .first();
+  // 1. Check if token is explicitly supplied and not a development tokenless marker
+  if (token && token !== 'tokenless') {
+    if (db) {
+      try {
+        const hashed = await hashToken(token);
+        const row = await db
+          .prepare('SELECT device_id, device_name, scope, status FROM media_devices WHERE token_hash = ? LIMIT 1')
+          .bind(hashed)
+          .first();
 
-      if (row) {
-        // FAIL-CLOSED: If device is REVOKED, immediately reject without fallthrough!
-        if (row.status === 'REVOKED') {
-          return {
-            authenticated: false,
-            deviceId: row.device_id,
-            error: 'Token perangkat LokaMedia tidak valid atau telah dicabut.',
-            statusCode: 401
-          };
-        }
-
-        if (row.status === 'ACTIVE') {
-          // Check scope validity
-          if (!ALLOWED_MEDIA_SCOPES.has(row.scope)) {
+        if (row) {
+          // FAIL-CLOSED: If device is REVOKED, immediately reject without fallthrough!
+          if (row.status === 'REVOKED') {
             return {
               authenticated: false,
               deviceId: row.device_id,
-              error: `Scope '${row.scope}' pada perangkat LokaMedia tidak valid.`,
-              statusCode: 403
+              error: 'Token perangkat LokaMedia tidak valid atau telah dicabut.',
+              statusCode: 401
             };
           }
 
-          // Update last_used_at asynchronously
-          try {
-            await db
-              .prepare('UPDATE media_devices SET last_used_at = CURRENT_TIMESTAMP WHERE device_id = ?')
-              .bind(row.device_id)
-              .run();
-          } catch (_) {}
+          if (row.status === 'ACTIVE') {
+            // Check scope validity
+            if (!ALLOWED_MEDIA_SCOPES.has(row.scope)) {
+              return {
+                authenticated: false,
+                deviceId: row.device_id,
+                error: `Scope '${row.scope}' pada perangkat LokaMedia tidak valid.`,
+                statusCode: 403
+              };
+            }
 
-          return {
-            authenticated: true,
-            deviceId: row.device_id,
-            scope: row.scope
-          };
+            // Update last_used_at asynchronously
+            try {
+              await db
+                .prepare('UPDATE media_devices SET last_used_at = CURRENT_TIMESTAMP WHERE device_id = ?')
+                .bind(row.device_id)
+                .run();
+            } catch (_) {}
+
+            return {
+              authenticated: true,
+              deviceId: row.device_id,
+              scope: row.scope
+            };
+          }
         }
+      } catch (_) {
+        // Fall through to env token check
       }
-    } catch (_) {
-      // Fall through to env token check
+    }
+
+    // Check against environment secrets (Staging / Dev / Production fallback)
+    const expectedKey =
+      env.LOKAMEDIA_DEVICE_TOKEN ||
+      env.RANCANGLOKA_MEDIA_UPLOAD_KEY ||
+      env.MEDIA_UPLOAD_KEY ||
+      '';
+
+    if (expectedKey && token === expectedKey) {
+      return {
+        authenticated: true,
+        deviceId: 'dev_env_master',
+        scope: 'media:device'
+      };
     }
   }
 
-  // 2. Check against environment secrets (Staging / Dev / Production fallback)
-  const expectedKey =
-    env.LOKAMEDIA_DEVICE_TOKEN ||
-    env.RANCANGLOKA_MEDIA_UPLOAD_KEY ||
-    env.MEDIA_UPLOAD_KEY ||
-    '';
-
-  if (expectedKey && token === expectedKey) {
+  // 2. Local Development Tokenless Access
+  // Allows LokaMedia extension in local dev loopback to authenticate without manual token entry.
+  const isTokenlessRequested = !token || token === 'tokenless' || request.headers.get('x-rl-dev-mode') === 'tokenless';
+  if (isTokenlessRequested && isLocalDevLoopbackRequest(request, env)) {
+    const devDeviceId = request.headers.get('x-rl-device-id')?.trim() || 'dev_local_tokenless';
     return {
       authenticated: true,
-      deviceId: 'dev_env_master',
-      scope: 'media:device'
+      deviceId: devDeviceId,
+      scope: declaredScope || 'media:device'
     };
   }
 

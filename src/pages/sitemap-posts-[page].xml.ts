@@ -29,7 +29,12 @@ export const GET: APIRoute = async ({ params, locals }) => {
 
   const urls = articles
     .map((a) => {
-      const lastMod = new Date(a.updated_at || a.published_at || Date.now()).toISOString();
+      const u = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const pub = a.published_at ? new Date(a.published_at).getTime() : 0;
+      const effectiveTime = Math.max(u, pub);
+      const lastmodTag = effectiveTime > 0 && !isNaN(effectiveTime)
+        ? `\n    <lastmod>${new Date(effectiveTime).toISOString()}</lastmod>`
+        : '';
       const imageTag = a.featured_image
         ? `\n    <image:image>
       <image:loc>${escapeXml(a.featured_image)}</image:loc>
@@ -38,8 +43,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
         : '';
 
       return `  <url>
-    <loc>${siteUrl}/${a.slug}</loc>
-    <lastmod>${lastMod}</lastmod>
+    <loc>${siteUrl}/${a.slug}</loc>${lastmodTag}
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>${imageTag}
   </url>`;
@@ -47,7 +51,6 @@ export const GET: APIRoute = async ({ params, locals }) => {
     .join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet type="text/xsl" href="/main-sitemap.xsl"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${urls}

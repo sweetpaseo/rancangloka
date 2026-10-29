@@ -1,0 +1,196 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+
+const db = await getDb(Astro.locals);
+const [allArticles, categories, siteSettings] = await Promise.all([
+  getAllArticles(db, 100, 0, 'published'),
+  getAllCategories(db),
+  getSiteSettings(db)
+]);
+
+const query = (Astro.url.searchParams.get('q') || '').trim();
+const normalizedQuery = query.toLowerCase();
+
+const searchResults = query
+  ? allArticles.filter((art) => {
+      const titleMatch = art.title.toLowerCase().includes(normalizedQuery);
+      const descMatch = (art.description || '').toLowerCase().includes(normalizedQuery);
+      const catMatch = (art.category_name || '').toLowerCase().includes(normalizedQuery);
+      return titleMatch || descMatch || catMatch;
+    })
+  : [];
+
+const breadcrumbItems = [
+  { name: 'Beranda', url: '/' },
+  { name: 'Pencarian', url: '/search' }
+];
+
+function resolveSearchImage(url?: string | null): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (trimmed.length < 5 || trimmed.includes('[object') || trimmed.includes('undefined')) return null;
+  if (trimmed.startsWith('/media/') || trimmed.startsWith('https://') || trimmed.startsWith('http://')) {
+    return trimmed;
+  }
+  return null;
+}
+---
+
+<BaseLayout
+  title={query ? `Hasil Pencarian: "${query}"` : 'Pencarian Ide & Solusi Rumah'}
+  description="Cari panduan arsitektur, pemilihan material, tata ruang, dan problem solving hunian tropis di RancangLoka."
+  categories={categories}
+  siteSettings={siteSettings}
+>
+  <div class="editorial-container py-8 md:py-12 max-w-[960px]">
+    <!-- 1. Breadcrumbs -->
+    <div class="crumb mb-6">
+      <Breadcrumbs items={breadcrumbItems} />
+    </div>
+
+    <!-- 2. Search Page Hero (Atlas T04) -->
+    <header class="page-hero mb-6">
+      <span class="eyebrow">Pencarian Editorial</span>
+      <h1 class="font-serif text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--ink)] leading-[1.12] my-3">
+        {query ? `Hasil untuk: "${query}"` : 'Cari Kajian & Panduan Rumah'}
+      </h1>
+      <p class="text-base sm:text-lg text-[var(--muted)] leading-relaxed max-w-[680px]">
+        Temukan jawaban teknis yang jelas, perbandingan spesifikasi material, dan solusi praktis untuk hunianmu di Indonesia.
+      </p>
+    </header>
+
+    <!-- 3. Search Form Input (Atlas T04: Server-Rendered GET Form) -->
+    <form action="/search" method="GET" class="my-6">
+      <div class="flex items-center border border-[var(--line)] bg-white rounded-lg overflow-hidden shadow-xs focus-within:border-[var(--primary)] transition">
+        <div class="pl-4 pr-2 text-[var(--muted)]">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          name="q"
+          value={query}
+          placeholder="Ketik masalah atau topik: atap, ventilasi, kamar sempit, kusen..."
+          class="w-full py-3.5 px-2 text-sm text-[var(--ink)] placeholder-[var(--muted)] bg-transparent focus:outline-none"
+          required
+        />
+        <button
+          type="submit"
+          class="bg-[var(--primary)] text-white text-xs font-bold uppercase tracking-wider px-6 py-4 hover:bg-[var(--deep)] transition-colors"
+        >
+          Cari
+        </button>
+      </div>
+    </form>
+
+    <!-- 4. Quick Suggested Keyword Chips -->
+    <div class="chips my-6">
+      <b>Saran topik:</b>
+      <a href="/search?q=atap+metal">Atap Metal</a>
+      <a href="/search?q=genteng+beton">Genteng Beton</a>
+      <a href="/search?q=rumah+panas">Rumah Panas</a>
+      <a href="/search?q=ventilasi+silang">Ventilasi Silang</a>
+      <a href="/search?q=shading+tropis">Shading Luar</a>
+      <a href="/search?q=kusen+aluminium">Kusen Aluminium</a>
+      <a href="/solusi" class="text-[var(--primary)] font-bold">✦ Problem Solver</a>
+    </div>
+
+    <!-- 5. Search Results List (Atlas T04) -->
+    {query ? (
+      searchResults.length > 0 ? (
+        <section class="my-8" aria-label="Daftar Hasil Pencarian">
+          <div class="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider pb-3 border-b border-[var(--line)] mb-4">
+            Ditemukan {searchResults.length} kajian untuk "{query}"
+          </div>
+
+          <div class="divide-y divide-[var(--line)]">
+            {searchResults.map((article) => {
+              const imgUrl = resolveSearchImage(article.featured_image);
+              return (
+                <article class="py-5 grid grid-cols-1 sm:grid-cols-[175px_1fr] gap-5 items-start group">
+                  {imgUrl ? (
+                    <a href={`/${article.slug}`} class="block rounded-md overflow-hidden bg-[var(--warm)] aspect-[16/10] sm:aspect-auto sm:h-[120px] border border-[var(--line)] flex-shrink-0">
+                      <img
+                        src={imgUrl}
+                        alt={article.image_alt || article.title}
+                        class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </a>
+                  ) : (
+                    <div class="hidden sm:block w-[175px] h-[120px] rounded-md bg-[var(--warm)] border border-[var(--line)] p-3 text-[11px] text-[var(--muted)] flex-shrink-0">
+                      <span class="font-serif font-bold text-[var(--ink)] block mb-1">RancangLoka</span>
+                      <span>Kajian Arsitektur &amp; Hunian</span>
+                    </div>
+                  )}
+                  <div>
+                  <span class="meta">{article.category_name || 'KAJIAN'}</span>
+                  <h3 class="font-serif text-lg sm:text-xl font-normal text-[var(--ink)] group-hover:text-[var(--primary)] transition-colors my-1 leading-snug">
+                    <a href={`/${article.slug}`}>
+                      {article.title}
+                    </a>
+                  </h3>
+                  <p class="text-xs sm:text-sm text-[var(--muted)] leading-relaxed line-clamp-2 my-1.5">
+                    {article.description}
+                  </p>
+                  <small class="text-[11px] text-[var(--muted)]">
+                    ⏱️ {article.reading_time_minutes || 5} menit baca · Redaksi
+                  </small>
+                </div>
+              </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        <!-- No Results Empty State (Atlas T15 / T04) -->
+        <section class="my-12 p-8 sm:p-12 text-center rounded-lg bg-[var(--warm)] border border-[var(--line)] max-w-lg mx-auto">
+          <span class="text-3xl block mb-3">🔍</span>
+          <h3 class="font-serif text-xl font-bold text-[var(--ink)] mb-2">
+            Tidak ada kajian untuk "{query}"
+          </h3>
+          <p class="text-xs sm:text-sm text-[var(--muted)] leading-relaxed mb-6">
+            Coba gunakan kata kunci yang lebih umum seperti <span class="font-semibold text-[var(--ink)]">atap</span>, <span class="font-semibold text-[var(--ink)]">panas</span>, atau <span class="font-semibold text-[var(--ink)]">ventilasi</span>.
+          </p>
+          <div class="flex justify-center gap-3">
+            <a href="/explore" class="btn">
+              Jelajahi Seluruh Arsip →
+            </a>
+            <a href="/solusi" class="btn btn-secondary">
+              Buka Problem Solver
+            </a>
+          </div>
+        </section>
+      )
+    ) : (
+      <!-- Initial State Before Query -->
+      <section class="my-10 p-8 rounded-lg bg-[var(--warm)] border border-[var(--line)]">
+        <span class="meta block mb-2">PANDUAN PENCARIAN</span>
+        <h3 class="font-serif text-xl text-[var(--ink)] mb-2">
+          Cari Berdasarkan Gejala Masalah atau Material
+        </h3>
+        <p class="text-xs sm:text-sm text-[var(--muted)] leading-relaxed mb-4">
+          RancangLoka menyusun kajian berdasarkan masalah nyata pemilik rumah: dari cara meredam panas matahari sore, mengatasi rembesan air tempias, hingga perbandingan teknis antara dua material bangunan.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <a href="/search?q=atap" class="p-3 bg-white rounded border border-[var(--line)] hover:border-[var(--primary)] transition font-medium block">
+            🏠 <b>Struktur Atap & Plafon:</b> Metal vs beton, insulasi panas, gording
+          </a>
+          <a href="/search?q=ventilasi" class="p-3 bg-white rounded border border-[var(--line)] hover:border-[var(--primary)] transition font-medium block">
+            💨 <b>Sirkulasi Udara:</b> Ventilasi silang, efek cerobong, louver
+          </a>
+          <a href="/search?q=kusen" class="p-3 bg-white rounded border border-[var(--line)] hover:border-[var(--primary)] transition font-medium block">
+            🪟 <b>Kusen & Bukaan:</b> Aluminium, UPVC, thermal bridge, kedap suara
+          </a>
+          <a href="/search?q=shading" class="p-3 bg-white rounded border border-[var(--line)] hover:border-[var(--primary)] transition font-medium block">
+            ☀️ <b>Peneduh & Fasad:</b> Kisi-kisi, secondary skin, teritisan
+          </a>
+        </div>
+      </section>
+    )}
+  </div>
+</BaseLayout>

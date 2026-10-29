@@ -45,7 +45,12 @@ export class UploadWorkerPool {
         attachment_confirmed: response.attachment_confirmed !== false,
         asset_id: response.asset_id ?? null
       });
-      if (response.attachment_confirmed !== false) await this.blobStore.delete(job.blob_key);
+      if (response.attachment_confirmed !== false) {
+        await this.blobStore.delete(job.blob_key);
+        if (job.original_blob_key && job.original_blob_key !== job.blob_key) {
+          await this.blobStore.delete(job.original_blob_key);
+        }
+      }
       await this.storage.dequeueUpload(job.job_id);
       return { ok: true, response };
     } finally {

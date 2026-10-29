@@ -1,27 +1,27 @@
 import type { APIRoute } from 'astro';
-import { getDb, getAllArticles, getSiteSettings } from '../lib/db';
+import { getDb, getEligibleNewsArticles, getSiteSettings } from '../lib/db';
 import { isNewsArticleEligible } from '../lib/seo';
 
 export { isNewsArticleEligible };
 
 export const GET: APIRoute = async ({ locals }) => {
   const db = await getDb(locals);
-  const [articles, settings] = await Promise.all([
-    getAllArticles(db, 50, 0, 'published'),
+  const fortyEightHoursAgo = Date.now() - 48 * 3600 * 1000;
+
+  const [targetArticles, settings] = await Promise.all([
+    getEligibleNewsArticles(db, fortyEightHoursAgo),
     getSiteSettings(db)
   ]);
 
   const siteUrl = settings.site_url || 'https://rancangloka.com';
   const siteTitle = settings.site_title || 'RancangLoka';
 
-  // Filter strictly eligible news articles published in the last 48 hours
-  const fortyEightHoursAgo = Date.now() - 48 * 3600 * 1000;
-  const targetArticles = articles.filter((a) => isNewsArticleEligible(a, fortyEightHoursAgo));
-
   const urls = targetArticles
     .map((a) => {
       const pubDate = new Date(a.published_at).toISOString();
-      const lastMod = new Date(a.updated_at || a.published_at).toISOString();
+      const u = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const pub = a.published_at ? new Date(a.published_at).getTime() : 0;
+      const lastMod = new Date(Math.max(u, pub)).toISOString();
       return `  <url>
     <loc>${siteUrl}/${a.slug}</loc>
     <lastmod>${lastMod}</lastmod>
@@ -38,7 +38,6 @@ export const GET: APIRoute = async ({ locals }) => {
     .join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet type="text/xsl" href="/main-sitemap.xsl"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
 ${urls}

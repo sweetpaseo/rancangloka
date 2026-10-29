@@ -1,14 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import TrendingTopics from '../components/TrendingTopics.astro';
-import HeroKompas from '../components/HeroKompas.astro';
-import SidebarPopular from '../components/SidebarPopular.astro';
-import VisualStudy from '../components/VisualStudy.astro';
-import Newsletter from '../components/Newsletter.astro';
 import { getDb, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import { getResponsiveImageAttrs } from '../lib/image';
 
 const db = await getDb(Astro.locals);
-const [articles, categories, siteSettings] = await Promise.all([
+const [allArticles, categories, siteSettings] = await Promise.all([
   getAllArticles(db, 30, 0, 'published'),
   getAllCategories(db),
   getSiteSettings(db)
@@ -19,28 +15,62 @@ Astro.response.headers.set('Cache-Tag', 'homepage');
 Astro.response.headers.set('Cache-Control', 'public, max-age=60');
 Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
 
-// 1. Hero articles (top 3)
+// Filter & Prioritize Published Articles:
+// 1. Prioritize featured articles (Article 4, Article C, etc.)
+const articles = [...allArticles].sort((a, b) => {
+  if (Boolean(b.is_featured) !== Boolean(a.is_featured)) {
+    return (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
+  }
+  return new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime();
+});
+
+// 1. Mosaic Articles (Top 3)
 const heroArticles = articles.slice(0, 3);
 const heroIds = new Set(heroArticles.map((a) => a.id));
 
-// 2. Feed stream articles
+// 2. Selected Editor's Picks (next 3)
 const feedArticles = articles.filter((a) => !heroIds.has(a.id));
+const selectedStories = feedArticles.slice(0, 3);
+const selectedIds = new Set(selectedStories.map((a) => a.id));
 
-// 3. Popular articles (by views or top order)
-const popularArticles = [...articles].sort((a, b) => (b.views || 0) - (a.views || 0));
+// 3. Remaining Articles for Latest Stories Feed
+const remainingArticles = feedArticles.filter((a) => !selectedIds.has(a.id)).slice(0, 6);
 
-function getFeedThumb(url?: string) {
-  if (!url) return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=320&fm=webp&auto=format&fit=crop&q=60';
-  if (url.includes('images.unsplash.com')) {
-    return `${url.split('?')[0]}?w=320&fm=webp&auto=format&fit=crop&q=60`;
+function resolveServerImage(url?: string | null): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (trimmed.length < 5) return null;
+  if (
+    trimmed.includes('[object') ||
+    trimmed.includes('ast_phase5l7_fixture') ||
+    trimmed.includes('phase5l5_fixture') ||
+    trimmed.includes('undefined') ||
+    trimmed.includes('null')
+  ) {
+    return null;
   }
-  return url;
+  // Local media paths
+  if (trimmed.startsWith('/media/')) {
+    return trimmed;
+  }
+  // Remote valid HTTP/HTTPS URLs
+  if (trimmed.startsWith('https://') || trimmed.startsWith('http://')) {
+    try {
+      new URL(trimmed);
+      return trimmed;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
-// LCP Candidate Image Preload (Hero #1 Image)
-const lcpImage = heroArticles.length > 0 && heroArticles[0].featured_image
-  ? `${heroArticles[0].featured_image.split('?')[0]}?w=450&fm=webp&auto=format&fit=crop&q=60`
-  : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=450&fm=webp&auto=format&fit=crop&q=60';
+// LCP Candidate Image Preload (Hero #1 Lead Image with Responsive Sizes)
+const heroLeadImage = heroArticles.length > 0 ? resolveServerImage(heroArticles[0].featured_image) : null;
+const heroLeadAttrs = heroLeadImage
+  ? getResponsiveImageAttrs(heroLeadImage, heroArticles[0].image_alt || heroArticles[0].title, { slotType: 'hero-large', isPriority: true })
+  : null;
+const lcpPreload = heroLeadAttrs ? { src: heroLeadAttrs.src, srcset: heroLeadAttrs.srcset, sizes: heroLeadAttrs.sizes } : undefined;
 
 // JSON-LD Schema for Website
 const websiteSchema = {
@@ -57,105 +87,414 @@ const websiteSchema = {
 ---
 
 <BaseLayout
-  title="Jurnal Kurasi Arsitektur, Desain Interior & Spasial Tropis"
-  preloadImage={lcpImage}
+  title="Media Arsitektur, Desain Hunian & Material Tropis"
+  description="Inspirasi, renovasi, dan panduan hunian yang dekat dengan hidup sehari-hari di Indonesia. Bahasa orang rumah, cara berpikir editor yang paham teknis."
+  preloadImage={lcpPreload}
   categories={categories}
   siteSettings={siteSettings}
   jsonLdSchema={websiteSchema}
 >
-  <!-- 1. Topik Pilihan Bar (Kompas.id Style) -->
-  <TrendingTopics />
+  <div class="editorial-container pt-5 pb-12 md:pt-6 md:pb-16">
+    <!-- A. Editorial Masthead (The Living Edit) -->
+    <header class="lead" aria-label="Pengantar Editorial">
+      <span class="eyebrow">The Living Edit · Edisi Tropis</span>
+      <h1>Rumah yang lebih baik,<br class="hidden sm:inline" /> <em>dimulai dari ide sederhana.</em></h1>
+    </header>
 
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-    <!-- 2. Hero Sorotan Utama Berlatar Gelap (Kompas.id Dark Monolith) -->
-    <HeroKompas articles={heroArticles.length > 0 ? heroArticles : articles.slice(0, 3)} />
+    <!-- B. Hero Feature Mosaic (Data-Aware: 1, 2, or 3-story layout) -->
+    {heroArticles.length >= 3 ? (() => {
+      const img0 = resolveServerImage(heroArticles[0].featured_image);
+      const img1 = resolveServerImage(heroArticles[1].featured_image);
+      const img2 = resolveServerImage(heroArticles[2].featured_image);
 
-    <!-- 3. Main 2-Column Layout (Left Stream + Right Sidebar) -->
-    {feedArticles.length > 0 && (
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 my-10 items-start">
-        <!-- Left Column: Article Stream Feed (Col 1-8: 65%) -->
-        <main class="lg:col-span-8 space-y-8">
-          <!-- Section Header -->
-          <div class="flex items-center justify-between pb-3 border-b-2 border-[#003366] dark:border-blue-400">
-            <h2 class="font-sans text-base sm:text-lg font-black uppercase tracking-wider text-[#003366] dark:text-blue-400">
-              Kajian Terkini
-            </h2>
-            <a href="/explore" class="text-xs font-bold text-[#003366] dark:text-blue-400 hover:underline flex items-center gap-1">
-              <span>Lihat Semua Arsip</span>
-              <span>❯</span>
+      const attrs0 = img0 ? getResponsiveImageAttrs(img0, heroArticles[0].image_alt || heroArticles[0].title, { slotType: 'hero-large', isPriority: true }) : null;
+      const attrs1 = img1 ? getResponsiveImageAttrs(img1, heroArticles[1].image_alt || heroArticles[1].title, { slotType: 'hero-stacked' }) : null;
+      const attrs2 = img2 ? getResponsiveImageAttrs(img2, heroArticles[2].image_alt || heroArticles[2].title, { slotType: 'hero-stacked' }) : null;
+
+      return (
+        <!-- 3-Story Mosaic: 60% lead + 40% stacked -->
+        <section class="mosaic mt-3 mb-8 md:mt-4 md:mb-10" aria-label="Kisah Utama Minggu Ini">
+          <!-- Lead Story (60% width) -->
+          <a class={`mosaic-large group ${!attrs0 ? 'has-no-image' : ''}`} href={`/${heroArticles[0].slug}`} aria-label={heroArticles[0].title}>
+            {attrs0 && (
+              <img
+                src={attrs0.src}
+                srcset={attrs0.srcset}
+                sizes={attrs0.sizes}
+                alt={attrs0.alt}
+                width={attrs0.width}
+                height={attrs0.height}
+                loading="eager"
+                fetchpriority="high"
+                decoding="async"
+                style={attrs0.style}
+              />
+            )}
+            <div>
+              <span>✦ PILIHAN REDAKSI · {heroArticles[0].category_name?.toUpperCase() || 'EDITORIAL'}</span>
+              <h3>{heroArticles[0].title}</h3>
+            </div>
+          </a>
+
+          <!-- Stacked Story 2 (Top 40%) -->
+          <a class={`group ${!attrs1 ? 'has-no-image' : ''}`} href={`/${heroArticles[1].slug}`} aria-label={heroArticles[1].title}>
+            {attrs1 && (
+              <img
+                src={attrs1.src}
+                srcset={attrs1.srcset}
+                sizes={attrs1.sizes}
+                alt={attrs1.alt}
+                width={attrs1.width}
+                height={attrs1.height}
+                loading="lazy"
+                decoding="async"
+                style={attrs1.style}
+              />
+            )}
+            <div>
+              <span>{heroArticles[1].category_name?.toUpperCase() || 'PANDUAN'}</span>
+              <h3>{heroArticles[1].title}</h3>
+            </div>
+          </a>
+
+          <!-- Stacked Story 3 (Bottom 40%) -->
+          <a class={`group ${!attrs2 ? 'has-no-image' : ''}`} href={`/${heroArticles[2].slug}`} aria-label={heroArticles[2].title}>
+            {attrs2 && (
+              <img
+                src={attrs2.src}
+                srcset={attrs2.srcset}
+                sizes={attrs2.sizes}
+                alt={attrs2.alt}
+                width={attrs2.width}
+                height={attrs2.height}
+                loading="lazy"
+                decoding="async"
+                style={attrs2.style}
+              />
+            )}
+            <div>
+              <span>{heroArticles[2].category_name?.toUpperCase() || 'RENOVASI'}</span>
+              <h3>{heroArticles[2].title}</h3>
+            </div>
+          </a>
+        </section>
+      );
+    })() : heroArticles.length === 2 ? (
+      <!-- 2-Story Balanced Grid (50% / 50%) -->
+      <section class="mosaic-two mt-3 mb-8 md:mt-4 md:mb-10" aria-label="Kisah Utama Minggu Ini">
+        {heroArticles.map((story, idx) => {
+          const img = resolveServerImage(story.featured_image);
+          return (
+            <a class={`mosaic-item group ${!img ? 'has-no-image' : ''}`} href={`/${story.slug}`} aria-label={story.title}>
+              {img && (
+                <img
+                  src={img}
+                  alt={story.image_alt || story.title}
+                  loading={idx === 0 ? 'eager' : 'lazy'}
+                />
+              )}
+              <div>
+                <span>{idx === 0 ? '✦ PILIHAN REDAKSI' : (story.category_name?.toUpperCase() || 'PANDUAN')}</span>
+                <h3>{story.title}</h3>
+              </div>
             </a>
+          );
+        })}
+      </section>
+    ) : heroArticles.length === 1 ? (() => {
+      const img0 = resolveServerImage(heroArticles[0].featured_image);
+      return (
+        <!-- 1-Story Full Width Lead -->
+        <section class="mosaic-single mt-3 mb-8 md:mt-4 md:mb-10" aria-label="Kisah Utama Minggu Ini">
+          <a class={`mosaic-large group ${!img0 ? 'has-no-image' : ''}`} href={`/${heroArticles[0].slug}`} aria-label={heroArticles[0].title}>
+            {img0 && (
+              <img
+                src={img0}
+                alt={heroArticles[0].image_alt || heroArticles[0].title}
+                loading="eager"
+              />
+            )}
+            <div>
+              <span>✦ PILIHAN REDAKSI · {heroArticles[0].category_name?.toUpperCase() || 'EDITORIAL'}</span>
+              <h3>{heroArticles[0].title}</h3>
+            </div>
+          </a>
+        </section>
+      );
+    })() : null}
+
+    <!-- C. Trending Topics Strip -->
+    <section class="chips" aria-label="Topik Populer">
+      <b>Topik hangat</b>
+      <a href="/search?q=atap+metal+genteng+beton">Atap Metal vs Beton</a>
+      <a href="/search?q=rumah+panas">Rumah Panas Sore</a>
+      <a href="/search?q=ventilasi">Ventilasi Alami</a>
+      <a href="/search?q=shading">Shading Luar</a>
+      <a href="/search?q=kusen+aluminium">Kusen Aluminium vs UPVC</a>
+      <a href="/solusi" class="font-bold text-[var(--primary)] border-[var(--line)] bg-[var(--lemon-soft)] hover:bg-[var(--lemon)] transition-colors">
+        ✦ Problem Solver
+      </a>
+    </section>
+
+    <!-- D. Editor's Picks (Pilihan Redaksi) -->
+    {selectedStories.length > 0 && (
+      <section class="my-14 pt-6 border-t border-[var(--line)]" aria-label="Pilihan Redaksi">
+        <div class="mb-6 flex items-baseline justify-between">
+          <div>
+            <span class="eyebrow">Editor's Picks</span>
+            <h2 class="font-serif text-2xl sm:text-3xl text-[var(--ink)] mt-1">
+              Pilihan Redaksi Minggu Ini
+            </h2>
           </div>
-
-          <!-- Feed List: Kompas.id Horizontal Cards -->
-          <div class="divide-y divide-slate-200 dark:divide-slate-800">
-            {feedArticles.map((art) => (
-              <article class="py-6 first:pt-0 flex flex-col sm:flex-row gap-5 group">
-                <!-- Content Left (60-70%) -->
-                <div class="flex-1 flex flex-col justify-between order-2 sm:order-1">
-                  <div>
-                    <div class="flex items-center gap-2 mb-2">
-                      <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                        {art.category_name || 'ARSITEKTUR'}
-                      </span>
-                      <span class="text-slate-600 dark:text-slate-400 text-xs">•</span>
-                      <span class="text-[11px] font-mono font-medium text-slate-600 dark:text-slate-400">
-                        ⏱️ {art.reading_time_minutes || 4} mnt baca
-                      </span>
-                    </div>
-
-                    <h3 class="font-serif text-lg sm:text-xl font-bold leading-snug text-slate-900 dark:text-white group-hover:text-[#003366] dark:group-hover:text-blue-400 transition mb-2">
-                      <a href={`/${art.slug}`}>{art.title}</a>
-                    </h3>
-
-                    {art.description && (
-                      <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2 font-normal">
-                        {art.description}
-                      </p>
-                    )}
+          <a href="/explore" class="text-xs font-bold text-[var(--primary)] hover:text-[var(--deep)] transition-colors">
+            Lihat Semua →
+          </a>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {selectedStories.map((story) => {
+            const img = resolveServerImage(story.featured_image);
+            const cardAttrs = img ? getResponsiveImageAttrs(img, story.image_alt || story.title, { slotType: 'card' }) : null;
+            return (
+              <a class="story group" href={`/${story.slug}`} aria-label={story.title}>
+                {cardAttrs && (
+                  <div class="story-img">
+                    <img
+                      src={cardAttrs.src}
+                      srcset={cardAttrs.srcset}
+                      sizes={cardAttrs.sizes}
+                      alt={cardAttrs.alt}
+                      width={cardAttrs.width}
+                      height={cardAttrs.height}
+                      loading="lazy"
+                      decoding="async"
+                      style={cardAttrs.style}
+                    />
                   </div>
-
-                  <div class="mt-4 text-[11px] text-slate-600 dark:text-slate-400 font-mono font-medium flex items-center gap-2">
-                    <span>Oleh {art.author_name || 'Dewan Redaksi Spasial'}</span>
-                  </div>
+                )}
+                <div class="story-pad">
+                  <span class="meta">{story.category_name || 'ARSITEKTUR'}</span>
+                  <h3>{story.title}</h3>
+                  <p>{story.description || 'Panduan praktis dan teruji untuk kenyamanan rumah tinggal tropis.'}</p>
+                  <small>{story.reading_time_minutes || 5} menit baca · Redaksi RancangLoka</small>
                 </div>
+              </a>
+            );
+          })}
+        </div>
+      </section>
+    )}
 
-                <!-- Thumbnail Right (30-40%) -->
-                <a
-                  href={`/${art.slug}`}
-                  class="w-full sm:w-52 h-44 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 order-1 sm:order-2"
-                >
-                  <img
-                    src={getFeedThumb(art.featured_image)}
-                    alt={art.title}
-                    width="360"
-                    height="225"
-                    class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </a>
-              </article>
-            ))}
+    <!-- E. Room Exploration Grid -->
+    <section class="my-14 pt-6 border-t border-[var(--line)]" aria-label="Eksplorasi Ruang">
+      <div class="mb-6">
+        <span class="eyebrow">Jelajahi Ide</span>
+        <h2 class="font-serif text-2xl sm:text-3xl text-[var(--ink)] mt-1">
+          Mulai dari ruang yang ingin kamu ubah
+        </h2>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a href="/category/ruang" class="room group" aria-label="Inspirasi Ruang Tamu">
+          <img
+            src="/media/rooms/ruang-tamu.webp"
+            alt="Ruang Tamu"
+            width="480"
+            height="320"
+            loading="lazy"
+            decoding="async"
+            style="aspect-ratio: 3/2; object-fit: cover;"
+          />
+          <strong>Ruang Tamu</strong>
+        </a>
+        <a href="/category/ruang" class="room group" aria-label="Inspirasi Dapur">
+          <img
+            src="/media/rooms/dapur.webp"
+            alt="Dapur"
+            width="480"
+            height="320"
+            loading="lazy"
+            decoding="async"
+            style="aspect-ratio: 3/2; object-fit: cover;"
+          />
+          <strong>Dapur</strong>
+        </a>
+        <a href="/category/ruang" class="room group" aria-label="Inspirasi Kamar Tidur">
+          <img
+            src="/media/rooms/kamar-tidur.webp"
+            alt="Kamar Tidur"
+            width="480"
+            height="320"
+            loading="lazy"
+            decoding="async"
+            style="aspect-ratio: 3/2; object-fit: cover;"
+          />
+          <strong>Kamar Tidur</strong>
+        </a>
+        <a href="/category/taman-outdoor" class="room group" aria-label="Inspirasi Teras & Balkon">
+          <img
+            src="/media/rooms/teras-balkon.webp"
+            alt="Teras & Balkon"
+            width="480"
+            height="320"
+            loading="lazy"
+            decoding="async"
+            style="aspect-ratio: 3/2; object-fit: cover;"
+          />
+          <strong>Teras & Balkon</strong>
+        </a>
+      </div>
+    </section>
+
+    <!-- F. Problem Solver Feature Band (Predominantly White/Neutral with Slim Lemon Accent) -->
+    <section class="feature-band my-14" aria-label="Problem Solver Masalah Rumah">
+      <div>
+        <span class="meta font-bold text-xs uppercase tracking-wider text-[var(--primary)]">PROBLEM SOLVER</span>
+        <h2>Ada masalah di rumahmu?</h2>
+        <p>
+          Mulai dari gejala yang kamu rasakan sehari-hari, lalu kenali pilihan langkah yang masuk akal dan berbasis bukti teknis.
+        </p>
+        <a class="btn" href="/solusi">
+          Cari Solusi <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+      <div class="problem-items">
+        <a href="/solusi?problem=panas"><span>Rumah panas & pengap</span></a>
+        <a href="/solusi?problem=sempit"><span>Ruangan terasa sempit</span></a>
+        <a href="/solusi?problem=lembab"><span>Dinding lembap & tempias</span></a>
+        <a href="/solusi?problem=bising"><span>Kamar terlalu bising</span></a>
+      </div>
+    </section>
+
+    <!-- G. Material & Comparison Feature (Featuring Article 4 & Core Guides) -->
+    <section class="my-14 pt-6 border-t border-[var(--line)]" aria-label="Komparasi Material Bangunan">
+      <div class="mb-6 flex items-baseline justify-between">
+        <div>
+          <span class="eyebrow">Panduan Keputusan Material</span>
+          <h2 class="font-serif text-2xl sm:text-3xl text-[var(--ink)] mt-1">
+            Komparasi Material: Spesifikasi & Bukti Nyata
+          </h2>
+        </div>
+        <a href="/komparasi" class="text-xs font-bold text-[var(--primary)] hover:text-[var(--deep)] transition-colors">
+          Buka Semua Komparasi →
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Feature 1: Atap Metal vs Genteng Beton (Article 4) -->
+        <div class="bg-[var(--surface)] border border-[var(--line)] rounded-lg p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-[var(--primary)] bg-[var(--lemon-soft)] px-2.5 py-1 rounded">
+                Penutup Atap Tropis
+              </span>
+              <span class="text-xs text-[var(--muted)]">Komparasi Teruji</span>
+            </div>
+            <h3 class="font-serif text-xl font-normal text-[var(--ink)] mb-2">
+              Atap Metal vs Genteng Beton: Mana yang Cocok untuk Rumah Tropis?
+            </h3>
+            <p class="text-sm text-[var(--muted)] leading-relaxed mb-4">
+              Perbandingan empiris berat beban struktur (5 kg/m² vs 45 kg/m²), karakteristik serapan panas siang hari, dan kekedapan suara hujan deras.
+            </p>
+            <div class="grid grid-cols-2 gap-2 text-xs bg-[var(--section-alt)] p-3 rounded border border-[var(--line)] mb-4">
+              <div>
+                <strong class="text-[var(--ink)] block mb-1">Atap Metal</strong>
+                <span class="text-[var(--muted)]">Ringan (5 kg/m²), hemat struktur rangka, cepat dingin</span>
+              </div>
+              <div>
+                <strong class="text-[var(--ink)] block mb-1">Genteng Beton</strong>
+                <span class="text-[var(--muted)]">Massa termal tinggi, senyap secara alami saat hujan</span>
+              </div>
+            </div>
           </div>
-        </main>
+          <div class="pt-2 flex items-center justify-between">
+            <a href="/perbedaan-atap-metal-dan-genteng-beton-untuk-rumah-tropis" class="text-xs font-bold text-[var(--primary)] hover:underline inline-flex items-center gap-1">
+              Baca Kajian Lengkap <span>→</span>
+            </a>
+            <span class="text-xs text-[var(--muted)]">7 menit baca</span>
+          </div>
+        </div>
 
-        <!-- Right Column: Sidebar (Col 9-12: 35%) -->
-        <div class="lg:col-span-4">
-          <SidebarPopular popularArticles={popularArticles} />
+        <!-- Feature 2: Kusen Aluminium vs UPVC -->
+        <div class="bg-[var(--surface)] border border-[var(--line)] rounded-lg p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-[var(--primary)] bg-[var(--lemon-soft)] px-2.5 py-1 rounded">
+                Sistem Bukaan & Kusen
+              </span>
+              <span class="text-xs text-[var(--muted)]">Komparasi Teruji</span>
+            </div>
+            <h3 class="font-serif text-xl font-normal text-[var(--ink)] mb-2">
+              Kusen Aluminium vs UPVC: Analisis Daya Tahan & Kebocoran Tropis
+            </h3>
+            <p class="text-sm text-[var(--muted)] leading-relaxed mb-4">
+              Mengevaluasi konduktivitas termal profil, risiko jembatan termal, ketahanan uap lembap, dan kemampuan redam suara jalan raya.
+            </p>
+            <div class="grid grid-cols-2 gap-2 text-xs bg-[var(--section-alt)] p-3 rounded border border-[var(--line)] mb-4">
+              <div>
+                <strong class="text-[var(--ink)] block mb-1">Kusen Aluminium</strong>
+                <span class="text-[var(--muted)]">Profil ramping, kokoh, 100% anti rayap & lapuk</span>
+              </div>
+              <div>
+                <strong class="text-[var(--ink)] block mb-1">Kusen UPVC</strong>
+                <span class="text-[var(--muted)]">Insulasi suara tinggi, non-konduktif termal</span>
+              </div>
+            </div>
+          </div>
+          <div class="pt-2 flex items-center justify-between">
+            <a href="/komparasi" class="text-xs font-bold text-[var(--primary)] hover:underline inline-flex items-center gap-1">
+              Lihat Matriks Spesifikasi <span>→</span>
+            </a>
+            <span class="text-xs text-[var(--muted)]">6 menit baca</span>
+          </div>
         </div>
       </div>
+    </section>
+
+    <!-- H. Latest Stories Feed (Kajian & Eksplorasi Lainnya) -->
+    {remainingArticles.length > 0 && (
+      <section class="my-14 pt-6 border-t border-[var(--line)]" aria-label="Artikel Terkini">
+        <div class="mb-6 flex items-baseline justify-between">
+          <div>
+            <span class="eyebrow">Arsip Terkini</span>
+            <h2 class="font-serif text-2xl sm:text-3xl text-[var(--ink)] mt-1">
+              Kajian & Eksplorasi Lainnya
+            </h2>
+          </div>
+          <a href="/explore" class="text-xs font-bold text-[var(--primary)] hover:text-[var(--deep)] transition-colors">
+            Buka Eksplorasi Arsip →
+          </a>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {remainingArticles.map((story) => {
+            const img = resolveServerImage(story.featured_image);
+            const cardAttrs = img ? getResponsiveImageAttrs(img, story.image_alt || story.title, { slotType: 'card' }) : null;
+            return (
+              <a class="story group" href={`/${story.slug}`} aria-label={story.title}>
+                {cardAttrs && (
+                  <div class="story-img">
+                    <img
+                      src={cardAttrs.src}
+                      srcset={cardAttrs.srcset}
+                      sizes={cardAttrs.sizes}
+                      alt={cardAttrs.alt}
+                      width={cardAttrs.width}
+                      height={cardAttrs.height}
+                      loading="lazy"
+                      decoding="async"
+                      style={cardAttrs.style}
+                    />
+                  </div>
+                )}
+                <div class="story-pad">
+                  <span class="meta">{story.category_name || 'MATERIAL'}</span>
+                  <h3>{story.title}</h3>
+                  <p>{story.description || 'Analisis dan pertimbangan keputusan material untuk pemilik rumah.'}</p>
+                  <small>{story.reading_time_minutes || 5} menit baca · Redaksi</small>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </section>
     )}
-  </div>
-
-  <!-- 4. Featured Visual Study Monolith -->
-  <VisualStudy
-    title="Dokumentasi Visual & Riset Spasial Tropis"
-    subtitle="Kajian lapangan mengenai performa fasad ulin, efisiensi termal bata ekspos, dan ventilasi silang hunian di Indonesia."
-    link="/metodologi"
-  />
-
-  <!-- 5. Newsletter Section -->
-  <div id="newsletter-section" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-    <Newsletter />
   </div>
 </BaseLayout>
