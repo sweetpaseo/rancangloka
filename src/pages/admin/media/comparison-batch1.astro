@@ -332,9 +332,9 @@ const workflowStages = [
     </div>
 
     <!-- WIZARD MODE CONTAINER (Default Primary View) -->
-    <div id="wizard-mode-container" data-initial-step={String(initialActiveStep)} class={urlView === 'all' ? 'space-y-8 hidden' : 'space-y-8'}>
+    <div id="wizard-mode-container" data-initial-step={String(initialActiveStep)} class={`scroll-mt-20 sm:scroll-mt-24 ${urlView === 'all' ? 'space-y-8 hidden' : 'space-y-8'}`}>
       <!-- Progress Header Banner (Phase 3 Requirement) -->
-      <div class="rounded-2xl bg-white border border-[#E7E9EE] p-6 shadow-2xs space-y-4">
+      <div id="wizard-progress-card" class="rounded-2xl bg-white border border-[#E7E9EE] p-6 shadow-2xs space-y-4 scroll-mt-20 sm:scroll-mt-24">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E7E9EE] pb-4">
           <div>
             <div class="flex items-center gap-2 text-xs font-semibold text-[#A76A00]">
@@ -447,7 +447,7 @@ const workflowStages = [
         return (
           <div
             id={`wizard-step-card-${st.stepNumber}`}
-            class={`bg-white border border-[#E7E9EE] rounded-2xl p-6 sm:p-8 shadow-xs space-y-6 ${
+            class={`bg-white border border-[#E7E9EE] rounded-2xl p-6 sm:p-8 shadow-xs space-y-6 scroll-mt-20 sm:scroll-mt-24 ${
               isCurrentActive ? '' : 'hidden'
             }`}
           >
@@ -731,7 +731,7 @@ const workflowStages = [
             <div class="flex items-center justify-between pt-4 border-t border-[#E7E9EE] text-xs font-outfit">
               <button
                 type="button"
-                onclick={`switchWizardStep(${st.stepNumber - 1})`}
+                onclick={`switchWizardStep(${st.stepNumber - 1}, true)`}
                 disabled={st.stepNumber === 1}
                 class={`px-4 py-2 rounded-xl border border-slate-200 transition font-bold flex items-center gap-1.5 ${
                   st.stepNumber === 1 ? 'opacity-40 cursor-not-allowed text-slate-400' : 'hover:bg-slate-100 text-slate-700 cursor-pointer'
@@ -746,7 +746,7 @@ const workflowStages = [
 
               <button
                 type="button"
-                onclick={`switchWizardStep(${st.stepNumber < 9 ? st.stepNumber + 1 : "'finalization'"})`}
+                onclick={`switchWizardStep(${st.stepNumber < 9 ? st.stepNumber + 1 : "'finalization'"}, true)`}
                 class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold transition flex items-center gap-1.5 cursor-pointer"
               >
                 <span>{st.stepNumber < 9 ? 'LANJUT →' : 'KE FINALISASI →'}</span>
@@ -759,7 +759,7 @@ const workflowStages = [
       <!-- FINALIZATION STAGE (Phase 8 & 9 Requirements) -->
       <div
         id="wizard-step-card-finalization"
-        class={`bg-white border border-[#E7E9EE] rounded-2xl p-6 sm:p-8 shadow-xs space-y-8 ${
+        class={`bg-white border border-[#E7E9EE] rounded-2xl p-6 sm:p-8 shadow-xs space-y-8 scroll-mt-20 sm:scroll-mt-24 ${
           initialActiveStep === 'finalization' ? '' : 'hidden'
         }`}
       >
@@ -2043,7 +2043,7 @@ const workflowStages = [
       }
     }
 
-    function switchWizardStep(stepTarget) {
+    function switchWizardStep(stepTarget, shouldScroll = false) {
       currentActiveStep = String(stepTarget);
 
       for (let i = 1; i <= 9; i++) {
@@ -2073,19 +2073,26 @@ const workflowStages = [
         }
       }
 
-      if (currentActiveStep === 'finalization') {
-        if (finalCard) finalCard.classList.remove('hidden');
-      } else {
-        const activeCard = document.getElementById(`wizard-step-card-${currentActiveStep}`);
-        if (activeCard) activeCard.classList.remove('hidden');
+      const activeCard = currentActiveStep === 'finalization'
+        ? finalCard
+        : document.getElementById(`wizard-step-card-${currentActiveStep}`);
+
+      if (activeCard) {
+        activeCard.classList.remove('hidden');
+
+        if (shouldScroll) {
+          activeCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          // If the card heading is tucked under the sticky header, bring it safely into view
+          const rect = activeCard.getBoundingClientRect();
+          const stickyHeaderOffset = 90; // accounts for 64px header + 26px breathing room
+          if (rect.top < stickyHeaderOffset) {
+            activeCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
       }
 
       history.replaceState(null, '', `?view=wizard&step=${currentActiveStep}`);
-
-      const wizardContainer = document.getElementById('wizard-mode-container');
-      if (wizardContainer) {
-        wizardContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
     }
 
     async function submitWizardSelection(candidateId, action, modelName, articleId, slotIdentifier, stepNumber) {

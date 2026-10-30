@@ -29,7 +29,7 @@
     </marker>
   </defs>
 
-  <!-- Background -->
+  <!-- Background Canvas -->
   <rect width="1200" height="675" class="bg" />
   <rect x="24" y="24" width="1152" height="627" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
 
@@ -88,14 +88,19 @@
     <text x="420" y="260" font-size="10" font-weight="700" fill="#0284C7">Kantung Lepuhan &amp; Garam</text>
 
     <!-- Zone 1 Callout Card (Right) -->
-    <g transform="translate(680, 220)">
-      <rect x="0" y="0" width="380" height="92" rx="10" fill="#F0F9FF" stroke="#BAE6FD" stroke-width="1.5" />
-      <circle cx="24" cy="24" r="10" fill="#0284C7" />
-      <text x="20" y="28" font-size="11" font-weight="800" fill="#FFFFFF">1</text>
-      <text x="44" y="26" class="zone-tag">Zona Bawah: Kapilaritas Air Tanah (Rising Damp)</text>
-      <text x="44" y="46" class="zone-desc">Kelembapan merambat naik dari tanah melalui pori kapiler bata/plesteran.</text>
-      <text x="44" y="62" class="zone-desc">Ciri: Cat menggelembung melepuh dan muncul bercak kristal garam putih.</text>
-      <text x="44" y="80" font-size="10" font-weight="700" fill="#0284C7">Fokus Solusi: Perbaikan lapisan kedap air (DPC) &amp; injeksi kimiawi dasar.</text>
+    <g transform="translate(640, 219)">
+      <rect x="0" y="0" width="460" height="104" rx="10" fill="#F0F9FF" stroke="#BAE6FD" stroke-width="1.5" />
+      <circle cx="24" cy="22" r="10" fill="#0284C7" />
+      <text x="20" y="26" font-size="11" font-weight="800" fill="#FFFFFF">1</text>
+      <text x="44" y="24" class="zone-tag">Zona Bawah: Kapilaritas Air Tanah (Rising Damp)</text>
+      <text x="44" y="44" class="zone-desc">
+        <tspan x="44" dy="0">Sumber: Air tanah merambat naik via pori kapiler bata &amp; plester.</tspan>
+        <tspan x="44" dy="16">Ciri: Cat menggelembung melepuh &amp; kristal garam putih (efloresensi).</tspan>
+      </text>
+      <text x="44" y="78" font-size="10" font-weight="700" fill="#0284C7">
+        <tspan x="44" dy="0">Fokus Solusi: Perbaikan lapisan kedap air trasram (DPC),</tspan>
+        <tspan x="44" dy="14">injeksi silane/siloxane kimiawi, dan plesteran kedap air.</tspan>
+      </text>
     </g>
 
     <!-- ZONE 2: TEMPIAS HUJAN (WIND-DRIVEN RAIN) - Bidang Dinding Terbuka -->
@@ -105,14 +110,19 @@
     <path d="M 180 165 L 325 185" class="water-path" stroke="#D97706" stroke-width="2" />
 
     <!-- Zone 2 Callout Card (Right) -->
-    <g transform="translate(680, 105)">
-      <rect x="0" y="0" width="380" height="92" rx="10" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1.5" />
-      <circle cx="24" cy="24" r="10" fill="#D97706" />
-      <text x="20" y="28" font-size="11" font-weight="800" fill="#FFFFFF">2</text>
-      <text x="44" y="26" class="zone-tag">Zona Tengah: Penetrasi Tempias Hujan Dinding Luar</text>
-      <text x="44" y="46" class="zone-desc">Angin kencang mendorong air hujan menembus retak rambut plesteran luar.</text>
-      <text x="44" y="62" class="zone-desc">Ciri: Bercak lembap muncul pasca-hujan lebat bersudut miring.</text>
-      <text x="44" y="80" font-size="10" font-weight="700" fill="#D97706">Fokus Solusi: Cat elastomeric waterproofing eksterior &amp; kanopi pelindung.</text>
+    <g transform="translate(640, 102)">
+      <rect x="0" y="0" width="460" height="104" rx="10" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1.5" />
+      <circle cx="24" cy="22" r="10" fill="#D97706" />
+      <text x="20" y="26" font-size="11" font-weight="800" fill="#FFFFFF">2</text>
+      <text x="44" y="24" class="zone-tag">Zona Tengah: Penetrasi Tempias Hujan Dinding Luar</text>
+      <text x="44" y="44" class="zone-desc">
+        <tspan x="44" dy="0">Sumber: Tekanan angin mendorong air hujan ke retak plesteran.</tspan>
+        <tspan x="44" dy="16">Ciri: Bercak lembap muncul pasca-hujan lebat bersudut miring.</tspan>
+      </text>
+      <text x="44" y="78" font-size="10" font-weight="700" fill="#D97706">
+        <tspan x="44" dy="0">Fokus Solusi: Cat elastomeric waterproofing eksterior,</tspan>
+        <tspan x="44" dy="14">perbaikan acian retak rambut, dan kanopi penahan tampias.</tspan>
+      </text>
     </g>
 
     <!-- ZONE 3: TALANG & FLASHING BOCOR - Pertemuan Atap -->
@@ -120,14 +130,19 @@
     <path d="M 280 35 Q 310 50 335 70 Q 360 85 390 90" class="water-path" stroke="#E11D48" stroke-width="3.5" marker-end="url(#arrow-rose)" />
 
     <!-- Zone 3 Callout Card (Right) -->
-    <g transform="translate(680, -10)">
-      <rect x="0" y="0" width="380" height="92" rx="10" fill="#FFF1F2" stroke="#FECDD3" stroke-width="1.5" />
-      <circle cx="24" cy="24" r="10" fill="#E11D48" />
-      <text x="20" y="28" font-size="11" font-weight="800" fill="#FFFFFF">3</text>
-      <text x="44" y="26" class="zone-tag">Zona Atas: Limpasan Talang / Flashing Atap Bocor</text>
-      <text x="44" y="46" class="zone-desc">Saluran talang mampet sampah/daun atau sambungan seng flashing retak.</text>
-      <text x="44" y="62" class="zone-desc">Ciri: Aliran rembesan vertikal turun dari sudut plafon pertemuan atas.</text>
-      <text x="44" y="80" font-size="10" font-weight="700" fill="#E11D48">Fokus Solusi: Pembersihan talang, perbaikan sudut kemiringan &amp; seal flashing.</text>
+    <g transform="translate(640, -15)">
+      <rect x="0" y="0" width="460" height="104" rx="10" fill="#FFF1F2" stroke="#FECDD3" stroke-width="1.5" />
+      <circle cx="24" cy="22" r="10" fill="#E11D48" />
+      <text x="20" y="26" font-size="11" font-weight="800" fill="#FFFFFF">3</text>
+      <text x="44" y="24" class="zone-tag">Zona Atas: Limpasan Talang / Flashing Atap Bocor</text>
+      <text x="44" y="44" class="zone-desc">
+        <tspan x="44" dy="0">Sumber: Talang mampet kotoran atau seng flashing atap retak.</tspan>
+        <tspan x="44" dy="16">Ciri: Aliran rembesan vertikal turun dari sudut pertemuan plafon.</tspan>
+      </text>
+      <text x="44" y="78" font-size="10" font-weight="700" fill="#E11D48">
+        <tspan x="44" dy="0">Fokus Solusi: Pembersihan talang, perbaikan kemiringan,</tspan>
+        <tspan x="44" dy="14">dan seal waterproofing fleksibel pada sambungan flashing.</tspan>
+      </text>
     </g>
 
     <!-- Qualitative Zone Indicators (Left) — Qualitative relative height, not rigid numbers -->
