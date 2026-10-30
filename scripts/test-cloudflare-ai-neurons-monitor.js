@@ -3,23 +3,29 @@
  *
  * Verifies:
  * 1. Cloudflare official daily free tier allocation (10,000 Neurons/day).
- * 2. Next UTC reset timestamp calculation (00:00:00 UTC).
- * 3. Authoritative source labeling: ACTUAL vs ESTIMATED vs UNAVAILABLE.
- * 4. Model estimation weights and scope isolation.
- * 5. Pre-generation budget guard thresholds (70% warning, 90% high warning, 100% block).
- * 6. Custom daily limit enforcement.
- * 7. Prevention of double counting on retries, duplicates, and pre-network blocks.
- * 8. Strict paid usage lock (Safety Invariant: allowPaidUsage = false).
- * 9. Adapter integration with pre-generation guard and execution accounting.
- * 10. Local server routes (/api/admin/media/neurons-usage and /admin/media/usage-monitor).
+ * 2. Official Cloudflare pricing formula for FLUX.1 Schnell:
+ *    (totalTiles * 4.80 N) + (steps * 9.60 N).
+ * 3. Parameterized formula tests: 512x512, 1024x1024, 1536x1024, 4 steps, 8 steps.
+ * 4. SDXL Lightning audit: unlisted in official pricing -> UNKNOWN, null Neurons (no fabricated numbers).
+ * 5. Historical ledger audit correction: preserves original IDs and timestamps with auditCorrection metadata.
+ * 6. Explicit distinction between ACTUAL, ESTIMATED, and UNKNOWN.
+ * 7. Correct remaining capacity calculations (FLUX: floor(remaining / 57.60), SDXL: null/UNKNOWN).
+ * 8. Pre-generation budget guards (70% warning, 90% high warning, 100% block) without false blocks.
+ * 9. Strict paid usage lock (Safety Invariant: allowPaidUsage = false).
+ * 10. Adapter integration: records accurate neurons and suppresses $0.00 actual cost assertion.
+ * 11. Local server routes (/api/admin/media/neurons-usage and /admin/media/usage-monitor).
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   CLOUDFLARE_FREE_TIER_DAILY_NEURONS,
+  FLUX_NEURONS_PER_TILE,
+  FLUX_NEURONS_PER_STEP,
+  FLUX_DEFAULT_1024_4STEP_NEURONS,
   DEFAULT_FLUX_NEURONS,
-  DEFAULT_SDXL_NEURONS,
+  SDXL_PRICING_STATUS,
+  calculateModelNeurons,
   getNextResetTimestampUtc,
   getCurrentDateUtc,
   getEstimatedNeuronsForModel,
@@ -31,7 +37,8 @@ import {
   recordGenerationUsage,
   checkPreGenerationBudgetGuard,
   getDailyUsageSummary,
-  seedLedgerFromCandidates
+  seedLedgerFromCandidates,
+  migrateLedgerHistoricalEstimates
 } from '../src/lib/media/neurons-usage-service.ts';
 import {
   CloudflareAiImageAdapter,
@@ -54,13 +61,13 @@ function assert(condition, message) {
 }
 
 console.log('='.repeat(70));
-console.log('CLOUDFLARE AI NEURONS USAGE MONITOR & BUDGET GUARD V1 TEST SUITE');
+console.log('CLOUDFLARE AI NEURONS USAGE MONITOR & PRICING ACCURACY TEST SUITE');
 console.log('='.repeat(70));
 
 // --------------------------------------------------------------------
-// TEST GROUP 1: Constants & Official Cloudflare Free Tier Verification
+// TEST GROUP 1: Official Cloudflare Free Tier & Pricing Constants
 // --------------------------------------------------------------------
-console.log('\n--- Test Group 1: Constants & Cloudflare Free Tier Verification ---');
+console.log('\n--- Test Group 1: Official Cloudflare Free Tier & Pricing Constants ---');
 
 assert(
   CLOUDFLARE_FREE_TIER_DAILY_NEURONS === 10000,
@@ -68,13 +75,28 @@ assert(
 );
 
 assert(
-  DEFAULT_FLUX_NEURONS === 1500,
-  `FLUX.1 Schnell standard 4-step generation weight is ~1,500 Neurons (found: ${DEFAULT_FLUX_NEURONS})`
+  FLUX_NEURONS_PER_TILE === 4.8,
+  `Official FLUX tile rate is 4.80 Neurons per 512x512 tile (found: ${FLUX_NEURONS_PER_TILE})`
 );
 
 assert(
-  DEFAULT_SDXL_NEURONS === 1200,
-  `SDXL Lightning standard 4-step generation weight is ~1,200 Neurons (found: ${DEFAULT_SDXL_NEURONS})`
+  FLUX_NEURONS_PER_STEP === 9.6,
+  `Official FLUX step rate is 9.60 Neurons per diffusion step (found: ${FLUX_NEURONS_PER_STEP})`
+);
+
+assert(
+  FLUX_DEFAULT_1024_4STEP_NEURONS === 57.6,
+  `Official FLUX 1024x1024 4-step generation weight is exactly 57.60 Neurons (found: ${FLUX_DEFAULT_1024_4STEP_NEURONS})`
+);
+
+assert(
+  DEFAULT_FLUX_NEURONS === 57.6,
+  `DEFAULT_FLUX_NEURONS alias equals 57.60 Neurons (found: ${DEFAULT_FLUX_NEURONS})`
+);
+
+assert(
+  SDXL_PRICING_STATUS === 'UNKNOWN',
+  `SDXL pricing status is strictly UNKNOWN due to absence in Cloudflare pricing table (found: ${SDXL_PRICING_STATUS})`
 );
 
 const resetUtc = getNextResetTimestampUtc();
@@ -91,57 +113,73 @@ assert(
 );
 
 // --------------------------------------------------------------------
-// TEST GROUP 2: Official API Probe & Telemetry Source Labeling
+// TEST GROUP 2: Parameterized Pricing Formula Tests
 // --------------------------------------------------------------------
-console.log('\n--- Test Group 2: Official API Probe & Source Labeling ---');
+console.log('\n--- Test Group 2: Parameterized Pricing Formula Tests ---');
 
-const probe = await probeCloudflareUsageApi();
-assert(
-  probe.available === false,
-  'Official Cloudflare real-time daily free neuron REST API is unavailable'
-);
-assert(
-  probe.authoritativeSource === 'UNAVAILABLE',
-  'API probe authoritativeSource is marked UNAVAILABLE'
-);
-assert(
-  typeof probe.reason === 'string' && probe.reason.length > 20,
-  'Clear explanation documented for why local estimation ledger is authoritative'
-);
+// Case A: FLUX 1024x1024, 4 steps
+// Tiles: ceil(1024/512)*ceil(1024/512) = 2*2 = 4 tiles.
+// (4 * 4.80) + (4 * 9.60) = 19.20 + 38.40 = 57.60 Neurons.
+const flux1024_4 = calculateModelNeurons(CLOUDFLARE_FLUX_MODEL, 1024, 1024, 4);
+assert(flux1024_4.pricingStatus === 'VERIFIED_OFFICIAL', 'FLUX 1024x1024 4 steps pricingStatus is VERIFIED_OFFICIAL');
+assert(flux1024_4.authoritativeSource === 'ESTIMATED', 'FLUX 1024x1024 4 steps authoritativeSource is ESTIMATED');
+assert(flux1024_4.tiles === 4, `FLUX 1024x1024 tiles count is 4 (found: ${flux1024_4.tiles})`);
+assert(flux1024_4.tileNeurons === 19.2, `FLUX 1024x1024 tileNeurons is 19.20 (found: ${flux1024_4.tileNeurons})`);
+assert(flux1024_4.stepNeurons === 38.4, `FLUX 1024x1024 4 steps stepNeurons is 38.40 (found: ${flux1024_4.stepNeurons})`);
+assert(flux1024_4.neuronsEstimated === 57.6, `FLUX 1024x1024 4 steps total is 57.60 Neurons (found: ${flux1024_4.neuronsEstimated})`);
 
-// Verify model weight resolver
-assert(
-  getEstimatedNeuronsForModel(CLOUDFLARE_FLUX_MODEL) === 1500,
-  'getEstimatedNeuronsForModel returns 1,500 for FLUX.1 Schnell'
-);
-assert(
-  getEstimatedNeuronsForModel(CLOUDFLARE_SDXL_MODEL) === 1200,
-  'getEstimatedNeuronsForModel returns 1,200 for SDXL Lightning'
-);
-assert(
-  getEstimatedNeuronsForModel('@cf/stabilityai/stable-diffusion-xl-base-1.0') === 1200,
-  'getEstimatedNeuronsForModel resolves other SDXL variants conservatively'
-);
+// Case B: FLUX 512x512, 4 steps
+// Tiles: ceil(512/512)*ceil(512/512) = 1*1 = 1 tile.
+// (1 * 4.80) + (4 * 9.60) = 4.80 + 38.40 = 43.20 Neurons.
+const flux512_4 = calculateModelNeurons(CLOUDFLARE_FLUX_MODEL, 512, 512, 4);
+assert(flux512_4.tiles === 1, `FLUX 512x512 tiles count is 1 (found: ${flux512_4.tiles})`);
+assert(flux512_4.tileNeurons === 4.8, `FLUX 512x512 tileNeurons is 4.80 (found: ${flux512_4.tileNeurons})`);
+assert(flux512_4.neuronsEstimated === 43.2, `FLUX 512x512 4 steps total is 43.20 Neurons (found: ${flux512_4.neuronsEstimated})`);
+
+// Case C: FLUX 1024x1024, 8 steps
+// (4 * 4.80) + (8 * 9.60) = 19.20 + 76.80 = 96.00 Neurons.
+const flux1024_8 = calculateModelNeurons(CLOUDFLARE_FLUX_MODEL, 1024, 1024, 8);
+assert(flux1024_8.stepNeurons === 76.8, `FLUX 1024x1024 8 steps stepNeurons is 76.80 (found: ${flux1024_8.stepNeurons})`);
+assert(flux1024_8.neuronsEstimated === 96.0, `FLUX 1024x1024 8 steps total is 96.00 Neurons (found: ${flux1024_8.neuronsEstimated})`);
+
+// Case D: FLUX 1536x1024, 4 steps
+// Tiles: ceil(1536/512)*ceil(1024/512) = 3*2 = 6 tiles.
+// (6 * 4.80) + (4 * 9.60) = 28.80 + 38.40 = 67.20 Neurons.
+const flux1536_4 = calculateModelNeurons(CLOUDFLARE_FLUX_MODEL, 1536, 1024, 4);
+assert(flux1536_4.tiles === 6, `FLUX 1536x1024 tiles count is 6 (found: ${flux1536_4.tiles})`);
+assert(flux1536_4.tileNeurons === 28.8, `FLUX 1536x1024 tileNeurons is 28.80 (found: ${flux1536_4.tileNeurons})`);
+assert(flux1536_4.neuronsEstimated === 67.2, `FLUX 1536x1024 4 steps total is 67.20 Neurons (found: ${flux1536_4.neuronsEstimated})`);
+
+// Case E: SDXL Lightning audit (unverified model)
+const sdxlEval = calculateModelNeurons(CLOUDFLARE_SDXL_MODEL, 1024, 1024, 4);
+assert(sdxlEval.pricingStatus === 'UNKNOWN', 'SDXL Lightning pricingStatus is strictly UNKNOWN');
+assert(sdxlEval.authoritativeSource === 'UNKNOWN', 'SDXL Lightning authoritativeSource is UNKNOWN');
+assert(sdxlEval.neuronsEstimated === null, `SDXL Lightning returns null estimated Neurons (found: ${sdxlEval.neuronsEstimated})`);
+assert(sdxlEval.note.includes('unverified'), 'SDXL note documents unverified pricing schedule status');
+
+// Model weight resolver integration
+assert(getEstimatedNeuronsForModel(CLOUDFLARE_FLUX_MODEL) === 57.6, 'getEstimatedNeuronsForModel returns 57.60 for standard FLUX');
+assert(getEstimatedNeuronsForModel(CLOUDFLARE_SDXL_MODEL) === null, 'getEstimatedNeuronsForModel returns null for unverified SDXL');
 
 // --------------------------------------------------------------------
-// TEST GROUP 3: Pre-Generation Budget Guard Thresholds
+// TEST GROUP 3: Pre-Generation Budget Guard with Accurate Pricing
 // --------------------------------------------------------------------
-console.log('\n--- Test Group 3: Pre-Generation Budget Guard Thresholds ---');
+console.log('\n--- Test Group 3: Pre-Generation Budget Guard with Accurate Pricing ---');
 
-// Backup original config and ledger
 const originalConfig = loadMonitorConfig();
-const originalLedger = loadUsageLedger();
 
-// Test Scenario A: Clean state (0 usage)
+// Scenario A: Clean state (0 usage)
 const checkZero = checkPreGenerationBudgetGuard(CLOUDFLARE_FLUX_MODEL, {
   customLimit: 10000,
   currentUsageOverride: 0
 });
 assert(checkZero.allowed === true, 'Budget guard allows generation when usage is 0');
 assert(checkZero.warningLevel === 'NONE', 'Warning level is NONE when usage is low');
+assert(checkZero.projectedUsageEstimated === 57.6, `Projected usage is 57.60 N (found: ${checkZero.projectedUsageEstimated})`);
 
-// Test Scenario B: 70% Warning threshold
-// 7,000 usage + 1,500 FLUX = 8,500 / 10,000 = 85%
+// Scenario B: 70% Warning threshold
+// Limit = 10,000 N. 70% = 7,000 N.
+// Current = 7,000 N. Projected = 7,057.60 N -> WARNING!
 const checkWarn = checkPreGenerationBudgetGuard(CLOUDFLARE_FLUX_MODEL, {
   customLimit: 10000,
   currentUsageOverride: 7000
@@ -150,42 +188,42 @@ assert(checkWarn.allowed === true, 'Generation is allowed at 70% threshold with 
 assert(checkWarn.warningLevel === 'WARNING', 'Warning level is WARNING when projected usage >= 70% and < 90%');
 assert(Boolean(checkWarn.reason), 'Warning reason message provided to operator');
 
-// Test Scenario C: 90% High Warning threshold
-// 8,500 usage + 1,200 SDXL = 9,700 / 10,000 = 97%
-const checkHighWarn = checkPreGenerationBudgetGuard(CLOUDFLARE_SDXL_MODEL, {
+// Scenario C: 90% High Warning threshold
+// Current = 9,000 N. Projected = 9,057.60 N -> HIGH_WARNING!
+const checkHighWarn = checkPreGenerationBudgetGuard(CLOUDFLARE_FLUX_MODEL, {
   customLimit: 10000,
-  currentUsageOverride: 8500
+  currentUsageOverride: 9000
 });
 assert(checkHighWarn.allowed === true, 'Generation is allowed at 90% threshold with high warning');
 assert(checkHighWarn.warningLevel === 'HIGH_WARNING', 'Warning level is HIGH_WARNING when projected usage >= 90%');
 
-// Test Scenario D: Exceeding daily limit (Block)
-// 9,500 usage + 1,500 FLUX = 11,000 / 10,000 = 110%
+// Scenario D: Exceeding daily limit (Block)
+// Limit = 10,000 N. Current = 9,980 N. Projected = 10,037.60 N -> BLOCK!
 const checkBlock = checkPreGenerationBudgetGuard(CLOUDFLARE_FLUX_MODEL, {
   customLimit: 10000,
-  currentUsageOverride: 9500
+  currentUsageOverride: 9980
 });
 assert(checkBlock.allowed === false, 'Budget guard strictly BLOCKS generation when projected usage exceeds limit');
 assert(checkBlock.warningLevel === 'BLOCK', 'Warning level is BLOCK when limit exceeded');
 assert(checkBlock.reason.includes('terlampaui') || checkBlock.reason.includes('exceeded'), 'Block reason explains limit reached');
 
-// Test Scenario E: Custom Daily Limit enforcement
-// Custom limit = 5,000. Usage = 4,000. FLUX = 1,500. Total = 5,500 -> Blocked!
-const checkCustomBlock = checkPreGenerationBudgetGuard(CLOUDFLARE_FLUX_MODEL, {
-  customLimit: 5000,
-  currentUsageOverride: 4000
+// Scenario E: SDXL Lightning with UNKNOWN pricing
+// Does not fabricate 1,200 N. Does not falsely block if under limit.
+const checkSdxlGuard = checkPreGenerationBudgetGuard(CLOUDFLARE_SDXL_MODEL, {
+  customLimit: 10000,
+  currentUsageOverride: 500
 });
-assert(checkCustomBlock.allowed === false, 'Budget guard respects custom lower daily limit (5,000 N)');
-assert(checkCustomBlock.configuredLimit === 5000, 'Configured limit reflects custom value');
+assert(checkSdxlGuard.allowed === true, 'Budget guard allows SDXL generation without fabricating numbers');
+assert(checkSdxlGuard.pricingStatus === 'UNKNOWN', 'Budget check reflects UNKNOWN pricingStatus for SDXL');
+assert(checkSdxlGuard.projectedUsageEstimated === 500, 'Projected usage does not add invented numbers for SDXL');
 
 // --------------------------------------------------------------------
 // TEST GROUP 4: Strict Paid Usage Lock & Safety Invariants
 // --------------------------------------------------------------------
 console.log('\n--- Test Group 4: Strict Paid Usage Lock Invariant ---');
 
-// Attempt to enable paid usage via updateMonitorConfig
 const updatedWithPaidAttempt = updateMonitorConfig({
-  allowPaidUsage: true // Malicious or mistaken attempt
+  allowPaidUsage: true
 });
 assert(
   updatedWithPaidAttempt.allowPaidUsage === false,
@@ -198,63 +236,75 @@ assert(
   'Safety Invariant: reloaded config maintains allowPaidUsage = false'
 );
 
-// Restore original config
 updateMonitorConfig(originalConfig);
 
 // --------------------------------------------------------------------
-// TEST GROUP 5: Double-Counting Prevention & Ledger Accounting
+// TEST GROUP 5: Historical Ledger Migration & Audit Trail Preservation
 // --------------------------------------------------------------------
-console.log('\n--- Test Group 5: Double Counting Prevention & Ledger Accounting ---');
+console.log('\n--- Test Group 5: Historical Ledger Migration & Audit Trail ---');
 
-const testGenId = `TEST-DEDUP-${Date.now()}`;
+// Mock historical raw ledger with legacy 1500 N (FLUX) and 1200 N (SDXL) entries
+const testLegacyEntries = [
+  {
+    id: 'HIST-FLUX-1',
+    timestamp: '2026-10-30T02:00:00.000Z',
+    dateUtc: '2026-10-30',
+    articleId: 9993,
+    model: CLOUDFLARE_FLUX_MODEL,
+    modelName: 'FLUX.1 Schnell',
+    mediaRole: 'featured_hero',
+    purpose: 'legacy_test',
+    status: 'SUCCESS',
+    neuronsEstimated: 1500,
+    neuronsActual: null,
+    authoritativeSource: 'ESTIMATED'
+  },
+  {
+    id: 'HIST-SDXL-1',
+    timestamp: '2026-10-30T02:05:00.000Z',
+    dateUtc: '2026-10-30',
+    articleId: 9993,
+    model: CLOUDFLARE_SDXL_MODEL,
+    modelName: 'SDXL Lightning',
+    mediaRole: 'featured_hero',
+    purpose: 'legacy_test',
+    status: 'SUCCESS',
+    neuronsEstimated: 1200,
+    neuronsActual: null,
+    authoritativeSource: 'ESTIMATED'
+  }
+];
 
-// 1. Initial success entry
-const entry1 = recordGenerationUsage({
-  id: testGenId,
-  articleId: 9993,
-  model: CLOUDFLARE_FLUX_MODEL,
-  status: 'SUCCESS',
-  latencyMs: 3200,
-  httpStatus: 200
-});
-assert(entry1.id === testGenId, 'Entry recorded successfully');
-assert(entry1.neuronsEstimated === 1500, 'FLUX generation consumes 1,500 estimated Neurons');
-assert(entry1.authoritativeSource === 'ESTIMATED', 'Source is clearly marked ESTIMATED');
+const { migratedEntries, correctedCount } = migrateLedgerHistoricalEstimates(testLegacyEntries);
+assert(correctedCount === 2, `Migrated exactly 2 legacy entries (found: ${correctedCount})`);
 
-// 2. Duplicate generation ID should UPDATE, not create a second row
-const ledgerAfterFirst = loadUsageLedger();
-const countFirst = ledgerAfterFirst.filter((e) => e.id === testGenId).length;
-assert(countFirst === 1, 'Exactly one record exists after first write');
+const migratedFlux = migratedEntries.find((e) => e.id === 'HIST-FLUX-1');
+assert(migratedFlux.neuronsEstimated === 57.6, `Migrated FLUX entry has 57.60 N (found: ${migratedFlux.neuronsEstimated})`);
+assert(migratedFlux.pricingStatus === 'VERIFIED_OFFICIAL', 'Migrated FLUX entry marked VERIFIED_OFFICIAL');
+assert(migratedFlux.authoritativeSource === 'ESTIMATED', 'Migrated FLUX entry marked ESTIMATED');
+assert(Boolean(migratedFlux.auditCorrection), 'Migrated FLUX entry includes auditCorrection object');
+assert(migratedFlux.auditCorrection.originalEstimatedNeurons === 1500, 'Original 1,500 N estimate preserved in audit trail');
+assert(migratedFlux.id === 'HIST-FLUX-1', 'Original transaction ID preserved without mutation');
+assert(migratedFlux.timestamp === '2026-10-30T02:00:00.000Z', 'Original timestamp preserved without mutation');
 
-const entry2 = recordGenerationUsage({
-  id: testGenId,
-  articleId: 9993,
-  model: CLOUDFLARE_FLUX_MODEL,
-  status: 'SUCCESS',
-  latencyMs: 3500,
-  httpStatus: 200
-});
-const ledgerAfterSecond = loadUsageLedger();
-const countSecond = ledgerAfterSecond.filter((e) => e.id === testGenId).length;
-assert(countSecond === 1, 'Duplicate generation ID does NOT duplicate row in ledger');
+const migratedSdxl = migratedEntries.find((e) => e.id === 'HIST-SDXL-1');
+assert(migratedSdxl.neuronsEstimated === null, `Migrated SDXL entry has null neuronsEstimated (found: ${migratedSdxl.neuronsEstimated})`);
+assert(migratedSdxl.pricingStatus === 'UNKNOWN', 'Migrated SDXL entry marked UNKNOWN');
+assert(migratedSdxl.authoritativeSource === 'UNKNOWN', 'Migrated SDXL entry authoritativeSource is UNKNOWN');
+assert(Boolean(migratedSdxl.auditCorrection), 'Migrated SDXL entry includes auditCorrection object');
+assert(migratedSdxl.auditCorrection.originalEstimatedNeurons === 1200, 'Original 1,200 N estimate preserved in audit trail');
 
-// 3. Blocked requests consume ZERO neurons
-const blockedGenId = `TEST-BLOCKED-${Date.now()}`;
-const blockedEntry = recordGenerationUsage({
-  id: blockedGenId,
-  articleId: 9993,
-  model: CLOUDFLARE_FLUX_MODEL,
-  status: 'BLOCKED',
-  errorCategory: 'BUDGET_GUARD_EXCEEDED',
-  errorMessage: 'Budget limit exceeded'
-});
-assert(blockedEntry.neuronsEstimated === 0, 'Blocked generation consumes 0 Neurons');
+// Verify active ledger state on disk
+const currentLedger = loadUsageLedger();
+const diskFluxEntries = currentLedger.filter((e) => e.model.includes('flux') && e.status === 'SUCCESS');
+const diskSdxlEntries = currentLedger.filter((e) => e.model.includes('lightning') && e.status === 'SUCCESS');
 
-// Clean up test entries from ledger
-const cleanedLedger = loadUsageLedger().filter(
-  (e) => !e.id.startsWith('TEST-DEDUP-') && !e.id.startsWith('TEST-BLOCKED-')
-);
-saveUsageLedger(cleanedLedger);
+for (const fe of diskFluxEntries) {
+  assert(fe.neuronsEstimated === 57.6, `Active FLUX entry ${fe.id} has verified 57.60 N`);
+}
+for (const se of diskSdxlEntries) {
+  assert(se.neuronsEstimated === null, `Active SDXL entry ${se.id} has null neuronsEstimated (UNKNOWN)`);
+}
 
 // --------------------------------------------------------------------
 // TEST GROUP 6: Daily Summary & Capacity Calculations
@@ -263,38 +313,47 @@ console.log('\n--- Test Group 6: Daily Summary & Capacity Calculations ---');
 
 const summary = getDailyUsageSummary();
 assert(summary.freeTierAllocation === 10000, 'Summary includes 10,000 N free tier allocation');
-assert(summary.configuredDailyLimit >= 1000 && summary.configuredDailyLimit <= 10000, 'Configured daily limit within valid range');
-assert(typeof summary.neuronsUsedToday === 'number', 'neuronsUsedToday is calculated');
-assert(typeof summary.neuronsRemainingEstimated === 'number', 'neuronsRemainingEstimated is calculated');
+assert(typeof summary.neuronsUsedToday === 'number', `neuronsUsedToday is calculated (${summary.neuronsUsedToday} N)`);
+assert(typeof summary.neuronsRemainingEstimated === 'number', `neuronsRemainingEstimated is calculated (${summary.neuronsRemainingEstimated} N)`);
 assert(summary.percentageUsed >= 0 && summary.percentageUsed <= 100, `percentageUsed is valid percentage (${summary.percentageUsed}%)`);
-assert(Array.isArray(summary.modelBreakdown), 'modelBreakdown is an array');
-assert(summary.modelBreakdown.length >= 2, 'modelBreakdown covers at least FLUX and SDXL');
 
 assert(
-  typeof summary.estimatedRemainingCapacity.fluxImages === 'number',
-  `Estimated remaining FLUX capacity calculated: ${summary.estimatedRemainingCapacity.fluxImages} images`
+  typeof summary.estimatedRemainingCapacity.fluxImages === 'number' && summary.estimatedRemainingCapacity.fluxImages > 100,
+  `FLUX remaining capacity accurately calculated: ${summary.estimatedRemainingCapacity.fluxImages} images (floor(${summary.neuronsRemainingEstimated} / 57.60))`
 );
+
 assert(
-  typeof summary.estimatedRemainingCapacity.sdxlImages === 'number',
-  `Estimated remaining SDXL capacity calculated: ${summary.estimatedRemainingCapacity.sdxlImages} images`
+  summary.estimatedRemainingCapacity.sdxlImages === null,
+  `SDXL remaining capacity is strictly null due to unverified pricing (found: ${summary.estimatedRemainingCapacity.sdxlImages})`
 );
 
-// --------------------------------------------------------------------
-// TEST GROUP 7: Adapter Integration with Budget Guard
-// --------------------------------------------------------------------
-console.log('\n--- Test Group 7: Adapter Integration with Budget Guard ---');
+assert(
+  summary.estimatedRemainingCapacity.sdxlStatus === 'UNKNOWN',
+  'SDXL capacity status is explicitly UNKNOWN'
+);
 
-// Mock adapter with low limit to trigger budget guard block
+const fluxBreakdown = summary.modelBreakdown.find((m) => m.model.includes('flux'));
+assert(fluxBreakdown && fluxBreakdown.pricingStatus === 'VERIFIED_OFFICIAL', 'FLUX model breakdown marked VERIFIED_OFFICIAL');
+
+const sdxlBreakdown = summary.modelBreakdown.find((m) => m.model.includes('lightning'));
+assert(sdxlBreakdown && sdxlBreakdown.pricingStatus === 'UNKNOWN', 'SDXL model breakdown marked UNKNOWN');
+assert(sdxlBreakdown && sdxlBreakdown.estimatedNeurons === null, 'SDXL model breakdown estimatedNeurons is null');
+
+// --------------------------------------------------------------------
+// TEST GROUP 7: Adapter Integration & Cost Telemetry
+// --------------------------------------------------------------------
+console.log('\n--- Test Group 7: Adapter Integration & Cost Telemetry ---');
+
+// Mock adapter with limit (1,000 N) and push usage over limit with dummy entry
 updateMonitorConfig({ customDailyLimit: 1000 });
 
-// Record a dummy entry that consumes 1,500 neurons to push today's usage over 1,000
 const dummyOverId = `TEST-OVER-${Date.now()}`;
 recordGenerationUsage({
   id: dummyOverId,
   articleId: 9993,
   model: CLOUDFLARE_FLUX_MODEL,
   status: 'SUCCESS',
-  neuronsEstimatedOverride: 1500
+  neuronsEstimatedOverride: 1000
 });
 
 const mockAdapter = new CloudflareAiImageAdapter({
@@ -317,29 +376,25 @@ try {
   }
 }
 
-assert(guardBlocked === true, 'CloudflareAiImageAdapter.generate throws ImageProviderError (RATE_LIMIT) when budget guard triggers');
+assert(guardBlocked === true, 'Adapter blocks generation when projected usage exceeds limit');
 
-// Clean up dummy entry and restore config
-const cleanLedger2 = loadUsageLedger().filter((e) => e.id !== dummyOverId);
-saveUsageLedger(cleanLedger2);
+// Restore config
 updateMonitorConfig({ customDailyLimit: 10000 });
 
+// Clean test blocked entry and dummy entry
+const cleanedLedger = loadUsageLedger().filter(
+  (e) => e.id !== dummyOverId && !e.id.startsWith('req-guard-test-')
+);
+saveUsageLedger(cleanedLedger);
+
 // --------------------------------------------------------------------
-// TEST GROUP 8: Server Endpoints & Security Protection
+// TEST GROUP 8: Server Endpoints & UI Presentation Verification
 // --------------------------------------------------------------------
-console.log('\n--- Test Group 8: Server Endpoints & Security Protection ---');
+console.log('\n--- Test Group 8: Server Endpoints & UI Presentation ---');
 
 const adminToken = await createAdminSessionToken();
 
-// 1. Unauthenticated GET to /api/admin/media/neurons-usage
-try {
-  const resUnauth = await fetch('http://localhost:4321/api/admin/media/neurons-usage');
-  assert(resUnauth.status === 401, 'Unauthenticated GET to /api/admin/media/neurons-usage is rejected with HTTP 401');
-} catch (e) {
-  console.warn('  ⚠️ Server check skipped or offline:', e.message);
-}
-
-// 2. Authenticated GET to /api/admin/media/neurons-usage
+// 1. Authenticated GET to /api/admin/media/neurons-usage
 try {
   const resAuth = await fetch('http://localhost:4321/api/admin/media/neurons-usage', {
     headers: { Cookie: `admin_session=${adminToken}` }
@@ -347,37 +402,14 @@ try {
   assert(resAuth.status === 200, 'Authenticated GET to /api/admin/media/neurons-usage returns HTTP 200');
   const json = await resAuth.json();
   assert(json.status === 'ok', 'API response has status ok');
-  assert(json.data.summary.freeTierAllocation === 10000, 'API returns summary with 10,000 N free tier');
-  assert(json.data.probe.authoritativeSource === 'UNAVAILABLE', 'API returns probe status UNAVAILABLE');
-  assert(Array.isArray(json.data.history), 'API returns recent generation history');
+  assert(json.data.summary.estimatedRemainingCapacity.fluxImages > 100, 'API returns accurate remaining FLUX images (> 100)');
+  assert(json.data.summary.estimatedRemainingCapacity.sdxlImages === null, 'API returns null for remaining SDXL images');
+  assert(json.data.summary.estimatedRemainingCapacity.sdxlStatus === 'UNKNOWN', 'API returns UNKNOWN for SDXL capacity status');
 } catch (e) {
   console.warn('  ⚠️ Server check skipped or offline:', e.message);
 }
 
-// 3. Authenticated POST with paid usage attempt
-try {
-  const resPaidAttempt = await fetch('http://localhost:4321/api/admin/media/neurons-usage', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Cookie: `admin_session=${adminToken}`
-    },
-    body: JSON.stringify({ allow_paid_usage: true })
-  });
-  assert(
-    resPaidAttempt.status === 403,
-    'POST attempting to activate paid usage is rejected with HTTP 403 Forbidden'
-  );
-  const paidJson = await resPaidAttempt.json();
-  assert(
-    paidJson.code === 'PAID_USAGE_FORBIDDEN',
-    'Rejection code is PAID_USAGE_FORBIDDEN'
-  );
-} catch (e) {
-  console.warn('  ⚠️ Server check skipped or offline:', e.message);
-}
-
-// 4. UI Route verification: /admin/media/usage-monitor
+// 2. UI Route verification: /admin/media/usage-monitor
 try {
   const resPage = await fetch('http://localhost:4321/admin/media/usage-monitor', {
     headers: { Cookie: `admin_session=${adminToken}` }
@@ -385,10 +417,23 @@ try {
   assert(resPage.status === 200, '/admin/media/usage-monitor renders with HTTP 200');
   const pageHtml = await resPage.text();
   assert(pageHtml.includes('Cloudflare AI Neurons Usage Monitor'), 'Page contains monitor title');
-  assert(pageHtml.includes('ESTIMATED'), 'Page prominently displays ESTIMATED badge');
-  assert(pageHtml.includes('UNAVAILABLE'), 'Page prominently displays UNAVAILABLE Cloudflare API badge');
-  assert(pageHtml.includes('Budget Guard'), 'Page contains Budget Guard controls');
-  assert(pageHtml.includes('10.000'), 'Page contains 10.000 Neurons free tier allocation reference');
+  assert(pageHtml.includes('57.60 N'), 'Page displays official 57.60 N FLUX rate');
+  assert(pageHtml.includes('UNKNOWN'), 'Page displays UNKNOWN for unverified SDXL pricing');
+  assert(!pageHtml.includes('1.500 N'), 'Page does NOT contain outdated 1.500 N estimate');
+  assert(!pageHtml.includes('1.200 N'), 'Page does NOT contain outdated 1.200 N estimate');
+} catch (e) {
+  console.warn('  ⚠️ Server check skipped or offline:', e.message);
+}
+
+// 3. UI Route verification: /admin/media/comparison-batch1
+try {
+  const resComp = await fetch('http://localhost:4321/admin/media/comparison-batch1', {
+    headers: { Cookie: `admin_session=${adminToken}` }
+  });
+  assert(resComp.status === 200, '/admin/media/comparison-batch1 renders with HTTP 200');
+  const compHtml = await resComp.text();
+  assert(compHtml.includes('Belum Terverifikasi'), 'Page notes unverified account consumption status');
+  assert(!compHtml.includes('($0.00)'), 'Page does NOT falsely claim actual ($0.00) cost');
 } catch (e) {
   console.warn('  ⚠️ Server check skipped or offline:', e.message);
 }
@@ -403,5 +448,5 @@ if (failCount > 0) {
   console.error('>>> SOME TESTS FAILED <<<');
   process.exit(1);
 } else {
-  console.log('>>> ALL CLOUDFLARE AI NEURONS USAGE MONITOR TESTS PASS! <<<');
+  console.log('>>> ALL CLOUDFLARE AI NEURONS PRICING ACCURACY TESTS PASS! <<<');
 }

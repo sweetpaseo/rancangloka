@@ -59,10 +59,11 @@ export interface ImageGenerationRequest {
 }
 
 export interface ImageCostMetadata {
-  estimated_cost_usd?: number;
+  estimated_cost_usd?: number | null;
   billed_units?: number;
   pricing_tier?: string;
   is_billable?: boolean;
+  cost_status?: 'UNVERIFIED_FREE_TIER' | 'ACTUAL_VERIFIED' | 'UNKNOWN';
 }
 
 export interface ImageGenerationResult {

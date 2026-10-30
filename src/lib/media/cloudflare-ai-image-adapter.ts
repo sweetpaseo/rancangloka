@@ -117,8 +117,12 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
       });
     }
 
-    // 0. Pre-generation Budget Guard
-    const budgetCheck = checkPreGenerationBudgetGuard(effectiveModel);
+    // 0. Pre-generation Budget Guard with dimensions and steps
+    const budgetCheck = checkPreGenerationBudgetGuard(effectiveModel, {
+      width: request.width || 1024,
+      height: request.height || 1024,
+      steps: 4
+    });
     if (!budgetCheck.allowed) {
       recordGenerationUsage({
         id: generationId,
@@ -127,6 +131,9 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
         mediaRole: request.media_role,
         purpose: request.purpose,
         status: 'BLOCKED',
+        width: request.width || 1024,
+        height: request.height || 1024,
+        steps: 4,
         errorCategory: 'BUDGET_GUARD_EXCEEDED',
         errorMessage: budgetCheck.reason || 'Estimated daily neurons limit exceeded'
       });
@@ -407,7 +414,10 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
       purpose: request.purpose,
       status: 'SUCCESS',
       latencyMs,
-      httpStatus: 200
+      httpStatus: 200,
+      width,
+      height,
+      steps: 4
     });
 
     return {
@@ -427,7 +437,7 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
       cost_metadata: {
         is_billable: false, // Within 10,000 daily free neurons
         pricing_tier: 'workers_ai_free_neurons',
-        estimated_cost_usd: 0.0
+        estimated_cost_usd: null // Cost is unverified; do not display $0.00 as actual verified cost
       }
     };
   }

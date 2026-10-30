@@ -33,11 +33,15 @@ export interface ExperimentalMediaCandidate {
   sha256: string;
   mime_type: string;
   usage: {
-    estimated_neurons: number;
-    estimated_cost_usd: number;
-    actual_neurons?: number;
-    actual_cost_usd?: number;
+    estimated_neurons: number | null;
+    estimated_cost_usd: number | null;
+    actual_neurons?: number | null;
+    actual_cost_usd?: number | null;
     is_free_tier: boolean;
+    pricing_status?: 'VERIFIED_OFFICIAL' | 'UNKNOWN';
+    cost_status?: 'UNVERIFIED_FREE_TIER' | 'ACTUAL_VERIFIED' | 'UNKNOWN';
+    pricing_note?: string;
+    audit_correction?: Record<string, any>;
   };
   visual_brief?: any;
   geometry_qa?: any;

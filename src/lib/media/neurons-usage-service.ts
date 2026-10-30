@@ -19,8 +19,29 @@ export const CLOUDFLARE_SDXL_MODEL = '@cf/bytedance/stable-diffusion-xl-lightnin
 
 export const CLOUDFLARE_FREE_TIER_DAILY_NEURONS = 10000;
 export const CLOUDFLARE_DAILY_FREE_NEURONS = CLOUDFLARE_FREE_TIER_DAILY_NEURONS;
-export const DEFAULT_FLUX_NEURONS = 1500;
-export const DEFAULT_SDXL_NEURONS = 1200;
+
+// Official Cloudflare Workers AI pricing schedule:
+// FLUX.1 Schnell: 4.80 Neurons per 512x512 tile, 9.60 Neurons per diffusion step
+export const FLUX_NEURONS_PER_TILE = 4.8;
+export const FLUX_NEURONS_PER_STEP = 9.6;
+export const FLUX_DEFAULT_1024_4STEP_NEURONS = 57.6;
+export const DEFAULT_FLUX_NEURONS = FLUX_DEFAULT_1024_4STEP_NEURONS;
+
+// SDXL Lightning is unlisted in official Cloudflare Workers AI pricing schedule
+export const SDXL_PRICING_STATUS = 'UNKNOWN' as const;
+
+export interface ModelPricingEvaluation {
+  model: string;
+  pricingStatus: 'VERIFIED_OFFICIAL' | 'UNKNOWN';
+  authoritativeSource: 'ESTIMATED' | 'UNKNOWN';
+  neuronsEstimated: number | null;
+  dimensions: string;
+  steps: number;
+  tiles: number;
+  tileNeurons: number;
+  stepNeurons: number;
+  note: string;
+}
 
 export interface NeuronsUsageEntry {
   id: string; // generation_id or request_id
@@ -32,15 +53,22 @@ export interface NeuronsUsageEntry {
   mediaRole: string;
   purpose: string;
   status: 'SUCCESS' | 'FAILED' | 'BLOCKED' | 'TIMEOUT';
-  neuronsEstimated: number;
+  neuronsEstimated: number | null;
   neuronsActual: number | null; // null if unconfirmed by Cloudflare API
-  authoritativeSource: 'ACTUAL' | 'ESTIMATED' | 'UNAVAILABLE';
+  authoritativeSource: 'ACTUAL' | 'ESTIMATED' | 'UNKNOWN' | 'UNAVAILABLE';
+  pricingStatus?: 'VERIFIED_OFFICIAL' | 'UNKNOWN';
+  costStatus?: 'UNVERIFIED_FREE_TIER' | 'ACTUAL_VERIFIED' | 'UNKNOWN';
   latencyMs?: number;
   httpStatus?: number;
   errorCategory?: string;
   errorMessage?: string;
   isRetry?: boolean;
   parentGenerationId?: string;
+  auditCorrection?: {
+    originalEstimatedNeurons?: number | null;
+    correctedAt?: string;
+    reason?: string;
+  };
 }
 
 export interface NeuronsMonitorConfig {
@@ -65,7 +93,7 @@ export interface NeuronsDailySummary {
   neuronsRemainingEstimated: number;
   percentageUsed: number;
   usagePercentEstimated: number;
-  statusLabel: 'ACTUAL' | 'ESTIMATED' | 'UNAVAILABLE';
+  statusLabel: 'ACTUAL' | 'ESTIMATED' | 'UNKNOWN' | 'UNAVAILABLE';
   budgetStatus: 'HEALTHY' | 'WARNING' | 'HIGH_WARNING' | 'BLOCKED';
   totalRequestsToday: number;
   totalRequests: number;
@@ -76,7 +104,8 @@ export interface NeuronsDailySummary {
   blockedGenerations: number;
   estimatedRemainingCapacity: {
     fluxImages: number;
-    sdxlImages: number;
+    sdxlImages: number | null;
+    sdxlStatus: 'UNKNOWN';
   };
   modelBreakdown: Array<{
     model: string;
@@ -85,7 +114,9 @@ export interface NeuronsDailySummary {
     totalRequests: number;
     successCount: number;
     failCount: number;
-    estimatedNeurons: number;
+    estimatedNeurons: number | null;
+    pricingStatus: 'VERIFIED_OFFICIAL' | 'UNKNOWN';
+    unitCostNote: string;
   }>;
   modelBreakdownMap: Record<string, any>;
   nextResetUtc: string;
@@ -171,6 +202,115 @@ export function updateMonitorConfig(updates: Partial<NeuronsMonitorConfig>): Neu
   return nextConfig;
 }
 
+export function calculateModelNeurons(
+  model: string,
+  width: number = 1024,
+  height: number = 1024,
+  steps: number = 4
+): ModelPricingEvaluation {
+  const m = (model || '').toLowerCase();
+  const w = Number(width) > 0 ? Number(width) : 1024;
+  const h = Number(height) > 0 ? Number(height) : 1024;
+  const s = Number(steps) > 0 ? Number(steps) : 4;
+
+  if (m === CLOUDFLARE_FLUX_MODEL || m.includes('flux')) {
+    const horizontalTiles = Math.ceil(w / 512);
+    const verticalTiles = Math.ceil(h / 512);
+    const totalTiles = horizontalTiles * verticalTiles;
+    const tileNeurons = Number((totalTiles * FLUX_NEURONS_PER_TILE).toFixed(2));
+    const stepNeurons = Number((s * FLUX_NEURONS_PER_STEP).toFixed(2));
+    const total = Number((tileNeurons + stepNeurons).toFixed(2));
+
+    return {
+      model,
+      pricingStatus: 'VERIFIED_OFFICIAL',
+      authoritativeSource: 'ESTIMATED',
+      neuronsEstimated: total,
+      dimensions: `${w}x${h}`,
+      steps: s,
+      tiles: totalTiles,
+      tileNeurons,
+      stepNeurons,
+      note: `Official Cloudflare Workers AI formula: (${totalTiles} tiles × ${FLUX_NEURONS_PER_TILE} N) + (${s} steps × ${FLUX_NEURONS_PER_STEP} N) = ${total} Neurons.`
+    };
+  }
+
+  // SDXL Lightning or other unlisted models in official Cloudflare pricing table
+  return {
+    model,
+    pricingStatus: 'UNKNOWN',
+    authoritativeSource: 'UNKNOWN',
+    neuronsEstimated: null,
+    dimensions: `${w}x${h}`,
+    steps: s,
+    tiles: Math.ceil(w / 512) * Math.ceil(h / 512),
+    tileNeurons: 0,
+    stepNeurons: 0,
+    note: 'Model pricing is unverified in official Cloudflare Workers AI pricing documentation. Displayed as UNKNOWN, zero fabricated values.'
+  };
+}
+
+/**
+ * Migrates historical ledger entries that have legacy placeholder estimates (1,500 N for FLUX or 1,200 N for SDXL).
+ * Preserves original transaction data, timestamps, and IDs while attaching transparent auditCorrection metadata.
+ */
+export function migrateLedgerHistoricalEstimates(entries: NeuronsUsageEntry[]): {
+  migratedEntries: NeuronsUsageEntry[];
+  correctedCount: number;
+} {
+  let correctedCount = 0;
+  const now = new Date().toISOString();
+
+  const migratedEntries = entries.map((entry) => {
+    const isFlux = entry.model === CLOUDFLARE_FLUX_MODEL || entry.model.includes('flux');
+    const isSdxl =
+      entry.model === CLOUDFLARE_SDXL_MODEL ||
+      entry.model.includes('lightning') ||
+      entry.model.includes('sdxl') ||
+      entry.model.includes('diffusion-xl');
+
+    // Case 1: Legacy FLUX placeholder of 1500 N
+    if (isFlux && entry.neuronsEstimated === 1500) {
+      correctedCount++;
+      return {
+        ...entry,
+        neuronsEstimated: FLUX_DEFAULT_1024_4STEP_NEURONS, // 57.60 N for standard 1024x1024 4 steps
+        authoritativeSource: 'ESTIMATED' as const,
+        pricingStatus: 'VERIFIED_OFFICIAL' as const,
+        costStatus: 'UNVERIFIED_FREE_TIER' as const,
+        auditCorrection: {
+          originalEstimatedNeurons: 1500,
+          correctedAt: now,
+          reason:
+            'Corrected legacy 1,500 N placeholder to official Cloudflare formula (4 tiles × 4.80 N + 4 steps × 9.60 N = 57.60 Neurons).'
+        }
+      };
+    }
+
+    // Case 2: Legacy SDXL placeholder of 1200 N
+    if (isSdxl && entry.neuronsEstimated === 1200) {
+      correctedCount++;
+      return {
+        ...entry,
+        neuronsEstimated: null,
+        authoritativeSource: 'UNKNOWN' as const,
+        pricingStatus: 'UNKNOWN' as const,
+        costStatus: 'UNKNOWN' as const,
+        auditCorrection: {
+          originalEstimatedNeurons: 1200,
+          correctedAt: now,
+          reason:
+            'Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN.'
+        }
+      };
+    }
+
+    return entry;
+  });
+
+  return { migratedEntries, correctedCount };
+}
+
 export function loadUsageLedger(): NeuronsUsageEntry[] {
   ensureStorageDir();
   if (!fs.existsSync(LEDGER_FILE)) {
@@ -181,7 +321,12 @@ export function loadUsageLedger(): NeuronsUsageEntry[] {
   }
   try {
     const raw = fs.readFileSync(LEDGER_FILE, 'utf8');
-    return JSON.parse(raw);
+    const parsed: NeuronsUsageEntry[] = JSON.parse(raw);
+    const { migratedEntries, correctedCount } = migrateLedgerHistoricalEstimates(parsed);
+    if (correctedCount > 0) {
+      saveUsageLedger(migratedEntries);
+    }
+    return migratedEntries;
   } catch {
     return [];
   }
@@ -202,8 +347,8 @@ export function seedLedgerFromCandidates(): NeuronsUsageEntry[] {
 
   for (const c of candidates) {
     const dateUtc = c.generation_timestamp ? c.generation_timestamp.slice(0, 10) : getCurrentDateUtc();
-    const isFlux = c.model === CLOUDFLARE_FLUX_MODEL;
-    const estNeurons = c.usage?.estimated_neurons || (isFlux ? DEFAULT_FLUX_NEURONS : DEFAULT_SDXL_NEURONS);
+    const isFlux = c.model === CLOUDFLARE_FLUX_MODEL || c.model.includes('flux');
+    const evalResult = calculateModelNeurons(c.model, c.width || 1024, c.height || 1024, c.steps || 4);
 
     entries.push({
       id: c.generation_job_id || `JOB-SEEDED-${c.id}`,
@@ -215,9 +360,11 @@ export function seedLedgerFromCandidates(): NeuronsUsageEntry[] {
       mediaRole: c.media_role || 'featured_hero',
       purpose: 'historical_seed',
       status: 'SUCCESS',
-      neuronsEstimated: estNeurons,
+      neuronsEstimated: evalResult.neuronsEstimated,
       neuronsActual: null,
-      authoritativeSource: 'ESTIMATED',
+      authoritativeSource: evalResult.authoritativeSource,
+      pricingStatus: evalResult.pricingStatus,
+      costStatus: isFlux ? 'UNVERIFIED_FREE_TIER' : 'UNKNOWN',
       latencyMs: c.provenance?.latency_ms,
       httpStatus: 200
     });
@@ -244,27 +391,23 @@ export async function probeCloudflareUsageApi(): Promise<{
 }
 
 /**
- * Determines estimated Neurons required for a model generation.
+ * Determines estimated Neurons required for a model generation based on official Cloudflare pricing formula.
+ * Returns null if model pricing is unverified in official documentation.
  */
-export function getEstimatedNeuronsForModel(model: string): number {
-  const m = (model || '').toLowerCase();
-  if (m === CLOUDFLARE_FLUX_MODEL || m.includes('flux')) {
-    return DEFAULT_FLUX_NEURONS;
-  }
-  if (
-    m === CLOUDFLARE_SDXL_MODEL ||
-    m.includes('lightning') ||
-    m.includes('sdxl') ||
-    m.includes('diffusion-xl')
-  ) {
-    return DEFAULT_SDXL_NEURONS;
-  }
-  return 1500;
+export function getEstimatedNeuronsForModel(
+  model: string,
+  width: number = 1024,
+  height: number = 1024,
+  steps: number = 4
+): number | null {
+  const evalResult = calculateModelNeurons(model, width, height, steps);
+  return evalResult.neuronsEstimated;
 }
 
 /**
  * Pre-generation Budget Guard:
  * Checks if running a generation with the given model will exceed 70%, 90%, or the block limit.
+ * Accurately handles verified models (FLUX: 57.60 N) and unverified models (SDXL: UNKNOWN).
  */
 export function checkPreGenerationBudgetGuard(
   model: string,
@@ -274,6 +417,9 @@ export function checkPreGenerationBudgetGuard(
         targetDateUtc?: string;
         customLimit?: number;
         currentUsageOverride?: number;
+        width?: number;
+        height?: number;
+        steps?: number;
       }
 ): {
   allowed: boolean;
@@ -282,6 +428,7 @@ export function checkPreGenerationBudgetGuard(
   currentUsageEstimated: number;
   projectedUsageEstimated: number;
   configuredLimit: number;
+  pricingStatus: 'VERIFIED_OFFICIAL' | 'UNKNOWN';
 } {
   const config = loadMonitorConfig();
   const targetDateUtc =
@@ -289,8 +436,12 @@ export function checkPreGenerationBudgetGuard(
       ? optionsOrDate
       : optionsOrDate?.targetDateUtc || getCurrentDateUtc();
 
+  const width = typeof optionsOrDate === 'object' ? optionsOrDate?.width : undefined;
+  const height = typeof optionsOrDate === 'object' ? optionsOrDate?.height : undefined;
+  const steps = typeof optionsOrDate === 'object' ? optionsOrDate?.steps : undefined;
+
   const summary = getDailyUsageSummary(targetDateUtc);
-  const neededNeurons = getEstimatedNeuronsForModel(model);
+  const evalResult = calculateModelNeurons(model, width, height, steps);
 
   const limit =
     typeof optionsOrDate === 'object' && optionsOrDate?.customLimit !== undefined
@@ -302,7 +453,38 @@ export function checkPreGenerationBudgetGuard(
       ? optionsOrDate.currentUsageOverride
       : summary.neuronsUsedToday;
 
-  const projectedUsage = currentUsage + neededNeurons;
+  // If model pricing is UNKNOWN (e.g. SDXL Lightning), do not fabricate a fake neuron addition to budget guard
+  if (evalResult.pricingStatus === 'UNKNOWN') {
+    const projectedUsage = currentUsage;
+    const projectedPercent = (projectedUsage / limit) * 100;
+
+    if (currentUsage >= limit) {
+      return {
+        allowed: false,
+        warningLevel: 'BLOCK',
+        reason: `Pre-generation budget guard: Kuota harian terpakai (${currentUsage} N) telah mencapai limit (${limit} N / 100%). Generasi dihentikan untuk melindungi Free Tier.`,
+        currentUsageEstimated: currentUsage,
+        projectedUsageEstimated: currentUsage,
+        configuredLimit: limit,
+        pricingStatus: 'UNKNOWN'
+      };
+    }
+
+    return {
+      allowed: true,
+      warningLevel: projectedPercent >= config.warningThresholdPercent ? 'WARNING' : 'NONE',
+      reason:
+        'Catatan: Tarif model ini (SDXL Lightning) belum terdaftar secara resmi di dokumentasi Cloudflare Workers AI (Status: UNKNOWN). Tidak menambahkan estimasi rekaan ke budget guard.',
+      currentUsageEstimated: currentUsage,
+      projectedUsageEstimated: currentUsage,
+      configuredLimit: limit,
+      pricingStatus: 'UNKNOWN'
+    };
+  }
+
+  // Verified official pricing (e.g. FLUX.1 Schnell)
+  const neededNeurons = evalResult.neuronsEstimated || FLUX_DEFAULT_1024_4STEP_NEURONS;
+  const projectedUsage = Number((currentUsage + neededNeurons).toFixed(2));
   const projectedPercent = (projectedUsage / limit) * 100;
 
   if (projectedUsage > limit) {
@@ -312,7 +494,8 @@ export function checkPreGenerationBudgetGuard(
       reason: `Pre-generation budget guard: Projected usage (${projectedUsage} Neurons) would exceed the configured daily limit (${limit} Neurons / 100%). Generation halted to protect Free Tier. Batas terlampaui.`,
       currentUsageEstimated: currentUsage,
       projectedUsageEstimated: projectedUsage,
-      configuredLimit: limit
+      configuredLimit: limit,
+      pricingStatus: 'VERIFIED_OFFICIAL'
     };
   }
 
@@ -323,7 +506,8 @@ export function checkPreGenerationBudgetGuard(
       reason: `High warning: Projected usage will reach ${projectedPercent.toFixed(1)}% (${projectedUsage}/${limit} Neurons). Free tier quota nearly exhausted.`,
       currentUsageEstimated: currentUsage,
       projectedUsageEstimated: projectedUsage,
-      configuredLimit: limit
+      configuredLimit: limit,
+      pricingStatus: 'VERIFIED_OFFICIAL'
     };
   }
 
@@ -334,7 +518,8 @@ export function checkPreGenerationBudgetGuard(
       reason: `Budget warning: Projected usage will reach ${projectedPercent.toFixed(1)}% (${projectedUsage}/${limit} Neurons). Peringatan kuota mendekati batas.`,
       currentUsageEstimated: currentUsage,
       projectedUsageEstimated: projectedUsage,
-      configuredLimit: limit
+      configuredLimit: limit,
+      pricingStatus: 'VERIFIED_OFFICIAL'
     };
   }
 
@@ -343,7 +528,8 @@ export function checkPreGenerationBudgetGuard(
     warningLevel: 'NONE',
     currentUsageEstimated: currentUsage,
     projectedUsageEstimated: projectedUsage,
-    configuredLimit: limit
+    configuredLimit: limit,
+    pricingStatus: 'VERIFIED_OFFICIAL'
   };
 }
 
@@ -364,24 +550,33 @@ export function recordGenerationUsage(entryInput: {
   errorMessage?: string;
   isRetry?: boolean;
   parentGenerationId?: string;
-  neuronsEstimatedOverride?: number;
+  neuronsEstimatedOverride?: number | null;
+  width?: number;
+  height?: number;
+  steps?: number;
 }): NeuronsUsageEntry {
   const ledger = loadUsageLedger();
   const dateUtc = getCurrentDateUtc();
   const isFlux = entryInput.model.includes('flux');
   const modelName = isFlux ? 'FLUX.1 Schnell' : 'SDXL Lightning';
+  const evalResult = calculateModelNeurons(
+    entryInput.model,
+    entryInput.width || 1024,
+    entryInput.height || 1024,
+    entryInput.steps || 4
+  );
 
   // For blocked or pre-network validation failures, zero neurons are consumed
-  let estNeurons = 0;
+  let estNeurons: number | null = 0;
   if (entryInput.status === 'SUCCESS' || entryInput.status === 'TIMEOUT') {
     estNeurons =
       entryInput.neuronsEstimatedOverride !== undefined
         ? entryInput.neuronsEstimatedOverride
-        : getEstimatedNeuronsForModel(entryInput.model);
+        : evalResult.neuronsEstimated;
   } else if (entryInput.status === 'FAILED') {
     // If provider reached 5xx after processing, count neurons conservatively; if 4xx auth or client validation, 0
     estNeurons = (entryInput.httpStatus && entryInput.httpStatus >= 500)
-      ? getEstimatedNeuronsForModel(entryInput.model)
+      ? evalResult.neuronsEstimated
       : 0;
   }
 
@@ -399,7 +594,9 @@ export function recordGenerationUsage(entryInput: {
     status: entryInput.status,
     neuronsEstimated: estNeurons,
     neuronsActual: null, // Always null because CF API does not expose daily free neuron counters
-    authoritativeSource: 'ESTIMATED',
+    authoritativeSource: evalResult.authoritativeSource,
+    pricingStatus: evalResult.pricingStatus,
+    costStatus: isFlux ? 'UNVERIFIED_FREE_TIER' : 'UNKNOWN',
     latencyMs: entryInput.latencyMs,
     httpStatus: entryInput.httpStatus,
     errorCategory: entryInput.errorCategory,
@@ -449,7 +646,9 @@ export function getDailyUsageSummary(targetDateUtc: string = getCurrentDateUtc()
       totalRequests: number;
       successCount: number;
       failCount: number;
-      estimatedNeurons: number;
+      estimatedNeurons: number | null;
+      pricingStatus: 'VERIFIED_OFFICIAL' | 'UNKNOWN';
+      unitCostNote: string;
     }
   > = {
     [CLOUDFLARE_FLUX_MODEL]: {
@@ -457,19 +656,25 @@ export function getDailyUsageSummary(targetDateUtc: string = getCurrentDateUtc()
       totalRequests: 0,
       successCount: 0,
       failCount: 0,
-      estimatedNeurons: 0
+      estimatedNeurons: 0,
+      pricingStatus: 'VERIFIED_OFFICIAL',
+      unitCostNote: '57.60 N / gen (resmi: 4 tiles × 4.80 N + 4 steps × 9.60 N)'
     },
     [CLOUDFLARE_SDXL_MODEL]: {
       modelName: 'SDXL Lightning',
       totalRequests: 0,
       successCount: 0,
       failCount: 0,
-      estimatedNeurons: 0
+      estimatedNeurons: null,
+      pricingStatus: 'UNKNOWN',
+      unitCostNote: 'UNKNOWN (Belum terdaftar di jadwal harga resmi Cloudflare)'
     }
   };
 
   for (const entry of dayEntries) {
-    neuronsUsedEstimated += entry.neuronsEstimated;
+    if (typeof entry.neuronsEstimated === 'number') {
+      neuronsUsedEstimated += entry.neuronsEstimated;
+    }
 
     if (entry.status === 'SUCCESS') {
       successfulGenerations++;
@@ -481,12 +686,17 @@ export function getDailyUsageSummary(targetDateUtc: string = getCurrentDateUtc()
 
     const key = entry.model.includes('flux') ? CLOUDFLARE_FLUX_MODEL : CLOUDFLARE_SDXL_MODEL;
     if (!modelBreakdownMap[key]) {
+      const isFlux = entry.model.includes('flux');
       modelBreakdownMap[key] = {
         modelName: entry.modelName,
         totalRequests: 0,
         successCount: 0,
         failCount: 0,
-        estimatedNeurons: 0
+        estimatedNeurons: isFlux ? 0 : null,
+        pricingStatus: isFlux ? 'VERIFIED_OFFICIAL' : 'UNKNOWN',
+        unitCostNote: isFlux
+          ? '57.60 N / gen (resmi)'
+          : 'UNKNOWN (Belum terdaftar di jadwal harga resmi Cloudflare)'
       };
     }
 
@@ -496,12 +706,18 @@ export function getDailyUsageSummary(targetDateUtc: string = getCurrentDateUtc()
     } else {
       modelBreakdownMap[key].failCount++;
     }
-    modelBreakdownMap[key].estimatedNeurons += entry.neuronsEstimated;
+
+    if (entry.model.includes('flux') && typeof entry.neuronsEstimated === 'number') {
+      modelBreakdownMap[key].estimatedNeurons = Number(
+        (((modelBreakdownMap[key].estimatedNeurons as number) || 0) + entry.neuronsEstimated).toFixed(2)
+      );
+    }
   }
 
+  neuronsUsedEstimated = Number(neuronsUsedEstimated.toFixed(2));
   const limit = config.customDailyLimit;
-  const neuronsRemainingEstimated = Math.max(limit - neuronsUsedEstimated, 0);
-  const usagePercentEstimated = Math.min((neuronsUsedEstimated / limit) * 100, 100);
+  const neuronsRemainingEstimated = Math.max(Number((limit - neuronsUsedEstimated).toFixed(2)), 0);
+  const usagePercentEstimated = Math.min(Number(((neuronsUsedEstimated / limit) * 100).toFixed(2)), 100);
 
   let budgetStatus: NeuronsDailySummary['budgetStatus'] = 'HEALTHY';
   if (neuronsUsedEstimated >= limit) {
@@ -519,12 +735,15 @@ export function getDailyUsageSummary(targetDateUtc: string = getCurrentDateUtc()
     totalRequests: data.totalRequests,
     successCount: data.successCount,
     failCount: data.failCount,
-    estimatedNeurons: data.estimatedNeurons
+    estimatedNeurons: data.estimatedNeurons,
+    pricingStatus: data.pricingStatus,
+    unitCostNote: data.unitCostNote
   }));
 
   const estimatedRemainingCapacity = {
-    fluxImages: Math.floor(neuronsRemainingEstimated / DEFAULT_FLUX_NEURONS),
-    sdxlImages: Math.floor(neuronsRemainingEstimated / DEFAULT_SDXL_NEURONS)
+    fluxImages: Math.floor(neuronsRemainingEstimated / FLUX_DEFAULT_1024_4STEP_NEURONS),
+    sdxlImages: null,
+    sdxlStatus: 'UNKNOWN' as const
   };
 
   return {

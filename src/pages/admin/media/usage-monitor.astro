@@ -180,13 +180,13 @@ const progressBarColor =
               <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
               SDXL Lightning
             </span>
-            <span class="font-mono font-bold text-sm text-cyan-300">
-              ~{summary.estimatedRemainingCapacity.sdxlImages} gambar
+            <span class="font-mono font-bold text-xs text-amber-400" title="Tarif model SDXL belum terdaftar di dokumentasi resmi Cloudflare Workers AI">
+              UNKNOWN
             </span>
           </div>
         </div>
         <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-500">
-          Asumsi: FLUX ~1.500 N/gen, SDXL ~1.200 N/gen
+          FLUX: 57.60 N/gen (resmi) | SDXL: UNKNOWN (belum terdaftar)
         </div>
       </div>
 
@@ -254,7 +254,11 @@ const progressBarColor =
                     </div>
                   </td>
                   <td class="px-4 py-3 text-center font-mono text-xs text-slate-400">
-                    {m.model.includes('flux') ? '1.500 N' : '1.200 N'}
+                    {m.pricingStatus === 'VERIFIED_OFFICIAL' ? (
+                      <span class="text-indigo-300 font-semibold" title={m.unitCostNote}>57.60 N</span>
+                    ) : (
+                      <span class="text-amber-400 font-semibold" title={m.unitCostNote}>UNKNOWN</span>
+                    )}
                   </td>
                   <td class="px-4 py-3 text-center font-mono">
                     {m.requestCount}
@@ -263,7 +267,11 @@ const progressBarColor =
                     {m.successCount}
                   </td>
                   <td class="px-4 py-3 text-right font-mono font-bold text-white">
-                    {m.estimatedNeurons.toLocaleString()} N
+                    {m.estimatedNeurons !== null ? (
+                      `${m.estimatedNeurons.toLocaleString()} N`
+                    ) : (
+                      <span class="text-amber-400 font-mono text-xs">UNKNOWN</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -440,7 +448,15 @@ const progressBarColor =
                       #{e.articleId}
                     </td>
                     <td class="px-4 py-2.5 text-slate-300 max-w-[200px] truncate" title={e.id}>
-                      {e.id}
+                      <span>{e.id}</span>
+                      {e.auditCorrection && (
+                        <span
+                          class="ml-1.5 px-1 py-0.2 rounded text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                          title={`Koreksi Audit: ${e.auditCorrection.reason}`}
+                        >
+                          Audit
+                        </span>
+                      )}
                     </td>
                     <td class="px-4 py-2.5 text-slate-300 font-sans">
                       {e.modelName}
@@ -451,10 +467,20 @@ const progressBarColor =
                       </span>
                     </td>
                     <td class="px-4 py-2.5 text-center font-bold text-white">
-                      {e.neuronsEstimated ? `${e.neuronsEstimated.toLocaleString()} N` : '0 N'}
+                      {e.neuronsEstimated !== null ? (
+                        `${e.neuronsEstimated.toLocaleString()} N`
+                      ) : (
+                        <span class="text-amber-400 font-mono text-[11px]" title="Tarif unverified di docs Cloudflare">UNKNOWN</span>
+                      )}
                     </td>
                     <td class="px-4 py-2.5 text-center">
-                      <span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-amber-300 border border-slate-700">
+                      <span class={`px-1.5 py-0.5 rounded text-[10px] border ${
+                        e.authoritativeSource === 'UNKNOWN'
+                          ? 'bg-slate-800 text-amber-400 border-amber-500/30'
+                          : e.authoritativeSource === 'ACTUAL'
+                            ? 'bg-slate-800 text-emerald-400 border-emerald-500/30'
+                            : 'bg-slate-800 text-indigo-300 border-indigo-500/30'
+                      }`}>
                         {e.authoritativeSource}
                       </span>
                     </td>

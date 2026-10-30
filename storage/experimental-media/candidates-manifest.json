@@ -30,9 +30,17 @@
     "sha256": "c3eda86f2a861a1d2b2fcca506767d9ea1ae457488c1cc4e2cae2f4f7d8763fd",
     "mime_type": "image/jpeg",
     "usage": {
-      "estimated_neurons": 1500,
-      "estimated_cost_usd": 0,
-      "is_free_tier": true
+      "estimated_neurons": 57.6,
+      "estimated_cost_usd": null,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL",
+      "cost_status": "UNVERIFIED_FREE_TIER",
+      "pricing_note": "Official Cloudflare Workers AI formula: (4 tiles × 4.80 N) + (4 steps × 9.60 N) = 57.60 Neurons",
+      "audit_correction": {
+        "original_estimated_neurons": 1500,
+        "corrected_at": "2026-10-30T05:09:28.987Z",
+        "reason": "Corrected from placeholder 1,500 N to official Cloudflare formula (57.60 Neurons)."
+      }
     },
     "visual_brief": {
       "articleId": 9993,
@@ -173,9 +181,17 @@
     "sha256": "bb9eff473c5ef94b389cbd02570639feb087aa6a17e2c64be5c16651f4eb3d84",
     "mime_type": "image/jpeg",
     "usage": {
-      "estimated_neurons": 1200,
-      "estimated_cost_usd": 0,
-      "is_free_tier": true
+      "estimated_neurons": null,
+      "estimated_cost_usd": null,
+      "is_free_tier": true,
+      "pricing_status": "UNKNOWN",
+      "cost_status": "UNKNOWN",
+      "pricing_note": "Model pricing unlisted in official Cloudflare Workers AI pricing documentation",
+      "audit_correction": {
+        "original_estimated_neurons": 1200,
+        "corrected_at": "2026-10-30T05:09:28.988Z",
+        "reason": "Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN."
+      }
     },
     "visual_brief": {
       "articleId": 9993,
@@ -314,9 +330,17 @@
     "sha256": "00e1893f131384a3d151dd327318f3ac4cfe9964cf89479205ee458e932dd11a",
     "mime_type": "image/jpeg",
     "usage": {
-      "estimated_neurons": 1500,
-      "estimated_cost_usd": 0,
-      "is_free_tier": true
+      "estimated_neurons": 57.6,
+      "estimated_cost_usd": null,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL",
+      "cost_status": "UNVERIFIED_FREE_TIER",
+      "pricing_note": "Official Cloudflare Workers AI formula: (4 tiles × 4.80 N) + (4 steps × 9.60 N) = 57.60 Neurons",
+      "audit_correction": {
+        "original_estimated_neurons": 1500,
+        "corrected_at": "2026-10-30T05:09:28.988Z",
+        "reason": "Corrected from placeholder 1,500 N to official Cloudflare formula (57.60 Neurons)."
+      }
     },
     "visual_brief": {
       "articleId": 9999,
@@ -438,9 +462,17 @@
     "sha256": "0906f7733389ab01bb27674a378543bf1c03f25cc88de104b1a81aeb4935ff4d",
     "mime_type": "image/jpeg",
     "usage": {
-      "estimated_neurons": 1200,
-      "estimated_cost_usd": 0,
-      "is_free_tier": true
+      "estimated_neurons": null,
+      "estimated_cost_usd": null,
+      "is_free_tier": true,
+      "pricing_status": "UNKNOWN",
+      "cost_status": "UNKNOWN",
+      "pricing_note": "Model pricing unlisted in official Cloudflare Workers AI pricing documentation",
+      "audit_correction": {
+        "original_estimated_neurons": 1200,
+        "corrected_at": "2026-10-30T05:09:28.988Z",
+        "reason": "Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN."
+      }
     },
     "visual_brief": {
       "articleId": 9999,
@@ -562,9 +594,17 @@
     "sha256": "30f991777538c02d66edc3cc15584ec370124ba8b4d74e72a22a5c0761813ae0",
     "mime_type": "image/jpeg",
     "usage": {
-      "estimated_neurons": 1500,
-      "estimated_cost_usd": 0,
-      "is_free_tier": true
+      "estimated_neurons": 57.6,
+      "estimated_cost_usd": null,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL",
+      "cost_status": "UNVERIFIED_FREE_TIER",
+      "pricing_note": "Official Cloudflare Workers AI formula: (4 tiles × 4.80 N) + (4 steps × 9.60 N) = 57.60 Neurons",
+      "audit_correction": {
+        "original_estimated_neurons": 1500,
+        "corrected_at": "2026-10-30T05:09:28.988Z",
+        "reason": "Corrected from placeholder 1,500 N to official Cloudflare formula (57.60 Neurons)."
+      }
     },
     "visual_brief": {
       "articleId": 10000,
@@ -685,9 +725,17 @@
     "sha256": "24a49ea563f629a3147956101b72df7077843c365b5d24743db0753213f018bf",
     "mime_type": "image/jpeg",
     "usage": {
-      "estimated_neurons": 1200,
-      "estimated_cost_usd": 0,
-      "is_free_tier": true
+      "estimated_neurons": null,
+      "estimated_cost_usd": null,
+      "is_free_tier": true,
+      "pricing_status": "UNKNOWN",
+      "cost_status": "UNKNOWN",
+      "pricing_note": "Model pricing unlisted in official Cloudflare Workers AI pricing documentation",
+      "audit_correction": {
+        "original_estimated_neurons": 1200,
+        "corrected_at": "2026-10-30T05:09:28.988Z",
+        "reason": "Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN."
+      }
     },
     "visual_brief": {
       "articleId": 10000,
@@ -812,9 +860,17 @@
     "sha256": "4a1a7376bf2ed55aa3d21851f06f4f864337744d657625f0400631e36e5d63b2",
     "mime_type": "image/jpeg",
     "usage": {
-      "estimated_neurons": 1200,
-      "estimated_cost_usd": 0,
-      "is_free_tier": true
+      "estimated_neurons": null,
+      "estimated_cost_usd": null,
+      "is_free_tier": true,
+      "pricing_status": "UNKNOWN",
+      "cost_status": "UNKNOWN",
+      "pricing_note": "Model pricing unlisted in official Cloudflare Workers AI pricing documentation",
+      "audit_correction": {
+        "original_estimated_neurons": 1200,
+        "corrected_at": "2026-10-30T05:09:28.988Z",
+        "reason": "Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN."
+      }
     },
     "visual_brief": {
       "articleId": 9993,
@@ -955,9 +1011,17 @@
     "sha256": "11f40738777b8227d6a2c89638a3277cc9d2d3b5f70d372915b24cf092f0f569",
     "mime_type": "image/jpeg",
     "usage": {
-      "estimated_neurons": 1500,
-      "estimated_cost_usd": 0,
-      "is_free_tier": true
+      "estimated_neurons": 57.6,
+      "estimated_cost_usd": null,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL",
+      "cost_status": "UNVERIFIED_FREE_TIER",
+      "pricing_note": "Official Cloudflare Workers AI formula: (4 tiles × 4.80 N) + (4 steps × 9.60 N) = 57.60 Neurons",
+      "audit_correction": {
+        "original_estimated_neurons": 1500,
+        "corrected_at": "2026-10-30T05:09:28.988Z",
+        "reason": "Corrected from placeholder 1,500 N to official Cloudflare formula (57.60 Neurons)."
+      }
     },
     "visual_brief": {
       "articleId": 9993,

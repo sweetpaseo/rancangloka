@@ -9,6 +9,7 @@ import {
   saveExperimentalCandidate,
   type ExperimentalMediaCandidate
 } from '../../../../lib/media/experimental-storage.ts';
+import { calculateModelNeurons } from '../../../../lib/media/neurons-usage-service.ts';
 
 export const POST: APIRoute = async ({ request, cookies, locals }) => {
   try {
@@ -98,9 +99,11 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       sha256: result.sha256,
       mime_type: result.mime_type,
       usage: {
-        estimated_neurons: isFlux ? 1500 : 1200,
-        estimated_cost_usd: 0.0,
-        is_free_tier: true
+        estimated_neurons: calculateModelNeurons(model, result.width, result.height, Number(steps)).neuronsEstimated,
+        estimated_cost_usd: null, // Cost is unverified; do not display $0.00 as actual verified cost
+        is_free_tier: true,
+        pricing_status: calculateModelNeurons(model, result.width, result.height, Number(steps)).pricingStatus,
+        cost_status: isFlux ? 'UNVERIFIED_FREE_TIER' : 'UNKNOWN'
       }
     };
 

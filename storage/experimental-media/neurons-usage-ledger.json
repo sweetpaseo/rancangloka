@@ -9,11 +9,18 @@
     "mediaRole": "featured_hero",
     "purpose": "historical_seed",
     "status": "SUCCESS",
-    "neuronsEstimated": 1500,
+    "neuronsEstimated": 57.6,
     "neuronsActual": null,
     "authoritativeSource": "ESTIMATED",
     "latencyMs": 36213,
-    "httpStatus": 200
+    "httpStatus": 200,
+    "pricingStatus": "VERIFIED_OFFICIAL",
+    "costStatus": "UNVERIFIED_FREE_TIER",
+    "auditCorrection": {
+      "originalEstimatedNeurons": 1500,
+      "correctedAt": "2026-10-30T05:07:40.319Z",
+      "reason": "Corrected legacy 1,500 N placeholder to official Cloudflare formula (4 tiles × 4.80 N + 4 steps × 9.60 N = 57.60 Neurons)."
+    }
   },
   {
     "id": "JOB-BATCH1-9993-SDXL-LIGHTNING-EVI-V2",
@@ -25,11 +32,18 @@
     "mediaRole": "featured_hero",
     "purpose": "historical_seed",
     "status": "SUCCESS",
-    "neuronsEstimated": 1200,
+    "neuronsEstimated": null,
     "neuronsActual": null,
-    "authoritativeSource": "ESTIMATED",
+    "authoritativeSource": "UNKNOWN",
     "latencyMs": 4882,
-    "httpStatus": 200
+    "httpStatus": 200,
+    "pricingStatus": "UNKNOWN",
+    "costStatus": "UNKNOWN",
+    "auditCorrection": {
+      "originalEstimatedNeurons": 1200,
+      "correctedAt": "2026-10-30T05:07:40.319Z",
+      "reason": "Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN."
+    }
   },
   {
     "id": "JOB-BATCH1-9999-FLUX-1-SCHNELL",
@@ -41,11 +55,18 @@
     "mediaRole": "featured_hero",
     "purpose": "historical_seed",
     "status": "SUCCESS",
-    "neuronsEstimated": 1500,
+    "neuronsEstimated": 57.6,
     "neuronsActual": null,
     "authoritativeSource": "ESTIMATED",
     "latencyMs": 2958,
-    "httpStatus": 200
+    "httpStatus": 200,
+    "pricingStatus": "VERIFIED_OFFICIAL",
+    "costStatus": "UNVERIFIED_FREE_TIER",
+    "auditCorrection": {
+      "originalEstimatedNeurons": 1500,
+      "correctedAt": "2026-10-30T05:07:40.319Z",
+      "reason": "Corrected legacy 1,500 N placeholder to official Cloudflare formula (4 tiles × 4.80 N + 4 steps × 9.60 N = 57.60 Neurons)."
+    }
   },
   {
     "id": "JOB-BATCH1-9999-SDXL-LIGHTNING",
@@ -57,11 +78,18 @@
     "mediaRole": "featured_hero",
     "purpose": "historical_seed",
     "status": "SUCCESS",
-    "neuronsEstimated": 1200,
+    "neuronsEstimated": null,
     "neuronsActual": null,
-    "authoritativeSource": "ESTIMATED",
+    "authoritativeSource": "UNKNOWN",
     "latencyMs": 2924,
-    "httpStatus": 200
+    "httpStatus": 200,
+    "pricingStatus": "UNKNOWN",
+    "costStatus": "UNKNOWN",
+    "auditCorrection": {
+      "originalEstimatedNeurons": 1200,
+      "correctedAt": "2026-10-30T05:07:40.319Z",
+      "reason": "Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN."
+    }
   },
   {
     "id": "JOB-BATCH1-10000-FLUX-1-SCHNELL",
@@ -73,11 +101,18 @@
     "mediaRole": "featured_hero",
     "purpose": "historical_seed",
     "status": "SUCCESS",
-    "neuronsEstimated": 1500,
+    "neuronsEstimated": 57.6,
     "neuronsActual": null,
     "authoritativeSource": "ESTIMATED",
     "latencyMs": 2072,
-    "httpStatus": 200
+    "httpStatus": 200,
+    "pricingStatus": "VERIFIED_OFFICIAL",
+    "costStatus": "UNVERIFIED_FREE_TIER",
+    "auditCorrection": {
+      "originalEstimatedNeurons": 1500,
+      "correctedAt": "2026-10-30T05:07:40.319Z",
+      "reason": "Corrected legacy 1,500 N placeholder to official Cloudflare formula (4 tiles × 4.80 N + 4 steps × 9.60 N = 57.60 Neurons)."
+    }
   },
   {
     "id": "JOB-BATCH1-10000-SDXL-LIGHTNING",
@@ -89,11 +124,18 @@
     "mediaRole": "featured_hero",
     "purpose": "historical_seed",
     "status": "SUCCESS",
-    "neuronsEstimated": 1200,
+    "neuronsEstimated": null,
     "neuronsActual": null,
-    "authoritativeSource": "ESTIMATED",
+    "authoritativeSource": "UNKNOWN",
     "latencyMs": 2831,
-    "httpStatus": 200
+    "httpStatus": 200,
+    "pricingStatus": "UNKNOWN",
+    "costStatus": "UNKNOWN",
+    "auditCorrection": {
+      "originalEstimatedNeurons": 1200,
+      "correctedAt": "2026-10-30T05:07:40.319Z",
+      "reason": "Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN."
+    }
   },
   {
     "id": "JOB-BATCH1-9993-SDXL-LIGHTNING-V3-CONTROLLED",
@@ -105,11 +147,18 @@
     "mediaRole": "featured_hero",
     "purpose": "historical_seed",
     "status": "SUCCESS",
-    "neuronsEstimated": 1200,
+    "neuronsEstimated": null,
     "neuronsActual": null,
-    "authoritativeSource": "ESTIMATED",
+    "authoritativeSource": "UNKNOWN",
     "latencyMs": 5602,
-    "httpStatus": 200
+    "httpStatus": 200,
+    "pricingStatus": "UNKNOWN",
+    "costStatus": "UNKNOWN",
+    "auditCorrection": {
+      "originalEstimatedNeurons": 1200,
+      "correctedAt": "2026-10-30T05:07:40.319Z",
+      "reason": "Removed fabricated 1,200 N placeholder. SDXL Lightning pricing is unverified in official Cloudflare documentation; marked as UNKNOWN."
+    }
   },
   {
     "id": "JOB-BATCH1-9993-FLUX-1-SCHNELL-V3-CONTROLLED",
@@ -121,27 +170,18 @@
     "mediaRole": "featured_hero",
     "purpose": "historical_seed",
     "status": "SUCCESS",
-    "neuronsEstimated": 1500,
+    "neuronsEstimated": 57.6,
     "neuronsActual": null,
     "authoritativeSource": "ESTIMATED",
     "latencyMs": 6621,
-    "httpStatus": 200
-  },
-  {
-    "id": "req-guard-test-1793335385830",
-    "timestamp": "2026-10-30T04:43:05.833Z",
-    "dateUtc": "2026-10-30",
-    "articleId": 9993,
-    "model": "@cf/black-forest-labs/flux-1-schnell",
-    "modelName": "FLUX.1 Schnell",
-    "mediaRole": "featured_hero",
-    "purpose": "guard_test",
-    "status": "BLOCKED",
-    "neuronsEstimated": 0,
-    "neuronsActual": null,
-    "authoritativeSource": "ESTIMATED",
-    "errorCategory": "BUDGET_GUARD_EXCEEDED",
-    "errorMessage": "Pre-generation budget guard: Projected usage (13800 Neurons) would exceed the configured daily limit (1000 Neurons / 100%). Generation halted to protect Free Tier. Batas terlampaui."
+    "httpStatus": 200,
+    "pricingStatus": "VERIFIED_OFFICIAL",
+    "costStatus": "UNVERIFIED_FREE_TIER",
+    "auditCorrection": {
+      "originalEstimatedNeurons": 1500,
+      "correctedAt": "2026-10-30T05:07:40.319Z",
+      "reason": "Corrected legacy 1,500 N placeholder to official Cloudflare formula (4 tiles × 4.80 N + 4 steps × 9.60 N = 57.60 Neurons)."
+    }
   },
   {
     "id": "test-1",
@@ -158,21 +198,5 @@
     "authoritativeSource": "ESTIMATED",
     "errorCategory": "BUDGET_GUARD_EXCEEDED",
     "errorMessage": "Pre-generation budget guard: Projected usage (12300 Neurons) would exceed the configured daily limit (10000 Neurons / 100%). Generation halted to protect Free Tier. Batas terlampaui."
-  },
-  {
-    "id": "req-guard-test-1793335429024",
-    "timestamp": "2026-10-30T04:43:49.027Z",
-    "dateUtc": "2026-10-30",
-    "articleId": 9993,
-    "model": "@cf/black-forest-labs/flux-1-schnell",
-    "modelName": "FLUX.1 Schnell",
-    "mediaRole": "featured_hero",
-    "purpose": "guard_test",
-    "status": "BLOCKED",
-    "neuronsEstimated": 0,
-    "neuronsActual": null,
-    "authoritativeSource": "ESTIMATED",
-    "errorCategory": "BUDGET_GUARD_EXCEEDED",
-    "errorMessage": "Pre-generation budget guard: Projected usage (13800 Neurons) would exceed the configured daily limit (1000 Neurons / 100%). Generation halted to protect Free Tier. Batas terlampaui."
   }
 ]
