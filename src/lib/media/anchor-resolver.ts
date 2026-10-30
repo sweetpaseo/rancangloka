@@ -197,7 +197,9 @@ export function resolveVisualPlacements(
 
     // 5. Check Publication & Approval Boundary
     const isApproved = item.editorial_approval === 'APPROVED_FOR_INLINE_PUBLICATION';
-    const isPreview = Boolean(options.isDev || options.allowUnapprovedInPreview);
+    const isPreview = options.allowUnapprovedInPreview !== undefined
+      ? Boolean(options.allowUnapprovedInPreview)
+      : Boolean(options.isDev);
 
     if (!isApproved && !isPreview) {
       warnings.push({
@@ -342,7 +344,7 @@ function defaultRenderFigure(item: VisualManifestItem, isPreview: boolean): stri
   const rawKey = item.storage_key ? item.storage_key.trim() : '';
   let url = '';
   if (rawKey) {
-    if (rawKey.startsWith('http://') || rawKey.startsWith('https://') || rawKey.startsWith('data:')) {
+    if (rawKey.startsWith('http://') || rawKey.startsWith('https://') || rawKey.startsWith('data:') || rawKey.startsWith('/')) {
       url = escapeHtml(rawKey);
     } else {
       const stripped = rawKey.replace(/^\/+/, '');

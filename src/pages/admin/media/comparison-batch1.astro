@@ -109,6 +109,92 @@ function getSupportingHistory(articleId: number, slotIdentifier: string): Experi
     );
   });
 }
+
+function getArticleApprovalSummary(articleId: number) {
+  const heroCandidate = articleId === 9993 
+    ? getLatestCandidate(9993, 'flux') 
+    : articleId === 9999 
+    ? getLatestCandidate(9999, 'flux') 
+    : getLatestCandidate(10000, 'lightning');
+  
+  const s1Candidate = getSupportingCandidate(articleId, 'S1');
+  const s2Candidate = getSupportingCandidate(articleId, 'S2');
+
+  const heroApproved = heroCandidate?.approval_status === 'APPROVED';
+  const s1Approved = s1Candidate?.approval_status === 'APPROVED';
+  const s2Approved = s2Candidate?.approval_status === 'APPROVED';
+
+  const approvedCount = (heroApproved ? 1 : 0) + (s1Approved ? 1 : 0) + (s2Approved ? 1 : 0);
+  const isFullyApproved = approvedCount === 3;
+
+  return {
+    heroCandidate,
+    s1Candidate,
+    s2Candidate,
+    heroApproved,
+    s1Approved,
+    s2Approved,
+    approvedCount,
+    isFullyApproved
+  };
+}
+
+const articleSummaries = articles.map((a) => ({
+  ...a,
+  approval: getArticleApprovalSummary(a.id)
+}));
+
+const totalHeroApproved = articleSummaries.filter((a) => a.approval.heroApproved).length;
+const totalSupportingApproved = articleSummaries.reduce((acc, a) => {
+  return acc + (a.approval.s1Approved ? 1 : 0) + (a.approval.s2Approved ? 1 : 0);
+}, 0);
+const totalMediaApproved = totalHeroApproved + totalSupportingApproved;
+const totalArticlesFullyApproved = articleSummaries.filter((a) => a.approval.isFullyApproved).length;
+
+const workflowStages = [
+  {
+    step: 1,
+    title: 'Draft Prepared',
+    desc: '3 Draf naskah riset siap',
+    status: 'COMPLETED',
+    statusLabel: 'Selesai'
+  },
+  {
+    step: 2,
+    title: 'Hero Approved',
+    desc: `${totalHeroApproved}/3 Hero disetujui`,
+    status: totalHeroApproved === 3 ? 'COMPLETED' : totalHeroApproved > 0 ? 'IN_PROGRESS' : 'PENDING',
+    statusLabel: totalHeroApproved === 3 ? 'Selesai (3/3)' : `${totalHeroApproved}/3`
+  },
+  {
+    step: 3,
+    title: 'Supporting Images Approved',
+    desc: `${totalSupportingApproved}/6 Visual pendamping disetujui`,
+    status: totalSupportingApproved === 6 ? 'COMPLETED' : totalSupportingApproved > 0 ? 'IN_PROGRESS' : 'PENDING',
+    statusLabel: totalSupportingApproved === 6 ? 'Selesai (6/6)' : `${totalSupportingApproved}/6 Menunggu Review`
+  },
+  {
+    step: 4,
+    title: 'Media Placement Complete',
+    desc: totalArticlesFullyApproved === 3 ? '3/3 Artikel terpasang lengkap' : `${totalArticlesFullyApproved}/3 Artikel terpasang penuh`,
+    status: totalArticlesFullyApproved === 3 ? 'COMPLETED' : 'WAITING',
+    statusLabel: totalArticlesFullyApproved === 3 ? 'Selesai' : 'Menunggu Approval Penuh'
+  },
+  {
+    step: 5,
+    title: 'Final Editorial QA',
+    desc: 'Inspeksi layout, caption & alt text',
+    status: 'WAITING',
+    statusLabel: 'Menunggu'
+  },
+  {
+    step: 6,
+    title: 'Ready for Publication Approval',
+    desc: 'Persetujuan rilis final Pemimpin Redaksi',
+    status: 'WAITING',
+    statusLabel: 'Menunggu'
+  }
+];
 ---
 
 <AdminLayout title="Perbandingan Visual Batch 1: Finalisasi Hero Image (EVI V1)">
@@ -201,6 +287,62 @@ function getSupportingHistory(articleId: number, slotIdentifier: string): Experi
       </div>
     </div>
 
+    <!-- BATCH 1 EDITORIAL WORKFLOW STEPPER (Phase 5 Requirement) -->
+    <div class="rounded-2xl bg-white border border-[#E7E9EE] p-6 shadow-2xs space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E7E9EE] pb-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#FFFDF7] border border-[#E7E9EE] text-[#A76A00] text-xs font-semibold">
+            <span>🚀 Alur Redaksi Terstruktur Batch 1</span>
+            <span>•</span>
+            <span class="font-mono">{totalMediaApproved}/9 Total Media Disetujui</span>
+          </div>
+          <h2 class="text-lg font-outfit font-black text-[#172033] tracking-tight mt-1">
+            Status Progres Redaksi &amp; Peluncuran Artikel
+          </h2>
+        </div>
+
+        <div class="text-xs text-[#596579]">
+          Prinsip: <strong class="text-[#172033]">Human Approval Wajib Sebelum Rilis Publik</strong> (AUTO_PUBLISH = OFF)
+        </div>
+      </div>
+
+      <!-- 6-Stage Stepper Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-1">
+        {workflowStages.map((st) => (
+          <div class={`p-3.5 rounded-xl border flex flex-col justify-between space-y-2 transition ${
+            st.status === 'COMPLETED'
+              ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+              : st.status === 'IN_PROGRESS'
+              ? 'bg-amber-50/80 border-amber-300 text-amber-950 ring-2 ring-amber-400/20'
+              : 'bg-slate-50/60 border-slate-200 text-slate-700'
+          }`}>
+            <div class="space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                  Tahap {st.step}
+                </span>
+                <span class={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                  st.status === 'COMPLETED'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : st.status === 'IN_PROGRESS'
+                    ? 'bg-amber-100 text-amber-900 animate-pulse'
+                    : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {st.status === 'COMPLETED' ? '✓ SELESAI' : st.status === 'IN_PROGRESS' ? '⏳ AKTIF' : '⏸ MENUNGGU'}
+                </span>
+              </div>
+              <h3 class="text-xs font-outfit font-bold leading-tight">
+                {st.title}
+              </h3>
+            </div>
+            <p class="text-[11px] leading-snug text-slate-500">
+              {st.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+
     <!-- Safety Invariant Alert -->
     <div class="rounded-xl bg-amber-50/70 border border-amber-200/80 p-4 text-xs text-amber-900 flex items-start gap-3">
       <span class="text-lg">🛡️</span>
@@ -219,11 +361,12 @@ function getSupportingHistory(articleId: number, slotIdentifier: string): Experi
         const sdxlCandidate = getLatestCandidate(art.id, 'lightning');
         const brief = BATCH_1_CANONICAL_BRIEFS[art.id];
         const historyCandidates = getHistoricalCandidates(art.id);
+        const artSummary = articleSummaries.find((s) => s.id === art.id) || { approval: getArticleApprovalSummary(art.id) };
 
         return (
           <div class="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
             <!-- Article Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
               <div>
                 <div class="flex items-center gap-2">
                   <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
@@ -243,8 +386,42 @@ function getSupportingHistory(articleId: number, slotIdentifier: string): Experi
                 <p class="text-xs text-slate-500 mt-0.5">{art.description}</p>
               </div>
 
-              <div class="flex items-center gap-2">
-                <span class="text-xs text-slate-400 font-mono">Slot: featured_hero (Target 16:9)</span>
+              <!-- Article Media Approval Progress & Contextual CTA -->
+              <div class="flex flex-col sm:items-end gap-2 shrink-0">
+                <div class="flex items-center gap-2">
+                  <span
+                    id={`art-approval-badge-${art.id}`}
+                    class={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ${
+                      artSummary.approval.isFullyApproved
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : 'bg-amber-50 text-amber-800 border-amber-300'
+                    }`}
+                  >
+                    {artSummary.approval.approvedCount}/3 Media Disetujui {artSummary.approval.isFullyApproved ? '✓' : `(${3 - artSummary.approval.approvedCount} Menunggu)`}
+                  </span>
+                </div>
+
+                <div id={`art-preview-cta-wrap-${art.id}`}>
+                  {artSummary.approval.isFullyApproved ? (
+                    <a
+                      id={`btn-preview-next-${art.id}`}
+                      href={`/admin/preview/${art.slug}`}
+                      target="_blank"
+                      class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>👁️ Lanjut ke Pratinjau Artikel ↗</span>
+                    </a>
+                  ) : (
+                    <a
+                      id={`btn-preview-next-${art.id}`}
+                      href={`/admin/preview/${art.slug}`}
+                      target="_blank"
+                      class="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition flex items-center gap-1.5"
+                    >
+                      <span>👁️ Pratinjau Draf ({artSummary.approval.approvedCount}/3 Terpasang) ↗</span>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1320,6 +1497,9 @@ function getSupportingHistory(articleId: number, slotIdentifier: string): Experi
             }
             showToast(`↺ Status kandidat dikembalikan ke PENDING_REVIEW.`, 'info');
           }
+
+          // Dynamically re-evaluate article progress and toggle "Lanjut ke Pratinjau Artikel"
+          updateArticleProgressUI(articleId);
         } else {
           // Failure response
           const msg = data?.message || 'Terjadi kesalahan sistem';
@@ -1355,6 +1535,56 @@ function getSupportingHistory(articleId: number, slotIdentifier: string): Experi
         }
       } finally {
         delete inFlight[candidateId];
+      }
+    }
+
+    function updateArticleProgressUI(articleId) {
+      if (!articleId) return;
+
+      let approved = 0;
+      const heroCandidateId = articleId === 9993 
+        ? 'candidate-9993-flux-1-schnell-v3' 
+        : articleId === 9999 
+        ? 'candidate-9999-flux-1-schnell' 
+        : 'candidate-10000-sdxl-lightning';
+      const heroBadge = document.getElementById('status-badge-' + heroCandidateId);
+      if (heroBadge && heroBadge.textContent.trim() === 'APPROVED') approved++;
+
+      const s1Badges = Array.from(document.querySelectorAll('[id^="status-badge-candidate-' + articleId + '-s1"]'));
+      if (s1Badges.some(b => b.textContent.trim() === 'APPROVED')) approved++;
+
+      const s2Badges = Array.from(document.querySelectorAll('[id^="status-badge-candidate-' + articleId + '-s2"]'));
+      if (s2Badges.some(b => b.textContent.trim() === 'APPROVED')) approved++;
+
+      const isFully = approved === 3;
+      const countBadge = document.getElementById('art-approval-badge-' + articleId);
+      if (countBadge) {
+        countBadge.textContent = approved + '/3 Media Disetujui ' + (isFully ? '✓' : '(' + (3 - approved) + ' Menunggu)');
+        countBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ' + (isFully ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300');
+      }
+
+      const ctaWrap = document.getElementById('art-preview-cta-wrap-' + articleId);
+      if (ctaWrap) {
+        const slug = articleId === 9993 
+          ? 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah'
+          : articleId === 9999 
+          ? '7-ide-menata-balkon-rumah-kecil-agar-nyaman'
+          : 'menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap';
+        
+        if (isFully) {
+          ctaWrap.innerHTML = `
+            <a id="btn-preview-next-${articleId}" href="/admin/preview/${slug}" target="_blank" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+              <span>👁️ Lanjut ke Pratinjau Artikel ↗</span>
+            </a>
+          `;
+          showToast('🎉 Seluruh media untuk Artikel #' + articleId + ' telah disetujui! Tombol "Lanjut ke Pratinjau Artikel" kini aktif.', 'success', 6000);
+        } else {
+          ctaWrap.innerHTML = `
+            <a id="btn-preview-next-${articleId}" href="/admin/preview/${slug}" target="_blank" class="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition flex items-center gap-1.5">
+              <span>👁️ Pratinjau Draf (${approved}/3 Terpasang) ↗</span>
+            </a>
+          `;
+        }
       }
     }
   </script>

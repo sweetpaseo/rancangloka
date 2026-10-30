@@ -2,7 +2,7 @@
   "manifest_version": "1.0.0",
   "article_id": "JOB-04-BALKON-COMPACT",
   "article_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman",
-  "content_hash": "balkon_compact_content_hash_v1",
+  "content_hash": "da3c6ae2c92fb430c5acec9a0f2e8fc402b90538b6e0090a503ee03f2f2877aa",
   "visual_items": [
     {
       "visual_id": "vis-job04-01-balcony-floor-plan-clearance",
@@ -39,18 +39,18 @@
       },
       "visual_purpose": "Memperlihatkan detail kerei bambu gulung sebagai penyaring silau sore dan lentera LED surya 2700K di pagar balkon.",
       "visual_brief": {
-        "prompt_indonesian": "Foto detail estetika peneduh kerei bambu alami pada pagar balkon yang menyaring cahaya matahari senja, dipadukan lentera meja LED hangat 2700K berdaya surya tanpa kabel terbuka.",
+        "prompt_indonesian": "Foto sudut santai balkon apartemen tropis dengan kursi lipat ringkas dan rak tanaman vertikal yang rapi.",
         "storytelling_class": "MATERIAL_ATMOSPHERE_VISUAL",
-        "aspect_ratio": "4:3",
-        "intended_width": 1000,
-        "intended_height": 750
+        "aspect_ratio": "16:9",
+        "intended_width": 1200,
+        "intended_height": 675
       },
       "caption": "Penyekat privasi alami: Kerei bambu gulung meredam silau matahari sore sekaligus menjaga aliran angin, dipadukan lentera LED berdaya surya yang aman dari cipratan air hujan.",
-      "alt_text": "Detail anyaman kerei bambu gulung dan lampu lentera LED hangat bertenaga surya pada pagar balkon.",
-      "asset_id": null,
-      "storage_key": null,
-      "review_status": "PENDING",
-      "editorial_approval": "PENDING"
+      "alt_text": "Sudut santai balkon apartemen tropis dengan kursi lipat ringkas dan rak tanaman vertikal yang rapi.",
+      "asset_id": "candidate-9999-s2-sudut-santai-tanaman-vertikal-flux",
+      "storage_key": "/experimental-media/candidate-9999-s2-sudut-santai-tanaman-vertikal-flux.jpg",
+      "review_status": "APPROVED_TECHNICAL_TRUTH",
+      "editorial_approval": "APPROVED_FOR_INLINE_PUBLICATION"
     }
   ]
 }

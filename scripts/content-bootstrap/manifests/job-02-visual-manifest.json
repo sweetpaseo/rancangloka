@@ -1,0 +1,56 @@
+{
+  "manifest_version": "1.0.0",
+  "article_id": "JOB-02-MOISTURE-WALL",
+  "article_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+  "content_hash": "681a83fd1cf29db4858aec8f514fc5a744e922f76b0657ef824bf711bbcc78db",
+  "visual_items": [
+    {
+      "visual_id": "vis-job02-01-moisture-ingress-pathways",
+      "slot_key": "inline_concept_diagram_1",
+      "media_type": "annotated_illustration",
+      "priority": "essential",
+      "placement": {
+        "target_heading_text": "2. Memahami Kemungkinan Sumber Kelembapan Dinding",
+        "position": "after_heading"
+      },
+      "visual_purpose": "Menggambarkan secara visual tiga arah rambatan kelembapan pada dinding bangunan: kapilaritas air tanah naik melewati sloof, penetrasi tempias hujan pada retak plesteran luar, dan rembesan gravitasi dari dak talang atap.",
+      "visual_brief": {
+        "prompt_indonesian": "Diagram potongan arsitektural dinding rumah tinggal 1 lantai di iklim tropis. Menunjukkan tiga vektor perambatan air: (1) panah kapilaritas air tanah naik melalui pori bata di atas sloof yang tidak memiliki trasram, (2) panah tempias hujan mendorong air masuk melalui retak rambut plesteran luar, (3) panah rembesan air gravitasi turun dari dak talang atap yang retak atau tersumbat. Anotasi jelas dan akurat secara teknik bangunan.",
+        "storytelling_class": "FAILURE_ANATOMY_VISUAL",
+        "aspect_ratio": "16:9",
+        "intended_width": 1200,
+        "intended_height": 675
+      },
+      "caption": "Tiga arah umum perambatan kelembapan dinding: kapilaritas air tanah di atas sloof, penetrasi tempias hujan pada bidang plesteran eksterior, dan rembesan limpasan air dari talang atau dak atap.",
+      "alt_text": "Diagram potongan dinding rumah satu lantai memperlihatkan arah pergerakan air dari kapilaritas tanah di bawah sloof, tempias angin pada dinding luar, dan rembesan talang atap di dekat plafon.",
+      "asset_id": null,
+      "storage_key": null,
+      "review_status": "PENDING",
+      "editorial_approval": "PENDING"
+    },
+    {
+      "visual_id": "vis-job02-02-paint-blistering-mechanics",
+      "slot_key": "inline_detail_close_up_1",
+      "media_type": "detail_close_up",
+      "priority": "helpful",
+      "placement": {
+        "target_heading_text": "4. Memahami Keterbatasan Perbaikan Interior: Tekanan Uap dan Cat Kedap Air",
+        "position": "after_heading"
+      },
+      "visual_purpose": "Menjelaskan mekanisme fisik pelepasan lapisan cat interior ketika diaplikasikan pada dinding yang masih menyimpan air: tekanan uap dan pembentukan kristal garam mendorong film cat melepuh.",
+      "visual_brief": {
+        "prompt_indonesian": "Foto detail makro plesteran dinding dengan cat menggelembung dan melepuh akibat tekanan kelembapan.",
+        "storytelling_class": "FAILURE_ANATOMY_VISUAL",
+        "aspect_ratio": "16:9",
+        "intended_width": 1200,
+        "intended_height": 675
+      },
+      "caption": "Mekanisme pelepasan cat interior: Uap air yang mencari jalur penguapan serta kristalisasi garam higroskopis di balik lapisan cat kedap air menciptakan tekanan dorong yang melepuhkan film cat dari dasar plesteran.",
+      "alt_text": "Detail makro lapisan cat dinding interior menggelembung melepuh dan mengelupas akibat tekanan kelembapan dinding tropis.",
+      "asset_id": "candidate-9993-s2-detail-cat-menggelembung-flux-v2",
+      "storage_key": "/experimental-media/candidate-9993-s2-detail-cat-menggelembung-flux-v2.jpg",
+      "review_status": "APPROVED_TECHNICAL_TRUTH",
+      "editorial_approval": "APPROVED_FOR_INLINE_PUBLICATION"
+    }
+  ]
+}

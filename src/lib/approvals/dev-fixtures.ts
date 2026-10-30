@@ -41,6 +41,8 @@ export interface DevLocalBatch1Article {
   local_source_path: string;
   key_takeaways: string;
   reading_time_minutes: number;
+  featured_image?: string;
+  image_alt?: string;
   created_at: string;
   updated_at: string;
   focus_keyword?: string;
@@ -68,6 +70,8 @@ export const BATCH_1_DEFINITIONS = [
     waitingHours: 1,
     focusKeyword: 'menata balkon rumah kecil',
     manifestPath: 'scripts/content-bootstrap/manifests/job-04-balkon-visual-manifest.json',
+    featuredImage: '/experimental-media/candidate-9999-flux-1-schnell.jpg',
+    imageAlt: 'Balkon rumah kecil ukuran 1.2x2.4 meter dengan decking kayu rapi, railing besi hitam, dan tanaman pot terawat di iklim tropis',
     keyTakeaways: [
       'Balkon kompak 1×2 meter ideal ditata dengan satu kursi lipat ringkas dan meja gantung railing agar akses sirkulasi pintu tetap leluasa saat digunakan.',
       'Meja lipat gantung railing dan set bistro lipat membebaskan lantai tengah sehingga balkon tetap terasa lapang saat tidak digunakan.',
@@ -95,6 +99,8 @@ export const BATCH_1_DEFINITIONS = [
     waitingHours: 2,
     focusKeyword: 'denah rumah lebar 6 meter',
     manifestPath: 'scripts/content-bootstrap/manifests/job-03-visual-manifest.json',
+    featuredImage: '/experimental-media/candidate-10000-sdxl-lightning.jpg',
+    imageAlt: 'Visualisasi interior arsitektural 3D ruang keluarga rumah kompak lebar 5-6 meter dengan bukaan cahaya alami dan inner court',
     keyTakeaways: [
       'Efek lorong pada kaveling deret 5–6 meter terjadi karena ketiadaan bukaan outlet di belakang, membuat udara dari jendela depan terperangkap.',
       'SNI 03-6572-2001 menetapkan luas bukaan ventilasi alami minimal 5% dari luas lantai ruangan yang dihuni ke arah luar ruangan.',
@@ -122,6 +128,8 @@ export const BATCH_1_DEFINITIONS = [
     waitingHours: 4,
     focusKeyword: 'dinding rembes cat menggelembung',
     manifestPath: 'scripts/content-bootstrap/manifests/job-02-visual-manifest.json',
+    featuredImage: '/experimental-media/candidate-9993-flux-1-schnell-v3.jpg',
+    imageAlt: 'Dinding bagian dalam rumah dengan plesteran lembap dan cat menggelembung terkelupas akibat rembesan air di iklim tropis',
     keyTakeaways: [
       'Cat menggelembung adalah gejala visual tekanan uap dan pergerakan air di dalam dinding, bukan penyakit utama yang selesai hanya dengan cat baru.',
       'Tiga zona ketinggian membedakan sumber air: zona atas (talang/flashing), zona tengah (tempias plesteran luar), dan zona bawah (rising damp air tanah).',
@@ -349,6 +357,8 @@ export async function getDevLocalBatch1Article(slug: string): Promise<DevLocalBa
     local_source_path: def.filePath,
     key_takeaways: JSON.stringify(def.keyTakeaways),
     reading_time_minutes: readingTime,
+    featured_image: (def as any).featuredImage || undefined,
+    image_alt: (def as any).imageAlt || undefined,
     created_at: nowIso,
     updated_at: nowIso,
     focus_keyword: def.focusKeyword,

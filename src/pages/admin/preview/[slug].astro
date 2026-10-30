@@ -47,10 +47,16 @@ if (Boolean((import.meta as any).env?.DEV)) {
   const { getDevLocalBatch1Article } = await import('../../../lib/approvals/dev-fixtures.ts');
   if (!article) {
     article = await getDevLocalBatch1Article(slug || '');
-  } else if (!article.visual_manifest) {
+  } else {
     const devFixture = await getDevLocalBatch1Article(slug || '');
-    if (devFixture?.visual_manifest) {
-      article.visual_manifest = devFixture.visual_manifest;
+    if (devFixture) {
+      if (!article.visual_manifest && devFixture.visual_manifest) {
+        article.visual_manifest = devFixture.visual_manifest;
+      }
+      if (!article.featured_image && devFixture.featured_image) {
+        article.featured_image = devFixture.featured_image;
+        article.image_alt = devFixture.image_alt || article.image_alt;
+      }
     }
   }
 }
@@ -94,7 +100,7 @@ if (article) {
     autoLoadManifest: true,
     isLocalFixture: Boolean(article.is_local_fixture),
     isDev: Boolean((import.meta as any).env?.DEV),
-    allowUnapprovedInPreview: true
+    allowUnapprovedInPreview: false
   });
   toc = extractTableOfContents(safeArticleHtml);
   processedHtml = processArticleContent(

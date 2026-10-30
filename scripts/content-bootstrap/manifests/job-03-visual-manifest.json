@@ -1,0 +1,56 @@
+{
+  "manifest_version": "1.0.0",
+  "article_id": "JOB-03-INTERIOR-SPATIAL",
+  "article_slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap",
+  "content_hash": "bbf2d6a58597dd69f0e6aa6e4be2b6f00a016880075b6dfa9541a0634695563e",
+  "visual_items": [
+    {
+      "visual_id": "vis-job03-01-inner-court-airflow",
+      "slot_key": "inline_comparative_visual_1",
+      "media_type": "technical_diagram",
+      "priority": "essential",
+      "placement": {
+        "target_heading_text": "2. Pendekatan 1: Menyisipkan Ruang Terbuka Hijau / Taman Kering Dalam (*Inner Court*)",
+        "position": "after_heading"
+      },
+      "visual_purpose": "Menjelaskan secara grafis prinsip perbedaan tekanan udara (inlet dan outlet) pada kaveling rumah sempit memanjang dengan dan tanpa bidang terbuka di bagian belakang/tengah.",
+      "visual_brief": {
+        "prompt_indonesian": "Gambar denah arsitektur 2D komparatif untuk kaveling rumah sempit lebar 5-6 meter memanjang. Denah kiri: tanah belakang tertutup rapat bangunan bata utuh, udara dari depan berputar mandek di ruang tengah (tunnel effect). Denah kanan: menyisipkan inner court terbuka di zona belakang/tengah, menciptakan jalur keluar udara sehingga terjadi ventilasi silang (cross-ventilation) melintasi ruang keluarga. Tampilan denah bersih, gaya arsitektur modern.",
+        "storytelling_class": "COMPARATIVE_VISUAL",
+        "aspect_ratio": "16:9",
+        "intended_width": 1200,
+        "intended_height": 675
+      },
+      "caption": "Perbandingan pola sirkulasi denah rumah sempit: Rumah tertutup rapat menyebabkan udara hanya berputar di depan, sementara penyediaan bidang terbuka (inner court) menyediakan jalur keluar udara untuk ventilasi silang (Konseptual).",
+      "alt_text": "Denah konseptual kaveling rumah lebar 5-6 meter memperlihatkan pola ventilasi silang menuju inner court belakang (Konseptual)",
+      "asset_id": "candidate-10000-s1-denah-konseptual-inner-court-svg",
+      "storage_key": "/experimental-media/candidate-10000-s1-denah-konseptual-inner-court-svg.svg",
+      "review_status": "APPROVED_TECHNICAL_TRUTH",
+      "editorial_approval": "APPROVED_FOR_INLINE_PUBLICATION"
+    },
+    {
+      "visual_id": "vis-job03-02-stair-void-stack-ventilation",
+      "slot_key": "inline_section_detail_1",
+      "media_type": "technical_diagram",
+      "priority": "essential",
+      "placement": {
+        "target_heading_text": "3. Pendekatan 2: Memanfaatkan Ruang Vertikal Tangga (*Stair Void*)",
+        "position": "after_heading"
+      },
+      "visual_purpose": "Menggambarkan prinsip ventilasi efek cerobong (stack ventilation) pada void tangga: udara hangat naik ke bukaan kisi-kisi atas (clerestory), serta memperingatkan bahaya kaca mati tanpa ventilasi.",
+      "visual_brief": {
+        "prompt_indonesian": "Diagram potongan melintang bangunan rumah tinggal 2 lantai. Menunjukkan zona void tangga terbuka yang menghubungkan ruang keluarga lantai bawah dengan area bordes lantai atas. Udara hangat yang naik secara alami (thermal buoyancy) terbuang ke luar melalui kisi ventilasi jalusi atas di dinding sopi-sopi. Dilengkapi catatan peringatan bahwa kaca mati tanpa kisi udara justru memerangkap panas.",
+        "storytelling_class": "SECTION_DETAIL",
+        "aspect_ratio": "16:9",
+        "intended_width": 1200,
+        "intended_height": 675
+      },
+      "caption": "Prinsip ventilasi efek cerobong pada void tangga: Udara hangat naik dan keluar melalui bukaan kisi-kisi dinding atas, membantu sirkulasi ruang tengah tanpa memerangkap panas layaknya kaca mati tertutup.",
+      "alt_text": "Diagram potongan vertikal rumah dua lantai memperlihatkan pergerakan udara hangat naik melewati rongga tangga menuju bukaan kisi-kisi ventilasi di dinding tertinggi.",
+      "asset_id": null,
+      "storage_key": null,
+      "review_status": "PENDING",
+      "editorial_approval": "PENDING"
+    }
+  ]
+}
