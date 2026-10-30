@@ -1,0 +1,9 @@
+{
+  "dailyFreeAllowance": 10000,
+  "warningThresholdPercent": 70,
+  "highWarningThresholdPercent": 90,
+  "blockThresholdPercent": 100,
+  "customDailyLimit": 10000,
+  "allowPaidUsage": false,
+  "billingResetTimeUtc": "00:00:00Z"
+}

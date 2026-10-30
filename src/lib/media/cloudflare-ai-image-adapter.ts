@@ -24,6 +24,10 @@ import type {
 } from './image-provider-types.ts';
 import { ImageProviderError } from './image-provider-types.ts';
 import { validateImageBinary } from './image-validation.ts';
+import {
+  checkPreGenerationBudgetGuard,
+  recordGenerationUsage
+} from './neurons-usage-service.ts';
 
 export const CLOUDFLARE_FLUX_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 export const CLOUDFLARE_SDXL_MODEL = '@cf/bytedance/stable-diffusion-xl-lightning';
@@ -100,6 +104,8 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
   async generate(request: ImageGenerationRequest): Promise<ImageGenerationResult> {
     const startTime = Date.now();
     const effectiveModel = request.model_override || this.modelName;
+    const articleId = request.article_id || 0;
+    const generationId = request.request_id || `cf-ai-${Date.now()}`;
 
     const trimmedPrompt = (request.prompt || '').trim();
     if (!trimmedPrompt) {
@@ -108,6 +114,28 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
         provider: this.providerName,
         message: 'Prompt cannot be empty for Cloudflare Workers AI generation.',
         isBillable: false
+      });
+    }
+
+    // 0. Pre-generation Budget Guard
+    const budgetCheck = checkPreGenerationBudgetGuard(effectiveModel);
+    if (!budgetCheck.allowed) {
+      recordGenerationUsage({
+        id: generationId,
+        articleId,
+        model: effectiveModel,
+        mediaRole: request.media_role,
+        purpose: request.purpose,
+        status: 'BLOCKED',
+        errorCategory: 'BUDGET_GUARD_EXCEEDED',
+        errorMessage: budgetCheck.reason || 'Estimated daily neurons limit exceeded'
+      });
+      throw new ImageProviderError({
+        code: 'RATE_LIMIT',
+        provider: this.providerName,
+        message: `Cloudflare Workers AI generation blocked by budget guard: ${budgetCheck.reason}`,
+        isBillable: false,
+        details: { budgetCheck }
       });
     }
 
@@ -160,6 +188,18 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
           throw new Error('Unsupported response format from env.AI.run');
         }
       } catch (err: any) {
+        recordGenerationUsage({
+          id: generationId,
+          articleId,
+          model: effectiveModel,
+          mediaRole: request.media_role,
+          purpose: request.purpose,
+          status: 'FAILED',
+          latencyMs: Date.now() - startTime,
+          httpStatus: 500,
+          errorCategory: 'PROVIDER_5XX',
+          errorMessage: err?.message || String(err)
+        });
         throw new ImageProviderError({
           code: 'PROVIDER_5XX',
           provider: this.providerName,
@@ -216,6 +256,18 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
         if (!res.ok) {
           const errBody = await res.text().catch(() => '');
           if (res.status === 401 || res.status === 403) {
+            recordGenerationUsage({
+              id: generationId,
+              articleId,
+              model: effectiveModel,
+              mediaRole: request.media_role,
+              purpose: request.purpose,
+              status: 'FAILED',
+              latencyMs: Date.now() - startTime,
+              httpStatus: res.status,
+              errorCategory: 'AUTH_ERROR',
+              errorMessage: 'Authentication failed'
+            });
             throw new ImageProviderError({
               code: 'AUTH_ERROR',
               provider: this.providerName,
@@ -225,6 +277,18 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
             });
           }
           if (res.status === 429) {
+            recordGenerationUsage({
+              id: generationId,
+              articleId,
+              model: effectiveModel,
+              mediaRole: request.media_role,
+              purpose: request.purpose,
+              status: 'FAILED',
+              latencyMs: Date.now() - startTime,
+              httpStatus: 429,
+              errorCategory: 'RATE_LIMIT',
+              errorMessage: 'Daily quota or rate limit exceeded'
+            });
             throw new ImageProviderError({
               code: 'RATE_LIMIT',
               provider: this.providerName,
@@ -233,6 +297,18 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
               isBillable: false
             });
           }
+          recordGenerationUsage({
+            id: generationId,
+            articleId,
+            model: effectiveModel,
+            mediaRole: request.media_role,
+            purpose: request.purpose,
+            status: 'FAILED',
+            latencyMs: Date.now() - startTime,
+            httpStatus: res.status,
+            errorCategory: 'PROVIDER_5XX',
+            errorMessage: `HTTP ${res.status}: ${errBody.slice(0, 100)}`
+          });
           throw new ImageProviderError({
             code: 'PROVIDER_5XX',
             provider: this.providerName,
@@ -246,6 +322,18 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
         if (contentType.includes('application/json')) {
           const json = await res.json() as any;
           if (!json.success || !json.result?.image) {
+            recordGenerationUsage({
+              id: generationId,
+              articleId,
+              model: effectiveModel,
+              mediaRole: request.media_role,
+              purpose: request.purpose,
+              status: 'FAILED',
+              latencyMs: Date.now() - startTime,
+              httpStatus: 200,
+              errorCategory: 'INVALID_RESPONSE',
+              errorMessage: 'Missing image field in JSON response'
+            });
             throw new ImageProviderError({
               code: 'INVALID_RESPONSE',
               provider: this.providerName,
@@ -263,6 +351,17 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
         clearTimeout(timer);
         if (err instanceof ImageProviderError) throw err;
         if (err.name === 'AbortError') {
+          recordGenerationUsage({
+            id: generationId,
+            articleId,
+            model: effectiveModel,
+            mediaRole: request.media_role,
+            purpose: request.purpose,
+            status: 'TIMEOUT',
+            latencyMs: Date.now() - startTime,
+            errorCategory: 'TIMEOUT',
+            errorMessage: `Cloudflare AI request timed out after ${this.timeoutMs}ms.`
+          });
           throw new ImageProviderError({
             code: 'TIMEOUT',
             provider: this.providerName,
@@ -270,6 +369,17 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
             isBillable: false
           });
         }
+        recordGenerationUsage({
+          id: generationId,
+          articleId,
+          model: effectiveModel,
+          mediaRole: request.media_role,
+          purpose: request.purpose,
+          status: 'FAILED',
+          latencyMs: Date.now() - startTime,
+          errorCategory: 'UNKNOWN_PROVIDER_ERROR',
+          errorMessage: err.message || String(err)
+        });
         throw new ImageProviderError({
           code: 'UNKNOWN_PROVIDER_ERROR',
           provider: this.providerName,
@@ -288,10 +398,22 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
     const width = validation.width || request.width || 1024;
     const height = validation.height || request.height || 1024;
 
+    // 4. Record successful generation in usage ledger
+    recordGenerationUsage({
+      id: generationId,
+      articleId,
+      model: effectiveModel,
+      mediaRole: request.media_role,
+      purpose: request.purpose,
+      status: 'SUCCESS',
+      latencyMs,
+      httpStatus: 200
+    });
+
     return {
       provider: this.providerName,
       model: effectiveModel,
-      provider_request_id: `cf-ai-${Date.now()}`,
+      provider_request_id: generationId,
       created_at: new Date().toISOString(),
       latency_ms: latencyMs,
       mime_type: validation.mimeType || 'image/jpeg',
