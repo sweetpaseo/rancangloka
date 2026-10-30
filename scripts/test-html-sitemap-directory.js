@@ -19,7 +19,8 @@ import { QUARANTINE_REGISTRY } from '../src/lib/quarantine.ts';
 async function runTests() {
   console.log('=== RUNNING HTML SITEMAP DIRECTORY VERIFICATION ===\n');
 
-  const url = 'http://localhost:8788/sitemap';
+  const baseUrl = process.env.TARGET_URL || 'http://localhost:8788';
+  const url = `${baseUrl}/sitemap`;
   const res = await fetch(url);
 
   assert.strictEqual(res.status, 200, 'Sitemap should return HTTP 200');
@@ -69,7 +70,7 @@ async function runTests() {
   assert.ok(html.includes('href="/perbedaan-atap-metal-dan-genteng-beton-untuk-rumah-tropis"'), 'Article 1 must be linked');
   assert.ok(html.includes('href="/kusen-aluminium-vs-upvc-untuk-rumah-tropis-di-indonesia"'), 'Article 2 must be linked');
   assert.ok(html.includes('href="/memilih-sistem-shading-luar-rumah-tropis"'), 'Article shading luar must be linked');
-  assert.ok(html.includes('href="/dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"'), 'Article dinding rembes must be linked');
+  assert.ok(html.includes('href="/thermal-bridge-kusen-aluminium-penyebab-panas-dingin-solusi"'), 'Article thermal bridge must be linked');
 
   // Check no quarantined articles leaked
   const quarantinedSlugs = Object.keys(QUARANTINE_REGISTRY);
