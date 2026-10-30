@@ -42,10 +42,12 @@ export interface ExperimentalMediaCandidate {
   visual_brief?: any;
   geometry_qa?: any;
   subject_priority_qa?: any;
+  five_dimensional_qa?: any;
   crop_preview?: any;
   editorial_verdict?: 'APPROVED_PREFERRED' | 'REJECTED' | 'PENDING_REVIEW' | 'NEEDS_REGENERATION';
   editorial_notes?: string;
   rejection_reason?: string;
+  version?: string;
 }
 
 const STORAGE_DIR = path.resolve('./storage/experimental-media');

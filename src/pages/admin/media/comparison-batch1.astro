@@ -12,8 +12,8 @@ const articles = [
     title: 'Dinding Rembes dan Cat Menggelembung',
     slug: 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah',
     description: 'Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah',
-    editorialDecision: 'REGENERATE_EVI',
-    decisionNotice: 'Kandidat awal ditolak karena dinding tampak bersih. Dua kandidat baru di bawah ini telah diregenerasi dengan sistem EVI V1 untuk menampilkan gejala fisik rembesan nyata.'
+    editorialDecision: 'REGENERATE_V3_CONTROLLED',
+    decisionNotice: 'Kandidat v3 Terkendali: Noda lembap terlokalisasi di bagian bawah dinding rumah terawat (tanpa lubang bobokan plesteran). Memerlukan inspeksi mata manusia untuk memilih antara FLUX v3 vs SDXL v3.'
   },
   {
     id: 9999,
@@ -22,7 +22,7 @@ const articles = [
     slug: '7-ide-menata-balkon-rumah-kecil-agar-nyaman',
     description: 'Penataan Balkon Kompak Tropis agar Nyaman dan Teduh (1.2x2.4 Meter)',
     editorialDecision: 'PREFER_FLUX',
-    decisionNotice: 'Pilihan Editorial: FLUX.1 Schnell direkomendasikan karena sambungan decking kayu rapi dan railing proporsional. SDXL Lightning memiliki cacat geometri sambungan decking.'
+    decisionNotice: 'Pilihan Editorial Utama: FLUX.1 Schnell direkomendasikan karena sambungan decking kayu rapi dan railing proporsional. SDXL Lightning memiliki cacat geometri sambungan decking.'
   },
   {
     id: 10000,
@@ -31,29 +31,40 @@ const articles = [
     slug: 'menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap',
     description: 'Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap',
     editorialDecision: 'PREFER_SDXL',
-    decisionNotice: 'Pilihan Owner: SDXL Lightning dipertahankan untuk ruang tengah dan inner court. Catatan Redaksi: Gambar ini adalah visualisasi interior arsitektural, bukan denah teknis 2D.'
+    decisionNotice: 'Pilihan Owner Utama: SDXL Lightning dipertahankan untuk ruang tengah dan inner court. Keterangan Redaksi: Visualisasi interior arsitektural 3D, bukan denah teknis 2D.'
   }
 ];
 
-function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCandidate | undefined {
+function getLatestCandidate(articleId: number, modelTag: string): ExperimentalMediaCandidate | undefined {
+  // For article 9993, prefer v3 candidate
+  if (articleId === 9993) {
+    const v3 = candidates.find(
+      (c) => c.article_id === articleId && c.id.includes('v3') && c.model.toLowerCase().includes(modelTag.toLowerCase())
+    );
+    if (v3) return v3;
+  }
   return candidates.find(
-    (c) => c.article_id === articleId && c.model.toLowerCase().includes(modelTag.toLowerCase())
+    (c) => c.article_id === articleId && c.model.toLowerCase().includes(modelTag.toLowerCase()) && !c.id.includes('v2')
   );
+}
+
+function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[] {
+  return candidates.filter((c) => c.article_id === articleId);
 }
 ---
 
-<AdminLayout title="Perbandingan Visual Batch 1: FLUX.1 Schnell vs SDXL Lightning (EVI V1)">
+<AdminLayout title="Perbandingan Visual Batch 1: Finalisasi Hero Image (EVI V1)">
   <div class="max-w-[1560px] mx-auto space-y-8 pb-16">
     <!-- Top Header Banner -->
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs">
       <div>
         <div class="flex flex-wrap items-center gap-2">
           <span class="px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono text-[11px] font-bold uppercase tracking-wider">
-            EDITORIAL VISUAL INTELLIGENCE (EVI) V1
+            BATCH 1 HERO FINALIZATION
           </span>
           <span class="text-slate-300">•</span>
           <span class="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-mono text-[11px] font-semibold">
-            CLOUDFLARE WORKERS AI
+            5-DIMENSIONAL QA
           </span>
           <span class="text-slate-300">•</span>
           <span class="text-xs font-mono text-emerald-600 font-semibold">Free Tier Allocation (0.00 USD)</span>
@@ -62,7 +73,7 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
           Inspeksi &amp; Komparasi Visual Redaksi Batch 1
         </h1>
         <p class="text-sm text-slate-500 mt-1 max-w-3xl leading-relaxed">
-          Evaluasi visual terstruktur berbasis <strong>Editorial Visual Intelligence (EVI)</strong> antara <strong>FLUX.1 Schnell</strong> (kiri) dan <strong>SDXL Lightning</strong> (kanan). Menegakkan prinsip <em>Primary Subject Must Be Visually Obvious</em> dan audit geometri arsitektural. Seluruh kandidat berada dalam status isolasi <code>PENDING_REVIEW</code>.
+          Evaluasi visual terstruktur berbasis <strong>5-Dimensional Editorial QA</strong> antara <strong>FLUX.1 Schnell</strong> dan <strong>SDXL Lightning</strong>. Membedakan <em>automated heuristics</em> dari verifikasi visual manusia. Seluruh kandidat berada dalam status isolasi <code>PENDING_REVIEW</code>.
         </p>
       </div>
 
@@ -110,9 +121,10 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
     <!-- Articles Loop -->
     <div class="space-y-12">
       {articles.map((art) => {
-        const fluxCandidate = getCandidate(art.id, 'flux');
-        const sdxlCandidate = getCandidate(art.id, 'lightning');
+        const fluxCandidate = getLatestCandidate(art.id, 'flux');
+        const sdxlCandidate = getLatestCandidate(art.id, 'lightning');
         const brief = BATCH_1_CANONICAL_BRIEFS[art.id];
+        const historyCandidates = getHistoricalCandidates(art.id);
 
         return (
           <div class="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
@@ -144,7 +156,7 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
 
             <!-- Editorial Decision Banner -->
             <div class={`rounded-xl p-4 text-xs flex items-start gap-3 border ${
-              art.editorialDecision === 'REGENERATE_EVI'
+              art.editorialDecision === 'REGENERATE_V3_CONTROLLED'
                 ? 'bg-blue-50/70 border-blue-200/80 text-blue-900'
                 : art.editorialDecision === 'PREFER_FLUX'
                 ? 'bg-purple-50/70 border-purple-200/80 text-purple-900'
@@ -157,48 +169,64 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
               </div>
             </div>
 
-            <!-- Structured Editorial Visual Brief Accordion -->
-            {brief && (
-              <details class="text-xs bg-slate-50/60 border border-slate-200/80 rounded-xl p-4 cursor-pointer">
+            <!-- Special Editorial Disclaimer for Article #10000 -->
+            {art.id === 10000 && (
+              <div class="rounded-xl p-3 bg-amber-50/60 border border-amber-200/80 text-amber-900 text-[11px] flex items-center gap-2.5">
+                <span class="text-base">⚠️</span>
+                <span>
+                  <strong>Keterangan Redaksi:</strong> Gambar untuk artikel ini merupakan <em>visualisasi interior arsitektural 3D</em> ruang tengah beratap void/inner court, bukan denah teknis 2D. Jangan mencantumkan klaim denah teknis pada caption atau alt text.
+                </span>
+              </div>
+            )}
+
+            <!-- Version History Drawer (Prominently for Article 9993) -->
+            {art.id === 9993 && (
+              <details class="text-xs bg-slate-50/80 border border-slate-200/90 rounded-xl p-4 cursor-pointer">
                 <summary class="font-outfit font-bold text-slate-800 flex items-center justify-between select-none">
                   <span class="flex items-center gap-2">
-                    <span>📋 Editorial Visual Brief (EVI V1)</span>
-                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-normal">
-                      Bagian: {brief.articleSection.split(':')[0]}
+                    <span>📜 Riwayat Versi &amp; Audit Trail Generasi (v1, v2, v3)</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                      {historyCandidates.length} Catatan Arsip
                     </span>
                   </span>
-                  <span class="text-slate-400 text-[11px]">Klik untuk melihat rincian bukti visual ▾</span>
+                  <span class="text-slate-400 text-[11px]">Buka Riwayat ▾</span>
                 </summary>
                 <div class="mt-4 pt-3 border-t border-slate-200 space-y-3 font-sans">
-                  <div>
-                    <strong class="text-slate-700 font-bold">Subjek Utama (Primary Subject):</strong>
-                    <p class="text-slate-600 mt-0.5 leading-relaxed">{brief.mainSubject}</p>
-                  </div>
-                  <div>
-                    <strong class="text-slate-700 font-bold">Bukti Fisik Wajib Muncul (Mandatory Evidence):</strong>
-                    <ul class="list-disc list-inside text-slate-600 mt-1 space-y-1">
-                      {brief.visualEvidence.map((ev) => (
-                        <li>{ev}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
-                    <div>
-                      <strong class="text-slate-700 font-bold">Konteks Arsitektur:</strong>
-                      <p class="text-slate-600 mt-0.5">{brief.architecturalContext}</p>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="p-3 rounded-lg border border-rose-200 bg-rose-50/40 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <strong class="font-mono text-[11px] text-rose-900 font-bold">Generasi v1 (Awal)</strong>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-100 text-rose-800 font-bold">REJECTED</span>
+                      </div>
+                      <p class="text-[11px] text-slate-600 leading-relaxed">
+                        Prompt terlalu estetis; kedua model menghasilkan dinding bersih (*spotless pristine wall*) tanpa indikasi kerusakan kelembapan.
+                      </p>
                     </div>
-                    <div>
-                      <strong class="text-slate-700 font-bold">Komposisi &amp; Pembingkaian:</strong>
-                      <p class="text-slate-600 mt-0.5">{brief.compositionAndFraming}</p>
+
+                    <div class="p-3 rounded-lg border border-rose-200 bg-rose-50/40 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <strong class="font-mono text-[11px] text-rose-900 font-bold">Generasi v2 (EVI V2)</strong>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-100 text-rose-800 font-bold">REJECTED</span>
+                      </div>
+                      <p class="text-[11px] text-slate-600 leading-relaxed">
+                        FLUX menghasilkan kerusakan menyerupai dinding dibobok; SDXL menghasilkan kerusakan terlalu ekstrem untuk masalah pemeliharaan bertahap.
+                      </p>
+                      <div class="pt-1 flex gap-2 text-[10px] text-blue-600 font-mono">
+                        <a href="/experimental-media/candidate-9993-flux-1-schnell-v2.jpg" target="_blank" class="hover:underline">Lihat FLUX v2 ↗</a>
+                        <span>•</span>
+                        <a href="/experimental-media/candidate-9993-sdxl-lightning-v2.jpg" target="_blank" class="hover:underline">Lihat SDXL v2 ↗</a>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <strong class="text-slate-700 font-bold">Batasan Negatif (Negative Constraints):</strong>
-                    <p class="text-rose-600 text-[11px] mt-0.5 font-mono">{brief.negativeConstraints.join(', ')}</p>
-                  </div>
-                  <div>
-                    <strong class="text-slate-700 font-bold">Caption &amp; Pembeda Diagnosis:</strong>
-                    <p class="text-slate-600 text-[11px] mt-0.5 italic">{brief.caption}</p>
+
+                    <div class="p-3 rounded-lg border border-emerald-200 bg-emerald-50/40 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <strong class="font-mono text-[11px] text-emerald-900 font-bold">Generasi v3 (Terkendali)</strong>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-100 text-emerald-800 font-bold">ACTIVE (REVIEW)</span>
+                      </div>
+                      <p class="text-[11px] text-slate-600 leading-relaxed">
+                        Prompt terkendali: noda lembap terlokalisasi di bagian bawah, beberapa gelembung cat kecil, sebagian besar dinding bersih dan utuh.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </details>
@@ -213,6 +241,9 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                     <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
                     <strong class="font-outfit text-sm text-slate-900">FLUX.1 Schnell</strong>
                     <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold">PRIMARY</span>
+                    {art.id === 9993 && (
+                      <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">v3 TERKENDALI</span>
+                    )}
                     {art.id === 9999 && (
                       <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">★ PILIHAN EDITORIAL</span>
                     )}
@@ -240,7 +271,7 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                           loading="lazy"
                         />
 
-                        <!-- 16:9 Visual Crop Guide Lines (Visible when in crop mode) -->
+                        <!-- 16:9 Visual Crop Guide Lines -->
                         <div class="crop-guide-overlay absolute inset-0 pointer-events-none border-2 border-emerald-400/80 bg-emerald-500/10 hidden flex-col justify-between p-2">
                           <span class="bg-black/80 text-emerald-400 font-mono text-[9px] px-1.5 py-0.5 rounded self-start">
                             16:9 Cover Safe Zone
@@ -256,29 +287,67 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                         </a>
                       </div>
 
-                      <!-- Geometry QA Badges & Notes -->
-                      {fluxCandidate.geometry_qa && (
-                        <div class="p-3 bg-white rounded-lg border border-slate-200/80 text-[11px] space-y-2">
-                          <div class="flex items-center justify-between">
-                            <span class="font-bold text-slate-800">Architectural Geometry QA:</span>
-                            <span class={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
-                              fluxCandidate.geometry_qa.overallStatus === 'APPROVED_PREFERRED'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : fluxCandidate.geometry_qa.overallStatus === 'NEEDS_REGENERATION'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              {fluxCandidate.geometry_qa.overallStatus}
+                      <!-- 5-DIMENSIONAL QA SCORECARD -->
+                      {fluxCandidate.five_dimensional_qa && (
+                        <div class="p-3 bg-white rounded-lg border border-slate-200/80 text-[11px] space-y-2.5">
+                          <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                            <span class="font-bold text-slate-800">5-Dimensional Editorial QA:</span>
+                            <span class="text-[9px] font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
+                              Automated Heuristics + Human Audit
                             </span>
                           </div>
-                          <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-600">
-                            <div>Decking Joints: <span class="font-bold">{fluxCandidate.geometry_qa.deckingJoints}</span></div>
-                            <div>Perspektif: <span class="font-bold">{fluxCandidate.geometry_qa.spatialPerspective}</span></div>
-                            <div>Pintu/Jendela: <span class="font-bold">{fluxCandidate.geometry_qa.doorWindowGeometry}</span></div>
-                            <div>Railing: <span class="font-bold">{fluxCandidate.geometry_qa.railingPosition}</span></div>
+
+                          <div class="space-y-1.5">
+                            <!-- 1. Subject Relevance -->
+                            <div class="flex items-start justify-between gap-2 text-[10px]">
+                              <div>
+                                <span class="font-bold text-slate-700">1. Subject Relevance:</span>
+                                <p class="text-slate-500">{fluxCandidate.five_dimensional_qa.subjectRelevance.evaluationText}</p>
+                              </div>
+                              <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">HEURISTIC PASS</span>
+                            </div>
+
+                            <!-- 2. Damage/Problem Accuracy -->
+                            <div class="flex items-start justify-between gap-2 text-[10px]">
+                              <div>
+                                <span class="font-bold text-slate-700">2. Damage/Problem Accuracy:</span>
+                                <p class="text-slate-500">{fluxCandidate.five_dimensional_qa.damageProblemAccuracy.evaluationText}</p>
+                              </div>
+                              <span class="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                                {fluxCandidate.five_dimensional_qa.damageProblemAccuracy.status}
+                              </span>
+                            </div>
+
+                            <!-- 3. Architectural Geometry -->
+                            <div class="flex items-start justify-between gap-2 text-[10px]">
+                              <div>
+                                <span class="font-bold text-slate-700">3. Architectural Geometry:</span>
+                                <p class="text-slate-500">{fluxCandidate.five_dimensional_qa.architecturalGeometry.evaluationText}</p>
+                              </div>
+                              <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">HEURISTIC PASS</span>
+                            </div>
+
+                            <!-- 4. Material Realism -->
+                            <div class="flex items-start justify-between gap-2 text-[10px]">
+                              <div>
+                                <span class="font-bold text-slate-700">4. Material Realism:</span>
+                                <p class="text-slate-500">{fluxCandidate.five_dimensional_qa.materialRealism.evaluationText}</p>
+                              </div>
+                              <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">HEURISTIC PASS</span>
+                            </div>
+
+                            <!-- 5. Editorial Suitability (Human) -->
+                            <div class="flex items-start justify-between gap-2 text-[10px] pt-1 border-t border-slate-100 bg-slate-50/70 p-1.5 rounded">
+                              <div>
+                                <span class="font-bold text-slate-900">5. Editorial Suitability (Chief Editor):</span>
+                                <p class="text-slate-600">{fluxCandidate.five_dimensional_qa.editorialSuitability.evaluationText}</p>
+                              </div>
+                              <span class="font-mono font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded shrink-0">HUMAN REVIEW</span>
+                            </div>
                           </div>
-                          <p class="text-slate-600 text-[10px] italic pt-1 border-t border-slate-100">
-                            {fluxCandidate.geometry_qa.notes}
+
+                          <p class="text-[9px] text-slate-400 italic pt-1 border-t border-slate-100">
+                            {fluxCandidate.five_dimensional_qa.disclaimer}
                           </p>
                         </div>
                       )}
@@ -286,16 +355,16 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                       <!-- Metadata Specs -->
                       <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-white p-3 rounded-lg border border-slate-100">
                         <div>
-                          <span class="text-slate-400">Resolusi:</span>
-                          <span class="font-bold text-slate-700 ml-1">{fluxCandidate.dimensions}</span>
+                          <span class="text-slate-400">ID / Versi:</span>
+                          <span class="font-bold text-slate-700 ml-1">{fluxCandidate.id}</span>
                         </div>
                         <div>
                           <span class="text-slate-400">Ukuran:</span>
                           <span class="font-bold text-slate-700 ml-1">{(fluxCandidate.byte_size / 1024).toFixed(1)} KB</span>
                         </div>
                         <div>
-                          <span class="text-slate-400">Format:</span>
-                          <span class="font-bold text-slate-700 ml-1">{fluxCandidate.mime_type}</span>
+                          <span class="text-slate-400">Resolusi:</span>
+                          <span class="font-bold text-slate-700 ml-1">{fluxCandidate.dimensions}</span>
                         </div>
                         <div>
                           <span class="text-slate-400">Steps:</span>
@@ -360,6 +429,9 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                     <span class="w-2.5 h-2.5 rounded-full bg-sky-600"></span>
                     <strong class="font-outfit text-sm text-slate-900">SDXL Lightning</strong>
                     <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-bold">SECONDARY</span>
+                    {art.id === 9993 && (
+                      <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">v3 TERKENDALI</span>
+                    )}
                     {art.id === 10000 && (
                       <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">★ PILIHAN OWNER</span>
                     )}
@@ -406,29 +478,79 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                         </a>
                       </div>
 
-                      <!-- Geometry QA Badges & Notes -->
-                      {sdxlCandidate.geometry_qa && (
-                        <div class="p-3 bg-white rounded-lg border border-slate-200/80 text-[11px] space-y-2">
-                          <div class="flex items-center justify-between">
-                            <span class="font-bold text-slate-800">Architectural Geometry QA:</span>
-                            <span class={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
-                              sdxlCandidate.geometry_qa.overallStatus === 'APPROVED_PREFERRED'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : sdxlCandidate.geometry_qa.overallStatus === 'NEEDS_REGENERATION'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              {sdxlCandidate.geometry_qa.overallStatus}
+                      <!-- 5-DIMENSIONAL QA SCORECARD -->
+                      {sdxlCandidate.five_dimensional_qa && (
+                        <div class="p-3 bg-white rounded-lg border border-slate-200/80 text-[11px] space-y-2.5">
+                          <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                            <span class="font-bold text-slate-800">5-Dimensional Editorial QA:</span>
+                            <span class="text-[9px] font-mono text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded">
+                              Automated Heuristics + Human Audit
                             </span>
                           </div>
-                          <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-600">
-                            <div>Decking Joints: <span class={`font-bold ${sdxlCandidate.geometry_qa.deckingJoints === 'FAIL' ? 'text-rose-600' : ''}`}>{sdxlCandidate.geometry_qa.deckingJoints}</span></div>
-                            <div>Perspektif: <span class="font-bold">{sdxlCandidate.geometry_qa.spatialPerspective}</span></div>
-                            <div>Pintu/Jendela: <span class="font-bold">{sdxlCandidate.geometry_qa.doorWindowGeometry}</span></div>
-                            <div>Railing: <span class="font-bold">{sdxlCandidate.geometry_qa.railingPosition}</span></div>
+
+                          <div class="space-y-1.5">
+                            <!-- 1. Subject Relevance -->
+                            <div class="flex items-start justify-between gap-2 text-[10px]">
+                              <div>
+                                <span class="font-bold text-slate-700">1. Subject Relevance:</span>
+                                <p class="text-slate-500">{sdxlCandidate.five_dimensional_qa.subjectRelevance.evaluationText}</p>
+                              </div>
+                              <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">HEURISTIC PASS</span>
+                            </div>
+
+                            <!-- 2. Damage/Problem Accuracy -->
+                            <div class="flex items-start justify-between gap-2 text-[10px]">
+                              <div>
+                                <span class="font-bold text-slate-700">2. Damage/Problem Accuracy:</span>
+                                <p class="text-slate-500">{sdxlCandidate.five_dimensional_qa.damageProblemAccuracy.evaluationText}</p>
+                              </div>
+                              <span class="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                                {sdxlCandidate.five_dimensional_qa.damageProblemAccuracy.status}
+                              </span>
+                            </div>
+
+                            <!-- 3. Architectural Geometry -->
+                            <div class="flex items-start justify-between gap-2 text-[10px]">
+                              <div>
+                                <span class="font-bold text-slate-700">3. Architectural Geometry:</span>
+                                <p class="text-slate-500">{sdxlCandidate.five_dimensional_qa.architecturalGeometry.evaluationText}</p>
+                              </div>
+                              <span class={`font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                sdxlCandidate.five_dimensional_qa.architecturalGeometry.status === 'HEURISTIC_FAIL'
+                                  ? 'text-rose-700 bg-rose-50'
+                                  : 'text-emerald-700 bg-emerald-50'
+                              }`}>
+                                {sdxlCandidate.five_dimensional_qa.architecturalGeometry.status}
+                              </span>
+                            </div>
+
+                            <!-- 4. Material Realism -->
+                            <div class="flex items-start justify-between gap-2 text-[10px]">
+                              <div>
+                                <span class="font-bold text-slate-700">4. Material Realism:</span>
+                                <p class="text-slate-500">{sdxlCandidate.five_dimensional_qa.materialRealism.evaluationText}</p>
+                              </div>
+                              <span class={`font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                sdxlCandidate.five_dimensional_qa.materialRealism.status === 'HEURISTIC_WARN'
+                                  ? 'text-amber-700 bg-amber-50'
+                                  : 'text-emerald-700 bg-emerald-50'
+                              }`}>
+                                {sdxlCandidate.five_dimensional_qa.materialRealism.status}
+                              </span>
+                            </div>
+
+                            <!-- 5. Editorial Suitability (Human) -->
+                            <div class="flex items-start justify-between gap-2 text-[10px] pt-1 border-t border-slate-100 bg-slate-50/70 p-1.5 rounded">
+                              <div>
+                                <span class="font-bold text-slate-900">5. Editorial Suitability (Chief Editor):</span>
+                                <p class="text-slate-600">{sdxlCandidate.five_dimensional_qa.editorialSuitability.evaluationText}</p>
+                              </div>
+                              <span class="font-mono font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded shrink-0">HUMAN REVIEW</span>
+                            </div>
                           </div>
-                          <p class={`text-[10px] pt-1 border-t border-slate-100 ${sdxlCandidate.geometry_qa.overallStatus === 'NEEDS_REGENERATION' ? 'text-rose-700 font-medium' : 'text-slate-600 italic'}`}>
-                            {sdxlCandidate.geometry_qa.notes}
+
+                          <p class="text-[9px] text-slate-400 italic pt-1 border-t border-slate-100">
+                            {sdxlCandidate.five_dimensional_qa.disclaimer}
                           </p>
                         </div>
                       )}
@@ -436,16 +558,16 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                       <!-- Metadata Specs -->
                       <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-white p-3 rounded-lg border border-slate-100">
                         <div>
-                          <span class="text-slate-400">Resolusi:</span>
-                          <span class="font-bold text-slate-700 ml-1">{sdxlCandidate.dimensions}</span>
+                          <span class="text-slate-400">ID / Versi:</span>
+                          <span class="font-bold text-slate-700 ml-1">{sdxlCandidate.id}</span>
                         </div>
                         <div>
                           <span class="text-slate-400">Ukuran:</span>
                           <span class="font-bold text-slate-700 ml-1">{(sdxlCandidate.byte_size / 1024).toFixed(1)} KB</span>
                         </div>
                         <div>
-                          <span class="text-slate-400">Format:</span>
-                          <span class="font-bold text-slate-700 ml-1">{sdxlCandidate.mime_type}</span>
+                          <span class="text-slate-400">Resolusi:</span>
+                          <span class="font-bold text-slate-700 ml-1">{sdxlCandidate.dimensions}</span>
                         </div>
                         <div>
                           <span class="text-slate-400">Steps:</span>

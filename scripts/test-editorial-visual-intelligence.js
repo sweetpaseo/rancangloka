@@ -7,7 +7,8 @@
  * 3. Architectural Geometry QA (8 criteria, decking joints, perspective, scale).
  * 4. Image Format QA (16:9 crop calculations, safe framing, focal bias).
  * 5. Batch 1 Canonical Briefs & Prompt Synthesis fidelity.
- * 6. Candidate Ledger integrity, PENDING_REVIEW invariants, and zero auto-promotion.
+ * 6. 5-Dimensional QA Classification (automated heuristics vs human audit).
+ * 7. Candidate Ledger integrity, v2 archiving, v3 controlled regeneration, and zero auto-promotion.
  */
 
 import assert from 'node:assert';
@@ -18,7 +19,9 @@ import {
   synthesizeEviPrompt,
   calculate16to9Crop,
   evaluateVisualSubjectPriority,
-  evaluateArchitecturalGeometryQA
+  evaluateArchitecturalGeometryQA,
+  evaluateFiveDimensionalQA,
+  CONTROLLED_PROMPT_9993_V3
 } from '../src/lib/media/editorial-visual-intelligence.ts';
 import {
   loadCandidatesLedger
@@ -100,6 +103,13 @@ it('synthesizes prompt for #9993 with physical damage evidence upfront', () => {
   assert.ok(prompt.includes('Avoid: no pristine clean walls'));
 });
 
+it('synthesizes controlled prompt v3 for #9993 without demolished plaster defects', () => {
+  assert.ok(CONTROLLED_PROMPT_9993_V3.includes('modest, well-maintained, occupied Indonesian residential living room'));
+  assert.ok(CONTROLLED_PROMPT_9993_V3.includes('localized, realistic moisture problem near its lower section'));
+  assert.ok(CONTROLLED_PROMPT_9993_V3.includes('Most of the wall surface remains intact and clean'));
+  assert.ok(CONTROLLED_PROMPT_9993_V3.includes('No large holes, no exposed brickwork, no demolished plaster'));
+});
+
 it('synthesizes prompt for #9999 with realistic compact dimensions & clear corridor', () => {
   const prompt = synthesizeEviPrompt(BATCH_1_CANONICAL_BRIEFS[9999]);
   assert.ok(prompt.includes('1.2 x 2.4 meters'));
@@ -136,41 +146,46 @@ it('accepts damaged wall candidate for #9993 via Visual Subject Priority QA', ()
   assert.strictEqual(check.subjectIsVisuallyObvious, true);
 });
 
-// 3. Architectural Geometry QA
-console.log('\n[3] Architectural Geometry QA:');
+// 3. 5-Dimensional QA Classification
+console.log('\n[3] 5-Dimensional QA Classification:');
 
-it('evaluates all 8 architectural geometry criteria', () => {
-  const qa = evaluateArchitecturalGeometryQA(9993, 'FLUX');
-  assert.ok('deckingJoints' in qa);
-  assert.ok('spatialPerspective' in qa);
-  assert.ok('doorWindowGeometry' in qa);
-  assert.ok('railingPosition' in qa);
-  assert.ok('structuralConsistency' in qa);
-  assert.ok('lightingAndShadow' in qa);
-  assert.ok('materialForm' in qa);
-  assert.ok('damageRealism' in qa);
-  assert.ok('overallStatus' in qa);
+it('separates review into 5 distinct dimensions and tags automated heuristics', () => {
+  const qa5 = evaluateFiveDimensionalQA(9993, 'FLUX', 'v3');
+  assert.ok(qa5.subjectRelevance, 'subjectRelevance dimension missing');
+  assert.ok(qa5.damageProblemAccuracy, 'damageProblemAccuracy dimension missing');
+  assert.ok(qa5.architecturalGeometry, 'architecturalGeometry dimension missing');
+  assert.ok(qa5.materialRealism, 'materialRealism dimension missing');
+  assert.ok(qa5.editorialSuitability, 'editorialSuitability dimension missing');
+
+  // Verify automated heuristic method
+  assert.strictEqual(qa5.subjectRelevance.method, 'AUTOMATED_HEURISTIC');
+  assert.strictEqual(qa5.damageProblemAccuracy.method, 'AUTOMATED_HEURISTIC');
+  assert.strictEqual(qa5.architecturalGeometry.method, 'AUTOMATED_HEURISTIC');
+  assert.strictEqual(qa5.materialRealism.method, 'AUTOMATED_HEURISTIC');
+  assert.strictEqual(qa5.editorialSuitability.method, 'HUMAN_AUDIT');
+  assert.strictEqual(qa5.editorialSuitability.status, 'PENDING_HUMAN_REVIEW');
+
+  // Verify disclaimer presence
+  assert.ok(qa5.disclaimer.includes('automated heuristic'));
+  assert.ok(qa5.disclaimer.includes('Chief Editor'));
 });
 
-it('flags SDXL candidate for Article #9999 as NEEDS_REGENERATION due to wood decking joint defect', () => {
-  const qa = evaluateArchitecturalGeometryQA(9999, 'SDXL');
-  assert.strictEqual(qa.deckingJoints, 'FAIL');
-  assert.strictEqual(qa.overallStatus, 'NEEDS_REGENERATION');
-  assert.ok(qa.notes.includes('Cacat geometri: Pola sambungan lantai kayu'));
+it('flags SDXL candidate for Article #9999 as HEURISTIC_FAIL on Architectural Geometry', () => {
+  const qa5 = evaluateFiveDimensionalQA(9999, 'SDXL', 'v1');
+  assert.strictEqual(qa5.architecturalGeometry.status, 'HEURISTIC_FAIL');
+  assert.ok(qa5.architecturalGeometry.evaluationText.includes('decking kayu tidak lurus'));
 });
 
-it('approves FLUX candidate for Article #9999 as APPROVED_PREFERRED with clean decking', () => {
-  const qa = evaluateArchitecturalGeometryQA(9999, 'FLUX');
-  assert.strictEqual(qa.deckingJoints, 'PASS');
-  assert.strictEqual(qa.overallStatus, 'APPROVED_PREFERRED');
-  assert.ok(qa.notes.includes('Pilihan Editorial'));
+it('approves FLUX candidate for Article #9999 as HEURISTIC_PASS on Architectural Geometry', () => {
+  const qa5 = evaluateFiveDimensionalQA(9999, 'FLUX', 'v1');
+  assert.strictEqual(qa5.architecturalGeometry.status, 'HEURISTIC_PASS');
+  assert.ok(qa5.editorialSuitability.evaluationText.includes('Pilihan Editorial Utama'));
 });
 
-it('approves SDXL candidate for Article #10000 as APPROVED_PREFERRED with interior visualization caveat', () => {
-  const qa = evaluateArchitecturalGeometryQA(10000, 'SDXL');
-  assert.strictEqual(qa.spatialPerspective, 'PASS');
-  assert.strictEqual(qa.overallStatus, 'APPROVED_PREFERRED');
-  assert.ok(qa.notes.includes('bukan denah teknis 2D'));
+it('sets interior visualization caveat on Article #10000 SDXL in Editorial Suitability', () => {
+  const qa5 = evaluateFiveDimensionalQA(10000, 'SDXL', 'v1');
+  assert.strictEqual(qa5.architecturalGeometry.status, 'HEURISTIC_PASS');
+  assert.ok(qa5.editorialSuitability.evaluationText.includes('bukan denah teknis 2D'));
 });
 
 // 4. Image Format QA: 16:9 Crop Calculation
@@ -187,7 +202,7 @@ it('calculates exact 16:9 crop height percent for 1024x1024 square images (56.25
 it('calculates bottom-biased 16:9 crop for lower wall damage inspection', () => {
   const crop = calculate16to9Crop(1024, 1024, 'bottom');
   assert.strictEqual(crop.cropHeightPercent, 56.25);
-  assert.strictEqual(crop.cropTopPercent, 38.75); // 100 - 56.25 - 5
+  assert.strictEqual(crop.cropTopPercent, 38.75);
   assert.strictEqual(crop.subjectFocalPointY, 'bottom');
 });
 
@@ -197,13 +212,31 @@ it('preserves native 16:9 dimensions without unnecessary crop', () => {
   assert.strictEqual(crop.cropTopPercent, 0);
 });
 
-// 5. Candidate Ledger & Safety Governance
-console.log('\n[5] Candidate Ledger & Safety Governance:');
+// 5. Candidate Ledger, Versioning & Safety Governance
+console.log('\n[5] Candidate Ledger, Versioning & Safety Governance:');
 
-it('loads candidates ledger with complete candidate entries', () => {
+it('loads candidates ledger with complete candidate entries including v2 and v3', () => {
   const ledger = loadCandidatesLedger();
   assert.ok(Array.isArray(ledger), 'Ledger is not an array');
-  assert.ok(ledger.length >= 6, `Expected at least 6 candidates, found ${ledger.length}`);
+  assert.ok(ledger.length >= 8, `Expected at least 8 candidates in ledger, found ${ledger.length}`);
+});
+
+it('verifies Article #9993 has both active v3 candidates and archived v2 candidates', () => {
+  const ledger = loadCandidatesLedger();
+  const v3Flux = ledger.find((c) => c.id === 'candidate-9993-flux-1-schnell-v3');
+  const v3Sdxl = ledger.find((c) => c.id === 'candidate-9993-sdxl-lightning-v3');
+  const v2Flux = ledger.find((c) => c.id === 'candidate-9993-flux-1-schnell-v2');
+  const v2Sdxl = ledger.find((c) => c.id === 'candidate-9993-sdxl-lightning-v2');
+
+  assert.ok(v3Flux, 'v3 FLUX missing');
+  assert.ok(v3Sdxl, 'v3 SDXL missing');
+  assert.ok(v2Flux, 'v2 FLUX missing');
+  assert.ok(v2Sdxl, 'v2 SDXL missing');
+
+  assert.strictEqual(v3Flux.approval_status, 'PENDING_REVIEW');
+  assert.strictEqual(v3Sdxl.approval_status, 'PENDING_REVIEW');
+  assert.strictEqual(v2Flux.approval_status, 'REJECTED');
+  assert.strictEqual(v2Sdxl.approval_status, 'REJECTED');
 });
 
 it('verifies Article #9999 FLUX is PENDING_REVIEW and marked APPROVED_PREFERRED', () => {
@@ -222,10 +255,14 @@ it('verifies Article #10000 SDXL is PENDING_REVIEW and marked APPROVED_PREFERRED
   assert.strictEqual(c10000Sdxl.editorial_verdict, 'APPROVED_PREFERRED');
 });
 
-it('verifies no candidate has automatically mutated articles in database', () => {
+it('verifies zero candidates are prematurely marked APPROVED without human decision', () => {
   const ledger = loadCandidatesLedger();
   for (const c of ledger) {
-    assert.strictEqual(c.approval_status, 'PENDING_REVIEW', `Candidate ${c.id} was prematurely approved`);
+    assert.notStrictEqual(
+      c.approval_status,
+      'APPROVED',
+      `Candidate ${c.id} was prematurely marked APPROVED`
+    );
   }
 });
 

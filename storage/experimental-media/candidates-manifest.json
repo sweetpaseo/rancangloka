@@ -1,6 +1,6 @@
 [
   {
-    "id": "candidate-9993-flux-1-schnell",
+    "id": "candidate-9993-flux-1-schnell-v2",
     "article_id": 9993,
     "generation_job_id": "JOB-BATCH1-9993-FLUX-1-SCHNELL-EVI-V2",
     "provider": "cloudflare_ai",
@@ -23,9 +23,9 @@
       "evi_version": "1.0.0",
       "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
     },
-    "approval_status": "PENDING_REVIEW",
-    "storage_reference": "storage/experimental-media/candidate-9993-flux-1-schnell.jpg",
-    "public_url": "/experimental-media/candidate-9993-flux-1-schnell.jpg",
+    "approval_status": "REJECTED",
+    "storage_reference": "storage/experimental-media/candidate-9993-flux-1-schnell-v2.jpg",
+    "public_url": "/experimental-media/candidate-9993-flux-1-schnell-v2.jpg",
     "byte_size": 810472,
     "sha256": "c3eda86f2a861a1d2b2fcca506767d9ea1ae457488c1cc4e2cae2f4f7d8763fd",
     "mime_type": "image/jpeg",
@@ -104,11 +104,46 @@
       "cropHeightPercent": 56.25,
       "subjectFocalPointY": "bottom"
     },
-    "editorial_verdict": "PENDING_REVIEW",
-    "editorial_notes": "Regenerasi EVI V2 (FLUX.1 Schnell) memperlihatkan gejala fisik kerusakan cat menggelembung & noda lembap."
+    "editorial_verdict": "REJECTED",
+    "editorial_notes": "Regenerasi EVI V2 (FLUX.1 Schnell) memperlihatkan gejala fisik kerusakan cat menggelembung & noda lembap.",
+    "version": "v2",
+    "rejection_reason": "Ditolak: FLUX v2 menghasilkan kerusakan menyerupai dinding dibobok (terlalu destruktif).",
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "category": "Subject Relevance",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Prompt berfokus pada dinding plesteran berkelembapan."
+      },
+      "damageProblemAccuracy": {
+        "category": "Damage/Problem Accuracy",
+        "status": "HEURISTIC_FAIL",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Fail: Kerusakan menyerupai dinding dibobok (terlalu destruktif)."
+      },
+      "architecturalGeometry": {
+        "category": "Architectural Geometry",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Perspektif ruang dan garis plint/lantai konsisten."
+      },
+      "materialRealism": {
+        "category": "Material Realism",
+        "status": "HEURISTIC_WARN",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Warn: Plesteran tampak terlalu hancur dibanding cat menggelembung rumah tinggal biasa."
+      },
+      "editorialSuitability": {
+        "category": "Editorial Suitability",
+        "status": "PENDING_HUMAN_REVIEW",
+        "method": "HUMAN_AUDIT",
+        "evaluationText": "Ditolak: Perlu regenerasi v3 dengan prompt terkendali (localized mild moisture)."
+      },
+      "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
+    }
   },
   {
-    "id": "candidate-9993-sdxl-lightning",
+    "id": "candidate-9993-sdxl-lightning-v2",
     "article_id": 9993,
     "generation_job_id": "JOB-BATCH1-9993-SDXL-LIGHTNING-EVI-V2",
     "provider": "cloudflare_ai",
@@ -131,9 +166,9 @@
       "evi_version": "1.0.0",
       "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
     },
-    "approval_status": "PENDING_REVIEW",
-    "storage_reference": "storage/experimental-media/candidate-9993-sdxl-lightning.jpg",
-    "public_url": "/experimental-media/candidate-9993-sdxl-lightning.jpg",
+    "approval_status": "REJECTED",
+    "storage_reference": "storage/experimental-media/candidate-9993-sdxl-lightning-v2.jpg",
+    "public_url": "/experimental-media/candidate-9993-sdxl-lightning-v2.jpg",
     "byte_size": 150831,
     "sha256": "bb9eff473c5ef94b389cbd02570639feb087aa6a17e2c64be5c16651f4eb3d84",
     "mime_type": "image/jpeg",
@@ -212,8 +247,43 @@
       "cropHeightPercent": 56.25,
       "subjectFocalPointY": "bottom"
     },
-    "editorial_verdict": "PENDING_REVIEW",
-    "editorial_notes": "Regenerasi EVI V2 (SDXL Lightning) memperlihatkan gejala fisik kerusakan cat menggelembung & noda lembap."
+    "editorial_verdict": "REJECTED",
+    "editorial_notes": "Regenerasi EVI V2 (SDXL Lightning) memperlihatkan gejala fisik kerusakan cat menggelembung & noda lembap.",
+    "version": "v2",
+    "rejection_reason": "Ditolak: SDXL v2 menghasilkan kerusakan terlalu ekstrem untuk masalah pemeliharaan bertahap.",
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "category": "Subject Relevance",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Prompt berfokus pada dinding plesteran berkelembapan."
+      },
+      "damageProblemAccuracy": {
+        "category": "Damage/Problem Accuracy",
+        "status": "HEURISTIC_FAIL",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Fail: Kerusakan terlalu ekstrem untuk masalah pemeliharaan rumah bertahap."
+      },
+      "architecturalGeometry": {
+        "category": "Architectural Geometry",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Perspektif ruang dan garis plint/lantai konsisten."
+      },
+      "materialRealism": {
+        "category": "Material Realism",
+        "status": "HEURISTIC_WARN",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Warn: Plesteran tampak terlalu hancur dibanding cat menggelembung rumah tinggal biasa."
+      },
+      "editorialSuitability": {
+        "category": "Editorial Suitability",
+        "status": "PENDING_HUMAN_REVIEW",
+        "method": "HUMAN_AUDIT",
+        "evaluationText": "Ditolak: Perlu regenerasi v3 dengan prompt terkendali (localized mild moisture)."
+      },
+      "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
+    }
   },
   {
     "id": "candidate-9999-flux-1-schnell",
@@ -303,7 +373,41 @@
       "overallStatus": "APPROVED_PREFERRED",
       "notes": "Pilihan Editorial: Geometri decking kayu rapi, railing besi hitam proporsional, sirkulasi balkon 1.2x2.4m masuk akal."
     },
-    "editorial_notes": "Pilihan Editorial: Geometri decking kayu rapi, railing proporsional, sirkulasi 1.2x2.4m lapang."
+    "editorial_notes": "Pilihan Editorial Utama: Decking rapi, railing proporsional, sirkulasi 60cm terjaga.",
+    "version": "v1",
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "category": "Subject Relevance",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Penataan balkon mungil 1.2x2.4m dengan meja gantung railing dan ubin decking."
+      },
+      "damageProblemAccuracy": {
+        "category": "Damage/Problem Accuracy",
+        "status": "NOT_APPLICABLE",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Tidak ada kerusakan material pada artikel ini (topik penataan ruang & perabot kompak)."
+      },
+      "architecturalGeometry": {
+        "category": "Architectural Geometry",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Sambungan decking kayu modular lurus, railing besi hitam proporsional."
+      },
+      "materialRealism": {
+        "category": "Material Realism",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Tekstur kayu akasia, railing besi powder-coated, dan daun sirih gading tampak nyata."
+      },
+      "editorialSuitability": {
+        "category": "Editorial Suitability",
+        "status": "PENDING_HUMAN_REVIEW",
+        "method": "HUMAN_AUDIT",
+        "evaluationText": "Pilihan Editorial Utama: Direkomendasikan oleh tim editorial, menunggu persetujuan akhir manusia."
+      },
+      "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
+    }
   },
   {
     "id": "candidate-9999-sdxl-lightning",
@@ -393,7 +497,41 @@
       "overallStatus": "NEEDS_REGENERATION",
       "notes": "Cacat geometri: Pola sambungan lantai kayu decking tidak konsisten dan tidak beraturan."
     },
-    "editorial_notes": "Cacat Geometri: Sambungan lantai decking kayu tidak konsisten dan tidak beraturan."
+    "editorial_notes": "Cacat Geometri: Pola sambungan decking kayu terdistorsi dan tidak lurus.",
+    "version": "v1",
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "category": "Subject Relevance",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Penataan balkon mungil 1.2x2.4m dengan meja gantung railing dan ubin decking."
+      },
+      "damageProblemAccuracy": {
+        "category": "Damage/Problem Accuracy",
+        "status": "NOT_APPLICABLE",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Tidak ada kerusakan material pada artikel ini (topik penataan ruang & perabot kompak)."
+      },
+      "architecturalGeometry": {
+        "category": "Architectural Geometry",
+        "status": "HEURISTIC_FAIL",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Fail: Pola sambungan decking kayu tidak lurus/tidak beraturan."
+      },
+      "materialRealism": {
+        "category": "Material Realism",
+        "status": "HEURISTIC_WARN",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Warn: Tekstur kayu tampak terdistorsi pada sambungan ubin."
+      },
+      "editorialSuitability": {
+        "category": "Editorial Suitability",
+        "status": "PENDING_HUMAN_REVIEW",
+        "method": "HUMAN_AUDIT",
+        "evaluationText": "Cacat Geometri: Tidak direkomendasikan sebagai cover artikel karena cacat decking."
+      },
+      "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
+    }
   },
   {
     "id": "candidate-10000-flux-1-schnell",
@@ -482,7 +620,41 @@
       "overallStatus": "PENDING_REVIEW",
       "notes": "Kandidat alternatif FLUX: Geometri ruang baik, namun pencahayaan void lebih disukai pada kandidat SDXL."
     },
-    "editorial_notes": "Kandidat alternatif FLUX: Geometri ruang baik, pencahayaan void lebih disukai pada kandidat SDXL."
+    "editorial_notes": "Kandidat Alternatif: Pencahayaan void lebih disukai pada model SDXL.",
+    "version": "v1",
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "category": "Subject Relevance",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Visualisasi ruang tengah rumah lebar 5–6 meter dengan bukaan inner court."
+      },
+      "damageProblemAccuracy": {
+        "category": "Damage/Problem Accuracy",
+        "status": "NOT_APPLICABLE",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Tidak ada kerusakan material pada artikel ini (topik arsitektur denah & pencahayaan void)."
+      },
+      "architecturalGeometry": {
+        "category": "Architectural Geometry",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Perspektif satu titik dinding 6m lurus, plafon proporsional 3.2m."
+      },
+      "materialRealism": {
+        "category": "Material Realism",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Lantai microcement semen poles dan pintu geser aluminium hitam realistis."
+      },
+      "editorialSuitability": {
+        "category": "Editorial Suitability",
+        "status": "PENDING_HUMAN_REVIEW",
+        "method": "HUMAN_AUDIT",
+        "evaluationText": "Kandidat Alternatif: Menunggu persetujuan akhir manusia."
+      },
+      "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
+    }
   },
   {
     "id": "candidate-10000-sdxl-lightning",
@@ -571,6 +743,326 @@
       "overallStatus": "APPROVED_PREFERRED",
       "notes": "Pilihan Owner: Perspektif ruang tengah 5-6m lapang, bukaan inner court jelas. Catatan: Visualisasi interior arsitektural, bukan denah teknis 2D."
     },
-    "editorial_notes": "Pilihan Owner: Perspektif ruang tengah 5-6m lapang, bukaan inner court jelas. Catatan: Visualisasi interior arsitektural, bukan denah teknis 2D."
+    "editorial_notes": "Pilihan Owner: Perspektif ruang tengah 5-6m lapang, bukaan void alami. Catatan: Visualisasi interior 3D (bukan denah teknis 2D).",
+    "version": "v1",
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "category": "Subject Relevance",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Visualisasi ruang tengah rumah lebar 5–6 meter dengan bukaan inner court."
+      },
+      "damageProblemAccuracy": {
+        "category": "Damage/Problem Accuracy",
+        "status": "NOT_APPLICABLE",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Tidak ada kerusakan material pada artikel ini (topik arsitektur denah & pencahayaan void)."
+      },
+      "architecturalGeometry": {
+        "category": "Architectural Geometry",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Perspektif satu titik dinding 6m lurus, plafon proporsional 3.2m."
+      },
+      "materialRealism": {
+        "category": "Material Realism",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Lantai microcement semen poles dan pintu geser aluminium hitam realistis."
+      },
+      "editorialSuitability": {
+        "category": "Editorial Suitability",
+        "status": "PENDING_HUMAN_REVIEW",
+        "method": "HUMAN_AUDIT",
+        "evaluationText": "Pilihan Owner: Direkomendasikan sebagai kandidat utama dengan keterangan visualisasi interior (bukan denah teknis 2D)."
+      },
+      "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
+    }
+  },
+  {
+    "id": "candidate-9993-sdxl-lightning-v3",
+    "article_id": 9993,
+    "version": "v3",
+    "generation_job_id": "JOB-BATCH1-9993-SDXL-LIGHTNING-V3-CONTROLLED",
+    "provider": "cloudflare_ai",
+    "model": "@cf/bytedance/stable-diffusion-xl-lightning",
+    "prompt": "Photorealistic architectural documentary photograph of a modest, well-maintained, occupied Indonesian residential living room. The main subject is an ordinary painted cement-plaster wall with a localized, realistic moisture problem near its lower section. Show irregular slightly darkened damp stains, several small areas of visibly bubbled paint, subtle peeling paint edges, and mild paint discoloration concentrated near the floor. Most of the wall surface remains intact and clean. The damage should resemble a common household maintenance problem that has developed gradually, not structural destruction. Natural tropical daylight, realistic ceramic floor tiles, ordinary Indonesian home construction, accurate plaster texture, believable moisture patterns. Medium-close architectural photography, moisture symptoms clearly recognizable. No large holes, no exposed brickwork, no demolished plaster, no abandoned building, no catastrophic damage, no flooding, no mold infestation, no luxury staged interior, no CGI, no text, no watermark.",
+    "dimensions": "1024x1024",
+    "width": 1024,
+    "height": 1024,
+    "steps": 4,
+    "generation_timestamp": "2026-10-30T04:22:51.813Z",
+    "media_role": "featured_hero",
+    "provenance": {
+      "source_type": "ai_generated_operator_reviewed",
+      "provider": "cloudflare_workers_ai",
+      "model": "@cf/bytedance/stable-diffusion-xl-lightning",
+      "model_name": "SDXL Lightning",
+      "latency_ms": 5602,
+      "byte_size": 71305,
+      "sha256": "4a1a7376bf2ed55aa3d21851f06f4f864337744d657625f0400631e36e5d63b2",
+      "evi_version": "1.1.0-controlled",
+      "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+      "prompt_style": "controlled_localized_moisture"
+    },
+    "approval_status": "PENDING_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-9993-sdxl-lightning-v3.jpg",
+    "public_url": "/experimental-media/candidate-9993-sdxl-lightning-v3.jpg",
+    "byte_size": 71305,
+    "sha256": "4a1a7376bf2ed55aa3d21851f06f4f864337744d657625f0400631e36e5d63b2",
+    "mime_type": "image/jpeg",
+    "usage": {
+      "estimated_neurons": 1200,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true
+    },
+    "visual_brief": {
+      "articleId": 9993,
+      "slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+      "articleSection": "2. Memahami Kemungkinan Sumber Kelembapan Dinding: Indikator Fisik Rembesan & Plesteran Rusak",
+      "purpose": "cover",
+      "mainSubject": "Dinding plesteran bata rumah tinggal tropis Indonesia yang mengalami kerusakan fisik akibat kelembapan dinding bawah (rising damp).",
+      "problemOrSolution": "Kelembapan air tanah dan tekanan uap yang mendorong lapisan film cat menggelembung (blistering), mengelupas rapuh, dan meninggalkan noda basah/bercak garam efloresensi pada plesteran.",
+      "visualEvidence": [
+        "Noda lembap gelap yang terlihat jelas pada plesteran dinding bagian bawah",
+        "Tekstur cat menggelembung melepuh (blistering paint) yang nyata",
+        "Lapisan cat terkelupas dan rapuh menampakkan plesteran semen kasar di baliknya",
+        "Perubahan warna permukaan dinding (discoloration) akibat air merembes",
+        "Tekstur plesteran semen asli rumah Indonesia yang realistis, bukan dinding gypsum bersih"
+      ],
+      "architecturalContext": "Interior ruang keluarga rumah tinggal Indonesia, lantai ubin keramik matte 40x40cm, plint dinding standar, kusen pintu kayu sederhana, pencahayaan alami jendela samping pagi hari.",
+      "compositionAndFraming": "Cover eye-level medium-close shot. Bidang dinding rusak pada ketinggian 0-80cm menjadi fokus tajam utama (60% bidang frame), namun tetap memperlihatkan sebagian konteks ruang tinggal (lantai, sedikit perabot kayu sederhana, sudut kusen) agar tetap terasa sebagai interior rumah nyata, bukan foto makro laboratorium semata.",
+      "materialGeometryConstraints": "Plesteran semen acian kasar realistis dengan retak rambut halus, ubin keramik matte berpola nat standar, konsistensi bayangan dari jendela samping.",
+      "negativeConstraints": [
+        "no pristine clean walls",
+        "no spotless white luxury mansion",
+        "no dramatic apocalyptic ruins",
+        "no fantasy Hollywood collapsing house",
+        "no floodwater standing in the room",
+        "no CGI glare or artificial neon lighting",
+        "no cluttered decorative mess"
+      ],
+      "caption": "Ilustrasi gejala fisik cat menggelembung dan rembesan lembap pada dinding plesteran bawah. Gejala visual ini merupakan manifestasi tekanan uap air dan garam kapiler, yang memerlukan diagnosis fisik lebih lanjut untuk membedakan antara rembesan air tanah (rising damp) dan kebocoran talang atap.",
+      "altText": "Dinding plesteran rumah tinggal Indonesia yang memperlihatkan noda kelembapan, cat menggelembung, dan cat terkelupas pada bagian bawah dekat lantai.",
+      "modelProvenance": {
+        "model": "@cf/black-forest-labs/flux-1-schnell",
+        "provider": "cloudflare_workers_ai",
+        "steps": 4,
+        "dimensions": "1024x1024",
+        "targetRatio": "16:9"
+      }
+    },
+    "geometry_qa": {
+      "deckingJoints": "NOT_APPLICABLE",
+      "spatialPerspective": "PASS",
+      "doorWindowGeometry": "PASS",
+      "railingPosition": "NOT_APPLICABLE",
+      "structuralConsistency": "PASS",
+      "lightingAndShadow": "PASS",
+      "materialForm": "PASS",
+      "damageRealism": "PASS",
+      "overallStatus": "PENDING_REVIEW",
+      "notes": "Kandidat v3 Terkendali: Noda lembap terlokalisasi pada dinding bawah rumah terawat (SDXL Lightning)."
+    },
+    "subject_priority_qa": {
+      "subjectIsVisuallyObvious": true,
+      "mandatoryEvidencePresent": [
+        "dinding plesteran dengan noda lembab terlokalisasi",
+        "bercak cat melepuh kecil",
+        "sebagian besar dinding bersih dan utuh",
+        "lantai ubin keramik",
+        "pencahayaan alami tropis"
+      ],
+      "missingEvidence": [],
+      "isRelevantToContent": true,
+      "verdict": "SATISFIED",
+      "notes": "Kandidat memenuhi prinsip Visual Subject Priority dan relevansi editorial."
+    },
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "category": "Subject Relevance",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Dinding plesteran dengan masalah kelembapan terlokalisasi di bagian bawah."
+      },
+      "damageProblemAccuracy": {
+        "category": "Damage/Problem Accuracy",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Gejala terkendali (noda lembap gelap tidak beraturan, bercak cat melepuh kecil, sebagian besar dinding bersih)."
+      },
+      "architecturalGeometry": {
+        "category": "Architectural Geometry",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Pertemuan dinding dan lantai ubin keramik masuk akal, elevasi mata wajar."
+      },
+      "materialRealism": {
+        "category": "Material Realism",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Tekstur plesteran semen dan ubin keramik rumah Indonesia tampak autentik tanpa lubang bobokan."
+      },
+      "editorialSuitability": {
+        "category": "Editorial Suitability",
+        "status": "PENDING_HUMAN_REVIEW",
+        "method": "HUMAN_AUDIT",
+        "evaluationText": "Menunggu Persetujuan Final: Memerlukan review visual mata manusia untuk memilih antara FLUX v3 vs SDXL v3."
+      },
+      "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
+    },
+    "crop_preview": {
+      "sourceDimensions": "1024x1024",
+      "targetRatio": "16:9",
+      "safeZoneMarginPercent": 5,
+      "cropTopPercent": 38.75,
+      "cropHeightPercent": 56.25,
+      "subjectFocalPointY": "bottom"
+    },
+    "editorial_verdict": "PENDING_REVIEW",
+    "editorial_notes": "Regenerasi v3 (SDXL Lightning): Kerusakan kelembapan ringan dan bertahap pada rumah tinggal terawat (tanpa lubang bobokan plesteran)."
+  },
+  {
+    "id": "candidate-9993-flux-1-schnell-v3",
+    "article_id": 9993,
+    "version": "v3",
+    "generation_job_id": "JOB-BATCH1-9993-FLUX-1-SCHNELL-V3-CONTROLLED",
+    "provider": "cloudflare_ai",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Photorealistic architectural documentary photograph of a modest, well-maintained, occupied Indonesian residential living room. The main subject is an ordinary painted cement-plaster wall with a localized, realistic moisture problem near its lower section. Show irregular slightly darkened damp stains, several small areas of visibly bubbled paint, subtle peeling paint edges, and mild paint discoloration concentrated near the floor. Most of the wall surface remains intact and clean. The damage should resemble a common household maintenance problem that has developed gradually, not structural destruction. Natural tropical daylight, realistic ceramic floor tiles, ordinary Indonesian home construction, accurate plaster texture, believable moisture patterns. Medium-close architectural photography, moisture symptoms clearly recognizable. No large holes, no exposed brickwork, no demolished plaster, no abandoned building, no catastrophic damage, no flooding, no mold infestation, no luxury staged interior, no CGI, no text, no watermark.",
+    "dimensions": "1024x1024",
+    "width": 1024,
+    "height": 1024,
+    "steps": 4,
+    "generation_timestamp": "2026-10-30T04:22:58.440Z",
+    "media_role": "featured_hero",
+    "provenance": {
+      "source_type": "ai_generated_operator_reviewed",
+      "provider": "cloudflare_workers_ai",
+      "model": "@cf/black-forest-labs/flux-1-schnell",
+      "model_name": "FLUX.1 Schnell",
+      "latency_ms": 6621,
+      "byte_size": 515830,
+      "sha256": "11f40738777b8227d6a2c89638a3277cc9d2d3b5f70d372915b24cf092f0f569",
+      "evi_version": "1.1.0-controlled",
+      "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+      "prompt_style": "controlled_localized_moisture"
+    },
+    "approval_status": "PENDING_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-9993-flux-1-schnell-v3.jpg",
+    "public_url": "/experimental-media/candidate-9993-flux-1-schnell-v3.jpg",
+    "byte_size": 515830,
+    "sha256": "11f40738777b8227d6a2c89638a3277cc9d2d3b5f70d372915b24cf092f0f569",
+    "mime_type": "image/jpeg",
+    "usage": {
+      "estimated_neurons": 1500,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true
+    },
+    "visual_brief": {
+      "articleId": 9993,
+      "slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+      "articleSection": "2. Memahami Kemungkinan Sumber Kelembapan Dinding: Indikator Fisik Rembesan & Plesteran Rusak",
+      "purpose": "cover",
+      "mainSubject": "Dinding plesteran bata rumah tinggal tropis Indonesia yang mengalami kerusakan fisik akibat kelembapan dinding bawah (rising damp).",
+      "problemOrSolution": "Kelembapan air tanah dan tekanan uap yang mendorong lapisan film cat menggelembung (blistering), mengelupas rapuh, dan meninggalkan noda basah/bercak garam efloresensi pada plesteran.",
+      "visualEvidence": [
+        "Noda lembap gelap yang terlihat jelas pada plesteran dinding bagian bawah",
+        "Tekstur cat menggelembung melepuh (blistering paint) yang nyata",
+        "Lapisan cat terkelupas dan rapuh menampakkan plesteran semen kasar di baliknya",
+        "Perubahan warna permukaan dinding (discoloration) akibat air merembes",
+        "Tekstur plesteran semen asli rumah Indonesia yang realistis, bukan dinding gypsum bersih"
+      ],
+      "architecturalContext": "Interior ruang keluarga rumah tinggal Indonesia, lantai ubin keramik matte 40x40cm, plint dinding standar, kusen pintu kayu sederhana, pencahayaan alami jendela samping pagi hari.",
+      "compositionAndFraming": "Cover eye-level medium-close shot. Bidang dinding rusak pada ketinggian 0-80cm menjadi fokus tajam utama (60% bidang frame), namun tetap memperlihatkan sebagian konteks ruang tinggal (lantai, sedikit perabot kayu sederhana, sudut kusen) agar tetap terasa sebagai interior rumah nyata, bukan foto makro laboratorium semata.",
+      "materialGeometryConstraints": "Plesteran semen acian kasar realistis dengan retak rambut halus, ubin keramik matte berpola nat standar, konsistensi bayangan dari jendela samping.",
+      "negativeConstraints": [
+        "no pristine clean walls",
+        "no spotless white luxury mansion",
+        "no dramatic apocalyptic ruins",
+        "no fantasy Hollywood collapsing house",
+        "no floodwater standing in the room",
+        "no CGI glare or artificial neon lighting",
+        "no cluttered decorative mess"
+      ],
+      "caption": "Ilustrasi gejala fisik cat menggelembung dan rembesan lembap pada dinding plesteran bawah. Gejala visual ini merupakan manifestasi tekanan uap air dan garam kapiler, yang memerlukan diagnosis fisik lebih lanjut untuk membedakan antara rembesan air tanah (rising damp) dan kebocoran talang atap.",
+      "altText": "Dinding plesteran rumah tinggal Indonesia yang memperlihatkan noda kelembapan, cat menggelembung, dan cat terkelupas pada bagian bawah dekat lantai.",
+      "modelProvenance": {
+        "model": "@cf/black-forest-labs/flux-1-schnell",
+        "provider": "cloudflare_workers_ai",
+        "steps": 4,
+        "dimensions": "1024x1024",
+        "targetRatio": "16:9"
+      }
+    },
+    "geometry_qa": {
+      "deckingJoints": "NOT_APPLICABLE",
+      "spatialPerspective": "PASS",
+      "doorWindowGeometry": "PASS",
+      "railingPosition": "NOT_APPLICABLE",
+      "structuralConsistency": "PASS",
+      "lightingAndShadow": "PASS",
+      "materialForm": "PASS",
+      "damageRealism": "PASS",
+      "overallStatus": "PENDING_REVIEW",
+      "notes": "Kandidat v3 Terkendali: Noda lembap terlokalisasi pada dinding bawah rumah terawat (FLUX.1 Schnell)."
+    },
+    "subject_priority_qa": {
+      "subjectIsVisuallyObvious": true,
+      "mandatoryEvidencePresent": [
+        "dinding plesteran dengan noda lembab terlokalisasi",
+        "bercak cat melepuh kecil",
+        "sebagian besar dinding bersih dan utuh",
+        "lantai ubin keramik",
+        "pencahayaan alami tropis"
+      ],
+      "missingEvidence": [],
+      "isRelevantToContent": true,
+      "verdict": "SATISFIED",
+      "notes": "Kandidat memenuhi prinsip Visual Subject Priority dan relevansi editorial."
+    },
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "category": "Subject Relevance",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Dinding plesteran dengan masalah kelembapan terlokalisasi di bagian bawah."
+      },
+      "damageProblemAccuracy": {
+        "category": "Damage/Problem Accuracy",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Gejala terkendali (noda lembap gelap tidak beraturan, bercak cat melepuh kecil, sebagian besar dinding bersih)."
+      },
+      "architecturalGeometry": {
+        "category": "Architectural Geometry",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Pertemuan dinding dan lantai ubin keramik masuk akal, elevasi mata wajar."
+      },
+      "materialRealism": {
+        "category": "Material Realism",
+        "status": "HEURISTIC_PASS",
+        "method": "AUTOMATED_HEURISTIC",
+        "evaluationText": "Heuristic Pass: Tekstur plesteran semen dan ubin keramik rumah Indonesia tampak autentik tanpa lubang bobokan."
+      },
+      "editorialSuitability": {
+        "category": "Editorial Suitability",
+        "status": "PENDING_HUMAN_REVIEW",
+        "method": "HUMAN_AUDIT",
+        "evaluationText": "Menunggu Persetujuan Final: Memerlukan review visual mata manusia untuk memilih antara FLUX v3 vs SDXL v3."
+      },
+      "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
+    },
+    "crop_preview": {
+      "sourceDimensions": "1024x1024",
+      "targetRatio": "16:9",
+      "safeZoneMarginPercent": 5,
+      "cropTopPercent": 38.75,
+      "cropHeightPercent": 56.25,
+      "subjectFocalPointY": "bottom"
+    },
+    "editorial_verdict": "PENDING_REVIEW",
+    "editorial_notes": "Regenerasi v3 (FLUX.1 Schnell): Kerusakan kelembapan ringan dan bertahap pada rumah tinggal terawat (tanpa lubang bobokan plesteran)."
   }
 ]

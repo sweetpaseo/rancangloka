@@ -136,11 +136,12 @@ for (const cand of ledger) {
 
 // Test status update workflow
 const testCand = ledger[0];
+const originalStatus = testCand.approval_status;
 const updatedApproved = updateCandidateStatus(testCand.id, 'APPROVED');
 assert(updatedApproved.approval_status === 'APPROVED', 'Candidate status can transition to APPROVED');
 
-const updatedReset = updateCandidateStatus(testCand.id, 'PENDING_REVIEW');
-assert(updatedReset.approval_status === 'PENDING_REVIEW', 'Candidate status can transition back to PENDING_REVIEW');
+const updatedReset = updateCandidateStatus(testCand.id, originalStatus);
+assert(updatedReset.approval_status === originalStatus, `Candidate status can transition back to original status (${originalStatus})`);
 
 // --------------------------------------------------------------------
 // TEST GROUP 5: Batch 1 Candidate Images on Disk & Integrity
@@ -148,8 +149,8 @@ assert(updatedReset.approval_status === 'PENDING_REVIEW', 'Candidate status can 
 console.log('\n--- Test Group 5: Batch 1 Candidates On-Disk Integrity ---');
 
 const expectedCandidates = [
-  { id: 'candidate-9993-flux-1-schnell', articleId: 9993, model: 'FLUX.1 Schnell' },
-  { id: 'candidate-9993-sdxl-lightning', articleId: 9993, model: 'SDXL Lightning' },
+  { id: 'candidate-9993-flux-1-schnell-v3', articleId: 9993, model: 'FLUX.1 Schnell' },
+  { id: 'candidate-9993-sdxl-lightning-v3', articleId: 9993, model: 'SDXL Lightning' },
   { id: 'candidate-9999-flux-1-schnell', articleId: 9999, model: 'FLUX.1 Schnell' },
   { id: 'candidate-9999-sdxl-lightning', articleId: 9999, model: 'SDXL Lightning' },
   { id: 'candidate-10000-flux-1-schnell', articleId: 10000, model: 'FLUX.1 Schnell' },
