@@ -4,6 +4,15 @@ import { loadCandidatesLedger, type ExperimentalMediaCandidate } from '../../../
 import { BATCH_1_CANONICAL_BRIEFS, BATCH_1_SUPPORTING_BRIEFS } from '../../../lib/media/editorial-visual-intelligence';
 import { getDailyUsageSummary } from '../../../lib/media/neurons-usage-service';
 import { ADMIN_COOKIE_NAME, isValidAdminSession } from '../../../lib/auth';
+import {
+  evaluateArticleMedia,
+  evaluateSlot,
+  getPendingMediaDecisions,
+  reconcileBatch1Manifest,
+  getSlotRequirement,
+  type EvaluatedSlot,
+  type EvaluatedCandidate
+} from '../../../lib/media/selection-service';
 
 const env = (Astro.locals as any)?.runtime?.env || (import.meta as any).env || {};
 const sessionCookie = Astro.cookies.get(ADMIN_COOKIE_NAME);
@@ -12,6 +21,9 @@ const isAuthenticated = await isValidAdminSession(sessionCookie, env);
 if (!isAuthenticated) {
   return Astro.redirect(`/admin/login?redirect=${encodeURIComponent(Astro.url.pathname)}`);
 }
+
+// Reconcile manifest on page load to ensure unselected alternatives are marked NOT_SELECTED
+reconcileBatch1Manifest();
 
 const candidates = loadCandidatesLedger();
 const neuronsSummary = getDailyUsageSummary();
@@ -24,7 +36,7 @@ const articles = [
     slug: 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah',
     description: 'Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah',
     editorialDecision: 'PREFER_FLUX',
-    decisionNotice: 'Pilihan Editorial Utama: FLUX.1 Schnell v3 direkomendasikan. Kerusakan dinding terlihat jelas dan realistis tanpa lubang bobokan plesteran, lebih sesuai topik artikel, dan komposisi medium-close lebih informatif dibanding SDXL v3. Tetap PENDING_REVIEW menunggu persetujuan final Chief Editor.'
+    decisionNotice: 'Pilihan Editorial Utama: FLUX.1 Schnell v3 direkomendasikan. Kerusakan dinding terlihat jelas dan realistis tanpa lubang bobokan plesteran, lebih sesuai topik artikel, dan komposisi medium-close lebih informatif dibanding SDXL v3.'
   },
   {
     id: 9999,
@@ -47,7 +59,6 @@ const articles = [
 ];
 
 function getLatestCandidate(articleId: number, modelTag: string): ExperimentalMediaCandidate | undefined {
-  // For article 9993, prefer v3 candidate
   if (articleId === 9993) {
     const v3 = candidates.find(
       (c) => c.article_id === articleId && c.id.includes('v3') && c.model.toLowerCase().includes(modelTag.toLowerCase())
@@ -66,7 +77,7 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
 function getSupportingCandidate(articleId: number, slotIdentifier: string): ExperimentalMediaCandidate | undefined {
   const normSlot = slotIdentifier.includes('-')
     ? slotIdentifier.split('-')[1].toUpperCase()
-    : slotIdentifier.toUpperCase(); // 'S1' or 'S2'
+    : slotIdentifier.toUpperCase();
 
   const matching = candidates.filter((c) => {
     if (c.article_id !== articleId) return false;
@@ -110,46 +121,27 @@ function getSupportingHistory(articleId: number, slotIdentifier: string): Experi
   });
 }
 
-function getArticleApprovalSummary(articleId: number) {
-  const heroCandidate = articleId === 9993 
-    ? getLatestCandidate(9993, 'flux') 
-    : articleId === 9999 
-    ? getLatestCandidate(9999, 'flux') 
-    : getLatestCandidate(10000, 'lightning');
-  
-  const s1Candidate = getSupportingCandidate(articleId, 'S1');
-  const s2Candidate = getSupportingCandidate(articleId, 'S2');
-
-  const heroApproved = heroCandidate?.approval_status === 'APPROVED';
-  const s1Approved = s1Candidate?.approval_status === 'APPROVED';
-  const s2Approved = s2Candidate?.approval_status === 'APPROVED';
-
-  const approvedCount = (heroApproved ? 1 : 0) + (s1Approved ? 1 : 0) + (s2Approved ? 1 : 0);
-  const isFullyApproved = approvedCount === 3;
-
+const articleEvaluations = articles.map((art) => {
+  const mediaSummary = evaluateArticleMedia(art.id, candidates);
   return {
-    heroCandidate,
-    s1Candidate,
-    s2Candidate,
-    heroApproved,
-    s1Approved,
-    s2Approved,
-    approvedCount,
-    isFullyApproved
+    ...art,
+    mediaSummary,
+    heroSlot: mediaSummary.hero_slot,
+    s1Slot: mediaSummary.s1_slot,
+    s2Slot: mediaSummary.s2_slot
   };
-}
+});
 
-const articleSummaries = articles.map((a) => ({
-  ...a,
-  approval: getArticleApprovalSummary(a.id)
-}));
-
-const totalHeroApproved = articleSummaries.filter((a) => a.approval.heroApproved).length;
-const totalSupportingApproved = articleSummaries.reduce((acc, a) => {
-  return acc + (a.approval.s1Approved ? 1 : 0) + (a.approval.s2Approved ? 1 : 0);
+const totalHeroCompleted = articleEvaluations.filter((a) => a.heroSlot.decision_status === 'DECISION_COMPLETE').length;
+const totalSupportingCompleted = articleEvaluations.reduce((acc, a) => {
+  const s1Done = a.s1Slot.decision_status === 'DECISION_COMPLETE' || a.s1Slot.decision_status === 'SKIPPED';
+  const s2Done = a.s2Slot.decision_status === 'DECISION_COMPLETE' || a.s2Slot.decision_status === 'SKIPPED';
+  return acc + (s1Done ? 1 : 0) + (s2Done ? 1 : 0);
 }, 0);
-const totalMediaApproved = totalHeroApproved + totalSupportingApproved;
-const totalArticlesFullyApproved = articleSummaries.filter((a) => a.approval.isFullyApproved).length;
+
+const totalCompletedSlots = totalHeroCompleted + totalSupportingCompleted;
+const totalArticlesComplete = articleEvaluations.filter((a) => a.mediaSummary.is_all_decisions_complete).length;
+const pendingDecisionsList = getPendingMediaDecisions([9993, 9999, 10000]);
 
 const workflowStages = [
   {
@@ -161,24 +153,24 @@ const workflowStages = [
   },
   {
     step: 2,
-    title: 'Hero Approved',
-    desc: `${totalHeroApproved}/3 Hero disetujui`,
-    status: totalHeroApproved === 3 ? 'COMPLETED' : totalHeroApproved > 0 ? 'IN_PROGRESS' : 'PENDING',
-    statusLabel: totalHeroApproved === 3 ? 'Selesai (3/3)' : `${totalHeroApproved}/3`
+    title: 'Hero Images Decided',
+    desc: `${totalHeroCompleted}/3 Slot Hero selesai diputuskan`,
+    status: totalHeroCompleted === 3 ? 'COMPLETED' : totalHeroCompleted > 0 ? 'IN_PROGRESS' : 'PENDING',
+    statusLabel: totalHeroCompleted === 3 ? 'Selesai (3/3)' : `${totalHeroCompleted}/3`
   },
   {
     step: 3,
-    title: 'Supporting Images Approved',
-    desc: `${totalSupportingApproved}/6 Visual pendamping disetujui`,
-    status: totalSupportingApproved === 6 ? 'COMPLETED' : totalSupportingApproved > 0 ? 'IN_PROGRESS' : 'PENDING',
-    statusLabel: totalSupportingApproved === 6 ? 'Selesai (6/6)' : `${totalSupportingApproved}/6 Menunggu Review`
+    title: 'Supporting Visuals Decided',
+    desc: `${totalSupportingCompleted}/6 Slot Pendamping diputuskan (${pendingDecisionsList.length} slot menunggu keputusan)`,
+    status: totalSupportingCompleted === 6 ? 'COMPLETED' : totalSupportingCompleted > 0 ? 'IN_PROGRESS' : 'PENDING',
+    statusLabel: totalSupportingCompleted === 6 ? 'Selesai (6/6)' : `${totalSupportingCompleted}/6 (${pendingDecisionsList.length} Menunggu)`
   },
   {
     step: 4,
     title: 'Media Placement Complete',
-    desc: totalArticlesFullyApproved === 3 ? '3/3 Artikel terpasang lengkap' : `${totalArticlesFullyApproved}/3 Artikel terpasang penuh`,
-    status: totalArticlesFullyApproved === 3 ? 'COMPLETED' : 'WAITING',
-    statusLabel: totalArticlesFullyApproved === 3 ? 'Selesai' : 'Menunggu Approval Penuh'
+    desc: totalCompletedSlots === 9 ? '3/3 Artikel tuntas keputusan media' : `${totalCompletedSlots}/9 Slot media telah tuntas diputuskan`,
+    status: totalCompletedSlots === 9 ? 'COMPLETED' : 'WAITING',
+    statusLabel: totalCompletedSlots === 9 ? 'Selesai' : `${totalCompletedSlots}/9 Selesai`
   },
   {
     step: 5,
@@ -190,7 +182,7 @@ const workflowStages = [
   {
     step: 6,
     title: 'Ready for Publication Approval',
-    desc: 'Persetujuan rilis final Pemimpin Redaksi',
+    desc: 'Persetujuan rilis final Pemimpin Redaksi (AUTO_PUBLISH = OFF)',
     status: 'WAITING',
     statusLabel: 'Menunggu'
   }
@@ -294,7 +286,7 @@ const workflowStages = [
           <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#FFFDF7] border border-[#E7E9EE] text-[#A76A00] text-xs font-semibold">
             <span>🚀 Alur Redaksi Terstruktur Batch 1</span>
             <span>•</span>
-            <span class="font-mono">{totalMediaApproved}/9 Total Media Disetujui</span>
+            <span class="font-mono">{totalCompletedSlots}/9 Slot Media Selesai Diputuskan</span>
           </div>
           <h2 class="text-lg font-outfit font-black text-[#172033] tracking-tight mt-1">
             Status Progres Redaksi &amp; Peluncuran Artikel
@@ -356,12 +348,13 @@ const workflowStages = [
 
     <!-- Articles Loop -->
     <div class="space-y-12">
-      {articles.map((art) => {
+      {articleEvaluations.map((art) => {
         const fluxCandidate = getLatestCandidate(art.id, 'flux');
         const sdxlCandidate = getLatestCandidate(art.id, 'lightning');
+        const fluxEval = art.heroSlot.candidates.find((c) => c.candidate.id === fluxCandidate?.id);
+        const sdxlEval = art.heroSlot.candidates.find((c) => c.candidate.id === sdxlCandidate?.id);
         const brief = BATCH_1_CANONICAL_BRIEFS[art.id];
         const historyCandidates = getHistoricalCandidates(art.id);
-        const artSummary = articleSummaries.find((s) => s.id === art.id) || { approval: getArticleApprovalSummary(art.id) };
 
         return (
           <div class="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
@@ -392,17 +385,17 @@ const workflowStages = [
                   <span
                     id={`art-approval-badge-${art.id}`}
                     class={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ${
-                      artSummary.approval.isFullyApproved
+                      art.mediaSummary.is_all_decisions_complete
                         ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                         : 'bg-amber-50 text-amber-800 border-amber-300'
                     }`}
                   >
-                    {artSummary.approval.approvedCount}/3 Media Disetujui {artSummary.approval.isFullyApproved ? '✓' : `(${3 - artSummary.approval.approvedCount} Menunggu)`}
+                    {art.mediaSummary.completed_slots}/3 Slot Diputuskan {art.mediaSummary.is_all_decisions_complete ? '✓' : `(${art.mediaSummary.pending_required_slots} Wajib Menunggu)`}
                   </span>
                 </div>
 
                 <div id={`art-preview-cta-wrap-${art.id}`}>
-                  {artSummary.approval.isFullyApproved ? (
+                  {art.mediaSummary.is_all_decisions_complete ? (
                     <a
                       id={`btn-preview-next-${art.id}`}
                       href={`/admin/preview/${art.slug}`}
@@ -418,7 +411,7 @@ const workflowStages = [
                       target="_blank"
                       class="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition flex items-center gap-1.5"
                     >
-                      <span>👁️ Pratinjau Draf ({artSummary.approval.approvedCount}/3 Terpasang) ↗</span>
+                      <span>👁️ Pratinjau Draf ({art.mediaSummary.completed_slots}/3 Slot Terpasang) ↗</span>
                     </a>
                   )}
                 </div>
@@ -503,6 +496,36 @@ const workflowStages = [
               </details>
             )}
 
+            <!-- Slot Header: Featured Hero -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-[#FFFDF7] border border-[#E7E9EE]">
+              <div class="space-y-0.5">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-mono font-black px-2.5 py-0.5 rounded bg-[#172033] text-white">
+                    SLOT: FEATURED HERO
+                  </span>
+                  <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-200">
+                    WAJIB (REQUIRED)
+                  </span>
+                  <span class="text-xs text-[#596579] font-sans">
+                    • Alternatif Model: FLUX.1 Schnell vs SDXL Lightning
+                  </span>
+                </div>
+                <p class="text-xs text-[#596579] mt-0.5">
+                  Penempatan: Sampul &amp; Bagian Atas Artikel. Pemilik artikel hanya perlu memilih <strong>1 gambar terbaik</strong> untuk slot ini. Alternatif yang tidak dipilih otomatis berstatus <span class="font-mono text-slate-700 bg-slate-100 px-1 rounded">TIDAK DIPILIH</span> dan tidak menimbulkan kewajiban persetujuan.
+                </p>
+              </div>
+
+              <div>
+                <span id={`slot-status-badge-${art.id}-hero`} class={`text-xs font-mono font-bold px-3 py-1 rounded-full border ${
+                  art.heroSlot.decision_status === 'DECISION_COMPLETE'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    : 'bg-amber-100 text-amber-800 border-amber-300'
+                }`}>
+                  {art.heroSlot.decision_status === 'DECISION_COMPLETE' ? '✓ KEPUTUSAN SELESAI' : '⏳ MENUNGGU KEPUTUSAN'}
+                </span>
+              </div>
+            </div>
+
             <!-- Comparison Grid: Left (FLUX) vs Right (SDXL) -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <!-- LEFT: FLUX.1 Schnell -->
@@ -520,13 +543,17 @@ const workflowStages = [
                     )}
                   </div>
                   <span id={`status-badge-${fluxCandidate?.id}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
-                    fluxCandidate?.approval_status === 'APPROVED'
+                    fluxEval?.selection_status === 'SELECTED'
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : fluxCandidate?.approval_status === 'REJECTED'
+                      : fluxEval?.selection_status === 'NOT_SELECTED'
+                      ? 'bg-slate-100 text-slate-700 border border-slate-300'
+                      : fluxEval?.selection_status === 'REJECTED'
                       ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                      : fluxEval?.selection_status === 'SUPERSEDED'
+                      ? 'bg-slate-100 text-slate-500 border border-slate-200'
                       : 'bg-amber-100 text-amber-800 border border-amber-300'
                   }`}>
-                    {fluxCandidate?.approval_status || 'NOT_FOUND'}
+                    {fluxEval?.status_label || fluxCandidate?.approval_status || 'NOT_FOUND'}
                   </span>
                 </div>
 
@@ -671,38 +698,40 @@ const workflowStages = [
                       </details>
                     </div>
 
-                    <!-- Operator Decision Actions -->
+                    <!-- Operator Selection Actions -->
                     <div id={`actions-wrapper-${fluxCandidate.id}`} class="pt-3 border-t border-purple-100/80 flex items-center gap-2">
                       <button
                         type="button"
-                        id={`btn-approve-${fluxCandidate.id}`}
-                        onclick={`handleDecision('${fluxCandidate.id}', 'approve', 'FLUX.1 Schnell', ${art.id})`}
-                        disabled={fluxCandidate.approval_status === 'APPROVED'}
-                        class={`flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
-                          fluxCandidate.approval_status === 'APPROVED' ? 'opacity-60 cursor-not-allowed' : ''
+                        id={`btn-select-${fluxCandidate.id}`}
+                        onclick={`handleSelection('${fluxCandidate.id}', 'select', 'FLUX.1 Schnell', ${art.id}, 'hero')`}
+                        disabled={fluxEval?.selection_status === 'SELECTED' || fluxEval?.selection_status === 'SUPERSEDED'}
+                        class={`flex-1 rounded-lg py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
+                          fluxEval?.selection_status === 'SELECTED'
+                            ? 'bg-emerald-700 text-white opacity-95 cursor-default'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                         }`}
                       >
-                        {fluxCandidate.approval_status === 'APPROVED' ? '✓ Telah Disetujui' : '✓ Setuju (Approve)'}
+                        {fluxEval?.selection_status === 'SELECTED' ? '✓ TERPILIH UNTUK ARTIKEL' : 'Pilih Gambar Ini'}
                       </button>
                       <button
                         type="button"
                         id={`btn-reject-${fluxCandidate.id}`}
-                        onclick={`handleDecision('${fluxCandidate.id}', 'reject', 'FLUX.1 Schnell', ${art.id})`}
-                        disabled={fluxCandidate.approval_status === 'REJECTED'}
-                        class={`flex-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
-                          fluxCandidate.approval_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
+                        onclick={`handleSelection('${fluxCandidate.id}', 'reject', 'FLUX.1 Schnell', ${art.id}, 'hero')`}
+                        disabled={fluxEval?.selection_status === 'REJECTED'}
+                        class={`rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-3 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
+                          fluxEval?.selection_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
                         }`}
                       >
-                        ✕ Tolak (Reject)
+                        ✕ Tolak
                       </button>
                       <button
                         type="button"
                         id={`btn-reset-${fluxCandidate.id}`}
-                        onclick={`handleDecision('${fluxCandidate.id}', 'reset', 'FLUX.1 Schnell', ${art.id})`}
+                        onclick={`handleSelection('${fluxCandidate.id}', 'reset', 'FLUX.1 Schnell', ${art.id}, 'hero')`}
                         class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 text-xs font-outfit font-semibold transition cursor-pointer"
-                        title="Reset status ke PENDING_REVIEW"
+                        title="Reset pilihan"
                       >
-                        Reset
+                        ↺ Reset
                       </button>
                     </div>
                   </div>
@@ -729,13 +758,17 @@ const workflowStages = [
                     )}
                   </div>
                   <span id={`status-badge-${sdxlCandidate?.id}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
-                    sdxlCandidate?.approval_status === 'APPROVED'
+                    sdxlEval?.selection_status === 'SELECTED'
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : sdxlCandidate?.approval_status === 'REJECTED'
+                      : sdxlEval?.selection_status === 'NOT_SELECTED'
+                      ? 'bg-slate-100 text-slate-700 border border-slate-300'
+                      : sdxlEval?.selection_status === 'REJECTED'
                       ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                      : sdxlEval?.selection_status === 'SUPERSEDED'
+                      ? 'bg-slate-100 text-slate-500 border border-slate-200'
                       : 'bg-amber-100 text-amber-800 border border-amber-300'
                   }`}>
-                    {sdxlCandidate?.approval_status || 'NOT_FOUND'}
+                    {sdxlEval?.status_label || sdxlCandidate?.approval_status || 'NOT_FOUND'}
                   </span>
                 </div>
 
@@ -892,38 +925,40 @@ const workflowStages = [
                       </details>
                     </div>
 
-                    <!-- Operator Decision Actions -->
+                    <!-- Operator Selection Actions -->
                     <div id={`actions-wrapper-${sdxlCandidate.id}`} class="pt-3 border-t border-sky-100/80 flex items-center gap-2">
                       <button
                         type="button"
-                        id={`btn-approve-${sdxlCandidate.id}`}
-                        onclick={`handleDecision('${sdxlCandidate.id}', 'approve', 'SDXL Lightning', ${art.id})`}
-                        disabled={sdxlCandidate.approval_status === 'APPROVED'}
-                        class={`flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
-                          sdxlCandidate.approval_status === 'APPROVED' ? 'opacity-60 cursor-not-allowed' : ''
+                        id={`btn-select-${sdxlCandidate.id}`}
+                        onclick={`handleSelection('${sdxlCandidate.id}', 'select', 'SDXL Lightning', ${art.id}, 'hero')`}
+                        disabled={sdxlEval?.selection_status === 'SELECTED' || sdxlEval?.selection_status === 'SUPERSEDED'}
+                        class={`flex-1 rounded-lg py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
+                          sdxlEval?.selection_status === 'SELECTED'
+                            ? 'bg-emerald-700 text-white opacity-95 cursor-default'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                         }`}
                       >
-                        {sdxlCandidate.approval_status === 'APPROVED' ? '✓ Telah Disetujui' : '✓ Setuju (Approve)'}
+                        {sdxlEval?.selection_status === 'SELECTED' ? '✓ TERPILIH UNTUK ARTIKEL' : 'Pilih Gambar Ini'}
                       </button>
                       <button
                         type="button"
                         id={`btn-reject-${sdxlCandidate.id}`}
-                        onclick={`handleDecision('${sdxlCandidate.id}', 'reject', 'SDXL Lightning', ${art.id})`}
-                        disabled={sdxlCandidate.approval_status === 'REJECTED'}
-                        class={`flex-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
-                          sdxlCandidate.approval_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
+                        onclick={`handleSelection('${sdxlCandidate.id}', 'reject', 'SDXL Lightning', ${art.id}, 'hero')`}
+                        disabled={sdxlEval?.selection_status === 'REJECTED'}
+                        class={`rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-3 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
+                          sdxlEval?.selection_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
                         }`}
                       >
-                        ✕ Tolak (Reject)
+                        ✕ Tolak
                       </button>
                       <button
                         type="button"
                         id={`btn-reset-${sdxlCandidate.id}`}
-                        onclick={`handleDecision('${sdxlCandidate.id}', 'reset', 'SDXL Lightning', ${art.id})`}
+                        onclick={`handleSelection('${sdxlCandidate.id}', 'reset', 'SDXL Lightning', ${art.id}, 'hero')`}
                         class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 text-xs font-outfit font-semibold transition cursor-pointer"
-                        title="Reset status ke PENDING_REVIEW"
+                        title="Reset pilihan"
                       >
-                        Reset
+                        ↺ Reset
                       </button>
                     </div>
                   </div>
@@ -961,7 +996,7 @@ const workflowStages = [
 
       <!-- Supporting Visual Cards Grouped by Article -->
       <div class="space-y-10">
-        {articles.map((art) => {
+        {articleEvaluations.map((art) => {
           const slot1 = BATCH_1_SUPPORTING_BRIEFS[`${art.id}-S1`];
           const slot2 = BATCH_1_SUPPORTING_BRIEFS[`${art.id}-S2`];
           const slots = [slot1, slot2].filter(Boolean);
@@ -983,7 +1018,7 @@ const workflowStages = [
                   </h3>
                 </div>
                 <div class="text-xs text-[#596579]">
-                  Target: <strong>2 Visual Pendamping Terpilih</strong>
+                  Status Slot Pendamping: <strong class="text-[#172033]">{art.s1Slot.decision_status === 'DECISION_COMPLETE' ? 'S1 Selesai' : 'S1 Menunggu'} • {art.s2Slot.decision_status === 'DECISION_COMPLETE' ? 'S2 Selesai' : art.s2Slot.decision_status === 'SKIPPED' ? 'S2 Dilewati' : 'S2 Menunggu'}</strong>
                 </div>
               </div>
 
@@ -991,6 +1026,10 @@ const workflowStages = [
                 {slots.map((s) => {
                   const cand = getSupportingCandidate(art.id, s.slotId);
                   const history = getSupportingHistory(art.id, s.slotId);
+                  const slotIdent = (s.slotId.includes('-') ? s.slotId.split('-')[1] : s.slotId).toUpperCase();
+                  const slotEval = slotIdent === 'S1' ? art.s1Slot : art.s2Slot;
+                  const candEval = slotEval.candidates.find((c) => c.candidate.id === cand?.id);
+                  const slotRequirement = slotEval.requirement;
                   const modelDisplayName = cand?.provenance?.model_name || cand?.model || (s.recommendedMethod === 'DETERMINISTIC_SVG' ? 'Deterministic Architectural SVG Engine' : 'Cloudflare Workers AI (FLUX.1 Schnell)');
 
                   return (
@@ -1002,6 +1041,13 @@ const workflowStages = [
                             <span class="text-xs font-mono font-black px-2.5 py-1 rounded-md bg-[#172033] text-white">
                               SLOT {s.slotId}
                             </span>
+                            <span class={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${
+                              slotRequirement === 'REQUIRED'
+                                ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                                : 'bg-amber-50 text-amber-900 border-amber-200'
+                            }`}>
+                              {slotRequirement === 'REQUIRED' ? 'WAJIB (REQUIRED)' : 'OPSIONAL (OPTIONAL)'}
+                            </span>
                             <span class={`text-[11px] font-mono font-bold px-2 py-0.5 rounded ${
                               s.recommendedMethod === 'DETERMINISTIC_SVG'
                                 ? 'bg-blue-100 text-blue-900 border border-blue-200'
@@ -1011,26 +1057,46 @@ const workflowStages = [
                             </span>
                           </div>
 
-                          <div class="flex items-center gap-1.5">
-                            <!-- Review Readiness Badge (Phase 8 Requirement) -->
-                            <span class={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded border ${
-                              cand?.review_readiness === 'NEEDS_REGENERATION'
-                                ? 'bg-rose-50 text-rose-800 border-rose-300'
-                                : 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                            }`}>
-                              {cand?.review_readiness === 'NEEDS_REGENERATION' ? '⚠️ NEEDS_REGENERATION' : '👁️ READY_FOR_HUMAN_REVIEW'}
-                            </span>
-
-                            <!-- Approval Status Badge -->
-                            <span id={`status-badge-${cand?.id || s.slotId}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
-                              cand?.approval_status === 'APPROVED'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                : cand?.approval_status === 'REJECTED'
+                          <div class="flex items-center gap-1.5 flex-wrap">
+                            <!-- Slot Decision Status Badge -->
+                            <span id={`slot-status-badge-${art.id}-${slotIdent}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                              slotEval.decision_status === 'DECISION_COMPLETE'
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : slotEval.decision_status === 'SKIPPED'
+                                ? 'bg-slate-100 text-slate-700 border border-slate-300'
+                                : slotEval.decision_status === 'NEEDS_REPLACEMENT'
                                 ? 'bg-rose-100 text-rose-800 border border-rose-300'
                                 : 'bg-amber-100 text-amber-800 border border-amber-300'
                             }`}>
-                              {cand?.approval_status || 'BELUM TERSEDIA'}
+                              {slotEval.decision_status === 'DECISION_COMPLETE'
+                                ? '✓ KEPUTUSAN SELESAI'
+                                : slotEval.decision_status === 'SKIPPED'
+                                ? 'DILEWATI (OPSIONAL)'
+                                : slotEval.decision_status === 'NEEDS_REPLACEMENT'
+                                ? 'PERLU REGENERASI'
+                                : 'MENUNGGU KEPUTUSAN'}
                             </span>
+
+                            {cand && (
+                              <!-- Candidate Selection Status Badge -->
+                              <span id={`status-badge-${cand.id}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                                candEval?.selection_status === 'SELECTED'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : candEval?.selection_status === 'REJECTED'
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                  : slotEval.decision_status === 'SKIPPED'
+                                  ? 'bg-slate-100 text-slate-700 border-slate-300'
+                                  : 'bg-amber-50 text-amber-800 border-amber-200'
+                              }`}>
+                                {candEval?.selection_status === 'SELECTED'
+                                  ? '✓ TERPILIH UNTUK ARTIKEL'
+                                  : candEval?.selection_status === 'REJECTED'
+                                  ? '✕ DITOLAK (REJECTED)'
+                                  : slotEval.decision_status === 'SKIPPED'
+                                  ? 'DILEWATI (SKIPPED)'
+                                  : 'TERSEDIA UNTUK DIPILIH'}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -1180,48 +1246,90 @@ const workflowStages = [
 
                       <!-- Action Buttons -->
                       {cand ? (
-                        <div id={`actions-wrapper-${cand.id}`} class="pt-3 border-t border-[#E7E9EE] flex items-center gap-2">
+                        <div id={`actions-wrapper-${cand.id}`} class="pt-3 border-t border-[#E7E9EE] flex items-center gap-2 flex-wrap">
                           <button
                             type="button"
-                            id={`btn-approve-${cand.id}`}
-                            onclick={`handleDecision('${cand.id}', 'approve', '${modelDisplayName}', ${art.id})`}
-                            disabled={cand.approval_status === 'APPROVED'}
-                            class={`flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
-                              cand.approval_status === 'APPROVED' ? 'opacity-60 cursor-not-allowed' : ''
+                            id={`btn-select-${cand.id}`}
+                            onclick={`handleSelection('${cand.id}', 'select', '${modelDisplayName}', ${art.id}, '${slotIdent}')`}
+                            disabled={candEval?.selection_status === 'SELECTED'}
+                            class={`flex-1 min-w-[140px] rounded-lg py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
+                              candEval?.selection_status === 'SELECTED'
+                                ? 'bg-emerald-700 text-white opacity-95 cursor-default'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                             }`}
                           >
-                            {cand.approval_status === 'APPROVED' ? '✓ Telah Disetujui' : '✓ Setuju (Approve)'}
+                            {candEval?.selection_status === 'SELECTED' ? '✓ TERPILIH UNTUK ARTIKEL' : 'Pilih Gambar Ini'}
                           </button>
+
+                          {slotRequirement === 'OPTIONAL' && (
+                            <button
+                              type="button"
+                              id={`btn-skip-${art.id}-${slotIdent}`}
+                              onclick={`handleSlotSkip(${art.id}, '${slotIdent}', '${slotEval.decision_status === 'SKIPPED' ? 'unskip_slot' : 'skip_slot'}')`}
+                              class={`rounded-lg px-3 py-2 text-xs font-outfit font-bold transition cursor-pointer border ${
+                                slotEval.decision_status === 'SKIPPED'
+                                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                              }`}
+                            >
+                              {slotEval.decision_status === 'SKIPPED' ? 'Batalkan Lewati' : 'Lewati Gambar Ini'}
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             id={`btn-reject-${cand.id}`}
-                            onclick={`handleDecision('${cand.id}', 'reject', '${modelDisplayName}', ${art.id})`}
-                            disabled={cand.approval_status === 'REJECTED'}
-                            class={`flex-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
-                              cand.approval_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
+                            onclick={`handleSelection('${cand.id}', 'reject', '${modelDisplayName}', ${art.id}, '${slotIdent}')`}
+                            disabled={candEval?.selection_status === 'REJECTED'}
+                            class={`rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-3 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
+                              candEval?.selection_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
                             }`}
                           >
-                            ✕ Tolak (Reject)
+                            ✕ Tolak
                           </button>
                           <button
                             type="button"
                             id={`btn-reset-${cand.id}`}
-                            onclick={`handleDecision('${cand.id}', 'reset', '${modelDisplayName}', ${art.id})`}
-                            class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 text-xs font-outfit font-semibold transition cursor-pointer"
-                            title="Reset status ke PENDING_REVIEW"
+                            onclick={`handleSelection('${cand.id}', 'reset', '${modelDisplayName}', ${art.id}, '${slotIdent}')`}
+                            class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-2 text-xs font-outfit font-semibold transition cursor-pointer"
+                            title="Reset keputusan seleksi"
                           >
                             ↺ Reset
                           </button>
                         </div>
                       ) : (
-                        <div class="pt-3 border-t border-[#E7E9EE]">
-                          <button
-                            type="button"
-                            disabled
-                            class="w-full rounded-lg bg-slate-100 text-slate-400 py-2 text-xs font-outfit font-semibold cursor-not-allowed text-center"
-                          >
-                            Tombol Persetujuan Dinonaktifkan (Kandidat Belum Diproduksi)
-                          </button>
+                        <div class="pt-3 border-t border-[#E7E9EE] flex items-center gap-2">
+                          {slotRequirement === 'OPTIONAL' ? (
+                            <div class="flex items-center gap-2 w-full">
+                              <button
+                                type="button"
+                                disabled
+                                class="flex-1 rounded-lg bg-slate-100 text-slate-400 py-2 text-xs font-outfit font-semibold cursor-not-allowed text-center"
+                              >
+                                Visual Belum Dibuat (Opsional)
+                              </button>
+                              <button
+                                type="button"
+                                id={`btn-skip-${art.id}-${slotIdent}`}
+                                onclick={`handleSlotSkip(${art.id}, '${slotIdent}', '${slotEval.decision_status === 'SKIPPED' ? 'unskip_slot' : 'skip_slot'}')`}
+                                class={`rounded-lg px-3 py-2 text-xs font-outfit font-bold transition cursor-pointer border ${
+                                  slotEval.decision_status === 'SKIPPED'
+                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
+                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                                }`}
+                              >
+                                {slotEval.decision_status === 'SKIPPED' ? 'Batalkan Lewati' : 'Lewati Gambar Ini'}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              class="w-full rounded-lg bg-slate-100 text-slate-400 py-2 text-xs font-outfit font-semibold cursor-not-allowed text-center"
+                            >
+                              Tombol Seleksi Dinonaktifkan (Kandidat Belum Diproduksi)
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1370,31 +1478,27 @@ const workflowStages = [
       }, duration);
     }
 
-    async function handleDecision(candidateId, action, modelName, articleId) {
+    async function handleSelection(candidateId, action, modelName, articleId, slotIdentifier) {
       if (inFlight[candidateId]) return;
       inFlight[candidateId] = true;
 
-      const btnApprove = document.getElementById(`btn-approve-${candidateId}`);
+      const btnSelect = document.getElementById(`btn-select-${candidateId}`) || document.getElementById(`btn-approve-${candidateId}`);
       const btnReject = document.getElementById(`btn-reject-${candidateId}`);
       const btnReset = document.getElementById(`btn-reset-${candidateId}`);
-      const badge = document.getElementById(`status-badge-${candidateId}`);
-      const reviewerBox = document.getElementById(`reviewer-info-${candidateId}`);
 
-      const origApproveHtml = btnApprove ? btnApprove.innerHTML : '';
+      const origSelectHtml = btnSelect ? btnSelect.innerHTML : '';
       const origRejectHtml = btnReject ? btnReject.innerHTML : '';
       const origResetHtml = btnReset ? btnReset.innerHTML : '';
 
-      // Set loading state
-      if (action === 'approve' && btnApprove) {
-        btnApprove.innerHTML = '⏳ Menyimpan...';
+      if (action === 'select' && btnSelect) {
+        btnSelect.innerHTML = '⏳ Memilih...';
       } else if (action === 'reject' && btnReject) {
-        btnReject.innerHTML = '⏳ Menyimpan...';
+        btnReject.innerHTML = '⏳ Menolak...';
       } else if (action === 'reset' && btnReset) {
         btnReset.innerHTML = '⏳ Mereset...';
       }
 
-      // Disable buttons during in-flight request
-      if (btnApprove) btnApprove.disabled = true;
+      if (btnSelect) btnSelect.disabled = true;
       if (btnReject) btnReject.disabled = true;
       if (btnReset) btnReset.disabled = true;
 
@@ -1402,7 +1506,12 @@ const workflowStages = [
         const res = await fetch('/api/admin/media/candidate-approval', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: candidateId, action })
+          body: JSON.stringify({
+            id: candidateId,
+            action,
+            articleId,
+            slot: slotIdentifier
+          })
         });
 
         if (res.status === 401) {
@@ -1415,104 +1524,26 @@ const workflowStages = [
 
         const data = await res.json();
 
-        if (res.ok && data.status === 'success' && data.candidate) {
-          const cand = data.candidate;
-          const status = cand.approval_status;
-
-          // Update Status Badge
-          if (badge) {
-            badge.textContent = status;
-            if (status === 'APPROVED') {
-              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
-            } else if (status === 'REJECTED') {
-              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300';
-            } else {
-              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300';
-            }
-          }
-
-          // Update Reviewer Metadata
-          if (reviewerBox) {
-            if (cand.reviewed_at) {
-              const timeStr = new Date(cand.reviewed_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-              reviewerBox.innerHTML = `
-                <div class="text-[11px] font-mono text-[#596579] bg-[#FFFDF7] p-2 rounded-lg border border-[#E7E9EE] flex items-center justify-between">
-                  <span>Reviewer: <strong class="text-[#172033]">${cand.reviewed_by || 'Chief Editor'}</strong></span>
-                  <span>${timeStr}</span>
-                </div>
-              `;
-            } else {
-              reviewerBox.innerHTML = '';
-            }
-          }
-
-          // Update Button States
-          if (status === 'APPROVED') {
-            if (btnApprove) {
-              btnApprove.innerHTML = '✓ Telah Disetujui';
-              btnApprove.disabled = true;
-              btnApprove.classList.add('opacity-60', 'cursor-not-allowed');
-            }
-            if (btnReject) {
-              btnReject.innerHTML = '✕ Tolak (Reject)';
-              btnReject.disabled = false;
-              btnReject.classList.remove('opacity-60', 'cursor-not-allowed');
-            }
-            if (btnReset) {
-              btnReset.innerHTML = '↺ Reset';
-              btnReset.disabled = false;
-            }
-            showToast(`✓ Gambar ${modelName || ''} untuk Artikel #${articleId || ''} berhasil disetujui!`, 'success');
-          } else if (status === 'REJECTED') {
-            if (btnApprove) {
-              btnApprove.innerHTML = '✓ Setuju (Approve)';
-              btnApprove.disabled = false;
-              btnApprove.classList.remove('opacity-60', 'cursor-not-allowed');
-            }
-            if (btnReject) {
-              btnReject.innerHTML = '✕ Telah Ditolak';
-              btnReject.disabled = true;
-              btnReject.classList.add('opacity-60', 'cursor-not-allowed');
-            }
-            if (btnReset) {
-              btnReset.innerHTML = '↺ Reset';
-              btnReset.disabled = false;
-            }
-            showToast(`✕ Gambar ${modelName || ''} untuk Artikel #${articleId || ''} telah ditolak.`, 'warning');
+        if (res.ok && data.status === 'success') {
+          if (action === 'select') {
+            showToast(`✓ Gambar ${modelName || ''} berhasil dipilih untuk Artikel #${articleId}!`, 'success');
+          } else if (action === 'reject') {
+            showToast(`✕ Gambar ${modelName || ''} telah ditolak.`, 'warning');
           } else {
-            // PENDING_REVIEW
-            if (btnApprove) {
-              btnApprove.innerHTML = '✓ Setuju (Approve)';
-              btnApprove.disabled = false;
-              btnApprove.classList.remove('opacity-60', 'cursor-not-allowed');
-            }
-            if (btnReject) {
-              btnReject.innerHTML = '✕ Tolak (Reject)';
-              btnReject.disabled = false;
-              btnReject.classList.remove('opacity-60', 'cursor-not-allowed');
-            }
-            if (btnReset) {
-              btnReset.innerHTML = '↺ Reset';
-              btnReset.disabled = false;
-            }
-            showToast(`↺ Status kandidat dikembalikan ke PENDING_REVIEW.`, 'info');
+            showToast(`↺ Status kandidat telah direset.`, 'info');
           }
-
-          // Dynamically re-evaluate article progress and toggle "Lanjut ke Pratinjau Artikel"
-          updateArticleProgressUI(articleId);
+          // Reload page to reflect authoritative server-side slot evaluations, superseded states, and counters
+          setTimeout(() => window.location.reload(), 700);
         } else {
-          // Failure response
           const msg = data?.message || 'Terjadi kesalahan sistem';
           showToast(`Gagal: ${msg}`, 'error');
-
-          // Restore buttons
-          if (btnApprove) {
-            btnApprove.innerHTML = origApproveHtml;
-            btnApprove.disabled = origApproveHtml.includes('Telah Disetujui');
+          if (btnSelect) {
+            btnSelect.innerHTML = origSelectHtml;
+            btnSelect.disabled = false;
           }
           if (btnReject) {
             btnReject.innerHTML = origRejectHtml;
-            btnReject.disabled = origRejectHtml.includes('Telah Ditolak');
+            btnReject.disabled = false;
           }
           if (btnReset) {
             btnReset.innerHTML = origResetHtml;
@@ -1521,13 +1552,13 @@ const workflowStages = [
         }
       } catch (err) {
         showToast(`Koneksi jaringan terputus: ${err.message}`, 'error');
-        if (btnApprove) {
-          btnApprove.innerHTML = origApproveHtml;
-          btnApprove.disabled = origApproveHtml.includes('Telah Disetujui');
+        if (btnSelect) {
+          btnSelect.innerHTML = origSelectHtml;
+          btnSelect.disabled = false;
         }
         if (btnReject) {
           btnReject.innerHTML = origRejectHtml;
-          btnReject.disabled = origRejectHtml.includes('Telah Ditolak');
+          btnReject.disabled = false;
         }
         if (btnReset) {
           btnReset.innerHTML = origResetHtml;
@@ -1536,6 +1567,70 @@ const workflowStages = [
       } finally {
         delete inFlight[candidateId];
       }
+    }
+
+    async function handleSlotSkip(articleId, slotIdentifier, action = 'skip_slot') {
+      const btnKey = `skip-${articleId}-${slotIdentifier}`;
+      if (inFlight[btnKey]) return;
+      inFlight[btnKey] = true;
+
+      const btnSkip = document.getElementById(`btn-skip-${articleId}-${slotIdentifier}`);
+      const origHtml = btnSkip ? btnSkip.innerHTML : '';
+      if (btnSkip) {
+        btnSkip.innerHTML = '⏳ Menyimpan...';
+        btnSkip.disabled = true;
+      }
+
+      try {
+        const res = await fetch('/api/admin/media/candidate-approval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action,
+            articleId,
+            slot: slotIdentifier
+          })
+        });
+
+        if (res.status === 401) {
+          showToast('Sesi admin telah berakhir. Mengalihkan ke login...', 'error');
+          setTimeout(() => {
+            window.location.href = '/admin/login?redirect=' + encodeURIComponent(window.location.pathname);
+          }, 1500);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (res.ok && data.status === 'success') {
+          showToast(
+            action === 'unskip_slot'
+              ? `Slot ${slotIdentifier} dikembalikan (tidak lagi dilewati).`
+              : `Slot ${slotIdentifier} berhasil dilewati (opsional).`,
+            'info'
+          );
+          setTimeout(() => window.location.reload(), 700);
+        } else {
+          const msg = data?.message || 'Gagal mengubah status slot';
+          showToast(`Gagal: ${msg}`, 'error');
+          if (btnSkip) {
+            btnSkip.innerHTML = origHtml;
+            btnSkip.disabled = false;
+          }
+        }
+      } catch (err) {
+        showToast(`Koneksi jaringan terputus: ${err.message}`, 'error');
+        if (btnSkip) {
+          btnSkip.innerHTML = origHtml;
+          btnSkip.disabled = false;
+        }
+      } finally {
+        delete inFlight[btnKey];
+      }
+    }
+
+    async function handleDecision(candidateId, action, modelName, articleId) {
+      return handleSelection(candidateId, action === 'approve' ? 'select' : action, modelName, articleId, 'supporting');
     }
 
     function updateArticleProgressUI(articleId) {
