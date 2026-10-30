@@ -33,6 +33,15 @@ export interface EditorialVisualBrief {
   };
 }
 
+export interface SupportingVisualBrief extends EditorialVisualBrief {
+  slotId: string;
+  recommendedMethod: 'DETERMINISTIC_SVG' | 'AI_GENERATION' | 'HYBRID_VECTOR';
+  relevanceCheck: string;
+  geometryCheckPlan: string;
+  reviewStatus: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  generationPromptOrInstructions: string;
+}
+
 export type GeometryCheckResult = 'PASS' | 'WARN' | 'FAIL' | 'NOT_APPLICABLE';
 
 export interface EditorialGeometryQA {
@@ -218,6 +227,252 @@ export const BATCH_1_CANONICAL_BRIEFS: Record<number, EditorialVisualBrief> = {
       dimensions: '1024x1024',
       targetRatio: '16:9'
     }
+  }
+};
+
+/**
+ * Supporting Visual Briefs for Batch 1 Articles (Target: 2 visuals per article)
+ * Strictly PENDING_REVIEW awaiting Chief Editor approval before generation.
+ */
+export const BATCH_1_SUPPORTING_BRIEFS: Record<string, SupportingVisualBrief> = {
+  // --- ARTICLE #9993: Dinding Rembes ---
+  '9993-S1': {
+    slotId: '9993-S1',
+    articleId: 9993,
+    slug: 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah',
+    articleSection: '2. Memahami Kemungkinan Sumber Kelembapan Dinding: Indikator Fisik Rembesan & Plesteran Rusak (Sub A, B, C)',
+    purpose: 'supporting',
+    mainSubject: 'Diagram teknis potongan melintang (cross-section) dinding rumah tinggal membedakan 3 jalur aliran air: rising damp, tempias hujan eksterior, dan kebocoran talang atap.',
+    problemOrSolution: 'Memperjelas secara visual perbedaan asal muasal air dan arah gaya rambatnya: kapilaritas ke atas (0-80cm), dorongan angin horizontal pada plesteran luar, dan gravitasi ke bawah dari pertemuan atap/talang.',
+    visualEvidence: [
+      'Penampang struktur dinding bata, lapisan plesteran semen acian, sloof beton, dan muka tanah',
+      'Vektor panah biru (1) Rising Damp: merambat naik secara kapiler dari tanah ke plesteran bawah',
+      'Vektor panah biru (2) Wind-Driven Rain: butiran tempias menghantam dinding luar meresap ke dalam',
+      'Vektor panah biru (3) Gravity Ingress: kebocoran talang/flashing mengalir vertikal ke bawah dari plafon',
+      'Label anotasi teknis yang jelas dan mudah dibaca pada setiap jalur'
+    ],
+    architecturalContext: 'Diagram skematik arsitektural teknik bangunan tropis Indonesia, latar belakang putih bersih, kontras tinggi.',
+    compositionAndFraming: 'Diagram penampang ortogonal 2D dengan proporsi rasional, membagi dinding menjadi tiga zona observasi vertikal (atas, tengah, bawah).',
+    materialGeometryConstraints: 'Garis penampang lurus bersudut 90 derajat, ketebalan dinding proporsional (15 cm), kedalaman pondasi dan sloof akurat.',
+    negativeConstraints: [
+      'no AI hallucinated messy arrows or gibberish text',
+      'no non-deterministic geometry',
+      'no realistic clutter obscuring the cross-section',
+      'no missing layer labels'
+    ],
+    caption: 'Diagram skematik tiga jalur utama penetrasi air ke dinding rumah: kapilaritas air tanah (rising damp), resapan tempias hujan horizontal, dan aliran kebocoran talang atap dari atas.',
+    altText: 'Diagram teknis penampang dinding membedakan arah aliran air tanah, tempias hujan luar, dan kebocoran talang atap.',
+    recommendedMethod: 'DETERMINISTIC_SVG',
+    modelProvenance: {
+      model: 'deterministic_svg_generator',
+      provider: 'rancangloka_editorial_vector',
+      dimensions: '1200x675',
+      targetRatio: '16:9'
+    },
+    relevanceCheck: 'Sangat relevan dengan penguraian 3 penyebab utama pada Bagian 2 naskah artikel #9993.',
+    geometryCheckPlan: 'Verifikasi sudut 90 derajat dinding, ketebalan dinding standar 150mm, elevasi tanah terhadap sloof dan lantai interior (+-0.00).',
+    reviewStatus: 'PENDING_REVIEW',
+    generationPromptOrInstructions: 'Gunakan kode SVG deterministik dengan palet warna editorial RancangLoka (Navy #172033, Sky Blue #0066ee untuk air, Amber #A76A00 untuk peringatan tanah lembap). Anotasi teks menggunakan font Plus Jakarta Sans terbaca tajam.'
+  },
+
+  '9993-S2': {
+    slotId: '9993-S2',
+    articleId: 9993,
+    slug: 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah',
+    articleSection: '3. Matriks Indikator Pengamatan Mandiri & 4. Memahami Keterbatasan Perbaikan Interior: Tekanan Uap dan Cat Kedap Air',
+    purpose: 'supporting',
+    mainSubject: 'Foto dokumenter makro detail kantung cat menggelembung (blistering), retakan lapisan film cat rapuh, dan plesteran semen kasar berkerak garam.',
+    problemOrSolution: 'Memperlihatkan manifestasi fisik tekanan uap air negatif di balik lapisan cat interior yang tidak permeable, menjelaskan mengapa cat antibocor interior selalu melepuh kembali jika sumber air tidak diputus.',
+    visualEvidence: [
+      'Kantung lepuhan cat (paint blister) mekar bulat berdiameter 1-3 cm',
+      'Lapisan cat terkelupas rapuh dengan ketebalan film nyata menampakkan acian abu-abu di baliknya',
+      'Bercak gelap kelembapan aktif pada plesteran semen',
+      'Serbuk kristal garam putih tipis (efloresensi) di sekitar tepi retakan',
+      'Pencahayaan alami menyamping yang menonjolkan tekstur kasar dan kedalaman kerusakan'
+    ],
+    architecturalContext: 'Detail permukaan dinding interior rumah tinggal Indonesia, plesteran semen acian, dekat lantai.',
+    compositionAndFraming: 'Macro / close-up textured shot dengan depth of field dangkal, fokus tajam pada lepuhan cat utama dan tepian plester terkelupas.',
+    materialGeometryConstraints: 'Ketebalan film cat realistis (bukan lapisan karton tebal), tekstur butiran semen acian kasar alami, bukan dinding gypsum mulus.',
+    negativeConstraints: [
+      'no catastrophic structural collapse',
+      'no pristine clean paint',
+      'no mold spores resembling alien mushrooms',
+      'no CGI plastic shiny texture'
+    ],
+    caption: 'Detail makro kerusakan cat interior yang melepuh (blistering) dan terkelupas akibat tekanan uap air tanah yang tertahan di balik lapisan film cat kedap air.',
+    altText: 'Foto close-up permukaan dinding dengan cat menggelembung, cat terkelupas rapuh, dan semen acian lembap berkerak efloresensi.',
+    recommendedMethod: 'AI_GENERATION',
+    modelProvenance: {
+      model: '@cf/black-forest-labs/flux-1-schnell',
+      provider: 'cloudflare_workers_ai',
+      steps: 4,
+      dimensions: '1024x1024',
+      targetRatio: '16:9'
+    },
+    relevanceCheck: 'Memberikan bukti visual otentik bagi pembahasan tabel matriks gejala di Bagian 3 dan fenomena tekanan uap di Bagian 4.',
+    geometryCheckPlan: 'Inspeksi tekstur mikro: pastikan tidak ada halusinasi geometris benda aneh, gelembung tampak seperti lepuhan cat asli.',
+    reviewStatus: 'PENDING_REVIEW',
+    generationPromptOrInstructions: 'Macro architectural documentary photography of localized moisture damage on a painted cement plaster wall of an Indonesian home. Prominently showing real paint blistering with air and moisture pockets, brittle cracked peeling paint film exposing gritty gray cement plaster, damp dark stains, and delicate white efflorescence salt crusts around the hairline edges. Natural side window morning light creating sharp textural relief and authentic shadows. Photojournalistic building diagnostic style. Avoid pristine walls, CGI sheen, extreme demolition.'
+  },
+
+  // --- ARTICLE #9999: Balkon Kecil ---
+  '9999-S1': {
+    slotId: '9999-S1',
+    articleId: 9999,
+    slug: '7-ide-menata-balkon-rumah-kecil-agar-nyaman',
+    articleSection: '2. Pilih Furnitur Fleksibel dan Ramah Ruang Sempit — Meja Gantung pada Railing',
+    purpose: 'supporting',
+    mainSubject: 'Detail mekanisme pemasangan meja gantung kayu pada railing besi balkon sempit dengan sisa koridor jalan kaki yang lega.',
+    problemOrSolution: 'Menghadirkan permukaan meja fungsional tanpa memakan luas lantai balkon berukuran 1.2 x 2.4 meter, memungkinkan pemilik tetap bisa bekerja atau minum kopi tanpa tersandung kaki meja.',
+    visualEvidence: [
+      'Braket klem logam kokoh terpasang melingkari rel atas (top rail) besi hitam',
+      'Papan meja kayu jati/akasia solid berbentuk ramping (lebar 30-35 cm) dalam posisi terbentang horizontal',
+      'Engsel lipat siku penopang di bawah meja yang realistis dan stabil',
+      'Koridor lantai ubin kayu di depan meja tersisa minimal 60-70 cm leluasa',
+      'Satu cangkir keramik kopi dan buku kecil di atas meja sebagai pembanding skala'
+    ],
+    architecturalContext: 'Balkon lantai dua rumah kota tropis Indonesia, railing besi hollow hitam doff, lantai ubin kayu interlocking.',
+    compositionAndFraming: 'Medium shot dari sudut serong 45 derajat memperlihatkan mekanisme klem meja pada railing sekaligus ruang kosong sirkulasi lantai di sebelahnya.',
+    materialGeometryConstraints: 'Railing besi vertikal lurus sejajar dengan jarak 10 cm, papan meja horizontal rata air, ubin decking kayu bergaris lurus konsisten.',
+    negativeConstraints: [
+      'no floating table brackets without physical connection to railing',
+      'no wide massive dining table blocking the entire doorway',
+      'no warped crooked railing bars',
+      'no oversized luxury penthouse terrace'
+    ],
+    caption: 'Meja bar lipat yang dikaitkan langsung pada railing atas balkon menghemat luas lantai dan menyisakan jalur sirkulasi selebar 60–70 cm.',
+    altText: 'Meja kayu lipat terpasang kokoh pada railing besi balkon dengan sisa ruang jalan kaki yang lega di sampingnya.',
+    recommendedMethod: 'AI_GENERATION',
+    modelProvenance: {
+      model: '@cf/black-forest-labs/flux-1-schnell',
+      provider: 'cloudflare_workers_ai',
+      steps: 4,
+      dimensions: '1024x1024',
+      targetRatio: '16:9'
+    },
+    relevanceCheck: 'Secara langsung memvisualisasikan solusi teknis sub-bagian 2.A naskah balkon kecil.',
+    geometryCheckPlan: 'Verifikasi sambungan klem besi pada railing: tidak boleh tampak menembus udara, garis railing lurus, permukaan meja datar.',
+    reviewStatus: 'PENDING_REVIEW',
+    generationPromptOrInstructions: 'Medium shot architectural photo of a space-saving foldable wooden bar shelf securely clamped onto a black metal balcony railing of a narrow 1.2m Indonesian townhouse balcony. The metal bracket attachment mechanism wrapping over the top railing bar is structurally realistic and tightly fitted. On the slim solid teak table surface rests a single ceramic coffee mug. To the side, at least 65 cm of open walking corridor on acacia interlocking decking tiles is clearly visible and uncluttered. Gentle morning tropical sunlight, straight railing balusters, realistic urban residential scale. Avoid floating brackets, cluttered floors, giant banquet tables.'
+  },
+
+  '9999-S2': {
+    slotId: '9999-S2',
+    articleId: 9999,
+    slug: '7-ide-menata-balkon-rumah-kecil-agar-nyaman',
+    articleSection: '2. Pilih Furnitur Fleksibel — Set Bistro Lipat & 4. Hadirkan Tanaman secara Vertikal',
+    purpose: 'supporting',
+    mainSubject: 'Penataan sudut santai balkon mungil dengan satu kursi bistro lipat ramping dan rak tanaman vertikal di dinding.',
+    problemOrSolution: 'Kombinasi furnitur yang mudah dilipat saat tidak digunakan dan pemanfaatan dinding vertikal untuk tanaman hias tropis, menjaga lantai tetap bersih dan mudah disapu/dipel.',
+    visualEvidence: [
+      'Satu kursi lipat bistro logam warna sage green atau hitam ramping di sudut balkon',
+      'Kisi kayu (trellis) terpasang di dinding samping dengan pot-pot gantung berisi sirih gading dan pakis mini',
+      'Lantai ubin kayu interlocking bersih tanpa pot besar yang menghalangi jalan',
+      'Pintu kaca geser terbuka sebagian menuju kamar tidur atau ruang kerja',
+      'Sirkulasi lantai terasa lega dan teratur'
+    ],
+    architecturalContext: 'Balkon kompak townhouse perkotaan Indonesia, ukuran 1.2 x 2.4 meter, iklim tropis hangat.',
+    compositionAndFraming: 'Eye-level shot menghadap sudut dinding samping balkon, menampilkan keseimbangan antara kursi bistro, penghijauan dinding, dan lantai kayu.',
+    materialGeometryConstraints: 'Garis sambungan ubin kayu paralel, kisi trellis dinding vertikal dan horizontal lurus, proporsi kursi proporsional dengan lebar balkon 1.2m.',
+    negativeConstraints: [
+      'no overgrown jungle blocking the doorway',
+      'no heavy concrete planter boxes crowding the floor',
+      'no distorted crooked decking tiles',
+      'no impossible perspective angles'
+    ],
+    caption: 'Kombinasi kursi lipat bistro dan rak tanaman vertikal pada dinding samping menciptakan sudut hijau yang teduh tanpa menyita luas lantai balkon yang terbatas.',
+    altText: 'Sudut balkon kecil dengan kursi lipat ramping, lantai ubin kayu, dan pot tanaman hijau tertata rapi di dinding.',
+    recommendedMethod: 'AI_GENERATION',
+    modelProvenance: {
+      model: '@cf/black-forest-labs/flux-1-schnell',
+      provider: 'cloudflare_workers_ai',
+      steps: 4,
+      dimensions: '1024x1024',
+      targetRatio: '16:9'
+    },
+    relevanceCheck: 'Menggabungkan rekomendasi furnitur fleksibel (Ide 2) dan penghijauan vertikal hemat tempat (Ide 4).',
+    geometryCheckPlan: 'Verifikasi garis sambungan ubin kayu tidak zig-zag melengkung, kisi dinding vertikal tegak, kaki kursi lipat menapak wajar.',
+    reviewStatus: 'PENDING_REVIEW',
+    generationPromptOrInstructions: 'Eye-level architectural photo of a cozy side corner of a 1.2 x 2.4 meter Indonesian townhouse balcony. A slim, foldable sage-green metal bistro chair is neatly placed in the corner next to a slender folding side table. The white side wall features a tidy vertical wooden trellis with small hanging terra cotta pots of lush pothos and ferns, keeping the interlocking acacia wood floor completely clear and unobstructed. Warm afternoon tropical light, sliding glass door frame to the side, realistic compact urban balcony layout, uncluttered and breezy. Avoid jungle overgrowth, massive floor pots, warped decking.'
+  },
+
+  // --- ARTICLE #10000: Denah Rumah 5-6 Meter ---
+  '10000-S1': {
+    slotId: '10000-S1',
+    articleId: 10000,
+    slug: 'menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap',
+    articleSection: '1. Memahami Fenomena "Rumah Lorong" (The Tunnel Effect) & 4. Pendekatan 3: Penataan Denah Terbuka (Open Plan)',
+    purpose: 'supporting',
+    mainSubject: 'Denah konseptual 2D beranotasi teknis rumah deret kaveling lebar 6 meter x panjang 15 meter dengan strategi zonasi ruang tengah terbuka dan inner court.',
+    problemOrSolution: 'Memberikan panduan visual konkret bagaimana kaveling 6x15 meter dibagi menjadi zonasi fungsional (Carport, Teras, Ruang Tamu, Inner Court Tengah, Ruang Makan/Pantry, Kamar Tidur Belakang) dengan jalur sirkulasi angin menerus.',
+    visualEvidence: [
+      'Garis batas kaveling 6 meter x 15 meter dengan grid dimensi 1 meter terukur',
+      'Taman kering / inner court (2x3 meter) diletakkan di tengah bangunan sebagai paru-paru rumah',
+      'Ruang tamu dan ruang makan mengapit inner court tanpa sekat tembok masif',
+      'Panah biru sirkulasi udara silang (cross ventilation) dari bukaan depan menembus inner court menuju belakang',
+      'Label nama ruang dan dimensi proporsional yang jelas dan bersih'
+    ],
+    architecturalContext: 'Gambar kerja denah konseptual arsitektural 2D modern tropis, standar gambar arsitek Indonesia, palet minimalis profesional.',
+    compositionAndFraming: 'Top-down 2D orthographic plan, proporsi 16:9 landscape dengan rasio panjang kavling horizontal/vertikal yang seimbang, legenda dan skala grafis.',
+    materialGeometryConstraints: 'Dinding tegak lurus 90 derajat, ketebalan dinding 15 cm konsisten, bukaan pintu ayun dengan simbol busur 90 derajat standar arsitektur.',
+    negativeConstraints: [
+      'no AI generated fake blueprint (must be deterministic vector)',
+      'no crooked diagonal lines where walls should be straight',
+      'no unreadable garbled typography',
+      'no impossible staircase connections'
+    ],
+    caption: 'Denah konseptual kaveling 6 × 15 meter: penempatan inner court berukuran 2 × 3 meter di sepertiga tengah bangunan memutus efek lorong dan memastikan seluruh ruangan memiliki akses pencahayaan dan ventilasi alami.',
+    altText: 'Diagram denah arsitektur rumah kaveling lebar 6 meter x 15 meter dengan inner court di tengah dan panah sirkulasi udara silang.',
+    recommendedMethod: 'DETERMINISTIC_SVG',
+    modelProvenance: {
+      model: 'deterministic_svg_generator',
+      provider: 'rancangloka_editorial_vector',
+      dimensions: '1200x675',
+      targetRatio: '16:9'
+    },
+    relevanceCheck: 'Esensial sebagai landasan tata ruang bagi pembaca yang sedang merencanakan denah kaveling sempit (5-6 meter) agar tidak terjebak efek rumah lorong.',
+    geometryCheckPlan: 'Verifikasi dimensi kaveling 6m x 15m (rasio 1:2.5), ketebalan dinding bata standar 150mm, bukaan pintu 800mm, clearance sirkulasi minimal 900mm.',
+    reviewStatus: 'PENDING_REVIEW',
+    generationPromptOrInstructions: 'Kembangkan modul SVG 2D denah arsitektural bersih dengan background putih (#FFFFFF), garis dinding abu-abu gelap (#172033), arsir inner court hijau sage (#EAF3ED), dan panah vektor sirkulasi udara biru laut (#0066EE). Tipografi Plus Jakarta Sans berbobot medium.'
+  },
+
+  '10000-S2': {
+    slotId: '10000-S2',
+    articleId: 10000,
+    slug: 'menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap',
+    articleSection: '2. Pendekatan 1: Menyisipkan Ruang Terbuka Hijau / Taman Kering Dalam (Inner Court) & 3. Pendekatan 2: Memanfaatkan Ruang Vertikal Tangga (Stair Void)',
+    purpose: 'supporting',
+    mainSubject: 'Diagram potongan vertikal (section) / visualisasi 3D memperlihatkan efek cerobong ventilasi alami (stack effect) melalui void tangga dan bukaan inner court.',
+    problemOrSolution: 'Menjelaskan mekanisme fisika bangunan tropis: udara panas di lantai bawah bergerak naik secara alami dan dibuang melalui kisi louvre di atap void/inner court, menarik udara segar dari lantai satu.',
+    visualEvidence: [
+      'Potongan vertikal rumah 2 lantai memperlihatkan hubungan lantai 1, void tengah, dan lantai 2',
+      'Bukaan inner court dengan skylight/kisi jalusi atap berventilasi di bagian atas',
+      'Vektor panah merah/oranye: udara hangat naik ke arah kisi ventilasi atap',
+      'Vektor panah biru: udara sejuk ditarik masuk dari bukaan bawah melewati tanaman',
+      'Sinar matahari alami jatuh vertikal menyinari lantai 1 ruang tengah'
+    ],
+    architecturalContext: 'Potongan isometrik arsitektur rumah tropis kontemporer kaveling 6 meter di perkotaan Indonesia.',
+    compositionAndFraming: 'Potongan vertikal 2.5D isometrik atau potongan ortogonal 2D beranotasi dengan kontras pencahayaan alami yang jelas.',
+    materialGeometryConstraints: 'Tinggi lantai ke lantai 3.2 meter, void tangga dan bukaan atap proporsional, sudut kemiringan atap 30 derajat.',
+    negativeConstraints: [
+      'no impossible floating staircases without structural stringers',
+      'no dark unventilated glass traps that turn into greenhouses',
+      'no messy vector artifacts',
+      'no missing labels on air flow vectors'
+    ],
+    caption: 'Diagram potongan vertikal efek ventilasi cerobong (stack effect): udara hangat terdorong naik dan keluar melalui bukaan atap void, sementara udara segar mengalir masuk mendinginkan ruang tengah lantai bawah.',
+    altText: 'Diagram potongan rumah bertingkat memperlihatkan sirkulasi udara panas naik melalui void atap dan udara sejuk masuk di lantai bawah.',
+    recommendedMethod: 'DETERMINISTIC_SVG',
+    modelProvenance: {
+      model: 'deterministic_svg_generator',
+      provider: 'rancangloka_editorial_vector',
+      dimensions: '1200x675',
+      targetRatio: '16:9'
+    },
+    relevanceCheck: 'Secara langsung memvalidasi prinsip fisika bangunan pada sub-bagian "Bagaimana Inner Court Bekerja secara Fisik" dan "Efek Cerobong di Iklim Tropis".',
+    geometryCheckPlan: 'Verifikasi elevasi lantai 1 (+0.00), lantai 2 (+3.20), dan puncak void (+6.80); arah panah termal sesuai prinsip termodinamika alami.',
+    reviewStatus: 'PENDING_REVIEW',
+    generationPromptOrInstructions: 'Diagram potongan teknis isometrik SVG dengan gradien lembut pencahayaan matahari, panah termal udara dingin (biru #0066ee) dan udara hangat (oranye #d97706), serta anotasi teks teknis Plus Jakarta Sans.'
   }
 };
 

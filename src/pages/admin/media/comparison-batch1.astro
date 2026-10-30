@@ -1,7 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { loadCandidatesLedger, type ExperimentalMediaCandidate } from '../../../lib/media/experimental-storage';
-import { BATCH_1_CANONICAL_BRIEFS } from '../../../lib/media/editorial-visual-intelligence';
+import { BATCH_1_CANONICAL_BRIEFS, BATCH_1_SUPPORTING_BRIEFS } from '../../../lib/media/editorial-visual-intelligence';
 import { getDailyUsageSummary } from '../../../lib/media/neurons-usage-service';
 
 const candidates = loadCandidatesLedger();
@@ -109,28 +109,28 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
       </div>
     </div>
 
-    <!-- Cloudflare AI Neurons Usage Quick Widget -->
-    <div class="rounded-xl bg-slate-900 border border-slate-800 p-4 text-xs text-slate-300 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+    <!-- Cloudflare AI Neurons Usage Quick Widget (Lemon Linen Light Editorial) -->
+    <div class="rounded-xl bg-white border border-[#E7E9EE] p-4 text-xs text-[#172033] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
       <div class="flex items-center gap-3">
-        <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+        <div class="p-2 rounded-lg bg-[#FFFDF7] text-[#A76A00] border border-[#E7E9EE] shrink-0">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <span class="font-bold text-white font-sans">Cloudflare AI Neurons Monitor:</span>
-            <span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-amber-300 border border-slate-700 font-mono font-semibold">
+            <span class="font-bold text-[#172033] font-sans">Cloudflare AI Neurons Monitor:</span>
+            <span class="px-1.5 py-0.5 rounded text-[10px] bg-[#FFFDF7] text-[#A76A00] border border-[#E7E9EE] font-mono font-semibold">
               ESTIMATED
             </span>
-            <span class="text-slate-400 font-mono">
+            <span class="text-[#596579] font-mono">
               {neuronsSummary.neuronsUsedToday.toLocaleString()} / {neuronsSummary.configuredDailyLimit.toLocaleString()} N ({neuronsSummary.percentageUsed.toFixed(1)}%)
             </span>
           </div>
-          <div class="text-slate-400 mt-0.5">
-            Estimasi Sisa: <strong class="text-emerald-400 font-mono">{neuronsSummary.neuronsRemainingEstimated.toLocaleString()} N</strong>
-            <span class="mx-1.5 text-slate-600">|</span>
-            Kapasitas: <span class="text-indigo-300 font-mono">~{neuronsSummary.estimatedRemainingCapacity.fluxImages}x FLUX</span> atau <span class="text-cyan-300 font-mono">~{neuronsSummary.estimatedRemainingCapacity.sdxlImages}x SDXL</span>
+          <div class="text-[#596579] mt-0.5">
+            Estimasi Sisa (Parsial): <strong class="text-[#16805D] font-mono">{neuronsSummary.neuronsRemainingEstimated.toLocaleString()} N</strong>
+            <span class="mx-1.5 text-slate-300">|</span>
+            Kapasitas: <span class="text-[#172033] font-mono font-semibold">~{neuronsSummary.estimatedRemainingCapacity.fluxImages}x FLUX</span> atau <span class="text-[#A76A00] font-mono font-semibold">SDXL: UNKNOWN</span>
           </div>
         </div>
       </div>
@@ -138,7 +138,7 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
       <div class="flex items-center gap-2">
         <a
           href="/admin/media/usage-monitor"
-          class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-1 shadow-2xs"
+          class="px-3.5 py-1.5 rounded-lg bg-[#172033] hover:bg-[#23304c] text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
         >
           <span>Buka Usage Monitor ↗</span>
         </a>
@@ -666,6 +666,163 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
           </div>
         );
       })}
+    </div>
+
+    <!-- RENCANA GAMBAR PENDAMPING (SUPPORTING VISUALS PLAN — BATCH 1) -->
+    <div class="mt-16 pt-10 border-t border-[#E7E9EE]">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div>
+          <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#FFFDF7] border border-[#E7E9EE] text-[#A76A00] text-xs font-semibold mb-2">
+            <span>📐 Phase 3: Supporting Image Plan</span>
+            <span>•</span>
+            <span>Target: 2 Gambar / Artikel (Total 6 Visual)</span>
+          </div>
+          <h2 class="text-2xl font-outfit font-black text-[#172033] tracking-tight">
+            Rencana Gambar Pendamping (Editorial Visual Briefs)
+          </h2>
+          <p class="text-sm text-[#596579] mt-1 max-w-3xl leading-relaxed">
+            Perencanaan terstruktur visual pendamping untuk memperkuat pemahaman teknis pembaca. Membedakan diagram deterministik (SVG) untuk denah dan potongan alur air dari model difusi AI fotorealistik. Seluruh visual berstatus <code>PENDING_REVIEW</code> dan <strong>belum di-generate</strong> sebelum disetujui Chief Editor.
+          </p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 max-w-sm">
+          <strong>Peringatan Batas Otoritas:</strong> Sesuai Phase 4, seluruh visual brief ini disajikan sebagai proposal rencana. Dilarang melakukan eksekusi generate sebelum persetujuan resmi.
+        </div>
+      </div>
+
+      <!-- Supporting Visual Cards Grouped by Article -->
+      <div class="space-y-10">
+        {articles.map((art) => {
+          const slot1 = BATCH_1_SUPPORTING_BRIEFS[`${art.id}-S1`];
+          const slot2 = BATCH_1_SUPPORTING_BRIEFS[`${art.id}-S2`];
+          const slots = [slot1, slot2].filter(Boolean);
+
+          return (
+            <div class="rounded-2xl bg-white border border-[#E7E9EE] p-6 shadow-2xs">
+              <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#E7E9EE]">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#FFFDF7] text-[#172033] border border-[#E7E9EE]">
+                      ID #{art.id}
+                    </span>
+                    <span class="text-xs font-semibold text-[#596579] font-mono">
+                      {art.code}
+                    </span>
+                  </div>
+                  <h3 class="text-lg font-outfit font-bold text-[#172033] mt-1">
+                    {art.title}
+                  </h3>
+                </div>
+                <div class="text-xs text-[#596579]">
+                  Target: <strong>2 Visual Pendamping Terpilih</strong>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {slots.map((s) => (
+                  <div class="rounded-xl bg-[#FFFDF7] border border-[#E7E9EE] p-5 flex flex-col justify-between">
+                    <div class="space-y-4">
+                      <!-- Badge Header -->
+                      <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="text-xs font-mono font-black px-2.5 py-1 rounded-md bg-[#172033] text-white">
+                          SLOT {s.slotId}
+                        </span>
+                        <div class="flex items-center gap-2">
+                          <span class={`text-[11px] font-mono font-bold px-2 py-0.5 rounded ${
+                            s.recommendedMethod === 'DETERMINISTIC_SVG'
+                              ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                          }`}>
+                            {s.recommendedMethod === 'DETERMINISTIC_SVG' ? '📊 DETERMINISTIC SVG' : '🎨 AI DIFFUSION (FLUX)'}
+                          </span>
+                          <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                            {s.reviewStatus}
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- Target Section -->
+                      <div>
+                        <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider">
+                          Penempatan dalam Naskah:
+                        </div>
+                        <div class="text-xs font-bold text-[#172033] mt-0.5">
+                          {s.articleSection}
+                        </div>
+                      </div>
+
+                      <!-- Main Subject & Problem/Solution -->
+                      <div>
+                        <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider">
+                          Subjek Visual &amp; Bukti:
+                        </div>
+                        <p class="text-xs font-bold text-[#172033] mt-0.5">
+                          {s.mainSubject}
+                        </p>
+                        <p class="text-xs text-[#596579] mt-1 leading-relaxed">
+                          {s.problemOrSolution}
+                        </p>
+                      </div>
+
+                      <!-- Mandatory Visible Evidence -->
+                      <div>
+                        <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider mb-1">
+                          Bukti Visual yang Wajib Terlihat:
+                        </div>
+                        <ul class="space-y-1 text-xs text-[#172033]">
+                          {s.visualEvidence.map((ev) => (
+                            <li class="flex items-start gap-1.5">
+                              <span class="text-emerald-700 shrink-0 font-bold">✓</span>
+                              <span class="leading-snug">{ev}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <!-- Prompt / Instructions -->
+                      <div>
+                        <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider">
+                          {s.recommendedMethod === 'DETERMINISTIC_SVG' ? 'Instruksi Kode SVG:' : 'Prompt Difusi FLUX:'}
+                        </div>
+                        <div class="mt-1 p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-[11px] text-[#172033] font-mono leading-relaxed select-all">
+                          {s.generationPromptOrInstructions}
+                        </div>
+                      </div>
+
+                      <!-- Caption & Alt Text -->
+                      <div class="space-y-2 pt-2 border-t border-[#E7E9EE] text-xs">
+                        <div>
+                          <strong class="text-[#172033]">Caption:</strong>
+                          <span class="text-[#596579] italic block mt-0.5 leading-relaxed">{s.caption}</span>
+                        </div>
+                        <div>
+                          <strong class="text-[#172033]">Alt Text:</strong>
+                          <span class="text-[#596579] block mt-0.5 font-mono text-[11px]">{s.altText}</span>
+                        </div>
+                      </div>
+
+                      <!-- QA Checks -->
+                      <div class="p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-[11px] space-y-1 text-[#596579]">
+                        <div>
+                          <strong class="text-[#172033]">Relevansi Naskah:</strong> {s.relevanceCheck}
+                        </div>
+                        <div>
+                          <strong class="text-[#172033]">Pemeriksaan Geometri:</strong> {s.geometryCheckPlan}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="mt-5 pt-3 border-t border-[#E7E9EE] flex items-center justify-between text-xs text-[#596579]">
+                      <span>Model: <code class="font-mono text-[#172033]">{s.modelProvenance.model}</code></span>
+                      <span class="font-semibold text-amber-800">Menunggu Persetujuan Rencana</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   </div>
 
