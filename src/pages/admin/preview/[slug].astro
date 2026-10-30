@@ -296,16 +296,20 @@ const manuscriptReadiness = {
   desc: 'Pemeriksaan struktur paragraf, batas kata, dan alur redaksi Irwan → Joko → Nadia → Rina.'
 };
 
+const isCanonicalBound = Boolean(activeFeaturedMedia && activeFeaturedMedia.asset_status === 'VALIDATED');
+
 const featuredMediaReadiness = {
   title: 'Gambar Utama (Featured)',
   icon: '🖼️',
-  statusText: activeFeaturedMedia 
+  statusText: isCanonicalBound 
     ? 'Gambar Utama Siap' 
-    : 'Gambar Belum Tersedia',
-  isOk: Boolean(activeFeaturedMedia),
-  desc: activeFeaturedMedia 
-    ? `${activeFeaturedMedia.width}×${activeFeaturedMedia.height} px • Teks alt terpasang` 
-    : 'Slot media featured wajib dipenuhi sebelum artikel dapat dijadwalkan.'
+    : (article?.featured_image ? 'Kandidat Belum Terikat Kanonikal' : 'Gambar Belum Tersedia'),
+  isOk: isCanonicalBound,
+  desc: isCanonicalBound 
+    ? `${activeFeaturedMedia.width || 1024}×${activeFeaturedMedia.height || 675} px • Terikat kanonikal (${activeFeaturedMedia.asset_id})` 
+    : (article?.featured_image 
+        ? 'Gambar tampil sebagai pratinjau eksperimental tetapi belum terikat ke media_assets & article_media.' 
+        : 'Slot media featured wajib dipenuhi sebelum artikel dapat dijadwalkan.')
 };
 
 const editorialStandardsReadiness = {
@@ -815,11 +819,20 @@ const editorialStandardsReadiness = {
             alt={article.image_alt || article.title}
             class="w-full h-auto max-h-[520px] object-cover"
           />
-          {article.image_alt && (
-            <figcaption class="px-4 py-2.5 text-xs text-slate-500 font-mono border-t border-slate-100 dark:border-slate-800">
-              📷 {article.image_alt}
-            </figcaption>
-          )}
+          <figcaption class="px-4 py-2.5 text-xs text-slate-500 font-mono border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+            <span>📷 {article.image_alt || article.title}</span>
+            {isCanonicalBound ? (
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Media Kanonikal Terikat
+              </span>
+            ) : (
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold text-amber-800 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800" title="Gambar eksperimental tampil di pratinjau namun belum terikat kanonikal untuk publikasi">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                Pratinjau Eksperimental (Belum Terikat Kanonikal)
+              </span>
+            )}
+          </figcaption>
         </figure>
       ) : (
         <div class="my-8 p-6 sm:p-8 rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-700/60 bg-amber-50/60 dark:bg-amber-950/20 text-center">

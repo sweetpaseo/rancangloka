@@ -32,23 +32,98 @@ Di iklim tropis lembap Indonesia, kelembapan pada dinding umumnya bersumber dari
 
 Sebelum terburu-buru membeli material pelapis antibocor atau membongkar plesteran, terapkan tahapan diagnosis bertahap berikut:
 
-```
-[1. Pengamatan]         --> [2. Hipotesis]           --> [3. Inspeksi Fisik]
-Catat lokasi, pola bercak,   Susun dugaan sumber:       Periksa sisi luar, talang,
-ketinggian, & waktu muncul   atap, luar, bawah, pipa     pipa, atau celah lantai
-                                                                |
-                                                                v
-[6. Pengeringan & Evaluasi] <-- [5. Perbaikan Terarah]  <-- [4. Konfirmasi Sumber]
-Beri waktu dinding kering,   Perbaiki akar masalah di    Pastikan sumber aktif,
-pantau saat hujan berikutnya sumbernya, bukan kosmetik   bukan sekadar sisa lama
-```
+<div class="my-8 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 p-5 sm:p-6">
+  <div class="flex items-center gap-2 mb-4">
+    <span class="text-[11px] font-bold tracking-wider uppercase text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-1 rounded-md">Alur Kerja Diagnosis Sistematis</span>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+    <div class="p-4 rounded-xl bg-white dark:bg-stone-900 border border-amber-100 dark:border-stone-800 flex flex-col justify-between shadow-xs">
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0">1</span>
+          <strong class="text-sm font-bold text-stone-900 dark:text-stone-100">Pengamatan</strong>
+        </div>
+        <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">Catat lokasi kerusakan, pola bercak basah, ketinggian dari lantai, dan waktu kemunculan noda.</p>
+      </div>
+      <div class="mt-3 pt-2 border-t border-stone-100 dark:border-stone-800 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center justify-between">
+        <span>Langkah awal</span>
+        <span>→ Tahap 2</span>
+      </div>
+    </div>
+    <div class="p-4 rounded-xl bg-white dark:bg-stone-900 border border-amber-100 dark:border-stone-800 flex flex-col justify-between shadow-xs">
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0">2</span>
+          <strong class="text-sm font-bold text-stone-900 dark:text-stone-100">Hipotesis</strong>
+        </div>
+        <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">Susun dugaan sumber: kebocoran talang atap, tempias dinding luar, kapilaritas air tanah, atau pipa tertanam.</p>
+      </div>
+      <div class="mt-3 pt-2 border-t border-stone-100 dark:border-stone-800 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center justify-between">
+        <span>Pemetaan dugaan</span>
+        <span>→ Tahap 3</span>
+      </div>
+    </div>
+    <div class="p-4 rounded-xl bg-white dark:bg-stone-900 border border-amber-100 dark:border-stone-800 flex flex-col justify-between shadow-xs">
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0">3</span>
+          <strong class="text-sm font-bold text-stone-900 dark:text-stone-100">Inspeksi Fisik</strong>
+        </div>
+        <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">Periksa titik kritis: cek dak talang &amp; flashing atap, retak plesteran luar, dan jalur instalasi pipa air.</p>
+      </div>
+      <div class="mt-3 pt-2 border-t border-stone-100 dark:border-stone-800 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center justify-between">
+        <span>Pemeriksaan langsung</span>
+        <span>→ Tahap 4</span>
+      </div>
+    </div>
+    <div class="p-4 rounded-xl bg-white dark:bg-stone-900 border border-amber-100 dark:border-stone-800 flex flex-col justify-between shadow-xs">
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0">4</span>
+          <strong class="text-sm font-bold text-stone-900 dark:text-stone-100">Konfirmasi Sumber</strong>
+        </div>
+        <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">Pastikan sumber air benar-benar aktif mengalir melalui tes siram atau pengamatan saat hujan, bukan sekadar noda lama.</p>
+      </div>
+      <div class="mt-3 pt-2 border-t border-stone-100 dark:border-stone-800 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center justify-between">
+        <span>Uji pembuktian</span>
+        <span>→ Tahap 5</span>
+      </div>
+    </div>
+    <div class="p-4 rounded-xl bg-white dark:bg-stone-900 border border-amber-100 dark:border-stone-800 flex flex-col justify-between shadow-xs">
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0">5</span>
+          <strong class="text-sm font-bold text-stone-900 dark:text-stone-100">Perbaikan Terarah</strong>
+        </div>
+        <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">Perbaiki akar masalah pada sumbernya di sisi luar atau instalasi, hindari perbaikan yang semata-mata kosmetik di dalam.</p>
+      </div>
+      <div class="mt-3 pt-2 border-t border-stone-100 dark:border-stone-800 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center justify-between">
+        <span>Penanganan sumber</span>
+        <span>→ Tahap 6</span>
+      </div>
+    </div>
+    <div class="p-4 rounded-xl bg-white dark:bg-stone-900 border border-amber-100 dark:border-stone-800 flex flex-col justify-between shadow-xs">
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0">6</span>
+          <strong class="text-sm font-bold text-stone-900 dark:text-stone-100">Pengeringan &amp; Evaluasi</strong>
+        </div>
+        <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">Beri dinding waktu pengeringan alami yang cukup, lalu pantau stabilitas plesteran saat siklus hujan lebat berikutnya.</p>
+      </div>
+      <div class="mt-3 pt-2 border-t border-stone-100 dark:border-stone-800 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center justify-between">
+        <span>Verifikasi akhir</span>
+        <span>✓ Tuntas</span>
+      </div>
+    </div>
+  </div>
+</div>
 
 1. **Pengamatan Awal:** Perhatikan di mana titik kerusakan terjadi (dekat lantai, di tengah dinding, atau dekat plafon), bagaimana bentuk noda (garis mendatar, bercak lokal melingkar, atau lidah air dari atas), serta kapan noda terasa basah (hanya saat hujan lebat, sesaat setelah mencuci di kamar mandi, atau basah terus-menerus sepanjang tahun).
 2. **Penyusunan Hipotesis:** Tentukan kemungkinan sumber air berdasarkan lokasi dan korelasi waktu. Jangan mengunci satu kesimpulan sebelum memeriksa seluruh kemungkinan.
 3. **Inspeksi Fisik:** Lakukan pemeriksaan langsung ke titik-titik kritis: naik ke plafon untuk melihat talang dan flashing atap, periksa sisi luar dinding untuk mencari retak plesteran, dan periksa jalur pipa air tertanam.
 4. **Konfirmasi Sumber:** Buktikan apakah sumber tersebut benar-benar aktif mengalirkan air (misalnya dengan tes siram lokal atau pengeringan sementara).
 5. **Perbaikan Terarah:** Perbaiki penyebab langsung pada sumber airnya, bukan sekadar menutup permukaan dalam ruangan.
-6. **Pengeringan dan Penilaian Ulang:** Pasangan bata yang basah memerlukan waktu yang cukup untuk mengeringkan kadar air di dalam inti dinding sebelum dicat ulang. Pantau kondisi dinding saat siklus hujan berikutnya datang.
+6. **Pengeringan dan Penilaian Ulang:** Pasangan bata yang basah memerlukan waktu pengeringan alami yang memadai agar kelembapan inti dinding menurun hingga memenuhi spesifikasi teknis batas kadar air/kelembapan substrat yang disyaratkan produsen cat sebelum dilakukan pengecatan ulang. Pantau kondisi dinding saat siklus hujan berikutnya datang.
 
 ---
 
@@ -144,7 +219,7 @@ Pembahasan perilaku air dan kelembapan pada dinding bangunan ini merujuk pada pr
   },
   {
     "question": "Berapa lama waktu yang dibutuhkan dinding bata yang basah untuk benar-benar kering sebelum diplester ulang?",
-    "answer": "Waktu pengeringan inti dinding bata sangat bergantung pada ketebalan dinding, sirkulasi udara, dan kelembapan lingkungan, umumnya berkisar antara 2 hingga 4 minggu setelah sumber air berhasil dimatikan. Memaksakan plesteran dan pengecatan pada dinding yang intinya masih jenuh air berisiko memicu kerusakan cat berulang."
+    "answer": "Waktu pengeringan inti dinding bata sangat bergantung pada ketebalan dinding, sirkulasi udara, dan kelembapan lingkungan, umumnya berkisar antara 2 hingga 4 minggu setelah sumber air berhasil dimatikan. Pengecatan ulang wajib mengacu pada kepatuhan terhadap spesifikasi batas kelembapan substrat dari produsen cat terkait (dapat diuji menggunakan moisture meter). Memaksakan plesteran dan pengecatan pada dinding yang intinya masih jenuh air berisiko memicu kerusakan cat berulang."
   },
   {
     "question": "Apakah injeksi cairan kimia kedap air efektif mengatasi dinding rembes pada rumah lama?",

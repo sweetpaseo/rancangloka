@@ -165,7 +165,7 @@ export async function renderMediaSlotAnchors(
           const attached = activeMap.get(item.slot_key);
           if (attached) {
             item.asset_id = attached.asset_id;
-            item.storage_key = attached.storage_key || attached.public_url;
+            item.storage_key = attached.public_url || attached.storage_key;
             item.editorial_approval = 'APPROVED_FOR_INLINE_PUBLICATION';
             item.review_status = 'APPROVED_TECHNICAL_TRUTH';
             if (attached.alt_text) item.alt_text = attached.alt_text;

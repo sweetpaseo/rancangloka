@@ -346,6 +346,10 @@ function defaultRenderFigure(item: VisualManifestItem, isPreview: boolean): stri
   if (rawKey) {
     if (rawKey.startsWith('http://') || rawKey.startsWith('https://') || rawKey.startsWith('data:') || rawKey.startsWith('/')) {
       url = escapeHtml(rawKey);
+    } else if (rawKey.startsWith('storage/experimental-media/')) {
+      url = escapeHtml(`/${rawKey.replace(/^storage\//, '')}`);
+    } else if (rawKey.startsWith('experimental-media/')) {
+      url = escapeHtml(`/${rawKey}`);
     } else {
       const stripped = rawKey.replace(/^\/+/, '');
       url = escapeHtml(stripped.startsWith('media/') ? `/${stripped}` : `/media/${stripped}`);

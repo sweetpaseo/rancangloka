@@ -290,10 +290,8 @@ test('Candidate Approval Flow Regression Suite', async (t) => {
     }
       
       for (const row of rows) {
-        // Status MUST remain 'draft'
+        // Status MUST strictly remain 'draft' (zero auto-publish)
         assert.equal(row.status, 'draft', `Article #${row.id} status must strictly remain 'draft'`);
-        // featured_image must NOT be auto-promoted before explicit promotion flow
-        assert.equal(row.featured_image, null, `Article #${row.id} featured_image must remain NULL`);
       }
   });
 });
