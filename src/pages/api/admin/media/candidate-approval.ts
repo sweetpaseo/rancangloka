@@ -40,27 +40,36 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { id, action } = body;
+  const { id, action, review_notes } = body;
 
   if (!id || !['approve', 'reject', 'reset'].includes(action)) {
     return new Response(
-      JSON.stringify({ status: 'error', message: 'Invalid id or action (approve|reject|reset)' }),
+      JSON.stringify({ status: 'error', message: 'Parameter tidak valid. Diperlukan id dan action (approve|reject|reset)' }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
   const targetStatus =
     action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'PENDING_REVIEW';
-  const updated = updateCandidateStatus(id, targetStatus);
+  
+  const updated = updateCandidateStatus(id, targetStatus, {
+    actor: 'Chief Editor',
+    action,
+    notes: review_notes || (action === 'approve' ? 'Disetujui via Inspeksi Visual Batch 1' : action === 'reject' ? 'Ditolak via Inspeksi Visual Batch 1' : 'Status di-reset ke PENDING_REVIEW')
+  });
 
   if (!updated) {
-    return new Response(JSON.stringify({ status: 'error', message: 'Candidate not found' }), {
+    return new Response(JSON.stringify({ status: 'error', message: `Kandidat gambar dengan ID '${id}' tidak ditemukan` }), {
       status: 404,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 
-  return new Response(JSON.stringify({ status: 'success', candidate: updated }), {
+  return new Response(JSON.stringify({
+    status: 'success',
+    message: action === 'approve' ? 'Gambar berhasil disetujui' : action === 'reject' ? 'Kandidat gambar ditolak' : 'Status kandidat di-reset ke PENDING_REVIEW',
+    candidate: updated
+  }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' }
   });

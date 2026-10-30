@@ -52,6 +52,19 @@ export interface ExperimentalMediaCandidate {
   editorial_notes?: string;
   rejection_reason?: string;
   version?: string;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  review_notes?: string | null;
+  approval_history?: CandidateApprovalAudit[];
+}
+
+export interface CandidateApprovalAudit {
+  action: 'approve' | 'reject' | 'reset';
+  previous_status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  new_status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  actor: string;
+  timestamp: string;
+  notes?: string;
 }
 
 const STORAGE_DIR = path.resolve('./storage/experimental-media');
@@ -121,15 +134,58 @@ export function getCandidatesByArticle(articleId: number): ExperimentalMediaCand
   return all.filter((c) => c.article_id === articleId);
 }
 
+export function getCandidateById(id: string): ExperimentalMediaCandidate | null {
+  const all = loadCandidatesLedger();
+  return all.find((c) => c.id === id) || null;
+}
+
 export function updateCandidateStatus(
   id: string,
-  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
+  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED',
+  reviewerContext?: {
+    actor?: string;
+    action?: 'approve' | 'reject' | 'reset';
+    notes?: string;
+  }
 ): ExperimentalMediaCandidate | null {
   const candidates = loadCandidatesLedger();
   const candidate = candidates.find((c) => c.id === id);
   if (!candidate) return null;
 
+  const previousStatus = candidate.approval_status;
   candidate.approval_status = status;
+
+  const actor = reviewerContext?.actor || 'Chief Editor';
+  const now = new Date().toISOString();
+  const action = reviewerContext?.action || (status === 'APPROVED' ? 'approve' : status === 'REJECTED' ? 'reject' : 'reset');
+
+  if (status === 'APPROVED' || status === 'REJECTED') {
+    candidate.reviewed_by = actor;
+    candidate.reviewed_at = now;
+    if (reviewerContext?.notes) {
+      candidate.review_notes = reviewerContext.notes;
+    }
+  } else {
+    // Resetting to PENDING_REVIEW
+    candidate.reviewed_by = null;
+    candidate.reviewed_at = null;
+    candidate.review_notes = null;
+  }
+
+  // Record audit history entry
+  if (!candidate.approval_history) {
+    candidate.approval_history = [];
+  }
+
+  candidate.approval_history.unshift({
+    action,
+    previous_status: previousStatus,
+    new_status: status,
+    actor,
+    timestamp: now,
+    notes: reviewerContext?.notes
+  });
+
   saveCandidatesLedger(candidates);
   return candidate;
 }

@@ -431,7 +431,28 @@
         "evaluationText": "Pilihan Editorial Utama: Direkomendasikan oleh tim editorial, menunggu persetujuan akhir manusia."
       },
       "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
-    }
+    },
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_notes": null,
+    "approval_history": [
+      {
+        "action": "reset",
+        "previous_status": "APPROVED",
+        "new_status": "PENDING_REVIEW",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T06:47:41.380Z",
+        "notes": "Status di-reset ke PENDING_REVIEW"
+      },
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T06:47:26.107Z",
+        "notes": "Disetujui via Inspeksi Visual Batch 1"
+      }
+    ]
   },
   {
     "id": "candidate-9999-sdxl-lightning",

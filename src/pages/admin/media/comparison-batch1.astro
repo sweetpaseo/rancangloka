@@ -3,6 +3,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { loadCandidatesLedger, type ExperimentalMediaCandidate } from '../../../lib/media/experimental-storage';
 import { BATCH_1_CANONICAL_BRIEFS, BATCH_1_SUPPORTING_BRIEFS } from '../../../lib/media/editorial-visual-intelligence';
 import { getDailyUsageSummary } from '../../../lib/media/neurons-usage-service';
+import { ADMIN_COOKIE_NAME, isValidAdminSession } from '../../../lib/auth';
+
+const env = (Astro.locals as any)?.runtime?.env || (import.meta as any).env || {};
+const sessionCookie = Astro.cookies.get(ADMIN_COOKIE_NAME);
+const isAuthenticated = await isValidAdminSession(sessionCookie, env);
+
+if (!isAuthenticated) {
+  return Astro.redirect(`/admin/login?redirect=${encodeURIComponent(Astro.url.pathname)}`);
+}
 
 const candidates = loadCandidatesLedger();
 const neuronsSummary = getDailyUsageSummary();
@@ -288,13 +297,22 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
                   </div>
                   <span id={`status-badge-${fluxCandidate?.id}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
                     fluxCandidate?.approval_status === 'APPROVED'
-                      ? 'bg-emerald-100 text-emerald-800'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                       : fluxCandidate?.approval_status === 'REJECTED'
-                      ? 'bg-rose-100 text-rose-800'
-                      : 'bg-amber-100 text-amber-800'
+                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300'
                   }`}>
                     {fluxCandidate?.approval_status || 'NOT_FOUND'}
                   </span>
+                </div>
+
+                <div id={`reviewer-info-${fluxCandidate?.id}`}>
+                  {fluxCandidate?.reviewed_at && (
+                    <div class="text-[11px] font-mono text-[#596579] bg-[#FFFDF7] p-2 rounded-lg border border-[#E7E9EE] flex items-center justify-between">
+                      <span>Reviewer: <strong class="text-[#172033]">{fluxCandidate.reviewed_by || 'Chief Editor'}</strong></span>
+                      <span>{new Date(fluxCandidate.reviewed_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    </div>
+                  )}
                 </div>
 
                 {fluxCandidate ? (
@@ -430,24 +448,33 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
                     </div>
 
                     <!-- Operator Decision Actions -->
-                    <div class="pt-3 border-t border-purple-100/80 flex items-center gap-2">
+                    <div id={`actions-wrapper-${fluxCandidate.id}`} class="pt-3 border-t border-purple-100/80 flex items-center gap-2">
                       <button
                         type="button"
-                        onclick={`handleDecision('${fluxCandidate.id}', 'approve')`}
-                        class="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs"
+                        id={`btn-approve-${fluxCandidate.id}`}
+                        onclick={`handleDecision('${fluxCandidate.id}', 'approve', 'FLUX.1 Schnell', ${art.id})`}
+                        disabled={fluxCandidate.approval_status === 'APPROVED'}
+                        class={`flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
+                          fluxCandidate.approval_status === 'APPROVED' ? 'opacity-60 cursor-not-allowed' : ''
+                        }`}
                       >
-                        ✓ Setuju (Approve)
+                        {fluxCandidate.approval_status === 'APPROVED' ? '✓ Telah Disetujui' : '✓ Setuju (Approve)'}
                       </button>
                       <button
                         type="button"
-                        onclick={`handleDecision('${fluxCandidate.id}', 'reject')`}
-                        class="flex-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer"
+                        id={`btn-reject-${fluxCandidate.id}`}
+                        onclick={`handleDecision('${fluxCandidate.id}', 'reject', 'FLUX.1 Schnell', ${art.id})`}
+                        disabled={fluxCandidate.approval_status === 'REJECTED'}
+                        class={`flex-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
+                          fluxCandidate.approval_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
+                        }`}
                       >
                         ✕ Tolak (Reject)
                       </button>
                       <button
                         type="button"
-                        onclick={`handleDecision('${fluxCandidate.id}', 'reset')`}
+                        id={`btn-reset-${fluxCandidate.id}`}
+                        onclick={`handleDecision('${fluxCandidate.id}', 'reset', 'FLUX.1 Schnell', ${art.id})`}
                         class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 text-xs font-outfit font-semibold transition cursor-pointer"
                         title="Reset status ke PENDING_REVIEW"
                       >
@@ -479,13 +506,22 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
                   </div>
                   <span id={`status-badge-${sdxlCandidate?.id}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
                     sdxlCandidate?.approval_status === 'APPROVED'
-                      ? 'bg-emerald-100 text-emerald-800'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                       : sdxlCandidate?.approval_status === 'REJECTED'
-                      ? 'bg-rose-100 text-rose-800'
-                      : 'bg-amber-100 text-amber-800'
+                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300'
                   }`}>
                     {sdxlCandidate?.approval_status || 'NOT_FOUND'}
                   </span>
+                </div>
+
+                <div id={`reviewer-info-${sdxlCandidate?.id}`}>
+                  {sdxlCandidate?.reviewed_at && (
+                    <div class="text-[11px] font-mono text-[#596579] bg-[#FFFDF7] p-2 rounded-lg border border-[#E7E9EE] flex items-center justify-between">
+                      <span>Reviewer: <strong class="text-[#172033]">{sdxlCandidate.reviewed_by || 'Chief Editor'}</strong></span>
+                      <span>{new Date(sdxlCandidate.reviewed_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    </div>
+                  )}
                 </div>
 
                 {sdxlCandidate ? (
@@ -633,24 +669,33 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
                     </div>
 
                     <!-- Operator Decision Actions -->
-                    <div class="pt-3 border-t border-sky-100/80 flex items-center gap-2">
+                    <div id={`actions-wrapper-${sdxlCandidate.id}`} class="pt-3 border-t border-sky-100/80 flex items-center gap-2">
                       <button
                         type="button"
-                        onclick={`handleDecision('${sdxlCandidate.id}', 'approve')`}
-                        class="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs"
+                        id={`btn-approve-${sdxlCandidate.id}`}
+                        onclick={`handleDecision('${sdxlCandidate.id}', 'approve', 'SDXL Lightning', ${art.id})`}
+                        disabled={sdxlCandidate.approval_status === 'APPROVED'}
+                        class={`flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
+                          sdxlCandidate.approval_status === 'APPROVED' ? 'opacity-60 cursor-not-allowed' : ''
+                        }`}
                       >
-                        ✓ Setuju (Approve)
+                        {sdxlCandidate.approval_status === 'APPROVED' ? '✓ Telah Disetujui' : '✓ Setuju (Approve)'}
                       </button>
                       <button
                         type="button"
-                        onclick={`handleDecision('${sdxlCandidate.id}', 'reject')`}
-                        class="flex-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer"
+                        id={`btn-reject-${sdxlCandidate.id}`}
+                        onclick={`handleDecision('${sdxlCandidate.id}', 'reject', 'SDXL Lightning', ${art.id})`}
+                        disabled={sdxlCandidate.approval_status === 'REJECTED'}
+                        class={`flex-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
+                          sdxlCandidate.approval_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
+                        }`}
                       >
                         ✕ Tolak (Reject)
                       </button>
                       <button
                         type="button"
-                        onclick={`handleDecision('${sdxlCandidate.id}', 'reset')`}
+                        id={`btn-reset-${sdxlCandidate.id}`}
+                        onclick={`handleDecision('${sdxlCandidate.id}', 'reset', 'SDXL Lightning', ${art.id})`}
                         class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 text-xs font-outfit font-semibold transition cursor-pointer"
                         title="Reset status ke PENDING_REVIEW"
                       >
@@ -826,8 +871,12 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
     </div>
   </div>
 
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none max-w-md w-full px-4"></div>
+
   <script is:inline>
     let currentCropMode = 'square';
+    const inFlight = {};
 
     function setCropMode(mode) {
       currentCropMode = mode;
@@ -865,12 +914,97 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
       }
     }
 
-    async function handleDecision(candidateId, action) {
-      const badge = document.getElementById(`status-badge-${candidateId}`);
-      if (badge) {
-        badge.textContent = 'Updating...';
-        badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600';
+    function showToast(message, type = 'success', duration = 4000) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-center justify-between gap-3 p-4 rounded-xl shadow-lg border text-sm font-outfit transition-all duration-300 transform translate-y-2 opacity-0 ${
+        type === 'success'
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+          : type === 'warning'
+          ? 'bg-amber-50 border-amber-200 text-amber-900'
+          : type === 'info'
+          ? 'bg-sky-50 border-sky-200 text-sky-900'
+          : 'bg-rose-50 border-rose-200 text-rose-900'
+      }`;
+
+      const icon =
+        type === 'success'
+          ? '✓'
+          : type === 'warning'
+          ? '⚠'
+          : type === 'info'
+          ? 'ℹ'
+          : '✕';
+
+      toast.innerHTML = `
+        <div class="flex items-center gap-2.5">
+          <span class="w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs ${
+            type === 'success'
+              ? 'bg-emerald-200 text-emerald-800'
+              : type === 'warning'
+              ? 'bg-amber-200 text-amber-800'
+              : type === 'info'
+              ? 'bg-sky-200 text-sky-800'
+              : 'bg-rose-200 text-rose-800'
+          }">${icon}</span>
+          <span class="font-medium">${message}</span>
+        </div>
+        <button type="button" class="text-xs opacity-60 hover:opacity-100 cursor-pointer font-bold ml-2">✕</button>
+      `;
+
+      const closeBtn = toast.querySelector('button');
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        };
       }
+
+      container.appendChild(toast);
+
+      // Trigger animation
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      // Auto dismiss
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, duration);
+    }
+
+    async function handleDecision(candidateId, action, modelName, articleId) {
+      if (inFlight[candidateId]) return;
+      inFlight[candidateId] = true;
+
+      const btnApprove = document.getElementById(`btn-approve-${candidateId}`);
+      const btnReject = document.getElementById(`btn-reject-${candidateId}`);
+      const btnReset = document.getElementById(`btn-reset-${candidateId}`);
+      const badge = document.getElementById(`status-badge-${candidateId}`);
+      const reviewerBox = document.getElementById(`reviewer-info-${candidateId}`);
+
+      const origApproveHtml = btnApprove ? btnApprove.innerHTML : '';
+      const origRejectHtml = btnReject ? btnReject.innerHTML : '';
+      const origResetHtml = btnReset ? btnReset.innerHTML : '';
+
+      // Set loading state
+      if (action === 'approve' && btnApprove) {
+        btnApprove.innerHTML = '⏳ Menyimpan...';
+      } else if (action === 'reject' && btnReject) {
+        btnReject.innerHTML = '⏳ Menyimpan...';
+      } else if (action === 'reset' && btnReset) {
+        btnReset.innerHTML = '⏳ Mereset...';
+      }
+
+      // Disable buttons during in-flight request
+      if (btnApprove) btnApprove.disabled = true;
+      if (btnReject) btnReject.disabled = true;
+      if (btnReset) btnReset.disabled = true;
 
       try {
         const res = await fetch('/api/admin/media/candidate-approval', {
@@ -879,24 +1013,133 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
           body: JSON.stringify({ id: candidateId, action })
         });
 
+        if (res.status === 401) {
+          showToast('Sesi admin telah berakhir. Mengalihkan ke login...', 'error');
+          setTimeout(() => {
+            window.location.href = '/admin/login?redirect=' + encodeURIComponent(window.location.pathname);
+          }, 1500);
+          return;
+        }
+
         const data = await res.json();
-        if (data.status === 'success' && data.candidate) {
-          const status = data.candidate.approval_status;
+
+        if (res.ok && data.status === 'success' && data.candidate) {
+          const cand = data.candidate;
+          const status = cand.approval_status;
+
+          // Update Status Badge
           if (badge) {
             badge.textContent = status;
             if (status === 'APPROVED') {
-              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
             } else if (status === 'REJECTED') {
-              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800';
+              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300';
             } else {
-              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
+              badge.className = 'text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300';
             }
           }
+
+          // Update Reviewer Metadata
+          if (reviewerBox) {
+            if (cand.reviewed_at) {
+              const timeStr = new Date(cand.reviewed_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+              reviewerBox.innerHTML = `
+                <div class="text-[11px] font-mono text-[#596579] bg-[#FFFDF7] p-2 rounded-lg border border-[#E7E9EE] flex items-center justify-between">
+                  <span>Reviewer: <strong class="text-[#172033]">${cand.reviewed_by || 'Chief Editor'}</strong></span>
+                  <span>${timeStr}</span>
+                </div>
+              `;
+            } else {
+              reviewerBox.innerHTML = '';
+            }
+          }
+
+          // Update Button States
+          if (status === 'APPROVED') {
+            if (btnApprove) {
+              btnApprove.innerHTML = '✓ Telah Disetujui';
+              btnApprove.disabled = true;
+              btnApprove.classList.add('opacity-60', 'cursor-not-allowed');
+            }
+            if (btnReject) {
+              btnReject.innerHTML = '✕ Tolak (Reject)';
+              btnReject.disabled = false;
+              btnReject.classList.remove('opacity-60', 'cursor-not-allowed');
+            }
+            if (btnReset) {
+              btnReset.innerHTML = '↺ Reset';
+              btnReset.disabled = false;
+            }
+            showToast(`✓ Gambar ${modelName || ''} untuk Artikel #${articleId || ''} berhasil disetujui!`, 'success');
+          } else if (status === 'REJECTED') {
+            if (btnApprove) {
+              btnApprove.innerHTML = '✓ Setuju (Approve)';
+              btnApprove.disabled = false;
+              btnApprove.classList.remove('opacity-60', 'cursor-not-allowed');
+            }
+            if (btnReject) {
+              btnReject.innerHTML = '✕ Telah Ditolak';
+              btnReject.disabled = true;
+              btnReject.classList.add('opacity-60', 'cursor-not-allowed');
+            }
+            if (btnReset) {
+              btnReset.innerHTML = '↺ Reset';
+              btnReset.disabled = false;
+            }
+            showToast(`✕ Gambar ${modelName || ''} untuk Artikel #${articleId || ''} telah ditolak.`, 'warning');
+          } else {
+            // PENDING_REVIEW
+            if (btnApprove) {
+              btnApprove.innerHTML = '✓ Setuju (Approve)';
+              btnApprove.disabled = false;
+              btnApprove.classList.remove('opacity-60', 'cursor-not-allowed');
+            }
+            if (btnReject) {
+              btnReject.innerHTML = '✕ Tolak (Reject)';
+              btnReject.disabled = false;
+              btnReject.classList.remove('opacity-60', 'cursor-not-allowed');
+            }
+            if (btnReset) {
+              btnReset.innerHTML = '↺ Reset';
+              btnReset.disabled = false;
+            }
+            showToast(`↺ Status kandidat dikembalikan ke PENDING_REVIEW.`, 'info');
+          }
         } else {
-          alert('Gagal memutakhirkan status: ' + (data.message || 'Unknown error'));
+          // Failure response
+          const msg = data?.message || 'Terjadi kesalahan sistem';
+          showToast(`Gagal: ${msg}`, 'error');
+
+          // Restore buttons
+          if (btnApprove) {
+            btnApprove.innerHTML = origApproveHtml;
+            btnApprove.disabled = origApproveHtml.includes('Telah Disetujui');
+          }
+          if (btnReject) {
+            btnReject.innerHTML = origRejectHtml;
+            btnReject.disabled = origRejectHtml.includes('Telah Ditolak');
+          }
+          if (btnReset) {
+            btnReset.innerHTML = origResetHtml;
+            btnReset.disabled = false;
+          }
         }
       } catch (err) {
-        alert('Koneksi gagal: ' + err.message);
+        showToast(`Koneksi jaringan terputus: ${err.message}`, 'error');
+        if (btnApprove) {
+          btnApprove.innerHTML = origApproveHtml;
+          btnApprove.disabled = origApproveHtml.includes('Telah Disetujui');
+        }
+        if (btnReject) {
+          btnReject.innerHTML = origRejectHtml;
+          btnReject.disabled = origRejectHtml.includes('Telah Ditolak');
+        }
+        if (btnReset) {
+          btnReset.innerHTML = origResetHtml;
+          btnReset.disabled = false;
+        }
+      } finally {
+        delete inFlight[candidateId];
       }
     }
   </script>
