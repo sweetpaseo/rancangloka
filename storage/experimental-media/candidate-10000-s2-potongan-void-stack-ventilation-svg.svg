@@ -142,6 +142,6 @@
   <!-- Bottom Disclaimer -->
   <g transform="translate(56, 615)">
     <rect x="0" y="0" width="460" height="20" rx="4" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1" />
-    <text x="10" y="14" font-size="11" font-weight="700" fill="#92400E" font-family: monospace;">DIAGRAM KONSEPTUAL FISIKA BANGUNAN • BUKAN GAMBAR KERJA MEKANIKAL</text>
+    <text x="10" y="14" font-size="11" font-weight="700" fill="#92400E" font-family="monospace">DIAGRAM KONSEPTUAL FISIKA BANGUNAN • BUKAN GAMBAR KERJA MEKANIKAL</text>
   </g>
 </svg>

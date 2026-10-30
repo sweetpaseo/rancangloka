@@ -63,10 +63,25 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
   return candidates.filter((c) => c.article_id === articleId);
 }
 
-function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): ExperimentalMediaCandidate | undefined {
-  return candidates.find(
-    (c) => c.article_id === articleId && (c.media_role === `supporting_${slotKey.toLowerCase()}` || c.visual_brief?.slotKey === slotKey)
-  );
+function getSupportingCandidate(articleId: number, slotIdentifier: string): ExperimentalMediaCandidate | undefined {
+  const normSlot = slotIdentifier.includes('-')
+    ? slotIdentifier.split('-')[1].toUpperCase()
+    : slotIdentifier.toUpperCase(); // 'S1' or 'S2'
+
+  return candidates.find((c) => {
+    if (c.article_id !== articleId) return false;
+    const role = (c.media_role || '').toLowerCase();
+    const briefSlot = (c.visual_brief?.slotKey || '').toUpperCase();
+    const id = c.id.toLowerCase();
+    const targetSlot = normSlot.toLowerCase();
+
+    return (
+      role === `supporting_${targetSlot}` ||
+      briefSlot === normSlot ||
+      id.includes(`-${targetSlot}-`) ||
+      id.endsWith(`-${targetSlot}`)
+    );
+  });
 }
 ---
 
@@ -771,8 +786,8 @@ function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): Experi
 
               <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 {slots.map((s) => {
-                  const cand = getSupportingCandidate(art.id, s.slotId as 'S1' | 'S2');
-                  const modelDisplayName = cand?.provenance?.model_name || s.modelProvenance?.model || cand?.model || 'SVG Engine';
+                  const cand = getSupportingCandidate(art.id, s.slotId);
+                  const modelDisplayName = cand?.provenance?.model_name || cand?.model || (s.recommendedMethod === 'DETERMINISTIC_SVG' ? 'Deterministic Architectural SVG Engine' : 'Cloudflare Workers AI (FLUX.1 Schnell)');
 
                   return (
                     <div class="rounded-xl bg-[#FFFDF7] border border-[#E7E9EE] p-5 flex flex-col justify-between space-y-5">
@@ -799,7 +814,7 @@ function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): Experi
                               ? 'bg-rose-100 text-rose-800 border border-rose-300'
                               : 'bg-amber-100 text-amber-800 border border-amber-300'
                           }`}>
-                            {cand?.approval_status || 'PENDING_REVIEW'}
+                            {cand?.approval_status || 'BELUM TERSEDIA'}
                           </span>
                         </div>
 
@@ -813,46 +828,78 @@ function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): Experi
                           )}
                         </div>
 
-                        <!-- Visual Preview Image -->
+                        <!-- Visual Preview Image & Direct Action -->
                         {cand ? (
-                          <div class="rounded-xl overflow-hidden border border-[#E7E9EE] bg-white p-2 flex items-center justify-center">
-                            <img
-                              src={cand.public_url}
-                              alt={cand.visual_brief?.altText || s.altText}
-                              class="w-full h-auto max-h-[340px] object-contain rounded-lg mx-auto"
-                              loading="lazy"
-                            />
+                          <div class="rounded-xl overflow-hidden border border-[#E7E9EE] bg-white p-3 space-y-2.5 shadow-2xs">
+                            <div class="relative bg-slate-50/70 rounded-lg overflow-hidden flex items-center justify-center min-h-[220px]">
+                              <img
+                                id={`cand-img-${cand.id}`}
+                                src={cand.public_url}
+                                alt={cand.visual_brief?.altText || s.altText}
+                                class="w-full h-auto max-h-[340px] object-contain rounded-lg mx-auto"
+                                loading="lazy"
+                                onerror={`handleImageLoadError(this, '${cand.id}', '${cand.public_url}')`}
+                              />
+                              <div id={`img-error-${cand.id}`} class="hidden w-full p-4 text-center"></div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
+                              <span class="text-slate-500 font-mono text-[11px] truncate max-w-[220px]" title={cand.public_url}>
+                                📁 {cand.public_url}
+                              </span>
+                              <a
+                                href={cand.public_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFFDF7] border border-[#E7E9EE] hover:bg-slate-100 text-xs font-mono font-semibold text-[#172033] shadow-2xs transition cursor-pointer"
+                              >
+                                <span>🔍 Buka Resolusi Penuh ↗</span>
+                              </a>
+                            </div>
                           </div>
                         ) : (
-                          <div class="h-48 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-xs text-slate-400">
-                            Kandidat belum diproduksi
+                          <div class="p-6 rounded-xl border border-dashed border-rose-300 bg-rose-50/60 flex flex-col items-center justify-center text-center space-y-2 text-rose-800">
+                            <span class="text-2xl">⚠️</span>
+                            <span class="text-xs font-bold font-outfit">Kandidat Gambar Belum Diproduksi</span>
+                            <p class="text-[11px] text-rose-600 max-w-xs leading-relaxed">
+                              Visual untuk slot ini belum terdaftar di ledger media eksperimental. Tombol persetujuan dinonaktifkan secara otomatis.
+                            </p>
                           </div>
                         )}
 
-                        <!-- Technical Metadata -->
+                        <!-- Technical Metadata Details -->
                         {cand && (
-                          <div class="p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-[11px] grid grid-cols-2 gap-2 text-[#596579]">
+                          <div class="p-3 rounded-lg bg-white border border-[#E7E9EE] text-[11px] grid grid-cols-2 gap-2 text-[#596579]">
                             <div>
-                              <span class="text-slate-400">ID:</span> <code class="font-mono text-[#172033] font-bold text-[10px]">{cand.id}</code>
+                              <span class="text-slate-400">Article ID:</span> <strong class="text-[#172033] font-mono">#{art.id}</strong>
                             </div>
                             <div>
-                              <span class="text-slate-400">Ukuran:</span> <strong class="text-[#172033]">{(cand.byte_size / 1024).toFixed(1)} KB</strong>
+                              <span class="text-slate-400">Slot ID:</span> <strong class="text-[#172033] font-mono">{s.slotId}</strong>
+                            </div>
+                            <div class="col-span-2">
+                              <span class="text-slate-400">Candidate ID:</span> <code class="font-mono text-[#172033] font-bold text-[10px] break-all">{cand.id}</code>
+                            </div>
+                            <div class="col-span-2">
+                              <span class="text-slate-400">Model / Metode:</span> <strong class="text-[#172033]">{modelDisplayName}</strong>
                             </div>
                             <div>
-                              <span class="text-slate-400">Resolusi:</span> <strong class="text-[#172033]">{cand.dimensions}</strong>
+                              <span class="text-slate-400">Ukuran File:</span> <strong class="text-[#172033]">{(cand.byte_size / 1024).toFixed(1)} KB</strong>
                             </div>
                             <div>
-                              <span class="text-slate-400">Usage:</span> <strong class="text-emerald-700">{cand.usage?.estimated_neurons ?? 0} Neurons</strong>
+                              <span class="text-slate-400">Resolusi Asli:</span> <strong class="text-[#172033]">{cand.dimensions}</strong>
+                            </div>
+                            <div class="col-span-2">
+                              <span class="text-slate-400">Konsumsi Neurons:</span> <strong class="text-emerald-700 font-mono">{cand.usage?.estimated_neurons ?? 0} Neurons</strong>
                             </div>
                           </div>
                         )}
 
                         <!-- Target Section in Article -->
-                        <div>
+                        <div class="p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-xs">
                           <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider">
                             Penempatan dalam Naskah:
                           </div>
-                          <div class="text-xs font-bold text-[#172033] mt-0.5">
+                          <div class="font-bold text-[#172033] mt-0.5 leading-snug">
                             {s.articleSection}
                           </div>
                         </div>
@@ -865,11 +912,11 @@ function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): Experi
                           </div>
                           <div>
                             <strong class="text-[#172033]">Alt Text:</strong>
-                            <span class="text-[#596579] block mt-0.5 font-mono text-[11px]">{cand?.visual_brief?.altText || s.altText}</span>
+                            <span class="text-[#596579] block mt-0.5 font-mono text-[11px] leading-relaxed">{cand?.visual_brief?.altText || s.altText}</span>
                           </div>
                         </div>
 
-                        <!-- QA Checks Summary -->
+                        <!-- Architectural QA Checks Summary -->
                         <div class="p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-[11px] space-y-1 text-[#596579]">
                           <div class="flex items-center justify-between">
                             <span class="font-bold text-[#172033]">Status QA Arsitektural:</span>
@@ -878,13 +925,13 @@ function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): Experi
                             </span>
                           </div>
                           {cand?.geometry_qa?.notes && (
-                            <p class="text-[10px] text-slate-500 italic mt-0.5">{cand.geometry_qa.notes}</p>
+                            <p class="text-[10px] text-slate-500 italic mt-0.5 leading-relaxed">{cand.geometry_qa.notes}</p>
                           )}
                         </div>
                       </div>
 
                       <!-- Action Buttons -->
-                      {cand && (
+                      {cand ? (
                         <div id={`actions-wrapper-${cand.id}`} class="pt-3 border-t border-[#E7E9EE] flex items-center gap-2">
                           <button
                             type="button"
@@ -918,6 +965,16 @@ function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): Experi
                             ↺ Reset
                           </button>
                         </div>
+                      ) : (
+                        <div class="pt-3 border-t border-[#E7E9EE]">
+                          <button
+                            type="button"
+                            disabled
+                            class="w-full rounded-lg bg-slate-100 text-slate-400 py-2 text-xs font-outfit font-semibold cursor-not-allowed text-center"
+                          >
+                            Tombol Persetujuan Dinonaktifkan (Kandidat Belum Diproduksi)
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -936,6 +993,34 @@ function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): Experi
   <script is:inline>
     let currentCropMode = 'square';
     const inFlight = {};
+
+    function handleImageLoadError(imgEl, candidateId, publicUrl) {
+      if (!imgEl) return;
+      imgEl.classList.add('hidden');
+      const errBox = document.getElementById('img-error-' + candidateId);
+      if (errBox) {
+        errBox.classList.remove('hidden');
+        errBox.innerHTML = `
+          <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs text-left space-y-1.5">
+            <div class="font-bold flex items-center gap-1.5 text-rose-800">
+              <span>⚠️ Gagal Memuat Asset Media</span>
+            </div>
+            <p class="font-mono text-[11px] text-rose-700 break-all bg-white/70 p-1 rounded border border-rose-100">
+              URL: ${publicUrl}
+            </p>
+            <p class="text-[11px] text-rose-600 leading-relaxed">
+              File biner tidak dapat diakses (HTTP error atau path salah). Tombol persetujuan dinonaktifkan secara otomatis sampai berkas media diverifikasi.
+            </p>
+          </div>
+        `;
+      }
+      const approveBtn = document.getElementById('btn-approve-' + candidateId);
+      if (approveBtn) {
+        approveBtn.disabled = true;
+        approveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        approveBtn.title = 'Persetujuan dinonaktifkan karena berkas media gagal dimuat.';
+      }
+    }
 
     function setCropMode(mode) {
       currentCropMode = mode;
