@@ -275,11 +275,19 @@ test('Candidate Approval Flow Regression Suite', async (t) => {
 
   await t.test('10. Safety Invariant: Media approval strictly decoupled from article publication', () => {
     // Check D1 articles table in local sqlite database
-    const dbPath = path.join(repoRoot, '.wrangler', 'state', 'v3', 'd1', 'miniflare-D1DatabaseObject', 'd40c0b96fc1b452e8d356caec5aa62c2f42a1228221b65e90d19642caecfef65.sqlite');
-
-    if (fs.existsSync(dbPath)) {
-      const db = new DatabaseSync(dbPath);
-      const rows = db.prepare('SELECT id, title, slug, status, featured_image FROM articles WHERE id IN (9993, 9999, 10000)').all();
+    const d1Dir = path.join(repoRoot, '.wrangler', 'state', 'v3', 'd1', 'miniflare-D1DatabaseObject');
+    const files = fs.existsSync(d1Dir) ? fs.readdirSync(d1Dir).filter(f => f.endsWith('.sqlite')) : [];
+    let rows = [];
+    for (const f of files) {
+      try {
+        const db = new DatabaseSync(path.join(d1Dir, f));
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='articles'").all();
+        if (tables.length > 0) {
+          rows = db.prepare('SELECT id, title, slug, status, featured_image FROM articles WHERE id IN (9993, 9999, 10000)').all();
+          break;
+        }
+      } catch {}
+    }
       
       for (const row of rows) {
         // Status MUST remain 'draft'
@@ -287,6 +295,5 @@ test('Candidate Approval Flow Regression Suite', async (t) => {
         // featured_image must NOT be auto-promoted before explicit promotion flow
         assert.equal(row.featured_image, null, `Article #${row.id} featured_image must remain NULL`);
       }
-    }
   });
 });

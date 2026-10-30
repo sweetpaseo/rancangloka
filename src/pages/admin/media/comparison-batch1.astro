@@ -62,6 +62,12 @@ function getLatestCandidate(articleId: number, modelTag: string): ExperimentalMe
 function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[] {
   return candidates.filter((c) => c.article_id === articleId);
 }
+
+function getSupportingCandidate(articleId: number, slotKey: 'S1' | 'S2'): ExperimentalMediaCandidate | undefined {
+  return candidates.find(
+    (c) => c.article_id === articleId && (c.media_role === `supporting_${slotKey.toLowerCase()}` || c.visual_brief?.slotKey === slotKey)
+  );
+}
 ---
 
 <AdminLayout title="Perbandingan Visual Batch 1: Finalisasi Hero Image (EVI V1)">
@@ -764,105 +770,158 @@ function getHistoricalCandidates(articleId: number): ExperimentalMediaCandidate[
               </div>
 
               <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                {slots.map((s) => (
-                  <div class="rounded-xl bg-[#FFFDF7] border border-[#E7E9EE] p-5 flex flex-col justify-between">
-                    <div class="space-y-4">
-                      <!-- Badge Header -->
-                      <div class="flex flex-wrap items-center justify-between gap-2">
-                        <span class="text-xs font-mono font-black px-2.5 py-1 rounded-md bg-[#172033] text-white">
-                          SLOT {s.slotId}
-                        </span>
-                        <div class="flex items-center gap-2">
-                          <span class={`text-[11px] font-mono font-bold px-2 py-0.5 rounded ${
-                            s.recommendedMethod === 'DETERMINISTIC_SVG'
-                              ? 'bg-blue-100 text-blue-900 border border-blue-200'
-                              : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                {slots.map((s) => {
+                  const cand = getSupportingCandidate(art.id, s.slotId as 'S1' | 'S2');
+                  const modelDisplayName = cand?.provenance?.model_name || s.modelProvenance?.model || cand?.model || 'SVG Engine';
+
+                  return (
+                    <div class="rounded-xl bg-[#FFFDF7] border border-[#E7E9EE] p-5 flex flex-col justify-between space-y-5">
+                      <div class="space-y-4">
+                        <!-- Badge Header -->
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                          <div class="flex items-center gap-2">
+                            <span class="text-xs font-mono font-black px-2.5 py-1 rounded-md bg-[#172033] text-white">
+                              SLOT {s.slotId}
+                            </span>
+                            <span class={`text-[11px] font-mono font-bold px-2 py-0.5 rounded ${
+                              s.recommendedMethod === 'DETERMINISTIC_SVG'
+                                ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                                : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                            }`}>
+                              {s.recommendedMethod === 'DETERMINISTIC_SVG' ? '📊 DETERMINISTIC SVG' : '🎨 AI DIFFUSION (FLUX)'}
+                            </span>
+                          </div>
+
+                          <span id={`status-badge-${cand?.id || s.slotId}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
+                            cand?.approval_status === 'APPROVED'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : cand?.approval_status === 'REJECTED'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
                           }`}>
-                            {s.recommendedMethod === 'DETERMINISTIC_SVG' ? '📊 DETERMINISTIC SVG' : '🎨 AI DIFFUSION (FLUX)'}
-                          </span>
-                          <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
-                            {s.reviewStatus}
+                            {cand?.approval_status || 'PENDING_REVIEW'}
                           </span>
                         </div>
-                      </div>
 
-                      <!-- Target Section -->
-                      <div>
-                        <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider">
-                          Penempatan dalam Naskah:
+                        <!-- Reviewer Box -->
+                        <div id={`reviewer-info-${cand?.id || s.slotId}`}>
+                          {cand?.reviewed_at && (
+                            <div class="text-[11px] font-mono text-[#596579] bg-white p-2 rounded-lg border border-[#E7E9EE] flex items-center justify-between">
+                              <span>Reviewer: <strong class="text-[#172033]">{cand.reviewed_by || 'Chief Editor'}</strong></span>
+                              <span>{new Date(cand.reviewed_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                            </div>
+                          )}
                         </div>
-                        <div class="text-xs font-bold text-[#172033] mt-0.5">
-                          {s.articleSection}
-                        </div>
-                      </div>
 
-                      <!-- Main Subject & Problem/Solution -->
-                      <div>
-                        <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider">
-                          Subjek Visual &amp; Bukti:
-                        </div>
-                        <p class="text-xs font-bold text-[#172033] mt-0.5">
-                          {s.mainSubject}
-                        </p>
-                        <p class="text-xs text-[#596579] mt-1 leading-relaxed">
-                          {s.problemOrSolution}
-                        </p>
-                      </div>
+                        <!-- Visual Preview Image -->
+                        {cand ? (
+                          <div class="rounded-xl overflow-hidden border border-[#E7E9EE] bg-white p-2 flex items-center justify-center">
+                            <img
+                              src={cand.public_url}
+                              alt={cand.visual_brief?.altText || s.altText}
+                              class="w-full h-auto max-h-[340px] object-contain rounded-lg mx-auto"
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : (
+                          <div class="h-48 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-xs text-slate-400">
+                            Kandidat belum diproduksi
+                          </div>
+                        )}
 
-                      <!-- Mandatory Visible Evidence -->
-                      <div>
-                        <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider mb-1">
-                          Bukti Visual yang Wajib Terlihat:
-                        </div>
-                        <ul class="space-y-1 text-xs text-[#172033]">
-                          {s.visualEvidence.map((ev) => (
-                            <li class="flex items-start gap-1.5">
-                              <span class="text-emerald-700 shrink-0 font-bold">✓</span>
-                              <span class="leading-snug">{ev}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                        <!-- Technical Metadata -->
+                        {cand && (
+                          <div class="p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-[11px] grid grid-cols-2 gap-2 text-[#596579]">
+                            <div>
+                              <span class="text-slate-400">ID:</span> <code class="font-mono text-[#172033] font-bold text-[10px]">{cand.id}</code>
+                            </div>
+                            <div>
+                              <span class="text-slate-400">Ukuran:</span> <strong class="text-[#172033]">{(cand.byte_size / 1024).toFixed(1)} KB</strong>
+                            </div>
+                            <div>
+                              <span class="text-slate-400">Resolusi:</span> <strong class="text-[#172033]">{cand.dimensions}</strong>
+                            </div>
+                            <div>
+                              <span class="text-slate-400">Usage:</span> <strong class="text-emerald-700">{cand.usage?.estimated_neurons ?? 0} Neurons</strong>
+                            </div>
+                          </div>
+                        )}
 
-                      <!-- Prompt / Instructions -->
-                      <div>
-                        <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider">
-                          {s.recommendedMethod === 'DETERMINISTIC_SVG' ? 'Instruksi Kode SVG:' : 'Prompt Difusi FLUX:'}
-                        </div>
-                        <div class="mt-1 p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-[11px] text-[#172033] font-mono leading-relaxed select-all">
-                          {s.generationPromptOrInstructions}
-                        </div>
-                      </div>
-
-                      <!-- Caption & Alt Text -->
-                      <div class="space-y-2 pt-2 border-t border-[#E7E9EE] text-xs">
+                        <!-- Target Section in Article -->
                         <div>
-                          <strong class="text-[#172033]">Caption:</strong>
-                          <span class="text-[#596579] italic block mt-0.5 leading-relaxed">{s.caption}</span>
+                          <div class="text-[11px] font-semibold text-[#596579] uppercase tracking-wider">
+                            Penempatan dalam Naskah:
+                          </div>
+                          <div class="text-xs font-bold text-[#172033] mt-0.5">
+                            {s.articleSection}
+                          </div>
                         </div>
-                        <div>
-                          <strong class="text-[#172033]">Alt Text:</strong>
-                          <span class="text-[#596579] block mt-0.5 font-mono text-[11px]">{s.altText}</span>
+
+                        <!-- Caption & Alt Text -->
+                        <div class="space-y-2 pt-2 border-t border-[#E7E9EE] text-xs">
+                          <div>
+                            <strong class="text-[#172033]">Caption:</strong>
+                            <span class="text-[#596579] italic block mt-0.5 leading-relaxed">{cand?.visual_brief?.caption || s.caption}</span>
+                          </div>
+                          <div>
+                            <strong class="text-[#172033]">Alt Text:</strong>
+                            <span class="text-[#596579] block mt-0.5 font-mono text-[11px]">{cand?.visual_brief?.altText || s.altText}</span>
+                          </div>
+                        </div>
+
+                        <!-- QA Checks Summary -->
+                        <div class="p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-[11px] space-y-1 text-[#596579]">
+                          <div class="flex items-center justify-between">
+                            <span class="font-bold text-[#172033]">Status QA Arsitektural:</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              {cand?.geometry_qa?.overallStatus || 'PASS'}
+                            </span>
+                          </div>
+                          {cand?.geometry_qa?.notes && (
+                            <p class="text-[10px] text-slate-500 italic mt-0.5">{cand.geometry_qa.notes}</p>
+                          )}
                         </div>
                       </div>
 
-                      <!-- QA Checks -->
-                      <div class="p-2.5 rounded-lg bg-white border border-[#E7E9EE] text-[11px] space-y-1 text-[#596579]">
-                        <div>
-                          <strong class="text-[#172033]">Relevansi Naskah:</strong> {s.relevanceCheck}
+                      <!-- Action Buttons -->
+                      {cand && (
+                        <div id={`actions-wrapper-${cand.id}`} class="pt-3 border-t border-[#E7E9EE] flex items-center gap-2">
+                          <button
+                            type="button"
+                            id={`btn-approve-${cand.id}`}
+                            onclick={`handleDecision('${cand.id}', 'approve', '${modelDisplayName}', ${art.id})`}
+                            disabled={cand.approval_status === 'APPROVED'}
+                            class={`flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
+                              cand.approval_status === 'APPROVED' ? 'opacity-60 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            {cand.approval_status === 'APPROVED' ? '✓ Telah Disetujui' : '✓ Setuju (Approve)'}
+                          </button>
+                          <button
+                            type="button"
+                            id={`btn-reject-${cand.id}`}
+                            onclick={`handleDecision('${cand.id}', 'reject', '${modelDisplayName}', ${art.id})`}
+                            disabled={cand.approval_status === 'REJECTED'}
+                            class={`flex-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 py-2 text-xs font-outfit font-bold transition text-center cursor-pointer ${
+                              cand.approval_status === 'REJECTED' ? 'opacity-60 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            ✕ Tolak (Reject)
+                          </button>
+                          <button
+                            type="button"
+                            id={`btn-reset-${cand.id}`}
+                            onclick={`handleDecision('${cand.id}', 'reset', '${modelDisplayName}', ${art.id})`}
+                            class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 text-xs font-outfit font-semibold transition cursor-pointer"
+                            title="Reset status ke PENDING_REVIEW"
+                          >
+                            ↺ Reset
+                          </button>
                         </div>
-                        <div>
-                          <strong class="text-[#172033]">Pemeriksaan Geometri:</strong> {s.geometryCheckPlan}
-                        </div>
-                      </div>
+                      )}
                     </div>
-
-                    <div class="mt-5 pt-3 border-t border-[#E7E9EE] flex items-center justify-between text-xs text-[#596579]">
-                      <span>Model: <code class="font-mono text-[#172033]">{s.modelProvenance.model}</code></span>
-                      <span class="font-semibold text-amber-800">Menunggu Persetujuan Rencana</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

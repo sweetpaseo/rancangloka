@@ -348,20 +348,23 @@ const iconPath = (icon: string) => {
               aria-label="Ringkasan Keputusan Menunggu"
             >
               <div class="px-4 py-3 bg-slate-50/80 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-mono font-bold uppercase tracking-wider text-slate-700">PERLU TINDAKAN</span>
-                  {pendingApprovalCount > 0 ? (
-                    <span class="flex h-5 px-1.5 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-mono text-[11px] font-bold">
-                      {pendingApprovalCount}
-                    </span>
-                  ) : (
-                    <span class="flex h-5 px-1.5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">
-                      0
-                    </span>
-                  )}
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono font-bold uppercase tracking-wider text-slate-700">PERLU TINDAKAN</span>
+                    {pendingApprovalCount > 0 ? (
+                      <span class="flex h-5 px-1.5 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-mono text-[11px] font-bold">
+                        {pendingApprovalCount}
+                      </span>
+                    ) : (
+                      <span class="flex h-5 px-1.5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-mono text-[11px] font-bold">
+                        0
+                      </span>
+                    )}
+                  </div>
+                  <p class="text-[10px] text-slate-400 mt-0.5">Antrean persetujuan publikasi naskah & promosi media resmi.</p>
                 </div>
                 <a href="/admin/approvals" class="text-[11px] font-medium text-[#0066ee] hover:underline">
-                  Lihat Semua Persetujuan →
+                  Lihat Semua →
                 </a>
               </div>
 
@@ -402,16 +405,24 @@ const iconPath = (icon: string) => {
                 )}
               </div>
 
-              {pendingApprovalCount > 0 && (
-                <div class="p-2.5 bg-slate-50/50 text-center">
-                  <a
-                    href="/admin/approvals"
-                    class="inline-block text-xs font-bold text-[#0066ee] hover:underline py-1"
-                  >
-                    Lihat Semua Persetujuan →
+              <div class="p-2.5 bg-slate-50/50 text-center divide-y divide-slate-100 space-y-2">
+                {pendingApprovalCount > 0 && (
+                  <div>
+                    <a
+                      href="/admin/approvals"
+                      class="inline-block text-xs font-bold text-[#0066ee] hover:underline py-1"
+                    >
+                      Buka Approval Inbox →
+                    </a>
+                  </div>
+                )}
+                <div class="pt-2 flex items-center justify-between text-[11px] text-slate-500 px-2">
+                  <span>Evaluasi Kandidat Media:</span>
+                  <a href="/admin/media/comparison-batch1" class="font-bold text-purple-700 hover:underline">
+                    Batch 1 Media →
                   </a>
                 </div>
-              )}
+              </div>
             </div>
           </div>
 

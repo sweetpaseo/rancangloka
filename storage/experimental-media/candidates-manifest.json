@@ -323,7 +323,7 @@
       "byte_size": 742401,
       "sha256": "00e1893f131384a3d151dd327318f3ac4cfe9964cf89479205ee458e932dd11a"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "storage_reference": "storage/experimental-media/candidate-9999-flux-1-schnell.jpg",
     "public_url": "/experimental-media/candidate-9999-flux-1-schnell.jpg",
     "byte_size": 742401,
@@ -432,10 +432,18 @@
       },
       "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
     },
-    "reviewed_by": null,
-    "reviewed_at": null,
-    "review_notes": null,
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T07:00:38.261Z",
+    "review_notes": "Disetujui via Inspeksi Visual Batch 1",
     "approval_history": [
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T07:00:38.261Z",
+        "notes": "Disetujui via Inspeksi Visual Batch 1"
+      },
       {
         "action": "reset",
         "previous_status": "APPROVED",
@@ -739,7 +747,7 @@
       "byte_size": 146386,
       "sha256": "24a49ea563f629a3147956101b72df7077843c365b5d24743db0753213f018bf"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "storage_reference": "storage/experimental-media/candidate-10000-sdxl-lightning.jpg",
     "public_url": "/experimental-media/candidate-10000-sdxl-lightning.jpg",
     "byte_size": 146386,
@@ -846,7 +854,20 @@
         "evaluationText": "Pilihan Owner: Direkomendasikan sebagai kandidat utama dengan keterangan visualisasi interior (bukan denah teknis 2D)."
       },
       "disclaimer": "Dimensi 1–4 merupakan automated heuristic berdasarkan aturan teks, prompt metadata, dan batasan arsitektur. Dimensi 5 (Editorial Suitability) tunduk pada verifikasi visual langsung oleh Chief Editor sebelum promosi media."
-    }
+    },
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T07:00:42.932Z",
+    "review_notes": "Disetujui via Inspeksi Visual Batch 1",
+    "approval_history": [
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T07:00:42.932Z",
+        "notes": "Disetujui via Inspeksi Visual Batch 1"
+      }
+    ]
   },
   {
     "id": "candidate-9993-sdxl-lightning-v3",
@@ -1025,7 +1046,7 @@
       "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
       "prompt_style": "controlled_localized_moisture"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "storage_reference": "storage/experimental-media/candidate-9993-flux-1-schnell-v3.jpg",
     "public_url": "/experimental-media/candidate-9993-flux-1-schnell-v3.jpg",
     "byte_size": 515830,
@@ -1148,6 +1169,316 @@
       "subjectFocalPointY": "bottom"
     },
     "editorial_verdict": "APPROVED_PREFERRED",
-    "editorial_notes": "Kandidat utama pilihan editorial: Kerusakan dinding terlihat jelas, lebih sesuai dengan topik artikel, dan komposisi lebih informatif dibanding SDXL v3. Tetap PENDING_REVIEW sampai Chief Editor menyetujui."
+    "editorial_notes": "Kandidat utama pilihan editorial: Kerusakan dinding terlihat jelas, lebih sesuai dengan topik artikel, dan komposisi lebih informatif dibanding SDXL v3. Tetap PENDING_REVIEW sampai Chief Editor menyetujui.",
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T07:00:23.757Z",
+    "review_notes": "Disetujui via Inspeksi Visual Batch 1",
+    "approval_history": [
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T07:00:23.757Z",
+        "notes": "Disetujui via Inspeksi Visual Batch 1"
+      }
+    ]
+  },
+  {
+    "id": "candidate-9993-s1-jalur-rembesan-svg",
+    "article_id": 9993,
+    "generation_job_id": "JOB-BATCH1-9993-S1-SVG",
+    "provider": "deterministic_svg",
+    "model": "rancangloka-svg-engine-v1",
+    "prompt": "Diagram potongan arsitektural dinding rumah 1 lantai di iklim tropis menunjukkan tiga vektor perambatan kelembapan: kapilaritas air tanah (rising damp) pada zona 0-80cm, tempias hujan pada retak plesteran zona 80-200cm, dan kebocoran talang dak atap pada zona >200cm.",
+    "dimensions": "1200x675",
+    "width": 1200,
+    "height": 675,
+    "generation_timestamp": "2026-10-30T07:14:41.154Z",
+    "media_role": "supporting_s1",
+    "provenance": {
+      "source_type": "deterministic_architectural_vector",
+      "provider": "rancangloka_svg_engine",
+      "model_name": "Determinitic SVG Vector Engine",
+      "byte_size": 10144,
+      "sha256": "902f4adb5acef507db4147abbf00f447e5c80b6c589a4a6d63c304d40bd5db86",
+      "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
+    },
+    "approval_status": "PENDING_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-9993-s1-jalur-rembesan-svg.svg",
+    "public_url": "/experimental-media/candidate-9993-s1-jalur-rembesan-svg.svg",
+    "byte_size": 10144,
+    "sha256": "902f4adb5acef507db4147abbf00f447e5c80b6c589a4a6d63c304d40bd5db86",
+    "mime_type": "image/svg+xml",
+    "usage": {
+      "estimated_neurons": 0,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL"
+    },
+    "visual_brief": {
+      "articleId": 9993,
+      "slotKey": "S1",
+      "articleSection": "2. Memahami Kemungkinan Sumber Kelembapan Dinding: Indikator Fisik Rembesan & Plesteran Rusak",
+      "purpose": "supporting_inline_diagram",
+      "caption": "Diagram konseptual tiga arah perambatan kelembapan pada dinding rumah tropis: kapilaritas air tanah (rising damp) di bagian bawah dekat sloof, tempias air hujan pada retak plesteran eksterior di bagian tengah, dan kebocoran talang atau dak atap di bagian atas dekat plafon.",
+      "altText": "Diagram arsitektural potongan dinding memperlihatkan tiga jalur rembesan air: kapilaritas air tanah di bagian bawah, tempias hujan pada dinding luar di bagian tengah, dan kebocoran talang atap di bagian atas."
+    },
+    "geometry_qa": {
+      "spatialPerspective": "PASS",
+      "structuralConsistency": "PASS",
+      "dimensionConsistency": "PASS",
+      "overallStatus": "PASS",
+      "notes": "Diagram konseptual 2D dengan zonasi elevasi ketinggian akurat."
+    }
+  },
+  {
+    "id": "candidate-9993-s2-detail-cat-menggelembung-flux",
+    "article_id": 9993,
+    "generation_job_id": "JOB-BATCH1-9993-S2-FLUX",
+    "provider": "cloudflare_ai",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Close-up macro architectural documentary photography of physical moisture damage on an Indonesian residential plastered brick wall, eye-level close-up shot. The paint film shows authentic blistering bubbles, peeling and flaking latex paint layer revealing coarse gray damp cement plaster acian underneath, with subtle white crystalline efflorescence salts along the peeling edges. Authentic building pathology case study, sharp focus on peeling paint textures, soft natural daylight from nearby window, realistic architectural materials, no CGI glare, no artificial neon lighting, no digital smoothing.",
+    "dimensions": "1024x1024",
+    "width": 1024,
+    "height": 1024,
+    "steps": 4,
+    "generation_timestamp": "2026-10-30T07:14:44.774Z",
+    "media_role": "supporting_s2",
+    "provenance": {
+      "source_type": "ai_generated_operator_reviewed",
+      "provider": "cloudflare_workers_ai",
+      "model": "@cf/black-forest-labs/flux-1-schnell",
+      "model_name": "FLUX.1 Schnell",
+      "latency_ms": 3617,
+      "byte_size": 1053251,
+      "sha256": "db79c54411ba6598141f0d25a7045f9a0dc77334b14d8856f5a08784fe20db1a",
+      "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
+    },
+    "approval_status": "PENDING_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-9993-s2-detail-cat-menggelembung-flux.jpg",
+    "public_url": "/experimental-media/candidate-9993-s2-detail-cat-menggelembung-flux.jpg",
+    "byte_size": 1053251,
+    "sha256": "db79c54411ba6598141f0d25a7045f9a0dc77334b14d8856f5a08784fe20db1a",
+    "mime_type": "image/jpeg",
+    "usage": {
+      "estimated_neurons": 57.6,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL"
+    },
+    "visual_brief": {
+      "articleId": 9993,
+      "slotKey": "S2",
+      "articleSection": "4. Memahami Keterbatasan Perbaikan Interior: Tekanan Uap dan Cat Kedap Air",
+      "purpose": "supporting_detail_photo",
+      "caption": "Detail fisik kerusakan lapisan cat interior: Tekanan uap air dari dalam dinding mendorong lapisan film cat hingga menggelembung (blistering) dan mengelupas rapuh, menampakkan plesteran semen acian lembap di baliknya.",
+      "altText": "Foto makro detail dinding plesteran dengan lapisan cat interior yang menggelembung melepuh dan terkelupas akibat tekanan uap air dan kelembapan."
+    },
+    "geometry_qa": {
+      "spatialPerspective": "PASS",
+      "structuralConsistency": "PASS",
+      "damageRealism": "PASS",
+      "overallStatus": "PASS",
+      "notes": "Makro tekstur plesteran semen dan cat melepuh sangat realistis tanpa artefak AI berlebih."
+    }
+  },
+  {
+    "id": "candidate-9999-s1-meja-gantung-railing-flux",
+    "article_id": 9999,
+    "generation_job_id": "JOB-BATCH1-9999-S1-FLUX",
+    "provider": "cloudflare_ai",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Documentary architectural photograph of a compact 1x2 meter apartment balcony in Indonesia, focused on a space-saving hanging balcony table mounted on the black metal railing. The wooden drop-leaf table has realistic steel clamp brackets securely attached to the top railing bar, sturdy folding support struts, and a smooth natural teak wood finish. On the table sits a ceramic coffee mug and a small notebook. Clear view of the 60 cm walking corridor clearance between the table and the balcony door, natural morning tropical light, clean realistic perspective, physically plausible clamping mechanism.",
+    "dimensions": "1024x1024",
+    "width": 1024,
+    "height": 1024,
+    "steps": 4,
+    "generation_timestamp": "2026-10-30T07:14:46.961Z",
+    "media_role": "supporting_s1",
+    "provenance": {
+      "source_type": "ai_generated_operator_reviewed",
+      "provider": "cloudflare_workers_ai",
+      "model": "@cf/black-forest-labs/flux-1-schnell",
+      "model_name": "FLUX.1 Schnell",
+      "latency_ms": 2186,
+      "byte_size": 477694,
+      "sha256": "5d2126d7e2bf4d3da0bf21400790fa45dac65fa4b608790610eee1a35264036b",
+      "brief_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman"
+    },
+    "approval_status": "PENDING_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-9999-s1-meja-gantung-railing-flux.jpg",
+    "public_url": "/experimental-media/candidate-9999-s1-meja-gantung-railing-flux.jpg",
+    "byte_size": 477694,
+    "sha256": "5d2126d7e2bf4d3da0bf21400790fa45dac65fa4b608790610eee1a35264036b",
+    "mime_type": "image/jpeg",
+    "usage": {
+      "estimated_neurons": 57.6,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL"
+    },
+    "visual_brief": {
+      "articleId": 9999,
+      "slotKey": "S1",
+      "articleSection": "3. Pilih Meja Lipat Gantung Railing",
+      "purpose": "supporting_furniture_detail",
+      "caption": "Meja lipat gantung railing pada balkon kompak: Menggunakan klem logam kokoh yang bertumpu pada pipa pagar atas tanpa memakan ruang lantai, menjaga koridor sirkulasi 60 cm tetap leluasa saat digunakan.",
+      "altText": "Meja lipat kayu jati yang tergantung pada railing besi hitam balkon sempit, memperlihatkan mekanisme klem besi dan ruang sirkulasi lantai yang tetap lapang."
+    },
+    "geometry_qa": {
+      "spatialPerspective": "PASS",
+      "railingPosition": "PASS",
+      "furnitureClampRealism": "PASS",
+      "overallStatus": "PASS",
+      "notes": "Mekanisme klem pagar masuk akal secara fisik; koridor sirkulasi balkon terlihat jelas."
+    }
+  },
+  {
+    "id": "candidate-9999-s2-sudut-santai-tanaman-vertikal-flux",
+    "article_id": 9999,
+    "generation_job_id": "JOB-BATCH1-9999-S2-FLUX",
+    "provider": "cloudflare_ai",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Architectural photograph of a cozy compact reading corner on a 1.2x2.5 meter tropical residential balcony. In the corner sits one lightweight folding wooden canvas chair, next to a vertical wall planter trellis mounted with lush tropical pothos (sirih gading) and small ferns in neat terracotta pots. The clean tiled balcony floor shows an unobstructed corner floor drain. Warm golden afternoon sunlight filtering through, tranquil residential ambience, authentic Indonesian house context, no impossible spatial geometry, realistic plant proportions.",
+    "dimensions": "1024x1024",
+    "width": 1024,
+    "height": 1024,
+    "steps": 4,
+    "generation_timestamp": "2026-10-30T07:14:49.067Z",
+    "media_role": "supporting_s2",
+    "provenance": {
+      "source_type": "ai_generated_operator_reviewed",
+      "provider": "cloudflare_workers_ai",
+      "model": "@cf/black-forest-labs/flux-1-schnell",
+      "model_name": "FLUX.1 Schnell",
+      "latency_ms": 2103,
+      "byte_size": 444257,
+      "sha256": "e2d226fe9d876dac9ad54dd6dc817774c61b194bc18b5101f31067077b032453",
+      "brief_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman"
+    },
+    "approval_status": "PENDING_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-9999-s2-sudut-santai-tanaman-vertikal-flux.jpg",
+    "public_url": "/experimental-media/candidate-9999-s2-sudut-santai-tanaman-vertikal-flux.jpg",
+    "byte_size": 444257,
+    "sha256": "e2d226fe9d876dac9ad54dd6dc817774c61b194bc18b5101f31067077b032453",
+    "mime_type": "image/jpeg",
+    "usage": {
+      "estimated_neurons": 57.6,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL"
+    },
+    "visual_brief": {
+      "articleId": 9999,
+      "slotKey": "S2",
+      "articleSection": "4. Manfaatkan Dinding untuk Tanaman Vertikal",
+      "purpose": "supporting_atmosphere_photo",
+      "caption": "Penataan sudut santai balkon mungil: Memadukan satu kursi lipat ringkas dengan teralis tanaman vertikal di dinding, membebaskan lantai tengah dan memastikan saluran pembuangan air (floor drain) di sudut tetap bebas hambatan.",
+      "altText": "Sudut santai balkon rumah kecil dengan kursi lipat kayu dan teralis tanaman hijau vertikal pada dinding, memperlihatkan area lantai yang bersih dan rapi."
+    },
+    "geometry_qa": {
+      "spatialPerspective": "PASS",
+      "plantTrellisGeometry": "PASS",
+      "floorDrainClearance": "PASS",
+      "overallStatus": "PASS",
+      "notes": "Tanaman vertikal tertata rapi di bidang dinding; proporsi ruang santai realistis."
+    }
+  },
+  {
+    "id": "candidate-10000-s1-denah-konseptual-inner-court-svg",
+    "article_id": 10000,
+    "generation_job_id": "JOB-BATCH1-10000-S1-SVG",
+    "provider": "deterministic_svg",
+    "model": "rancangloka-svg-engine-v1",
+    "prompt": "Diagram denah arsitektur 2D komparatif untuk kaveling rumah sempit lebar 6 meter dan panjang 15 meter. Menunjukkan inner court terbuka di zona tengah berukuran 2.5 x 3.0 m yang memecah efek lorong gelap dan menciptakan ventilasi silang alami antar-ruang.",
+    "dimensions": "1200x675",
+    "width": 1200,
+    "height": 675,
+    "generation_timestamp": "2026-10-30T07:14:49.069Z",
+    "media_role": "supporting_s1",
+    "provenance": {
+      "source_type": "deterministic_architectural_vector",
+      "provider": "rancangloka_svg_engine",
+      "model_name": "Determinitic SVG Vector Engine",
+      "byte_size": 10265,
+      "sha256": "fa6dd01af707b846456abcd8b0e86eaa5e68159a8afbf77ac0e57c58ed63b429",
+      "brief_slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap"
+    },
+    "approval_status": "PENDING_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-10000-s1-denah-konseptual-inner-court-svg.svg",
+    "public_url": "/experimental-media/candidate-10000-s1-denah-konseptual-inner-court-svg.svg",
+    "byte_size": 10265,
+    "sha256": "fa6dd01af707b846456abcd8b0e86eaa5e68159a8afbf77ac0e57c58ed63b429",
+    "mime_type": "image/svg+xml",
+    "usage": {
+      "estimated_neurons": 0,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL"
+    },
+    "visual_brief": {
+      "articleId": 10000,
+      "slotKey": "S1",
+      "articleSection": "2. Pendekatan 1: Menyisipkan Ruang Terbuka Hijau / Taman Kering Dalam (*Inner Court*)",
+      "purpose": "supporting_plan_diagram",
+      "caption": "Diagram denah konseptual kaveling rumah deret 6×15 meter: Menyisipkan inner court (taman terbuka) di zona tengah memecah efek lorong gelap dan menciptakan ventilasi silang alami antar-ruang.",
+      "altText": "Diagram denah arsitektur rumah kaveling lebar 6 meter dan panjang 15 meter memperlihatkan penempatan taman terbuka inner court di bagian tengah untuk ventilasi silang."
+    },
+    "geometry_qa": {
+      "spatialPerspective": "PASS",
+      "dimensionConsistency": "PASS",
+      "airflowLogic": "PASS",
+      "overallStatus": "PASS",
+      "notes": "Penjumlahan dimensi panjang 15m dan lebar 6m konsisten; jalur sirkulasi udara logis."
+    }
+  },
+  {
+    "id": "candidate-10000-s2-potongan-void-stack-ventilation-svg",
+    "article_id": 10000,
+    "generation_job_id": "JOB-BATCH1-10000-S2-SVG",
+    "provider": "deterministic_svg",
+    "model": "rancangloka-svg-engine-v1",
+    "prompt": "Diagram potongan melintang bangunan rumah tinggal 2 lantai. Menunjukkan zona void tangga terbuka yang menghubungkan ruang keluarga lantai bawah dengan area bordes lantai atas. Udara hangat yang naik secara alami (thermal buoyancy) terbuang ke luar melalui kisi ventilasi jalusi atas di dinding sopi-sopi.",
+    "dimensions": "1200x675",
+    "width": 1200,
+    "height": 675,
+    "generation_timestamp": "2026-10-30T07:14:49.070Z",
+    "media_role": "supporting_s2",
+    "provenance": {
+      "source_type": "deterministic_architectural_vector",
+      "provider": "rancangloka_svg_engine",
+      "model_name": "Determinitic SVG Vector Engine",
+      "byte_size": 9375,
+      "sha256": "398276bd7d321fae9ffbdefe5b0c1f9e478b2b4cdc71381d14cf054bee0b1571",
+      "brief_slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap"
+    },
+    "approval_status": "PENDING_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-10000-s2-potongan-void-stack-ventilation-svg.svg",
+    "public_url": "/experimental-media/candidate-10000-s2-potongan-void-stack-ventilation-svg.svg",
+    "byte_size": 9375,
+    "sha256": "398276bd7d321fae9ffbdefe5b0c1f9e478b2b4cdc71381d14cf054bee0b1571",
+    "mime_type": "image/svg+xml",
+    "usage": {
+      "estimated_neurons": 0,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL"
+    },
+    "visual_brief": {
+      "articleId": 10000,
+      "slotKey": "S2",
+      "articleSection": "3. Pendekatan 2: Memanfaatkan Ruang Vertikal Tangga (*Stair Void*)",
+      "purpose": "supporting_section_diagram",
+      "caption": "Diagram potongan ventilasi efek cerobong (stack effect): Udara sejuk masuk dari lantai bawah dan mendorong udara hangat naik melalui rongga void tangga, lalu keluar melalui kisi-kisi ventilasi atas di sopi-sopi atap.",
+      "altText": "Diagram potongan arsitektural rumah bertingkat memperlihatkan pergerakan udara sejuk masuk dari lantai bawah dan udara hangat keluar melalui kisi ventilasi void tangga."
+    },
+    "geometry_qa": {
+      "spatialPerspective": "PASS",
+      "thermalBuoyancyLogic": "PASS",
+      "sectionGeometry": "PASS",
+      "overallStatus": "PASS",
+      "notes": "Penampang potongan tangga dan void akurat; peringatan anti-kaca-mati tercantum jelas."
+    }
   }
 ]
