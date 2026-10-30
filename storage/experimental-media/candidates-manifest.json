@@ -1126,7 +1126,7 @@
       "cropHeightPercent": 56.25,
       "subjectFocalPointY": "bottom"
     },
-    "editorial_verdict": "PENDING_REVIEW",
-    "editorial_notes": "Regenerasi v3 (FLUX.1 Schnell): Kerusakan kelembapan ringan dan bertahap pada rumah tinggal terawat (tanpa lubang bobokan plesteran)."
+    "editorial_verdict": "APPROVED_PREFERRED",
+    "editorial_notes": "Kandidat utama pilihan editorial: Kerusakan dinding terlihat jelas, lebih sesuai dengan topik artikel, dan komposisi lebih informatif dibanding SDXL v3. Tetap PENDING_REVIEW sampai Chief Editor menyetujui."
   }
 ]
