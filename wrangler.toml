@@ -20,6 +20,10 @@ migrations_dir = "db/migrations"
 binding = "MEDIA_BUCKET"
 bucket_name = "rancangloka-media"
 
+# Cloudflare Workers AI Binding (MEDIA-CLOUDFLARE-AI-1)
+[ai]
+binding = "AI"
+
 # Source-Level Cron Triggers (Phase 5L9 + JEV-7A)
 [triggers]
 crons = [

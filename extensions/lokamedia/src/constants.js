@@ -58,6 +58,16 @@ export const UPLOAD_CONCURRENCY = 2;
 export const PROVIDER_GENERATION_CONCURRENCY = 1;
 export const IMAGE_CAPTURE_CONCURRENCY = 1;
 export const MAX_PENDING_CAPTURED_ASSETS = 4;
+export const PROVIDER_CHATGPT = 'CHATGPT_BROWSER';
+export const PROVIDER_GEMINI = 'GEMINI_BROWSER';
+export const PROVIDER_CLOUDFLARE_AI = 'CLOUDFLARE_WORKERS_AI';
+export const PROVIDER_MANUAL = 'MANUAL_UPLOAD';
+
+export const CLOUDFLARE_MODELS = {
+  FLUX_SCHNELL: '@cf/black-forest-labs/flux-1-schnell',
+  SDXL_LIGHTNING: '@cf/bytedance/stable-diffusion-xl-lightning'
+};
+
 export const MAX_PENDING_CAPTURED_BYTES = 20 * 1024 * 1024;
 
 export const TERMINAL_STATUSES = new Set([

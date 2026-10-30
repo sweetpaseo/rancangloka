@@ -38,6 +38,8 @@ export default defineConfig({
         'node:stream', 'stream',
         'node:buffer', 'buffer',
         'node:events', 'events',
+        'node:fs', 'fs',
+        'node:path', 'path',
         'undici',
         'sharp'
       ]

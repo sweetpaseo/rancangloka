@@ -37,8 +37,24 @@
         <div class="status-row"><span>Article</span><strong id="prompt-article-title">None</strong></div>
         <div class="status-row"><span>Slot</span><strong id="prompt-slot">featured</strong></div>
         <div class="status-row"><span>Target Dimensions</span><strong id="prompt-dimensions">1792 × 1024 (Featured)</strong></div>
-        <label for="prompt-text" style="margin-top: 8px;">Canonical Generation Prompt</label>
-        <textarea id="prompt-text" readonly placeholder="No prompt loaded..."></textarea>
+        <div class="status-row" style="margin-top: 6px;">
+          <span>Provider</span>
+          <select id="provider-selector" style="font-size: 11px; max-width: 190px; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface);">
+            <option value="CHATGPT_BROWSER">OpenAI / ChatGPT</option>
+            <option value="GEMINI_BROWSER">Gemini</option>
+            <option value="CLOUDFLARE_WORKERS_AI">Cloudflare Workers AI</option>
+            <option value="MANUAL_UPLOAD">Manual Upload</option>
+          </select>
+        </div>
+        <div id="cf-model-row" class="status-row" style="margin-top: 6px; display: none;">
+          <span>Model</span>
+          <select id="cf-model-selector" style="font-size: 11px; max-width: 190px; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface);">
+            <option value="@cf/black-forest-labs/flux-1-schnell">FLUX.1 Schnell</option>
+            <option value="@cf/bytedance/stable-diffusion-xl-lightning">SDXL Lightning</option>
+          </select>
+        </div>
+        <label for="prompt-text" style="margin-top: 8px;">Generation Prompt (Editable)</label>
+        <textarea id="prompt-text" placeholder="No prompt loaded..."></textarea>
         <div class="workflow-actions" style="margin-top: 8px; display: flex; gap: 6px;">
           <button id="copy-prompt" type="button" style="flex: 1;">Copy Prompt</button>
           <button id="send-to-chatgpt" type="button" class="btn-primary" style="flex: 1;" disabled>Send to Provider</button>

@@ -742,6 +742,68 @@ async function sendToProvider() {
   button.disabled = true;
   let actionError = null;
   try {
+    const providerSelector = element('#provider-selector');
+    const selectedProvider = providerSelector ? providerSelector.value : 'CHATGPT_BROWSER';
+
+    if (selectedProvider === 'MANUAL_UPLOAD') {
+      document.querySelector('#manual-file-input')?.click();
+      button.disabled = false;
+      return;
+    }
+
+    if (selectedProvider === 'CLOUDFLARE_WORKERS_AI') {
+      const promptText = (element('#prompt-text')?.value || '').trim();
+      if (!promptText) {
+        setStatus('Prompt generation text cannot be empty.', true);
+        button.disabled = false;
+        return;
+      }
+      const cfModel = element('#cf-model-selector')?.value || '@cf/black-forest-labs/flux-1-schnell';
+      const windowCtx = await getSidePanelWindowContext();
+      const statusRes = await send('STATUS', { windowContext: windowCtx });
+      const currentJob = resolveCurrentJob(statusRes.state || {});
+      const articleId = currentJob?.article_id || 9993;
+
+      setStatus(`Generating with Cloudflare Workers AI (${cfModel.split('/').pop()})...`);
+      const serverUrl = element('#server')?.value || 'http://localhost:4321';
+
+      const genRes = await fetch(`${serverUrl}/api/admin/media/generate-cloudflare-ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          article_id: articleId,
+          model: cfModel,
+          prompt: promptText,
+          media_role: 'featured_hero'
+        })
+      });
+
+      const genData = await genRes.json();
+      if (genData.status === 'success' && genData.candidate) {
+        const c = genData.candidate;
+        setStatus(`Candidate generated successfully via ${cfModel.split('/').pop()}!`);
+        const img = element('#result-preview-image');
+        const placeholder = element('#preview-placeholder');
+        if (img) {
+          img.src = `${serverUrl}${c.public_url}`;
+          img.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+        element('#result-dimensions').textContent = c.dimensions;
+        element('#result-mime').textContent = c.mime_type;
+        element('#result-size').textContent = `${(c.byte_size / 1024).toFixed(1)} KB`;
+        element('#result-sha256').textContent = `${c.sha256.slice(0, 16)}...`;
+        const provEl = element('#result-provenance');
+        if (provEl) provEl.textContent = `Cloudflare AI (${c.model.split('/').pop()})`;
+        element('#approve-upload').disabled = false;
+        element('#reject-result').disabled = false;
+      } else {
+        setStatus(`Generation error: ${genData.message || 'Unknown error'}`, true);
+      }
+      button.disabled = false;
+      return;
+    }
+
     const windowCtx = await getSidePanelWindowContext();
     const statusRes = await send('STATUS', { windowContext: windowCtx });
     const auth = resolveAuthoritativeProvider(statusRes.state || {}, windowCtx);
@@ -1420,6 +1482,39 @@ function bindSidePanel() {
       void acquireJobLease().catch((error) => setStatus(boundedError(error), true));
     });
   }
+  const providerSelector = element('#provider-selector');
+  const cfModelRow = element('#cf-model-row');
+  const sendBtn = element('#send-to-chatgpt');
+
+  function updateProviderUi() {
+    if (!providerSelector) return;
+    const selected = providerSelector.value;
+    if (selected === 'CLOUDFLARE_WORKERS_AI') {
+      if (cfModelRow) cfModelRow.style.display = 'flex';
+      if (sendBtn) {
+        sendBtn.textContent = 'Generate with Cloudflare AI';
+        sendBtn.disabled = false;
+      }
+    } else if (selected === 'MANUAL_UPLOAD') {
+      if (cfModelRow) cfModelRow.style.display = 'none';
+      if (sendBtn) {
+        sendBtn.textContent = 'Select Local File';
+        sendBtn.disabled = false;
+      }
+    } else if (selected === 'GEMINI_BROWSER') {
+      if (cfModelRow) cfModelRow.style.display = 'none';
+      if (sendBtn) sendBtn.textContent = 'Send to Gemini';
+    } else {
+      if (cfModelRow) cfModelRow.style.display = 'none';
+      if (sendBtn) sendBtn.textContent = 'Send to ChatGPT';
+    }
+  }
+
+  if (providerSelector) {
+    providerSelector.addEventListener('change', updateProviderUi);
+    updateProviderUi();
+  }
+
   element('#send-to-chatgpt').addEventListener('click', () => {
     void sendToChatGpt().catch((error) => setStatus(boundedError(error), true));
   });
