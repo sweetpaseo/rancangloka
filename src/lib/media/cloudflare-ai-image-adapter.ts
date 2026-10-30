@@ -27,7 +27,7 @@ import { validateImageBinary } from './image-validation.ts';
 
 export const CLOUDFLARE_FLUX_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 export const CLOUDFLARE_SDXL_MODEL = '@cf/bytedance/stable-diffusion-xl-lightning';
-export const DEFAULT_TIMEOUT_MS = 60000;
+export const DEFAULT_TIMEOUT_MS = 120000;
 
 export interface CloudflareAiAdapterOptions {
   accountId?: string;

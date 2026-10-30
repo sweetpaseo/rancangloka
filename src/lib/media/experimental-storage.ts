@@ -39,6 +39,13 @@ export interface ExperimentalMediaCandidate {
     actual_cost_usd?: number;
     is_free_tier: boolean;
   };
+  visual_brief?: any;
+  geometry_qa?: any;
+  subject_priority_qa?: any;
+  crop_preview?: any;
+  editorial_verdict?: 'APPROVED_PREFERRED' | 'REJECTED' | 'PENDING_REVIEW' | 'NEEDS_REGENERATION';
+  editorial_notes?: string;
+  rejection_reason?: string;
 }
 
 const STORAGE_DIR = path.resolve('./storage/experimental-media');

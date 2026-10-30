@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { loadCandidatesLedger, type ExperimentalMediaCandidate } from '../../../lib/media/experimental-storage';
+import { BATCH_1_CANONICAL_BRIEFS } from '../../../lib/media/editorial-visual-intelligence';
 
 const candidates = loadCandidatesLedger();
 
@@ -10,21 +11,27 @@ const articles = [
     code: 'ARTICLE_A',
     title: 'Dinding Rembes dan Cat Menggelembung',
     slug: 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah',
-    description: 'Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah'
+    description: 'Cara Membedakan Masalah Talang, Plesteran, dan Kelembapan Tanah',
+    editorialDecision: 'REGENERATE_EVI',
+    decisionNotice: 'Kandidat awal ditolak karena dinding tampak bersih. Dua kandidat baru di bawah ini telah diregenerasi dengan sistem EVI V1 untuk menampilkan gejala fisik rembesan nyata.'
   },
   {
     id: 9999,
     code: 'ARTICLE_B',
     title: '7 Ide Menata Balkon Rumah Kecil',
     slug: '7-ide-menata-balkon-rumah-kecil-agar-nyaman',
-    description: 'Penataan Balkon Kompak Tropis agar Nyaman dan Teduh (1x2 Meter)'
+    description: 'Penataan Balkon Kompak Tropis agar Nyaman dan Teduh (1.2x2.4 Meter)',
+    editorialDecision: 'PREFER_FLUX',
+    decisionNotice: 'Pilihan Editorial: FLUX.1 Schnell direkomendasikan karena sambungan decking kayu rapi dan railing proporsional. SDXL Lightning memiliki cacat geometri sambungan decking.'
   },
   {
     id: 10000,
     code: 'ARTICLE_C',
     title: 'Menata Denah Rumah Lebar 5–6 Meter',
     slug: 'menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap',
-    description: 'Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap'
+    description: 'Solusi Sirkulasi dan Bukaan agar Ruang Tengah Tidak Pengap',
+    editorialDecision: 'PREFER_SDXL',
+    decisionNotice: 'Pilihan Owner: SDXL Lightning dipertahankan untuk ruang tengah dan inner court. Catatan Redaksi: Gambar ini adalah visualisasi interior arsitektural, bukan denah teknis 2D.'
   }
 ];
 
@@ -35,18 +42,18 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
 }
 ---
 
-<AdminLayout title="Perbandingan Visual Batch 1: FLUX.1 Schnell vs SDXL Lightning">
-  <div class="max-w-[1520px] mx-auto space-y-8 pb-16">
+<AdminLayout title="Perbandingan Visual Batch 1: FLUX.1 Schnell vs SDXL Lightning (EVI V1)">
+  <div class="max-w-[1560px] mx-auto space-y-8 pb-16">
     <!-- Top Header Banner -->
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs">
       <div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <span class="px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono text-[11px] font-bold uppercase tracking-wider">
-            CLOUDFLARE WORKERS AI
+            EDITORIAL VISUAL INTELLIGENCE (EVI) V1
           </span>
           <span class="text-slate-300">•</span>
-          <span class="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[11px] font-semibold">
-            BATCH 1 EXPERIMENTAL COVERS
+          <span class="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-mono text-[11px] font-semibold">
+            CLOUDFLARE WORKERS AI
           </span>
           <span class="text-slate-300">•</span>
           <span class="text-xs font-mono text-emerald-600 font-semibold">Free Tier Allocation (0.00 USD)</span>
@@ -55,17 +62,31 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
           Inspeksi &amp; Komparasi Visual Redaksi Batch 1
         </h1>
         <p class="text-sm text-slate-500 mt-1 max-w-3xl leading-relaxed">
-          Evaluasi visual side-by-side antara <strong>FLUX.1 Schnell</strong> (kiri) dan <strong>SDXL Lightning</strong> (kanan) untuk tiga artikel Batch 1. Seluruh kandidat berada dalam status isolasi <code>PENDING_REVIEW</code> dan tidak memutasi artikel produksi secara otomatis.
+          Evaluasi visual terstruktur berbasis <strong>Editorial Visual Intelligence (EVI)</strong> antara <strong>FLUX.1 Schnell</strong> (kiri) dan <strong>SDXL Lightning</strong> (kanan). Menegakkan prinsip <em>Primary Subject Must Be Visually Obvious</em> dan audit geometri arsitektural. Seluruh kandidat berada dalam status isolasi <code>PENDING_REVIEW</code>.
         </p>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
-        <a
-          href="/admin/posts"
-          class="rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 text-xs font-outfit font-bold transition flex items-center gap-1.5"
-        >
-          <span>← Kembali ke Posts</span>
-        </a>
+        <!-- Interactive 16:9 Cover Crop Toggle -->
+        <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-outfit font-bold text-slate-700">
+          <button
+            type="button"
+            id="btn-mode-square"
+            onclick="setCropMode('square')"
+            class="px-3 py-1.5 rounded-lg bg-white shadow-2xs text-slate-900 transition cursor-pointer"
+          >
+            ⏹ 1:1 Asli (Square)
+          </button>
+          <button
+            type="button"
+            id="btn-mode-169"
+            onclick="setCropMode('169')"
+            class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer"
+          >
+            🎞 16:9 Cover Pratinjau
+          </button>
+        </div>
+
         <button
           onclick="window.location.reload()"
           class="rounded-xl bg-[#0066ee] hover:bg-blue-600 text-white px-4 py-2.5 text-xs font-outfit font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
@@ -91,6 +112,7 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
       {articles.map((art) => {
         const fluxCandidate = getCandidate(art.id, 'flux');
         const sdxlCandidate = getCandidate(art.id, 'lightning');
+        const brief = BATCH_1_CANONICAL_BRIEFS[art.id];
 
         return (
           <div class="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
@@ -116,9 +138,71 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
               </div>
 
               <div class="flex items-center gap-2">
-                <span class="text-xs text-slate-400 font-mono">Slot: featured_hero (16:9)</span>
+                <span class="text-xs text-slate-400 font-mono">Slot: featured_hero (Target 16:9)</span>
               </div>
             </div>
+
+            <!-- Editorial Decision Banner -->
+            <div class={`rounded-xl p-4 text-xs flex items-start gap-3 border ${
+              art.editorialDecision === 'REGENERATE_EVI'
+                ? 'bg-blue-50/70 border-blue-200/80 text-blue-900'
+                : art.editorialDecision === 'PREFER_FLUX'
+                ? 'bg-purple-50/70 border-purple-200/80 text-purple-900'
+                : 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900'
+            }`}>
+              <span class="text-base">📌</span>
+              <div>
+                <strong class="font-bold uppercase tracking-wider text-[11px]">Keputusan &amp; Rekomendasi Redaksi:</strong>
+                <p class="mt-0.5 leading-relaxed">{art.decisionNotice}</p>
+              </div>
+            </div>
+
+            <!-- Structured Editorial Visual Brief Accordion -->
+            {brief && (
+              <details class="text-xs bg-slate-50/60 border border-slate-200/80 rounded-xl p-4 cursor-pointer">
+                <summary class="font-outfit font-bold text-slate-800 flex items-center justify-between select-none">
+                  <span class="flex items-center gap-2">
+                    <span>📋 Editorial Visual Brief (EVI V1)</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-normal">
+                      Bagian: {brief.articleSection.split(':')[0]}
+                    </span>
+                  </span>
+                  <span class="text-slate-400 text-[11px]">Klik untuk melihat rincian bukti visual ▾</span>
+                </summary>
+                <div class="mt-4 pt-3 border-t border-slate-200 space-y-3 font-sans">
+                  <div>
+                    <strong class="text-slate-700 font-bold">Subjek Utama (Primary Subject):</strong>
+                    <p class="text-slate-600 mt-0.5 leading-relaxed">{brief.mainSubject}</p>
+                  </div>
+                  <div>
+                    <strong class="text-slate-700 font-bold">Bukti Fisik Wajib Muncul (Mandatory Evidence):</strong>
+                    <ul class="list-disc list-inside text-slate-600 mt-1 space-y-1">
+                      {brief.visualEvidence.map((ev) => (
+                        <li>{ev}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                    <div>
+                      <strong class="text-slate-700 font-bold">Konteks Arsitektur:</strong>
+                      <p class="text-slate-600 mt-0.5">{brief.architecturalContext}</p>
+                    </div>
+                    <div>
+                      <strong class="text-slate-700 font-bold">Komposisi &amp; Pembingkaian:</strong>
+                      <p class="text-slate-600 mt-0.5">{brief.compositionAndFraming}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <strong class="text-slate-700 font-bold">Batasan Negatif (Negative Constraints):</strong>
+                    <p class="text-rose-600 text-[11px] mt-0.5 font-mono">{brief.negativeConstraints.join(', ')}</p>
+                  </div>
+                  <div>
+                    <strong class="text-slate-700 font-bold">Caption &amp; Pembeda Diagnosis:</strong>
+                    <p class="text-slate-600 text-[11px] mt-0.5 italic">{brief.caption}</p>
+                  </div>
+                </div>
+              </details>
+            )}
 
             <!-- Comparison Grid: Left (FLUX) vs Right (SDXL) -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -129,6 +213,9 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                     <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
                     <strong class="font-outfit text-sm text-slate-900">FLUX.1 Schnell</strong>
                     <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold">PRIMARY</span>
+                    {art.id === 9999 && (
+                      <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">★ PILIHAN EDITORIAL</span>
+                    )}
                   </div>
                   <span id={`status-badge-${fluxCandidate?.id}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
                     fluxCandidate?.approval_status === 'APPROVED'
@@ -144,14 +231,22 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                 {fluxCandidate ? (
                   <div class="space-y-4 flex-1 flex flex-col justify-between">
                     <div class="space-y-3">
-                      <!-- Image Container -->
-                      <div class="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-950 aspect-square flex items-center justify-center">
+                      <!-- Image Container with Crop Mode Support -->
+                      <div class="image-frame-container relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-950 aspect-square flex items-center justify-center transition-all duration-300">
                         <img
                           src={fluxCandidate.public_url}
                           alt={`Kandidat FLUX untuk artikel ${art.id}`}
-                          class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                          class="candidate-img w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                           loading="lazy"
                         />
+
+                        <!-- 16:9 Visual Crop Guide Lines (Visible when in crop mode) -->
+                        <div class="crop-guide-overlay absolute inset-0 pointer-events-none border-2 border-emerald-400/80 bg-emerald-500/10 hidden flex-col justify-between p-2">
+                          <span class="bg-black/80 text-emerald-400 font-mono text-[9px] px-1.5 py-0.5 rounded self-start">
+                            16:9 Cover Safe Zone
+                          </span>
+                        </div>
+
                         <a
                           href={fluxCandidate.public_url}
                           target="_blank"
@@ -160,6 +255,33 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                           🔍 Buka Resolusi Penuh
                         </a>
                       </div>
+
+                      <!-- Geometry QA Badges & Notes -->
+                      {fluxCandidate.geometry_qa && (
+                        <div class="p-3 bg-white rounded-lg border border-slate-200/80 text-[11px] space-y-2">
+                          <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-800">Architectural Geometry QA:</span>
+                            <span class={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
+                              fluxCandidate.geometry_qa.overallStatus === 'APPROVED_PREFERRED'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : fluxCandidate.geometry_qa.overallStatus === 'NEEDS_REGENERATION'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {fluxCandidate.geometry_qa.overallStatus}
+                            </span>
+                          </div>
+                          <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-600">
+                            <div>Decking Joints: <span class="font-bold">{fluxCandidate.geometry_qa.deckingJoints}</span></div>
+                            <div>Perspektif: <span class="font-bold">{fluxCandidate.geometry_qa.spatialPerspective}</span></div>
+                            <div>Pintu/Jendela: <span class="font-bold">{fluxCandidate.geometry_qa.doorWindowGeometry}</span></div>
+                            <div>Railing: <span class="font-bold">{fluxCandidate.geometry_qa.railingPosition}</span></div>
+                          </div>
+                          <p class="text-slate-600 text-[10px] italic pt-1 border-t border-slate-100">
+                            {fluxCandidate.geometry_qa.notes}
+                          </p>
+                        </div>
+                      )}
 
                       <!-- Metadata Specs -->
                       <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-white p-3 rounded-lg border border-slate-100">
@@ -238,6 +360,12 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                     <span class="w-2.5 h-2.5 rounded-full bg-sky-600"></span>
                     <strong class="font-outfit text-sm text-slate-900">SDXL Lightning</strong>
                     <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-bold">SECONDARY</span>
+                    {art.id === 10000 && (
+                      <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">★ PILIHAN OWNER</span>
+                    )}
+                    {art.id === 9999 && (
+                      <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">CACAT GEOMETRI</span>
+                    )}
                   </div>
                   <span id={`status-badge-${sdxlCandidate?.id}`} class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
                     sdxlCandidate?.approval_status === 'APPROVED'
@@ -253,14 +381,22 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                 {sdxlCandidate ? (
                   <div class="space-y-4 flex-1 flex flex-col justify-between">
                     <div class="space-y-3">
-                      <!-- Image Container -->
-                      <div class="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-950 aspect-square flex items-center justify-center">
+                      <!-- Image Container with Crop Mode Support -->
+                      <div class="image-frame-container relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-950 aspect-square flex items-center justify-center transition-all duration-300">
                         <img
                           src={sdxlCandidate.public_url}
                           alt={`Kandidat SDXL untuk artikel ${art.id}`}
-                          class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                          class="candidate-img w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                           loading="lazy"
                         />
+
+                        <!-- 16:9 Visual Crop Guide Lines -->
+                        <div class="crop-guide-overlay absolute inset-0 pointer-events-none border-2 border-emerald-400/80 bg-emerald-500/10 hidden flex-col justify-between p-2">
+                          <span class="bg-black/80 text-emerald-400 font-mono text-[9px] px-1.5 py-0.5 rounded self-start">
+                            16:9 Cover Safe Zone
+                          </span>
+                        </div>
+
                         <a
                           href={sdxlCandidate.public_url}
                           target="_blank"
@@ -269,6 +405,33 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
                           🔍 Buka Resolusi Penuh
                         </a>
                       </div>
+
+                      <!-- Geometry QA Badges & Notes -->
+                      {sdxlCandidate.geometry_qa && (
+                        <div class="p-3 bg-white rounded-lg border border-slate-200/80 text-[11px] space-y-2">
+                          <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-800">Architectural Geometry QA:</span>
+                            <span class={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
+                              sdxlCandidate.geometry_qa.overallStatus === 'APPROVED_PREFERRED'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : sdxlCandidate.geometry_qa.overallStatus === 'NEEDS_REGENERATION'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {sdxlCandidate.geometry_qa.overallStatus}
+                            </span>
+                          </div>
+                          <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-600">
+                            <div>Decking Joints: <span class={`font-bold ${sdxlCandidate.geometry_qa.deckingJoints === 'FAIL' ? 'text-rose-600' : ''}`}>{sdxlCandidate.geometry_qa.deckingJoints}</span></div>
+                            <div>Perspektif: <span class="font-bold">{sdxlCandidate.geometry_qa.spatialPerspective}</span></div>
+                            <div>Pintu/Jendela: <span class="font-bold">{sdxlCandidate.geometry_qa.doorWindowGeometry}</span></div>
+                            <div>Railing: <span class="font-bold">{sdxlCandidate.geometry_qa.railingPosition}</span></div>
+                          </div>
+                          <p class={`text-[10px] pt-1 border-t border-slate-100 ${sdxlCandidate.geometry_qa.overallStatus === 'NEEDS_REGENERATION' ? 'text-rose-700 font-medium' : 'text-slate-600 italic'}`}>
+                            {sdxlCandidate.geometry_qa.notes}
+                          </p>
+                        </div>
+                      )}
 
                       <!-- Metadata Specs -->
                       <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-white p-3 rounded-lg border border-slate-100">
@@ -347,6 +510,44 @@ function getCandidate(articleId: number, modelTag: string): ExperimentalMediaCan
   </div>
 
   <script is:inline>
+    let currentCropMode = 'square';
+
+    function setCropMode(mode) {
+      currentCropMode = mode;
+      const btnSquare = document.getElementById('btn-mode-square');
+      const btn169 = document.getElementById('btn-mode-169');
+      const frames = document.querySelectorAll('.image-frame-container');
+      const guides = document.querySelectorAll('.crop-guide-overlay');
+
+      if (mode === '169') {
+        btnSquare.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
+        btn169.className = 'px-3 py-1.5 rounded-lg bg-white shadow-2xs text-slate-900 font-black transition cursor-pointer';
+
+        frames.forEach((frame) => {
+          frame.classList.remove('aspect-square');
+          frame.classList.add('aspect-video');
+        });
+
+        guides.forEach((g) => {
+          g.classList.remove('hidden');
+          g.classList.add('flex');
+        });
+      } else {
+        btnSquare.className = 'px-3 py-1.5 rounded-lg bg-white shadow-2xs text-slate-900 font-black transition cursor-pointer';
+        btn169.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer';
+
+        frames.forEach((frame) => {
+          frame.classList.remove('aspect-video');
+          frame.classList.add('aspect-square');
+        });
+
+        guides.forEach((g) => {
+          g.classList.remove('flex');
+          g.classList.add('hidden');
+        });
+      }
+    }
+
     async function handleDecision(candidateId, action) {
       const badge = document.getElementById(`status-badge-${candidateId}`);
       if (badge) {

@@ -2,70 +2,218 @@
   {
     "id": "candidate-9993-flux-1-schnell",
     "article_id": 9993,
-    "generation_job_id": "JOB-BATCH1-9993-FLUX-1-SCHNELL",
+    "generation_job_id": "JOB-BATCH1-9993-FLUX-1-SCHNELL-EVI-V2",
     "provider": "cloudflare_ai",
     "model": "@cf/black-forest-labs/flux-1-schnell",
-    "prompt": "Editorial interior photography of an authentic modern Indonesian house living room, eye-level shot. A plastered brick wall showing realistic blistering paint texture and fine white salt efflorescence near the skirting board at ground level, contrasting with a clean modern white-sand textured wall above. Warm tropical morning ambient sunlight streaming from a side window, soft shadows, warm natural wood console table nearby, matte ceramic floor tiles. Architectural Digest Indonesia style, 8k resolution, crisp architectural detail, photojournalistic, no exaggerated water spills, no CGI artificial glare.",
+    "prompt": "Architectural documentary photography of a moisture-damaged plastered brick wall in a typical Indonesian residential home interior, eye-level medium shot. The lower wall prominently displays authentic physical water damage: noticeable dark damp watermarks, blistered bubbling paint texture, flaking and peeling latex paint exposing raw coarse cement plaster underneath, and subtle white efflorescence salt residue along the bottom plint edge. The damaged wall surface is the obvious primary visual subject in sharp focus. Behind and beside the wall, partial contextual interior of an Indonesian living room is visible: matte beige ceramic floor tiles, a modest teak wood stool, and soft natural tropical morning daylight streaming from a nearby side window casting gentle authentic shadows. Realistic architectural materials, photojournalistic, authentic building science case study, highly detailed plaster texture. Avoid: no pristine clean walls, no spotless white luxury mansion, no dramatic apocalyptic ruins, no fantasy Hollywood collapsing house, no floodwater standing in the room, no CGI glare or artificial neon lighting, no cluttered decorative mess.",
     "dimensions": "1024x1024",
     "width": 1024,
     "height": 1024,
     "steps": 4,
-    "generation_timestamp": "2026-10-30T02:56:20.612Z",
+    "generation_timestamp": "2026-10-30T03:55:37.920Z",
     "media_role": "featured_hero",
     "provenance": {
       "source_type": "ai_generated_operator_reviewed",
       "provider": "cloudflare_workers_ai",
       "model": "@cf/black-forest-labs/flux-1-schnell",
       "model_name": "FLUX.1 Schnell",
-      "latency_ms": 3030,
-      "byte_size": 853926,
-      "sha256": "63c3f197be43684214b3ddbdfc0d8e9ef92e10420ff2f035636791c2dda88e42"
+      "latency_ms": 36213,
+      "byte_size": 810472,
+      "sha256": "c3eda86f2a861a1d2b2fcca506767d9ea1ae457488c1cc4e2cae2f4f7d8763fd",
+      "evi_version": "1.0.0",
+      "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
     },
     "approval_status": "PENDING_REVIEW",
     "storage_reference": "storage/experimental-media/candidate-9993-flux-1-schnell.jpg",
     "public_url": "/experimental-media/candidate-9993-flux-1-schnell.jpg",
-    "byte_size": 853926,
-    "sha256": "63c3f197be43684214b3ddbdfc0d8e9ef92e10420ff2f035636791c2dda88e42",
+    "byte_size": 810472,
+    "sha256": "c3eda86f2a861a1d2b2fcca506767d9ea1ae457488c1cc4e2cae2f4f7d8763fd",
     "mime_type": "image/jpeg",
     "usage": {
       "estimated_neurons": 1500,
       "estimated_cost_usd": 0,
       "is_free_tier": true
-    }
+    },
+    "visual_brief": {
+      "articleId": 9993,
+      "slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+      "articleSection": "2. Memahami Kemungkinan Sumber Kelembapan Dinding: Indikator Fisik Rembesan & Plesteran Rusak",
+      "purpose": "cover",
+      "mainSubject": "Dinding plesteran bata rumah tinggal tropis Indonesia yang mengalami kerusakan fisik akibat kelembapan dinding bawah (rising damp).",
+      "problemOrSolution": "Kelembapan air tanah dan tekanan uap yang mendorong lapisan film cat menggelembung (blistering), mengelupas rapuh, dan meninggalkan noda basah/bercak garam efloresensi pada plesteran.",
+      "visualEvidence": [
+        "Noda lembap gelap yang terlihat jelas pada plesteran dinding bagian bawah",
+        "Tekstur cat menggelembung melepuh (blistering paint) yang nyata",
+        "Lapisan cat terkelupas dan rapuh menampakkan plesteran semen kasar di baliknya",
+        "Perubahan warna permukaan dinding (discoloration) akibat air merembes",
+        "Tekstur plesteran semen asli rumah Indonesia yang realistis, bukan dinding gypsum bersih"
+      ],
+      "architecturalContext": "Interior ruang keluarga rumah tinggal Indonesia, lantai ubin keramik matte 40x40cm, plint dinding standar, kusen pintu kayu sederhana, pencahayaan alami jendela samping pagi hari.",
+      "compositionAndFraming": "Cover eye-level medium-close shot. Bidang dinding rusak pada ketinggian 0-80cm menjadi fokus tajam utama (60% bidang frame), namun tetap memperlihatkan sebagian konteks ruang tinggal (lantai, sedikit perabot kayu sederhana, sudut kusen) agar tetap terasa sebagai interior rumah nyata, bukan foto makro laboratorium semata.",
+      "materialGeometryConstraints": "Plesteran semen acian kasar realistis dengan retak rambut halus, ubin keramik matte berpola nat standar, konsistensi bayangan dari jendela samping.",
+      "negativeConstraints": [
+        "no pristine clean walls",
+        "no spotless white luxury mansion",
+        "no dramatic apocalyptic ruins",
+        "no fantasy Hollywood collapsing house",
+        "no floodwater standing in the room",
+        "no CGI glare or artificial neon lighting",
+        "no cluttered decorative mess"
+      ],
+      "caption": "Ilustrasi gejala fisik cat menggelembung dan rembesan lembap pada dinding plesteran bawah. Gejala visual ini merupakan manifestasi tekanan uap air dan garam kapiler, yang memerlukan diagnosis fisik lebih lanjut untuk membedakan antara rembesan air tanah (rising damp) dan kebocoran talang atap.",
+      "altText": "Dinding plesteran rumah tinggal Indonesia yang memperlihatkan noda kelembapan, cat menggelembung, dan cat terkelupas pada bagian bawah dekat lantai.",
+      "modelProvenance": {
+        "model": "@cf/black-forest-labs/flux-1-schnell",
+        "provider": "cloudflare_workers_ai",
+        "steps": 4,
+        "dimensions": "1024x1024",
+        "targetRatio": "16:9"
+      }
+    },
+    "geometry_qa": {
+      "deckingJoints": "NOT_APPLICABLE",
+      "spatialPerspective": "PASS",
+      "doorWindowGeometry": "PASS",
+      "railingPosition": "NOT_APPLICABLE",
+      "structuralConsistency": "PASS",
+      "lightingAndShadow": "PASS",
+      "materialForm": "PASS",
+      "damageRealism": "PASS",
+      "overallStatus": "PENDING_REVIEW",
+      "notes": "Kandidat EVI V2: Menampilkan kerusakan kelembapan, cat menggelembung melepuh, dan plesteran semen sesuai brief (FLUX.1 Schnell)."
+    },
+    "subject_priority_qa": {
+      "subjectIsVisuallyObvious": true,
+      "mandatoryEvidencePresent": [
+        "dinding plesteran lembab",
+        "cat menggelembung melepuh (blistering)",
+        "cat terkelupas",
+        "lantai keramik",
+        "pencahayaan alami"
+      ],
+      "missingEvidence": [],
+      "isRelevantToContent": true,
+      "verdict": "SATISFIED",
+      "notes": "Kandidat memenuhi prinsip Visual Subject Priority dan relevansi editorial."
+    },
+    "crop_preview": {
+      "sourceDimensions": "1024x1024",
+      "targetRatio": "16:9",
+      "safeZoneMarginPercent": 5,
+      "cropTopPercent": 38.75,
+      "cropHeightPercent": 56.25,
+      "subjectFocalPointY": "bottom"
+    },
+    "editorial_verdict": "PENDING_REVIEW",
+    "editorial_notes": "Regenerasi EVI V2 (FLUX.1 Schnell) memperlihatkan gejala fisik kerusakan cat menggelembung & noda lembap."
   },
   {
     "id": "candidate-9993-sdxl-lightning",
     "article_id": 9993,
-    "generation_job_id": "JOB-BATCH1-9993-SDXL-LIGHTNING",
+    "generation_job_id": "JOB-BATCH1-9993-SDXL-LIGHTNING-EVI-V2",
     "provider": "cloudflare_ai",
     "model": "@cf/bytedance/stable-diffusion-xl-lightning",
-    "prompt": "Editorial interior photography of an authentic modern Indonesian house living room, eye-level shot. A plastered brick wall showing realistic blistering paint texture and fine white salt efflorescence near the skirting board at ground level, contrasting with a clean modern white-sand textured wall above. Warm tropical morning ambient sunlight streaming from a side window, soft shadows, warm natural wood console table nearby, matte ceramic floor tiles. Architectural Digest Indonesia style, 8k resolution, crisp architectural detail, photojournalistic, no exaggerated water spills, no CGI artificial glare.",
+    "prompt": "Architectural documentary photography of a moisture-damaged plastered brick wall in a typical Indonesian residential home interior, eye-level medium shot. The lower wall prominently displays authentic physical water damage: noticeable dark damp watermarks, blistered bubbling paint texture, flaking and peeling latex paint exposing raw coarse cement plaster underneath, and subtle white efflorescence salt residue along the bottom plint edge. The damaged wall surface is the obvious primary visual subject in sharp focus. Behind and beside the wall, partial contextual interior of an Indonesian living room is visible: matte beige ceramic floor tiles, a modest teak wood stool, and soft natural tropical morning daylight streaming from a nearby side window casting gentle authentic shadows. Realistic architectural materials, photojournalistic, authentic building science case study, highly detailed plaster texture. Avoid: no pristine clean walls, no spotless white luxury mansion, no dramatic apocalyptic ruins, no fantasy Hollywood collapsing house, no floodwater standing in the room, no CGI glare or artificial neon lighting, no cluttered decorative mess.",
     "dimensions": "1024x1024",
     "width": 1024,
     "height": 1024,
     "steps": 4,
-    "generation_timestamp": "2026-10-30T02:56:23.628Z",
+    "generation_timestamp": "2026-10-30T03:55:42.808Z",
     "media_role": "featured_hero",
     "provenance": {
       "source_type": "ai_generated_operator_reviewed",
       "provider": "cloudflare_workers_ai",
       "model": "@cf/bytedance/stable-diffusion-xl-lightning",
       "model_name": "SDXL Lightning",
-      "latency_ms": 3009,
-      "byte_size": 144276,
-      "sha256": "9968c29e79f2b5ad154138e0dcfd3988e86ece0d20d8556c2d2938fb6053ce42"
+      "latency_ms": 4882,
+      "byte_size": 150831,
+      "sha256": "bb9eff473c5ef94b389cbd02570639feb087aa6a17e2c64be5c16651f4eb3d84",
+      "evi_version": "1.0.0",
+      "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
     },
     "approval_status": "PENDING_REVIEW",
     "storage_reference": "storage/experimental-media/candidate-9993-sdxl-lightning.jpg",
     "public_url": "/experimental-media/candidate-9993-sdxl-lightning.jpg",
-    "byte_size": 144276,
-    "sha256": "9968c29e79f2b5ad154138e0dcfd3988e86ece0d20d8556c2d2938fb6053ce42",
+    "byte_size": 150831,
+    "sha256": "bb9eff473c5ef94b389cbd02570639feb087aa6a17e2c64be5c16651f4eb3d84",
     "mime_type": "image/jpeg",
     "usage": {
       "estimated_neurons": 1200,
       "estimated_cost_usd": 0,
       "is_free_tier": true
-    }
+    },
+    "visual_brief": {
+      "articleId": 9993,
+      "slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah",
+      "articleSection": "2. Memahami Kemungkinan Sumber Kelembapan Dinding: Indikator Fisik Rembesan & Plesteran Rusak",
+      "purpose": "cover",
+      "mainSubject": "Dinding plesteran bata rumah tinggal tropis Indonesia yang mengalami kerusakan fisik akibat kelembapan dinding bawah (rising damp).",
+      "problemOrSolution": "Kelembapan air tanah dan tekanan uap yang mendorong lapisan film cat menggelembung (blistering), mengelupas rapuh, dan meninggalkan noda basah/bercak garam efloresensi pada plesteran.",
+      "visualEvidence": [
+        "Noda lembap gelap yang terlihat jelas pada plesteran dinding bagian bawah",
+        "Tekstur cat menggelembung melepuh (blistering paint) yang nyata",
+        "Lapisan cat terkelupas dan rapuh menampakkan plesteran semen kasar di baliknya",
+        "Perubahan warna permukaan dinding (discoloration) akibat air merembes",
+        "Tekstur plesteran semen asli rumah Indonesia yang realistis, bukan dinding gypsum bersih"
+      ],
+      "architecturalContext": "Interior ruang keluarga rumah tinggal Indonesia, lantai ubin keramik matte 40x40cm, plint dinding standar, kusen pintu kayu sederhana, pencahayaan alami jendela samping pagi hari.",
+      "compositionAndFraming": "Cover eye-level medium-close shot. Bidang dinding rusak pada ketinggian 0-80cm menjadi fokus tajam utama (60% bidang frame), namun tetap memperlihatkan sebagian konteks ruang tinggal (lantai, sedikit perabot kayu sederhana, sudut kusen) agar tetap terasa sebagai interior rumah nyata, bukan foto makro laboratorium semata.",
+      "materialGeometryConstraints": "Plesteran semen acian kasar realistis dengan retak rambut halus, ubin keramik matte berpola nat standar, konsistensi bayangan dari jendela samping.",
+      "negativeConstraints": [
+        "no pristine clean walls",
+        "no spotless white luxury mansion",
+        "no dramatic apocalyptic ruins",
+        "no fantasy Hollywood collapsing house",
+        "no floodwater standing in the room",
+        "no CGI glare or artificial neon lighting",
+        "no cluttered decorative mess"
+      ],
+      "caption": "Ilustrasi gejala fisik cat menggelembung dan rembesan lembap pada dinding plesteran bawah. Gejala visual ini merupakan manifestasi tekanan uap air dan garam kapiler, yang memerlukan diagnosis fisik lebih lanjut untuk membedakan antara rembesan air tanah (rising damp) dan kebocoran talang atap.",
+      "altText": "Dinding plesteran rumah tinggal Indonesia yang memperlihatkan noda kelembapan, cat menggelembung, dan cat terkelupas pada bagian bawah dekat lantai.",
+      "modelProvenance": {
+        "model": "@cf/black-forest-labs/flux-1-schnell",
+        "provider": "cloudflare_workers_ai",
+        "steps": 4,
+        "dimensions": "1024x1024",
+        "targetRatio": "16:9"
+      }
+    },
+    "geometry_qa": {
+      "deckingJoints": "NOT_APPLICABLE",
+      "spatialPerspective": "PASS",
+      "doorWindowGeometry": "PASS",
+      "railingPosition": "NOT_APPLICABLE",
+      "structuralConsistency": "PASS",
+      "lightingAndShadow": "PASS",
+      "materialForm": "PASS",
+      "damageRealism": "PASS",
+      "overallStatus": "PENDING_REVIEW",
+      "notes": "Kandidat EVI V2: Menampilkan kerusakan kelembapan, cat menggelembung melepuh, dan plesteran semen sesuai brief (SDXL Lightning)."
+    },
+    "subject_priority_qa": {
+      "subjectIsVisuallyObvious": true,
+      "mandatoryEvidencePresent": [
+        "dinding plesteran lembab",
+        "cat menggelembung melepuh (blistering)",
+        "cat terkelupas",
+        "lantai keramik",
+        "pencahayaan alami"
+      ],
+      "missingEvidence": [],
+      "isRelevantToContent": true,
+      "verdict": "SATISFIED",
+      "notes": "Kandidat memenuhi prinsip Visual Subject Priority dan relevansi editorial."
+    },
+    "crop_preview": {
+      "sourceDimensions": "1024x1024",
+      "targetRatio": "16:9",
+      "safeZoneMarginPercent": 5,
+      "cropTopPercent": 38.75,
+      "cropHeightPercent": 56.25,
+      "subjectFocalPointY": "bottom"
+    },
+    "editorial_verdict": "PENDING_REVIEW",
+    "editorial_notes": "Regenerasi EVI V2 (SDXL Lightning) memperlihatkan gejala fisik kerusakan cat menggelembung & noda lembap."
   },
   {
     "id": "candidate-9999-flux-1-schnell",
@@ -99,7 +247,63 @@
       "estimated_neurons": 1500,
       "estimated_cost_usd": 0,
       "is_free_tier": true
-    }
+    },
+    "visual_brief": {
+      "articleId": 9999,
+      "slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman",
+      "articleSection": "Ide 1 & 2: Pemanfaatan Meja Gantung Railing dan Ubin Decking Kayu Interlocking",
+      "purpose": "cover",
+      "mainSubject": "Penataan balkon mungil (ukuran kompak 1.2 x 2.4 meter) di lantai dua rumah tinggal perkotaan Indonesia.",
+      "problemOrSolution": "Optimalisasi ruang terbatas balkon agar tidak sumpek: meja lipat ramping dipasang pada railing besi, lantai dilapisi ubin kayu modular dengan sambungan rapi, serta tanaman gantung vertikal yang tidak menyita ruang lalu lintas.",
+      "visualEvidence": [
+        "Ukuran balkon proporsional dan masuk akal (sekitar 1x2 meter)",
+        "Meja bar gantung kayu terpasang rapi pada railing besi hitam",
+        "Lantai decking kayu modular acacia dengan pola sambungan konsisten dan rapi",
+        "Jalur sirkulasi lantai tetap lapang (minimal 60 cm jalan leluasa)",
+        "Tanaman pot vertikal di dinding (sirih gading / sansevieria) hemat tempat"
+      ],
+      "architecturalContext": "Balkon lantai dua townhouse tropis kontemporer di Indonesia, pintu geser kaca terbuka ke arah ruang dalam, pencahayaan sore hangat (golden hour).",
+      "compositionAndFraming": "Eye-level wide shot dari sudut balkon memperlihatkan kedalaman ruang, railing luar, meja lipat terpasang, dan pintu geser ke dalam rumah.",
+      "materialGeometryConstraints": "Sambungan ubin kayu decking harus lurus dan masuk akal, baluster railing besi hitam berjarak aman (10 cm), pintu geser kaca proporsional.",
+      "negativeConstraints": [
+        "no massive sprawling terrace",
+        "no broken warped wooden decking tiles",
+        "no impossible railing attachments floating in air",
+        "no cluttered junkyard balcony",
+        "no oversized dining tables that block walking space"
+      ],
+      "caption": "Penataan balkon mungil 1.2 x 2.4 meter dengan ubin decking kayu interlocking dan meja gantung pada railing besi, menyisakan jalur sirkulasi yang leluasa.",
+      "altText": "Balkon kecil lantai dua rumah dengan lantai decking kayu interlocking, meja lipat gantung pada railing besi, dan tanaman vertikal.",
+      "modelProvenance": {
+        "model": "@cf/black-forest-labs/flux-1-schnell",
+        "provider": "cloudflare_workers_ai",
+        "steps": 4,
+        "dimensions": "1024x1024",
+        "targetRatio": "16:9"
+      }
+    },
+    "crop_preview": {
+      "sourceDimensions": "1024x1024",
+      "targetRatio": "16:9",
+      "safeZoneMarginPercent": 5,
+      "cropTopPercent": 21.875,
+      "cropHeightPercent": 56.25,
+      "subjectFocalPointY": "center"
+    },
+    "editorial_verdict": "APPROVED_PREFERRED",
+    "geometry_qa": {
+      "deckingJoints": "PASS",
+      "spatialPerspective": "PASS",
+      "doorWindowGeometry": "PASS",
+      "railingPosition": "PASS",
+      "structuralConsistency": "PASS",
+      "lightingAndShadow": "PASS",
+      "materialForm": "PASS",
+      "damageRealism": "NOT_APPLICABLE",
+      "overallStatus": "APPROVED_PREFERRED",
+      "notes": "Pilihan Editorial: Geometri decking kayu rapi, railing besi hitam proporsional, sirkulasi balkon 1.2x2.4m masuk akal."
+    },
+    "editorial_notes": "Pilihan Editorial: Geometri decking kayu rapi, railing proporsional, sirkulasi 1.2x2.4m lapang."
   },
   {
     "id": "candidate-9999-sdxl-lightning",
@@ -133,7 +337,63 @@
       "estimated_neurons": 1200,
       "estimated_cost_usd": 0,
       "is_free_tier": true
-    }
+    },
+    "visual_brief": {
+      "articleId": 9999,
+      "slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman",
+      "articleSection": "Ide 1 & 2: Pemanfaatan Meja Gantung Railing dan Ubin Decking Kayu Interlocking",
+      "purpose": "cover",
+      "mainSubject": "Penataan balkon mungil (ukuran kompak 1.2 x 2.4 meter) di lantai dua rumah tinggal perkotaan Indonesia.",
+      "problemOrSolution": "Optimalisasi ruang terbatas balkon agar tidak sumpek: meja lipat ramping dipasang pada railing besi, lantai dilapisi ubin kayu modular dengan sambungan rapi, serta tanaman gantung vertikal yang tidak menyita ruang lalu lintas.",
+      "visualEvidence": [
+        "Ukuran balkon proporsional dan masuk akal (sekitar 1x2 meter)",
+        "Meja bar gantung kayu terpasang rapi pada railing besi hitam",
+        "Lantai decking kayu modular acacia dengan pola sambungan konsisten dan rapi",
+        "Jalur sirkulasi lantai tetap lapang (minimal 60 cm jalan leluasa)",
+        "Tanaman pot vertikal di dinding (sirih gading / sansevieria) hemat tempat"
+      ],
+      "architecturalContext": "Balkon lantai dua townhouse tropis kontemporer di Indonesia, pintu geser kaca terbuka ke arah ruang dalam, pencahayaan sore hangat (golden hour).",
+      "compositionAndFraming": "Eye-level wide shot dari sudut balkon memperlihatkan kedalaman ruang, railing luar, meja lipat terpasang, dan pintu geser ke dalam rumah.",
+      "materialGeometryConstraints": "Sambungan ubin kayu decking harus lurus dan masuk akal, baluster railing besi hitam berjarak aman (10 cm), pintu geser kaca proporsional.",
+      "negativeConstraints": [
+        "no massive sprawling terrace",
+        "no broken warped wooden decking tiles",
+        "no impossible railing attachments floating in air",
+        "no cluttered junkyard balcony",
+        "no oversized dining tables that block walking space"
+      ],
+      "caption": "Penataan balkon mungil 1.2 x 2.4 meter dengan ubin decking kayu interlocking dan meja gantung pada railing besi, menyisakan jalur sirkulasi yang leluasa.",
+      "altText": "Balkon kecil lantai dua rumah dengan lantai decking kayu interlocking, meja lipat gantung pada railing besi, dan tanaman vertikal.",
+      "modelProvenance": {
+        "model": "@cf/black-forest-labs/flux-1-schnell",
+        "provider": "cloudflare_workers_ai",
+        "steps": 4,
+        "dimensions": "1024x1024",
+        "targetRatio": "16:9"
+      }
+    },
+    "crop_preview": {
+      "sourceDimensions": "1024x1024",
+      "targetRatio": "16:9",
+      "safeZoneMarginPercent": 5,
+      "cropTopPercent": 21.875,
+      "cropHeightPercent": 56.25,
+      "subjectFocalPointY": "center"
+    },
+    "editorial_verdict": "NEEDS_REGENERATION",
+    "geometry_qa": {
+      "deckingJoints": "FAIL",
+      "spatialPerspective": "PASS",
+      "doorWindowGeometry": "PASS",
+      "railingPosition": "WARN",
+      "structuralConsistency": "PASS",
+      "lightingAndShadow": "PASS",
+      "materialForm": "FAIL",
+      "damageRealism": "NOT_APPLICABLE",
+      "overallStatus": "NEEDS_REGENERATION",
+      "notes": "Cacat geometri: Pola sambungan lantai kayu decking tidak konsisten dan tidak beraturan."
+    },
+    "editorial_notes": "Cacat Geometri: Sambungan lantai decking kayu tidak konsisten dan tidak beraturan."
   },
   {
     "id": "candidate-10000-flux-1-schnell",
@@ -167,7 +427,62 @@
       "estimated_neurons": 1500,
       "estimated_cost_usd": 0,
       "is_free_tier": true
-    }
+    },
+    "visual_brief": {
+      "articleId": 10000,
+      "slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap",
+      "articleSection": "Solusi Void & Inner Court: Sirkulasi Silang Ruang Tengah Rumah Lebar 5-6 Meter",
+      "purpose": "cover",
+      "mainSubject": "Visualisasi interior arsitektural ruang tengah rumah tapak modern dengan lebar kavling 5–6 meter.",
+      "problemOrSolution": "Mengatasi rasa pengap pada rumah kavling memanjang dengan menempatkan bukaan taman kering (inner court/void) di ruang tengah sebagai sumber cahaya alami dan ventilasi silang.",
+      "visualEvidence": [
+        "Proporsi ruang berlebar 5-6 meter yang nyata tanpa sekat masif pengap",
+        "Bukaan inner court/taman kering dalam rumah dengan pintu kaca geser aluminium",
+        "Pencahayaan alami dari void atas menyinari ruang makan dan ruang keluarga",
+        "Pohon mini tropis atau tanaman indoor di area taman kering",
+        "Sirkulasi linear yang jelas menghubungkan bagian depan hingga ruang tengah"
+      ],
+      "architecturalContext": "Rumah deret urban Indonesia, kavling 6x15m, lantai semen poles/microcement, palet warna netral hangat, iklim tropis.",
+      "compositionAndFraming": "One-point perspective dari ruang keluarga mengarah ke inner court di ruang tengah, memperlihatkan bukaan vertikal cahaya alami dan hubungan antar-ruang.",
+      "materialGeometryConstraints": "Garis perspektif dinding lurus 5-6m, proporsi langit-langit standar 3-3.2m, detail kusen pintu geser aluminium hitam rapi.",
+      "negativeConstraints": [
+        "no technical 2D blueprint claim (this is an architectural interior visualization)",
+        "no wide-angle fish-eye distortion making a 5m house look 15m wide",
+        "no dark claustrophobic windowless rooms",
+        "no unrealistic European neoclassical interiors"
+      ],
+      "caption": "Visualisasi interior ruang tengah rumah lebar 5–6 meter dengan bukaan taman kering (inner court) sebagai penyuplai ventilasi silang dan cahaya alami.",
+      "altText": "Interior rumah tropis modern berlebar 6 meter dengan bukaan taman kering di ruang tengah dan pintu kaca geser.",
+      "modelProvenance": {
+        "model": "@cf/bytedance/stable-diffusion-xl-lightning",
+        "provider": "cloudflare_workers_ai",
+        "steps": 4,
+        "dimensions": "1024x1024",
+        "targetRatio": "16:9"
+      }
+    },
+    "crop_preview": {
+      "sourceDimensions": "1024x1024",
+      "targetRatio": "16:9",
+      "safeZoneMarginPercent": 5,
+      "cropTopPercent": 21.875,
+      "cropHeightPercent": 56.25,
+      "subjectFocalPointY": "center"
+    },
+    "editorial_verdict": "PENDING_REVIEW",
+    "geometry_qa": {
+      "deckingJoints": "NOT_APPLICABLE",
+      "spatialPerspective": "PASS",
+      "doorWindowGeometry": "PASS",
+      "railingPosition": "NOT_APPLICABLE",
+      "structuralConsistency": "PASS",
+      "lightingAndShadow": "PASS",
+      "materialForm": "PASS",
+      "damageRealism": "NOT_APPLICABLE",
+      "overallStatus": "PENDING_REVIEW",
+      "notes": "Kandidat alternatif FLUX: Geometri ruang baik, namun pencahayaan void lebih disukai pada kandidat SDXL."
+    },
+    "editorial_notes": "Kandidat alternatif FLUX: Geometri ruang baik, pencahayaan void lebih disukai pada kandidat SDXL."
   },
   {
     "id": "candidate-10000-sdxl-lightning",
@@ -201,6 +516,61 @@
       "estimated_neurons": 1200,
       "estimated_cost_usd": 0,
       "is_free_tier": true
-    }
+    },
+    "visual_brief": {
+      "articleId": 10000,
+      "slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap",
+      "articleSection": "Solusi Void & Inner Court: Sirkulasi Silang Ruang Tengah Rumah Lebar 5-6 Meter",
+      "purpose": "cover",
+      "mainSubject": "Visualisasi interior arsitektural ruang tengah rumah tapak modern dengan lebar kavling 5–6 meter.",
+      "problemOrSolution": "Mengatasi rasa pengap pada rumah kavling memanjang dengan menempatkan bukaan taman kering (inner court/void) di ruang tengah sebagai sumber cahaya alami dan ventilasi silang.",
+      "visualEvidence": [
+        "Proporsi ruang berlebar 5-6 meter yang nyata tanpa sekat masif pengap",
+        "Bukaan inner court/taman kering dalam rumah dengan pintu kaca geser aluminium",
+        "Pencahayaan alami dari void atas menyinari ruang makan dan ruang keluarga",
+        "Pohon mini tropis atau tanaman indoor di area taman kering",
+        "Sirkulasi linear yang jelas menghubungkan bagian depan hingga ruang tengah"
+      ],
+      "architecturalContext": "Rumah deret urban Indonesia, kavling 6x15m, lantai semen poles/microcement, palet warna netral hangat, iklim tropis.",
+      "compositionAndFraming": "One-point perspective dari ruang keluarga mengarah ke inner court di ruang tengah, memperlihatkan bukaan vertikal cahaya alami dan hubungan antar-ruang.",
+      "materialGeometryConstraints": "Garis perspektif dinding lurus 5-6m, proporsi langit-langit standar 3-3.2m, detail kusen pintu geser aluminium hitam rapi.",
+      "negativeConstraints": [
+        "no technical 2D blueprint claim (this is an architectural interior visualization)",
+        "no wide-angle fish-eye distortion making a 5m house look 15m wide",
+        "no dark claustrophobic windowless rooms",
+        "no unrealistic European neoclassical interiors"
+      ],
+      "caption": "Visualisasi interior ruang tengah rumah lebar 5–6 meter dengan bukaan taman kering (inner court) sebagai penyuplai ventilasi silang dan cahaya alami.",
+      "altText": "Interior rumah tropis modern berlebar 6 meter dengan bukaan taman kering di ruang tengah dan pintu kaca geser.",
+      "modelProvenance": {
+        "model": "@cf/bytedance/stable-diffusion-xl-lightning",
+        "provider": "cloudflare_workers_ai",
+        "steps": 4,
+        "dimensions": "1024x1024",
+        "targetRatio": "16:9"
+      }
+    },
+    "crop_preview": {
+      "sourceDimensions": "1024x1024",
+      "targetRatio": "16:9",
+      "safeZoneMarginPercent": 5,
+      "cropTopPercent": 21.875,
+      "cropHeightPercent": 56.25,
+      "subjectFocalPointY": "center"
+    },
+    "editorial_verdict": "APPROVED_PREFERRED",
+    "geometry_qa": {
+      "deckingJoints": "NOT_APPLICABLE",
+      "spatialPerspective": "PASS",
+      "doorWindowGeometry": "PASS",
+      "railingPosition": "NOT_APPLICABLE",
+      "structuralConsistency": "PASS",
+      "lightingAndShadow": "PASS",
+      "materialForm": "PASS",
+      "damageRealism": "NOT_APPLICABLE",
+      "overallStatus": "APPROVED_PREFERRED",
+      "notes": "Pilihan Owner: Perspektif ruang tengah 5-6m lapang, bukaan inner court jelas. Catatan: Visualisasi interior arsitektural, bukan denah teknis 2D."
+    },
+    "editorial_notes": "Pilihan Owner: Perspektif ruang tengah 5-6m lapang, bukaan inner court jelas. Catatan: Visualisasi interior arsitektural, bukan denah teknis 2D."
   }
 ]
