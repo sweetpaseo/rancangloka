@@ -1,84 +1,64 @@
-# 🤖 Antigravity Master Milestone Handoff: RANCANGLOKA_SESSION_WARMUP_AND_CLOUDFLARE_AI_RESUME_1
+# 🤖 Antigravity Master Milestone Handoff: RANCANGLOKA_BATCH1_MEDIA_PLACEMENT_AND_PREVIEWS_1
 
-**Tanggal / Waktu:** 2026-10-30T10:05:00+07:00 (03:05:00 UTC)  
-**Eksekutor:** Antigravity / Senior AI Systems Engineer, Senior Cloudflare Workers Engineer, LokaMedia Integration Engineer  
+**Tanggal / Waktu:** 2026-10-30T16:45:00+07:00 (09:45:00 UTC)  
+**Eksekutor:** Antigravity / Senior AI Systems Engineer + LokaMedia Integration Engineer  
 **Baseline:** `RL-LIVING-LEMON-MAGAZINE-2.1`  
-**Misi:** `RANCANGLOKA_SESSION_WARMUP_AND_CLOUDFLARE_AI_RESUME_1`  
-**Status Sesi:** `RANCANGLOKA_CLOUDFLARE_AI_INTEGRATION_COMPLETE`  
-**Status Operasional:** **PRODUKSI AKTIF (de250e22-0de3-4ef1-a7c5-53ec20102c9d) & 6 KANDIDAT VISUAL CLOUDFLARE AI TERSEDIA UNTUK REVIEW**  
+**Git HEAD:** `e414e0a` (branch: `feat/jev-lokamedia-integration`)  
+**Misi:** `RANCANGLOKA_BATCH1_MEDIA_PLACEMENT_AND_PREVIEWS_1`  
+**Status Sesi:** `RANCANGLOKA_BATCH1_MEDIA_PLACEMENT_AND_PREVIEWS_COMPLETE`  
+**Status Operasional:** **PRODUKSI AKTIF (de250e22-0de3-4ef1-a7c5-53ec20102c9d) & TITIK AMAN OFFLINE TERCAPAI**  
 **Status Rilis:** Deployed to `https://rancangloka.com` (Zero production mutations during this staging mission)  
 **Worker Version ID Aktif:** `de250e22-0de3-4ef1-a7c5-53ec20102c9d`  
-**Worker Version ID Rollback (Standby):** `4a242be8-367f-4e8b-8708-33abc6f6994f`  
-**Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments` | `Free Tier Quota Bound`  
+**Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`  
 **Database Staging Aktif:** `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/37bd9da5950b040e71b09fbfd7ca57290acb451dcd5dc35acb02655fa75fa480.sqlite` (Terisolasi dari D1 Produksi)  
 **Halaman Inspeksi & Komparasi Visual:** `http://localhost:4321/admin/media/comparison-batch1`  
-**Langkah Operasional Berikutnya:** `HUMAN OPERATOR / CHIEF EDITOR REVIEW: Evaluasi visual 6 kandidat cover Batch 1 (FLUX.1 Schnell vs SDXL Lightning) pada antarmuka perbandingan, tentukan kandidat terbaik per artikel, lalu proses diagram pendukung dan publikasi bertahap.`
+**Langkah Operasional Berikutnya:** `HUMAN OPERATOR / CHIEF EDITOR REVIEW: Evaluasi 3 kandidat pendukung tertunda (#9993-S1 diagram rembesan, #9999-S1 foto meja v2 bersih, #10000-S2 diagram void tangga), klik Approve, lalu lanjutkan ke pratinjau artikel untuk persetujuan akhir penerbitan.`
 
 ---
 
-## 1. Ringkasan Pencapaian Sesi (Cloudflare Workers AI & Multi-Model Integration)
+## 1. Ringkasan Pencapaian Sesi (Batch 1 Final Media Placement & Previews)
 
-1. **Warmup & Verifikasi Environment Bersih:**
-   - Commit `deccedd` (Preview Quality Fix) dan `163cf94` (Batch 1 Technical Factcheck) terverifikasi utuh di HEAD (`d5ff4ce`).
-   - Node.js v24.16.0 dan Wrangler 4.151.0 terverifikasi.
-   - Dev server Astro berjalan di port 4321; ketiga draft Batch 1 (ID 9993, 9999, 10000) terkonfirmasi utuh di D1 lokal dengan placeholder editorial dan accordion FAQ.
+1. **Status Ledger Kandidat (6 APPROVED, 3 PENDING_REVIEW):**
+   - **Hero Images (3/3 Disetujui):**
+     - `#9993-HERO` (FLUX.1 Schnell v3): APPROVED
+     - `#9999-HERO` (FLUX.1 Schnell): APPROVED
+     - `#10000-HERO` (SDXL Lightning): APPROVED
+   - **Supporting Images (3 Disetujui, 3 Tertunda):**
+     - `#9993-S1` (Diagram Jalur Rembesan SVG): `PENDING_REVIEW` (Disupresi dari draf, tanpa placeholder rusak)
+     - `#9993-S2` (Detail Cat Menggelembung FLUX v2): `APPROVED` (Terpasang pada Section 4)
+     - `#9999-S1` (Meja Gantung Railing FLUX v2 Bersih): `PENDING_REVIEW` (Siap direview di dashboard)
+     - `#9999-S2` (Sudut Santai & Tanaman Vertikal FLUX): `APPROVED` (Terpasang pada Section 5)
+     - `#10000-S1` (Denah Konseptual SVG): `APPROVED` (Terpasang pada Section 2 dengan label *(Konseptual)*)
+     - `#10000-S2` (Potongan Void Tangga SVG): `PENDING_REVIEW` (Disupresi dari draf, tanpa placeholder rusak)
 
-2. **Integrasi Cloudflare Workers AI (MEDIA-CLOUDFLARE-AI-1):**
-   - Menambahkan binding Workers AI `[ai] binding = "AI"` pada `wrangler.toml`.
-   - Mengimplementasikan `CloudflareAiImageAdapter` (`src/lib/media/cloudflare-ai-image-adapter.ts`) yang mematuhi `ImageProviderAdapter`.
-   - Mendukung model primer `@cf/black-forest-labs/flux-1-schnell` (4 steps, parameter seed diabaikan secara aman) dan model sekunder `@cf/bytedance/stable-diffusion-xl-lightning` (4 steps, 1024x1024).
-   - Zero credential leaks: token tidak pernah terekspos ke klien atau dilog ke terminal.
+2. **Decoupling Database & Keamanan Dual-Control:**
+   - Kolom `featured_image` pada tabel `articles` (D1 lokal) tetap `NULL` untuk seluruh artikel draf.
+   - Hero image di rute preview `/admin/preview/[slug]` dihidrasi secara dinamis dari ledger kandidat / `dev-fixtures.ts`.
+   - Mengeliminasi mutasi prematur dan menjaga invarian bahwa persetujuan media terpisah dari mutasi database draf.
 
-3. **Ekspansi Antarmuka LokaMedia Provider Selection:**
-   - Menyediakan pilihan provider lengkap: OpenAI / ChatGPT, Gemini, Cloudflare Workers AI, dan Manual Upload pada side panel.
-   - Menyediakan sub-pilihan model Cloudflare AI (FLUX.1 Schnell dan SDXL Lightning).
-   - Input prompt dapat diedit (`editable`), mendukung eksekusi generate langsung via server endpoint `/api/admin/media/generate-cloudflare-ai`, review hasil real-time, dan reset/approval gate.
+3. **Workflow Progress Stepper pada Dashboard:**
+   - Mengimplementasikan 6-Tahap Progress Stepper di `/admin/media/comparison-batch1`.
+   - Menampilkan status dinamis `2/3 Media Disetujui` per artikel.
+   - Menyediakan tombol navigasi langsung ke pratinjau artikel (`Pratinjau Draf ↗` / `Lanjut ke Pratinjau Artikel ↗`).
 
-4. **Produksi 6 Kandidat Visual Eksperimental Batch 1:**
-   - **Artikel A (ID 9993 - Dinding Rembes):**
-     - FLUX.1 Schnell: 833.9 KB (1024x1024), 3030ms latency, SHA-256 `63c3f197be43...`
-     - SDXL Lightning: 140.9 KB (1024x1024), 3009ms latency, SHA-256 `9968c29e79f2...`
-   - **Artikel B (ID 9999 - Balkon Kecil):**
-     - FLUX.1 Schnell: 725.0 KB (1024x1024), 2958ms latency, SHA-256 `00e1893f1313...`
-     - SDXL Lightning: 188.1 KB (1024x1024), 2924ms latency, SHA-256 `0906f7733389...`
-   - **Artikel C (ID 10000 - Denah Rumah 5-6m):**
-     - FLUX.1 Schnell: 579.0 KB (1024x1024), 2072ms latency, SHA-256 `30f991777538...`
-     - SDXL Lightning: 143.0 KB (1024x1024), 2831ms latency, SHA-256 `24a49ea563f6...`
-   - Seluruh kandidat tersimpan terisolasi di `storage/experimental-media/` dan `public/experimental-media/` dengan status default `PENDING_REVIEW` di `candidates-manifest.json`.
-
-5. **Halaman Inspeksi & Komparasi Owner-Facing:**
-   - Tersedia di `/admin/media/comparison-batch1` dengan tautan di sidebar Admin CMS.
-   - Menyajikan inspeksi side-by-side (kiri: FLUX.1 Schnell, kanan: SDXL Lightning) dengan fitur Buka Resolusi Penuh, detail metadata, prompt kanonikal, dan kontrol keputusan (`APPROVE` / `REJECT` / `RESET`).
-   - Persetujuan media terisolasi penuh dari status publikasi artikel (Zero auto-publish, Zero draft mutation).
+4. **Kepatuhan Hash Konten Visual Manifest:**
+   - Seluruh manifest visual disinkronkan dengan nilai hash aktual `sha256(content_md)` untuk mencegah error `STALE_CONTENT_HASH`.
 
 ---
 
-## 2. Inventaris Status 6 Kandidat Gambar Eksperimental Batch 1
+## 2. Hasil Pengujian Otomatis & Visual
 
-| Artikel ID | Judul Artikel | Model | Dimensi | Ukuran | Latency | Status Review | Lokasi Publik |
-| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **9993** | Dinding Rembes | FLUX.1 Schnell | 1024x1024 | 833.9 KB | 3030 ms | `PENDING_REVIEW` | `/experimental-media/candidate-9993-flux-1-schnell.jpg` |
-| **9993** | Dinding Rembes | SDXL Lightning | 1024x1024 | 140.9 KB | 3009 ms | `PENDING_REVIEW` | `/experimental-media/candidate-9993-sdxl-lightning.jpg` |
-| **9999** | Balkon Kecil | FLUX.1 Schnell | 1024x1024 | 725.0 KB | 2958 ms | `PENDING_REVIEW` | `/experimental-media/candidate-9999-flux-1-schnell.jpg` |
-| **9999** | Balkon Kecil | SDXL Lightning | 1024x1024 | 188.1 KB | 2924 ms | `PENDING_REVIEW` | `/experimental-media/candidate-9999-sdxl-lightning.jpg` |
-| **10000** | Denah Rumah 5-6m | FLUX.1 Schnell | 1024x1024 | 579.0 KB | 2072 ms | `PENDING_REVIEW` | `/experimental-media/candidate-10000-flux-1-schnell.jpg` |
-| **10000** | Denah Rumah 5-6m | SDXL Lightning | 1024x1024 | 143.0 KB | 2831 ms | `PENDING_REVIEW` | `/experimental-media/candidate-10000-sdxl-lightning.jpg` |
-
----
-
-## 3. Hasil Pengujian Otomatis & Visual
-
-* `scripts/test-lokamedia-cloudflare-ai.js`: **84 / 84 PASS**
-* `scripts/test-preview-quality-fix.js`: **46 / 46 PASS**
-* `scripts/test-soak-safety.js`: **54 / 54 PASS**
+* `node scripts/test-candidate-approval-flow.js`: **11 / 11 PASS**
+* `node scripts/test-soak-safety.js`: **54 / 54 PASS**
+* `node scripts/test-preview-media-rendering.mjs`: **PASS (3/3 artikel terverifikasi HTTP 200, Hero dan inline figures ter-render)**
 * `npx tsc --noEmit`: **0 error**
-* `npm run build`: **Sukses 100% (8.46s, Adapter: @astrojs/cloudflare)**
-* **Visual QA Browser Subagent:** Terverifikasi 100% pada `http://localhost:4321/admin/media/comparison-batch1` dengan semua 6 kartu komparasi dan gambar resolusi penuh tampil tanpa error (rekaman: `batch1_visual_qa`).
+* `npm run build`: **Sukses 100% (8.13s, Adapter: @astrojs/cloudflare)**
+* **Visual QA Browser Subagent:** Tangkapan layar desktop (1536x695) dan mobile (390x844) terverifikasi bersih dan bebas overflow.
 
 ---
 
-## 4. Titik Aman & Rekomendasi Selanjutnya
+## 3. Titik Aman & Rekomendasi Selanjutnya
 
-* **Kondisi Repository:** Kode bersih, typecheck 100% lulus, build produksi sukses, server dev aktif.
-* **Stop Condition Tercapai:** 6 kandidat cover selesai diproduksi dan siap diinspeksi oleh owner.
-* **Tindakan Owner:** Buka browser ke `http://localhost:4321/admin/media/comparison-batch1` untuk mengevaluasi kualitas visual foto arsitektural antara FLUX.1 Schnell dan SDXL Lightning.
+* **Kondisi Repository:** Bersih, seluruh perubahan telah terkomit di Git HEAD `e414e0a`, zero uncommitted regressions.
+* **Stop Condition Tercapai:** Status aman offline tercapai penuh.
+* **Tindakan Saat Kembali Online:** Buka browser ke `http://localhost:4321/admin/media/comparison-batch1`, lakukan approval pada 3 kandidat pendukung tersisa, dan lakukan final review di `/admin/preview/[slug]`.

@@ -13,6 +13,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-BATCH1-MEDIA-PLACEMENT-AND-PREVIEWS-1: Batch 1 Final Media Placement, Visual QA, Workflow Progress Stepper, and Article Previews (2026-10-30)
+
+- **Tanggal / Waktu:** 2026-10-30T16:45:00+07:00 (09:45:00 UTC)
+- **Status Misi:** `RANCANGLOKA_BATCH1_MEDIA_PLACEMENT_AND_PREVIEWS_COMPLETE` (Safe Offline Point Reached)
+- **Git HEAD Baseline:** `e414e0a` (branch: `feat/jev-lokamedia-integration`)
+- **Peran:** Senior AI Systems Engineer + LokaMedia Integration Engineer + Chief Editorial Visual Assistant
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`
+- **Pencapaian Utama:**
+  1. *Audit & Status Candidate Approval Ledger (6 Disetujui, 3 Tertunda):*
+     - Hero Images: 3/3 Disetujui oleh Chief Editor (#9993 FLUX v3, #9999 FLUX, #10000 SDXL Lightning).
+     - Supporting Images: 3/6 Disetujui (#9993-S2 detail cat melepuh, #9999-S2 sudut santai tanaman vertikal, #10000-S1 denah konseptual dengan label tegas *(Konseptual)*).
+     - Kandidat Tertunda: 3/6 (#9993-S1 diagram jalur rembesan SVG, #9999-S1 foto meja gantung railing v2 bersih tanpa teks AI/box hitam, #10000-S2 diagram void tangga SVG).
+  2. *Dual-Control Decoupling & Invarian Database:*
+     - Kolom `featured_image` pada database D1 lokal draf tetap bernilai `NULL` untuk mematuhi invarian batas persetujuan ganda (*dual-control security*).
+     - Hero image di rute `/admin/preview/[slug]` dihidrasi secara dinamis dari ledger kandidat / `dev-fixtures.ts` tanpa mengubah status draf di database.
+     - Gambar pendukung yang berstatus `PENDING_REVIEW` disupresi penuh (`allowUnapprovedInPreview: false`) sehingga tidak memunculkan placeholder generik atau broken layout di pratinjau artikel.
+  3. *Kepatuhan Hash Konten Visual Manifest:*
+     - Nilai `content_hash` pada seluruh manifest visual disinkronkan dengan `sha256(content_md)` aktual untuk mencegah kegagalan `STALE_CONTENT_HASH`.
+  4. *Workflow Progress Stepper pada Dashboard Komparasi:*
+     - Membangun 6-Tahap Progress Stepper di `/admin/media/comparison-batch1`: (1) Draft Prepared [COMPLETED], (2) Hero Approved [COMPLETED 3/3], (3) Supporting Images Approved [IN PROGRESS 3/6], (4) Media Placement Complete [WAITING], (5) Final Editorial QA [WAITING], (6) Ready for Publication Approval [WAITING].
+     - Menambahkan badge status real-time (`2/3 Media Disetujui`) dan tombol aksi kontekstual (`Pratinjau Draf ↗` / `Lanjut ke Pratinjau Artikel ↗`).
+  5. *Multi-Device Visual QA & Rendering Integrity:*
+     - Terverifikasi pada Desktop (1536x695) dan Mobile (390x844) dengan layout bersih, hero image tajam, inline figure rapi, dan nol overflow.
+- **Hasil Pengujian & Verifikasi:**
+  - `test-candidate-approval-flow.js`: **11 / 11 PASS**
+  - `test-soak-safety.js`: **54 / 54 PASS**
+  - `test-preview-media-rendering.mjs`: **3 / 3 PASS (HTTP 200, Hero & Inline Figures Valid)**
+  - `npx tsc --noEmit`: **0 error**
+  - `npm run build`: **Sukses 100% (8.13s, Adapter: @astrojs/cloudflare)**
+
 ### RANCANGLOKA-SESSION-WARMUP-AND-CLOUDFLARE-AI-RESUME-1: Cloudflare Workers AI Integration, Multi-Model Image Generation (FLUX.1 Schnell vs SDXL Lightning), and Batch 1 Visual Comparison (2026-10-30)
 
 - **Tanggal / Waktu:** 2026-10-30T10:05:00+07:00 (03:05:00 UTC)
