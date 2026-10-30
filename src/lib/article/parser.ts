@@ -35,13 +35,29 @@ export function parseArticleMarkdown(rawContent: string): ParseResult {
     };
   }
 
+  // Strip optional UTF-8 BOM
+  const cleaned = rawContent.replace(/^\ufeff/, '');
+
   // Check for opening and closing triple dash frontmatter delimiters
-  const match = rawContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  const match = cleaned.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!match) {
+    // Check if there is an unclosed frontmatter delimiter at start of file
+    if (/^---\r?\n/.test(cleaned)) {
+      // Look for boundary where editorial body begins (e.g. markdown heading # or double newline after YAML keys)
+      const unclosedMatch = cleaned.match(/^---\r?\n[\s\S]*?\n(?=(?:#{1,6}\s|[A-Z0-9].*?\n\n))([\s\S]*)$/);
+      const fallbackBody = unclosedMatch ? unclosedMatch[1] : cleaned.replace(/^---\r?\n[\s\S]*?(?=\n\n|$)/, '').trimStart();
+      return {
+        success: false,
+        frontmatter: {},
+        markdownBody: fallbackBody,
+        error: 'Frontmatter tidak ditutup dengan triple dash (---)'
+      };
+    }
+
     return {
       success: false,
       frontmatter: {},
-      markdownBody: rawContent,
+      markdownBody: cleaned,
       error: 'Frontmatter tidak ditemukan atau tidak diawali dan diakhiri dengan triple dash (---)'
     };
   }
@@ -74,3 +90,42 @@ export function parseArticleMarkdown(rawContent: string): ParseResult {
     };
   }
 }
+
+/**
+ * Returns strictly the Markdown body of an article, cleanly stripping any leading
+ * YAML frontmatter block (whether valid or malformed) to guarantee metadata never
+ * leaks into editorial prose.
+ *
+ * Invariants:
+ * - Documents without frontmatter are returned as-is (with BOM stripped).
+ * - Horizontal rules (---) inside article body are strictly preserved.
+ * - Malformed or unclosed frontmatter blocks at the beginning of the file are stripped.
+ */
+export function extractArticleBody(content: string): string {
+  if (!content || typeof content !== 'string') return '';
+  const cleaned = content.replace(/^\ufeff/, '');
+
+  // 1. Standard opening and closing triple dash frontmatter
+  const match = cleaned.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?([\s\S]*)$/);
+  if (match) {
+    return match[1];
+  }
+
+  // 2. Unclosed frontmatter guard: starts with --- and metadata keys, but missing closing delimiter
+  if (/^---\r?\n/.test(cleaned)) {
+    // If there is any closing --- later in the text
+    const anyClosing = cleaned.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?([\s\S]*)$/);
+    if (anyClosing) {
+      return anyClosing[1];
+    }
+    // Look for boundary where editorial body begins (e.g. markdown heading # or double newline)
+    const unclosedMatch = cleaned.match(/^---\r?\n[\s\S]*?\n(?=(?:#{1,6}\s|[A-Z0-9].*?\n\n))([\s\S]*)$/);
+    if (unclosedMatch && unclosedMatch[1].trim()) {
+      return unclosedMatch[1];
+    }
+    return cleaned.replace(/^---\r?\n[\s\S]*?(?=\n\n|$)/, '').trimStart();
+  }
+
+  return cleaned;
+}
+

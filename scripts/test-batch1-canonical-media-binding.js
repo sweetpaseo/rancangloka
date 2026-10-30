@@ -76,14 +76,15 @@ test('Batch 1 Canonical Media Binding & Article Rendering Test Suite', async (t)
   // TEST 2: Pending candidate cannot be promoted
   // ---------------------------------------------------------------------------
   await t.test('2. Pending candidate promotion fails closed with CANDIDATE_NOT_APPROVED', async () => {
-    const pendingCandidateId = 'candidate-10000-s2-potongan-void-stack-ventilation-svg';
+    const pendingCandidateId = 'candidate-10000-flux-1-schnell';
     await assert.rejects(
       async () => {
         await promoteApprovedCandidateToCanonical(
-          { candidateId: pendingCandidateId, slotKey: 'inline_section_detail_1' },
+          { candidateId: pendingCandidateId, slotKey: 'featured' },
           db
         );
       },
+
       (err) => {
         assert.equal(err.code, 'CANDIDATE_NOT_APPROVED');
         assert.equal(err.statusCode, 422);

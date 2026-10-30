@@ -83,11 +83,17 @@ if (article) {
 
   relatedArticles = fetchedRelated;
   let rawContentHtml = stripFaqCommentMarkers(article.content_html || '');
+  const hasLeakedMetadata =
+    rawContentHtml.includes('title:') &&
+    (rawContentHtml.includes('slug:') || rawContentHtml.includes('focus_keyword:') || rawContentHtml.includes('key_takeaways:')) &&
+    /<(?:h[1-6]|p|blockquote|div)[^>]*>[\s\S]*?title:[\s\S]*?<\/(?:h[1-6]|p|blockquote|div)>/i.test(rawContentHtml);
+
   const isMalformedHtml =
     !rawContentHtml ||
     typeof rawContentHtml !== 'string' ||
     rawContentHtml.trim() === '[object Object]' ||
-    rawContentHtml.trim().length < 50;
+    rawContentHtml.trim().length < 50 ||
+    hasLeakedMetadata;
 
   if (isMalformedHtml && article.content_md) {
     rawContentHtml = await renderArticleMarkdownSafely(article.content_md);
@@ -111,6 +117,10 @@ if (article) {
     siteSettings,
     toc
   );
+
+  // Eliminate duplicate Markdown H1 at presentation boundary to ensure strictly one semantic H1
+  processedHtml = processedHtml.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
+
 
   if (article.key_takeaways) {
     try {

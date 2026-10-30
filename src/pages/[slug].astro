@@ -125,15 +125,22 @@ if (article) {
   Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
 
   let rawContentHtml = stripFaqCommentMarkers(article.content_html || '');
+  const hasLeakedMetadata =
+    rawContentHtml.includes('title:') &&
+    (rawContentHtml.includes('slug:') || rawContentHtml.includes('focus_keyword:') || rawContentHtml.includes('key_takeaways:')) &&
+    /<(?:h[1-6]|p|blockquote|div)[^>]*>[\s\S]*?title:[\s\S]*?<\/(?:h[1-6]|p|blockquote|div)>/i.test(rawContentHtml);
+
   const isMalformedHtml =
     !rawContentHtml ||
     typeof rawContentHtml !== 'string' ||
     rawContentHtml.trim() === '[object Object]' ||
-    rawContentHtml.trim().length < 50;
+    rawContentHtml.trim().length < 50 ||
+    hasLeakedMetadata;
 
   if (isMalformedHtml && article.content_md) {
     rawContentHtml = stripFaqCommentMarkers(await renderArticleMarkdownSafely(article.content_md));
   }
+
 
   const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(rawContentHtml), {
     articleSlug: article.slug,
