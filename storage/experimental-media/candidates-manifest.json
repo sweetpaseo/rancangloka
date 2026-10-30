@@ -1332,7 +1332,7 @@
       "sha256": "5d2126d7e2bf4d3da0bf21400790fa45dac65fa4b608790610eee1a35264036b",
       "brief_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "REJECTED",
     "storage_reference": "storage/experimental-media/candidate-9999-s1-meja-gantung-railing-flux.jpg",
     "public_url": "/experimental-media/candidate-9999-s1-meja-gantung-railing-flux.jpg",
     "byte_size": 477694,
@@ -1361,7 +1361,19 @@
       "overallStatus": "PASS",
       "notes": "Mekanisme klem logam bertumpu aman pada pipa pagar atas; penyangga lipat kokoh; koridor sirkulasi balkon lapang (>60 cm)."
     },
-    "review_readiness": "READY_FOR_HUMAN_REVIEW"
+    "review_readiness": "NEEDS_REGENERATION",
+    "rejection_reason": "AI-generated text overlay and gibberish typography inside editorial photograph.",
+    "revision_reason": "AI-generated text overlay and gibberish typography inside editorial photograph.",
+    "approval_history": [
+      {
+        "action": "reject",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "REJECTED",
+        "timestamp": "2026-10-30T08:30:35.892Z",
+        "reviewer": "Chief Editor Policy Audit",
+        "notes": "Rejected under EDITORIAL_PHOTO_TEXT_FREE policy: AI-generated text overlay and gibberish typography inside editorial photograph."
+      }
+    ]
   },
   {
     "id": "candidate-9999-s2-sudut-santai-tanaman-vertikal-flux",
@@ -1386,7 +1398,7 @@
       "sha256": "e2d226fe9d876dac9ad54dd6dc817774c61b194bc18b5101f31067077b032453",
       "brief_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "storage_reference": "storage/experimental-media/candidate-9999-s2-sudut-santai-tanaman-vertikal-flux.jpg",
     "public_url": "/experimental-media/candidate-9999-s2-sudut-santai-tanaman-vertikal-flux.jpg",
     "byte_size": 444257,
@@ -1422,11 +1434,21 @@
         "previous_status": "PENDING_REVIEW",
         "new_status": "APPROVED",
         "actor": "Chief Editor",
+        "timestamp": "2026-10-30T08:21:06.657Z",
+        "notes": "Disetujui via Inspeksi Visual Batch 1"
+      },
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
         "timestamp": "2026-10-30T07:48:36.473Z",
         "notes": "Disetujui via Inspeksi Visual Batch 1"
       }
     ],
-    "review_readiness": "READY_FOR_HUMAN_REVIEW"
+    "review_readiness": "READY_FOR_HUMAN_REVIEW",
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T08:21:06.657Z"
   },
   {
     "id": "candidate-10000-s1-denah-konseptual-inner-court-svg",
@@ -1448,7 +1470,7 @@
       "sha256": "67eb315decaa76e11bb1dae717ecf6b25a51d8abaca8334bc6105fea209c329e",
       "brief_slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "storage_reference": "storage/experimental-media/candidate-10000-s1-denah-konseptual-inner-court-svg.svg",
     "public_url": "/experimental-media/candidate-10000-s1-denah-konseptual-inner-court-svg.svg",
     "byte_size": 10847,
@@ -1483,11 +1505,21 @@
         "previous_status": "PENDING_REVIEW",
         "new_status": "APPROVED",
         "actor": "Chief Editor",
+        "timestamp": "2026-10-30T08:21:09.672Z",
+        "notes": "Disetujui via Inspeksi Visual Batch 1"
+      },
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
         "timestamp": "2026-10-30T07:48:44.514Z",
         "notes": "Disetujui via Inspeksi Visual Batch 1"
       }
     ],
-    "review_readiness": "READY_FOR_HUMAN_REVIEW"
+    "review_readiness": "READY_FOR_HUMAN_REVIEW",
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T08:21:09.672Z"
   },
   {
     "id": "candidate-10000-s2-potongan-void-stack-ventilation-svg",
@@ -1562,7 +1594,7 @@
       "sha256": "21742fc3c3ea53e27fa125a87133b586ad410f7b29a55006eb33f4f9abb31c16",
       "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "review_readiness": "READY_FOR_HUMAN_REVIEW",
     "storage_reference": "storage/experimental-media/candidate-9993-s2-detail-cat-menggelembung-flux-v2.jpg",
     "public_url": "/experimental-media/candidate-9993-s2-detail-cat-menggelembung-flux-v2.jpg",
@@ -1591,6 +1623,103 @@
       "noExposedBricks": "PASS",
       "overallStatus": "PASS",
       "notes": "Cat menggelembung melepuh nyata, plesteran sebagian besar utuh, kerusakan terlokalisasi, bebas bata terbuka atau lubang besar."
+    },
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T08:20:27.193Z",
+    "review_notes": "Disetujui via Inspeksi Visual Batch 1",
+    "approval_history": [
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T08:20:27.193Z",
+        "notes": "Disetujui via Inspeksi Visual Batch 1"
+      }
+    ]
+  },
+  {
+    "id": "candidate-9999-s1-meja-gantung-railing-flux-v2",
+    "article_id": 9999,
+    "generation_job_id": "JOB-BATCH1-9999-S1-FLUX-V2",
+    "provider": "cloudflare_ai",
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "prompt": "Photorealistic architectural editorial photograph of a compact Indonesian residential balcony featuring a slim foldable wooden table securely attached to a black powder-coated steel railing. Focus on the actual table, its realistic mounting brackets, and the clear walking space remaining on the balcony. One plain ceramic coffee cup rests on the tabletop. Natural tropical morning daylight, authentic residential materials, realistic proportions, clean composition, editorial interior photography, no decorative graphics. Strictly no text, no typography, no labels, no captions, no letters, no numbers, no watermark, no infographic, no presentation overlay, no black translucent text box, no UI elements, no fake magazine layout, no gibberish characters.",
+    "negative_prompt": "no text, no typography, no labels, no captions, no letters, no numbers, no watermark, no infographic, no presentation overlay, no black translucent text box, no UI elements, no fake magazine layout, no gibberish characters",
+    "dimensions": "1024x1024",
+    "width": 1024,
+    "height": 1024,
+    "steps": 4,
+    "generation_timestamp": "2026-10-30T08:30:38.027Z",
+    "media_role": "supporting_s1",
+    "provenance": {
+      "source_type": "ai_generated_operator_reviewed",
+      "provider": "cloudflare_workers_ai",
+      "model": "@cf/black-forest-labs/flux-1-schnell",
+      "model_name": "FLUX.1 Schnell (v2 Clean Photo)",
+      "latency_ms": 2128,
+      "byte_size": 474199,
+      "sha256": "b6c7c1c4db046afbba91337e584583a7a7c31882b6c6d22c443ff3e8f3823b12",
+      "brief_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman",
+      "editorial_photo_text_free": true,
+      "negative_constraints_applied": true
+    },
+    "approval_status": "PENDING_REVIEW",
+    "review_readiness": "READY_FOR_HUMAN_REVIEW",
+    "storage_reference": "storage/experimental-media/candidate-9999-s1-meja-gantung-railing-flux-v2.jpg",
+    "public_url": "/experimental-media/candidate-9999-s1-meja-gantung-railing-flux-v2.jpg",
+    "byte_size": 474199,
+    "sha256": "b6c7c1c4db046afbba91337e584583a7a7c31882b6c6d22c443ff3e8f3823b12",
+    "mime_type": "image/jpeg",
+    "usage": {
+      "estimated_neurons": 57.6,
+      "estimated_cost_usd": 0,
+      "is_free_tier": true,
+      "pricing_status": "VERIFIED_OFFICIAL"
+    },
+    "visual_brief": {
+      "articleId": 9999,
+      "slotKey": "S1",
+      "articleSection": "3. Pilih Meja Lipat Gantung Railing",
+      "purpose": "supporting_furniture_detail",
+      "caption": "Meja lipat kayu terpasang aman pada railing besi hitam balkon: Desain ramping tanpa kaki meja membebaskan ruang lantai dan menjaga koridor gerak leluasa di balkon berukuran terbatas.",
+      "altText": "Meja lipat kayu yang menempel pada railing besi hitam di balkon rumah kecil, di atasnya terdapat cangkir kopi polos tanpa teks atau watermark."
+    },
+    "geometry_qa": {
+      "spatialPerspective": "PASS",
+      "railingPosition": "PASS",
+      "furnitureClampRealism": "PASS",
+      "strutDirection": "PASS",
+      "corridorClearance": "PASS",
+      "overallStatus": "PASS",
+      "notes": "Foto bersih tanpa teks (EDITORIAL_PHOTO_TEXT_FREE verified). Meja terpasang realistis pada railing besi hitam, proporsi ruang natural, koridor sirkulasi lapang, satu cangkir kopi polos di atas meja."
+    },
+    "five_dimensional_qa": {
+      "subjectRelevance": {
+        "status": "HEURISTIC_PASS",
+        "evaluationText": "Meja gantung lipat railing terpasang presisi pada balkon kompak Indonesia."
+      },
+      "damageProblemAccuracy": {
+        "status": "NOT_APPLICABLE",
+        "evaluationText": "Visual perabot solusi ruang (bukan kerusakan dinding)."
+      },
+      "architecturalGeometry": {
+        "status": "HEURISTIC_PASS",
+        "evaluationText": "Geometri railing besi hitam dan engsel braket meja stabil, proporsi realistis."
+      },
+      "materialRealism": {
+        "status": "HEURISTIC_PASS",
+        "evaluationText": "Tekstur kayu alami dan finishing besi hitam matte tanpa artefak distorsi AI."
+      },
+      "textFreePolicy": {
+        "status": "PASS",
+        "evaluationText": "EDITORIAL_PHOTO_TEXT_FREE = TRUE. Zero baked-in text, zero watermark, zero black boxes."
+      },
+      "editorialSuitability": {
+        "status": "PENDING_HUMAN",
+        "evaluationText": "Siap untuk penilaian visual manusia oleh Chief Editor."
+      },
+      "disclaimer": "Pemeriksaan heuristik otomatis lolos. Keputusan approval mutlak wewenang Chief Editor."
     }
   }
 ]

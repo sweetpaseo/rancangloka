@@ -154,8 +154,11 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
       try {
         let inputParams: Record<string, any>;
         if (effectiveModel === CLOUDFLARE_FLUX_MODEL) {
+          const finalPrompt = request.negative_prompt && !trimmedPrompt.toLowerCase().includes('no text')
+            ? `${trimmedPrompt}. Strictly ${request.negative_prompt}`
+            : trimmedPrompt;
           inputParams = {
-            prompt: trimmedPrompt,
+            prompt: finalPrompt,
             steps: 4
           };
         } else {
@@ -163,7 +166,8 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
             prompt: trimmedPrompt,
             num_steps: 4,
             width: request.width || 1024,
-            height: request.height || 1024
+            height: request.height || 1024,
+            ...(request.negative_prompt ? { negative_prompt: request.negative_prompt } : {})
           };
         }
 
@@ -231,8 +235,11 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
 
       let payload: Record<string, any>;
       if (effectiveModel === CLOUDFLARE_FLUX_MODEL) {
+        const finalPrompt = request.negative_prompt && !trimmedPrompt.toLowerCase().includes('no text')
+          ? `${trimmedPrompt}. Strictly ${request.negative_prompt}`
+          : trimmedPrompt;
         payload = {
-          prompt: trimmedPrompt,
+          prompt: finalPrompt,
           steps: 4
         };
       } else {
@@ -240,7 +247,8 @@ export class CloudflareAiImageAdapter implements ImageProviderAdapter {
           prompt: trimmedPrompt,
           num_steps: 4,
           width: request.width || 1024,
-          height: request.height || 1024
+          height: request.height || 1024,
+          ...(request.negative_prompt ? { negative_prompt: request.negative_prompt } : {})
         };
       }
 

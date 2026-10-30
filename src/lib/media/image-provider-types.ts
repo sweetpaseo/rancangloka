@@ -43,6 +43,7 @@ export class ImageProviderError extends Error {
 export interface ImageGenerationRequest {
   request_id: string;
   prompt: string;
+  negative_prompt?: string;
   width?: number;
   height?: number;
   aspect_ratio?: string; // e.g. '1315:660', '16:9', 'landscape'

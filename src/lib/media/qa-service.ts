@@ -49,6 +49,15 @@ export const MEDIA_QA_FAILURE_CODES = {
   FILE_TOO_LARGE: 'FILE_TOO_LARGE',
   FILE_TOO_SMALL: 'FILE_TOO_SMALL',
 
+  // QA-1b: Editorial Photo Text-Free Policy (EDITORIAL_PHOTO_TEXT_FREE = TRUE)
+  TEXT_OVERLAY_DETECTED: 'TEXT_OVERLAY_DETECTED',
+  WATERMARK_DETECTED: 'WATERMARK_DETECTED',
+  GIBBERISH_TYPOGRAPHY: 'GIBBERISH_TYPOGRAPHY',
+  PRESENTATION_BOX_DETECTED: 'PRESENTATION_BOX_DETECTED',
+  ARTIFICIAL_UI_ELEMENTS: 'ARTIFICIAL_UI_ELEMENTS',
+  UNWANTED_LABELS: 'UNWANTED_LABELS',
+  TEXT_IN_EDITORIAL_PHOTO: 'TEXT_IN_EDITORIAL_PHOTO',
+
   // Integrity
   HASH_MISMATCH: 'HASH_MISMATCH',
 
@@ -490,6 +499,174 @@ export function evaluateProvenance(provenance: Record<string, any> | null | unde
 }
 
 /**
+ * PERMANENT EDITORIAL PHOTO POLICY (EDITORIAL_PHOTO_TEXT_FREE = TRUE)
+ *
+ * Applicable to:
+ * - featured_image (hero)
+ * - supporting_photograph
+ * - material_photograph
+ * - architectural_documentary_photograph
+ *
+ * Exemptions:
+ * - technical_diagram (SVG/annotated)
+ * - infographic
+ * - annotated_illustration (explicitly requiring callout labels)
+ *
+ * Invariant: For editorial photographs, text must NEVER be baked into the bitmap.
+ * Captions and alt text must be managed strictly via CMS metadata, separated from the image.
+ */
+export const EDITORIAL_PHOTO_TEXT_FREE = true;
+
+export interface VisualArtifactScan {
+  hasTextOverlay?: boolean;
+  hasWatermark?: boolean;
+  hasGibberishTypography?: boolean;
+  hasPresentationBox?: boolean;
+  hasArtificialUi?: boolean;
+  hasUnwantedLabels?: boolean;
+  detectedTextSnippets?: string[];
+  scanDetails?: string;
+  ocrConfidence?: number;
+  visionEvaluationPassed?: boolean;
+}
+
+/**
+ * QA-1b: Evaluates Editorial Photo Text-Free Policy.
+ * Verifies that photographic assets do not contain baked-in typography,
+ * text overlays, presentation boxes, artificial UI elements, or watermarks.
+ */
+export function evaluateEditorialPhotoTextFree(
+  metadata: {
+    media_role?: string;
+    media_type?: string;
+    isDiagramOrInfographic?: boolean;
+  },
+  scan?: VisualArtifactScan
+): MediaQaResult {
+  const role = (metadata.media_role || '').toLowerCase();
+  const type = (metadata.media_type || '').toLowerCase();
+
+  // Explicit exemptions for technical diagrams, infographics, annotated SVGs
+  const isExempt =
+    metadata.isDiagramOrInfographic === true ||
+    role.includes('diagram') ||
+    role.includes('infographic') ||
+    role.includes('annotated') ||
+    type.includes('diagram') ||
+    type.includes('infographic') ||
+    type.includes('annotated_illustration') ||
+    type === 'image/svg+xml';
+
+  if (isExempt) {
+    return {
+      decision: 'PASS',
+      stage: 'TECHNICAL_QUALITY',
+      failure_code: null,
+      retry_hint: null,
+      evidence: {
+        role,
+        is_exempt: true,
+        reasons: ['Asset is an exempt explanatory diagram/infographic where technical labels are permitted.']
+      }
+    };
+  }
+
+  // Not exempt: Editorial Photo Text-Free Policy applies strictly
+  if (scan) {
+    if (scan.hasTextOverlay) {
+      return {
+        decision: 'FAIL',
+        stage: 'TECHNICAL_QUALITY',
+        failure_code: MEDIA_QA_FAILURE_CODES.TEXT_OVERLAY_DETECTED,
+        retry_hint: 'RETRYABLE_WITH_REPROMPT',
+        evidence: {
+          role,
+          reasons: ['Text overlay detected inside editorial photograph. Text must be managed via CMS, not baked into bitmap.'],
+          snippets: scan.detectedTextSnippets || []
+        }
+      };
+    }
+    if (scan.hasGibberishTypography) {
+      return {
+        decision: 'FAIL',
+        stage: 'TECHNICAL_QUALITY',
+        failure_code: MEDIA_QA_FAILURE_CODES.GIBBERISH_TYPOGRAPHY,
+        retry_hint: 'RETRYABLE_WITH_REPROMPT',
+        evidence: {
+          role,
+          reasons: ['AI-generated gibberish typography or pseudo-characters detected inside editorial photograph.'],
+          snippets: scan.detectedTextSnippets || []
+        }
+      };
+    }
+    if (scan.hasWatermark) {
+      return {
+        decision: 'FAIL',
+        stage: 'TECHNICAL_QUALITY',
+        failure_code: MEDIA_QA_FAILURE_CODES.WATERMARK_DETECTED,
+        retry_hint: 'RETRYABLE_WITH_REPROMPT',
+        evidence: {
+          role,
+          reasons: ['Watermark or artificial stamp detected in editorial photograph.']
+        }
+      };
+    }
+    if (scan.hasPresentationBox) {
+      return {
+        decision: 'FAIL',
+        stage: 'TECHNICAL_QUALITY',
+        failure_code: MEDIA_QA_FAILURE_CODES.PRESENTATION_BOX_DETECTED,
+        retry_hint: 'RETRYABLE_WITH_REPROMPT',
+        evidence: {
+          role,
+          reasons: ['Presentation-style black or translucent text box detected in editorial photograph.']
+        }
+      };
+    }
+    if (scan.hasArtificialUi) {
+      return {
+        decision: 'FAIL',
+        stage: 'TECHNICAL_QUALITY',
+        failure_code: MEDIA_QA_FAILURE_CODES.ARTIFICIAL_UI_ELEMENTS,
+        retry_hint: 'RETRYABLE_WITH_REPROMPT',
+        evidence: {
+          role,
+          reasons: ['Artificial UI elements or graphic card borders detected in editorial photograph.']
+        }
+      };
+    }
+    if (scan.hasUnwantedLabels) {
+      return {
+        decision: 'FAIL',
+        stage: 'TECHNICAL_QUALITY',
+        failure_code: MEDIA_QA_FAILURE_CODES.UNWANTED_LABELS,
+        retry_hint: 'RETRYABLE_WITH_REPROMPT',
+        evidence: {
+          role,
+          reasons: ['Unwanted labels or artificial annotations detected in editorial photograph.']
+        }
+      };
+    }
+  }
+
+  // Prompt-based checks alone are insufficient; human visual review remains mandatory
+  return {
+    decision: 'PASS',
+    stage: 'TECHNICAL_QUALITY',
+    failure_code: null,
+    retry_hint: null,
+    evidence: {
+      role,
+      editorial_photo_text_free: EDITORIAL_PHOTO_TEXT_FREE,
+      human_visual_review_required: true,
+      reasons: [
+        'Editorial photo text-free policy evaluated. Prompt-based checks clean; mandatory human visual review gate pending.'
+      ]
+    }
+  };
+}
+
+/**
  * Semantic / Vision Quality Evaluator (Future Extension Point).
  * INVARIANT: If no vision evaluator is configured/executed, status is strictly DEFERRED.
  * It must NEVER return PASS when no evaluation took place.
@@ -513,7 +690,7 @@ export function evaluateSemanticQuality(
 
 /**
  * Composite Deterministic Media QA Evaluator.
- * Evaluates QA-0 (Artifact Integrity), QA-1 (Technical Quality), and QA-2 (Provenance).
+ * Evaluates QA-0 (Artifact Integrity), QA-1 (Technical Quality), QA-1b (Text-Free Policy), and QA-2 (Provenance).
  * Completely pure and side-effect free.
  */
 export async function evaluateMediaArtifact(
@@ -522,11 +699,14 @@ export async function evaluateMediaArtifact(
     mime_type?: string;
     sha256?: string;
     media_role?: string;
+    media_type?: string;
     provenance?: Record<string, any>;
   },
   options: {
     roleOverride?: string;
     policy?: TechnicalQualityPolicy;
+    visualScan?: VisualArtifactScan;
+    isDiagramOrInfographic?: boolean;
   } = {}
 ): Promise<MediaQaResult> {
   // 1. QA-0: Artifact Integrity
@@ -555,7 +735,21 @@ export async function evaluateMediaArtifact(
     return qualityResult;
   }
 
-  // 3. QA-2: Provenance & Privacy
+  // 3. QA-1b: Editorial Photo Text-Free Policy
+  const textFreeResult = evaluateEditorialPhotoTextFree(
+    {
+      media_role: role,
+      media_type: artifact.media_type || integrityResult.evidence.mime_type,
+      isDiagramOrInfographic: options.isDiagramOrInfographic
+    },
+    options.visualScan || (artifact.provenance?.visual_scan as VisualArtifactScan)
+  );
+
+  if (textFreeResult.decision !== 'PASS') {
+    return textFreeResult;
+  }
+
+  // 4. QA-2: Provenance & Privacy
   if (artifact.provenance) {
     const provResult = evaluateProvenance(artifact.provenance);
     if (provResult.decision !== 'PASS') {

@@ -623,17 +623,24 @@ export function decideMediaRetryPolicy(input: MediaRetryPolicyInput): MediaRetry
     };
   }
 
-  // Technical dimension / sizing issues -> RETRY_WITH_REPROMPT (generation parameters)
+  // Technical dimension / sizing issues or text-free policy violations -> RETRY_WITH_REPROMPT
   if (
     failure_code === MEDIA_QA_FAILURE_CODES.DIMENSIONS_TOO_SMALL ||
     failure_code === MEDIA_QA_FAILURE_CODES.FILE_TOO_SMALL ||
     failure_code === MEDIA_QA_FAILURE_CODES.FILE_TOO_LARGE ||
     failure_code === MEDIA_QA_FAILURE_CODES.INVALID_ASPECT_RATIO ||
     failure_code === MEDIA_QA_FAILURE_CODES.MIME_MISMATCH ||
-    failure_code === MEDIA_QA_FAILURE_CODES.UNSUPPORTED_FORMAT
+    failure_code === MEDIA_QA_FAILURE_CODES.UNSUPPORTED_FORMAT ||
+    failure_code === MEDIA_QA_FAILURE_CODES.TEXT_OVERLAY_DETECTED ||
+    failure_code === MEDIA_QA_FAILURE_CODES.WATERMARK_DETECTED ||
+    failure_code === MEDIA_QA_FAILURE_CODES.GIBBERISH_TYPOGRAPHY ||
+    failure_code === MEDIA_QA_FAILURE_CODES.PRESENTATION_BOX_DETECTED ||
+    failure_code === MEDIA_QA_FAILURE_CODES.ARTIFICIAL_UI_ELEMENTS ||
+    failure_code === MEDIA_QA_FAILURE_CODES.UNWANTED_LABELS ||
+    failure_code === MEDIA_QA_FAILURE_CODES.TEXT_IN_EDITORIAL_PHOTO
   ) {
     baseEvidence.reasons.push(
-      `Artifact failed technical quality (${failure_code}). Retrying autonomous provider generation with revised parameters/prompt.`
+      `Artifact failed technical/text-free quality (${failure_code}). Retrying autonomous provider generation with revised parameters/prompt.`
     );
     return {
       retry_class: 'RETRY_WITH_REPROMPT',
