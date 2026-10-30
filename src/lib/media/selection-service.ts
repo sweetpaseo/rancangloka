@@ -63,6 +63,8 @@ export interface EvaluatedSlot {
   candidates: EvaluatedCandidate[];
   can_skip: boolean;
   is_skipped: boolean;
+  is_canonically_bound: boolean;
+  canonical_asset_id: string | null;
   notes?: string;
 }
 
@@ -327,6 +329,12 @@ export function evaluateSlot(
       ? 'Sampul / Bagian Atas Artikel'
       : slotBrief?.articleSection || 'Bagian Pembahasan Relevan';
 
+  const matchedCanonicalAsset = canonicalActiveAssetIds.find((id) =>
+    id.includes(`_${articleId}_${slotIdentifier.toLowerCase()}_`) ||
+    id.includes(`_${articleId}_${slotIdentifier.toLowerCase()}`)
+  ) || null;
+  const isCanonicallyBound = Boolean(matchedCanonicalAsset);
+
   return {
     article_id: articleId,
     slot_identifier: slotIdentifier,
@@ -337,10 +345,12 @@ export function evaluateSlot(
     requirement,
     decision_status: decisionStatus,
     status_label: statusLabel,
-    selected_candidate_id: winningId,
+    selected_candidate_id: isSkipped ? null : winningId,
     candidates: evaluatedCandidates,
     can_skip: requirement === 'OPTIONAL' && decisionStatus !== 'DECISION_COMPLETE',
     is_skipped: isSkipped,
+    is_canonically_bound: isCanonicallyBound,
+    canonical_asset_id: matchedCanonicalAsset,
     notes: persistedDecision?.notes
   };
 }
@@ -627,4 +637,285 @@ export function reconcileBatch1Manifest(): {
   }
 
   return { reconciledCount: changes.length, changes };
+}
+
+export interface WizardStep {
+  stepNumber: number; // 1 to 9
+  articleId: number;
+  articleCode: string;
+  articleTitle: string;
+  articleSlug: string;
+  slotIdentifier: 'hero' | 'S1' | 'S2';
+  slotType: SlotType;
+  slotName: string;
+  targetSection: string;
+  requirement: SlotRequirement;
+  evaluatedSlot: EvaluatedSlot;
+  isComplete: boolean;
+  isSkipped: boolean;
+  isCanonicallyBound: boolean;
+  canonicalAssetId: string | null;
+  selectedCandidateId: string | null;
+  activeCandidate: EvaluatedCandidate | null;
+  competingCandidates: EvaluatedCandidate[];
+  caption: string;
+  altText: string;
+  purpose: string;
+  recommendedMethod?: string;
+  notes?: string;
+}
+
+export interface Batch1WizardSummary {
+  steps: WizardStep[];
+  totalSlots: number;
+  totalCompleted: number;
+  totalRemainingRequired: number;
+  firstIncompleteStepNumber: number | null;
+  isAllComplete: boolean;
+  articlesSummary: Array<{
+    articleId: number;
+    title: string;
+    slug: string;
+    isFullyComplete: boolean;
+    heroComplete: boolean;
+    s1Complete: boolean;
+    s2Complete: boolean;
+    canonicalBindingsComplete: boolean;
+  }>;
+}
+
+/**
+ * Returns structured Batch 1 Wizard Steps representing 1 actionable task per media slot.
+ */
+export function getBatch1WizardSteps(
+  allCandidates?: ExperimentalMediaCandidate[],
+  canonicalActiveAssetIds: string[] = []
+): Batch1WizardSummary {
+  const candidates = allCandidates || loadCandidatesLedger();
+
+  const articleMeta: Record<number, { code: string; title: string; slug: string }> = {
+    9993: {
+      code: 'ARTICLE_A',
+      title: 'Dinding Rembes dan Cat Menggelembung',
+      slug: 'dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah'
+    },
+    9999: {
+      code: 'ARTICLE_B',
+      title: '7 Ide Menata Balkon Rumah Kecil',
+      slug: '7-ide-menata-balkon-rumah-kecil-agar-nyaman'
+    },
+    10000: {
+      code: 'ARTICLE_C',
+      title: 'Menata Denah Rumah Lebar 5–6 Meter',
+      slug: 'menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap'
+    }
+  };
+
+  const slotDefinitions: Array<{
+    articleId: number;
+    slotIdentifier: 'hero' | 'S1' | 'S2';
+    slotType: SlotType;
+    slotName: string;
+    targetSection: string;
+    caption: string;
+    altText: string;
+    purpose: string;
+    recommendedMethod?: string;
+  }> = [
+    // Step 1: Article #9993 - Hero
+    {
+      articleId: 9993,
+      slotIdentifier: 'hero',
+      slotType: 'HERO',
+      slotName: 'Featured Hero Cover',
+      targetSection: 'Header Utama Artikel',
+      caption: 'Dinding rembes bagian bawah dengan plesteran terkelupas dan cat menggelembung pada rumah tropis.',
+      altText: 'Dinding bata rumah lembap dengan cat mengelupas dan bercak jamur akibat rembesan air.',
+      purpose: 'Visualisasi cover artikel pembuka untuk mengenali kerusakan rembesan dinding secara realistis.',
+      recommendedMethod: 'Cloudflare Workers AI (FLUX.1 Schnell)'
+    },
+    // Step 2: Article #9993 - S1
+    {
+      articleId: 9993,
+      slotIdentifier: 'S1',
+      slotType: 'SUPPORTING',
+      slotName: 'Diagram Jalur Rembesan',
+      targetSection: 'Identifikasi Gejala & Pola Kerusakan',
+      caption: 'Diagram potongan melintang dinding mengidentifikasi 3 zona sumber rembesan: atap/talang, tampias dinding luar, dan rembesan tanah kapiler.',
+      altText: 'Diagram teknis arsitektur potongan dinding memperlihatkan jalur pergerakan air dari talang bocor, retak rambut, dan naiknya air tanah.',
+      purpose: 'Memberikan panduan teknis visual bagi pemilik rumah untuk mendiagnosis asal sumber rembesan.',
+      recommendedMethod: 'Deterministic Architectural SVG Engine'
+    },
+    // Step 3: Article #9993 - S2
+    {
+      articleId: 9993,
+      slotIdentifier: 'S2',
+      slotType: 'SUPPORTING',
+      slotName: 'Detail Cat Menggelembung & Garam Ef floresensi',
+      targetSection: 'Tanda Fisik Kelembapan Tanah Naik (Rising Damp)',
+      caption: 'Close-up kerusakan dinding dengan kristal garam putih (efflorescence) dan lapisan cat lateks terangkat gelembung udara.',
+      altText: 'Tampilan dekat lapisan cat dinding rumah menggelembung dan serbuk putih garam akibat rembesan kelembapan tanah kapiler.',
+      purpose: 'Menunjukkan detail mikroskopis perbedaan cat menggelembung karena rising damp vs rembesan biasa.',
+      recommendedMethod: 'Cloudflare Workers AI (FLUX.1 Schnell)'
+    },
+    // Step 4: Article #9999 - Hero
+    {
+      articleId: 9999,
+      slotIdentifier: 'hero',
+      slotType: 'HERO',
+      slotName: 'Featured Hero Cover',
+      targetSection: 'Header Utama Artikel',
+      caption: 'Penataan balkon mungil 1.2 x 2.4 meter dengan ubin decking kayu interlocking dan meja gantung pada railing besi.',
+      altText: 'Balkon kecil lantai dua rumah dengan lantai decking kayu interlocking, meja lipat gantung pada railing besi, dan tanaman vertikal.',
+      purpose: 'Menampilkan solusi inspiratif penataan balkon kompak tropis yang nyaman dan teduh tanpa membuat sempit.',
+      recommendedMethod: 'Cloudflare Workers AI (FLUX.1 Schnell)'
+    },
+    // Step 5: Article #9999 - S1
+    {
+      articleId: 9999,
+      slotIdentifier: 'S1',
+      slotType: 'SUPPORTING',
+      slotName: 'Meja Gantung Railing Balkon',
+      targetSection: 'Zona Sirkulasi & Batas Beban',
+      caption: 'Detail meja lipat gantung berbahan kayu solid yang dikaitkan kuat pada struktur railing balkon besi hollow.',
+      altText: 'Detail konstruksi meja kerja gantung lipat yang terpasang pada railing balkon apartemen/rumah sempit.',
+      purpose: 'Menjelaskan efisiensi ruang meja gantung tanpa kaki meja yang mengganggu jalur sirkulasi balkon.',
+      recommendedMethod: 'Cloudflare Workers AI (FLUX.1 Schnell)'
+    },
+    // Step 6: Article #9999 - S2
+    {
+      articleId: 9999,
+      slotIdentifier: 'S2',
+      slotType: 'SUPPORTING',
+      slotName: 'Proteksi Cuaca Railing Balkon',
+      targetSection: 'Material & Proteksi Cuaca',
+      caption: 'Aplikasi tanaman pelindung tampias dan kanopi kisi-kisi kayu pelindung panas sore pada balkon rumah.',
+      altText: 'Balkon rumah tropis dengan kisi-kisi pelindung sinar matahari barat dan tanaman sirih gading penahan tampias hujan.',
+      purpose: 'Menampilkan proteksi cuaca alami terhadap panas matahari dan tampias hujan iklim tropis.',
+      recommendedMethod: 'Cloudflare Workers AI (FLUX.1 Schnell)'
+    },
+    // Step 7: Article #10000 - Hero
+    {
+      articleId: 10000,
+      slotIdentifier: 'hero',
+      slotType: 'HERO',
+      slotName: 'Featured Hero Cover',
+      targetSection: 'Header Utama Artikel',
+      caption: 'Visualisasi interior ruang tengah rumah lebar 5–6 meter dengan bukaan taman kering (inner court) sebagai penyuplai ventilasi silang.',
+      altText: 'Interior rumah tropis modern berlebar 6 meter dengan bukaan taman kering di ruang tengah dan pintu kaca geser.',
+      purpose: 'Visualisasi ruang tengah rumah lebar 5–6 meter yang terang dan sejuk berkat bukaan vertikal void inner court.',
+      recommendedMethod: 'Cloudflare Workers AI (SDXL Lightning)'
+    },
+    // Step 8: Article #10000 - S1
+    {
+      articleId: 10000,
+      slotIdentifier: 'S1',
+      slotType: 'SUPPORTING',
+      slotName: 'Perbandingan Layout 5m vs 6m',
+      targetSection: 'Perbandingan Layout 5m vs 6m',
+      caption: 'Komparasi zoning denah rumah lebar 5 meter (sirkulasi linear satu sisi) vs lebar 6 meter (ruang keluarga & makan leluasa berdampingan).',
+      altText: 'Denah komparatif arsitektur tata ruang rumah lebar 5 meter dibandingkan rumah lebar 6 meter dengan penempatan inner court.',
+      purpose: 'Membandingkan trade-off ruang sirkulasi antara lebar 5 meter dan 6 meter secara jelas dan terukur.',
+      recommendedMethod: 'Deterministic Architectural SVG Engine'
+    },
+    // Step 9: Article #10000 - S2
+    {
+      articleId: 10000,
+      slotIdentifier: 'S2',
+      slotType: 'SUPPORTING',
+      slotName: 'Diagram Void & Sirkulasi Silang (Stack Ventilation)',
+      targetSection: 'Potongan Void Tangga & Sirkulasi Silang',
+      caption: 'Potongan vertikal rumah 2 lantai memperlihatkan efek cerobong udara (stack ventilation) melalui void tangga dan bukaan atas.',
+      altText: 'Diagram aliran udara potongan vertikal rumah dua lantai menunjukkan udara hangat keluar melalui void atap dan udara sejuk masuk dari bawah.',
+      purpose: 'Menjelaskan prinsip fisika bangunan efek cerobong udara (stack effect) agar ruang tengah tidak pengap.',
+      recommendedMethod: 'Deterministic Architectural SVG Engine'
+    }
+  ];
+
+  let totalCompleted = 0;
+  let totalRemainingRequired = 0;
+  let firstIncompleteStepNumber: number | null = null;
+
+  const steps: WizardStep[] = slotDefinitions.map((def, index) => {
+    const stepNumber = index + 1;
+    const art = articleMeta[def.articleId];
+    const evaluatedSlot = evaluateSlot(def.articleId, def.slotIdentifier, candidates, canonicalActiveAssetIds);
+    const isComplete = evaluatedSlot.decision_status === 'DECISION_COMPLETE' || evaluatedSlot.decision_status === 'SKIPPED';
+    const isSkipped = evaluatedSlot.decision_status === 'SKIPPED';
+
+    if (isComplete) {
+      totalCompleted++;
+    } else if (evaluatedSlot.requirement === 'REQUIRED') {
+      totalRemainingRequired++;
+      if (firstIncompleteStepNumber === null) {
+        firstIncompleteStepNumber = stepNumber;
+      }
+    }
+
+    const selectedCand = evaluatedSlot.candidates.find((c) => c.selection_status === 'SELECTED');
+    const availableCands = evaluatedSlot.candidates.filter((c) => c.selection_status !== 'SUPERSEDED');
+    const activeCandidate = selectedCand || availableCands[0] || evaluatedSlot.candidates[0] || null;
+
+    return {
+      stepNumber,
+      articleId: def.articleId,
+      articleCode: art.code,
+      articleTitle: art.title,
+      articleSlug: art.slug,
+      slotIdentifier: def.slotIdentifier,
+      slotType: def.slotType,
+      slotName: def.slotName,
+      targetSection: def.targetSection,
+      requirement: evaluatedSlot.requirement,
+      evaluatedSlot,
+      isComplete,
+      isSkipped,
+      isCanonicallyBound: evaluatedSlot.is_canonically_bound,
+      canonicalAssetId: evaluatedSlot.canonical_asset_id,
+      selectedCandidateId: evaluatedSlot.selected_candidate_id,
+      activeCandidate,
+      competingCandidates: evaluatedSlot.candidates,
+      caption: def.caption,
+      altText: def.altText,
+      purpose: def.purpose,
+      recommendedMethod: def.recommendedMethod,
+      notes: evaluatedSlot.notes
+    };
+  });
+
+  const isAllComplete = totalCompleted === 9 || (totalRemainingRequired === 0 && totalCompleted >= 6);
+
+  const articlesSummary = [9993, 9999, 10000].map((artId) => {
+    const art = articleMeta[artId];
+    const artSteps = steps.filter((s) => s.articleId === artId);
+    const heroStep = artSteps.find((s) => s.slotIdentifier === 'hero');
+    const s1Step = artSteps.find((s) => s.slotIdentifier === 'S1');
+    const s2Step = artSteps.find((s) => s.slotIdentifier === 'S2');
+
+    const heroComplete = heroStep?.isComplete ?? false;
+    const s1Complete = s1Step?.isComplete ?? false;
+    const s2Complete = s2Step?.isComplete ?? false;
+    const isFullyComplete = heroComplete && s1Complete && s2Complete;
+
+    return {
+      articleId: artId,
+      title: art.title,
+      slug: art.slug,
+      isFullyComplete,
+      heroComplete,
+      s1Complete,
+      s2Complete,
+      canonicalBindingsComplete: true
+    };
+  });
+
+  return {
+    steps,
+    totalSlots: 9,
+    totalCompleted,
+    totalRemainingRequired,
+    firstIncompleteStepNumber,
+    isAllComplete,
+    articlesSummary
+  };
 }

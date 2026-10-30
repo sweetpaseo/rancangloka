@@ -10,8 +10,11 @@ import {
   getPendingMediaDecisions,
   reconcileBatch1Manifest,
   getSlotRequirement,
+  getBatch1WizardSteps,
   type EvaluatedSlot,
-  type EvaluatedCandidate
+  type EvaluatedCandidate,
+  type WizardStep,
+  type Batch1WizardSummary
 } from '../../../lib/media/selection-service';
 
 const env = (Astro.locals as any)?.runtime?.env || (import.meta as any).env || {};
@@ -27,6 +30,22 @@ reconcileBatch1Manifest();
 
 const candidates = loadCandidatesLedger();
 const neuronsSummary = getDailyUsageSummary();
+const wizardData = getBatch1WizardSteps(candidates);
+
+const urlStep = Astro.url.searchParams.get('step');
+const urlView = Astro.url.searchParams.get('view') || 'wizard';
+
+let initialActiveStep: number | 'finalization' = 1;
+if (urlStep === 'finalization') {
+  initialActiveStep = 'finalization';
+} else if (urlStep && !isNaN(Number(urlStep))) {
+  const parsed = Math.max(1, Math.min(9, Number(urlStep)));
+  initialActiveStep = parsed;
+} else if (wizardData.firstIncompleteStepNumber !== null) {
+  initialActiveStep = wizardData.firstIncompleteStepNumber;
+} else if (wizardData.isAllComplete) {
+  initialActiveStep = 'finalization';
+}
 
 const articles = [
   {
@@ -279,8 +298,646 @@ const workflowStages = [
       </div>
     </div>
 
-    <!-- BATCH 1 EDITORIAL WORKFLOW STEPPER (Phase 5 Requirement) -->
-    <div class="rounded-2xl bg-white border border-[#E7E9EE] p-6 shadow-2xs space-y-4">
+    <!-- View Switcher Tabs (Phase 2 Requirement) -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#FFFDF7] border border-[#E7E9EE] rounded-2xl p-3 shadow-2xs">
+      <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-outfit font-bold w-full sm:w-auto">
+        <button
+          type="button"
+          id="tab-btn-wizard"
+          onclick="switchViewMode('wizard')"
+          class={`flex-1 sm:flex-initial px-4 py-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-2 ${
+            urlView === 'all' ? 'text-slate-600 hover:text-[#172033]' : 'bg-white shadow-2xs text-[#172033]'
+          }`}
+        >
+          <span>🧭 Panduan Finalisasi Media (Wizard)</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 font-mono font-bold">
+            {wizardData.totalCompleted}/9 Selesai
+          </span>
+        </button>
+        <button
+          type="button"
+          id="tab-btn-all"
+          onclick="switchViewMode('all')"
+          class={`flex-1 sm:flex-initial px-4 py-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-2 ${
+            urlView === 'all' ? 'bg-white shadow-2xs text-[#172033]' : 'text-slate-600 hover:text-[#172033]'
+          }`}
+        >
+          <span>📊 Lihat Semua Kandidat (Komparasi Lengkap)</span>
+        </button>
+      </div>
+
+      <div class="flex items-center gap-3 text-xs text-[#596579]">
+        <span>Mode: <strong id="current-view-label" class="text-[#172033]">{urlView === 'all' ? 'Lihat Semua Kandidat (Komparasi Lengkap)' : 'Panduan Langkah per Langkah (1 Tugas Aktif)'}</strong></span>
+      </div>
+    </div>
+
+    <!-- WIZARD MODE CONTAINER (Default Primary View) -->
+    <div id="wizard-mode-container" data-initial-step={String(initialActiveStep)} class={urlView === 'all' ? 'space-y-8 hidden' : 'space-y-8'}>
+      <!-- Progress Header Banner (Phase 3 Requirement) -->
+      <div class="rounded-2xl bg-white border border-[#E7E9EE] p-6 shadow-2xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E7E9EE] pb-4">
+          <div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-[#A76A00]">
+              <span class="px-2.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 uppercase tracking-wider font-mono text-[10px] font-bold">
+                FINALISASI MEDIA BATCH 1
+              </span>
+              <span>•</span>
+              <span id="wizard-progress-headline" class="font-outfit text-slate-700 font-bold">
+                {wizardData.totalCompleted} dari 9 keputusan selesai
+              </span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-outfit font-black text-[#172033] tracking-tight mt-1">
+              Panduan Editorial: Tinjau &amp; Pilih Visual Per Slot
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">
+              Fokus pada satu keputusan media editorial pada satu waktu. Pilihan tersimpan secara permanen di server dan sistem otomatis beralih ke tugas berikutnya.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <div class="text-right">
+              <div class="text-[11px] text-slate-400 font-mono">Status Alur Media:</div>
+              <div class="text-xs font-bold font-mono text-emerald-700">
+                {wizardData.isAllComplete ? '✓ Seluruh Slot Selesai' : `${wizardData.totalRemainingRequired} Keputusan Wajib Tersisa`}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Bar (Phase 3 Requirement) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs font-mono">
+            <span class="text-[#596579] font-semibold">Progres Keputusan Slot Media:</span>
+            <span id="wizard-progress-pct" class="font-bold text-[#172033]">
+              {wizardData.totalCompleted}/9 Selesai ({Math.round((wizardData.totalCompleted / 9) * 100)}%)
+            </span>
+          </div>
+          <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200 p-0.5">
+            <div
+              id="wizard-progress-bar-fill"
+              class="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-xs"
+              style={`width: ${Math.round((wizardData.totalCompleted / 9) * 100)}%`}
+            ></div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
+            <span>✓ {wizardData.totalCompleted} Selesai</span>
+            <span>⏳ {wizardData.totalRemainingRequired} Menunggu Keputusan</span>
+            <span>🎯 Tugas Aktif: Langkah {initialActiveStep === 'finalization' ? 'Final' : initialActiveStep} dari 9</span>
+            <span>Tahap Berikutnya: {wizardData.isAllComplete ? 'Tinjauan Draf Artikel' : 'Finalisasi Media'}</span>
+          </div>
+        </div>
+
+        <!-- Stepper Pills Bar (1 to 9 + Finalization) -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 pt-2 border-t border-[#E7E9EE] no-scrollbar">
+          {wizardData.steps.map((st) => (
+            <button
+              type="button"
+              id={`step-pill-${st.stepNumber}`}
+              onclick={`switchWizardStep(${st.stepNumber})`}
+              data-is-done={st.isComplete ? 'true' : 'false'}
+              class={`px-3 py-2 rounded-xl text-xs font-outfit font-bold transition shrink-0 cursor-pointer border flex items-center gap-2 ${
+                st.stepNumber === initialActiveStep
+                  ? 'bg-[#172033] text-white border-[#172033] shadow-xs ring-2 ring-slate-400/20'
+                  : st.isComplete
+                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-200'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+              }`}
+            >
+              <span class={`w-5 h-5 rounded-full flex items-center justify-center font-mono text-[10px] font-bold ${
+                st.stepNumber === initialActiveStep
+                  ? 'bg-amber-400 text-slate-900'
+                  : st.isComplete
+                  ? 'bg-emerald-200 text-emerald-800'
+                  : 'bg-slate-200 text-slate-700'
+              }`}>
+                {st.isComplete ? '✓' : st.stepNumber}
+              </span>
+              <span>#{st.articleId} {st.slotIdentifier.toUpperCase()}</span>
+              <span class={`text-[9px] font-mono px-1 py-0.2 rounded ${
+                st.isComplete ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {st.isComplete ? 'Selesai' : 'Menunggu'}
+              </span>
+            </button>
+          ))}
+
+          <button
+            type="button"
+            id="step-pill-finalization"
+            onclick="switchWizardStep('finalization')"
+            class={`px-3.5 py-2 rounded-xl text-xs font-outfit font-bold transition shrink-0 cursor-pointer border flex items-center gap-2 ${
+              initialActiveStep === 'finalization'
+                ? 'bg-[#172033] text-white border-[#172033] shadow-xs'
+                : wizardData.isAllComplete
+                ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                : 'bg-slate-50 text-slate-600 hover:text-slate-900 border-slate-200'
+            }`}
+          >
+            <span>🎉 Selesai &amp; Pratinjau</span>
+            {wizardData.isAllComplete && (
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <!-- WIZARD STEP CARDS: ONE ACTIVE TASK AT A TIME (Phase 4 Requirement) -->
+      {wizardData.steps.map((st) => {
+        const isCurrentActive = st.stepNumber === initialActiveStep;
+        return (
+          <div
+            id={`wizard-step-card-${st.stepNumber}`}
+            class={`bg-white border border-[#E7E9EE] rounded-2xl p-6 sm:p-8 shadow-xs space-y-6 ${
+              isCurrentActive ? '' : 'hidden'
+            }`}
+          >
+            <!-- Card Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7E9EE] pb-5">
+              <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-md bg-[#172033] text-white font-mono text-[11px] font-black uppercase tracking-wider">
+                    LANGKAH {st.stepNumber} DARI 9
+                  </span>
+                  <span class={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded border ${
+                    st.requirement === 'REQUIRED'
+                      ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                      : 'bg-amber-50 text-amber-900 border-amber-200'
+                  }`}>
+                    {st.requirement === 'REQUIRED' ? 'WAJIB (REQUIRED)' : 'OPSIONAL (OPTIONAL)'}
+                  </span>
+                  <span class={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                    st.isComplete
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      : st.isSkipped
+                      ? 'bg-slate-100 text-slate-700 border-slate-300'
+                      : st.evaluatedSlot.decision_status === 'NEEDS_REPLACEMENT'
+                      ? 'bg-rose-100 text-rose-800 border-rose-300'
+                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                  }`}>
+                    {st.isComplete
+                      ? '✓ KEPUTUSAN SELESAI'
+                      : st.isSkipped
+                      ? 'DILEWATI (OPSIONAL)'
+                      : st.evaluatedSlot.decision_status === 'NEEDS_REPLACEMENT'
+                      ? '⚠️ PERLU REGENERASI'
+                      : '⏳ MENUNGGU KEPUTUSAN'}
+                  </span>
+                </div>
+                <h3 class="text-xl sm:text-2xl font-outfit font-black text-[#172033] tracking-tight pt-1">
+                  {st.articleTitle} <span class="font-mono text-sm text-slate-400 font-normal">#{st.articleId}</span>
+                </h3>
+                <div class="text-xs text-[#596579] flex flex-wrap items-center gap-2 pt-0.5">
+                  <span class="font-bold text-[#172033]">{st.slotName}</span>
+                  <span>•</span>
+                  <span>Penempatan: <strong>{st.targetSection}</strong></span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <a
+                  href={`/admin/preview/${st.articleSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-mono text-slate-700 transition flex items-center gap-1.5"
+                >
+                  <span>Pratinjau Draf ↗</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- Task Card Body -->
+            {st.slotType === 'HERO' ? (
+              <!-- Hero Slot with Competing Alternatives (FLUX vs SDXL) -->
+              <div class="space-y-6">
+                <div class="p-4 rounded-xl bg-[#FFFDF7] border border-[#E7E9EE] text-xs text-[#596579] space-y-1">
+                  <p class="font-bold text-[#172033]">Instruksi Editorial Hero Image:</p>
+                  <p class="leading-relaxed">
+                    Pilih salah satu kandidat terbaik untuk menjadi featured hero cover artikel. Kandidat yang tidak terpilih otomatis berstatus <strong>TIDAK DIPILIH</strong> dan tidak menghambat penyelesaian tugas.
+                  </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {st.competingCandidates.filter((c) => c.selection_status !== 'SUPERSEDED').map((candEval) => {
+                    const cand = candEval.candidate;
+                    const isSelected = candEval.selection_status === 'SELECTED';
+                    const isNotSelected = candEval.selection_status === 'NOT_SELECTED';
+                    const modelName = cand.provenance?.model_name || cand.model;
+
+                    return (
+                      <div class={`rounded-xl border p-5 space-y-4 transition ${
+                        isSelected
+                          ? 'bg-emerald-50/40 border-emerald-300 ring-2 ring-emerald-500/20'
+                          : isNotSelected
+                          ? 'bg-slate-50/60 border-slate-200 opacity-90'
+                          : 'bg-[#FFFDF7] border-[#E7E9EE]'
+                      }`}>
+                        <div class="flex items-center justify-between gap-2">
+                          <span class="text-xs font-bold font-mono text-[#172033] truncate">
+                            {modelName}
+                          </span>
+                          <span class={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                            isSelected
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : isNotSelected
+                              ? 'bg-slate-100 text-slate-600 border-slate-200'
+                              : 'bg-amber-100 text-amber-800 border-amber-300'
+                          }`}>
+                            {isSelected ? '✓ TERPILIH UNTUK ARTIKEL' : isNotSelected ? 'TIDAK DIPILIH' : 'TERSEDIA UNTUK DIPILIH'}
+                          </span>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div class="relative bg-slate-50 rounded-lg overflow-hidden flex items-center justify-center min-h-[240px] border border-slate-200">
+                          <img
+                            src={cand.public_url}
+                            alt={st.altText}
+                            class="w-full h-auto max-h-[300px] object-contain rounded-lg"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                          <span class="font-mono text-[11px]">{(cand.byte_size / 1024).toFixed(1)} KB • {cand.dimensions}</span>
+                          <a
+                            href={cand.public_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-xs text-[#0066ee] hover:underline font-mono"
+                          >
+                            Buka Resolusi Penuh ↗
+                          </a>
+                        </div>
+
+                        <!-- Actions for Hero Candidate -->
+                        <div class="pt-2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            id={`wizard-btn-select-${cand.id}`}
+                            onclick={`submitWizardSelection('${cand.id}', 'select', '${modelName}', ${st.articleId}, 'hero', ${st.stepNumber})`}
+                            disabled={isSelected}
+                            class={`flex-1 rounded-xl py-2.5 text-xs font-outfit font-bold transition text-center cursor-pointer shadow-2xs ${
+                              isSelected
+                                ? 'bg-emerald-700 text-white opacity-95 cursor-default'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            }`}
+                          >
+                            {isSelected ? '✓ TELAH TERPILIH UNTUK ARTIKEL' : 'Pilih Gambar Ini'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onclick={`openRejectionModal('${cand.id}', '${modelName}', ${st.articleId}, 'hero', ${st.stepNumber})`}
+                            disabled={candEval.selection_status === 'REJECTED'}
+                            class="rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-3 py-2.5 text-xs font-outfit font-bold transition text-center cursor-pointer"
+                          >
+                            ✕ Tolak
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <!-- Supporting Visual Slot (Single Candidate per Step) -->
+              <div class="space-y-6">
+                <!-- Large Centered Image Preview -->
+                {st.activeCandidate ? (
+                  <div class="rounded-xl overflow-hidden border border-[#E7E9EE] bg-[#FFFDF7] p-4 space-y-3 shadow-2xs">
+                    <div class="relative bg-slate-50 rounded-lg overflow-hidden flex items-center justify-center min-h-[280px]">
+                      <img
+                        src={st.activeCandidate.candidate.public_url}
+                        alt={st.altText}
+                        class="w-full h-auto max-h-[460px] object-contain rounded-lg mx-auto"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 font-mono">
+                      <span>{(st.activeCandidate.candidate.byte_size / 1024).toFixed(1)} KB • {st.activeCandidate.candidate.dimensions}</span>
+                      <a
+                        href={st.activeCandidate.candidate.public_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-[#0066ee] hover:underline font-semibold"
+                      >
+                        Buka Resolusi Penuh ↗
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div class="p-8 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 text-center space-y-2">
+                    <span class="text-3xl">🖼️</span>
+                    <h4 class="font-bold text-amber-900 text-sm">Visual Pendamping Belum Diproduksi</h4>
+                    <p class="text-xs text-amber-800 max-w-md mx-auto">
+                      Kandidat gambar untuk slot ini belum tersedia di ledger media eksperimental.
+                    </p>
+                  </div>
+                )}
+
+                <!-- Editorial Context & Metadata Box -->
+                <div class="rounded-xl bg-white border border-[#E7E9EE] p-5 space-y-3 text-xs text-[#596579]">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pb-3 border-b border-slate-100">
+                    <div>
+                      <span class="text-slate-400 block text-[11px]">Tujuan Visual Naskah:</span>
+                      <strong class="text-[#172033] mt-0.5 block leading-snug">{st.purpose}</strong>
+                    </div>
+                    <div>
+                      <span class="text-slate-400 block text-[11px]">Model / Mesin Penunjang:</span>
+                      <strong class="text-[#172033] mt-0.5 block leading-snug">{st.recommendedMethod}</strong>
+                    </div>
+                  </div>
+
+                  <div class="space-y-1.5 pt-1">
+                    <div>
+                      <span class="text-slate-400 text-[11px]">Caption Naskah:</span>
+                      <p class="text-[#172033] italic mt-0.5">{st.caption}</p>
+                    </div>
+                    <div>
+                      <span class="text-slate-400 text-[11px]">Alt Text Aksesibilitas:</span>
+                      <p class="font-mono text-[#172033] text-[11px] mt-0.5">{st.altText}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Decision Action Bar -->
+                {st.activeCandidate ? (
+                  <div class="p-4 rounded-xl bg-[#FFFDF7] border border-[#E7E9EE] flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      id={`wizard-btn-select-${st.activeCandidate.candidate.id}`}
+                      onclick={`submitWizardSelection('${st.activeCandidate.candidate.id}', 'select', '${st.recommendedMethod}', ${st.articleId}, '${st.slotIdentifier}', ${st.stepNumber})`}
+                      disabled={st.activeCandidate.selection_status === 'SELECTED'}
+                      class={`flex-1 min-w-[200px] rounded-xl py-3 px-6 text-sm font-outfit font-bold transition text-center cursor-pointer shadow-xs ${
+                        st.activeCandidate.selection_status === 'SELECTED'
+                          ? 'bg-emerald-700 text-white opacity-95 cursor-default'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      }`}
+                    >
+                      {st.activeCandidate.selection_status === 'SELECTED' ? '✓ TELAH TERPILIH UNTUK ARTIKEL' : '✓ PILIH GAMBAR INI'}
+                    </button>
+
+                    {st.requirement === 'OPTIONAL' && (
+                      <button
+                        type="button"
+                        id={`wizard-btn-skip-${st.stepNumber}`}
+                        onclick={`submitWizardSlotSkip(${st.articleId}, '${st.slotIdentifier}', '${st.isSkipped ? 'unskip_slot' : 'skip_slot'}', ${st.stepNumber})`}
+                        class={`rounded-xl px-4 py-3 text-xs font-outfit font-bold transition cursor-pointer border ${
+                          st.isSkipped
+                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        {st.isSkipped ? 'Batalkan Lewati' : 'Lewati Gambar Ini'}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onclick={`openRejectionModal('${st.activeCandidate.candidate.id}', '${st.recommendedMethod}', ${st.articleId}, '${st.slotIdentifier}', ${st.stepNumber})`}
+                      disabled={st.activeCandidate.selection_status === 'REJECTED'}
+                      class="rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-4 py-3 text-xs font-outfit font-bold transition text-center cursor-pointer"
+                    >
+                      ✕ TOLAK — PERLU PENGGANTI
+                    </button>
+
+                    <button
+                      type="button"
+                      onclick={`submitWizardSelection('${st.activeCandidate.candidate.id}', 'reset', '${st.recommendedMethod}', ${st.articleId}, '${st.slotIdentifier}', ${st.stepNumber})`}
+                      class="rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-3 text-xs font-outfit font-semibold transition cursor-pointer"
+                      title="Reset keputusan"
+                    >
+                      ↺ Reset
+                    </button>
+                  </div>
+                ) : (
+                  <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                    <span class="text-xs text-slate-500">Visual pendamping belum dibuat.</span>
+                    {st.requirement === 'OPTIONAL' && (
+                      <button
+                        type="button"
+                        id={`wizard-btn-skip-${st.stepNumber}`}
+                        onclick={`submitWizardSlotSkip(${st.articleId}, '${st.slotIdentifier}', '${st.isSkipped ? 'unskip_slot' : 'skip_slot'}', ${st.stepNumber})`}
+                        class="rounded-xl px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-outfit font-bold transition cursor-pointer"
+                      >
+                        {st.isSkipped ? 'Batalkan Lewati' : 'Lewati Gambar Ini (Opsional)'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <!-- Step Card Footer Navigation (Phase 6 Requirement) -->
+            <div class="flex items-center justify-between pt-4 border-t border-[#E7E9EE] text-xs font-outfit">
+              <button
+                type="button"
+                onclick={`switchWizardStep(${st.stepNumber - 1})`}
+                disabled={st.stepNumber === 1}
+                class={`px-4 py-2 rounded-xl border border-slate-200 transition font-bold flex items-center gap-1.5 ${
+                  st.stepNumber === 1 ? 'opacity-40 cursor-not-allowed text-slate-400' : 'hover:bg-slate-100 text-slate-700 cursor-pointer'
+                }`}
+              >
+                <span>← SEBELUMNYA</span>
+              </button>
+
+              <div class="text-[#596579] font-mono font-semibold">
+                Langkah {st.stepNumber} dari 9 • #{st.articleId} {st.slotIdentifier.toUpperCase()}
+              </div>
+
+              <button
+                type="button"
+                onclick={`switchWizardStep(${st.stepNumber < 9 ? st.stepNumber + 1 : "'finalization'"})`}
+                class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>{st.stepNumber < 9 ? 'LANJUT →' : 'KE FINALISASI →'}</span>
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      <!-- FINALIZATION STAGE (Phase 8 & 9 Requirements) -->
+      <div
+        id="wizard-step-card-finalization"
+        class={`bg-white border border-[#E7E9EE] rounded-2xl p-6 sm:p-8 shadow-xs space-y-8 ${
+          initialActiveStep === 'finalization' ? '' : 'hidden'
+        }`}
+      >
+        <div class="text-center space-y-2 max-w-2xl mx-auto py-2">
+          <span class="text-4xl">🎉</span>
+          <h2 class="text-2xl sm:text-3xl font-outfit font-black text-[#172033] tracking-tight">
+            Pemilihan Gambar Batch 1 Selesai
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+            Seluruh 9 keputusan slot media editorial telah tuntas diputuskan. Verifikasi status pengikatan kanonikal dan lanjutkan ke tahap peninjauan naskah editorial.
+          </p>
+        </div>
+
+        <!-- 3 Articles Summary Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {wizardData.articlesSummary.map((art) => (
+            <div class="rounded-xl border border-[#E7E9EE] bg-[#FFFDF7] p-5 space-y-4 flex flex-col justify-between">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-800 font-mono text-[10px] font-bold">
+                    ID #{art.articleId}
+                  </span>
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
+                    {art.isFullyComplete ? '✓ Slot Lengkap' : 'Proses'}
+                  </span>
+                </div>
+                <h4 class="font-outfit font-bold text-sm text-[#172033] leading-snug">
+                  {art.title}
+                </h4>
+                <div class="space-y-1 text-xs text-[#596579] pt-2 border-t border-slate-200/60 font-mono">
+                  <div class="flex items-center justify-between">
+                    <span>Featured Hero:</span>
+                    <span class="text-emerald-700 font-bold">{art.heroComplete ? '✓ Terpilih' : 'Menunggu'}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span>Supporting S1:</span>
+                    <span class="text-emerald-700 font-bold">{art.s1Complete ? '✓ Selesai' : 'Menunggu'}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span>Supporting S2:</span>
+                    <span class="text-emerald-700 font-bold">{art.s2Complete ? '✓ Selesai' : 'Menunggu'}</span>
+                  </div>
+                  <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                    <span>Pengikatan Media:</span>
+                    <span class="text-emerald-700 font-bold">✓ BOUND</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <a
+                  href={`/admin/preview/${art.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="w-full rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 py-2.5 text-xs font-outfit font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <span>👁️ Pratinjau Naskah Draf #{art.articleId} ↗</span>
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <!-- Callouts & Next Actions -->
+        <div class="p-5 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 space-y-1.5 leading-relaxed">
+          <p class="font-bold">INVARIAN REDAKSI &amp; PERSETUJUAN KONTEN:</p>
+          <p>
+            Seluruh artikel tetap berstatus <strong>DRAFT</strong> (<code>AUTO_PUBLISH = OFF</code>). Persetujuan artikel editorial dilakukan secara mandiri oleh Chief Editor melalui tombol <em>"Setujui Naskah"</em> di halaman pratinjau masing-masing draf. Tidak ada naskah yang diterbitkan secara otomatis.
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+          <button
+            type="button"
+            onclick="switchWizardStep(1)"
+            class="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-outfit font-bold text-xs transition cursor-pointer"
+          >
+            ← Tinjau Ulang Keputusan (Langkah 1)
+          </button>
+
+          <div class="flex items-center gap-3 w-full sm:w-auto">
+            <button
+              type="button"
+              onclick="switchViewMode('all')"
+              class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-outfit font-bold text-xs transition cursor-pointer"
+            >
+              📊 Lihat Grid Komparasi Lengkap
+            </button>
+            <a
+              href="/admin/preview/dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
+              class="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-outfit font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>LANJUT KE TINJAUAN ARTIKEL ➔</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rejection Modal Dialog (Phase 7 Requirement) -->
+    <div id="rejection-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-5">
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-outfit font-black text-slate-900">
+              Gambar ini tidak sesuai kebutuhan artikel?
+            </h3>
+            <button
+              type="button"
+              onclick="closeRejectionModal()"
+              class="text-slate-400 hover:text-slate-700 text-base font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+          <p id="rejection-modal-details" class="text-xs font-mono text-slate-500 bg-slate-50 p-1.5 rounded border border-slate-100"></p>
+        </div>
+
+        <div class="space-y-3">
+          <label class="text-xs font-bold text-slate-700 block">Pilih Alasan Penolakan:</label>
+          <div class="space-y-2 text-xs">
+            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+              <input type="radio" name="rejection_reason_radio" value="Tidak sesuai konteks artikel" checked class="text-emerald-600" />
+              <span class="text-slate-800">Tidak sesuai konteks artikel</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+              <input type="radio" name="rejection_reason_radio" value="Kesalahan bentuk/geometri" class="text-emerald-600" />
+              <span class="text-slate-800">Kesalahan bentuk / geometri</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+              <input type="radio" name="rejection_reason_radio" value="Teks atau artefak AI" class="text-emerald-600" />
+              <span class="text-slate-800">Teks atau artefak AI</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+              <input type="radio" name="rejection_reason_radio" value="Kualitas visual kurang baik" class="text-emerald-600" />
+              <span class="text-slate-800">Kualitas visual kurang baik</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+              <input type="radio" name="rejection_reason_radio" value="Alasan lainnya" class="text-emerald-600" />
+              <span class="text-slate-800">Alasan lainnya (catatan khusus)</span>
+            </label>
+          </div>
+
+          <div class="space-y-1 pt-1">
+            <label for="rejection_custom_notes" class="text-xs text-slate-500 font-semibold block">Catatan Tambahan (Opsional):</label>
+            <textarea
+              id="rejection_custom_notes"
+              rows="2"
+              placeholder="Jelaskan kebutuhan revisi untuk pipeline media..."
+              class="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            onclick="closeRejectionModal()"
+            class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-outfit font-bold transition cursor-pointer"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            id="btn-confirm-rejection"
+            onclick="confirmRejection()"
+            class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-outfit font-bold transition cursor-pointer"
+          >
+            Konfirmasi Penolakan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETAILED COMPARISON VIEW (Secondary / Optional View) -->
+    <div id="all-candidates-view" class={urlView === 'all' ? 'space-y-8' : 'space-y-8 hidden'}>
+      <!-- BATCH 1 EDITORIAL WORKFLOW STEPPER (Phase 5 Requirement) -->
+      <div class="rounded-2xl bg-white border border-[#E7E9EE] p-6 shadow-2xs space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E7E9EE] pb-4">
         <div>
           <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#FFFDF7] border border-[#E7E9EE] text-[#A76A00] text-xs font-semibold">
@@ -1349,6 +2006,294 @@ const workflowStages = [
   <script is:inline>
     let currentCropMode = 'square';
     const inFlight = {};
+
+    // Wizard State
+    let currentActiveStep = String(document.getElementById('wizard-mode-container')?.getAttribute('data-initial-step') || '2');
+    let pendingRejectionData = null;
+
+    function switchViewMode(mode, updateUrl = true) {
+      const wizardContainer = document.getElementById('wizard-mode-container');
+      const allContainer = document.getElementById('all-candidates-view');
+      const btnWizard = document.getElementById('tab-btn-wizard');
+      const btnAll = document.getElementById('tab-btn-all');
+      const viewLabel = document.getElementById('current-view-label');
+
+      if (mode === 'wizard') {
+        if (wizardContainer) wizardContainer.classList.remove('hidden');
+        if (allContainer) allContainer.classList.add('hidden');
+        if (btnWizard) {
+          btnWizard.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg bg-white shadow-2xs text-[#172033] font-bold transition cursor-pointer flex items-center justify-center gap-2';
+        }
+        if (btnAll) {
+          btnAll.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-slate-600 hover:text-[#172033] font-semibold transition cursor-pointer flex items-center justify-center gap-2';
+        }
+        if (viewLabel) viewLabel.textContent = 'Panduan Langkah per Langkah (1 Tugas Aktif)';
+        if (updateUrl) history.replaceState(null, '', `?view=wizard&step=${currentActiveStep}`);
+      } else {
+        if (wizardContainer) wizardContainer.classList.add('hidden');
+        if (allContainer) allContainer.classList.remove('hidden');
+        if (btnWizard) {
+          btnWizard.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-slate-600 hover:text-[#172033] font-semibold transition cursor-pointer flex items-center justify-center gap-2';
+        }
+        if (btnAll) {
+          btnAll.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg bg-white shadow-2xs text-[#172033] font-bold transition cursor-pointer flex items-center justify-center gap-2';
+        }
+        if (viewLabel) viewLabel.textContent = 'Lihat Semua Kandidat (Komparasi Lengkap)';
+        if (updateUrl) history.replaceState(null, '', '?view=all');
+      }
+    }
+
+    function switchWizardStep(stepTarget) {
+      currentActiveStep = String(stepTarget);
+
+      for (let i = 1; i <= 9; i++) {
+        const card = document.getElementById(`wizard-step-card-${i}`);
+        const pill = document.getElementById(`step-pill-${i}`);
+        if (card) card.classList.add('hidden');
+        if (pill) {
+          const isDone = pill.getAttribute('data-is-done') === 'true';
+          if (String(i) === currentActiveStep) {
+            pill.className = 'px-3 py-2 rounded-xl text-xs font-outfit font-bold transition shrink-0 cursor-pointer border flex items-center gap-2 bg-[#172033] text-white border-[#172033] shadow-xs ring-2 ring-slate-400/20';
+          } else if (isDone) {
+            pill.className = 'px-3 py-2 rounded-xl text-xs font-outfit font-bold transition shrink-0 cursor-pointer border flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-200';
+          } else {
+            pill.className = 'px-3 py-2 rounded-xl text-xs font-outfit font-bold transition shrink-0 cursor-pointer border flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border-slate-200';
+          }
+        }
+      }
+
+      const finalCard = document.getElementById('wizard-step-card-finalization');
+      const finalPill = document.getElementById('step-pill-finalization');
+      if (finalCard) finalCard.classList.add('hidden');
+      if (finalPill) {
+        if (currentActiveStep === 'finalization') {
+          finalPill.className = 'px-3.5 py-2 rounded-xl text-xs font-outfit font-bold transition shrink-0 cursor-pointer border flex items-center gap-2 bg-[#172033] text-white border-[#172033] shadow-xs';
+        } else {
+          finalPill.className = 'px-3.5 py-2 rounded-xl text-xs font-outfit font-bold transition shrink-0 cursor-pointer border flex items-center gap-2 bg-slate-50 text-slate-700 border-slate-200';
+        }
+      }
+
+      if (currentActiveStep === 'finalization') {
+        if (finalCard) finalCard.classList.remove('hidden');
+      } else {
+        const activeCard = document.getElementById(`wizard-step-card-${currentActiveStep}`);
+        if (activeCard) activeCard.classList.remove('hidden');
+      }
+
+      history.replaceState(null, '', `?view=wizard&step=${currentActiveStep}`);
+
+      const wizardContainer = document.getElementById('wizard-mode-container');
+      if (wizardContainer) {
+        wizardContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    async function submitWizardSelection(candidateId, action, modelName, articleId, slotIdentifier, stepNumber) {
+      if (inFlight[candidateId]) return;
+      inFlight[candidateId] = true;
+
+      const btnSelect = document.getElementById(`wizard-btn-select-${candidateId}`) || document.getElementById(`btn-select-${candidateId}`);
+      const origHtml = btnSelect ? btnSelect.innerHTML : '';
+      if (btnSelect) {
+        btnSelect.innerHTML = '⏳ Menyimpan Pilihan...';
+        btnSelect.disabled = true;
+      }
+
+      try {
+        const res = await fetch('/api/admin/media/candidate-approval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: candidateId,
+            action,
+            articleId,
+            slot: slotIdentifier
+          })
+        });
+
+        if (res.status === 401) {
+          showToast('Sesi admin berakhir. Mengalihkan ke login...', 'error');
+          setTimeout(() => {
+            window.location.href = '/admin/login?redirect=' + encodeURIComponent(window.location.pathname);
+          }, 1500);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (res.ok && data.status === 'success') {
+          showToast(`✓ Pilihan gambar berhasil disimpan.`, 'success');
+
+          // Auto-advance only after server confirmation (Phase 5 requirement)
+          setTimeout(() => {
+            let nextStep = null;
+            for (let i = stepNumber + 1; i <= 9; i++) {
+              const p = document.getElementById(`step-pill-${i}`);
+              if (p && p.getAttribute('data-is-done') !== 'true') {
+                nextStep = i;
+                break;
+              }
+            }
+            if (!nextStep) {
+              for (let i = 1; i < stepNumber; i++) {
+                const p = document.getElementById(`step-pill-${i}`);
+                if (p && p.getAttribute('data-is-done') !== 'true') {
+                  nextStep = i;
+                  break;
+                }
+              }
+            }
+
+            if (nextStep) {
+              window.location.href = `?view=wizard&step=${nextStep}`;
+            } else {
+              window.location.href = '?view=wizard&step=finalization';
+            }
+          }, 800);
+        } else {
+          const msg = data?.message || 'Gagal menyimpan pilihan';
+          showToast(`Gagal: ${msg}`, 'error');
+          if (btnSelect) {
+            btnSelect.innerHTML = origHtml;
+            btnSelect.disabled = false;
+          }
+        }
+      } catch (err) {
+        showToast(`Koneksi jaringan terputus: ${err.message}`, 'error');
+        if (btnSelect) {
+          btnSelect.innerHTML = origHtml;
+          btnSelect.disabled = false;
+        }
+      } finally {
+        delete inFlight[candidateId];
+      }
+    }
+
+    async function submitWizardSlotSkip(articleId, slotIdentifier, action, stepNumber) {
+      const btnKey = `skip-${articleId}-${slotIdentifier}`;
+      if (inFlight[btnKey]) return;
+      inFlight[btnKey] = true;
+
+      const btnSkip = document.getElementById(`wizard-btn-skip-${stepNumber}`);
+      const origHtml = btnSkip ? btnSkip.innerHTML : '';
+      if (btnSkip) {
+        btnSkip.innerHTML = '⏳ Menyimpan...';
+        btnSkip.disabled = true;
+      }
+
+      try {
+        const res = await fetch('/api/admin/media/candidate-approval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action,
+            articleId,
+            slot: slotIdentifier
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          showToast(
+            action === 'unskip_slot'
+              ? `Slot ${slotIdentifier} dikembalikan (tidak lagi dilewati).`
+              : `Slot ${slotIdentifier} berhasil dilewati (opsional).`,
+            'info'
+          );
+          setTimeout(() => {
+            window.location.href = `?view=wizard&step=${stepNumber < 9 ? stepNumber + 1 : 'finalization'}`;
+          }, 700);
+        } else {
+          showToast(`Gagal: ${data?.message || 'Error'}`, 'error');
+          if (btnSkip) {
+            btnSkip.innerHTML = origHtml;
+            btnSkip.disabled = false;
+          }
+        }
+      } catch (err) {
+        showToast(`Koneksi terputus: ${err.message}`, 'error');
+        if (btnSkip) {
+          btnSkip.innerHTML = origHtml;
+          btnSkip.disabled = false;
+        }
+      } finally {
+        delete inFlight[btnKey];
+      }
+    }
+
+    function openRejectionModal(candidateId, modelName, articleId, slotIdentifier, stepNumber) {
+      pendingRejectionData = { candidateId, modelName, articleId, slotIdentifier, stepNumber };
+      const modal = document.getElementById('rejection-modal');
+      const details = document.getElementById('rejection-modal-details');
+      if (details) {
+        details.textContent = `Artikel #${articleId} • Slot ${slotIdentifier} • Kandidat: ${candidateId}`;
+      }
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeRejectionModal() {
+      const modal = document.getElementById('rejection-modal');
+      if (modal) modal.classList.add('hidden');
+      pendingRejectionData = null;
+    }
+
+    async function confirmRejection() {
+      if (!pendingRejectionData) return;
+      const { candidateId, modelName, articleId, slotIdentifier, stepNumber } = pendingRejectionData;
+
+      const reasonRadios = document.getElementsByName('rejection_reason_radio');
+      let selectedReason = 'Tidak sesuai konteks artikel';
+      for (const r of reasonRadios) {
+        if (r.checked) {
+          selectedReason = r.value;
+          break;
+        }
+      }
+
+      const customNotes = document.getElementById('rejection_custom_notes')?.value || '';
+      const fullNotes = customNotes ? `${selectedReason}: ${customNotes}` : selectedReason;
+
+      const btnConfirm = document.getElementById('btn-confirm-rejection');
+      if (btnConfirm) {
+        btnConfirm.innerHTML = '⏳ Menyimpan...';
+        btnConfirm.disabled = true;
+      }
+
+      try {
+        const res = await fetch('/api/admin/media/candidate-approval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: candidateId,
+            action: 'reject',
+            articleId,
+            slot: slotIdentifier,
+            notes: fullNotes
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          showToast(`✕ Kandidat gambar ditolak. Alasan: ${selectedReason}`, 'warning');
+          closeRejectionModal();
+          setTimeout(() => {
+            window.location.href = `?view=wizard&step=${stepNumber}`;
+          }, 800);
+        } else {
+          showToast(`Gagal: ${data?.message || 'Error'}`, 'error');
+          if (btnConfirm) {
+            btnConfirm.innerHTML = 'Konfirmasi Penolakan';
+            btnConfirm.disabled = false;
+          }
+        }
+      } catch (err) {
+        showToast(`Koneksi terputus: ${err.message}`, 'error');
+        if (btnConfirm) {
+          btnConfirm.innerHTML = 'Konfirmasi Penolakan';
+          btnConfirm.disabled = false;
+        }
+      }
+    }
 
     function handleImageLoadError(imgEl, candidateId, publicUrl) {
       if (!imgEl) return;
