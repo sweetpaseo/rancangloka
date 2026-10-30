@@ -35,11 +35,11 @@
 
   <!-- Top Header Area -->
   <g transform="translate(56, 56)">
-    <rect x="0" y="0" width="280" height="26" rx="6" class="badge-bg" />
+    <rect x="0" y="0" width="310" height="26" rx="6" class="badge-bg" />
     <text x="12" y="17" class="badge-txt">DIAGRAM KONSEPTUAL SAINS BANGUNAN</text>
     
     <text x="0" y="58" class="title">Tiga Jalur Utama Penetrasi Kelembapan pada Dinding Tropis</text>
-    <text x="0" y="80" class="subtitle">Membedakan sumber air berdasarkan zona ketinggian: Air Tanah, Tempias Hujan, dan Talang Atap</text>
+    <text x="0" y="80" class="subtitle">Membedakan sumber air berdasarkan orientasi perambatan: Air Tanah (Kapilaritas), Tempias Hujan, dan Talang Atap</text>
   </g>
 
   <!-- Central Building Cross-Section Diagram -->
@@ -58,57 +58,47 @@
 
     <!-- Floor Slab & Tiles -->
     <rect x="410" y="300" width="200" height="18" fill="#CBD5E1" stroke="#94A3B8" stroke-width="1.5" />
-    <rect x="410" y="292" width="200" height="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
-    <text x="440" y="285" font-size="11" font-weight="600" fill="#64748B">LANTAI RUANG TINGGAL</text>
+    <line x1="410" y1="300" x2="610" y2="300" stroke="#0F172A" stroke-width="2" />
+    <text x="470" y="335" font-size="10" font-weight="700" fill="#64748B">LANTAI RUANGAN (+-0.00)</text>
 
-    <!-- Main Plastered Brick Wall (Height 320px) -->
-    <rect x="340" y="40" width="60" height="260" class="wall-core" />
-    <!-- Brick pattern lines -->
-    <line x1="340" y1="90" x2="400" y2="90" stroke="#CBD5E1" stroke-width="1" />
-    <line x1="340" y1="140" x2="400" y2="140" stroke="#CBD5E1" stroke-width="1" />
-    <line x1="340" y1="190" x2="400" y2="190" stroke="#CBD5E1" stroke-width="1" />
-    <line x1="340" y1="240" x2="400" y2="240" stroke="#CBD5E1" stroke-width="1" />
+    <!-- Brick Wall (Core) -->
+    <rect x="340" y="20" width="60" height="280" class="brick" />
+    <!-- Interior Plaster (Right side) -->
+    <rect x="400" y="20" width="10" height="280" fill="#F8FAFC" stroke="#64748B" stroke-width="1" />
+    <!-- Exterior Plaster (Left side) -->
+    <rect x="330" y="20" width="10" height="280" fill="#F1F5F9" stroke="#64748B" stroke-width="1" />
 
-    <!-- Exterior Plaster Layer (Left) -->
-    <rect x="334" y="40" width="6" height="260" fill="#94A3B8" />
-    <!-- Interior Plaster Layer (Right) -->
-    <rect x="400" y="40" width="6" height="260" fill="#94A3B8" />
-
-    <!-- Top Ring Beam & Roof Gutter -->
-    <rect x="325" y="0" width="90" height="40" class="concrete" />
-    <text x="335" y="25" font-size="11" font-weight="800" fill="#1E293B">RINGBALK</text>
+    <!-- Ceiling / Ringbalk Top Level -->
+    <rect x="320" y="0" width="100" height="20" class="concrete" />
+    <text x="335" y="15" font-size="10" font-weight="800" fill="#1E293B">RING BALK</text>
     
-    <!-- Roof Gutter / Dak Beton (Top Left) -->
-    <polygon points="240,10 325,10 325,30 255,30 240,10" fill="#0284C7" opacity="0.3" stroke="#0284C7" stroke-width="1.5" />
-    <text x="245" y="0" font-size="11" font-weight="700" fill="#0369A1">TALANG DAK</text>
+    <!-- Roof Overhang / Talang Air Structure -->
+    <polygon points="280,0 340,-20 340,0" fill="#CBD5E1" stroke="#64748B" stroke-width="1.5" />
+    <rect x="270" y="-10" width="20" height="20" rx="3" fill="#94A3B8" stroke="#475569" stroke-width="1" />
+    <text x="250" y="-16" font-size="10" font-weight="700" fill="#E11D48">TALANG DAK</text>
 
-    <!-- Plafond Interior (Top Right) -->
-    <line x1="415" y1="35" x2="560" y2="35" stroke="#94A3B8" stroke-width="3" stroke-dasharray="8,4" />
-    <text x="440" y="25" font-size="11" font-weight="600" fill="#64748B">PLAFON RUANG</text>
+    <!-- ZONE 1: RISING DAMP (AIR TANAH) - Dekat Sloof -->
+    <!-- Upward capillary arrows -->
+    <path d="M 350 340 L 350 260" class="water-path" stroke="#0284C7" stroke-width="3.5" marker-end="url(#arrow-blue)" />
+    <path d="M 370 340 L 370 240" class="water-path" stroke="#0284C7" stroke-width="3.5" marker-end="url(#arrow-blue)" />
+    <path d="M 390 340 L 390 270" class="water-path" stroke="#0284C7" stroke-width="3.5" marker-end="url(#arrow-blue)" />
 
-    <!-- Vertical Zone Separator Guidelines (Dotted) -->
-    <line x1="160" y1="230" x2="680" y2="230" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="4,4" />
-    <line x1="160" y1="100" x2="680" y2="100" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="4,4" />
-
-    <!-- ZONE 1: JALUR AIR TANAH (RISING DAMP) - 0 to 80cm -->
-    <!-- Moisture blue gradient path rising from ground -->
-    <path d="M 280 340 Q 340 330 355 300 Q 370 270 380 240" class="water-path" stroke="#0284C7" stroke-width="5" marker-end="url(#arrow-blue)" />
-    <circle cx="380" cy="245" r="4" fill="#0284C7" />
-    <circle cx="390" cy="265" r="3" fill="#0284C7" />
-    <circle cx="385" cy="285" r="5" fill="#0284C7" />
+    <!-- Damp zone texture at base -->
+    <rect x="330" y="220" width="80" height="80" fill="#0284C7" opacity="0.15" />
+    <text x="420" y="260" font-size="10" font-weight="700" fill="#0284C7">Kantung Lepuhan &amp; Garam</text>
 
     <!-- Zone 1 Callout Card (Right) -->
     <g transform="translate(680, 220)">
-      <rect x="0" y="0" width="380" height="90" rx="10" fill="#F0F9FF" stroke="#BAE6FD" stroke-width="1.5" />
+      <rect x="0" y="0" width="380" height="92" rx="10" fill="#F0F9FF" stroke="#BAE6FD" stroke-width="1.5" />
       <circle cx="24" cy="24" r="10" fill="#0284C7" />
-      <text x="21" y="28" font-size="11" font-weight="800" fill="#FFFFFF">1</text>
-      <text x="44" y="26" class="zone-tag">Zona Bawah (0 – 80 cm): Naiknya Air Tanah (Rising Damp)</text>
-      <text x="44" y="46" class="zone-desc">Gaya kapilaritas menyedot air tanah melewati sloof jika trasram</text>
-      <text x="44" y="62" class="zone-desc">kedap air aus/absen. Cat melepuh di bawah, ada kristal garam putih.</text>
-      <text x="44" y="78" font-size="10" font-weight="700" fill="#0284C7">Solusi: Injeksi DPC kimia atau plesteran trasram 1:2.</text>
+      <text x="20" y="28" font-size="11" font-weight="800" fill="#FFFFFF">1</text>
+      <text x="44" y="26" class="zone-tag">Zona Bawah: Kapilaritas Air Tanah (Rising Damp)</text>
+      <text x="44" y="46" class="zone-desc">Kelembapan merambat naik dari tanah melalui pori kapiler bata/plesteran.</text>
+      <text x="44" y="62" class="zone-desc">Ciri: Cat menggelembung melepuh dan muncul bercak kristal garam putih.</text>
+      <text x="44" y="80" font-size="10" font-weight="700" fill="#0284C7">Fokus Solusi: Perbaikan lapisan kedap air (DPC) &amp; injeksi kimiawi dasar.</text>
     </g>
 
-    <!-- ZONE 2: TEMPIAS HUJAN (WIND-DRIVEN RAIN) - 80 to 200cm -->
+    <!-- ZONE 2: TEMPIAS HUJAN (WIND-DRIVEN RAIN) - Bidang Dinding Terbuka -->
     <!-- Diagonal wind rain lines from left -->
     <path d="M 170 140 L 320 160" class="water-path" stroke="#D97706" stroke-width="3.5" marker-end="url(#arrow-amber)" />
     <path d="M 190 120 L 325 140" class="water-path" stroke="#D97706" stroke-width="2" />
@@ -116,47 +106,47 @@
 
     <!-- Zone 2 Callout Card (Right) -->
     <g transform="translate(680, 105)">
-      <rect x="0" y="0" width="380" height="90" rx="10" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1.5" />
+      <rect x="0" y="0" width="380" height="92" rx="10" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1.5" />
       <circle cx="24" cy="24" r="10" fill="#D97706" />
       <text x="20" y="28" font-size="11" font-weight="800" fill="#FFFFFF">2</text>
-      <text x="44" y="26" class="zone-tag">Zona Tengah (80 – 200 cm): Penetrasi Tempias Hujan</text>
-      <text x="44" y="46" class="zone-desc">Angin kencang mendorong air hujan menembus retak rambut luar.</text>
-      <text x="44" y="62" class="zone-desc">Bercak lembap muncul horizontal setelah hujan badai lebat.</text>
-      <text x="44" y="78" font-size="10" font-weight="700" fill="#D97706">Solusi: Waterproofing elastis eksterior &amp; kanopi penangkal tempias.</text>
+      <text x="44" y="26" class="zone-tag">Zona Tengah: Penetrasi Tempias Hujan Dinding Luar</text>
+      <text x="44" y="46" class="zone-desc">Angin kencang mendorong air hujan menembus retak rambut plesteran luar.</text>
+      <text x="44" y="62" class="zone-desc">Ciri: Bercak lembap muncul pasca-hujan lebat bersudut miring.</text>
+      <text x="44" y="80" font-size="10" font-weight="700" fill="#D97706">Fokus Solusi: Cat elastomeric waterproofing eksterior &amp; kanopi pelindung.</text>
     </g>
 
-    <!-- ZONE 3: TALANG & FLASHING BOCOR (> 200cm) -->
+    <!-- ZONE 3: TALANG & FLASHING BOCOR - Pertemuan Atap -->
     <!-- Downward water path from roof gutter -->
     <path d="M 280 35 Q 310 50 335 70 Q 360 85 390 90" class="water-path" stroke="#E11D48" stroke-width="3.5" marker-end="url(#arrow-rose)" />
 
     <!-- Zone 3 Callout Card (Right) -->
     <g transform="translate(680, -10)">
-      <rect x="0" y="0" width="380" height="90" rx="10" fill="#FFF1F2" stroke="#FECDD3" stroke-width="1.5" />
+      <rect x="0" y="0" width="380" height="92" rx="10" fill="#FFF1F2" stroke="#FECDD3" stroke-width="1.5" />
       <circle cx="24" cy="24" r="10" fill="#E11D48" />
       <text x="20" y="28" font-size="11" font-weight="800" fill="#FFFFFF">3</text>
-      <text x="44" y="26" class="zone-tag">Zona Atas (> 200 cm): Limpasan Talang / Flashing Atap</text>
-      <text x="44" y="46" class="zone-desc">Kemiringan talang dak kurang, saluran mampet daun, atau retakan</text>
-      <text x="44" y="62" class="zone-desc">pertemuan atap membuat air mengalir turun gravitasi di plafon.</text>
-      <text x="44" y="78" font-size="10" font-weight="700" fill="#E11D48">Solusi: Perbaikan sudut kemiringan talang &amp; lembaran flashing seng.</text>
+      <text x="44" y="26" class="zone-tag">Zona Atas: Limpasan Talang / Flashing Atap Bocor</text>
+      <text x="44" y="46" class="zone-desc">Saluran talang mampet sampah/daun atau sambungan seng flashing retak.</text>
+      <text x="44" y="62" class="zone-desc">Ciri: Aliran rembesan vertikal turun dari sudut plafon pertemuan atas.</text>
+      <text x="44" y="80" font-size="10" font-weight="700" fill="#E11D48">Fokus Solusi: Pembersihan talang, perbaikan sudut kemiringan &amp; seal flashing.</text>
     </g>
 
-    <!-- Dimension Bracket Left -->
+    <!-- Qualitative Zone Indicators (Left) — Qualitative relative height, not rigid numbers -->
     <g transform="translate(100, 0)">
       <line x1="30" y1="20" x2="30" y2="300" stroke="#94A3B8" stroke-width="1.5" />
       <line x1="20" y1="20" x2="40" y2="20" stroke="#94A3B8" stroke-width="1.5" />
-      <line x1="20" y1="100" x2="40" y2="100" stroke="#94A3B8" stroke-width="1.5" />
-      <line x1="20" y1="230" x2="40" y2="230" stroke="#94A3B8" stroke-width="1.5" />
+      <line x1="20" y1="110" x2="40" y2="110" stroke="#94A3B8" stroke-width="1.5" />
+      <line x1="20" y1="220" x2="40" y2="220" stroke="#94A3B8" stroke-width="1.5" />
       <line x1="20" y1="300" x2="40" y2="300" stroke="#94A3B8" stroke-width="1.5" />
       
-      <text x="0" y="65" font-size="10" font-weight="700" fill="#64748B" transform="rotate(-90 0,65)">>2.0 m</text>
-      <text x="0" y="175" font-size="10" font-weight="700" fill="#64748B" transform="rotate(-90 0,175)">0.8 - 2.0 m</text>
-      <text x="0" y="275" font-size="10" font-weight="700" fill="#64748B" transform="rotate(-90 0,275)">0 - 0.8 m</text>
+      <text x="0" y="65" font-size="10" font-weight="700" fill="#64748B" transform="rotate(-90 0,65)">ZONA ATAS</text>
+      <text x="0" y="170" font-size="10" font-weight="700" fill="#64748B" transform="rotate(-90 0,170)">ZONA TENGAH</text>
+      <text x="0" y="265" font-size="10" font-weight="700" fill="#64748B" transform="rotate(-90 0,265)">ZONA BAWAH</text>
     </g>
   </g>
 
-  <!-- Bottom Bar: Editorial Disclaimer -->
+  <!-- Bottom Bar: Editorial Disclaimer (Phase 3 Requirement) -->
   <g transform="translate(56, 615)">
-    <rect x="0" y="0" width="480" height="20" rx="4" class="disclaimer-bg" />
-    <text x="10" y="14" class="disclaimer-txt">CATATAN: DIAGRAM KONSEPTUAL GEJALA FISIK • BUKAN GAMBAR KERJA STRUKTUR</text>
+    <rect x="0" y="0" width="550" height="22" rx="4" class="disclaimer-bg" />
+    <text x="10" y="15" class="disclaimer-txt" font-family="monospace">DIAGRAM KONSEPTUAL — BUKAN DIAGNOSIS KONDISI BANGUNAN TERTENTU</text>
   </g>
 </svg>

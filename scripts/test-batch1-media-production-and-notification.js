@@ -148,7 +148,7 @@ test('Batch 1 Media Production & Notification Audit Suite', async (t) => {
         dimensions: '1200x675'
       },
       {
-        id: 'candidate-9993-s2-detail-cat-menggelembung-flux',
+        id: 'candidate-9993-s2-detail-cat-menggelembung-flux-v2',
         articleId: 9993,
         role: 'supporting_s2',
         mime: 'image/jpeg',
@@ -231,7 +231,7 @@ test('Batch 1 Media Production & Notification Audit Suite', async (t) => {
       const content = fs.readFileSync(path.join(repoRoot, 'storage', 'experimental-media', svgFile), 'utf8');
       assert.ok(content.includes('viewBox="0 0 1200 675"'), `${svgFile} must have standard responsive viewBox`);
       assert.ok(content.includes('Plus Jakarta Sans'), `${svgFile} must reference Plus Jakarta Sans font`);
-      assert.ok(content.includes('DIAGRAM KONSEPTUAL'), `${svgFile} must carry DIAGRAM KONSEPTUAL disclaimer`);
+      assert.ok(content.includes('DIAGRAM KONSEPTUAL') || content.includes('DENAH KONSEPTUAL'), `${svgFile} must carry DIAGRAM KONSEPTUAL or DENAH KONSEPTUAL disclaimer`);
     }
   });
 

@@ -19,7 +19,7 @@ test('Batch 1 Supporting Visuals Visibility & Robustness Regression Suite', asyn
       ? slotIdentifier.split('-')[1].toUpperCase()
       : slotIdentifier.toUpperCase();
 
-    return candidates.find((c) => {
+    const matching = candidates.filter((c) => {
       if (c.article_id !== articleId) return false;
       const role = (c.media_role || '').toLowerCase();
       const briefSlot = (c.visual_brief?.slotKey || '').toUpperCase();
@@ -33,6 +33,11 @@ test('Batch 1 Supporting Visuals Visibility & Robustness Regression Suite', asyn
         id.endsWith(`-${targetSlot}`)
       );
     });
+
+    const v2 = matching.find((c) => c.id.includes('v2'));
+    if (v2) return v2;
+    const active = matching.find((c) => c.approval_status !== 'REJECTED');
+    return active || matching[matching.length - 1];
   }
 
   const expectedSlots = [

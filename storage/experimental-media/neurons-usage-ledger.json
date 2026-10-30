@@ -290,5 +290,41 @@
     "costStatus": "UNVERIFIED_FREE_TIER",
     "latencyMs": 2102,
     "httpStatus": 200
+  },
+  {
+    "id": "req-batch1-9993-s2-v2",
+    "timestamp": "2026-10-30T08:01:37.592Z",
+    "dateUtc": "2026-10-30",
+    "articleId": 9993,
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "modelName": "FLUX.1 Schnell",
+    "mediaRole": "supporting_s2",
+    "purpose": "batch1_supporting_candidate_v2",
+    "status": "SUCCESS",
+    "neuronsEstimated": 57.6,
+    "neuronsActual": null,
+    "authoritativeSource": "ESTIMATED",
+    "pricingStatus": "VERIFIED_OFFICIAL",
+    "costStatus": "UNVERIFIED_FREE_TIER",
+    "latencyMs": 3634,
+    "httpStatus": 200
+  },
+  {
+    "id": "req-batch1-9993-s2-flux-v2",
+    "timestamp": "2026-10-30T08:04:22.131Z",
+    "dateUtc": "2026-10-30",
+    "articleId": 9993,
+    "model": "@cf/black-forest-labs/flux-1-schnell",
+    "modelName": "FLUX.1 Schnell",
+    "mediaRole": "supporting_s2",
+    "purpose": "batch1_supporting_candidate_v2",
+    "status": "SUCCESS",
+    "neuronsEstimated": 57.6,
+    "neuronsActual": null,
+    "authoritativeSource": "ESTIMATED",
+    "pricingStatus": "VERIFIED_OFFICIAL",
+    "costStatus": "UNVERIFIED_FREE_TIER",
+    "latencyMs": 2397,
+    "httpStatus": 200
   }
 ]

@@ -28,10 +28,10 @@
   <!-- Header -->
   <g transform="translate(56, 54)">
     <rect x="0" y="0" width="310" height="26" rx="6" class="badge-bg" />
-    <text x="12" y="17" class="badge-txt">DIAGRAM KONSEPTUAL TATA RUANG (6×15 M)</text>
+    <text x="12" y="17" class="badge-txt">DENAH KONSEPTUAL — BUKAN GAMBAR KERJA</text>
     
     <text x="0" y="56" class="title">Denah Rumah Kaveling 6×15 Meter dengan Bukaan Inner Court</text>
-    <text x="0" y="78" class="subtitle">Penyisipan taman terbuka di zona tengah memecah efek lorong gelap dan menciptakan ventilasi silang</text>
+    <text x="0" y="78" class="subtitle">Ventilasi silang melayani ruang bersama tengah; kamar tidur memiliki bukaan langsung ke taman luar</text>
   </g>
 
   <!-- Plan Rendering (Scale: 1m = 48px, Length 15m = 720px horizontal, Width 6m = 288px vertical) -->
@@ -41,7 +41,6 @@
     <rect x="0" y="0" width="720" height="288" fill="#F8FAFC" stroke="#94A3B8" stroke-width="2" />
 
     <!-- ZONE 1: FRONT CARPORT & PORCH (Length 4.5m = 216px) -->
-    <!-- Carport (3.5m x 4.5m) -->
     <rect x="0" y="0" width="216" height="168" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.5" />
     <text x="65" y="90" class="room-label">CARPORT</text>
     <text x="75" y="108" class="dim-label">3.5 × 4.5 m</text>
@@ -58,113 +57,119 @@
     <line x1="216" y1="0" x2="216" y2="168" class="wall" />
     <line x1="216" y1="228" x2="216" y2="288" class="wall" />
     <!-- Main Door & Window Louver (Inlet) -->
-    <line x1="216" y1="168" x2="216" y2="228" stroke="#0284C7" stroke-width="4" stroke-dasharray="8,2" />
-    <text x="222" y="198" font-size="10" font-weight="800" fill="#0284C7">INLET UDARA</text>
+    <line x1="216" y1="168" x2="216" y2="228" class="glass-door" />
+    <text x="222" y="196" font-size="8" font-weight="700" fill="#0284C7">INLET UDARA</text>
 
-    <!-- ZONE 2: LIVING & DINING (L-Shaped 5.0m = 240px) -->
-    <!-- Kamar Tidur Depan (3.0m x 3.0m) -->
-    <rect x="216" y="0" width="144" height="144" fill="#FFFFFF" stroke="#64748B" stroke-width="2" />
-    <text x="235" y="70" class="room-label">KAMAR TIDUR 1</text>
-    <text x="260" y="90" class="dim-label">3.0 × 3.0 m</text>
+    <!-- ZONE 2: LIVING / GUEST ROOM & FRONT BEDROOM -->
+    <!-- Kamar Tidur Depan (3.0m x 3.5m = 144px x 168px) -->
+    <rect x="216" y="0" width="144" height="168" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.5" />
+    <text x="235" y="80" class="room-label">KAMAR DEPAN</text>
+    <text x="250" y="98" class="dim-label">3.0 × 3.5 m</text>
+    <!-- Window to carport/garden -->
+    <line x1="216" y1="40" x2="216" y2="120" stroke="#0284C7" stroke-width="3" />
+    <text x="220" y="32" font-size="8" font-weight="600" fill="#0284C7">Jendela Depan</text>
 
-    <!-- Ruang Keluarga / Tamu Terbuka (3.0m x 5.0m) -->
-    <rect x="216" y="144" width="240" height="144" fill="#FFFFFF" />
-    <text x="270" y="210" class="room-label">RUANG KELUARGA</text>
-    <text x="295" y="228" class="dim-label">Open Living 3.0 × 5.0 m</text>
+    <!-- Ruang Tamu / Foyer (3.0m x 2.5m = 144px x 120px) -->
+    <rect x="216" y="168" width="144" height="120" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="240" y="235" class="room-label">RUANG TAMU</text>
+    <text x="252" y="252" class="dim-label">3.0 × 2.5 m</text>
 
-    <!-- ZONE 3: INNER COURT (CENTER 2.5m x 3.0m = 120px x 144px) -->
-    <rect x="360" y="0" width="120" height="144" class="court-bg" />
-    <!-- Plants representation -->
-    <circle cx="420" cy="72" r="28" fill="#86EFAC" opacity="0.6" />
-    <circle cx="420" cy="72" r="14" fill="#22C55E" />
-    <text x="375" y="55" class="room-label" fill="#15803D">INNER COURT</text>
-    <text x="380" y="72" font-size="9" font-weight="700" fill="#166534">TAMAN TERBUKA</text>
-    <text x="390" y="90" class="dim-label" fill="#166534">2.5 × 3.0 m</text>
-    <text x="370" y="105" font-size="9" font-weight="800" fill="#0284C7">OUTLET UDARA / VOID</text>
+    <!-- Internal wall between bedroom and living -->
+    <line x1="216" y1="168" x2="360" y2="168" class="wall" />
 
-    <!-- Sliding Glass Doors to Inner Court -->
-    <line x1="360" y1="144" x2="480" y2="144" class="glass-door" />
-    <text x="375" y="138" font-size="8" font-weight="700" fill="#0284C7">PINTU KACA GESER</text>
+    <!-- ZONE 3: CENTRAL CORE (INNER COURT, LIVING, STAIR VOID) - Length 4.5m = 216px -->
+    <!-- Inner Court (Taman Terbuka Tengah) - 2.5m x 3.0m = 120px x 144px -->
+    <rect x="360" y="0" width="144" height="144" class="court-bg" />
+    <text x="382" y="65" class="room-label" fill="#15803D">INNER COURT</text>
+    <text x="390" y="82" font-size="10" font-weight="700" fill="#166534">(TAMAN TERBUKA)</text>
+    <text x="398" y="98" class="dim-label">2.5 × 3.0 m</text>
+    <!-- Sliding Glass Door Boundary with living room -->
+    <line x1="360" y1="144" x2="504" y2="144" class="glass-door" />
+    <text x="400" y="136" font-size="8" font-weight="700" fill="#0284C7">PINTU KACA GESER</text>
 
-    <!-- ZONE 4: DINING, KITCHEN & REAR (Length 5.5m = 264px) -->
-    <!-- Ruang Makan & Dapur Bersih (3.0m x 3.5m) -->
-    <rect x="456" y="144" width="168" height="144" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
-    <text x="480" y="210" class="room-label">RUANG MAKAN &amp; DAPUR</text>
-    <text x="525" y="228" class="dim-label">3.5 × 3.0 m</text>
+    <!-- Ruang Keluarga & Makan (3.5m x 3.0m = 168px x 144px) -->
+    <rect x="360" y="144" width="200" height="144" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="385" y="210" class="room-label">RUANG KELUARGA &amp; MAKAN</text>
+    <text x="430" y="228" class="dim-label">Zona Kumpul</text>
 
-    <!-- Kamar Tidur Utama Belakang (3.0m x 3.5m) -->
-    <rect x="480" y="0" width="144" height="144" fill="#FFFFFF" stroke="#64748B" stroke-width="2" />
-    <text x="500" y="70" class="room-label">KAMAR TIDUR 2</text>
-    <text x="525" y="90" class="dim-label">3.0 × 3.0 m</text>
+    <!-- Staircase Void (Area Tangga Vertikal) -->
+    <rect x="504" y="0" width="56" height="144" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1.5" />
+    <text x="512" y="70" font-size="10" font-weight="800" fill="#92400E" transform="rotate(90 512,70)">VOID TANGGA</text>
 
-    <!-- Service Area & Bathroom (Rear 2.0m = 96px) -->
-    <!-- Kamar Mandi -->
-    <rect x="624" y="0" width="96" height="72" fill="#F1F5F9" stroke="#64748B" stroke-width="2" />
-    <text x="645" y="40" font-size="10" font-weight="800" fill="#334155">KM / WC</text>
-    <text x="645" y="55" class="dim-label">1.5 × 2.0 m</text>
-    
-    <!-- Tempat Cuci Jemur Belakang -->
-    <rect x="624" y="72" width="96" height="216" fill="#F8FAFC" stroke="#64748B" stroke-width="2" />
-    <text x="635" y="170" font-size="10" font-weight="800" fill="#334155">CUCI / JEMUR</text>
-    <text x="645" y="188" class="dim-label">2.0 × 4.5 m</text>
+    <!-- ZONE 4: REAR BEDROOM, BATHROOM, KITCHEN - Length 3.0m = 144px -->
+    <!-- Kamar Mandi (1.5m x 2.0m) -->
+    <rect x="560" y="0" width="80" height="96" fill="#F1F5F9" stroke="#94A3B8" stroke-width="1" />
+    <text x="585" y="45" font-size="9" font-weight="700" fill="#475569">KM/WC</text>
+    <text x="582" y="60" class="dim-label">1.5 × 2.0</text>
 
-    <!-- Wall Outlines -->
-    <rect x="0" y="0" width="720" height="288" class="wall" />
-    <line x1="624" y1="0" x2="624" y2="288" class="wall" />
+    <!-- Dapur Bersih (1.5m x 2.0m) -->
+    <rect x="560" y="96" width="80" height="96" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1" />
+    <text x="582" y="145" font-size="9" font-weight="700" fill="#475569">DAPUR</text>
 
-    <!-- AIRFLOW ARROW VECTORS (Cross Ventilation Path) -->
-    <!-- Flow entering from front door -->
-    <path d="M 150 198 Q 216 198 260 200" class="airflow" marker-end="url(#arrow-air)" />
-    <!-- Branch flowing to inner court -->
-    <path d="M 280 200 Q 360 200 410 155" class="airflow" marker-end="url(#arrow-air)" />
-    <!-- Branch continuing to rear kitchen -->
-    <path d="M 320 200 Q 420 205 480 205" class="airflow" marker-end="url(#arrow-air)" />
-    <!-- Flow exiting to service area -->
-    <path d="M 520 205 Q 580 205 635 205" class="airflow" marker-end="url(#arrow-air)" />
+    <!-- Kamar Tidur Belakang (3.0m x 3.0m) -->
+    <rect x="560" y="192" width="160" height="96" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.5" />
+    <text x="585" y="245" class="room-label">KAMAR BELAKANG</text>
+    <text x="610" y="262" class="dim-label">3.0 × 3.0 m</text>
+    <!-- Rear Garden / Service Yard (1.5m x 4.0m) -->
+    <rect x="640" y="0" width="80" height="192" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1" />
+    <text x="655" y="95" class="room-label" fill="#15803D">TAMAN</text>
+    <text x="650" y="112" class="room-label" fill="#15803D">BELAKANG</text>
+    <!-- Window from rear bedroom to rear garden -->
+    <line x1="640" y1="192" x2="720" y2="192" stroke="#0284C7" stroke-width="3" />
+    <text x="645" y="185" font-size="8" font-weight="600" fill="#0284C7">Jendela Belakang</text>
 
-    <!-- External Dimension Lines -->
-    <!-- Width: 6.0 m (Left) -->
-    <line x1="-20" y1="0" x2="-20" y2="288" stroke="#64748B" stroke-width="1.5" />
-    <line x1="-30" y1="0" x2="-10" y2="0" stroke="#64748B" stroke-width="1.5" />
-    <line x1="-30" y1="288" x2="-10" y2="288" stroke="#64748B" stroke-width="1.5" />
-    <text x="-48" y="150" font-size="12" font-weight="800" fill="#1E293B" transform="rotate(-90 -48,150)">LEBAR 6.00 M</text>
+    <!-- CROSS-VENTILATION AIRFLOW PATH ARROWS -->
+    <!-- 1. Air enters from front door/terrace -->
+    <path d="M 180 198 L 260 210 Q 320 220 370 200" class="airflow" marker-end="url(#arrow-air)" />
+    <!-- 2. Air crosses through living room towards inner court -->
+    <path d="M 370 200 Q 420 180 432 150" class="airflow" marker-end="url(#arrow-air)" />
+    <!-- 3. Air circulates up into open sky of inner court -->
+    <path d="M 432 150 L 432 72" class="airflow" marker-end="url(#arrow-air)" />
 
-    <!-- Length: 15.0 m (Bottom) -->
-    <line x1="0" y1="315" x2="720" y2="315" stroke="#64748B" stroke-width="1.5" />
-    <line x1="0" y1="305" x2="0" y2="325" stroke="#64748B" stroke-width="1.5" />
-    <line x1="720" y1="305" x2="720" y2="325" stroke="#64748B" stroke-width="1.5" />
-    <text x="310" y="335" font-size="12" font-weight="800" fill="#1E293B">PANJANG KAVELING 15.00 M (LUAS 90 M²)</text>
+    <!-- External Dimensions Annotations -->
+    <!-- Width: 6m (vertical) -->
+    <line x1="-15" y1="0" x2="-15" y2="288" stroke="#64748B" stroke-width="1" />
+    <line x1="-20" y1="0" x2="-10" y2="0" stroke="#64748B" stroke-width="1" />
+    <line x1="-20" y1="288" x2="-10" y2="288" stroke="#64748B" stroke-width="1" />
+    <text x="-22" y="150" font-size="12" font-weight="800" fill="#1E293B" transform="rotate(-90 -22,150)">LEBAR 6.0 M</text>
+
+    <!-- Length: 15m (horizontal) -->
+    <line x1="0" y1="305" x2="720" y2="305" stroke="#64748B" stroke-width="1" />
+    <line x1="0" y1="300" x2="0" y2="310" stroke="#64748B" stroke-width="1" />
+    <line x1="720" y1="300" x2="720" y2="310" stroke="#64748B" stroke-width="1" />
+    <text x="310" y="325" font-size="12" font-weight="800" fill="#1E293B">PANJANG TOTAL 15.0 METER</text>
   </g>
 
-  <!-- Side Technical Legend / Key Takeaways Box (Right) -->
-  <g transform="translate(820, 190)">
-    <rect x="0" y="0" width="310" height="300" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5" />
-    <text x="18" y="28" font-size="12" font-weight="800" fill="#1E293B">PRINSIP PENATAAN 6×15 M:</text>
+  <!-- Right Side Architectural Insights Card -->
+  <g transform="translate(820, 200)">
+    <rect x="0" y="0" width="310" height="288" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5" />
+    
+    <text x="18" y="28" font-size="13" font-weight="800" fill="#1E293B">ANALISIS TATA SIRKULASI UDARA</text>
     
     <circle cx="28" cy="58" r="4" fill="#0284C7" />
-    <text x="40" y="62" font-size="11" font-weight="700" fill="#334155">Bukaan Alami Inner Court</text>
-    <text x="40" y="78" font-size="10" font-weight="500" fill="#64748B">Luas bukaan tengah 7.5 m² (8.3%)</text>
-    <text x="40" y="92" font-size="10" font-weight="500" fill="#64748B">memenuhi syarat SNI (min. 5% lantai).</text>
+    <text x="40" y="62" font-size="11" font-weight="700" fill="#334155">Inner Court Pusat Tekanan Negatif</text>
+    <text x="40" y="78" font-size="10" font-weight="500" fill="#64748B">Taman terbuka melepas udara hangat</text>
+    <text x="40" y="92" font-size="10" font-weight="500" fill="#64748B">dan menarik udara sejuk dari depan.</text>
 
     <circle cx="28" cy="118" r="4" fill="#0284C7" />
-    <text x="40" y="122" font-size="11" font-weight="700" fill="#334155">Jalur Sirkulasi Silang (Cross-Vent)</text>
-    <text x="40" y="138" font-size="10" font-weight="500" fill="#64748B">Udara segar masuk pintu teras depan</text>
-    <text x="40" y="152" font-size="10" font-weight="500" fill="#64748B">tertarik keluar via bukaan taman tengah.</text>
+    <text x="40" y="122" font-size="11" font-weight="700" fill="#334155">Ventilasi Kamar Mandiri (Direct)</text>
+    <text x="40" y="138" font-size="10" font-weight="500" fill="#64748B">Kamar depan via jendela carport;</text>
+    <text x="40" y="152" font-size="10" font-weight="500" fill="#64748B">kamar belakang via bukaan taman belakang.</text>
 
     <circle cx="28" cy="178" r="4" fill="#0284C7" />
-    <text x="40" y="182" font-size="11" font-weight="700" fill="#334155">Pencahayaan Siang Hari</text>
-    <text x="40" y="198" font-size="10" font-weight="500" fill="#64748B">Cahaya alami menerangi ruang keluarga</text>
-    <text x="40" y="212" font-size="10" font-weight="500" fill="#64748B">tanpa lampu hingga sore hari.</text>
+    <text x="40" y="182" font-size="11" font-weight="700" fill="#334155">Pencahayaan Alami Siang Hari</text>
+    <text x="40" y="198" font-size="10" font-weight="500" fill="#64748B">Ruang tengah terang alami tanpa lampu</text>
+    <text x="40" y="212" font-size="10" font-weight="500" fill="#64748B">sepanjang pagi hingga sore hari.</text>
 
     <!-- SNI Compliance Badge -->
-    <rect x="18" y="240" width="274" height="42" rx="8" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1" />
-    <text x="30" y="258" font-size="10" font-weight="700" fill="#065F46">STANDAR KELAYAKAN UDARA ALAMI:</text>
-    <text x="30" y="272" font-size="10" font-weight="600" fill="#047857">SNI 03-6572-2001 terpenuhi secara pasif.</text>
+    <rect x="18" y="235" width="274" height="42" rx="8" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1" />
+    <text x="30" y="253" font-size="10" font-weight="700" fill="#065F46">STANDAR BUKAAN ALAMI:</text>
+    <text x="30" y="267" font-size="10" font-weight="600" fill="#047857">SNI 03-6572-2001 (Bukaan > 5% Luas Lantai)</text>
   </g>
 
-  <!-- Bottom Disclaimer -->
+  <!-- Bottom Disclaimer (Phase 6 Requirement) -->
   <g transform="translate(56, 615)">
-    <rect x="0" y="0" width="450" height="20" rx="4" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1" />
-    <text x="10" y="14" font-size="11" font-weight="700" fill="#92400E" font-family="monospace">DIAGRAM KONSEPTUAL TATA RUANG • BUKAN GAMBAR KERJA ARSITEK</text>
+    <rect x="0" y="0" width="460" height="20" rx="4" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1" />
+    <text x="10" y="14" font-size="11" font-weight="700" fill="#92400E" font-family="monospace">DENAH KONSEPTUAL — BUKAN GAMBAR KERJA</text>
   </g>
 </svg>
