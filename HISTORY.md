@@ -13,6 +13,36 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-BATCH1-EDITORIAL-FACTCHECK-1: Meticulous Technical Fact-Checking, Spatial Clearance Correction, and Editorial Verification (2026-10-30)
+
+- **Tanggal / Waktu:** 2026-10-30T08:30:00+07:00 (01:30:00 UTC)
+- **Status Misi:** `RANCANGLOKA_BATCH1_FACTCHECK_COMPLETE` (All Articles Verified: EDITORIAL_READY)
+- **Git HEAD Baseline:** `deccedd` (branch: `feat/jev-lokamedia-integration`)
+- **Peran Redaksi:** Joko (Lead Editor) + Rina (Editorial Quality QA) + Irwan (Evidence Specialist) + SEON (Search Intent Architect)
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`
+- **Fokus & Hasil Fact-Check per Artikel:**
+  1. *Artikel B (ID 9999 - Balkon Kecil):*
+     - Koreksi matematika spasial: Klaim lama memaksakan furnitur 45–50 cm + koridor 60 cm secara melintang pada balkon lebar 100 cm (45+60 = 105 cm > 100 cm).
+     - Dikoreksi: Menjelaskan penataan satu kursi lipat ringkas dan meja gantung railing yang merapat ke sisi pagar/dinding agar jalur keluar-masuk pintu tetap leluasa saat perabot digunakan.
+     - Sinkronisasi FAQ 1: Diganti penuh dengan teks kanonikal editorial baru.
+     - Status Akhir: `EDITORIAL_READY`.
+  2. *Artikel A (ID 9993 - Dinding Rembes):*
+     - Audit standar teknis: BRE Digest 245 (rising damp equilibrium & salt crystallisation), RILEM Test Method II.4 (Karsten tube test), SNI 03-6861.1-2002 (adukan semen trasram 1:2 / 1:3).
+     - Verifikasi klaim: Waterproofing interior tidak menyelesaikan rising damp; durasi pengeringan inti bata 2–4 minggu pasca-sumber air dimatikan.
+     - Status Akhir: `EDITORIAL_READY`.
+  3. *Artikel C (ID 10000 - Denah Rumah 5–6 Meter):*
+     - Audit standar teknis: SNI 03-6572-2001 Pasal 4.3.2 (luas bukaan ventilasi alami minimal 5% dari luas lantai ruangan yang dihuni).
+     - Audit fisika fluida & termal: Szokolay 2014 (stack effect/thermal buoyancy), Givoni 1998 (wind pressure differential).
+     - Audit keselamatan: Peringatan tegas risiko pembongkaran dinding bata penopang balok latai, kolom praktis, dan ringbalk atap tanpa perkuatan baja/lintel.
+     - Status Akhir: `EDITORIAL_READY`.
+- **Hasil Pengujian & Verifikasi:**
+  - `test-preview-quality-fix.js`: 46/46 PASS
+  - `test-faq-rendering-fix.js`: 12/12 PASS
+  - `test-article-render-integrity.js`: 6/6 PASS
+  - `test-article-persistence.js`: 7/7 PASS
+  - `npx tsc --noEmit` & `npm run build`: 0 error / build sukses
+  - Live Browser Subagent: Terverifikasi visual expand FAQ ter-update pada mobile 390px (Status 200)
+
 ### RANCANGLOKA-EDITORIAL-PREVIEW-QUALITY-FIX-1: Featured Image Motherboard Elimination, Editorial Readability Short Paragraphs, and Accessible FAQ Accordion Preview (2026-10-30)
 
 - **Tanggal / Waktu:** 2026-10-30T00:45:00+07:00 (17:45:00 UTC)

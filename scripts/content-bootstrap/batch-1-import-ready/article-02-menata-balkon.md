@@ -6,7 +6,7 @@ category: "Eksterior & Lanskap"
 author: "Dewan Redaksi Spasial"
 focus_keyword: "menata balkon rumah kecil"
 key_takeaways:
-  - "Balkon kompak 1x2 meter membutuhkan koridor sirkulasi minimal 60 cm dan furnitur berkedalaman maksimal 45–50 cm agar pintu tidak tersangkut."
+  - "Balkon kompak 1×2 meter ideal ditata dengan satu kursi lipat ringkas dan meja gantung railing agar akses sirkulasi pintu tetap leluasa saat digunakan."
   - "Meja lipat gantung railing dan set bistro lipat membebaskan lantai tengah sehingga balkon tetap terasa lapang saat tidak digunakan."
   - "Pemanfaatan bidang vertikal untuk pot gantung dan teralis tanaman sirih gading menghadirkan nuansa hijau tanpa memakan ruang pijak."
   - "Saluran pembuangan air (floor drain) wajib dibiarkan bebas hambatan dan gunakan lampu luar ruang bertegangan rendah berstandar IP44–IP65."
@@ -26,9 +26,9 @@ Sebelum membeli perabot, kosongkan balkon terlebih dahulu. Singkirkan barang yan
 
 Langkah sederhana ini membantu melihat luas balkon yang sebenarnya. Dari sana, Anda dapat menentukan sudut mana yang paling potensial untuk dijadikan area duduk santai.
 
-Ukur lebar pintu, panjang balkon, serta jarak antara pintu dan pagar. Pada balkon berukuran 1–1,5 meter dengan panjang sekitar 2–3 meter, furnitur berkedalaman maksimal 45–50 cm biasanya lebih mudah ditata.
+Ukur lebar bukaan pintu, panjang balkon, serta jarak antara dinding dan pagar. Pada balkon dengan lebar 1 meter, hindari menaruh meja dan kursi berhadapan yang melintangi lebar ruang karena akan menutup total akses gerak.
 
-Usahakan tetap tersedia jalur pijak sekitar 60 cm, terutama di depan pintu balkon. Ruang sirkulasi ini penting agar pintu geser atau pintu dorong dapat dibuka leluasa tanpa tersangkut kursi maupun meja.
+Pilihlah satu kursi lipat berukuran ringkas dan meja gantung railing yang dapat dilipat saat tidak digunakan. Dengan menempatkan perabot merapat ke sisi pagar atau dinding sudut, jalur sirkulasi di depan pintu tetap aman dan tidak terhalang perabot.
 
 Perhatikan juga arah datangnya sinar matahari dan posisi saluran pembuangan air. Balkon yang terkena matahari sore membutuhkan peneduh, sedangkan balkon yang sering terkena hujan perlu menggunakan material yang mudah kering dan tahan cuaca.
 
@@ -134,7 +134,7 @@ Balkon kecil tidak harus menjadi ruang yang penuh barang atau sekadar area jemur
 [
   {
     "question": "Berapa ukuran minimal balkon yang masih nyaman untuk ditata dengan meja dan kursi santai?",
-    "answer": "Balkon berukuran 1 x 2 meter sudah cukup nyaman untuk memuat sepasang kursi lipat dan meja gantung railing, asalkan furnitur memiliki kedalaman maksimal 45–50 cm dan tetap menyisakan koridor sirkulasi minimal 60 cm di depan pintu."
+    "answer": "Balkon berukuran 1 × 2 meter masih bisa dimanfaatkan sebagai tempat bersantai sederhana. Pilih satu kursi lipat berukuran ringkas dan meja gantung yang dapat dilipat saat tidak digunakan. Atur posisinya agar akses menuju pintu tetap mudah dan tidak terhalang furnitur."
   },
   {
     "question": "Material furnitur apa yang paling tahan cuaca panas dan hujan tropis untuk balkon terbuka?",

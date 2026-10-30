@@ -69,7 +69,7 @@ export const BATCH_1_DEFINITIONS = [
     focusKeyword: 'menata balkon rumah kecil',
     manifestPath: 'scripts/content-bootstrap/manifests/job-04-balkon-visual-manifest.json',
     keyTakeaways: [
-      'Balkon kompak 1x2 meter membutuhkan koridor sirkulasi minimal 60 cm dan furnitur berkedalaman maksimal 45–50 cm agar pintu tidak tersangkut.',
+      'Balkon kompak 1×2 meter ideal ditata dengan satu kursi lipat ringkas dan meja gantung railing agar akses sirkulasi pintu tetap leluasa saat digunakan.',
       'Meja lipat gantung railing dan set bistro lipat membebaskan lantai tengah sehingga balkon tetap terasa lapang saat tidak digunakan.',
       'Pemanfaatan bidang vertikal untuk pot gantung dan teralis tanaman sirih gading menghadirkan nuansa hijau tanpa memakan ruang pijak.',
       'Saluran pembuangan air (floor drain) wajib dibiarkan bebas hambatan dan gunakan lampu luar ruang bertegangan rendah berstandar IP44–IP65.'

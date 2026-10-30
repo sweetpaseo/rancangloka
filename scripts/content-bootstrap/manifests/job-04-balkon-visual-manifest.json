@@ -1,0 +1,56 @@
+{
+  "manifest_version": "1.0.0",
+  "article_id": "JOB-04-BALKON-COMPACT",
+  "article_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman",
+  "content_hash": "balkon_compact_content_hash_v1",
+  "visual_items": [
+    {
+      "visual_id": "vis-job04-01-balcony-floor-plan-clearance",
+      "slot_key": "inline_concept_diagram_1",
+      "media_type": "annotated_illustration",
+      "priority": "essential",
+      "placement": {
+        "target_heading_text": "1. Mulai dari Mengukur dan Membersihkan Balkon",
+        "position": "after_heading"
+      },
+      "visual_purpose": "Denah tampak atas tata letak balkon sempit 1x2 meter memperlihatkan jalur sirkulasi 60 cm, radius ayun pintu geser/dorong, dan posisi meja gantung railing.",
+      "visual_brief": {
+        "prompt_indonesian": "Denah tampak atas 2D arsitektur penataan balkon kompak ukuran 1,2 x 2,5 meter. Garis gambar bersih bernuansa blueprint beige dengan aksen hijau lembut. Anotasi menunjukkan koridor sirkulasi 60 cm, meja gantung pagar lipat, dan posisi floor drain bebas hambatan.",
+        "storytelling_class": "SPATIAL_PLANNING_VISUAL",
+        "aspect_ratio": "16:9",
+        "intended_width": 1200,
+        "intended_height": 675
+      },
+      "caption": "Denah tata ruang balkon kompak: Menjaga akses sirkulasi keluar-masuk pintu tetap leluasa dan memastikan floor drain sudut tetap bebas hambatan.",
+      "alt_text": "Denah tampak atas tata letak balkon sempit 1x2 meter memperlihatkan akses pintu leluasa dan posisi meja lipat railing.",
+      "asset_id": null,
+      "storage_key": null,
+      "review_status": "PENDING",
+      "editorial_approval": "PENDING"
+    },
+    {
+      "visual_id": "vis-job04-02-shading-and-lighting-details",
+      "slot_key": "inline_detail_close_up_1",
+      "media_type": "detail_close_up",
+      "priority": "helpful",
+      "placement": {
+        "target_heading_text": "5. Gunakan Pencahayaan Hangat dan Penyekat Privasi",
+        "position": "after_heading"
+      },
+      "visual_purpose": "Memperlihatkan detail kerei bambu gulung sebagai penyaring silau sore dan lentera LED surya 2700K di pagar balkon.",
+      "visual_brief": {
+        "prompt_indonesian": "Foto detail estetika peneduh kerei bambu alami pada pagar balkon yang menyaring cahaya matahari senja, dipadukan lentera meja LED hangat 2700K berdaya surya tanpa kabel terbuka.",
+        "storytelling_class": "MATERIAL_ATMOSPHERE_VISUAL",
+        "aspect_ratio": "4:3",
+        "intended_width": 1000,
+        "intended_height": 750
+      },
+      "caption": "Penyekat privasi alami: Kerei bambu gulung meredam silau matahari sore sekaligus menjaga aliran angin, dipadukan lentera LED berdaya surya yang aman dari cipratan air hujan.",
+      "alt_text": "Detail anyaman kerei bambu gulung dan lampu lentera LED hangat bertenaga surya pada pagar balkon.",
+      "asset_id": null,
+      "storage_key": null,
+      "review_status": "PENDING",
+      "editorial_approval": "PENDING"
+    }
+  ]
+}
