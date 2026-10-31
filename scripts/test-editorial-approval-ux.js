@@ -310,7 +310,7 @@ assert.ok(
   'Preview page must isolate Cabut Persetujuan as separate destructive action'
 );
 assert.ok(
-  previewSource.includes('Persetujuan Editorial Berhasil Disimpan!'),
+  previewSource.includes('Persetujuan editorial berhasil dicatat & disimpan!'),
   'Client-side handler must render explicit success container upon approval'
 );
 assert.ok(
