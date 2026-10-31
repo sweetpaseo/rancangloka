@@ -721,6 +721,32 @@ export async function recordEditorialApproval(
   const approvedRole = params.approvedRole || 'editor_in_chief';
   const notes = params.notes || null;
 
+  // Idempotency Guard: If article already has an active, valid approval for the exact same content hash and asset ID, return it without creating duplicate records.
+  const latestExisting = await db
+    .prepare(
+      `SELECT id, article_id, approved_by, approved_role, approval_status,
+              approved_content_hash, approved_asset_id, notes, created_at, updated_at
+       FROM article_editorial_approvals
+       WHERE article_id = ?
+       ORDER BY id DESC
+       LIMIT 1`
+    )
+    .bind(params.articleId)
+    .first();
+
+  if (
+    latestExisting &&
+    latestExisting.approval_status === APPROVAL_STATUS_APPROVED &&
+    latestExisting.approved_content_hash === article.content_hash &&
+    latestExisting.approved_asset_id === mediaBinding.asset_id
+  ) {
+    const snapshot = await evaluateArticleReadiness(db, params.articleId);
+    return {
+      approval: latestExisting,
+      snapshot
+    };
+  }
+
   // 3. Insert into article_editorial_approvals and trajectory decision outcomes
   const insertApprovalStmt = db
     .prepare(

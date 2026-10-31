@@ -255,43 +255,148 @@ let indonesianStatusBadge = {
   dotClass: 'bg-slate-400'
 };
 
+// Canonical Editorial Status Semantics (Phase 2)
+let editorialStatus = 'NOT_REVIEWED';
+let editorialStatusLabel = 'Belum Ditinjau';
+let editorialBadgeColor = 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300';
+let editorialDotColor = 'bg-slate-400';
+
 if (article?.is_local_fixture) {
+  editorialStatus = 'LOCAL_BENCHMARK';
+  editorialStatusLabel = 'Uji Coba Lokal';
+  editorialBadgeColor = 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200';
+  editorialDotColor = 'bg-amber-500';
   indonesianStatusBadge = {
     label: 'Pratinjau Uji Coba Lokal (Batch 1)',
     colorClass: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-700',
     dotClass: 'bg-amber-500'
   };
 } else if (approvalDisplayStatus === 'APPROVED') {
+  editorialStatus = 'APPROVED';
+  editorialStatusLabel = 'Disetujui Redaksi';
+  editorialBadgeColor = 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-200';
+  editorialDotColor = 'bg-emerald-500';
   indonesianStatusBadge = {
     label: 'Disetujui Pemimpin Redaksi',
     colorClass: 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-700',
     dotClass: 'bg-emerald-500'
   };
 } else if (approvalDisplayStatus === 'STALE') {
+  editorialStatus = 'APPROVAL_STALE';
+  editorialStatusLabel = 'Persetujuan Kadaluarsa';
+  editorialBadgeColor = 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-200';
+  editorialDotColor = 'bg-rose-500';
   indonesianStatusBadge = {
     label: 'Perlu Tinjauan Ulang (Konten Berubah)',
     colorClass: 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-700',
     dotClass: 'bg-rose-500'
   };
 } else if (approvalDisplayStatus === 'REJECTED') {
+  editorialStatus = 'REVISION_REQUESTED';
+  editorialStatusLabel = 'Perlu Revisi Penulis';
+  editorialBadgeColor = 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-200';
+  editorialDotColor = 'bg-rose-500';
   indonesianStatusBadge = {
     label: 'Perlu Revisi Penulis',
     colorClass: 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-700',
     dotClass: 'bg-rose-500'
   };
 } else if (approvalDisplayStatus === 'REVOKED') {
+  editorialStatus = 'APPROVAL_REVOKED';
+  editorialStatusLabel = 'Persetujuan Dicabut';
+  editorialBadgeColor = 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300';
+  editorialDotColor = 'bg-slate-500';
   indonesianStatusBadge = {
     label: 'Persetujuan Dicabut',
     colorClass: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300',
     dotClass: 'bg-slate-500'
   };
 } else if (isReadyForReview) {
+  editorialStatus = 'NOT_REVIEWED';
+  editorialStatusLabel = 'Siap Ditinjau';
+  editorialBadgeColor = 'bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/40 dark:text-blue-200';
+  editorialDotColor = 'bg-blue-500 animate-pulse';
   indonesianStatusBadge = {
     label: 'Siap Ditinjau Pemimpin Redaksi',
     colorClass: 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-700',
     dotClass: 'bg-emerald-500 animate-pulse'
   };
 }
+
+// Canonical Publication Status Semantics (Phase 2)
+let publicationStatus = 'DRAFT';
+let publicationStatusLabel = 'Draf';
+let publicationBadgeColor = 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800';
+
+if (article?.status === 'published') {
+  publicationStatus = 'PUBLISHED';
+  publicationStatusLabel = 'Terbit';
+  publicationBadgeColor = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800';
+} else if (article?.status === 'scheduled') {
+  publicationStatus = 'SCHEDULED';
+  publicationStatusLabel = 'Terjadwal';
+  publicationBadgeColor = 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-800';
+} else if (approvalDisplayStatus === 'APPROVED' && persistedReadiness?.is_ready) {
+  publicationStatus = 'READY_FOR_PUBLICATION';
+  publicationStatusLabel = 'Draf (Siap Publikasi)';
+  publicationBadgeColor = 'bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300';
+} else {
+  publicationStatus = 'DRAFT';
+  publicationStatusLabel = 'Draf';
+  publicationBadgeColor = 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800';
+}
+
+// Phase 5 Safe Date Rendering Helpers
+function formatArticleDateDisplay(art: any): { label: string; formatted: string } | null {
+  if (!art) return null;
+  if (art.status === 'published' && art.published_at) {
+    const d = new Date(art.published_at);
+    if (!isNaN(d.getTime()) && d.getTime() > 0) {
+      return {
+        label: 'Diterbitkan',
+        formatted: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+      };
+    }
+  }
+
+  if (art.status === 'scheduled' && art.scheduled_at) {
+    const d = new Date(art.scheduled_at);
+    if (!isNaN(d.getTime()) && d.getTime() > 0) {
+      return {
+        label: 'Terjadwal',
+        formatted: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+      };
+    }
+  }
+
+  const rawDate = art.updated_at || (art.is_local_fixture ? art.created_at : null);
+  if (rawDate) {
+    const d = new Date(rawDate);
+    if (!isNaN(d.getTime()) && d.getTime() > 0) {
+      return {
+        label: 'Draf Diperbarui',
+        formatted: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+      };
+    }
+  }
+
+  return null;
+}
+
+function formatApprovalTime(dateStr?: string): string {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime()) || d.getTime() <= 0) return String(dateStr);
+  return d.toLocaleString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+const dateDisplay = formatArticleDateDisplay(article);
 
 // Simple 3-point Readiness Summary for Chief Editor
 const manuscriptReadiness = {
@@ -384,10 +489,21 @@ const editorialStandardsReadiness = {
             CMS ADMIN PREVIEW
           </span>
         )}
-        <span class="text-slate-300">|</span>
-        <span class="font-mono text-[11px] text-slate-300">
-          Status: <strong class={`uppercase ${article.status === 'published' ? 'text-emerald-400' : article.status === 'scheduled' ? 'text-blue-400' : 'text-amber-400'}`}>{article.status}</strong>
-        </span>
+        <span class="text-slate-600">|</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-slate-400 text-[11px]">Redaksi:</span>
+          <span class={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${editorialBadgeColor}`}>
+            <span class={`h-1.5 w-1.5 rounded-full ${editorialDotColor}`}></span>
+            {editorialStatusLabel}
+          </span>
+        </div>
+        <span class="text-slate-600">•</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-slate-400 text-[11px]">Publikasi:</span>
+          <span class={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${publicationBadgeColor}`}>
+            {publicationStatusLabel}
+          </span>
+        </div>
         {article.is_local_fixture ? (
           <>
             <span class="text-slate-500">•</span>
@@ -549,76 +665,204 @@ const editorialStandardsReadiness = {
               </div>
             ) : isReadyForReview ? (
               <div class="space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <h3 class="text-xs font-bold uppercase tracking-wide text-slate-800 dark:text-slate-200">
-                      Aksi Keputusan Pemimpin Redaksi
-                    </h3>
-                    <p class="text-[11px] text-slate-500">
-                      Persetujuan akan mengikat hash naskah dan gambar utama saat ini ke jadwal publikasi.
-                    </p>
+                {approvalDisplayStatus === 'APPROVED' && latestApproval ? (
+                  <!-- Active Valid Approval Display (Phase 3) -->
+                  <div class="rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-4 sm:p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/60 dark:border-emerald-800/40 pb-3">
+                      <div class="flex items-center gap-2.5">
+                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-black shadow-sm">✓</span>
+                        <div>
+                          <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-100">
+                            Persetujuan Editorial Berhasil Disimpan
+                          </h3>
+                          <p class="text-[11px] text-emerald-800/80 dark:text-emerald-300/80">
+                            Naskah telah terikat secara kriptografis dan siap untuk antrean penerbitan.
+                          </p>
+                        </div>
+                      </div>
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 self-start sm:self-auto">
+                        ID Persetujuan: #{latestApproval.id}
+                      </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-[11px]">
+                      <div class="p-2.5 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-900/40">
+                        <span class="text-emerald-800/60 dark:text-emerald-400/60 block text-[10px] font-bold uppercase tracking-wider">Penyetuju (Approver)</span>
+                        <span class="font-bold text-emerald-950 dark:text-emerald-100">{latestApproval.approved_by}</span>
+                        <span class="text-[10px] text-emerald-700/70 dark:text-emerald-400/70 block">({latestApproval.approved_role || 'editor_in_chief'})</span>
+                      </div>
+                      <div class="p-2.5 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-900/40">
+                        <span class="text-emerald-800/60 dark:text-emerald-400/60 block text-[10px] font-bold uppercase tracking-wider">Waktu Persetujuan</span>
+                        <span class="font-semibold text-emerald-950 dark:text-emerald-100">{formatApprovalTime(latestApproval.created_at)}</span>
+                      </div>
+                      <div class="p-2.5 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-900/40 font-mono">
+                        <span class="text-emerald-800/60 dark:text-emerald-400/60 block text-[10px] font-sans font-bold uppercase tracking-wider">Bound Content Hash</span>
+                        <span class="font-bold text-emerald-950 dark:text-emerald-100 truncate block" title={latestApproval.approved_content_hash}>
+                          {latestApproval.approved_content_hash ? latestApproval.approved_content_hash.slice(0, 16) + '...' : '-'}
+                        </span>
+                      </div>
+                      <div class="p-2.5 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-900/40 font-mono">
+                        <span class="text-emerald-800/60 dark:text-emerald-400/60 block text-[10px] font-sans font-bold uppercase tracking-wider">Bound Featured Media</span>
+                        <span class="font-bold text-emerald-950 dark:text-emerald-100 truncate block" title={latestApproval.approved_asset_id}>
+                          {latestApproval.approved_asset_id || '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {latestApproval.notes && (
+                      <div class="p-2.5 rounded-lg bg-white/60 dark:bg-slate-900/30 border border-emerald-100 dark:border-emerald-900/40 text-[11px] text-emerald-900 dark:text-emerald-200">
+                        <span class="font-bold text-[10px] uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400/80 block mb-0.5">Catatan Persetujuan:</span>
+                        <em>"{latestApproval.notes}"</em>
+                      </div>
+                    )}
+
+                    <!-- Primary Disabled Button + Next Action Button -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      <div class="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          disabled
+                          class="px-5 py-2.5 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow-none flex items-center justify-center gap-2 cursor-not-allowed opacity-90"
+                          title="Naskah ini sudah disetujui secara resmi"
+                        >
+                          <span>✓</span>
+                          <span>Naskah Sudah Disetujui</span>
+                        </button>
+
+                        {nextPendingApproval ? (
+                          <a
+                            href={nextPendingApproval.detailUrl}
+                            class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs shadow-sm transition inline-flex items-center justify-center gap-2"
+                            title={`Lanjut ke persetujuan naskah berikutnya: ${nextPendingApproval.title}`}
+                          >
+                            <span>Tinjau Artikel Berikutnya</span>
+                            <span>→</span>
+                          </a>
+                        ) : (
+                          <a
+                            href="/admin/approvals"
+                            class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition inline-flex items-center justify-center gap-2"
+                          >
+                            <span>Kembali ke Inbox Persetujuan →</span>
+                          </a>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        id="btn-explicit-revoke"
+                        data-article-id={article.id}
+                        class="px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-900/80 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[11px] font-medium transition cursor-pointer"
+                        title="Tindakan destruktif: Membatalkan persetujuan editorial"
+                      >
+                        Cabut Persetujuan
+                      </button>
+                    </div>
                   </div>
-                  {latestApproval && latestApproval.approval_status === 'APPROVED' && (
-                    <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                      <span>✓</span> Telah disetujui oleh {latestApproval.approved_by}
-                    </span>
-                  )}
-                </div>
+                ) : approvalDisplayStatus === 'STALE' ? (
+                  <!-- Stale Approval State -->
+                  <div class="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 p-4 space-y-3">
+                    <div class="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200 text-xs">
+                      <span class="text-base">⚠️</span>
+                      <span>Persetujuan Kadaluarsa ({staleReason === 'STALE_CONTENT' ? 'Perubahan Naskah Teks Terdeteksi' : 'Perubahan Gambar Utama Terdeteksi'})</span>
+                    </div>
+                    <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                      {staleReason === 'STALE_CONTENT'
+                        ? 'Teks artikel telah diubah setelah persetujuan sebelumnya diberikan. Hash naskah saat ini tidak cocok dengan hash saat disetujui. Pemimpin Redaksi perlu memeriksa ulang perubahan teks dan menyetujui kembali naskah versi terbaru.'
+                        : 'Gambar utama (featured media) aktif telah diperbarui atau diganti setelah persetujuan sebelumnya. Keterikatan media baru harus disetujui kembali oleh Pemimpin Redaksi.'}
+                    </p>
+                    <div class="space-y-1.5 pt-1">
+                      <label for="approval-notes-input" class="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                        Catatan Persetujuan Ulang (Opsional):
+                      </label>
+                      <input
+                        type="text"
+                        id="approval-notes-input"
+                        placeholder="Contoh: Menyetujui naskah hasil revisi teks/media."
+                        class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                      />
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                      <button
+                        type="button"
+                        id="btn-explicit-approve"
+                        data-article-id={article.id}
+                        data-next-url={nextPendingApproval?.detailUrl || ''}
+                        class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span>✓</span>
+                        <span>Setujui Ulang Versi Terbaru</span>
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-explicit-revision"
+                        data-article-id={article.id}
+                        class="px-4 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>↩</span>
+                        <span>Minta Revisi Penulis</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <!-- Normal / Pending Initial Approval State -->
+                  <div class="space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wide text-slate-800 dark:text-slate-200">
+                          Aksi Keputusan Pemimpin Redaksi
+                        </h3>
+                        <p class="text-[11px] text-slate-500">
+                          Persetujuan akan mengikat hash naskah dan gambar utama saat ini ke jadwal publikasi.
+                        </p>
+                      </div>
+                    </div>
 
-                <div class="space-y-1.5">
-                  <label for="approval-notes-input" class="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-                    Catatan Editorial (Opsional):
-                  </label>
-                  <input
-                    type="text"
-                    id="approval-notes-input"
-                    placeholder="Contoh: Naskah disetujui, sudut pandang rumah tropis sudah jelas."
-                    class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
-                  />
-                </div>
+                    <div class="space-y-1.5">
+                      <label for="approval-notes-input" class="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                        Catatan Editorial (Opsional):
+                      </label>
+                      <input
+                        type="text"
+                        id="approval-notes-input"
+                        placeholder="Contoh: Naskah disetujui, sudut pandang rumah tropis sudah jelas."
+                        class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                      />
+                    </div>
 
-                <div class="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    id="btn-explicit-approve"
-                    data-article-id={article.id}
-                    data-next-url={nextPendingApproval?.detailUrl || ''}
-                    class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <span>✓</span>
-                    <span>Setujui Naskah untuk Publikasi</span>
-                  </button>
+                    <div class="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        id="btn-explicit-approve"
+                        data-article-id={article.id}
+                        data-next-url={nextPendingApproval?.detailUrl || ''}
+                        class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span>✓</span>
+                        <span>Setujui Naskah untuk Publikasi</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    id="btn-explicit-revision"
-                    data-article-id={article.id}
-                    class="px-4 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <span>↩</span>
-                    <span>Minta Revisi Penulis</span>
-                  </button>
+                      <button
+                        type="button"
+                        id="btn-explicit-revision"
+                        data-article-id={article.id}
+                        class="px-4 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>↩</span>
+                        <span>Minta Revisi Penulis</span>
+                      </button>
 
-                  {latestApproval && latestApproval.approval_status === 'APPROVED' && (
-                    <button
-                      type="button"
-                      id="btn-explicit-revoke"
-                      data-article-id={article.id}
-                      class="px-3.5 py-2 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-medium transition cursor-pointer"
-                    >
-                      Cabut Persetujuan
-                    </button>
-                  )}
-
-                  {nextPendingApproval && (
-                    <a
-                      href={nextPendingApproval.detailUrl}
-                      class="ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
-                    >
-                      <span>Tinjau Naskah Berikutnya →</span>
-                    </a>
-                  )}
-                </div>
+                      {nextPendingApproval && (
+                        <a
+                          href={nextPendingApproval.detailUrl}
+                          class="ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                        >
+                          <span>Tinjau Naskah Berikutnya →</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div id="approval-action-feedback" class="text-xs font-medium hidden"></div>
               </div>
@@ -784,12 +1028,22 @@ const editorialStandardsReadiness = {
           <span class="font-mono text-xs text-stone tracking-wide">
             {article.reading_time_minutes} MENIT BACA
           </span>
+          {dateDisplay ? (
+            <time class="font-mono text-xs text-stone uppercase tracking-wide">
+              {dateDisplay.label}: {dateDisplay.formatted}
+            </time>
+          ) : (
+            <span class="font-mono text-xs text-stone uppercase tracking-wide">
+              Draf Belum Terbit
+            </span>
+          )}
           <span class="font-mono text-xs text-stone">/</span>
-          <time class="font-mono text-xs text-stone uppercase tracking-wide">
-            {new Date(article.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </time>
-          <span class={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${article.status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-            {article.status}
+          <span class={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${publicationBadgeColor}`}>
+            Publikasi: {publicationStatusLabel}
+          </span>
+          <span class={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${editorialBadgeColor}`}>
+            <span class={`h-1.5 w-1.5 rounded-full ${editorialDotColor}`}></span>
+            Redaksi: {editorialStatusLabel}
           </span>
         </div>
 
@@ -929,13 +1183,14 @@ const editorialStandardsReadiness = {
           var notesInput = document.getElementById('approval-notes-input');
           var feedbackEl = document.getElementById('approval-action-feedback');
 
-          function showFeedback(message, isError) {
+          function showFeedback(htmlOrText, isError) {
             if (!feedbackEl) return;
-            feedbackEl.textContent = message;
-            feedbackEl.className = 'text-[11px] font-medium p-2.5 rounded-lg ' + (
+            feedbackEl.innerHTML = htmlOrText;
+            feedbackEl.textContent = typeof htmlOrText === 'string' ? htmlOrText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+            feedbackEl.className = 'text-[11px] font-medium p-3 rounded-xl ' + (
               isError
-                ? 'bg-rose-50 text-rose-700 border border-rose-200 block'
-                : 'bg-emerald-50 text-emerald-700 border border-emerald-200 block'
+                ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200 border border-rose-200 dark:border-rose-800 block'
+                : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 block'
             );
             feedbackEl.classList.remove('hidden');
           }
@@ -1014,15 +1269,29 @@ const editorialStandardsReadiness = {
                 }
 
                 var nextUrl = approveBtn.getAttribute('data-next-url');
-                if (nextUrl) {
-                  showFeedback('✓ Persetujuan editorial berhasil dicatat. <a href="' + nextUrl + '" class="font-bold underline ml-1 text-[#0066ee]">Tinjau Persetujuan Berikutnya →</a>', false);
-                } else {
-                  showFeedback('✓ Persetujuan editorial berhasil dicatat. Memuat ulang pratinjau...', false);
-                }
-                approveBtn.innerHTML = '<span>✓ Persetujuan Disimpan</span>';
+                var successHtml = '<div class="space-y-2">' +
+                  '<div class="font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-1.5">' +
+                    '<span class="h-4 w-4 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[10px]">✓</span>' +
+                    '<span>Persetujuan editorial berhasil dicatat & disimpan!</span>' +
+                  '</div>' +
+                  '<p class="text-xs text-emerald-800/90 dark:text-emerald-300/90">Naskah telah resmi disetujui untuk publikasi oleh Pemimpin Redaksi.</p>' +
+                  '<div class="pt-2 flex flex-wrap items-center gap-2.5">' +
+                    (nextUrl ? '<a href="' + nextUrl + '" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition">Tinjau Artikel Berikutnya →</a>' : '') +
+                    '<button type="button" onclick="window.location.reload()" class="px-3 py-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 text-emerald-900 dark:text-emerald-200 text-xs font-semibold hover:bg-emerald-50 transition cursor-pointer">Muat Ulang Halaman</button>' +
+                  '</div>' +
+                '</div>';
+
+                showFeedback(successHtml, false);
+                approveBtn.innerHTML = '<span>✓ Naskah Sudah Disetujui</span>';
+                approveBtn.setAttribute('disabled', 'true');
+                approveBtn.style.opacity = '0.9';
+                approveBtn.style.cursor = 'not-allowed';
+                approveBtn.className = 'px-5 py-2.5 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow-none flex items-center justify-center gap-2 cursor-not-allowed opacity-90';
+
+                // Auto reload if user stays on page without clicking next
                 setTimeout(function() {
                   window.location.reload();
-                }, 1800);
+                }, 3500);
               } catch (err) {
                 var msg = err && err.message ? err.message : 'Terjadi gangguan jaringan atau kesalahan sistem.';
                 showFeedback('Error: ' + msg, true);

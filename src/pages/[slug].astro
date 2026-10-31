@@ -63,7 +63,7 @@ function safeDateIso(dateStr?: string): string {
 function safeDateLocal(dateStr?: string): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  return isNaN(d.getTime()) || d.getTime() <= 0 ? '' : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 

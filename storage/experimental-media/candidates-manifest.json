@@ -156,6 +156,30 @@
         "previous_status": "NOT_SELECTED",
         "new_status": "NOT_SELECTED",
         "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.243Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.237Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.233Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
         "timestamp": "2026-10-30T17:45:28.584Z",
         "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
       },
@@ -401,6 +425,30 @@
     },
     "selection_status": "SUPERSEDED",
     "approval_history": [
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.243Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.237Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.233Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
       {
         "action": "reset",
         "previous_status": "NOT_SELECTED",
@@ -1228,6 +1276,30 @@
         "previous_status": "NOT_SELECTED",
         "new_status": "NOT_SELECTED",
         "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.243Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.237Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.233Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
+      },
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
         "timestamp": "2026-10-30T17:45:28.584Z",
         "notes": "Tidak dipilih: kandidat 'candidate-9993-flux-1-schnell-v3' dipilih untuk slot ini."
       },
@@ -1472,9 +1544,33 @@
     "editorial_verdict": "APPROVED_PREFERRED",
     "editorial_notes": "Kandidat utama pilihan editorial: Kerusakan dinding terlihat jelas, lebih sesuai dengan topik artikel, dan komposisi lebih informatif dibanding SDXL v3. Tetap PENDING_REVIEW sampai Chief Editor menyetujui.",
     "reviewed_by": "Chief Editor",
-    "reviewed_at": "2026-10-30T17:45:28.584Z",
+    "reviewed_at": "2026-10-30T18:17:12.243Z",
     "review_notes": "Terpilih untuk artikel via Inspeksi Visual",
     "approval_history": [
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.243Z",
+        "notes": "Terpilih untuk artikel via Inspeksi Visual"
+      },
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.237Z",
+        "notes": "Terpilih untuk artikel via Inspeksi Visual"
+      },
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T18:17:12.233Z",
+        "notes": "Terpilih untuk artikel via Inspeksi Visual"
+      },
       {
         "action": "approve",
         "previous_status": "PENDING_REVIEW",
@@ -1602,7 +1698,7 @@
       "sha256": "d54a04d03c0a4dc061a439db28bfa0215cdb5155cb4f59730d2fc1b677aae8b6",
       "brief_slug": "dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "storage_reference": "storage/experimental-media/candidate-9993-s1-jalur-rembesan-svg.svg",
     "public_url": "/experimental-media/candidate-9993-s1-jalur-rembesan-svg.svg",
     "byte_size": 10280,
@@ -1631,7 +1727,20 @@
       "notes": "Zonasi perambatan kualitatif (bawah, tengah, atas), tanpa angka ketinggian kaku absolut. Label disclaimer terpasang akurat."
     },
     "review_readiness": "READY_FOR_HUMAN_REVIEW",
-    "selection_status": "AVAILABLE"
+    "selection_status": "SELECTED",
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T23:45:10.630Z",
+    "review_notes": "Terpilih untuk artikel via Inspeksi Visual",
+    "approval_history": [
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T23:45:10.630Z",
+        "notes": "Terpilih untuk artikel via Inspeksi Visual"
+      }
+    ]
   },
   {
     "id": "candidate-9993-s2-detail-cat-menggelembung-flux",
@@ -1732,7 +1841,7 @@
       "sha256": "5d2126d7e2bf4d3da0bf21400790fa45dac65fa4b608790610eee1a35264036b",
       "brief_slug": "7-ide-menata-balkon-rumah-kecil-agar-nyaman"
     },
-    "approval_status": "REJECTED",
+    "approval_status": "NOT_SELECTED",
     "storage_reference": "storage/experimental-media/candidate-9999-s1-meja-gantung-railing-flux.jpg",
     "public_url": "/experimental-media/candidate-9999-s1-meja-gantung-railing-flux.jpg",
     "byte_size": 477694,
@@ -1765,6 +1874,14 @@
     "rejection_reason": "AI-generated text overlay and gibberish typography inside editorial photograph.",
     "revision_reason": "AI-generated text overlay and gibberish typography inside editorial photograph.",
     "approval_history": [
+      {
+        "action": "reset",
+        "previous_status": "NOT_SELECTED",
+        "new_status": "NOT_SELECTED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T23:45:15.965Z",
+        "notes": "Tidak dipilih: kandidat 'candidate-9999-s1-meja-gantung-railing-flux-v2' dipilih untuk slot ini."
+      },
       {
         "action": "reject",
         "previous_status": "PENDING_REVIEW",
@@ -1944,7 +2061,7 @@
       "sha256": "6d8f0a8c6f95d011fc492b23b1c7e53d9a2780df4a385b35d23851a4ecc07d4a",
       "brief_slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap"
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "storage_reference": "storage/experimental-media/candidate-10000-s2-potongan-void-stack-ventilation-svg.svg",
     "public_url": "/experimental-media/candidate-10000-s2-potongan-void-stack-ventilation-svg.svg",
     "byte_size": 8803,
@@ -1973,7 +2090,20 @@
       "notes": "Penampang void tangga akurat. Mencantumkan batasan ketergantungan suhu/angin dan peringatan redaksi bahaya kaca mati."
     },
     "review_readiness": "READY_FOR_HUMAN_REVIEW",
-    "selection_status": "AVAILABLE"
+    "selection_status": "SELECTED",
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T23:45:24.398Z",
+    "review_notes": "Terpilih untuk artikel via Inspeksi Visual",
+    "approval_history": [
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T23:45:24.398Z",
+        "notes": "Terpilih untuk artikel via Inspeksi Visual"
+      }
+    ]
   },
   {
     "id": "candidate-9993-s2-detail-cat-menggelembung-flux-v2",
@@ -2069,7 +2199,7 @@
       "editorial_photo_text_free": true,
       "negative_constraints_applied": true
     },
-    "approval_status": "PENDING_REVIEW",
+    "approval_status": "APPROVED",
     "review_readiness": "READY_FOR_HUMAN_REVIEW",
     "storage_reference": "storage/experimental-media/candidate-9999-s1-meja-gantung-railing-flux-v2.jpg",
     "public_url": "/experimental-media/candidate-9999-s1-meja-gantung-railing-flux-v2.jpg",
@@ -2126,6 +2256,19 @@
       },
       "disclaimer": "Pemeriksaan heuristik otomatis lolos. Keputusan approval mutlak wewenang Chief Editor."
     },
-    "selection_status": "AVAILABLE"
+    "selection_status": "SELECTED",
+    "reviewed_by": "Chief Editor",
+    "reviewed_at": "2026-10-30T23:45:15.965Z",
+    "review_notes": "Terpilih untuk artikel via Inspeksi Visual",
+    "approval_history": [
+      {
+        "action": "approve",
+        "previous_status": "PENDING_REVIEW",
+        "new_status": "APPROVED",
+        "actor": "Chief Editor",
+        "timestamp": "2026-10-30T23:45:15.965Z",
+        "notes": "Terpilih untuk artikel via Inspeksi Visual"
+      }
+    ]
   }
 ]
