@@ -13,6 +13,55 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-BATCH1-MEDIA-AND-EDITORIAL-HOTFIXES-1: Batch 1 Visual Selection, Wizard V1, SVG Overflow & Frontmatter Hotfixes, and Editorial Approval Persistence (2026-10-31)
+
+- **Tanggal / Waktu:** 2026-10-31T07:10:00+07:00 (00:10:00 UTC)
+- **Status Misi:** `RANCANGLOKA_BATCH1_MEDIA_AND_EDITORIAL_HOTFIXES_COMPLETE` (Safe Offline Point Reached)
+- **Git HEAD Baseline:** `282e559` (branch: `feat/jev-lokamedia-integration`)
+- **Peran:** Senior AI Systems Engineer + LokaMedia Integration Engineer + Chief Editorial Visual Assistant
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`
+- **Pencapaian Utama (14 Milestone Siklus Batch 1):**
+  1. *FLUX.1 Schnell vs SDXL Lightning Comparison (`commit 30fa2d0`):*
+     - Generasi multi-model terkontrol Cloudflare Workers AI untuk 3 artikel Batch 1 (#9993, #9999, #10000).
+     - Komparasi kualitas arsitektural: FLUX.1 unggul pada detail permukaan dan ketepatan pencahayaan interior; SDXL Lightning efisien pada denah dan diagram konseptual.
+  2. *Editorial Visual Intelligence (EVI) V1 (`commit 6925d7b`):*
+     - Framework penjaminan kualitas visual redaksi dengan 5 dimensi evaluasi (Subjek & Kesesuaian Konteks, Integritas Geometri & Arsitektur, Kualitas Fotografi & Materialitas, Kepatuhan Editorial Anti-Slop, dan Nilai Edukasi Pembaca).
+  3. *Architectural Geometry QA (`commit 9899f8c`):*
+     - Purging cacat visual: jendela bengkok, proporsi tangga abnormal, dan artefak generator.
+     - Penilaian 5D scorecard mandatori sebelum kandidat gambar dipromosikan ke tahap review.
+  4. *Cloudflare AI Neurons Usage Monitor & Budget Guard (`commit 162f565`, `feb6e96`):*
+     - Sistem pemantauan kuota harian gratis Cloudflare (10.000 neuron/hari) dengan peredam otomatis (*circuit breaker*) dan formula kalkulasi resmi.
+  5. *Light Editorial Lemon Linen UI Redesign (`commit 47b9fa5`):*
+     - Desain ulang antarmuka panel kontrol agar selaras dengan bahasa visual majalah editorial RancangLoka (*Lemon Linen palette*).
+  6. *Canonical Media Promotion & D1 Binding (`commit 7c68d1d`):*
+     - Menghubungkan kandidat eksperimental yang terpilih ke tabel kanonikal `media_assets` dan `article_media` (D1 lokal) dengan status `VALIDATED` dan role `featured` / `inline`.
+  7. *Responsive Diagnostic Diagram (`commit 7c68d1d`):*
+     - Menggantikan visual diagnostik ASCII yang overflow pada Article #9993 dengan diagram responsif desktop & mobile, bebas overflow, ramah pembaca.
+  8. *Media Selection Workflow & Approval State Correction (`commit a304ee5`):*
+     - Memperbaiki model status kandidat: membedakan "kandidat alternatif tidak terpilih" (`NOT_SELECTED`) dari "persetujuan tertunda" (`PENDING_REVIEW`). Pemilik redaksi hanya memilih satu gambar per slot tanpa kewajiban menyetujui seluruh kandidat.
+  9. *Batch 1 Editorial Review Wizard V1 (`commit 1f08bdf`):*
+     - Mentransformasikan antarmuka komparasi Batch 1 menjadi wizard terpandu berbasis langkah (*guided step-by-step review*) dengan task card aktif, filter otomatis, dan navigasi langsung ke artikel yang membutuhkan atensi.
+  10. *SVG Text Overflow Hotfix (`commit faa3c85`):*
+      - Memperbaiki layout diagram jalur rembesan SVG (#9993-S1) dengan multi-line text chunking, penyesuaian viewBox dan font size agar teks deskripsi tidak memotong batas kartu penjelas.
+  11. *Wizard Sticky-Header Clipping Hotfix (`commit faa3c85`):*
+      - Menambahkan scroll-padding dan top-margin pada kontainer wizard agar elemen header dan breadcrumb tidak terpotong oleh bilah sticky header admin.
+  12. *Markdown Frontmatter Leakage Hotfix (`commit c7c5fb1`):*
+      - Memperbaiki parser markdown renderer (`src/lib/article/renderer.ts`) untuk menanggalkan blok YAML frontmatter secara bersih, mencegah teks metadata raw (`title:`, `slug:`, `focus_keyword:`) bocor menjadi judul visual artikel.
+  13. *Editorial Approval Persistence & UX Hotfix (`commit d7da43d`, `282e559`):*
+      - Memverifikasi keberadaan dan keabsahan persetujuan Article #9993 (ID #6, approver `editorial_editor`, status `APPROVED`).
+      - Memisahkan semantik Status Redaksi (`APPROVED`, `NOT_REVIEWED`, `REVISION_REQUESTED`, `APPROVAL_STALE`) dari Status Publikasi (`DRAFT`, `READY_FOR_PUBLICATION`, `SCHEDULED`, `PUBLISHED`).
+      - Menampilkan kartu dedicated *"Persetujuan Editorial Berhasil Disimpan"*, mengganti tombol persetujuan aktif dengan tombol non-aktif `✓ Naskah Sudah Disetujui`, menyediakan navigasi prominent `Tinjau Artikel Berikutnya →`, mengisolasi tombol destruktif `Cabut Persetujuan`, dan menambahkan idempotency guard di `recordEditorialApproval()`.
+  14. *Invalid Publication Date Fallback Fix (`commit d7da43d`, `282e559`):*
+      - Mengeliminasi bug "1 JAN 1970" yang disebabkan oleh evaluasi `new Date(null)`.
+      - Menambahkan helper `formatArticleDateDisplay()`: untuk draf yang belum terbit, tanggal ditampilkan sebagai `Draf Diperbarui: {formatted}` dari `updated_at`, atau dihilangkan jika tidak tersedia.
+- **Hasil Pengujian & Verifikasi:**
+  - `scripts/test-editorial-approval-ux.js`: **14 / 14 PASS (100%)**
+  - `scripts/test-publication-readiness.js`: **85 / 85 PASS**
+  - `scripts/test-soak-safety.js`: **54 / 54 PASS**
+  - `npx tsc --noEmit`: **0 error (Clean)**
+  - `npm run build`: **Sukses 100% (8.86s, Adapter: @astrojs/cloudflare)**
+  - Browser QA Subagent: **Terverifikasi 100% pada /admin/preview/[slug] (Screenshot & video approval_ui_qa)**
+
 ### RANCANGLOKA-BATCH1-MEDIA-PLACEMENT-AND-PREVIEWS-1: Batch 1 Final Media Placement, Visual QA, Workflow Progress Stepper, and Article Previews (2026-10-30)
 
 - **Tanggal / Waktu:** 2026-10-30T16:45:00+07:00 (09:45:00 UTC)

@@ -1,64 +1,89 @@
-# 🤖 Antigravity Master Milestone Handoff: RANCANGLOKA_BATCH1_MEDIA_PLACEMENT_AND_PREVIEWS_1
+# 🤖 Antigravity Master Milestone Handoff: RANCANGLOKA_BATCH1_MEDIA_AND_EDITORIAL_HOTFIXES_1
 
-**Tanggal / Waktu:** 2026-10-30T16:45:00+07:00 (09:45:00 UTC)  
-**Eksekutor:** Antigravity / Senior AI Systems Engineer + LokaMedia Integration Engineer  
+**Tanggal / Waktu:** 2026-10-31T07:15:00+07:00 (00:15:00 UTC)  
+**Eksekutor:** Antigravity / Senior AI Systems Engineer + Editorial Pipeline Lead  
 **Baseline:** `RL-LIVING-LEMON-MAGAZINE-2.1`  
-**Git HEAD:** `e414e0a` (branch: `feat/jev-lokamedia-integration`)  
-**Misi:** `RANCANGLOKA_BATCH1_MEDIA_PLACEMENT_AND_PREVIEWS_1`  
-**Status Sesi:** `RANCANGLOKA_BATCH1_MEDIA_PLACEMENT_AND_PREVIEWS_COMPLETE`  
+**Git HEAD:** `282e559` (branch: `feat/jev-lokamedia-integration`)  
+**Misi:** `RANCANGLOKA_BATCH1_MEDIA_AND_EDITORIAL_HOTFIXES_1`  
+**Status Sesi:** `RANCANGLOKA_BATCH1_MEDIA_AND_EDITORIAL_CYCLE_COMPLETE`  
 **Status Operasional:** **PRODUKSI AKTIF (de250e22-0de3-4ef1-a7c5-53ec20102c9d) & TITIK AMAN OFFLINE TERCAPAI**  
 **Status Rilis:** Deployed to `https://rancangloka.com` (Zero production mutations during this staging mission)  
 **Worker Version ID Aktif:** `de250e22-0de3-4ef1-a7c5-53ec20102c9d`  
 **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`  
 **Database Staging Aktif:** `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/37bd9da5950b040e71b09fbfd7ca57290acb451dcd5dc35acb02655fa75fa480.sqlite` (Terisolasi dari D1 Produksi)  
+**Snapshot Pemulihan D1 Lokal:** `state/BATCH1_LOCAL_D1_RECOVERY_SNAPSHOT_20261031.json`  
 **Halaman Inspeksi & Komparasi Visual:** `http://localhost:4321/admin/media/comparison-batch1`  
-**Langkah Operasional Berikutnya:** `HUMAN OPERATOR / CHIEF EDITOR REVIEW: Evaluasi 3 kandidat pendukung tertunda (#9993-S1 diagram rembesan, #9999-S1 foto meja v2 bersih, #10000-S2 diagram void tangga), klik Approve, lalu lanjutkan ke pratinjau artikel untuk persetujuan akhir penerbitan.`
+**Langkah Operasional Berikutnya:** `Lanjutkan review editorial naskah Artikel #9999 dan #10000 di /admin/preview/[slug], verifikasi final asset placement, lalu persiapkan rencana deployment terkontrol.`
 
 ---
 
-## 1. Ringkasan Pencapaian Sesi (Batch 1 Final Media Placement & Previews)
+## 1. Ringkasan Status Batch 1 (Editorial & Visual Media)
 
-1. **Status Ledger Kandidat (6 APPROVED, 3 PENDING_REVIEW):**
-   - **Hero Images (3/3 Disetujui):**
-     - `#9993-HERO` (FLUX.1 Schnell v3): APPROVED
-     - `#9999-HERO` (FLUX.1 Schnell): APPROVED
-     - `#10000-HERO` (SDXL Lightning): APPROVED
-   - **Supporting Images (3 Disetujui, 3 Tertunda):**
-     - `#9993-S1` (Diagram Jalur Rembesan SVG): `PENDING_REVIEW` (Disupresi dari draf, tanpa placeholder rusak)
-     - `#9993-S2` (Detail Cat Menggelembung FLUX v2): `APPROVED` (Terpasang pada Section 4)
-     - `#9999-S1` (Meja Gantung Railing FLUX v2 Bersih): `PENDING_REVIEW` (Siap direview di dashboard)
-     - `#9999-S2` (Sudut Santai & Tanaman Vertikal FLUX): `APPROVED` (Terpasang pada Section 5)
-     - `#10000-S1` (Denah Konseptual SVG): `APPROVED` (Terpasang pada Section 2 dengan label *(Konseptual)*)
-     - `#10000-S2` (Potongan Void Tangga SVG): `PENDING_REVIEW` (Disupresi dari draf, tanpa placeholder rusak)
+1. **Status Media Wizard Batch 1 (9 / 9 Keputusan Selesai):**
+   - Seluruh 9 slot editorial telah memiliki kandidat terpilih/disetujui di `storage/experimental-media/candidates-manifest.json`.
+   - **Artikel #9993:**
+     - `#9993-HERO`: `candidate-9993-flux-1-schnell-v3` (`APPROVED` / `SELECTED`)
+     - `#9993-S1`: `candidate-9993-s1-jalur-rembesan-svg` (`APPROVED` / `SELECTED` — teks SVG bebas overflow)
+     - `#9993-S2`: `candidate-9993-s2-detail-cat-menggelembung-flux-v2` (`APPROVED` / `SELECTED`)
+   - **Artikel #9999:**
+     - `#9999-HERO`: `candidate-9999-flux-1-schnell` (`APPROVED` / `SELECTED`)
+     - `#9999-S1`: `candidate-9999-s1-meja-gantung-railing-flux-v2` (`APPROVED` / `SELECTED` — clean v2 tanpa teks AI)
+     - `#9999-S2`: `candidate-9999-s2-sudut-santai-tanaman-vertikal-flux` (`APPROVED` / `SELECTED`)
+   - **Artikel #10000:**
+     - `#10000-HERO`: `candidate-10000-sdxl-lightning` (`APPROVED` / `SELECTED`)
+     - `#10000-S1`: `candidate-10000-s1-denah-konseptual-inner-court-svg` (`APPROVED` / `SELECTED` — badge *(Konseptual)*)
+     - `#10000-S2`: `candidate-10000-s2-potongan-void-stack-ventilation-svg` (`APPROVED` / `SELECTED`)
 
-2. **Decoupling Database & Keamanan Dual-Control:**
-   - Kolom `featured_image` pada tabel `articles` (D1 lokal) tetap `NULL` untuk seluruh artikel draf.
-   - Hero image di rute preview `/admin/preview/[slug]` dihidrasi secara dinamis dari ledger kandidat / `dev-fixtures.ts`.
-   - Mengeliminasi mutasi prematur dan menjaga invarian bahwa persetujuan media terpisah dari mutasi database draf.
-
-3. **Workflow Progress Stepper pada Dashboard:**
-   - Mengimplementasikan 6-Tahap Progress Stepper di `/admin/media/comparison-batch1`.
-   - Menampilkan status dinamis `2/3 Media Disetujui` per artikel.
-   - Menyediakan tombol navigasi langsung ke pratinjau artikel (`Pratinjau Draf ↗` / `Lanjut ke Pratinjau Artikel ↗`).
-
-4. **Kepatuhan Hash Konten Visual Manifest:**
-   - Seluruh manifest visual disinkronkan dengan nilai hash aktual `sha256(content_md)` untuk mencegah error `STALE_CONTENT_HASH`.
-
----
-
-## 2. Hasil Pengujian Otomatis & Visual
-
-* `node scripts/test-candidate-approval-flow.js`: **11 / 11 PASS**
-* `node scripts/test-soak-safety.js`: **54 / 54 PASS**
-* `node scripts/test-preview-media-rendering.mjs`: **PASS (3/3 artikel terverifikasi HTTP 200, Hero dan inline figures ter-render)**
-* `npx tsc --noEmit`: **0 error**
-* `npm run build`: **Sukses 100% (8.13s, Adapter: @astrojs/cloudflare)**
-* **Visual QA Browser Subagent:** Tangkapan layar desktop (1536x695) dan mobile (390x844) terverifikasi bersih dan bebas overflow.
+2. **Status Persetujuan Editorial Naskah:**
+   - **Artikel #9993 (*Dinding Rembes dan Cat Menggelembung*):**
+     - Status Publikasi: `draft`
+     - Status Editorial: `APPROVED` (Approval ID #6, `editorial_editor`, `46d9bc42...`)
+     - Canonical Featured Asset: `ast_98688461d836be2a4acde715` terikat
+     - Status Kesiapan: `READY` untuk publikasi (menunggu jadwal rilis)
+   - **Artikel #9999 (*7 Ide Menata Balkon Rumah Kecil*):**
+     - Status Publikasi: `draft`
+     - Status Editorial: `NOT_REVIEWED` (Belum ada approval)
+     - Media Terikat: Featured Hero + 2 Inline Figures lengkap
+     - Status Kesiapan: Siap untuk ditinjau editor di `/admin/preview/7-ide-menata-balkon-rumah-kecil-agar-nyaman`
+   - **Artikel #10000 (*Menata Denah Rumah Lebar 5–6 Meter*):**
+     - Status Publikasi: `draft`
+     - Status Editorial: `NOT_REVIEWED` (Belum ada approval)
+     - Media Terikat: Featured Hero + 2 Inline Figures lengkap
+     - Status Kesiapan: Siap untuk ditinjau editor di `/admin/preview/menata-denah-rumah-lebar-5-6-meter-tetap-terasa-luas-dan-terang`
 
 ---
 
-## 3. Titik Aman & Rekomendasi Selanjutnya
+## 2. 14 Milestone Siklus Batch 1 yang Telah Tuntas & Terkomit
 
-* **Kondisi Repository:** Bersih, seluruh perubahan telah terkomit di Git HEAD `e414e0a`, zero uncommitted regressions.
-* **Stop Condition Tercapai:** Status aman offline tercapai penuh.
-* **Tindakan Saat Kembali Online:** Buka browser ke `http://localhost:4321/admin/media/comparison-batch1`, lakukan approval pada 3 kandidat pendukung tersisa, dan lakukan final review di `/admin/preview/[slug]`.
+1. **FLUX.1 Schnell vs SDXL Lightning Komparasi:** Evaluasi komparatif model generasi gambar (`commit 30fa2d0`).
+2. **Editorial Visual Intelligence (EVI):** Kontrak schema & validasi prompt visual (`commit 6925d7b`).
+3. **Architectural Geometry QA:** Guardrail geometris perspektif arsitektur (`commit 9899f8c`).
+4. **Cloudflare AI Neurons Usage Monitor:** Estimasi biaya & kuota inferensi Workers AI (`commit 162f565`, `feb6e96`).
+5. **Light Editorial Dashboard Redesign:** Penyesuaian tema terang redaksi (`commit 47b9fa5`).
+6. **Canonical Media Promotion & D1 Binding:** Promosi aset dan penegakan id featured media (`commit 7c68d1d`).
+7. **Responsive Diagnostic Diagram:** Diagram 6-tahap diagnosis responsif desktop/mobile (`commit 7c68d1d`).
+8. **Media Selection State Correction:** Pemisahan konsep kandidat vs slot artikel (`commit a304ee5`).
+9. **Batch 1 Editorial Review Wizard V1:** Wizard terpandu langkah demi langkah (`commit 1f08bdf`).
+10. **SVG Text Overflow Hotfix:** Perbaikan text wrap card SVG `#9993-S1` (`commit faa3c85`).
+11. **Wizard Sticky-Header Clipping Hotfix:** Perbaikan z-index & padding sticky header (`commit faa3c85`).
+12. **Markdown Frontmatter Leakage Hotfix:** Sanitasi frontmatter YAML di body preview (`commit c7c5fb1`).
+13. **Editorial Approval Persistence & UX Hotfix:** Integrasi status persetujuan & aksi dinamis (`commit d7da43d`, `282e559`).
+14. **Invalid Publication Date Fallback Fix:** Eliminasi tampilan "1 JAN 1970" untuk draf (`commit d7da43d`, `282e559`).
+
+---
+
+## 3. Ketahanan State Lokal (Durability & Recovery)
+
+* **Local D1 SQLite:** Disimpan di Miniflare stage database. Snapshot lengkap diekstrak dan disimpan di `state/BATCH1_LOCAL_D1_RECOVERY_SNAPSHOT_20261031.json` (berisi tabel `articles`, `article_media`, `media_assets`, `article_editorial_approvals`, dan `article_publication_readiness`).
+* **Experimental Media Files:** Seluruh file gambar dan SVG di `storage/experimental-media/` dan `public/experimental-media/` telah terlacak di Git (Tracked in Git).
+* **Decisions Manifest:** `storage/experimental-media/candidates-manifest.json` terlacak di Git dan menyimpan status 9/9 selesai.
+
+---
+
+## 4. Prioritas Sesi Berikutnya
+
+- **P1:** Lanjutkan review editorial naskah Artikel #9999 (*Balkon*) dan Artikel #10000 (*Denah Lebar 5-6m*) via `/admin/preview/...`.
+- **P2:** Berikan persetujuan editorial (Editorial Approval) untuk kedua naskah jika kualitas teks telah memenuhi standar.
+- **P3:** Lakukan verifikasi penempatan media akhir di desktop dan mobile.
+- **P4:** Audit ketahanan penyimpanan media Cloudflare R2 dan sinkronisasi manifest sebelum rilis publik.
+- **P5:** Siapkan rencana deployment terkontrol terpisah (produksi tetap terisolasi).
