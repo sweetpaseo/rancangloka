@@ -36,7 +36,7 @@ import {
 function resolveApiKey() {
   let apiKey = process.env.SUMOPOD_API_KEY || '';
   let providerName = 'sumopod';
-  let modelName = process.env.EDITORIAL_LLM_MODEL || 'gpt-5.6-luna';
+  let modelName = process.env.EDITORIAL_LLM_MODEL || 'gpt-6-luna';
 
   if (!apiKey) {
     const labEnvPath = path.resolve('../rancangloka-ai-lab/.env');

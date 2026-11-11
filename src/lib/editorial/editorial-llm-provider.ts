@@ -116,7 +116,7 @@ export const DEFAULT_EDITORIAL_TIMEOUT_MS = 120000; // 120 seconds
 export const DEFAULT_EDITORIAL_MAX_TOKENS = 8000; // 8000 tokens completion headroom
 export const DEFAULT_EDITORIAL_TEMPERATURE = 0.6;
 export const DEFAULT_EDITORIAL_MODEL = 'google/gemini-2.0-flash-001';
-export const DEFAULT_SUMOPOD_EDITORIAL_MODEL = 'gpt-5.6-luna';
+export const DEFAULT_SUMOPOD_EDITORIAL_MODEL = 'gpt-6-luna';
 export const DEFAULT_EDITORIAL_MAX_RETRIES = 2; // Up to 3 total attempts for transient failures
 
 /**

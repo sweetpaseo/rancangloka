@@ -35,7 +35,7 @@ async function run() {
     if (env.SUMOPOD_API_KEY) {
       apiKey = env.SUMOPOD_API_KEY;
       providerName = 'sumopod';
-      modelName = env.EDITORIAL_LLM_MODEL || 'gpt-5.6-luna';
+      modelName = env.EDITORIAL_LLM_MODEL || 'gpt-6-luna';
     } else {
       // Check parent rancangloka-ai-lab/.env if present
       const labEnvPath = path.resolve('../rancangloka-ai-lab/.env');
@@ -45,7 +45,7 @@ async function run() {
         if (match && match[1].trim()) {
           apiKey = match[1].trim();
           providerName = 'sumopod';
-          modelName = env.EDITORIAL_LLM_MODEL || 'gpt-5.6-luna';
+          modelName = env.EDITORIAL_LLM_MODEL || 'gpt-6-luna';
         }
       }
     }

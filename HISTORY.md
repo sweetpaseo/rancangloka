@@ -13,6 +13,40 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 * **Keamanan:** Kriptografi PBKDF2 SHA-256 (100.000 iterasi) + Cloudflare Zero Trust (Access)
 * **SEO & Performa:** Skor PageSpeed 90-100 (Google News Sitemap, RSS XML, Schema.org, WCAG AA Contrast)
 
+### RANCANGLOKA-HERMES-EU-MIGRATION-AND-GPT6-LUNA-UPGRADE-1: Hermes Editorial Lab Migration to EU, S6 Supervision Recovery, GPT-6 Luna Model Upgrade, and Article #10001 Draft Persistence (2026-11-11)
+
+- **Tanggal / Waktu:** 2026-11-11T16:45:00+07:00 (09:45:00 UTC)
+- **Status Misi:** `RANCANGLOKA_HERMES_EU_GPT6_SAFE_OFFLINE_CHECKPOINT` (Safe Offline Point Reached)
+- **Git HEAD Baseline:** `feat/jev-lokamedia-integration`
+- **Peran:** Senior AI Systems Engineer + Editorial Pipeline Lead
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`
+- **Pencapaian Utama (Milestone Siklus Migrasi & Model Upgrade):**
+  1. *Hermes AI Editorial Lab Container Migration (Jakarta → EU):*
+     - Mengatasi limit unduh browser 10MB dengan membuat backup staging `/opt/data/backups/rl-eu-20261111/hermes-full.zip` (188.3 MB) di pod Jakarta (`jkt6.sumopod.my.id`).
+     - Memecah arsip menjadi 24 chunk (8MB per chunk) dan mengunggahnya ke Cloudflare R2 bucket `rancangloka-hermes-migration`.
+     - Mengotomasi proses unduh dan ekstraksi selektif di pod EU (`eu6.sumopod.my.id`) menggunakan script presigned AWS SigV4 (`restore.sh`) dengan native `curl` dan Python `zipfile`, memulihkan 626 file, seluruh basis data SQLite (`projects.db`, `kanban.db`), memori, skills, dan kredensial secara identik.
+  2. *Hermes Gateway Runtime Recovery & S6-Overlay Supervision:*
+     - Menyelesaikan kendala `DeletedWalGenerationError` dan file lock transien pada `state.db`.
+     - Mengaktifkan Gateway Hermes di bawah supervisi otomatis `s6-overlay` (`hermes --profile default gateway run`). Status gateway: **Running (Hijau)**.
+  3. *Head-to-Head Model Evaluation (GPT-5.6 Luna vs GPT-6 Luna):*
+     - Menjalankan uji penulisan naskah komparatif dengan topik arsitektural: *"Plafon Kamar Mandi Berjamur Hitam: Akibat Kurang Ventilasi atau Kebocoran Lantai Atas?"*.
+     - **Hasil Evaluasi:** GPT-5.6 Luna (96/100) vs **GPT-6 Luna (98/100)**.
+     - GPT-6 Luna unggul mutlak dalam kealamian bahasa Indonesia, alur bercerita (*narrative flow*), intuisi fisik arsitektural (rambatan air horizontal pada gypsum, sirkulasi make-up air lewat celah bawah pintu), mitigasi keselamatan (spora jamur dan instalasi listrik), dan kepatuhan penuh pada *Warm Advisory Tone* serta *Monetary Silence*.
+  4. *Efisiensi Finansial Signifikan (Hemat 58%):*
+     - Tarif inferensi terpangkas drastis: Input \$0.10/1M (-50%) dan Output \$0.50/1M (-58.3%).
+     - Proyeksi biaya inferensi untuk **1.000 artikel utuh** hanya sekitar **\$4.50 – \$5.40 (Rp72.000 – Rp86.400)**.
+  5. *Sinkronisasi Master Spesifikasi & Kode RancangLoka:*
+     - `src/lib/editorial/editorial-llm-provider.ts`: `DEFAULT_SUMOPOD_EDITORIAL_MODEL = 'gpt-6-luna'`.
+     - `AGENTS.md`: Update master model AI editorial ke GPT-6 Luna via SumoPod.
+     - Runner scripts (`runtime-proof-runner-v2.js`, `runtime-proof-runner.js`, `run-wave1b-retry-1.js`): Diarahkan ke default `gpt-6-luna`.
+     - Hermes EU pod: `/opt/data/config.yaml` dan UI default model terkunci di `gpt-6-luna`.
+  6. *Article #10001 Draft Ingestion & D1 Persistence:*
+     - Naskah artikel hasil generasi GPT-6 Luna divalidasi dan di-render secara kanonikal ke D1 lokal dengan status **`draft`** (ID: `10001`, slug: `plafon-kamar-mandi-berjamur-hitam-akibat-kurang-ventilasi-atau-kebocoran-lantai-atas`, category: `Sistem & Konstruksi Rumah`).
+  7. *Verifikasi Integritas & Typecheck:*
+     - TypeScript compilation (`npx tsc --noEmit`): **0 Error / Exit Code 0**.
+     - Suite uji mutu penulisan (`test-editorial-human-quality.js`): **22 / 22 PASS (100%)**.
+     - Server Jakarta lama dinyatakan siap didecommissioning dengan aman.
+
 ### RANCANGLOKA-BATCH1-MEDIA-AND-EDITORIAL-HOTFIXES-1: Batch 1 Visual Selection, Wizard V1, SVG Overflow & Frontmatter Hotfixes, and Editorial Approval Persistence (2026-10-31)
 
 - **Tanggal / Waktu:** 2026-10-31T07:10:00+07:00 (00:10:00 UTC)

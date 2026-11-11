@@ -1,19 +1,18 @@
-# 🤖 Antigravity Master Milestone Handoff: RANCANGLOKA_BATCH1_MEDIA_AND_EDITORIAL_HOTFIXES_1
+# 🤖 Antigravity Master Milestone Handoff: RANCANGLOKA_HERMES_EU_MIGRATION_AND_GPT6_LUNA_UPGRADE_1
 
-**Tanggal / Waktu:** 2026-10-31T07:15:00+07:00 (00:15:00 UTC)  
+**Tanggal / Waktu:** 2026-11-11T16:45:00+07:00 (09:45:00 UTC)  
 **Eksekutor:** Antigravity / Senior AI Systems Engineer + Editorial Pipeline Lead  
 **Baseline:** `RL-LIVING-LEMON-MAGAZINE-2.1`  
-**Git HEAD:** `282e559` (branch: `feat/jev-lokamedia-integration`)  
-**Misi:** `RANCANGLOKA_BATCH1_MEDIA_AND_EDITORIAL_HOTFIXES_1`  
-**Status Sesi:** `RANCANGLOKA_BATCH1_MEDIA_AND_EDITORIAL_CYCLE_COMPLETE`  
+**Git Branch:** `feat/jev-lokamedia-integration`  
+**Misi:** `RANCANGLOKA_HERMES_EU_MIGRATION_AND_GPT6_LUNA_UPGRADE_1`  
+**Status Sesi:** `RANCANGLOKA_HERMES_EU_GPT6_SAFE_OFFLINE_CHECKPOINT`  
 **Status Operasional:** **PRODUKSI AKTIF (de250e22-0de3-4ef1-a7c5-53ec20102c9d) & TITIK AMAN OFFLINE TERCAPAI**  
-**Status Rilis:** Deployed to `https://rancangloka.com` (Zero production mutations during this staging mission)  
-**Worker Version ID Aktif:** `de250e22-0de3-4ef1-a7c5-53ec20102c9d`  
+**Server AI Aktif:** `https://hermes-iklme1.eu6.sumopod.my.id` (EU Pod, Profile `default`, Gateway Running, Model: `gpt-6-luna`)  
+**Server AI Lama (Ready for Decommission):** `https://hermes-i7wraz.jkt6.sumopod.my.id` (Seluruh 626 file telah termigrasi identik)  
 **Invarian Keselamatan:** `AUTO_PUBLISH = OFF` | `JEV_MODE = shadow` | `PRODUCTION_AUTHORITY = 0` | `Zero Remote D1 Mutations` | `Zero Deployments`  
 **Database Staging Aktif:** `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/37bd9da5950b040e71b09fbfd7ca57290acb451dcd5dc35acb02655fa75fa480.sqlite` (Terisolasi dari D1 Produksi)  
-**Snapshot Pemulihan D1 Lokal:** `state/BATCH1_LOCAL_D1_RECOVERY_SNAPSHOT_20261031.json`  
-**Halaman Inspeksi & Komparasi Visual:** `http://localhost:4321/admin/media/comparison-batch1`  
-**Langkah Operasional Berikutnya:** `Lanjutkan review editorial naskah Artikel #9999 dan #10000 di /admin/preview/[slug], verifikasi final asset placement, lalu persiapkan rencana deployment terkontrol.`
+**Checkpoint Lengkap:** `state/OFFLINE_CHECKPOINT_20261111.md`  
+**Langkah Operasional Berikutnya:** `1. Hapus kontainer Jakarta lama di SumoPod. 2. Lanjutkan review editorial naskah Artikel #9999, #10000, dan visual brief #10001 di /admin/preview/[slug].`
 
 ---
 
