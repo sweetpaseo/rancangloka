@@ -56,7 +56,8 @@ export interface Article {
   pillar_role?: 'PILLAR' | 'SUPPORTING' | 'STANDALONE';
   parent_pillar_id?: number | null;
   faq?: string | any[];
-  published_at: string;
+  created_at?: string | null;
+  published_at: string | null;
   updated_at: string;
 }
 
@@ -947,7 +948,7 @@ export async function getAllArticles(
                a.category_id, a.author_id, a.status, a.views, a.reading_time_minutes,
                a.key_takeaways, a.focus_keyword, a.content_hash, a.is_featured,
                a.is_trending, a.is_sponsored, a.disable_internal_links,
-               a.published_at, a.updated_at,
+               a.created_at, a.published_at, a.updated_at,
                '' as content_md, '' as content_html,
                c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
                au.name as author_name, au.avatar as author_avatar, au.role as author_role
@@ -980,13 +981,15 @@ export async function getAllArticles(
       }
 
       if (options?.q) {
-        whereClauses.push('(LOWER(a.title) LIKE ? OR LOWER(a.description) LIKE ?)');
+        whereClauses.push('(LOWER(a.title) LIKE ? OR LOWER(a.slug) LIKE ? OR LOWER(a.description) LIKE ?)');
         const qTerm = `%${options.q.toLowerCase()}%`;
-        bindings.push(qTerm, qTerm);
+        bindings.push(qTerm, qTerm, qTerm);
       }
 
       const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-      const orderSql = `ORDER BY a.published_at ${orderDirection}, a.id ${orderDirection}`;
+      const orderSql = options?.sort
+        ? `ORDER BY CASE WHEN a.created_at IS NULL THEN 1 ELSE 0 END ASC, a.created_at ${orderDirection}, a.id ${orderDirection}`
+        : `ORDER BY a.published_at DESC, a.id DESC`;
 
       // Push limit and offset in SQL
       const query = `${selectColumns} ${whereSql} ${orderSql} LIMIT ? OFFSET ?`;
@@ -1027,9 +1030,12 @@ export async function getAllArticles(
   }
 
   combined.sort((a, b) => {
+    const dateField = options?.sort ? 'created_at' : 'published_at';
+    const aValue = a[dateField] ? new Date(a[dateField] as string).getTime() : Number.NEGATIVE_INFINITY;
+    const bValue = b[dateField] ? new Date(b[dateField] as string).getTime() : Number.NEGATIVE_INFINITY;
     const diff = options?.sort === 'oldest'
-      ? (new Date(a.published_at || 0).getTime() - new Date(b.published_at || 0).getTime())
-      : (new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime());
+      ? (aValue - bValue)
+      : (bValue - aValue);
     if (diff !== 0) return diff;
     return options?.sort === 'oldest' ? ((a.id || 0) - (b.id || 0)) : ((b.id || 0) - (a.id || 0));
   });
@@ -1315,6 +1321,7 @@ export async function getEligibleNewsArticles(
             a.category_slug === 'berita'
           );
           if (!isNews) return false;
+          if (!a.published_at) return false;
           const pubTime = new Date(a.published_at).getTime();
           return !isNaN(pubTime) && pubTime >= cutoffMs && isPubliclyDiscoverable(a);
         });
@@ -1335,10 +1342,11 @@ export async function getEligibleNewsArticles(
         a.category_slug === 'berita'
       );
       if (!isNews) return false;
+      if (!a.published_at) return false;
       const pubTime = new Date(a.published_at).getTime();
       return !isNaN(pubTime) && pubTime >= cutoffMs;
     })
-    .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+    .sort((a, b) => new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime())
     .map(sanitizeArticle);
 }
 
@@ -1349,7 +1357,7 @@ export interface InternalLinkCandidate {
   focus_keyword?: string;
   status: string;
   is_featured?: number;
-  published_at?: string;
+  published_at?: string | null;
 }
 
 export async function getInternalLinkCandidates(
@@ -2092,8 +2100,10 @@ export async function insertArticle(
   const is_trending = article.is_trending || 0;
   const is_sponsored = article.is_sponsored || 0;
   const disable_internal_links = article.disable_internal_links || 0;
-  const published_at = article.published_at || new Date().toISOString();
-  const updated_at = article.updated_at || new Date().toISOString();
+  const now = new Date().toISOString();
+  const created_at = article.created_at ?? now;
+  const published_at = article.published_at !== undefined ? article.published_at : null;
+  const updated_at = article.updated_at || now;
 
   // Case A: Real D1 Database Binding exists
   if (db) {
@@ -2115,9 +2125,9 @@ export async function insertArticle(
           id, slug, title, description, content_md, content_html, featured_image, image_alt,
           category_id, author_id, status, reading_time_minutes, key_takeaways,
           focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
-          disable_internal_links, published_at, updated_at
+          disable_internal_links, created_at, published_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         insertedId,
@@ -2139,6 +2149,7 @@ export async function insertArticle(
         is_trending,
         is_sponsored,
         disable_internal_links,
+        created_at,
         published_at,
         updated_at
       );
@@ -2223,6 +2234,7 @@ export async function insertArticle(
     is_trending,
     is_sponsored,
     disable_internal_links,
+    created_at,
     published_at,
     updated_at
   };
@@ -2505,6 +2517,7 @@ export async function updateArticle(
     ...article,
     content_html: memHtmlToPersist,
     id, // strictly preserve original id!
+    created_at: inMemoryArticles[idx].created_at,
     updated_at: new Date().toISOString()
   };
 

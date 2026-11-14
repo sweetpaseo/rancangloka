@@ -13,8 +13,9 @@ export const GET: APIRoute = async ({ locals }) => {
   const siteDesc = settings.site_description || 'Platform editorial arsitektur, desain interior, dan hunian modern.';
 
   const items = articles
+    .filter((a) => Boolean(a.published_at))
     .map((a) => {
-      const pubDate = new Date(a.published_at).toUTCString();
+      const pubDate = new Date(a.published_at as string).toUTCString();
       const brandedDesc = `${siteTitle.toUpperCase()} – ${a.description} (Sumber: <a href="${siteUrl}/${a.slug}">${siteUrl}/${a.slug}</a>)`;
       return `    <item>
       <title><![CDATA[${a.title}]]></title>

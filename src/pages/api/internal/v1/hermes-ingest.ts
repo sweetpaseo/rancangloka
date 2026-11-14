@@ -419,7 +419,8 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     is_trending: 0,
     is_sponsored: 0,
     disable_internal_links: 0,
-    published_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    published_at: null,
     updated_at: new Date().toISOString()
   };
 

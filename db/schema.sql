@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS articles (
   disable_internal_links INTEGER DEFAULT 0, -- 1 to disable auto-keyword & in-article related links
   pillar_role TEXT DEFAULT 'STANDALONE', -- 'PILLAR', 'SUPPORTING', 'STANDALONE'
   parent_pillar_id INTEGER DEFAULT NULL, -- references parent pillar article id if applicable
+  created_at DATETIME,
   published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

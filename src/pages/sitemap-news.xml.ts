@@ -18,6 +18,7 @@ export const GET: APIRoute = async ({ locals }) => {
 
   const urls = targetArticles
     .map((a) => {
+      if (!a.published_at) return '';
       const pubDate = new Date(a.published_at).toISOString();
       const u = a.updated_at ? new Date(a.updated_at).getTime() : 0;
       const pub = a.published_at ? new Date(a.published_at).getTime() : 0;
