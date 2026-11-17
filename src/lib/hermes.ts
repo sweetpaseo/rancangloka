@@ -90,6 +90,7 @@ export interface HermesTransportPayload {
   contract_version: number;
   article_id: string;
   markdown: string;
+  visual_manifest?: any;
 }
 
 /**
@@ -315,7 +316,7 @@ export function validateHermesTransportPayload(
     return { valid: false, code: 'MALFORMED_JSON', message: 'Payload body harus berupa JSON object.' };
   }
 
-  const allowedFields = new Set(['source', 'contract_version', 'article_id', 'markdown']);
+  const allowedFields = new Set(['source', 'contract_version', 'article_id', 'markdown', 'visual_manifest']);
   for (const key of Object.keys(body)) {
     if (!allowedFields.has(key)) {
       return {
@@ -348,13 +349,22 @@ export function validateHermesTransportPayload(
     return { valid: false, code: 'TRANSPORT_INVALID', message: 'Field markdown wajib diisi string konten Markdown.' };
   }
 
+  let validatedManifest: any = undefined;
+  if (body.visual_manifest !== undefined && body.visual_manifest !== null) {
+    if (typeof body.visual_manifest !== 'object' || Array.isArray(body.visual_manifest)) {
+      return { valid: false, code: 'TRANSPORT_INVALID', message: 'Field visual_manifest harus berupa JSON object jika disediakan.' };
+    }
+    validatedManifest = body.visual_manifest;
+  }
+
   return {
     valid: true,
     data: {
       source: body.source,
       contract_version: body.contract_version,
       article_id: body.article_id,
-      markdown: body.markdown
+      markdown: body.markdown,
+      ...(validatedManifest ? { visual_manifest: validatedManifest } : {})
     }
   };
 }

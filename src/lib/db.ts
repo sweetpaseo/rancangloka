@@ -2871,7 +2871,8 @@ export async function getReceiptByContentHashes(
 export async function insertHermesArticleAndReceipt(
   db: any,
   articleData: Omit<Article, 'id'>,
-  receiptData: Omit<ArticleIngestReceipt, 'article_id' | 'created_at'>
+  receiptData: Omit<ArticleIngestReceipt, 'article_id' | 'created_at'>,
+  visualManifest?: any
 ): Promise<{ article: Article; receipt: ArticleIngestReceipt }> {
   if (!db) {
     throw new DatabaseWriteError('Database D1 tidak tersedia untuk machine ingestion Hermes.');
@@ -2956,9 +2957,28 @@ export async function insertHermesArticleAndReceipt(
     'hermes_ingest'
   );
 
-  // 4. Execute atomic batch: article + receipt + initial snapshot
+  // 4. Build atomic batch: article + receipt + initial snapshot (+ optional settings manifest)
+  const batchStatements: any[] = [insertArticleStmt, insertReceiptStmt, snapStmt];
+
+  if (visualManifest && typeof visualManifest === 'object') {
+    const manifestJson = JSON.stringify(visualManifest);
+    const setArticleManifestStmt = db.prepare(`
+      INSERT INTO settings (key, value, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+    `).bind(`visual_manifest:article:${insertedArticleId}`, manifestJson);
+
+    const setSlugManifestStmt = db.prepare(`
+      INSERT INTO settings (key, value, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+    `).bind(`visual_manifest:slug:${articleData.slug}`, manifestJson);
+
+    batchStatements.push(setArticleManifestStmt, setSlugManifestStmt);
+  }
+
   try {
-    await db.batch([insertArticleStmt, insertReceiptStmt, snapStmt]);
+    await db.batch(batchStatements);
   } catch (err: any) {
     const msg = err?.message || String(err);
     if (msg.includes('UNIQUE constraint failed') || msg.includes('SQLITE_CONSTRAINT')) {

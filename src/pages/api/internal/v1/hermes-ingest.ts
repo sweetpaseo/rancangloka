@@ -212,7 +212,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     return errorResponse(400, payloadValidation.code || 'TRANSPORT_INVALID', payloadValidation.data ? '' : (payloadValidation.message || 'Payload transport tidak valid.'));
   }
 
-  const { source, contract_version, article_id: sourceArticleId, markdown } = payloadValidation.data;
+  const { source, contract_version, article_id: sourceArticleId, markdown, visual_manifest: visualManifest } = payloadValidation.data;
 
   // 10. Compute CONTENT_SHA256 (exact full Markdown fingerprint)
   const contentSha256 = await computeSha256Hex(markdown);
@@ -435,7 +435,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 
   let persisted;
   try {
-    persisted = await insertHermesArticleAndReceipt(db, articlePayload, receiptPayload);
+    persisted = await insertHermesArticleAndReceipt(db, articlePayload, receiptPayload, visualManifest);
   } catch (err: any) {
     safeLog('ATOMIC_INSERT_FAILED', {
       requestId,
@@ -499,6 +499,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     article_status: 'draft',
     content_sha256: contentSha256,
     article_content_hash: articleContentHash,
+    manifest_persisted: Boolean(visualManifest),
     write_performed: true
   });
   } catch (err: any) {
