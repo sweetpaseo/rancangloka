@@ -1,19 +1,19 @@
 #!/bin/bash
 # ==============================================================================
-# RancangLoka — Hermes EU SumoPod Isolated Bootstrap & Runner
+# RancangLoka — Hermes EU SumoPod Isolated Bootstrap & Runner Setup
 # File: scripts/sumopod-bootstrap.sh
 # ==============================================================================
-# PANDUAN KEAMANAN HOSTING:
+# Invarian Keamanan:
 # 1. Tidak mengganggu workspace aktif Hermes (/opt/data/rancangloka).
-# 2. Membuat isolated runner worktree/clone di /opt/data/rancangloka-runner.
-# 3. Menjaga database sqlite (projects.db, kanban.db) dan konfigurasi s6 tetap aman.
-# 4. Input secret secara aman tanpa mencetak ke log layar terminal.
+# 2. Menggunakan clone terisolasi di /opt/data/rancangloka-runner.
+# 3. Database daemon (projects.db, kanban.db) dan supervisi s6 100% aman.
+# 4. Kredensial disimpan persisten di .env.staging (chmod 600) tanpa echo/log leak.
 # ==============================================================================
 
 set -e
 
 echo "=================================================================="
-echo "🛡️ RANCANGLOKA — HERMES EU PRE-FLIGHT VERIFIKASI HOST (READ-ONLY)"
+echo "🛡️ RANCANGLOKA — HERMES EU PRE-FLIGHT VERIFIKASI (READ-ONLY)"
 echo "=================================================================="
 
 # 1. Read-Only System Check
@@ -32,61 +32,43 @@ else
   echo "ℹ️ Catatan: Proses hermes spesifik tidak terdeteksi via pgrep."
 fi
 
-# 2. Setup Isolated Runner Directory (Mencegah modifikasi workspace utama)
+# 2. Setup Persistent Configuration (Outside git, chmod 600)
 RUNNER_DIR="/opt/data/rancangloka-runner"
+ENV_FILE="$RUNNER_DIR/.env.staging"
+
 echo ""
 echo "=================================================================="
-echo "📂 MENYIAPKAN ISOLATED RUNNER WORKSPACE"
+echo "🔐 KONFIGURASI KREDENSIAL PERSISTEN (CHMOD 600)"
 echo "=================================================================="
 
-if [ -d "$RUNNER_DIR" ]; then
-  echo "✓ Direktori isolated runner ditemukan: $RUNNER_DIR"
-  cd "$RUNNER_DIR"
-  echo "📥 Menarik pembaruan branch feat/jev-lokamedia-integration..."
-  git fetch origin feat/jev-lokamedia-integration
-  git checkout feat/jev-lokamedia-integration
-  git pull origin feat/jev-lokamedia-integration
+if [ -f "$ENV_FILE" ]; then
+  echo "✓ File konfigurasi persisten ditemukan di: $ENV_FILE"
 else
-  echo "📦 Melakukan isolated clone ke: $RUNNER_DIR..."
-  git clone --branch feat/jev-lokamedia-integration --single-branch https://github.com/sweetpaseo/rancangloka.git "$RUNNER_DIR"
-  cd "$RUNNER_DIR"
-fi
+  echo "Membuat file konfigurasi baru di: $ENV_FILE"
+  cat << 'EOF' > "$ENV_FILE"
+# RancangLoka Staging Environment (Persistent for Runner & Future Cron)
+HERMES_INGEST_KEY_ID=hermes_staging_key_v2
+HERMES_INGEST_ENDPOINT=https://rancangloka-staging.chandrajoyko.workers.dev/api/internal/v1/hermes-ingest
+EOF
+  chmod 600 "$ENV_FILE"
 
-echo "✓ Isolated Runner siap pada commit: $(git log -1 --oneline)"
-echo "✓ Workspace utama (/opt/data/rancangloka) 100% TIDAK TERSENTUH."
-
-# 3. Secure Secret Input (No Echo, No Logs)
-echo ""
-echo "=================================================================="
-echo "🔐 KONFIGURASI KUNCI STAGING (INPUT AMAN TANPA LOG)"
-echo "=================================================================="
-
-if [ -z "$HERMES_INGEST_SECRET_STAGING" ]; then
-  echo "Kunci HERMES_INGEST_SECRET_STAGING belum diset pada environment shell ini."
   echo "Ketik/paste kunci staging (input disembunyikan untuk mencegah kebocoran log):"
-  read -s -p "Kunci Staging Secret: " SECRET_INPUT
+  read -s -p "Kunci Staging Secret: " STAGING_SECRET_INPUT
   echo ""
-  if [ -n "$SECRET_INPUT" ]; then
-    export HERMES_INGEST_SECRET_STAGING="$SECRET_INPUT"
-    export HERMES_INGEST_KEY_ID="hermes_staging_key_v2"
-    echo "✓ Kunci staging berhasil dimuat ke memory sesi shell (Zero Log Leak)."
+  if [ -n "$STAGING_SECRET_INPUT" ]; then
+    echo "HERMES_INGEST_SECRET_STAGING=$STAGING_SECRET_INPUT" >> "$ENV_FILE"
+    echo "✓ Kunci staging berhasil disimpan secara persisten di .env.staging (chmod 600)."
   else
-    echo "⚠️ Tidak ada kunci yang dimasukkan. Hanya mode --dry-run yang dapat dijalankan."
+    echo "⚠️ Kunci tidak dimasukkan. Hanya mode --dry-run lokal yang dapat berjalan."
   fi
-else
-  echo "✓ HERMES_INGEST_SECRET_STAGING sudah aktif di sesi shell."
+  unset STAGING_SECRET_INPUT
 fi
 
 echo ""
 echo "=================================================================="
-echo "🎯 PILIHAN EKSEKUSI RUNNER:"
+echo "✅ PRE-FLIGHT & SETUP BERHASIL"
 echo "=================================================================="
-echo "1. Uji Mandiri In-Memory ($0, Zero Network, Zero D1 Writes):"
+echo "Langkah selanjutnya:"
+echo "1. Jalankan Uji Mandiri Gratis ($0, Zero Network, Zero D1 Writes):"
 echo "   node scripts/hermes-eu-autonomous-runner.mjs --dry-run"
-echo ""
-echo "2. Uji Coba Kontrak M2M Ingest (Menulis 1 draft test ke Staging D1):"
-echo "   node scripts/hermes-eu-autonomous-runner.mjs --test-ingest"
-echo ""
-echo "3. Eksekusi Canary Otonom Nyata (Artikel #10011 via gpt-6-luna):"
-echo "   node scripts/hermes-eu-autonomous-runner.mjs --canary"
 echo "=================================================================="

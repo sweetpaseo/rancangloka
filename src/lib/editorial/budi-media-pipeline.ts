@@ -235,8 +235,8 @@ export async function executeBudiMediaPipeline(
       storage_key: itemSrc,
       alt_text: slot.draft_alt_text || slot.educational_purpose,
       caption: slot.caption_intent || slot.reader_takeaway,
-      review_status: 'APPROVED_TECHNICAL_TRUTH',
-      editorial_approval: 'APPROVED_FOR_INLINE_PUBLICATION'
+      review_status: 'PENDING',
+      editorial_approval: 'PENDING'
     });
   }
 
