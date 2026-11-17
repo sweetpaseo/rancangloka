@@ -32,3 +32,8 @@ artifacts/
 # LokaMedia credentials
 /extensions/token.txt
 
+# Staging and local secrets
+.env.staging*
+state/staging/secrets/
+*.secret
+

@@ -76,6 +76,7 @@ JEV_ENABLED = "true"
 JEV_MODE = "shadow"
 JEV_SHADOW_COLLECTOR_ENABLED = "false"
 MEDIA_WORKER_ENABLED = "false"
+RANCANGLOKA_HERMES_INGEST_KEY_CURRENT_ID = "hermes_staging_key_v2"
 
 
 
