@@ -560,7 +560,8 @@ export class EditorialLlmProvider {
           lastErrorCategory = 'PROVIDER_TIMEOUT';
           lastCanonicalCategory = 'PROVIDER_TIMEOUT';
         } else {
-          lastError = `Network error: ${err.message || String(err)}`;
+          const causeDetail = err.cause ? ` (${err.cause.message || err.cause.code || err.cause})` : '';
+          lastError = `Network error: ${err.message || String(err)}${causeDetail}`;
           lastErrorCategory = 'PROVIDER_TRANSPORT_ERROR';
           lastCanonicalCategory = 'PROVIDER_TRANSPORT_ERROR';
         }

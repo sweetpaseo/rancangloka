@@ -83,6 +83,11 @@ import {
 } from './nadia-reader-voice.ts';
 
 import {
+  runJevQualitySupervision,
+  type JevSupervisionAuditReceipt
+} from './jev-quality-supervision.ts';
+
+import {
   compileEditorialBrief,
   type EditorialBrief
 } from './editorial-planner.ts';
@@ -111,6 +116,7 @@ export type EditorialRuntimeEventType =
   | 'NADIA_EDIT_STARTED'
   | 'NADIA_EDIT_COMPLETED'
   | 'NADIA_EDIT_SKIPPED'
+  | 'JEV_SUPERVISION_COMPLETED'
   | 'RINA_QA_STARTED'
   | 'RINA_QA_COMPLETED'
   | 'EDITORIAL_REPAIR_REQUESTED'
@@ -639,6 +645,47 @@ export async function executeEditorialDraftJob(
         `Penyuntingan bahasa Nadia dibatalkan karena terdeteksi potensi pelanggaran batas otoritas: ${nadiaResult.authorityCheck.violations.join('; ')}. Menggunakan draf asli Joko.`,
         { violations: nadiaResult.authorityCheck.violations }
       );
+    }
+
+    // 5B. Jefry (TypeSafe JEV) Quality Supervision
+    // Canonical: After actual READER_VOICE_PASS, Jefry performs independent shadow audit
+    let jevSupervisionReceipt: JevSupervisionAuditReceipt | undefined;
+    if (nadiaResult.readerVoiceEvaluation.decision === 'READER_VOICE_PASS') {
+      try {
+        const articleSlug = input.topic
+          ? input.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+          : 'untitled-article';
+        jevSupervisionReceipt = await runJevQualitySupervision({
+          articleId: typeof input.articleId === 'number' ? input.articleId : 0,
+          slug: articleSlug,
+          candidateContent: currentDraft,
+          focusKeyword: input.topic || editorialBrief?.topic || '',
+          nadiaResult: {
+            decision: nadiaResult.readerVoiceEvaluation.decision,
+            overallScore: nadiaResult.readerVoiceEvaluation.overallScore
+          }
+        });
+
+        addTraceEvent(
+          'JEV_SUPERVISION_COMPLETED',
+          'management_advisor_jefry',
+          jevSupervisionReceipt.advisory_summary,
+          {
+            auditId: jevSupervisionReceipt.audit_id,
+            supervisionDecision: jevSupervisionReceipt.supervision_decision,
+            discrepancyDetected: jevSupervisionReceipt.discrepancy_detected,
+            violationsCount: jevSupervisionReceipt.violations.length,
+            revisionHash: jevSupervisionReceipt.revision_hash
+          }
+        );
+      } catch (err: any) {
+        addTraceEvent(
+          'JEV_SUPERVISION_COMPLETED',
+          'management_advisor_jefry',
+          `[Advisori Jefry]: Audit supervisi independen mengalami error: ${err?.message || err}`,
+          { error: err?.message || String(err), supervisionDecision: 'AUDIT_FAILED' }
+        );
+      }
     }
 
     // 6. Rina Deterministic QA & Factual Grounding

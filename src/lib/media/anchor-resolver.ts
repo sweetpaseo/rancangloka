@@ -49,7 +49,12 @@ export interface VisualPlacementManifest {
   manifest_version: string;
   article_id: string;
   article_slug: string;
-  content_hash: string;
+  content_hash?: string;
+  featured?: {
+    src: string;
+    alt?: string;
+    caption?: string;
+  };
   visual_items: VisualManifestItem[];
 }
 
@@ -97,9 +102,18 @@ export function normalizeAnchorText(text: string): string {
 /**
  * Computes sha256 hex digest of article content string.
  */
-export function computeContentHash(content: string): string {
+export function computeCanonicalContentHash(content: string): string {
   if (!content) return '';
-  return createHash('sha256').update(content.trim(), 'utf8').digest('hex');
+  const normalized = content.replace(/\s+/g, ' ').trim().toLowerCase();
+  return createHash('sha256').update(normalized, 'utf8').digest('hex');
+}
+
+/**
+ * Computes sha256 hex digest of article content string.
+ * Uses canonical normalization identical to generateContentHash.
+ */
+export function computeContentHash(content: string): string {
+  return computeCanonicalContentHash(content);
 }
 
 /**
@@ -123,13 +137,18 @@ export function resolveVisualPlacements(
 
   // 1. Content Hash Verification
   if (options.contentMd && manifest.content_hash) {
-    const computed = computeContentHash(options.contentMd);
-    const rawComputed = createHash('sha256').update(options.contentMd, 'utf8').digest('hex');
+    const canonicalHash = computeCanonicalContentHash(options.contentMd);
+    const legacyTrimHash = createHash('sha256').update(options.contentMd.replace(/\r\n/g, '\n').trim(), 'utf8').digest('hex');
+    const legacyRawHash = createHash('sha256').update(options.contentMd, 'utf8').digest('hex');
     const cleanManifestHash = manifest.content_hash.replace(/^sha256:/i, '').trim().toLowerCase();
-    if (computed !== cleanManifestHash && rawComputed !== cleanManifestHash) {
+    if (
+      canonicalHash !== cleanManifestHash &&
+      legacyTrimHash !== cleanManifestHash &&
+      legacyRawHash !== cleanManifestHash
+    ) {
       warnings.push({
         code: 'STALE_CONTENT_HASH',
-        message: `Manifest content hash (${cleanManifestHash}) does not match current manuscript hash (${computed}). Placement aborted for editorial safety.`
+        message: `Manifest content hash (${cleanManifestHash}) does not match current manuscript hash (${canonicalHash}). Placement aborted for editorial safety.`
       });
       return { html, placedCount: 0, warnings, isValid: false };
     }

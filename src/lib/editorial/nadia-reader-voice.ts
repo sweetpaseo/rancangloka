@@ -67,6 +67,12 @@ import {
   type L4DimensionResult
 } from './nadia-voice-l4.ts';
 
+import {
+  CANONICAL_SHORT_PARAGRAPH_RULE,
+  auditShortParagraphs,
+  auditAllReaderFacingContent
+} from '../article/editorial-knowledge.ts';
+
 export {
   evaluateWarmAdvisoryTone,
   INVARIANT_WARM_ADVISORY_TONE,
@@ -231,7 +237,7 @@ export const ESCAPED_MARKDOWN_PATTERNS = [
   { pattern: /\\_/, name: 'escaped underscore (\\_)' }
 ];
 
-export const DENSE_PARAGRAPH_WORD_THRESHOLD = 90;
+export const DENSE_PARAGRAPH_WORD_THRESHOLD = CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph; // 60 kata kanonikal
 
 // Forbidden raw technical syntax in reader-facing prose
 export const RAW_TECHNICAL_SYNTAX_PATTERNS = [
@@ -335,6 +341,7 @@ export function evaluateReaderVoice(
     originalContent?: string;
     editorialVoiceLevel?: 'L3' | 'L4';
     enableVoiceL4?: boolean;
+    enforceAllBlockBreathing?: boolean;
   } = {}
 ): ReaderVoiceEvaluationResult {
   const evaluatedAt = new Date().toISOString();
@@ -350,7 +357,10 @@ export function evaluateReaderVoice(
   const blockingIssues: ReaderVoiceEvaluationResult['blockingIssues'] = [];
   const revisionRequests: ReaderVoiceEvaluationResult['revisionRequests'] = [];
 
-  const text = String(content || '').trim();
+  const rawText = String(content || '').trim();
+  // Strip frontmatter and FAQ comment metadata blocks before evaluating prose paragraphs
+  const textWithoutFrontmatter = rawText.replace(/^---[\s\S]*?---\s*/, '');
+  const text = textWithoutFrontmatter.replace(/<!--\s*FAQ_START\s*-->[\s\S]*?<!--\s*FAQ_END\s*-->/gi, '').trim();
   const bodyText = text.replace(/^#+.*$/gm, '').trim();
   const paragraphs = bodyText
     .split(/\n\s*\n/)
@@ -779,35 +789,61 @@ export function evaluateReaderVoice(
   };
 
   // --------------------------------------------------------------------------
-  // Rubric I: PARAGRAPH BREATHING & DENSITY CHECK
+  // Rubric I: PARAGRAPH BREATHING & DENSITY CHECK (ED-PARA-01)
   // --------------------------------------------------------------------------
   const paragraphDensityWarnings: string[] = [];
   const denseParagraphFlags: RubricDimensionResult['flaggedPassages'] = [];
   const denseParagraphNotes: string[] = [];
   let breathingScore = 100;
 
-  paragraphs.forEach((p, idx) => {
-    // Skip headings, tables, or divider lines
-    if (p.startsWith('#') || p.startsWith('|') || p.startsWith('---')) return;
-
-    const words = p.split(/\s+/).filter(Boolean).length;
-    if (words >= DENSE_PARAGRAPH_WORD_THRESHOLD) {
-      breathingScore -= Math.min(30, Math.floor((words - 80) / 10) * 10);
-      const warningMsg = `PARAGRAPH_DENSITY_WARNING: Paragraf ke-${idx + 1} (${words} kata) melebihi batas kenyamanan baca 90 kata. Pecah menjadi 1-3 kalimat dengan satu ide pokok.`;
-      paragraphDensityWarnings.push(warningMsg);
-      denseParagraphNotes.push(warningMsg);
-      denseParagraphFlags.push({
-        passage: p.slice(0, 100) + '...',
-        issue: warningMsg,
-        suggestion: 'Pecah menjadi 2 atau 3 paragraf pendek-menengah (30-70 kata).'
-      });
-      revisionRequests.push({
-        section: `Paragraf ke-${idx + 1}`,
-        currentPhrasing: p.slice(0, 80) + '...',
-        requestedImprovement: warningMsg
-      });
+  const paraAudit = auditShortParagraphs(content);
+  if (!paraAudit.passed) {
+    for (const item of paraAudit.items.filter((i) => i.isViolation)) {
+      const isHardViolation = item.wordCount > 90;
+      if (isHardViolation) {
+        breathingScore -= Math.min(30, Math.floor((item.wordCount - 80) / 10) * 10);
+        const warningMsg = `PARAGRAPH_DENSITY_WARNING: Paragraf narasi ke-${item.index} (${item.wordCount} kata) melebihi batas kanonikal 90 kata. Pecah menjadi 1-3 kalimat dengan satu ide pokok.`;
+        paragraphDensityWarnings.push(warningMsg);
+        denseParagraphNotes.push(warningMsg);
+        denseParagraphFlags.push({
+          passage: item.text.slice(0, 100) + '...',
+          issue: warningMsg,
+          suggestion: `Pecah menjadi paragraf pendek-menengah (ideal ${CANONICAL_SHORT_PARAGRAPH_RULE.ideal_words_min}-${CANONICAL_SHORT_PARAGRAPH_RULE.ideal_words_max} kata, maks ${CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph} kata, maks ${CANONICAL_SHORT_PARAGRAPH_RULE.max_sentences_per_paragraph} kalimat).`
+        });
+        revisionRequests.push({
+          section: `Paragraf narasi ke-${item.index}`,
+          currentPhrasing: item.text.slice(0, 80) + '...',
+          requestedImprovement: warningMsg
+        });
+      } else {
+        // Soft advisory density signal (61-90 words)
+        breathingScore -= 5;
+        const advisoryMsg = `ADVISORY_PARAGRAPH_DENSITY: Paragraf narasi ke-${item.index} (${item.wordCount} kata) berada di zona transisi (61-90 kata). Disarankan di bawah 60 kata untuk kenyamanan baca mobile.`;
+        denseParagraphNotes.push(advisoryMsg);
+      }
     }
-  });
+  }
+
+  // Conversational 2.1: Audit all list items and reader blocks (opt-in or when enabled)
+  if (options?.enforceAllBlockBreathing) {
+    const fullBlockAudit = auditAllReaderFacingContent(content);
+    if (!fullBlockAudit.passed) {
+      for (const item of fullBlockAudit.items.filter((i) => i.isViolation)) {
+        if (item.type !== 'narrative_paragraph') {
+          const penalty = Math.min(20, 8 + (item.wordCount - CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph));
+          breathingScore -= penalty;
+          const warningMsg = `READER_BLOCK_DENSITY_WARNING: Butir ${item.type} ke-${item.index} (${item.wordCount} kata) melanggar batas kanonikal (maks ${CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph} kata). Pecah menjadi penjelasan ringkas mengalir.`;
+          paragraphDensityWarnings.push(warningMsg);
+          denseParagraphNotes.push(warningMsg);
+          denseParagraphFlags.push({
+            passage: item.text.slice(0, 100) + '...',
+            issue: warningMsg,
+            suggestion: 'Ringkas butir daftar atau pecah menjadi paragraf narasi pendek terpisah.'
+          });
+        }
+      }
+    }
+  }
 
   // Visual Density Signal & Scannability for Tables / Comparison Matrices
   const visualDensitySignals: string[] = [];
@@ -1187,8 +1223,10 @@ export function applyNadiaDeterministicPolish(content: string): {
     }
   }
 
-  // 2. Replace informal colloquial words with polite standard Indonesian
+  // 2. Replace informal colloquial words with polite standard Indonesian & enforce Conversational 2.1 sapaan
   const informalReplacements: Array<[RegExp, string, string]> = [
+    [/\brumah Anda\b/gi, 'rumahmu', '"rumah Anda" -> "rumahmu"'],
+    [/\bAnda\b/g, 'kamu', '"Anda" -> "kamu"'],
     [/\bnggak\b/gi, 'tidak', '"nggak" -> "tidak"'],
     [/\bndak\b/gi, 'tidak', '"ndak" -> "tidak"'],
     [/\budah\b/gi, 'sudah', '"udah" -> "sudah"'],
@@ -1384,7 +1422,8 @@ export async function executeNadiaReaderVoiceEdit(
     contentFamily: input.intent || 'explainer',
     originalContent: input.draftMarkdown,
     editorialVoiceLevel: input.editorialVoiceLevel,
-    enableVoiceL4: input.enableVoiceL4
+    enableVoiceL4: input.enableVoiceL4,
+    enforceAllBlockBreathing: true
   });
 
   if (evaluation.voice3L4Assessment) {

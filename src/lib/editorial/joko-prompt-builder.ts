@@ -20,7 +20,9 @@
 import {
   getJokoAuthoringKnowledge,
   CANONICAL_TERMINOLOGY_MAP,
-  CANONICAL_PRODUCT_REVIEW_TERMINOLOGY
+  CANONICAL_PRODUCT_REVIEW_TERMINOLOGY,
+  CANONICAL_SHORT_PARAGRAPH_RULE,
+  auditShortParagraphs
 } from '../article/editorial-knowledge.ts';
 
 import {
@@ -290,12 +292,18 @@ Utamakan kejelasan, manfaat bagi pembaca, dan ketepatan informasi. Hindari pengu
 Tulislah seperti penulis media hunian yang berpengalaman, bukan seperti mesin yang sedang memenuhi checklist.
 
 # PRINSIP KONSULTAN AHLI & INTEGRITAS REDAKSI
-1. Diagnosis Mendahului Solusi: Jelaskan akar persoalan fisik sebelum menyarankan opsi penanganan atau renovasi.
-2. Rekomendasi Berbasis Skenario: Paparkan pertimbangan solusi sesuai konteks dan kebutuhan nyata hunian pembaca.
-3. Transparansi Risiko & Kompromi Nyata: Paparkan kelebihan, keterbatasan, dan konsekuensi pemeliharaan secara berimbang.
-4. Kepastian Proporsional (Prescriptive Certainty <= Evidence Certainty): Jangan membuat klaim kepastian mutlak tanpa dukungan bukti primer yang kuat.
-5. Kompresi Redaksional (ONE IDEA — ONE BEST HOME): Sampaikan setiap gagasan di tempat terbaiknya tanpa pengulangan berlebih.
-6. Langkah Aksi Nyata & Daftar Periksa Pra-Biaya: Bila relevan, sertakan panduan pemeriksaan mandiri yang dapat dilakukan pembaca sebelum mengeluarkan biaya (Daftar Periksa Pra-Biaya).
+1. Standar Suara Redaksi: Conversational Editorial 2.1:
+   - "Artikel RancangLoka harus terasa seperti teman yang memahami masalah rumah sedang menjelaskan sesuatu kepada temannya."
+   - Gunakan sapaan wajar "kamu" dan "rumahmu".
+   - DILARANG KERAS menggunakan kata sapaan kaku "Anda" dalam naskah artikel!
+   - Mulai dari masalah sehari-hari yang mudah dikenali, berikan penjelasan dengan bahasa umum, berikan contoh konkret, baru kenalkan istilah teknis bila perlu.
+   - Heading harus terasa seperti pertanyaan atau persoalan nyata pembaca (bukan laporan akademis kaku).
+2. Diagnosis Mendahului Solusi: Jelaskan akar persoalan fisik sebelum menyarankan opsi penanganan atau renovasi.
+3. Rekomendasi Berbasis Skenario: Paparkan pertimbangan solusi sesuai konteks dan kebutuhan nyata hunian pembaca.
+4. Transparansi Risiko & Kompromi Nyata: Paparkan kelebihan, keterbatasan, dan konsekuensi pemeliharaan secara berimbang.
+5. Kepastian Proporsional (Prescriptive Certainty <= Evidence Certainty): Jangan membuat klaim kepastian mutlak tanpa dukungan bukti primer yang kuat.
+6. Kompresi Redaksional (ONE IDEA — ONE BEST HOME): Sampaikan setiap gagasan di tempat terbaiknya tanpa pengulangan berlebih.
+7. Langkah Aksi Nyata & Daftar Periksa Pra-Biaya: Bila relevan, sertakan panduan pemeriksaan mandiri yang dapat dilakukan pembaca sebelum mengeluarkan biaya (Daftar Periksa Pra-Biaya).
 
 # KONTRAK KEPENULISAN BAHASA INDONESIA ASLI (NATIVE INDONESIAN AUTHORING)
 - authoring_language = id-ID
@@ -312,6 +320,13 @@ ${terminologyRules}
 - Kepatuhan Monetary Silence Mutlak: DILARANG melempar estimasi angka rupiah/harga material tanpa riset empiris yang valid.
 - Pelarangan Verdict Asing / Biner: Dilarang menggunakan kata: ${bannedVerdictTerms}.
 - Larangan Klaim Pengujian Palsu: DILARANG mengarang hasil uji lab fiktif, proyek klien khayalan, atau klaim inspeksi tangan pertama palsu.
+
+# ATURAN PARAGRAF PENDEK KANONIKAL (CANONICAL SHORT PARAGRAPH RULE — ED-PARA-01)
+- Tulis langsung menggunakan pola short paragraph: ideal 25–45 kata per paragraf, MAKSIMUM 60 kata per paragraf.
+- MAKSIMUM 3 kalimat per paragraf. Dilarang menghasilkan blok teks panjang.
+- Setiap paragraf harus membawa satu gagasan yang jelas (one idea per paragraph) tanpa memecah mekanis di tengah kalimat.
+- Hindari paragraf pendek satu kalimat secara berlebihan agar tulisan tidak terasa patah-patah.
+- Heading, tabel, daftar/list, dan blok kutipan diperlakukan sesuai formatnya masing-masing.
 
 # FORMAT KELUARAN WAJIB (GROUNDED DRAFT ENVELOPE)
 Hasilkan output berupa satu objek JSON yang valid dan rapi:
@@ -700,6 +715,8 @@ export interface JokoDraftReadabilityAuditResult {
   verboseTableCells: Array<{ line: number; wordCount: number; excerpt: string }>;
 }
 
+export type JokoReadabilityAuditResult = JokoDraftReadabilityAuditResult;
+
 /**
  * Audits a draft against Joko's authoring standards:
  * - One idea per paragraph (flags paragraphs >= 90 words)
@@ -723,7 +740,7 @@ export function auditJokoDraftReadability(markdown: string): JokoDraftReadabilit
     issues.push(`Ditemukan sintaks Markdown ter-escape (${foundEscaped.join(', ')}). Output harus berupa Markdown kanonikal bersih.`);
   }
 
-  // 2. Paragraph density (ignore headings, tables, separators)
+  // 2. Paragraph & list density (Conversational 2.1: max 60 words per block)
   const paragraphs = text
     .split(/\r?\n\r?\n/)
     .map((p) => p.trim())
@@ -731,9 +748,8 @@ export function auditJokoDraftReadability(markdown: string): JokoDraftReadabilit
 
   const denseParagraphs: Array<{ index: number; wordCount: number; excerpt: string }> = [];
   paragraphs.forEach((p, idx) => {
-    // If it's a list item, count words in the item
     const words = p.split(/\s+/).filter(Boolean).length;
-    if (words >= 90) {
+    if (words > 60) {
       denseParagraphs.push({
         index: idx + 1,
         wordCount: words,
@@ -743,7 +759,12 @@ export function auditJokoDraftReadability(markdown: string): JokoDraftReadabilit
   });
 
   if (denseParagraphs.length > 0) {
-    issues.push(`Ditemukan ${denseParagraphs.length} paragraf padat (>= 90 kata). Pecah menjadi 1-3 kalimat per paragraf untuk menjaga ritme visual membaca.`);
+    issues.push(`Ditemukan ${denseParagraphs.length} paragraf padat (> 60 kata). Aturan Conversational Editorial 2.1 mewajibkan maksimal 60 kata per paragraf/butir.`);
+  }
+
+  // 2b. Check for forbidden formal word "Anda"
+  if (/\bAnda\b/.test(text)) {
+    issues.push('Ditemukan kata sapaan kaku "Anda". Conversational Editorial 2.1 mewajibkan sapaan hangat "kamu" dan "rumahmu".');
   }
 
   // 3. Common word preferences

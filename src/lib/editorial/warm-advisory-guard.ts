@@ -86,14 +86,14 @@ const AUTHORITARIAN_VERDICT_PATTERNS = [
 const AGENCY_HANDOFF_INDICATORS = [
   /keputusan (?:akhirnya )?(?:tetap )?(?:ada di tangan|kembali ke|tergantung)/i,
   /keputusan terbaik tetap kembali ke/i,
-  /pilih(?:lah)? solusi yang paling (?:sesuai|masuk akal|pas|cocok)/i,
+  /pilih(?:lah)? (?:solusi|pendekatan) yang paling (?:sesuai|masuk akal|pas|cocok)/i,
   /tidak ada satu (?:sistem|opsi|material|solusi|pilihan) yang (?:sempurna|paling unggul di semua)/i,
   /menyesuaikan dengan kondisi (?:nyata )?(?:rumah|ruang|lapangan|kantong)/i,
-  /kondisi nyata rumah anda/i,
-  /kebutuhan dan prioritas (?:rumah )?anda/i,
+  /kondisi nyata rumah (?:anda|kamu)/i,
+  /kebutuhan dan prioritas (?:rumah )?(?:anda|kamu)/i,
   /pilihan akhir (?:tetap )?(?:ada di tangan|kembali ke|pada)/i,
   /sesuaikan dengan arah/i,
-  /pertimbangan.*?kembali kepada anda/i
+  /pertimbangan.*?kembali kepada (?:anda|kamu)/i
 ];
 
 /**
@@ -119,9 +119,11 @@ export function isComparisonContent(content: string, options: { contentFamily?: 
  * Extracts the substantive editorial closing passage (the last 1-2 paragraphs before technical reference notes).
  */
 export function extractEditorialClosingPassage(content: string): string {
-  // Strip code blocks and technical reference sections
+  // Strip code blocks, FAQ blocks, comments, and technical reference sections
   const cleaned = content
     .replace(/```[\s\S]*?```/g, '')
+    .replace(/<!--\s*(?:EDITORIAL_FAQ_START|FAQ_START)\s*-->[\s\S]*?<!--\s*(?:EDITORIAL_FAQ_END|FAQ_END)\s*-->/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
     .trim();
 
   // Split before technical references section
@@ -136,14 +138,14 @@ export function extractEditorialClosingPassage(content: string): string {
   const paragraphs = targetPart
     .split(/\n\s*\n/)
     .map((p) => p.trim())
-    .filter((p) => p.length > 0 && !p.startsWith('#') && !p.startsWith('*') && !p.startsWith('-') && !/^\d+\./.test(p));
+    .filter((p) => p.length > 0 && !p.startsWith('#') && !p.startsWith('*') && !p.startsWith('-') && !/^\d+\./.test(p) && !p.startsWith('<!--'));
 
   if (paragraphs.length === 0) {
     // Fallback: look at overall mainBody non-bullet paragraphs
     const allParas = mainBody
       .split(/\n\s*\n/)
       .map((p) => p.trim())
-      .filter((p) => p.length > 0 && !p.startsWith('#') && !p.startsWith('*') && !p.startsWith('-') && !/^\d+\./.test(p));
+      .filter((p) => p.length > 0 && !p.startsWith('#') && !p.startsWith('*') && !p.startsWith('-') && !/^\d+\./.test(p) && !p.startsWith('<!--'));
     return allParas.slice(-2).join('\n\n');
   }
 

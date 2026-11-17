@@ -9,6 +9,7 @@
  * 3. GRACEFUL FALLBACK: Fails closed (returns null) on missing, unreadable, or malformed manifests.
  */
 
+export type { VisualPlacementManifest, VisualManifestItem } from './anchor-resolver.ts';
 import type { VisualPlacementManifest } from './anchor-resolver.ts';
 
 export interface ManifestLookupParams {
@@ -78,6 +79,11 @@ export async function loadArticleVisualManifest(
           candidatePaths.push('scripts/content-bootstrap/manifests/job-02-visual-manifest.json');
         } else if (slug.includes('menata-denah')) {
           candidatePaths.push('scripts/content-bootstrap/manifests/job-03-visual-manifest.json');
+        } else if (slug.includes('balkon')) {
+          candidatePaths.push('scripts/content-bootstrap/manifests/job-04-balkon-visual-manifest.json');
+          candidatePaths.push('scripts/content-bootstrap/manifests/article-9999-visual-manifest.json');
+        } else if (slug.includes('japandi')) {
+          candidatePaths.push('scripts/content-bootstrap/manifests/article-9992-visual-manifest.json');
         }
       }
 
