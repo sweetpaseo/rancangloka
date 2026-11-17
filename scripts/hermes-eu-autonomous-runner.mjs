@@ -250,6 +250,8 @@ key_takeaways:
   - "Perbaiki sirkulasi udara dengan exhaust fan berkapasitas 5–8 ACH sesuai SNI 6572 sebelum membersihkan spora dan mengecat ulang dengan cat anti-jamur."
 ---
 
+*Sesi Uji Mandiri Runtime: ${new Date(timestamp * 1000).toISOString()} (Job: ${jobId})*
+
 Bercak hitam di plafon kamar mandi memang bikin waswas. Apalagi kalau kamar mandi berada tepat di bawah dak beton atau kamar mandi lantai atas. Penyebabnya bisa sesederhana uap mandi yang terjebak, tetapi kebocoran dari pipa atau lantai atas juga tidak boleh diabaikan.
 
 Warna hitamnya sendiri belum bisa memastikan sumber masalah. Bercak gelap bisa tampak seperti jamur, tetapi yang lebih membantu untuk diagnosis awal adalah melihat pola noda, kondisi plafon, dan kapan kelembapan muncul.
