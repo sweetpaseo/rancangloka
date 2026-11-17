@@ -1116,6 +1116,406 @@ export interface JefryAdvisoryKnowledgeView {
   observation_scope: string[];
 }
 
+export interface CanonicalSupervisionRule {
+  id: string;
+  name: string;
+  description: string;
+  standard: string;
+  drafting_owner: 'content_writer_primary' | 'evidence_researcher_lead' | 'seo_growth_specialist';
+  first_line_evaluator: 'audience_language_editor' | 'seo_growth_specialist' | 'evidence_researcher_lead';
+  gatekeeper: 'editorial_qa_primary';
+  supervisor: 'management_advisor_jefry';
+}
+
+export const CANONICAL_EDITORIAL_SUPERVISION_RULES: CanonicalSupervisionRule[] = [
+  {
+    id: 'ED-VOICE-01',
+    name: 'Sapaan Akrab Kamu / Rumahmu',
+    description: 'Sapaan pembaca wajib menggunakan kata "kamu" dan kepemilikan "rumahmu", menciptakan kedekatan hangat seperti konsultan ramah di ruang tamu.',
+    standard: 'Editorial Voice L4 — Santai Berisi (Minimal 1 sapaan "kamu" per 300 kata, rasio kamu vs total kata wajar)',
+    drafting_owner: 'content_writer_primary',
+    first_line_evaluator: 'audience_language_editor',
+    gatekeeper: 'editorial_qa_primary',
+    supervisor: 'management_advisor_jefry'
+  },
+  {
+    id: 'ED-VOICE-02',
+    name: 'Larangan Sapaan Formal Anda',
+    description: 'Dilarang menggunakan kata sapaan formal "Anda" dalam narasi editorial artikel kepada pembaca (kecuali dalam kutipan sumber/dokumen asli atau metadata).',
+    standard: 'Zero tolerance for "Anda" in author narrative prose',
+    drafting_owner: 'content_writer_primary',
+    first_line_evaluator: 'audience_language_editor',
+    gatekeeper: 'editorial_qa_primary',
+    supervisor: 'management_advisor_jefry'
+  },
+  {
+    id: 'ED-SEO-01',
+    name: 'Penempatan Focus Keyword Kalimat Pertama & Terakhir',
+    description: 'Focus keyword utama wajib hadir secara alami di kalimat pertama pembukaan artikel dan kalimat terakhir penutup artikel.',
+    standard: 'First sentence and last sentence exact or normalized keyword inclusion',
+    drafting_owner: 'content_writer_primary',
+    first_line_evaluator: 'audience_language_editor',
+    gatekeeper: 'editorial_qa_primary',
+    supervisor: 'management_advisor_jefry'
+  },
+  {
+    id: 'ED-STRUCT-01',
+    name: 'Konsistensi Struktur & Heading Arsitektural',
+    description: 'Struktur artikel memiliki hierarki heading runtut (H2 untuk topik utama, H3 untuk subtopik, H1 tunggal untuk judul utama), tanpa duplikasi H1 dan tanpa kebocoran metadata.',
+    standard: 'Strict heading hierarchy and zero metadata leak in prose',
+    drafting_owner: 'content_writer_primary',
+    first_line_evaluator: 'audience_language_editor',
+    gatekeeper: 'editorial_qa_primary',
+    supervisor: 'management_advisor_jefry'
+  },
+  {
+    id: 'ED-FORMAT-01',
+    name: 'Anti-Formula Slop & Format Presisi',
+    description: 'Dilarang membocorkan rumus LaTeX mentah ($Delta T$, $Delta h$), formula matematika berantakan, atau tag tabel yang tidak ditutup.',
+    standard: 'Zero raw LaTeX syntax and clean markdown formatting',
+    drafting_owner: 'content_writer_primary',
+    first_line_evaluator: 'audience_language_editor',
+    gatekeeper: 'editorial_qa_primary',
+    supervisor: 'management_advisor_jefry'
+  },
+  {
+    id: 'ED-PARA-01',
+    name: 'Aturan Paragraf Pendek Kanonikal (Short Paragraph Rule)',
+    description: 'Paragraf narasi wajib ringkas dan bernapas: ideal 25–45 kata, maksimum 60 kata, dan maksimum 3 kalimat per paragraf. Membawa satu gagasan yang jelas tanpa memecah mekanis di tengah kalimat.',
+    standard: 'Ideal 25-45 words, max 60 words, max 3 sentences per paragraph (one idea per paragraph)',
+    drafting_owner: 'content_writer_primary',
+    first_line_evaluator: 'audience_language_editor',
+    gatekeeper: 'editorial_qa_primary',
+    supervisor: 'management_advisor_jefry'
+  }
+];
+
+export const CANONICAL_SHORT_PARAGRAPH_RULE = {
+  id: 'ED-PARA-01',
+  name: 'Aturan Paragraf Pendek Kanonikal (Short Paragraph Rule)',
+  ideal_words_min: 25,
+  ideal_words_max: 45,
+  max_words_per_paragraph: 60,
+  max_sentences_per_paragraph: 3,
+  core_principle: 'ONE_IDEA_PER_PARAGRAPH',
+  mechanical_split_forbidden: true,
+  excessive_single_sentence_avoided: true,
+  exclusions: ['heading', 'table', 'list', 'blockquote', 'faq', 'code_block', 'horizontal_rule'] as const
+};
+
+export function isExcludedParagraphBlock(block: string): boolean {
+  if (!block || typeof block !== 'string') return true;
+  const trimmed = block.trim();
+  if (trimmed.startsWith('#')) return true; // heading
+  if (trimmed.startsWith('|')) return true; // table
+  if (trimmed.startsWith('>')) return true; // blockquote
+  if (trimmed.startsWith('---') || trimmed.startsWith('***') || trimmed.startsWith('___')) return true; // hr
+  if (trimmed.startsWith('```')) return true; // code block
+  if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('+ ') || /^\d+\.\s/.test(trimmed)) return true; // list
+  if (trimmed.startsWith('<!--')) return true; // comments / metadata
+  return false;
+}
+
+export function countSentencesInParagraph(text: string): number {
+  if (!text || typeof text !== 'string' || !text.trim()) return 0;
+  const protectedText = text
+    .replace(/(\d+)[.,](\d+)/g, '$1_DEC_$2')
+    .replace(/\bSNI\s+[\d\-:]+\b/gi, (m) => m.replace(/[\s\-:]/g, '_'))
+    .replace(/\b(?:No|Pasal|Vol|Hal|Bab|Gambar|Tabel|Lampiran|vs|dkk|dsb|dll|dst)\.\s*/gi, (m) => m.replace('.', '_DOT_'))
+    .replace(/\b(?:m|cm|mm|m2|m3|m\/s|km\/h|lux|watt|kg|g)\.\s+/gi, (m) => m.replace('.', '_DOT_'));
+
+  const sentences = protectedText
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9"“\(\[])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return sentences.length;
+}
+
+export interface ParagraphAuditItem {
+  index: number;
+  text: string;
+  wordCount: number;
+  sentenceCount: number;
+  isViolation: boolean;
+  violationReasons: string[];
+}
+
+export interface ShortParagraphAuditResult {
+  passed: boolean;
+  totalNarrativeParagraphs: number;
+  violatingParagraphsCount: number;
+  longestParagraphWords: number;
+  maxSentencesInParagraph: number;
+  paragraphsExceeding3SentencesCount: number;
+  paragraphsExceeding60WordsCount: number;
+  items: ParagraphAuditItem[];
+}
+
+export function auditShortParagraphs(markdown: string): ShortParagraphAuditResult {
+  if (!markdown || typeof markdown !== 'string') {
+    return {
+      passed: true,
+      totalNarrativeParagraphs: 0,
+      violatingParagraphsCount: 0,
+      longestParagraphWords: 0,
+      maxSentencesInParagraph: 0,
+      paragraphsExceeding3SentencesCount: 0,
+      paragraphsExceeding60WordsCount: 0,
+      items: []
+    };
+  }
+
+  // Strip frontmatter and FAQ blocks
+  const clean = markdown
+    .replace(/^---[\s\S]*?---\s*/, '')
+    .replace(/<!--\s*(?:EDITORIAL_FAQ_START|FAQ_START)\s*-->[\s\S]*?<!--\s*(?:EDITORIAL_FAQ_END|FAQ_END)\s*-->/gi, '')
+    .trim();
+
+  const blocks = clean.split(/\r?\n\r?\n/).map((b) => b.trim()).filter(Boolean);
+  const items: ParagraphAuditItem[] = [];
+
+  let pIndex = 0;
+  let longestWords = 0;
+  let maxSentences = 0;
+  let violatingCount = 0;
+  let exceedingWordsCount = 0;
+  let exceedingSentencesCount = 0;
+
+  for (const block of blocks) {
+    if (isExcludedParagraphBlock(block)) continue;
+    pIndex++;
+
+    const wordCount = block.replace(/[*_`~#]/g, ' ').split(/\s+/).filter(Boolean).length;
+    const sentenceCount = countSentencesInParagraph(block);
+
+    if (wordCount > longestWords) longestWords = wordCount;
+    if (sentenceCount > maxSentences) maxSentences = sentenceCount;
+
+    const reasons: string[] = [];
+    if (wordCount > CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph) {
+      reasons.push(`MELEBIHI_BATAS_KATA: ${wordCount} kata (maksimum ${CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph} kata)`);
+      exceedingWordsCount++;
+    }
+    if (sentenceCount > CANONICAL_SHORT_PARAGRAPH_RULE.max_sentences_per_paragraph) {
+      reasons.push(`MELEBIHI_BATAS_KALIMAT: ${sentenceCount} kalimat (maksimum ${CANONICAL_SHORT_PARAGRAPH_RULE.max_sentences_per_paragraph} kalimat)`);
+      exceedingSentencesCount++;
+    }
+
+    const isViolation = reasons.length > 0;
+    if (isViolation) violatingCount++;
+
+    items.push({
+      index: pIndex,
+      text: block,
+      wordCount,
+      sentenceCount,
+      isViolation,
+      violationReasons: reasons
+    });
+  }
+
+  return {
+    passed: violatingCount === 0,
+    totalNarrativeParagraphs: items.length,
+    violatingParagraphsCount: violatingCount,
+    longestParagraphWords: longestWords,
+    maxSentencesInParagraph: maxSentences,
+    paragraphsExceeding3SentencesCount: exceedingSentencesCount,
+    paragraphsExceeding60WordsCount: exceedingWordsCount,
+    items
+  };
+}
+
+export interface ReaderFacingBlockItem {
+  index: number;
+  type: 'narrative_paragraph' | 'list_item' | 'table_cell' | 'faq_answer' | 'caption';
+  text: string;
+  wordCount: number;
+  sentenceCount: number;
+  isViolation: boolean;
+  violationReasons: string[];
+}
+
+export interface ComprehensiveReadabilityAuditResult {
+  passed: boolean;
+  totalBlocks: number;
+  narrativeParagraphsCount: number;
+  listItemsCount: number;
+  tableCellsCount: number;
+  faqAnswersCount: number;
+  idealWordsCount: number;
+  acceptableWordsCount: number;
+  exceedingWordsCount: number;
+  longestBlockWords: number;
+  items: ReaderFacingBlockItem[];
+}
+
+/**
+ * Conversational Editorial 2.1 — Comprehensive Reader-Facing Readability Audit
+ * Evaluates ALL visible reader units: narrative paragraphs, list items, table cells, and FAQ answers.
+ * Guarantees zero cognitive fatigue by ensuring every unit complies with the canonical 60-word threshold.
+ */
+export function auditAllReaderFacingContent(markdown: string): ComprehensiveReadabilityAuditResult {
+  if (!markdown || typeof markdown !== 'string') {
+    return {
+      passed: true,
+      totalBlocks: 0,
+      narrativeParagraphsCount: 0,
+      listItemsCount: 0,
+      tableCellsCount: 0,
+      faqAnswersCount: 0,
+      idealWordsCount: 0,
+      acceptableWordsCount: 0,
+      exceedingWordsCount: 0,
+      longestBlockWords: 0,
+      items: []
+    };
+  }
+
+  // 1. Extract FAQ answers
+  const faqMatch = markdown.match(/<!--\s*(?:EDITORIAL_FAQ_START|FAQ_START)\s*-->([\s\S]*?)<!--\s*(?:EDITORIAL_FAQ_END|FAQ_END)\s*-->/i);
+  let faqs: Array<{ question?: string; answer?: string }> = [];
+  if (faqMatch) {
+    try {
+      faqs = JSON.parse(faqMatch[1]);
+    } catch (_) {}
+  }
+
+  // 1b. Extract Key Takeaways from frontmatter (audited as reader-facing list items)
+  const units: Array<{ type: ReaderFacingBlockItem['type']; text: string }> = [];
+  const fmMatch = markdown.match(/^---\s*([\s\S]*?)\s*---/);
+  if (fmMatch) {
+    const fmText = fmMatch[1];
+    const ktMatch = fmText.match(/key_takeaways:\s*\n((?:\s*-\s*[^\n]+\r?\n*)+)/i);
+    if (ktMatch) {
+      const ktLines = ktMatch[1].split(/\r?\n/).map((l) => l.trim()).filter((l) => l.startsWith('- '));
+      for (const line of ktLines) {
+        units.push({ type: 'list_item', text: line.replace(/^-\s*/, '') });
+      }
+    }
+  }
+
+  // 2. Clean markdown body
+  const clean = markdown
+    .replace(/^---[\s\S]*?---\s*/, '')
+    .replace(/<!--\s*(?:EDITORIAL_FAQ_START|FAQ_START)\s*-->[\s\S]*?<!--\s*(?:EDITORIAL_FAQ_END|FAQ_END)\s*-->/gi, '')
+    .trim();
+
+  const rawBlocks = clean.split(/\r?\n\r?\n/).map((b) => b.trim()).filter(Boolean);
+
+  for (let b of rawBlocks) {
+    if (b.startsWith('#')) {
+      const lines = b.split('\n');
+      const nonHeadingLines = lines.filter((l) => !l.trim().startsWith('#') && l.trim().length > 0);
+      if (nonHeadingLines.length === 0) continue; // Pure heading, skip
+      b = nonHeadingLines.join('\n'); // Process non-heading lines attached to heading
+    }
+    if (b.startsWith('---') || b.startsWith('***') || b.startsWith('___')) continue; // Dividers
+    if (b.startsWith('```') || b.startsWith('<!--')) continue;
+
+    if (b.startsWith('|')) {
+      // Table rows & cells
+      const rows = b.split('\n').filter((r) => r.trim().startsWith('|'));
+      for (const r of rows) {
+        if (r.includes('---')) continue; // Table separator
+        const cells = r.split('|').map((c) => c.trim()).filter(Boolean);
+        for (const c of cells) {
+          if (c.startsWith('**') && c.endsWith('**') && c.length < 30) continue; // Short table header cell
+          units.push({ type: 'table_cell', text: c });
+        }
+      }
+      continue;
+    }
+
+    if (b.startsWith('- ') || b.startsWith('* ') || b.startsWith('+ ') || /^\d+\.\s/.test(b)) {
+      // List block - split into individual items
+      const lines = b.split('\n');
+      let curItem: string[] = [];
+      for (const l of lines) {
+        const trimL = l.trim();
+        if (trimL.startsWith('- ') || trimL.startsWith('* ') || trimL.startsWith('+ ') || /^\d+\.\s/.test(trimL)) {
+          if (curItem.length) units.push({ type: 'list_item', text: curItem.join(' ') });
+          curItem = [trimL];
+        } else {
+          curItem.push(trimL);
+        }
+      }
+      if (curItem.length) units.push({ type: 'list_item', text: curItem.join(' ') });
+      continue;
+    }
+
+    // Pure narrative paragraph
+    units.push({ type: 'narrative_paragraph', text: b });
+  }
+
+  // Add FAQ answers
+  for (const f of faqs) {
+    if (f.answer) {
+      units.push({ type: 'faq_answer', text: f.answer });
+    }
+  }
+
+  let longestBlockWords = 0;
+  let idealWordsCount = 0;
+  let acceptableWordsCount = 0;
+  let exceedingWordsCount = 0;
+  let narrativeCount = 0;
+  let listCount = 0;
+  let tableCount = 0;
+  let faqCount = 0;
+
+  const items: ReaderFacingBlockItem[] = units.map((u, idx) => {
+    if (u.type === 'narrative_paragraph') narrativeCount++;
+    else if (u.type === 'list_item') listCount++;
+    else if (u.type === 'table_cell') tableCount++;
+    else if (u.type === 'faq_answer') faqCount++;
+
+    const wordCount = u.text.replace(/[*_`~#]/g, ' ').split(/\s+/).filter(Boolean).length;
+    const sentenceCount = countSentencesInParagraph(u.text);
+
+    if (wordCount > longestBlockWords) longestBlockWords = wordCount;
+
+    const reasons: string[] = [];
+    if (wordCount > CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph) {
+      reasons.push(`MELEBIHI_BATAS_KATA: ${wordCount} kata (maksimum ${CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph} kata)`);
+      exceedingWordsCount++;
+    } else if (wordCount > CANONICAL_SHORT_PARAGRAPH_RULE.ideal_words_max) {
+      acceptableWordsCount++;
+    } else {
+      idealWordsCount++;
+    }
+
+    return {
+      index: idx + 1,
+      type: u.type,
+      text: u.text,
+      wordCount,
+      sentenceCount,
+      isViolation: reasons.length > 0,
+      violationReasons: reasons
+    };
+  });
+
+  return {
+    passed: exceedingWordsCount === 0,
+    totalBlocks: items.length,
+    narrativeParagraphsCount: narrativeCount,
+    listItemsCount: listCount,
+    tableCellsCount: tableCount,
+    faqAnswersCount: faqCount,
+    idealWordsCount,
+    acceptableWordsCount,
+    exceedingWordsCount,
+    longestBlockWords,
+    items
+  };
+}
+
+export function getCanonicalSupervisionRules(): CanonicalSupervisionRule[] {
+  return [...CANONICAL_EDITORIAL_SUPERVISION_RULES];
+}
+
 /**
  * Derives role-specific view of canonical knowledge for Irwan (Evidence & Research).
  */
@@ -1162,6 +1562,9 @@ export function getJokoAuthoringKnowledge(): JokoAuthoringKnowledgeView {
     native_indonesian_authoring: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer2_language_cohesion.native_indonesian_authoring,
     joko_authoring_rules: [
       'Formulasikan naskah artikel langsung dalam bahasa Indonesia sejak awal alur pemikiran.',
+      'Terapkan pola Short Paragraph: ideal 25–45 kata per paragraf, maksimum 60 kata dan maksimum 3 kalimat per paragraf (ED-PARA-01).',
+      'Setiap paragraf harus membawa satu gagasan yang jelas (one idea per paragraph) tanpa memecah mekanis di tengah kalimat.',
+      'Hindari paragraf pendek satu kalimat secara berlebihan agar tulisan tidak terasa patah-patah.',
       'Pertahankan susunan kalimat dan urutan klausa alami bahasa Indonesia.',
       'Gunakan logika penghubung gagasan Indonesia, bukan menerjemahkan transisi mekanis bahasa Inggris.',
       'Utamakan ungkapan bahasa Indonesia yang akrab dan lugas bagi pemilik rumah.',
@@ -1210,7 +1613,8 @@ export function getRinaQAKnowledge(): RinaQAKnowledgeView {
         'shifts unexpectedly into translated corporate language',
         'uses unnecessary English editorial jargon',
         'has natural Indonesian transitions',
-        'preserves technical accuracy and allowed technical English terms'
+        'preserves technical accuracy and allowed technical English terms',
+        'preserves technical context, facts, quotes, and explanatory integrity during paragraph splitting (ED-PARA-01)'
       ],
       routing: 'Jika artikel secara teknis akurat namun kental gaya translationese, arahkan ke Joko untuk REVISE atau REWRITE sesuai tingkat keparahan.'
     },

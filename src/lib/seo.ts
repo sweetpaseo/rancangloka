@@ -182,8 +182,13 @@ export function generateBreadcrumbSchema(items: { name: string; url: string }[])
 /**
  * Generates SHA-256 hash for content duplicate detection
  */
+export function normalizeContentForHash(content: string): string {
+  if (!content) return '';
+  return content.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 export async function generateContentHash(content: string): Promise<string> {
-  const normalized = content.replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalized = normalizeContentForHash(content);
   const encoder = new TextEncoder();
   const data = encoder.encode(normalized);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);

@@ -127,13 +127,27 @@ export function stripLeakedMetadataHtml(html: string): string {
 }
 
 /**
+ * Sanitizes raw LaTeX mathematical notation into clean, conversational editorial terms.
+ * Banned in RancangLoka: ($\Delta T$), ($\Delta h$), $...$, \Delta, etc.
+ */
+export function sanitizeMathFormulas(text: string): string {
+  if (!text || typeof text !== 'string') return '';
+  return text
+    .replace(/\(\s*\\?\$?\\?Delta\s*T\\?\$?\s*\)/gi, '(perbedaan suhu)')
+    .replace(/\(\s*\\?\$?\\?Delta\s*h\\?\$?\s*\)/gi, '(perbedaan ketinggian bukaan)')
+    .replace(/\\?\$?\\?Delta\s*T\\?\$?/gi, 'perbedaan suhu')
+    .replace(/\\?\$?\\?Delta\s*h\\?\$?/gi, 'perbedaan ketinggian')
+    .replace(/\$([^\$\n]+)\$/g, '$1');
+}
+
+/**
  * Sanitizes an HTML string against the strict article allowlist.
  * Can be used on both newly rendered Markdown and legacy content_html from the database.
  */
 export function sanitizeArticleHtml(rawHtml: string): string {
   if (!rawHtml || typeof rawHtml !== 'string') return '';
 
-  const cleanHtml = stripFaqCommentMarkers(rawHtml);
+  const cleanHtml = sanitizeMathFormulas(stripFaqCommentMarkers(rawHtml));
   const withoutLeakedMeta = stripLeakedMetadataHtml(cleanHtml);
   return xss(withoutLeakedMeta, {
     whiteList: ARTICLE_HTML_WHITELIST,
@@ -151,6 +165,24 @@ export function sanitizeArticleHtml(rawHtml: string): string {
 }
 
 /**
+ * Auto-wraps standalone markdown tables in responsive card containers
+ * unless already wrapped by the comparison matrix component.
+ */
+export function wrapStandaloneTables(html: string): string {
+  if (!html || typeof html !== 'string') return '';
+  return html.replace(
+    /(<table\b[^>]*>[\s\S]*?<\/table>)/gi,
+    (match, p1, offset, fullStr) => {
+      const preceding = fullStr.slice(Math.max(0, offset - 300), offset);
+      if (preceding.includes('comparison-desktop') || preceding.includes('article-comparison-matrix') || preceding.includes('article-table-wrapper')) {
+        return match;
+      }
+      return `<div class="article-table-wrapper not-prose my-8 overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">${match}</div>`;
+    }
+  );
+}
+
+/**
  * Parses Markdown into safe, sanitized HTML with responsive comparison matrix presentation.
  * Cleanly separates and excludes frontmatter so raw metadata NEVER renders as visible prose.
  */
@@ -160,10 +192,13 @@ export async function renderArticleMarkdownSafely(markdownInput: string): Promis
   // 1. Cleanly separate frontmatter from markdown body to guarantee metadata never leaks
   const cleanBody = extractArticleBody(markdownInput);
 
-  // 2. Strip recognized FAQ metadata blocks before Markdown conversion to HTML
-  const cleanMarkdown = stripFaqCommentMarkers(cleanBody);
+  // 2. Strip recognized FAQ metadata blocks and stray math formulas before Markdown conversion to HTML
+  const cleanMarkdown = sanitizeMathFormulas(stripFaqCommentMarkers(cleanBody));
   const parsedHtml = await marked.parse(cleanMarkdown);
   const enhancedHtml = enhanceComparisonMatrices(parsedHtml);
-  return sanitizeArticleHtml(enhancedHtml);
+  const tableWrappedHtml = wrapStandaloneTables(enhancedHtml);
+  const sanitizedHtml = sanitizeArticleHtml(tableWrappedHtml);
+  // Guarantee single semantic H1 on page: strip any duplicate H1 from rendered markdown body
+  return sanitizedHtml.replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, '');
 }
 

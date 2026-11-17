@@ -105,27 +105,28 @@ export function extractArticleBody(content: string): string {
   if (!content || typeof content !== 'string') return '';
   const cleaned = content.replace(/^\ufeff/, '');
 
+  let body = cleaned;
   // 1. Standard opening and closing triple dash frontmatter
   const match = cleaned.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?([\s\S]*)$/);
   if (match) {
-    return match[1];
-  }
-
-  // 2. Unclosed frontmatter guard: starts with --- and metadata keys, but missing closing delimiter
-  if (/^---\r?\n/.test(cleaned)) {
-    // If there is any closing --- later in the text
+    body = match[1];
+  } else if (/^---\r?\n/.test(cleaned)) {
+    // 2. Unclosed frontmatter guard: starts with --- and metadata keys, but missing closing delimiter
     const anyClosing = cleaned.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?([\s\S]*)$/);
     if (anyClosing) {
-      return anyClosing[1];
+      body = anyClosing[1];
+    } else {
+      // Look for boundary where editorial body begins (e.g. markdown heading # or double newline)
+      const unclosedMatch = cleaned.match(/^---\r?\n[\s\S]*?\n(?=(?:#{1,6}\s|[A-Z0-9].*?\n\n))([\s\S]*)$/);
+      if (unclosedMatch && unclosedMatch[1].trim()) {
+        body = unclosedMatch[1];
+      } else {
+        body = cleaned.replace(/^---\r?\n[\s\S]*?(?=\n\n|$)/, '').trimStart();
+      }
     }
-    // Look for boundary where editorial body begins (e.g. markdown heading # or double newline)
-    const unclosedMatch = cleaned.match(/^---\r?\n[\s\S]*?\n(?=(?:#{1,6}\s|[A-Z0-9].*?\n\n))([\s\S]*)$/);
-    if (unclosedMatch && unclosedMatch[1].trim()) {
-      return unclosedMatch[1];
-    }
-    return cleaned.replace(/^---\r?\n[\s\S]*?(?=\n\n|$)/, '').trimStart();
   }
 
-  return cleaned;
+  // Strip leading redundant top-level H1 (e.g. # Article Title) so it never duplicates hero H1
+  return body.replace(/^\s*#\s+[^\r\n]+(?:\r?\n)*/, '').trimStart();
 }
 
