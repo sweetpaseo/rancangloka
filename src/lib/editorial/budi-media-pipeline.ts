@@ -15,13 +15,23 @@
  * 6. PERMANENT MANIFEST PERSISTENCE: Syncs to both filesystem and D1 settings table.
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
 import { renderArticleMarkdownSafely } from '../article/renderer.ts';
 import { resolveVisualPlacements, normalizeAnchorText } from '../media/anchor-resolver.ts';
 import type { VisualStoryboard, StoryboardInlineSlot } from './nadia-visual-storyboard.ts';
 import type { VisualPlacementManifest, VisualManifestItem } from '../media/manifest-loader.ts';
 import { buildDeepPromptV2, SEEDREAM_PRICE_USD } from './budi-prompt-engine.ts';
+
+async function getFs() {
+  if (typeof process !== 'undefined' && (process as any).versions?.node) {
+    try {
+      return await import('node:fs');
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
 
 export interface BudiMediaPipelineOptions {
   allowPaidGeneration?: boolean;
@@ -53,8 +63,10 @@ function findExistingAsset(
   articleSlug: string,
   articleId: number | string,
   mediaType: string,
-  rootDir: string
+  rootDir: string,
+  fs: any
 ): string | null {
+  if (!fs) return null;
   const candidatesDir = path.resolve(rootDir, 'public/experimental-media/candidates');
   const mediaDir = path.resolve(rootDir, 'public/experimental-media');
 
@@ -128,8 +140,10 @@ export async function executeBudiMediaPipeline(
   let reusedCount = 0;
   let generatedCount = 0;
 
+  const fs = await getFs();
+
   // 1. Resolve Cover Hero
-  let coverSrc = findExistingAsset('cover_hero', articleSlug, articleId, 'photo', rootDir);
+  let coverSrc = findExistingAsset('cover_hero', articleSlug, articleId, 'photo', rootDir, fs);
   const coverAlt = storyboard.cover.suggested_alt_text || `Foto arsitektur dan interior ${storyboard.article_title}`;
   const coverCaption = storyboard.cover.educational_goal || storyboard.cover.main_idea;
 
@@ -169,7 +183,7 @@ export async function executeBudiMediaPipeline(
     const slot = storyboard.inline_slots[idx];
     const isSvg = slot.visual_media_type === 'TECHNICAL_DIAGRAM_SVG';
 
-    let itemSrc = findExistingAsset(slot.slot_key, articleSlug, articleId, isSvg ? 'svg' : 'photo', rootDir);
+    let itemSrc = findExistingAsset(slot.slot_key, articleSlug, articleId, isSvg ? 'svg' : 'photo', rootDir, fs);
 
     if (!itemSrc) {
       if (allowPaid && totalSpendUsd + SEEDREAM_PRICE_USD <= maxBudget) {
@@ -239,25 +253,27 @@ export async function executeBudiMediaPipeline(
     visual_items: visualItems
   };
 
-  // 4. Persist Manifest to Disk
-  const manifestDir = path.resolve(rootDir, 'scripts/content-bootstrap/manifests');
-  if (!fs.existsSync(manifestDir)) {
-    fs.mkdirSync(manifestDir, { recursive: true });
-  }
+  // 4. Persist Manifest to Disk (when running in Node environment)
+  if (fs) {
+    const manifestDir = path.resolve(rootDir, 'scripts/content-bootstrap/manifests');
+    if (!fs.existsSync(manifestDir)) {
+      fs.mkdirSync(manifestDir, { recursive: true });
+    }
 
-  try {
-    fs.writeFileSync(
-      path.join(manifestDir, `article-${articleId}-visual-manifest.json`),
-      JSON.stringify(manifest, null, 2),
-      'utf8'
-    );
-    fs.writeFileSync(
-      path.join(manifestDir, `${articleSlug}-visual-manifest.json`),
-      JSON.stringify(manifest, null, 2),
-      'utf8'
-    );
-  } catch (err: any) {
-    warnings.push(`Gagal menyimpan manifest ke filesystem: ${err?.message || err}`);
+    try {
+      fs.writeFileSync(
+        path.join(manifestDir, `article-${articleId}-visual-manifest.json`),
+        JSON.stringify(manifest, null, 2),
+        'utf8'
+      );
+      fs.writeFileSync(
+        path.join(manifestDir, `${articleSlug}-visual-manifest.json`),
+        JSON.stringify(manifest, null, 2),
+        'utf8'
+      );
+    } catch (err: any) {
+      warnings.push(`Gagal menyimpan manifest ke filesystem: ${err?.message || err}`);
+    }
   }
 
   // 5. Automated D1 Local Media Binding

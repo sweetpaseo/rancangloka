@@ -25,7 +25,6 @@
  * - PRESERVE GOLDEN ARTICLE #9993: Golden Article remains 100% frozen and intact.
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
 import {
   auditJokoDraftReadability,

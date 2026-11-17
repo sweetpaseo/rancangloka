@@ -40,5 +40,43 @@ JEV_MODE = "shadow"
 JEV_SHADOW_COLLECTOR_ENABLED = "true"
 MEDIA_WORKER_ENABLED = "true"
 
+# ==============================================================================
+# STAGING ENVIRONMENT (STRICTLY ISOLATED FROM PRODUCTION)
+# ==============================================================================
+[env.staging]
+name = "rancangloka-staging"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Staging Cloudflare D1 Database Binding
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "rancangloka_staging_db"
+database_id = "9e889739-0488-4667-8de8-5a731a0ae5b0"
+migrations_dir = "db/migrations"
+
+# Staging Cloudflare R2 Object Storage Binding
+[[env.staging.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "rancangloka-media-staging"
+
+# Cloudflare Workers AI Binding
+[env.staging.ai]
+binding = "AI"
+
+# Cron Triggers in Staging: STRICTLY DISABLED
+[env.staging.triggers]
+crons = []
+
+# Staging Runtime Variables (AUTO_PUBLISH STRICTLY OFF)
+[env.staging.vars]
+ENVIRONMENT = "staging"
+AUTO_PUBLISH = "false"
+JEV_ENABLED = "true"
+JEV_MODE = "shadow"
+JEV_SHADOW_COLLECTOR_ENABLED = "false"
+MEDIA_WORKER_ENABLED = "false"
+
+
 
 
