@@ -70,7 +70,8 @@ const SECRET = process.env.HERMES_INGEST_SECRET_STAGING || process.env.RANCANGLO
 
 const args = process.argv.slice(2);
 const isCanary = args.includes('--canary');
-const isDryRun = !isCanary;
+const isTestIngest = args.includes('--test-ingest');
+const isDryRun = !isCanary && !isTestIngest;
 
 function getGitInfo() {
   try {
@@ -149,7 +150,7 @@ async function run() {
   const nodeVersion = process.version;
   const cwd = process.cwd();
 
-  const runMode = isCanary ? 'REAL_AUTONOMOUS_CANARY' : 'LOCAL_DRY_RUN_VALIDATION';
+  const runMode = isCanary ? 'REAL_AUTONOMOUS_CANARY' : isTestIngest ? 'REAL_HMAC_TEST_INGEST' : 'LOCAL_DRY_RUN_VALIDATION';
   const articleIdNum = isCanary ? 10011 : 10010;
   const articleIdStr = `art_${articleIdNum}_${crypto.randomBytes(12).toString('hex')}`;
   const jobId = `job_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
@@ -230,7 +231,203 @@ Warna hitamnya sendiri belum bisa memastikan sumber masalah secara pasti. Yang l
   }
 
   // ============================================================================
-  // MODE 2: REAL AUTONOMOUS CANARY (INTEGRATED WITH MASTER WORKFLOW)
+  // MODE 2: REAL HMAC TEST INGEST (M2M INTEGRATION, $0 SPEND, ZERO PAID AI)
+  // ============================================================================
+  if (isTestIngest) {
+    console.log('🧪 [TEST-INGEST] Memulai pengujian live HMAC Ingestion ke Cloudflare Staging...');
+
+    if (!SECRET) {
+      console.error('❌ Error: Kunci rahasia staging belum dikonfigurasi.');
+      console.error('   Silakan masukkan ke .env.staging atau set variabel: HERMES_INGEST_SECRET_STAGING');
+      process.exit(1);
+    }
+
+    const testRunSuffix = crypto.randomBytes(3).toString('hex');
+    const testTitle = `Uji Ingest Otonom Staging: Standar Ventilasi Kamar Mandi Kering (Uji ${testRunSuffix})`;
+    const testMarkdown = `---
+title: "${testTitle}"
+description: "Pengujian integrasi mesin-ke-mesin HMAC staging Cloudflare D1 untuk artikel otonom RancangLoka."
+category: "Sistem & Konstruksi Rumah"
+author: "RancangLoka Editorial Desk"
+focus_keyword: "ventilasi kamar mandi"
+featured_image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=1200&auto=format&fit=crop&q=80"
+image_alt: "Visual ventilasi kamar mandi modern"
+key_takeaways:
+  - "Kondensasi uap panas kamar mandi memicu jamur tipis merata di sudut plafon."
+  - "Rembesan dak beton aktif ditandai noda terpusat melingkar dan gypsum melunak."
+  - "Standar SNI 6572 mewajibkan 5 hingga 8 ACH untuk ventilasi mekanis kamar mandi."
+---
+
+Bercak hitam di plafon kamar mandi memang bikin waswas bagi setiap pemilik rumah. Penyebabnya bisa sesederhana uap mandi hangat yang terjebak, tetapi kebocoran dari pipa buangan atau retakan lantai atas juga tidak boleh diabaikan begitu saja (catatan uji integrasi mesin ${testRunSuffix}).
+
+Warna hitamnya sendiri belum bisa memastikan sumber masalah secara pasti. Yang lebih membantu untuk diagnosis awal adalah melihat pola noda, tekstur fisik plafon, dan kapan kelembapan air tersebut mulai muncul di rumahmu.
+
+## Perhatikan pola noda dan kapan plafon terasa basah
+
+Kalau noda jamur menyebar rata seperti kabut tipis di sudut-sudut plafon dan dinding luar, pemicu utamanya biasanya adalah kondensasi uap panas yang terperangkap. Ruangan yang lembap setelah kamu selesai mandi air hangat membuat titik embun menempel di permukaan cat yang dingin.
+
+Sebaliknya, jika noda terlihat terkonsentrasi di satu titik melingkar, permukaan gypsum melengkung atau lembek saat disentuh, maka kamu sedang berhadapan dengan rembesan air aktif dari dak beton atau instalasi pipa air di atasnya.
+
+## Jika polanya mengarah ke kondensasi, bantu uap keluar
+
+Solusi paling efektif untuk kelembapan uap adalah memasang sistem exhaust fan mekanis yang sesuai dengan volume kamar mandi rumahmu. Berdasarkan standar SNI 6572, laju pertukaran udara kamar mandi tanpa bukaan alami idealnya berkisar antara 5 hingga 8 kali pertukaran udara per jam.
+
+Pastikan juga ada jalur udara masuk pengganti, misalnya celah sekitar satu hingga dua sentimeter di bawah pintu kamar mandi. Tanpa celah udara masuk, kipas hisap tidak akan bisa bekerja optimal karena ruangan mengalami tekanan negatif.
+
+## Langkah perbaikan yang tenang dan tepat sasaran
+
+Sebelum mengecat ulang plafon berjamur, bersihkan dulu sporanya menggunakan cairan pembasmi jamur dan biarkan permukaan benar-benar kering sempurna. Jangan langsung menutup noda jamur basah dengan cat biasa karena lapisan jamur akan kembali tumbuh menembus lapisan cat dalam hitungan minggu.
+
+Gunakan cat dasar tahan alkali dan cat akhir khusus area basah yang mengandung formula anti-fungal. Dengan perbaikan ventilasi yang tepat dan perlindungan cat yang sesuai, plafon kamar mandimu akan tetap bersih, sehat, dan bebas dari ancaman jamur hitam.
+`;
+
+    // Synthesize Visual Manifest with Technical SVG Diagrams
+    const svg1 = generateSvgDataUri(
+      'Diferensiasi Jamur Plafon: Titik Embun vs Rembesan Dak',
+      'Analisis visual ciri fisik dan sebaran noda air di plafon',
+      [
+        { label: 'Kondensasi Uap Mandi', desc: 'Noda menyebar tipis merata di sudut plafon, gypsum tetap kokoh.' },
+        { label: 'Rembesan Air Dak Beton', desc: 'Noda terpusat melingkar, permukaan gypsum melengkung atau lembek.' },
+        { label: 'Tindakan Solutif', desc: 'Perbaiki ventilasi untuk kondensasi; tambal waterproofing untuk rembesan.' }
+      ]
+    );
+
+    const svg2 = generateSvgDataUri(
+      'Standar Ventilasi Kamar Mandi SNI 6572',
+      'Parameter teknis pergantian udara mekanis dan celah sirkulasi',
+      [
+        { label: 'Kebutuhan Laju Udara', desc: 'Target 5-8 ACH (Air Changes per Hour) untuk ruang tanpa jendela.' },
+        { label: 'Celah Bawah Pintu', desc: 'Minimal 1,5 - 2 cm sebagai jalur pasokan udara pengganti (make-up air).' },
+        { label: 'Kemiringan Ducting', desc: 'Kemiringan pipa pembuangan 1-2° ke luar mencegah tetesan kondensasi.' }
+      ]
+    );
+
+    const visualManifest = {
+      manifest_version: '2.0.0',
+      article_id: String(articleIdNum),
+      article_slug: `uji-ingest-otonom-staging-standar-ventilasi-kamar-mandi-kering-uji-${testRunSuffix}`,
+      featured: {
+        src: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=1200&auto=format&fit=crop&q=80',
+        alt: 'Visual ventilasi kamar mandi modern',
+        caption: 'Tampilan visual panduan ventilasi kamar mandi kering'
+      },
+      visual_items: [
+        {
+          visual_id: `ast_${articleIdNum}_s1_diagram`,
+          slot_key: 'slot_1',
+          media_type: 'technical_diagram',
+          priority: 'essential',
+          placement: {
+            target_heading_text: 'Perhatikan pola noda dan kapan plafon terasa basah',
+            position: 'after_heading'
+          },
+          visual_purpose: 'Diferensiasi diagnosis titik embun vs rembesan dak',
+          visual_brief: {
+            prompt_indonesian: 'Diagram diferensiasi pola noda jamur',
+            storytelling_class: 'ENGINEERING_DIAGRAM',
+            aspect_ratio: '16:9',
+            intended_width: 1200,
+            intended_height: 480
+          },
+          caption: 'Diagram diferensiasi pola noda jamur plafon',
+          alt_text: 'Diagram diferensiasi pola noda jamur plafon',
+          asset_id: `ast_${articleIdNum}_s1`,
+          storage_key: svg1,
+          review_status: 'PENDING',
+          editorial_approval: 'PENDING'
+        },
+        {
+          visual_id: `ast_${articleIdNum}_s2_diagram`,
+          slot_key: 'slot_2',
+          media_type: 'technical_diagram',
+          priority: 'essential',
+          placement: {
+            target_heading_text: 'Jika polanya mengarah ke kondensasi, bantu uap keluar',
+            position: 'after_heading'
+          },
+          visual_purpose: 'Standar teknis ventilasi mekanis SNI 6572',
+          visual_brief: {
+            prompt_indonesian: 'Diagram standar ventilasi SNI 6572',
+            storytelling_class: 'ENGINEERING_DIAGRAM',
+            aspect_ratio: '16:9',
+            intended_width: 1200,
+            intended_height: 480
+          },
+          caption: 'Diagram standar teknis ventilasi SNI 6572',
+          alt_text: 'Diagram standar teknis ventilasi SNI 6572',
+          asset_id: `ast_${articleIdNum}_s2`,
+          storage_key: svg2,
+          review_status: 'PENDING',
+          editorial_approval: 'PENDING'
+        }
+      ]
+    };
+
+    const transportPayload = {
+      source: 'hermes',
+      contract_version: 1,
+      article_id: articleIdStr,
+      markdown: testMarkdown,
+      visual_manifest: visualManifest
+    };
+
+    const payloadJson = JSON.stringify(transportPayload);
+    const rawBodyBytes = new TextEncoder().encode(payloadJson);
+
+    console.log('🔒 [Sari] Menandatangani payload test-ingest dengan HMAC-SHA256 fail-closed...');
+    const { signatureHex } = await signHermesRequest(rawBodyBytes, jobId, requestId, timestamp, SECRET);
+
+    console.log(`🚀 [Sari] Mengirim permintaan test-ingest M2M ke Cloudflare Staging Edge...`);
+    console.log(`   POST ${STAGING_ENDPOINT}`);
+
+    let res, resBody;
+    try {
+      res = await fetch(STAGING_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RL-Signature-Version': 'v1',
+          'X-RL-Timestamp': String(timestamp),
+          'X-RL-Job-Id': jobId,
+          'X-RL-Request-Id': requestId,
+          'X-RL-Key-Id': KEY_ID,
+          'X-RL-Signature': `sha256=${signatureHex}`
+        },
+        body: payloadJson
+      });
+      resBody = await res.json();
+    } catch (netErr) {
+      console.error('❌ Gagal menghubungi endpoint staging:', netErr.message);
+      process.exit(1);
+    }
+
+    const durationMs = Date.now() - startTime;
+    console.log(`\n================================================================`);
+    console.log(`HASIL TEST-INGEST CLOUDFLARE STAGING (HTTP ${res.status})`);
+    console.log(`================================================================`);
+    console.log(`Status HTTP    : ${res.status} ${res.statusText}`);
+    console.log(`Response Code  : ${resBody.code}`);
+    console.log(`D1 Article ID  : ${resBody.d1_article_id}`);
+    console.log(`Article Slug   : ${resBody.slug}`);
+    console.log(`Draft Status   : ${resBody.article_status}`);
+    console.log(`Manifest Saved : ${resBody.manifest_persisted ? 'YES (D1 settings)' : 'NO'}`);
+    console.log(`Financial Spend: US$0.00 (Zero paid LLM, Zero paid media)`);
+    console.log(`Duration       : ${durationMs} ms`);
+
+    if (res.status === 200 || res.status === 201) {
+      const previewUrl = `https://rancangloka-staging.chandrajoyko.workers.dev/admin/preview/${resBody.slug}?mode=reader`;
+      console.log(`\n🎉 READER PREVIEW URL:`);
+      console.log(`   ${previewUrl}\n`);
+      console.log('✅ TEST-INGEST M2M STAGING SUKSES!');
+    } else {
+      console.error('⚠️ Ingestion gagal:', JSON.stringify(resBody, null, 2));
+      process.exit(1);
+    }
+    return;
+  }
+
+  // ============================================================================
+  // MODE 3: REAL AUTONOMOUS CANARY (INTEGRATED WITH MASTER WORKFLOW)
   // ============================================================================
   console.log('🚀 [CANARY] Memulai eksekusi otonom terintegrasi Master Workflow...');
 
