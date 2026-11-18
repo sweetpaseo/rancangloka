@@ -692,7 +692,7 @@ export function auditFactualClaimsTaxonomy(
       if (lower.includes('sni 1727') || lower.includes('beban mati') || lower.includes('kn/m²')) {
         sourceNote = 'SNI 1727:2020 Tabel C3.1-1 (Badan Standardisasi Nasional)';
         distinctionNotes = 'CATATAN INTEGRITAS: Angka 0,77 kN/m² (~78,5 kg/m²) pada SNI 1727:2020 adalah batas desain beban mati struktural minimum untuk perhitungan kekuatan rangka bangunan, BUKAN timbangan keping genteng polos di toko (keping genteng beton pasaran berkisar 40–50 kg/m²). Jelaskan perbedaan ini secara jernih.';
-      } else if (lower.includes('kemiringan') || lower.includes('derajat') || lower.includes('slope')) {
+      } else if ((topicLower.includes('atap') || topicLower.includes('genteng') || topicLower.includes('seng')) && (lower.includes('kemiringan') || lower.includes('derajat') || lower.includes('slope'))) {
         sourceNote = 'Pedoman Teknis Pemasangan Pabrikan & Standar Kemiringan Atap';
         distinctionNotes = 'CATATAN INTEGRITAS: Bedakan dengan tegas antara derajat sudut (°) dan persen kemiringan (%). Atap metal lembaran berprofil tinggi dipasang pada sudut landai 3°–5° (bukan 5%). Genteng beton membutuhkan sudut curam minimal 25°–30° agar air mengalir deras dan tidak terjadi aliran balik di sambungan.';
       }
@@ -960,54 +960,54 @@ export function compileReaderFocusedOutline(
       ];
     }
 
-    // Generic material comparison outline (e.g. glass, tiles, wall systems)
+    // Generic comparison outline (materials, equipment, solutions)
     return [
       {
-        heading: 'Karakter Fisik dan Struktur Dasar Material',
-        objective: 'Membandingkan sifat mekanis, kekuatan, dan komposisi fisik kedua opsi material secara objektif.',
+        heading: 'Karakter Fisik dan Cara Kerja Sistem',
+        objective: 'Membandingkan sifat fisik, mekanisme kerja, dan efektivitas kedua opsi secara objektif.',
         key_points: [
-          'Jelaskan perbedaan struktur internal dan proses pembentukan masing-masing opsi.',
-          'Uraikan perilaku material saat menerima tekanan, benturan, atau beban kerja harian.'
+          'Jelaskan perbedaan mendasar cara kerja masing-masing opsi di lapangan.',
+          'Uraikan bagaimana masing-masing opsi merespons beban kerja dan kondisi operasional harian.'
         ]
       },
       {
-        heading: 'Kinerja Keselamatan dan Pola Kerusakan',
-        objective: 'Menjelaskan mekanisme keamanan dan bagaimana material berperilaku saat mengalami kegagalan atau pecah.',
+        heading: 'Kinerja dan Batasan Operasional di Lapangan',
+        objective: 'Menjelaskan batas kemampuan dan apa yang bisa maupun tidak bisa diselesaikan oleh masing-masing opsi.',
         key_points: [
-          'Bandingkan pola pecahan atau retak demi keamanan penghuni rumah.',
-          'Paparkan standar keselamatan dan kepatuhan aplikasi pada area berisiko benturan.'
+          'Paparkan batasan fisik dan situasi di mana opsi tertentu tidak efektif bekerja.',
+          'Jelaskan aspek keselamatan, kenyamanan penghuni, dan keandalan fungsi.'
         ]
       },
       {
-        heading: 'Pemasangan, Dukungan Rangka, dan Fleksibilitas Desain',
-        objective: 'Menjelaskan persyaratan teknis dudukan, profil pengikat, dan kepraktisan instalasi di lapangan.',
+        heading: 'Persyaratan Pemasangan dan Dukungan Ruang',
+        objective: 'Menjelaskan kebutuhan teknis instalasi, jalur sirkulasi, dan kepraktisan pengerjaan di lapangan.',
         key_points: [
-          'Uraikan batasan pemotongan, fabrikasi, dan toleransi pemasangan di lapangan.',
-          'Jelaskan kompatibilitas material dengan gasket, perekat, atau rangka penopang.'
+          'Uraikan kebutuhan bukaan, saluran, ruang dudukan, atau pasokan udara/daya yang memadai.',
+          'Jelaskan toleransi dan ketepatan pemasangan agar sistem tidak bekerja dalam kondisi tertekan.'
         ]
       },
       {
         heading: 'Daya Tahan dan Perawatan di Iklim Tropis',
-        objective: 'Membahas ketahanan terhadap kelembapan tropis, radiasi sinar matahari, dan perawatan jangka panjang.',
+        objective: 'Membahas ketahanan terhadap kelembapan tropis, akumulasi kotoran, dan pemeliharaan berkala.',
         key_points: [
-          'Paparkan risiko delaminasi, korosi tepi, atau pemudaran lapisan pelindung.',
-          'Berikan panduan pembersihan dan inspeksi visual berkala yang aman.'
+          'Paparkan titik kritis perawatan berkala yang wajib diketahui pemilik rumah.',
+          'Berikan panduan pembersihan dan pemeriksaan mandiri yang realistis.'
         ]
       },
       {
-        heading: 'Panduan Memilih Sesuai Zona dan Prioritas Ruang',
-        objective: 'Menyajikan rekomendasi praktis penempatan masing-masing material sesuai kebutuhan ruang hunian.',
+        heading: 'Panduan Memilih Sesuai Kondisi dan Prioritas Rumah',
+        objective: 'Menyajikan rekomendasi praktis kapan memilih opsi pertama vs opsi kedua.',
         key_points: [
-          'Daftar skenario aplikasi terbaik untuk opsi pertama vs opsi kedua.',
-          'Pertimbangkan aspek anggaran total sistem pemasangan dan tingkat risiko penghuni.'
+          'Daftar skenario hunian yang paling tepat untuk opsi pertama vs opsi kedua.',
+          'Pertimbangkan aspek kepraktisan renovasi, efisiensi biaya, dan kebutuhan nyata penghuni.'
         ]
       },
       {
         heading: 'Penutup Bersahaja: Mengambil Keputusan Sesuai Prioritas',
         objective: 'Menyerahkan kembali keputusan kepada kondisi nyata dan prioritas rumah pembaca (Warm Decision Handoff).',
         key_points: [
-          'Tegaskan tidak ada material yang unggul mutlak di segala sisi.',
-          'Bantu pembaca menimbang antara faktor keselamatan, estetika, dan anggaran sistem.'
+          'Tegaskan tidak ada opsi yang unggul mutlak di segala situasi.',
+          'Bantu pembaca menimbang antara kepraktisan, anggaran, dan kenyamanan jangka panjang.'
         ]
       }
     ];
@@ -1129,7 +1129,7 @@ export function compileReaderFocusedOutline(
         ]
       },
       {
-        heading: 'Panduan Memilih yang Paling Masuk Akal untuk Rumah Anda',
+        heading: 'Panduan Memilih yang Paling Masuk Akal untuk Rumahmu',
         objective: 'Menyajikan skenario konkret pemilihan berbasis bukaan, anggaran, dan kemudahan perawatan.',
         key_points: [
           'Buat ringkasan perbandingan: kapan memilih overhang, louver, awning, atau secondary skin.',
@@ -1166,7 +1166,7 @@ export function compileReaderFocusedOutline(
       ]
     },
     {
-      heading: 'Keputusan yang Tepat untuk Rumah Anda',
+      heading: 'Keputusan yang Tepat untuk Rumahmu',
       objective: 'Menyerahkan kembali agensi keputusan kepada pemilik rumah secara percaya diri.',
       key_points: [
         'Rangkum kesimpulan utama.',
@@ -1183,6 +1183,7 @@ export function compileReaderFocusedOutline(
 export function compileEditorialBrief(input: EditorialPlannerInput): EditorialBrief {
   const family = detectEditorialArticleFamily(input.topic, input.requestedTitle, input.intentProfile);
   const title = input.requestedTitle || input.topic;
+  const topicLower = `${title} ${input.topic}`.toLowerCase();
 
   const outline = compileReaderFocusedOutline(family, input.topic, title);
   const taxonomy = auditFactualClaimsTaxonomy(input.authorSafeClaims, input.evidencePack, family, outline, input.topic);
@@ -1202,16 +1203,22 @@ export function compileEditorialBrief(input: EditorialPlannerInput): EditorialBr
     }
   }
 
+  const isRoofTopic = topicLower.includes('atap') || topicLower.includes('genteng') || topicLower.includes('seng');
+
   const searchIntent =
     family === 'MATERIAL_COMPARISON'
-      ? 'Pemilik rumah ingin memahami perbedaan nyata, beban struktur, dan kenyamanan termal/akustik antara dua pilihan material agar bisa memilih sesuai bentuk atap dan anggaran tanpa salah beli.'
+      ? (isRoofTopic
+          ? 'Pemilik rumah ingin memahami perbedaan nyata, beban struktur, dan kenyamanan termal/akustik antara pilihan penutup atap agar bisa memilih sesuai bentuk atap dan anggaran tanpa salah beli.'
+          : 'Pemilik rumah ingin memahami perbedaan nyata, efektivitas fungsi, dan konsekuensi praktis antara opsi yang dibandingkan agar dapat mengambil keputusan yang paling tepat sesuai kebutuhan hunian.')
       : family === 'INSPIRATION_DECOR'
       ? 'Pemilik rumah ingin ide penataan yang nyata, praktis, dan terjangkau agar ruang hunian terasa lebih lega, rapi, dan nyaman untuk bersantai tanpa renovasi besar.'
       : 'Pemilik rumah mencari solusi praktis dan diagnosis fisik yang dapat diandalkan untuk masalah hunian mereka.';
 
   const editorialAngle =
     family === 'MATERIAL_COMPARISON'
-      ? 'Tidak ada pemenang mutlak untuk semua rumah. Atap metal unggul dalam bobot ringan dan fleksibilitas kemiringan rendah; genteng beton unggul dalam massa solid dan peredaman suara alami. Pilihan terbaik ditentukan oleh struktur rangka, kemiringan atap, dan kenyamanan sistem.'
+      ? (isRoofTopic
+          ? 'Tidak ada pemenang mutlak untuk semua rumah. Setiap opsi memiliki keunggulan fisik, beban struktur, dan kenyamanan sistem tersendiri. Pilihan terbaik ditentukan oleh struktur rangka, kemiringan atap, dan kebutuhan hunian.'
+          : 'Tidak ada pemenang mutlak untuk semua rumah. Setiap opsi memiliki keunggulan karakteristik fisik, efektivitas fungsi, dan konsekuensi perawatan tersendiri. Pilihan terbaik ditentukan oleh kondisi fisik lapangan dan prioritas kebutuhan hunian.')
       : family === 'INSPIRATION_DECOR'
       ? 'Keindahan dan kenyamanan bukan tentang membeli banyak perabot baru atau menghafal teori arsitektur rumit, melainkan tentang memilih elemen fungsional yang ramping, tekstur alami, dan sirkulasi yang lega.'
       : 'Pendekatan konsultan bangunan yang mendiagnosis penyebab mendasar sebelum memutuskan tindakan perbaikan.';
