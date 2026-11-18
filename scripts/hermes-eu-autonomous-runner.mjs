@@ -116,29 +116,29 @@ async function signHermesRequest(rawBodyBytes, jobId, requestId, timestamp, secr
  */
 function generateSvgDataUri(title, subtitle, bullets) {
   const bulletItems = bullets.map((b, i) => `
-    <g transform="translate(60, ${180 + i * 70})">
-      <rect width="1080" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
-      <circle cx="30" cy="26" r="10" fill="#2563EB"/>
-      <text x="30" y="31" fill="#FFFFFF" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" text-anchor="middle">${i + 1}</text>
-      <text x="60" y="32" fill="#1E293B" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="15" font-weight="600">${b.label}</text>
-      <text x="380" y="32" fill="#64748B" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="14">${b.desc}</text>
+    <g transform="translate(60, ${200 + i * 85})">
+      <rect width="1080" height="65" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
+      <circle cx="35" cy="32" r="14" fill="#2563EB"/>
+      <text x="35" y="37" fill="#FFFFFF" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" text-anchor="middle">${i + 1}</text>
+      <text x="70" y="38" fill="#1E293B" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="15" font-weight="600">${b.label}</text>
+      <text x="400" y="38" fill="#64748B" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="13">${b.desc}</text>
     </g>
   `).join('');
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" width="1200" height="480">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675">
   <defs>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&amp;display=swap');
     </style>
   </defs>
-  <rect width="1200" height="480" rx="16" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <rect x="0" y="0" width="1200" height="90" rx="16" fill="#1E293B"/>
-  <rect x="0" y="70" width="1200" height="20" fill="#1E293B"/>
-  <text x="60" y="44" fill="#38BDF8" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">STANDAR REKAYASA &amp; PANDUAN BANGUNAN RANCANGLOKA</text>
-  <text x="60" y="70" fill="#FFFFFF" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="20" font-weight="800">${title}</text>
-  <text x="60" y="130" fill="#475569" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="16" font-weight="500">${subtitle}</text>
+  <rect width="1200" height="675" rx="16" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <rect x="0" y="0" width="1200" height="100" rx="16" fill="#1E293B"/>
+  <rect x="0" y="80" width="1200" height="20" fill="#1E293B"/>
+  <text x="60" y="48" fill="#38BDF8" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">STANDAR REKAYASA &amp; PANDUAN BANGUNAN RANCANGLOKA</text>
+  <text x="60" y="78" fill="#FFFFFF" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="20" font-weight="800">${title}</text>
+  <text x="60" y="145" fill="#475569" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="16" font-weight="500">${subtitle}</text>
   ${bulletItems}
-  <text x="60" y="440" fill="#94A3B8" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">Prinsip Editorial RancangLoka: Bebas klaim fiktif • Rujukan Standar Fisika Bangunan Tropis</text>
+  <text x="60" y="630" fill="#94A3B8" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">Prinsip Editorial RancangLoka: Bebas klaim fiktif • Rujukan Standar Fisika Bangunan Tropis</text>
 </svg>`;
 
   const base64Svg = Buffer.from(svg, 'utf8').toString('base64');
@@ -915,7 +915,12 @@ ${finalMarkdown}`;
     if (m) bodyH2Headings.push(m[1].trim());
   }
 
-  console.log('📐 [Budi & Nadia] Menyintesis diagram teknis SVG Base64 dari slot storyboard...');
+  console.log('📐 [Budi & Nadia] Menyintesis diagram teknis SVG Base64 arsitektural 16:9 dari slot storyboard...');
+  const {
+    generateKitchenAirflowComparisonSvg,
+    generateVentilationEffectivenessSvg
+  } = await import('../src/lib/editorial/kitchen-ventilation-diagrams.ts');
+
   for (let idx = 0; idx < storyboard.inline_slots.length; idx++) {
     const slot = storyboard.inline_slots[idx];
     let targetHeading = slot.section_title;
@@ -929,20 +934,24 @@ ${finalMarkdown}`;
       }
     }
 
-    const diagTitle = targetHeading || slot.section_title || `Diagram Teknis Slot ${idx + 1}`;
-    const diagSubtitle = slot.educational_purpose || 'Standar Rekayasa Ventilasi Bangunan RancangLoka';
+    let dataUri = '';
+    let diagTitle = '';
+    let diagSubtitle = '';
+    let altText = '';
 
-    const bullets = idx === 0 ? [
-      { label: 'Cooker Hood Resirkulasi Karbon', desc: 'Menyaring lemak dan bau; uap air dan panas tetap bertahan di dapur.' },
-      { label: 'Exhaust Fan Ducting Keluar', desc: 'Menyalurkan sebagian besar uap air, panas, dan asap langsung ke luar bangunan.' },
-      { label: 'Pasokan Make-Up Air', desc: 'Celah sirkulasi udara masuk diperlukan agar kipas hisap tidak bekerja dalam ruang vakum.' }
-    ] : [
-      { label: 'Rumus Debit Udara Q = V x Sirkulasi', desc: 'Kapasitas hisap dihitung dari volume ruangan dikalikan target laju pertukaran udara per jam.' },
-      { label: 'Jarak Penangkap Asap', desc: 'Posisi corong hisap dipasang 65-75 cm di atas kompor gas atau 60-70 cm di atas induksi.' },
-      { label: 'Kemiringan Saluran Ducting', desc: 'Pipa pembuangan horizontal dipasang landai ke arah luar guna mencegah aliran balik kondensasi.' }
-    ];
-
-    const dataUri = generateSvgDataUri(diagTitle, diagSubtitle, bullets);
+    if (idx === 0) {
+      const svgContent = generateKitchenAirflowComparisonSvg();
+      dataUri = `data:image/svg+xml;base64,${Buffer.from(svgContent, 'utf8').toString('base64')}`;
+      diagTitle = 'Diagram Potongan Dapur: Perbedaan Aliran Udara Cooker Hood Resirkulasi vs Exhaust Fan Dinding';
+      diagSubtitle = 'Perbedaan arah aliran udara dan pelepasan uap panas antara cooker hood resirkulasi dan exhaust fan dinding.';
+      altText = 'Diagram potongan dapur yang memperlihatkan perbedaan aliran udara antara cooker hood resirkulasi dan exhaust fan dinding yang membuang udara keluar.';
+    } else {
+      const svgContent = generateVentilationEffectivenessSvg();
+      dataUri = `data:image/svg+xml;base64,${Buffer.from(svgContent, 'utf8').toString('base64')}`;
+      diagTitle = 'Diagram Kondisi Efektivitas Ventilasi: Ruang Terisolasi vs Aliran Udara Berimbang';
+      diagSubtitle = 'Kondisi kegagalan akibat ruang vakum tanpa make-up air dibandingkan sistem ventilasi berimbang.';
+      altText = 'Diagram kondisi ventilasi kurang efektif: tanpa udara pengganti, hambatan aliran, dan kondisi sistem dengan jalur udara masuk serta pembuangan yang memadai.';
+    }
 
     visualItems.push({
       visual_id: `ast_${articleIdNum}_s${idx + 1}_diagram`,
@@ -959,10 +968,10 @@ ${finalMarkdown}`;
         storytelling_class: 'ENGINEERING_DIAGRAM',
         aspect_ratio: '16:9',
         intended_width: 1200,
-        intended_height: 480
+        intended_height: 675
       },
       caption: diagTitle,
-      alt_text: diagTitle,
+      alt_text: altText,
       asset_id: `ast_${articleIdNum}_s${idx + 1}`,
       storage_key: dataUri,
       review_status: 'PENDING',
@@ -983,6 +992,15 @@ ${finalMarkdown}`;
     },
     visual_items: visualItems
   };
+
+  // Evaluate Visual Semantic Quality Gate
+  const { evaluateVisualSemanticGate } = await import('../src/lib/editorial/visual-semantic-gate.ts');
+  const semanticGateResult = evaluateVisualSemanticGate(visualManifest, finalMarkdown);
+  if (!semanticGateResult.passed) {
+    console.error('❌ Gagal lolos Visual Semantic Quality Gate:', semanticGateResult.violations);
+    process.exit(1);
+  }
+  console.log(`   ✓ Visual Semantic Quality Gate: PASS (Skor: ${semanticGateResult.score}/100, 0 violations).`);
 
   // Verify inline placement resolution locally before transport
   const { resolveVisualPlacements } = await import('../src/lib/media/anchor-resolver.ts');

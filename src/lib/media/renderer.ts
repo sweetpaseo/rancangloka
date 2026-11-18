@@ -95,15 +95,12 @@ export function formatInlineFigure(params: {
   const safeCaption = caption ? escapeHtml(caption) : '';
 
   const fixtureAttr = isFixture ? ' data-fixture-asset="true"' : '';
-  const fixtureBadge = isFixture
-    ? ' <span class="text-amber-600 dark:text-amber-400 font-semibold">(Fixture Media - Belum Disetujui)</span>'
-    : '';
 
   return `<figure class="rl-media-slot my-8 max-w-full" data-media-slot="${safeSlot}"${fixtureAttr}>
   <div class="relative overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-800 aspect-16/9">
     <img src="${safeUrl}" alt="${safeAlt}" width="${width}" height="${height}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
   </div>
-  ${safeCaption ? `<figcaption class="mt-2.5 text-center text-xs text-stone-500 dark:text-stone-400 font-sans tracking-tight">${safeCaption}${fixtureBadge}</figcaption>` : ''}
+  ${safeCaption ? `<figcaption class="mt-2.5 text-center text-xs text-stone-500 dark:text-stone-400 font-sans tracking-tight">${safeCaption}</figcaption>` : ''}
 </figure>`;
 }
 

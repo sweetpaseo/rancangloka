@@ -394,14 +394,11 @@ function defaultRenderFigure(item: VisualManifestItem, isPreview: boolean): stri
 
   const isApproved = item.editorial_approval === 'APPROVED_FOR_INLINE_PUBLICATION';
   const fixtureAttr = isPreview && !isApproved ? ' data-fixture-asset="true"' : '';
-  const fixtureBadge = isPreview && !isApproved
-    ? ' <span class="text-amber-600 dark:text-amber-400 font-semibold">(LOCAL TEST / NOT EDITORIALLY APPROVED)</span>'
-    : '';
 
   return `<figure class="rl-media-slot my-8 max-w-full" data-media-slot="${slotKey}"${fixtureAttr}>
   <div class="relative overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-800 aspect-16/9">
     <img src="${url}" alt="${alt}" width="${width}" height="${height}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
   </div>
-  ${caption ? `<figcaption class="mt-2.5 text-center text-xs text-stone-500 dark:text-stone-400 font-sans tracking-tight">${caption}${fixtureBadge}</figcaption>` : ''}
+  ${caption ? `<figcaption class="mt-2.5 text-center text-xs text-stone-500 dark:text-stone-400 font-sans tracking-tight">${caption}</figcaption>` : ''}
 </figure>`;
 }
