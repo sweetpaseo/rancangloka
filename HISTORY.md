@@ -5026,3 +5026,38 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
 - **Financial Supervision:** Pilot spend for Article #9993 is US$0.2025, safely within the US$0.30 cap.
 - **Review URL:** `http://localhost:4321/admin/preview/dinding-rembes-dan-cat-menggelembung-cara-membedakan-masalah-talang-plesteran-kelembapan-tanah`.
 
+
+
+## 2026-11-18 — Milestone: RANCANGLOKA_REAL_AI_CANARY_10011_AND_REPLAY_RESOLUTION
+- **Target Topik:** Artikel #10011 (*Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*).
+- **Remote Environment:** SumoPod EU Container (`1430fbde9a84`, Node.js `v26.12.1`), Git branch `feat/jev-lokamedia-integration`.
+- **Cloudflare Edge Staging:** `rancangloka-staging.chandrajoyko.workers.dev` (Version ID `94f3c7a8-f189-4c2c-a64a-f3c50ff4db00`).
+- **Autentikasi & Ingest HMAC Staging:**
+  - Kunci rahasia staging berhasil disinkronkan secara aman tanpa kebocoran secret.
+  - Verifikasi HMAC test-ingest berhasil menciptakan D1 Staging Article ID 9 (HTTP 201 INGEST_CREATED, $0 spend).
+- **Pemanggilan Model AI Nyata (GPT-6 Luna):**
+  - Runner otonom berhasil memanggil model `gpt-6-luna` asli via SumoPod API.
+  - Pemakaian token: 3.553 input + 3.540 output = 7.093 total token.
+  - Biaya aktual: US$0.0159 (sangat aman di bawah pagu US$0.10).
+  - Naskah yang dihasilkan: 1.267 kata / 9.157 karakter teks editorial bahasa Indonesia mendalam, bebas jargon tanpa penjelasan, dan berstruktur analitis tajam.
+  - Kepatuhan Conversational Editorial: 100% lulus, 0 kata 'Anda', ritme paragraf pendek alami.
+  - Rina QA status: `HUMAN_OR_AUTHORIZED_SEMANTIC_REVIEW_REQUIRED` (murni evaluasi substantif, zero synthetic approval).
+- **Resolusi Domain Leak & Kontrak Body HTTP 422:**
+  - Memperbaiki kebocoran domain plafon/atap lama pada editorial planner brief (commit `322a93c`).
+  - Memperbaiki kontrak payload Markdown pada runner sehingga naskah utuh dikirim pada field `content`, menambahkan fail-fast validation, dan menyimpan naskah ke disk lokal kontainer (commit `cc757a8`).
+- **Resolusi HTTP 409 Conflict Tanpa Biaya Baru ($0.00 Spend):**
+  - Investigasi read-only pada D1 Staging menemukan slug lama bertabrakan dengan Artikel ID 2 (draf uji coba lama 3.308 karakter dari 2026-11-17).
+  - Mengimplementasikan mode `--replay` / `--reuse-disk-draft` untuk membaca naskah 9.157 karakter langsung dari disk tanpa membuat pemanggilan AI berbayar baru ($0.00 spend).
+  - Menetapkan identitas staging unik `(Canary #10011)` pada judul dan slug: `ventilasi-dapur-tanpa-jendela-solusi-cooker-hood-resirkulasi-vs-exhaust-fan-dinding-canary-10011`.
+  - Mengikat `source_article_id` deterministik stabil: `art_10011_canary_kitchen_v2` untuk mendukung idempotensi.
+  - Artikel ID 2 dipertahankan utuh tanpa perubahan atau penghapusan.
+- **Rendering Diagram SVG pada Reader Preview:**
+  - Memperbarui `src/pages/admin/preview/[slug].astro` dengan `allowUnapprovedInPreview: true` sehingga kedua diagram SVG inline dirender penuh pada pratinjau admin, sementara rute publik tetap aman (`allowUnapprovedInPreview: false`).
+  - Dideploy ke Cloudflare Workers Staging (Version ID `94f3c7a8-f189-4c2c-a64a-f3c50ff4db00`).
+- **Verifikasi Pengujian & Build:**
+  - `scripts/test-canary-replay-idempotency.mjs`: 6/6 PASSED.
+  - `scripts/test-canary-body-contract.mjs`: 6/6 PASSED.
+  - TypeScript typecheck (`npx tsc --noEmit`): 0 error (Exit code 0).
+  - Production build (`npm run build`): Selesai dalam 9.73s (Exit code 0).
+  - Commit `6ae080a` di-push sukses ke `feat/jev-lokamedia-integration`.
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF`, `PRODUCTION_AUTHORITY = 0`, `JEV_MODE = shadow`, `Cron = OFF`, zero secret leaks.
