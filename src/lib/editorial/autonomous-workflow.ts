@@ -98,6 +98,7 @@ export interface AutonomousWorkflowResult {
   totalSpendUsd: number;
   gravyManualStepsRemaining: number;
   traceLog: Array<{ step: string; status: 'PASS' | 'WARN' | 'FAIL'; message: string }>;
+  editorialJobResult?: EditorialJobResult | null;
   error?: string;
 }
 
@@ -335,6 +336,7 @@ export async function executeAutonomousEditorialWorkflow(
       totalSpendUsd: mediaResult.totalSpendUsd,
       gravyManualStepsRemaining: 0,
       traceLog,
+      editorialJobResult,
       error: mediaResult.error
     };
   }
@@ -401,6 +403,7 @@ export async function executeAutonomousEditorialWorkflow(
     expectedCount: storyboard.inline_slots.length,
     totalSpendUsd: mediaResult.totalSpendUsd,
     gravyManualStepsRemaining: 0,
-    traceLog
+    traceLog,
+    editorialJobResult
   };
 }
