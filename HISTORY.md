@@ -2,6 +2,52 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **Rancangloka**.
 
+## Hermes EU Autonomous Canary Preflight (#10011) & Kling V1 Closeout (2026-11-18)
+
+- **Milestone:** `RANCANGLOKA_REAL_CANARY_10011_PREFLIGHT_READY`
+- **Checkpoint:** Titik Aman Offline (`state/OFFLINE_CHECKPOINT_20261118_HERMES_EU_CANARY_PREFLIGHT.md`) pada branch `feat/jev-lokamedia-integration`.
+- **Target Topik Baru:** Artikel #10011 — *Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*
+- **Karakteristik & Pembuktian Nyata:**
+  1. **Kling Integration V1 & Visual Quality Gate V2.2 Selesai:**
+     - `KlingImageProviderAdapter` teruji 15/15 PASS dengan tarif resmi (2K=8 unit, 4K=16 unit).
+     - Visual Quality Gate V2.2 menegakkan 5 Gerbang Wajib Storyboard Nadia (`primary_subject_mismatch`, `spatial_layout_inaccurate`, `building_proportions_invalid`, `construction_implausible`, `contradicts_article_concept`).
+     - Invarian terbukti: Skor fotorealisme tinggi (90/100) tidak dapat membatalkan kegagalan gerbang wajib. Kandidat live #1 dicatat `BENCHMARK_REJECTED` di `calibration_decisions.json`.
+     - Seedream 5.0 Pro V2 dipertahankan sebagai **DEFAULT** provider; Kling dihentikan resmi sebagai eksperimental.
+  2. **Verifikasi Remote HMAC Ingestion SumoPod EU (PASS):**
+     - Kunci staging dirotasi ke `hermes_staging_key_v2`.
+     - Eksekusi nyata dari container SumoPod EU (`hostname: 1430fbde9a84`) menghasilkan `HTTP 201 INGEST_CREATED`, D1 Article ID `9`, dan visual manifest tersimpan persisten di Cloudflare D1 Staging ($0 spend).
+  3. **Kesiapan Real AI Canary #10011 (Preflight Ready):**
+     - Paket riset empiris dikalibrasi ketat ke SNI 6572-2:2024 / SNI 03-6572-2001 dan hukum kontinuitas fluida (menghapus klaim mutlak 15-20 ACH, 100% pembuangan, dan ukuran celah pintu/sudut tanpa sumber).
+     - Kredensial mendeteksi otomatis multi-sumber (`process.env.SUMOPOD_API_KEY`, `.env.staging`, `/opt/hermes/.env`) tanpa duplikasi kunci.
+     - Model `gpt-6-luna` siap dipanggil via SumoPod API untuk naskah nyata Joko.
+     - Diagram teknis SVG Base64 (Plus Jakarta Sans, 16:9, status `PENDING`) disintesis oleh Budi ($0 media spend).
+     - Pagu keras: $\le \text{US}\$0.10$ (estimasi pemanggilan LLM: $\text{US}\$0.02 - \$0.04$).
+     - Satu perintah terenkapsulasi disiapkan untuk Web Terminal SumoPod menunggu otorisasi Owner.
+
+## Hermes EU Autonomous Staging Canary (#10010) — Real Edge Execution (2026-11-17)
+
+- **Milestone:** `RANCANGLOKA_HERMES_CANARY_STAGING_COMPLETE`
+- **Checkpoint:** Titik Aman Offline (`state/OFFLINE_CHECKPOINT_20261117_HERMES_EU_CANARY_STAGING.md`) pada branch `feat/jev-lokamedia-integration`.
+- **Target Topik:** Artikel #10010 — *Mengatasi Plafon Kamar Mandi Berjamur Hitam: Solusi Exhaust Fan dan Cat Anti-Jamur*
+- **Karakteristik Eksekusi & Bukti Nyata Edge:**
+  1. **Infrastruktur Terisolasi Penuh:**
+     - Cloudflare Worker Staging: `https://rancangloka-staging.chandrajoyko.workers.dev`
+     - Database Staging: `rancangloka_staging_db` (ID: `9e889739-0488-4667-8de8-5a731a0ae5b0` di APAC/SIN)
+     - Storage Staging: `rancangloka-media-staging` (R2)
+     - Zero mutation ke database/bucket produksi (`rancangloka_db` dan `rancangloka-media` 100% aman).
+  2. **Ingestion Kriptografis M2M (Sari):**
+     - Endpoint: `POST /api/internal/v1/hermes-ingest` dengan HMAC-SHA256 fail-closed.
+     - Teruji lulus 3 vektor pengujian: Invalid signature (401), replay timestamp luar toleransi (401), dan signed valid (201/success).
+     - Status artikel di D1 staging: strictly **`draft`** (`AUTO_PUBLISH = OFF`).
+  3. **Visual Media & fal.ai (Budi):**
+     - Cover image ter-generate nyata via `FalImageProviderAdapter` (`fal-ai/flux/schnell`, 466.814 bytes).
+     - Pengeluaran aktual: **US$0.0030** (Pagu keras <= US$0.30 terjaga ketat).
+     - 2 Diagram SVG Plus Jakarta Sans murni: `candidate-10010-s1-diagram.svg` & `candidate-10010-s2-diagram.svg`.
+     - Seluruh media diunggah ke R2 staging dan disinkronkan ke Cloudflare Edge Assets.
+  4. **Dynamic Manifest & Reader Preview Verification:**
+     - Manifest terikat ke D1 `settings` (`visual_manifest:slug:...`).
+     - Tampilan Reader Preview bersih (`?mode=reader`) dengan 1 H1 tunggal, 0 kata "Anda", cover hero & 2 diagram inline terikat sempurna.
+
 ## Hermes EU Live Autonomy Proof — Unsimulated Real Execution (2026-11-17)
 
 - **Milestone:** `HERMES_EU_LIVE_AUTONOMY_PROOF_COMPLETE`
