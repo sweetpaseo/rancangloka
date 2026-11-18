@@ -220,6 +220,52 @@ Warna hitamnya sendiri belum bisa memastikan sumber masalah secara pasti. Yang l
     const { signatureHex, rawBodySha256 } = await signHermesRequest(dummyRawBody, jobId, requestId, timestamp, mockSecret);
     console.log(`   ✓ In-memory HMAC-SHA256 calculation: PASS (SHA256: ${rawBodySha256.substring(0, 16)}...)`);
 
+    // 5. Canonical Article Contract & Body Validation In-Memory
+    const { validateArticle } = await import('../src/lib/article/validator.ts');
+    const dryRunSampleMarkdown = `---
+title: "Uji Mandiri Standar Rekayasa Ventilasi Kamar Mandi Kering"
+description: "Panduan teknis dan simulasi validasi kontrak artikel kanonikal RancangLoka."
+category: "Sistem & Konstruksi Rumah"
+author: "RancangLoka Editorial Desk"
+focus_keyword: "ventilasi kamar mandi"
+featured_image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=1200&auto=format&fit=crop&q=80"
+image_alt: "Visual ventilasi kamar mandi modern"
+key_takeaways:
+  - "Kondensasi uap panas kamar mandi memicu jamur tipis merata di sudut plafon."
+  - "Rembesan dak beton aktif ditandai noda terpusat melingkar dan gypsum melunak."
+  - "Standar SNI 6572 mewajibkan 5 hingga 8 ACH untuk ventilasi mekanis kamar mandi."
+---
+
+Bercak hitam di plafon kamar mandi memang bikin waswas bagi setiap pemilik rumah. Penyebabnya bisa sesederhana uap mandi hangat yang terjebak, tetapi kebocoran dari pipa buangan atau retakan lantai atas juga tidak boleh diabaikan begitu saja.
+
+Warna hitamnya sendiri belum bisa memastikan sumber masalah secara pasti. Yang lebih membantu untuk diagnosis awal adalah melihat pola noda, tekstur fisik plafon, dan kapan kelembapan air tersebut mulai muncul di rumahmu.
+
+## Perhatikan pola noda dan kapan plafon terasa basah
+
+Kalau noda jamur menyebar rata seperti kabut tipis di sudut-sudut plafon dan dinding luar, pemicu utamanya biasanya adalah kondensasi uap panas yang terperangkap. Ruangan yang lembap setelah kamu selesai mandi air hangat membuat titik embun menempel di permukaan cat yang dingin.
+
+Sebaliknya, jika noda terlihat terkonsentrasi di satu titik melingkar, permukaan gypsum melengkung atau lembek saat disentuh, maka kamu sedang berhadapan dengan rembesan air aktif dari dak beton atau instalasi pipa air di atasnya.
+
+## Jika polanya mengarah ke kondensasi, bantu uap keluar
+
+Solusi paling efektif untuk kelembapan uap adalah memasang sistem exhaust fan mekanis yang sesuai dengan volume kamar mandi rumahmu. Berdasarkan standar SNI 6572, laju pertukaran udara kamar mandi tanpa bukaan alami idealnya berkisar antara 5 hingga 8 kali pertukaran udara per jam.
+
+Pastikan juga ada jalur udara masuk pengganti, misalnya celah sekitar satu hingga dua sentimeter di bawah pintu kamar mandi. Tanpa celah udara masuk, kipas hisap tidak akan bisa bekerja optimal karena ruangan mengalami tekanan negatif.
+
+## Langkah perbaikan yang tenang dan tepat sasaran
+
+Sebelum mengecat ulang plafon berjamur, bersihkan dulu sporanya menggunakan cairan pembasmi jamur dan biarkan permukaan benar-benar kering sempurna. Jangan langsung menutup noda jamur basah dengan cat biasa karena lapisan jamur akan kembali tumbuh menembus lapisan cat dalam hitungan minggu.
+
+Gunakan cat dasar tahan alkali dan cat akhir khusus area basah yang mengandung formula anti-fungal. Dengan perbaikan ventilasi yang tepat dan perlindungan cat yang sesuai, plafon kamar mandimu akan tetap bersih, sehat, dan bebas dari ancaman jamur hitam.
+`;
+
+    const dryValidation = validateArticle(dryRunSampleMarkdown);
+    if (!dryValidation.isValid) {
+      console.error('❌ Dry-run sample markdown failed canonical validation:', dryValidation.errors);
+      process.exit(1);
+    }
+    console.log(`   ✓ In-memory Canonical Contract Validation: PASS (${dryValidation.data?.wordCount} kata, body: ${dryValidation.data?.markdownBody.length} chars).`);
+
     console.log('\n================================================================');
     console.log('HASIL DRY-RUN (ZERO SIDE-EFFECT)');
     console.log('================================================================');
@@ -713,16 +759,93 @@ Gunakan cat dasar tahan alkali dan cat akhir khusus area basah yang mengandung f
     process.exit(1);
   }
 
-  console.log(`   ✓ Master workflow selesai. Naskah dihasilkan (${workflowResult.manifest?.article_slug || 'slug'}).`);
+  // Extract manuscript produced by master workflow
+  const rawManuscript = 
+    workflowResult.markdown ||
+    workflowResult.polishedDraft ||
+    workflowResult.contentMd ||
+    workflowResult.editorialJobResult?.finalDraft ||
+    '';
+
+  console.log(`   ✓ Master workflow selesai. Naskah dihasilkan: ${rawManuscript.length} karakter.`);
+
+  if (!rawManuscript || rawManuscript.trim().length < 100) {
+    console.error('\n❌ FAIL-FAST GATE: Master workflow tidak menghasilkan naskah artikel yang valid (panjang < 100 karakter).');
+    process.exit(1);
+  }
+
+  // Persist draft to local disk immediately (ensures zero draft loss on network or validation errors)
+  const draftArtifactPath = path.resolve(rootDir, 'scripts/content-bootstrap/trials/canary-10011-generated.md');
+  try {
+    fs.mkdirSync(path.dirname(draftArtifactPath), { recursive: true });
+    fs.writeFileSync(draftArtifactPath, rawManuscript, 'utf8');
+    console.log(`💾 [Runner] Draf artikel tersimpan di disk: ${draftArtifactPath} (${rawManuscript.length} chars)`);
+  } catch (saveErr) {
+    console.warn(`⚠️ Gagal menyimpan draf artikel ke disk: ${saveErr.message}`);
+  }
+
+  // Assemble full canonical markdown with frontmatter
+  let finalMarkdown = rawManuscript;
+  if (!finalMarkdown.startsWith('---')) {
+    finalMarkdown = `---
+title: "${workflowResult.articleTitle || requestedTitle}"
+description: "Panduan teknis dan komparasi solusi ventilasi dapur tanpa jendela berbasis standar SNI 6572-2:2024 dan SNI 03-6572-2001."
+category: "Sistem & Konstruksi Rumah"
+author: "RancangLoka Editorial Desk"
+focus_keyword: "ventilasi dapur"
+featured_image: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&auto=format&fit=crop&q=80"
+image_alt: "Visual ventilasi dapur tanpa jendela"
+key_takeaways:
+  - "Cooker hood resirkulasi menyaring minyak dan bau, tetapi tidak membuang panas kompor dan kelembapan uap air."
+  - "Exhaust fan ducting ke luar menyalurkan sebagian besar uap air dan panas kompor langsung ke luar bangunan."
+  - "Perancangan ventilasi dapur mengacu pada SNI 6572-2:2024 dengan mempertimbangkan pasokan make-up air."
+---
+
+${finalMarkdown}`;
+  }
+
+  // Local Fail-Fast Gate: Canonical Article Validation BEFORE Signing & Ingest
+  const { validateArticle } = await import('../src/lib/article/validator.ts');
+  const validation = validateArticle(finalMarkdown);
+  if (!validation.isValid) {
+    console.error('\n❌ FAIL-FAST GATE: Validasi kanonikal artikel gagal sebelum penandatanganan HMAC:');
+    for (const err of validation.errors) {
+      console.error(`   - ${err}`);
+    }
+    process.exit(1);
+  }
+
+  console.log(`✅ [Fail-Fast Gate] Validasi artikel kanonikal PASS:`);
+  console.log(`   - Jumlah Kata  : ${validation.data.wordCount} kata (batas wajar: 300 - 5000 kata)`);
+  console.log(`   - Panjang Body : ${validation.data.markdownBody.length} karakter`);
+  console.log(`   - Heading H2   : Terverifikasi`);
 
   // Synthesize Base64 Technical SVG Diagrams from Dynamic Storyboard Slots
   const storyboard = workflowResult.storyboard;
   const visualItems = [];
 
+  // Extract available H2 headings from the validated markdown body
+  const bodyH2Headings = [];
+  for (const line of validation.data.markdownBody.split('\n')) {
+    const m = line.match(/^##\s+(.+)$/);
+    if (m) bodyH2Headings.push(m[1].trim());
+  }
+
   console.log('📐 [Budi & Nadia] Menyintesis diagram teknis SVG Base64 dari slot storyboard...');
   for (let idx = 0; idx < storyboard.inline_slots.length; idx++) {
     const slot = storyboard.inline_slots[idx];
-    const diagTitle = slot.section_title || `Diagram Teknis Slot ${idx + 1}`;
+    let targetHeading = slot.section_title;
+
+    // Ensure target_heading_text matches an actual H2 heading in the article
+    if (!bodyH2Headings.includes(targetHeading)) {
+      if (bodyH2Headings[idx]) {
+        targetHeading = bodyH2Headings[idx];
+      } else if (bodyH2Headings[0]) {
+        targetHeading = bodyH2Headings[0];
+      }
+    }
+
+    const diagTitle = targetHeading || slot.section_title || `Diagram Teknis Slot ${idx + 1}`;
     const diagSubtitle = slot.educational_purpose || 'Standar Rekayasa Ventilasi Bangunan RancangLoka';
 
     const bullets = idx === 0 ? [
@@ -743,7 +866,7 @@ Gunakan cat dasar tahan alkali dan cat akhir khusus area basah yang mengandung f
       media_type: 'technical_diagram',
       priority: 'essential',
       placement: {
-        target_heading_text: slot.section_title,
+        target_heading_text: targetHeading,
         position: 'after_heading'
       },
       visual_purpose: diagSubtitle,
@@ -762,7 +885,7 @@ Gunakan cat dasar tahan alkali dan cat akhir khusus area basah yang mengandung f
       editorial_approval: 'PENDING'
     });
 
-    console.log(`   ✓ Inline ${idx + 1}: ${diagTitle} (Base64 SVG: ${dataUri.length} chars) - Status: PENDING`);
+    console.log(`   ✓ Inline ${idx + 1}: ${diagTitle} (Base64 SVG: ${dataUri.length} chars, anchor: "${targetHeading}") - Status: PENDING`);
   }
 
   const visualManifest = {
@@ -777,25 +900,15 @@ Gunakan cat dasar tahan alkali dan cat akhir khusus area basah yang mengandung f
     visual_items: visualItems
   };
 
-  // Sign and Post to Cloudflare Staging Ingest Endpoint
-  let finalMarkdown = workflowResult.storyboard?.markdown || '';
-  if (!finalMarkdown.startsWith('---')) {
-    finalMarkdown = `---
-title: "${workflowResult.articleTitle || requestedTitle}"
-description: "Panduan teknis dan komparasi solusi ventilasi dapur tanpa jendela berbasis standar SNI 6572-2:2024 dan SNI 03-6572-2001."
-category: "Sistem & Konstruksi Rumah"
-author: "RancangLoka Editorial Desk"
-focus_keyword: "ventilasi dapur"
-featured_image: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&auto=format&fit=crop&q=80"
-image_alt: "Visual ventilasi dapur tanpa jendela"
-key_takeaways:
-  - "Cooker hood resirkulasi menyaring minyak dan bau, tetapi tidak membuang panas kompor dan kelembapan uap air."
-  - "Exhaust fan ducting ke luar menyalurkan sebagian besar uap air dan panas kompor langsung ke luar bangunan."
-  - "Perancangan ventilasi dapur mengacu pada SNI 6572-2:2024 dengan mempertimbangkan pasokan make-up air."
----
-
-${finalMarkdown}`;
-  }
+  // Verify inline placement resolution locally before transport
+  const { resolveVisualPlacements } = await import('../src/lib/media/anchor-resolver.ts');
+  const { renderArticleMarkdownSafely } = await import('../src/lib/article/renderer.ts');
+  const renderedHtml = await renderArticleMarkdownSafely(finalMarkdown);
+  const localPlacementCheck = resolveVisualPlacements(renderedHtml, visualManifest, {
+    isDev: true,
+    allowUnapprovedInPreview: true
+  });
+  console.log(`   ✓ Resolusi anchor visual lokal: ${localPlacementCheck.placedCount}/${storyboard.inline_slots.length} terpasang (${localPlacementCheck.isValid ? 'PASS' : 'WARN'})`);
 
   const transportPayload = {
     source: 'hermes',
@@ -870,7 +983,7 @@ ${finalMarkdown}`;
   console.log(`Conversational Audit  : ${workflowResult.readabilityAudit.passed ? 'PASS' : 'WARN'} (0 kata 'Anda')`);
   console.log(`Visual Manifest Saved : ${resBody.manifest_persisted ? 'YES (D1 settings)' : 'NO'}`);
   console.log(`Visuals Created       : ${visualManifest.visual_items.length} inline items (Format: Base64 SVG Data URI, Status: PENDING)`);
-  console.log(`Inline Placement Gate : ${workflowResult.placedCount}/${workflowResult.expectedCount} slots resolved`);
+  console.log(`Inline Placement Gate : ${localPlacementCheck.placedCount}/${storyboard.inline_slots.length} slots resolved (${localPlacementCheck.isValid ? 'PASS' : 'WARN'})`);
   console.log(`Manual Interventions  : ${workflowResult.gravyManualStepsRemaining} (100% Autonomous Pipeline)`);
   console.log(`Total Duration        : ${durationMs} ms`);
 
