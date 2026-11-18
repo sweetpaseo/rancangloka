@@ -20,7 +20,15 @@ import { renderArticleMarkdownSafely } from '../article/renderer.ts';
 import { resolveVisualPlacements, normalizeAnchorText } from '../media/anchor-resolver.ts';
 import type { VisualStoryboard, StoryboardInlineSlot } from './nadia-visual-storyboard.ts';
 import type { VisualPlacementManifest, VisualManifestItem } from '../media/manifest-loader.ts';
-import { buildDeepPromptV2, SEEDREAM_PRICE_USD } from './budi-prompt-engine.ts';
+import {
+  buildDeepPromptV2,
+  SEEDREAM_PRICE_USD,
+  SEEDREAM_PRO_MODEL_ID,
+  KLING_V3_MODEL_ID,
+  KLING_V3_OMNI_MODEL_ID,
+  KLING_V3_PRICE_USD,
+  KLING_V3_OMNI_PRICE_USD
+} from './budi-prompt-engine.ts';
 
 async function getFs() {
   if (typeof process !== 'undefined' && (process as any).versions?.node) {
@@ -39,6 +47,9 @@ export interface BudiMediaPipelineOptions {
   dryRun?: boolean;
   allowMockWhenMissing?: boolean;
   rootDir?: string;
+  provider?: 'seedream' | 'fal' | 'kling' | string;
+  klingModel?: 'kling-v3' | 'kling-v3-omni';
+  klingApiKey?: string;
 }
 
 export interface BudiMediaPipelineResult {
@@ -53,6 +64,8 @@ export interface BudiMediaPipelineResult {
   warnings: string[];
   escalatedToJev?: boolean;
   error?: string;
+  providerUsed?: string;
+  modelUsed?: string;
 }
 
 /**
@@ -132,6 +145,16 @@ export async function executeBudiMediaPipeline(
   const allowPaid = Boolean(options.allowPaidGeneration);
   const allowMock = options.allowMockWhenMissing ?? true;
 
+  const selectedProvider = options.provider || 'seedream';
+  const isKling = selectedProvider === 'kling';
+  const providerUsed = isKling ? 'kling' : 'seedream';
+  const modelUsed = isKling
+    ? (options.klingModel || KLING_V3_MODEL_ID)
+    : SEEDREAM_PRO_MODEL_ID;
+  const activeUnitCost = isKling
+    ? (modelUsed === KLING_V3_OMNI_MODEL_ID ? KLING_V3_OMNI_PRICE_USD : KLING_V3_PRICE_USD)
+    : SEEDREAM_PRICE_USD;
+
   const articleId = storyboard.article_id || 0;
   const articleSlug = storyboard.article_slug;
   const warnings: string[] = [];
@@ -148,15 +171,17 @@ export async function executeBudiMediaPipeline(
   const coverCaption = storyboard.cover.educational_goal || storyboard.cover.main_idea;
 
   if (!coverSrc) {
-    if (allowPaid && totalSpendUsd + SEEDREAM_PRICE_USD <= maxBudget) {
-      // In production mode with authorized budget, call FalImageProviderAdapter here
-      totalSpendUsd += SEEDREAM_PRICE_USD;
+    if (allowPaid && totalSpendUsd + activeUnitCost <= maxBudget) {
+      // In production mode with authorized budget, invoke adapter
+      totalSpendUsd += activeUnitCost;
       generatedCount++;
-      coverSrc = `/experimental-media/candidates/art${articleId}_cover_seedream-pro.jpg`;
+      const suffix = isKling ? `kling-${modelUsed === KLING_V3_OMNI_MODEL_ID ? 'v3-omni' : 'v3'}` : 'seedream-pro';
+      coverSrc = `/experimental-media/candidates/art${articleId}_cover_${suffix}.jpg`;
     } else if (allowMock) {
       // Offline / Dry-run safe fallback
-      coverSrc = `/experimental-media/candidates/art${articleId}_cover_seedream-pro.jpg`;
-      warnings.push(`Cover hero menggunakan referensi visual aman (Zero Paid Spend, otorisasi berbayar belum aktif).`);
+      const suffix = isKling ? `kling-${modelUsed === KLING_V3_OMNI_MODEL_ID ? 'v3-omni' : 'v3'}` : 'seedream-pro';
+      coverSrc = `/experimental-media/candidates/art${articleId}_cover_${suffix}.jpg`;
+      warnings.push(`Cover hero menggunakan referensi visual aman (${providerUsed} / ${modelUsed}, Zero Paid Spend).`);
     } else {
       return {
         success: false,
@@ -167,9 +192,11 @@ export async function executeBudiMediaPipeline(
         reusedCount: 0,
         generatedCount: 0,
         qualityGatePassed: false,
-        warnings: ['Otorisasi anggaran fal.ai dibutuhkan untuk pembuatan cover baru.'],
+        warnings: [`Otorisasi anggaran ${providerUsed} dibutuhkan untuk pembuatan cover baru.`],
         escalatedToJev: true,
-        error: 'PAID_GENERATION_UNAUTHORIZED'
+        error: 'PAID_GENERATION_UNAUTHORIZED',
+        providerUsed,
+        modelUsed
       };
     }
   } else {
@@ -186,15 +213,17 @@ export async function executeBudiMediaPipeline(
     let itemSrc = findExistingAsset(slot.slot_key, articleSlug, articleId, isSvg ? 'svg' : 'photo', rootDir, fs);
 
     if (!itemSrc) {
-      if (allowPaid && totalSpendUsd + SEEDREAM_PRICE_USD <= maxBudget) {
-        totalSpendUsd += SEEDREAM_PRICE_USD;
+      if (allowPaid && totalSpendUsd + activeUnitCost <= maxBudget) {
+        totalSpendUsd += activeUnitCost;
         generatedCount++;
-        itemSrc = `/experimental-media/candidates/art${articleId}_inline_${idx + 1}_seedream-pro.jpg`;
+        const suffix = isKling ? `kling-${modelUsed === KLING_V3_OMNI_MODEL_ID ? 'v3-omni' : 'v3'}` : 'seedream-pro';
+        itemSrc = `/experimental-media/candidates/art${articleId}_inline_${idx + 1}_${suffix}.jpg`;
       } else if (allowMock) {
+        const suffix = isKling ? `kling-${modelUsed === KLING_V3_OMNI_MODEL_ID ? 'v3-omni' : 'v3'}` : 'seedream-pro';
         itemSrc = isSvg
           ? `/experimental-media/candidate-${articleId}-s${idx + 1}-diagram.svg`
-          : `/experimental-media/candidates/art${articleId}_inline_${idx + 1}_seedream-pro.jpg`;
-        warnings.push(`Slot inline ${slot.slot_key} menggunakan referensi visual aman (Zero Paid Spend).`);
+          : `/experimental-media/candidates/art${articleId}_inline_${idx + 1}_${suffix}.jpg`;
+        warnings.push(`Slot inline ${slot.slot_key} menggunakan referensi visual aman (${providerUsed} / ${modelUsed}, Zero Paid Spend).`);
       } else {
         return {
           success: false,
@@ -207,7 +236,9 @@ export async function executeBudiMediaPipeline(
           qualityGatePassed: false,
           warnings: [`Otorisasi anggaran dibutuhkan untuk slot inline ${slot.slot_key}.`],
           escalatedToJev: true,
-          error: 'PAID_GENERATION_UNAUTHORIZED'
+          error: 'PAID_GENERATION_UNAUTHORIZED',
+          providerUsed,
+          modelUsed
         };
       }
     } else {
@@ -392,6 +423,8 @@ export async function executeBudiMediaPipeline(
     escalatedToJev: !qualityGatePassed,
     error: !qualityGatePassed
       ? `PLACEMENT_GATE_FAIL: Nadia merencanakan ${expectedCount} inline visuals tetapi hanya ${placedCount} yang berhasil terpasang di CMS.`
-      : undefined
+      : undefined,
+    providerUsed,
+    modelUsed
   };
 }

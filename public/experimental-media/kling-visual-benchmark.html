@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RancangLoka — Kling Image 3.0 vs Seedream Pro V2 Benchmark</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --text: #0F172A;
+      --muted: #64748B;
+      --border: #E2E8F0;
+      --accent: #2563EB;
+      --success: #16A34A;
+      --success-bg: #DCFCE7;
+      --warning: #D97706;
+      --warning-bg: #FEF3C7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; line-height: 1.5; }
+    .container { max-width: 1300px; margin: 0 auto; }
+    header { background: var(--card-bg); border: 1px solid var(--border); border-top: 4px solid var(--accent); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: #F1F5F9; font-weight: 700; display: flex; justify-content: space-between; }
+    .card-body { padding: 20px; }
+    .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px; }
+    .metric-label { color: var(--muted); }
+    .metric-val { font-weight: 600; }
+    .badge-pass { background: var(--success-bg); color: var(--success); padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .badge-exp { background: var(--warning-bg); color: var(--warning); padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>RancangLoka — Benchmark Media Arsitektur: Kling Image 3.0 vs Seedream Pro V2</h1>
+    <div class="subtitle">Evaluasi komparatif visual editorial untuk Artikel #10000: Menata Denah Rumah Lebar 5–6 Meter</div>
+    <div>
+      <span class="badge-exp">EXPERIMENTAL: Kling AI</span>
+      <span class="badge-pass">BASELINE DEFAULT: Seedream 5.0 Pro</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-header">
+        <span>Kling Image 3.0 (Kling AI Singapore)</span>
+        <span class="badge-exp">Trial Package</span>
+      </div>
+      <div class="card-body">
+        <div class="metric"><span class="metric-label">Model ID</span><span class="metric-val">kling-v3</span></div>
+        <div class="metric"><span class="metric-label">Resolusi Output</span><span class="metric-val">2K (16:9)</span></div>
+        <div class="metric"><span class="metric-label">Batch Size Target</span><span class="metric-val">1 Gambar (Trial Single Run)</span></div>
+        <div class="metric"><span class="metric-label">Unit Konsumsi</span><span class="metric-val">8 Unit (Hard Cap: 8)</span></div>
+        <div class="metric"><span class="metric-label">List Price Resmi</span><span class="metric-val">US$0.0280 / gambar</span></div>
+        <div class="metric"><span class="metric-label">Harga Efektif Trial</span><span class="metric-val">US$0.0196 ($0.00245/unit)</span></div>
+        <div class="metric"><span class="metric-label">Asynchronous Polling</span><span class="metric-val">POST /v1/images/generations</span></div>
+        <div class="metric"><span class="metric-label">Pencegahan Dobel Generasi</span><span class="metric-val">Preserved task_id</span></div>
+        <div class="metric"><span class="metric-label">R2 Staging Storage</span><span class="metric-val">rancangloka-media-staging</span></div>
+        <div class="metric"><span class="metric-label">Skor Total Evaluasi</span><span class="metric-val">64/100</span></div>
+        <div class="metric"><span class="metric-label">Status Integrasi</span><span class="metric-val" style="color:var(--success);">READY_FOR_API_TEST</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span>Seedream 5.0 Pro (ByteDance / fal.ai)</span>
+        <span class="badge-pass">Active Default</span>
+      </div>
+      <div class="card-body">
+        <div class="metric"><span class="metric-label">Model ID</span><span class="metric-val">bytedance/seedream/v5/pro</span></div>
+        <div class="metric"><span class="metric-label">Resolusi Output</span><span class="metric-val">1312x672 px (~2:1)</span></div>
+        <div class="metric"><span class="metric-label">Batch Size Target</span><span class="metric-val">1-2 Kandidat</span></div>
+        <div class="metric"><span class="metric-label">Biaya Satuan Riil</span><span class="metric-val">US$0.0675 / gambar</span></div>
+        <div class="metric"><span class="metric-label">Transport</span><span class="metric-val">fal.client.subscribe</span></div>
+        <div class="metric"><span class="metric-label">Skor Total Baseline</span><span class="metric-val">90/100</span></div>
+        <div class="metric"><span class="metric-label">Status Operasional</span><span class="metric-val" style="color:var(--success);">DEFAULT_ACTIVE</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

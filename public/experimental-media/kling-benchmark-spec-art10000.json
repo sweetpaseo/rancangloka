@@ -1,0 +1,105 @@
+{
+  "benchmark_id": "KLING_V3_IMAGE_BENCHMARK_ART10000",
+  "created_at": "2026-11-17T14:30:00.000Z",
+  "article": {
+    "id": 10000,
+    "slug": "menata-denah-rumah-lebar-5-6-meter-solusi-sirkulasi-bukaan-ruang-tengah-tidak-pengap",
+    "title": "Menata Denah Rumah Lebar 5–6 Meter: Solusi Sirkulasi, Bukaan, dan Ruang Tengah Tidak Pengap",
+    "category": "Interior & Tata Ruang"
+  },
+  "provider": {
+    "name": "kling",
+    "api_base": "https://api-singapore.klingai.com",
+    "auth_type": "Bearer ${KLING_API_KEY}",
+    "status": "EXPERIMENTAL_PROVIDER"
+  },
+  "baseline_comparison": {
+    "default_model": "bytedance/seedream/v5/pro/text-to-image",
+    "default_display": "Seedream 5.0 Pro V2",
+    "default_unit_cost_usd": 0.0675,
+    "default_resolution": "1312x672",
+    "default_sha256": "6c18b2476fa6a738892edb3e87da13f59fd4aa1f1c1c7fe6a997112228389f7b"
+  },
+  "kling_candidate_specification": {
+    "model": "kling-v3",
+    "model_display": "Kling Image 3.0",
+    "resolution": "2k",
+    "aspect_ratio": "16:9",
+    "n": 1,
+    "batch_size_max": 1,
+    "actual_units_consumed": 8,
+    "units_per_image": 8,
+    "list_price_per_unit_usd": 0.0035,
+    "trial_prepaid_rate_per_unit_usd": 0.00245,
+    "estimated_spend_usd": 0.0280,
+    "effective_prepaid_cost_usd": 0.0196,
+    "hard_budget_cap_units": 8,
+    "hard_budget_cap_usd": 0.0280,
+    "r2_staging_bucket": "rancangloka-media-staging",
+    "r2_storage_key": "media/staging/articles/10000/art10000_cover_kling-v3.jpg"
+  },
+  "deep_prompt_v2": {
+    "slot_key": "cover_hero",
+    "positive_prompt": "Photorealistic architectural photograph for RancangLoka editorial magazine. [EDITORIAL OBJECTIVE] Demonstrate how a narrow 5-meter Indonesian townhouse achieves a bright, breezy, and open atmosphere through an unroofed central inner court connecting living and dining areas without dark solid partitions. [PRIMARY SUBJECT & SPATIAL FLOW] Eye-level architectural photograph from the foreground living seating area looking across an open-air central landscaped courtyard toward a softly visible dining area in the background. The 5-meter wide layout feels continuous and expansive with no corridor effect. Living area with comfortable modern sofa and coffee table in foreground, expansive floor-to-ceiling glass sliding doors opening to a central lightwell courtyard in midground, clean dining area and stair void softly visible in background. [BUILDABLE ARCHITECTURE & DETAILS] True constructible residential architecture: visible structural reinforced concrete lintel beam above openings, black powder-coated aluminum sliding glass panels partially open, polished concrete floor, matte off-white plaster walls, compact indoor gravel garden bed. [CAMERA & COMPOSITION] Realistic eye-level perspective, 35mm architectural lens, sharp straight vertical lines, balanced composition emphasizing spatial depth and horizontal connectivity across the 5-meter width. [LIGHTING & ATMOSPHERE] Zenith diffuse tropical daylight cascading vertically from the open sky down into the living core, soft ambient fill light, realistic subtle shadows, natural daytime illumination of Jakarta without harsh artificial flares. [MATERIAL REALISM & LIVED-IN] Authentic Indonesian interior materials: warm natural teak wood furniture, indoor potted monstera and fiddle-leaf fig, clean mortar lines, natural plaster roughness, lived-in warmth without commercial showroom staging. Human-scale furniture proportion for a 5-meter wide home: sofa, books on low table, ceramic planter, feeling genuinely lived-in and comfortable rather than sterile or empty. [REQUIRED VISUAL EVIDENCE] Must clearly show: 5-meter wide spatial proportion with 3.2m ceiling, Vertical lightwell with real open sky daylight spill, Living room seating in foreground connecting to central court, Operable sliding glass connection on black aluminum frame, Visible concrete lintel beam providing structural plausibility.",
+    "negative_prompt": "narrow empty corridor, hotel hallway trap, closed glass skylight ceiling, sealed roof greenhouse, commercial showroom staging, impossible structural spans, floating columns, oversaturated CGI render, watermark, text overlay, distorted furniture, repeated synthetic plants"
+  },
+  "evaluation_criteria": {
+    "rina_editorial_relevance": "Kesesuaian naskah denah rumah 5-meter, pembagian zoning tanpa lorong gelap",
+    "irwan_structural_plausibility": "Logika balok lintel penopang dak beton, talang perimeter inner court, material semen dan kayu jati autentik",
+    "budi_photorealism": "Pencahayaan alami tropis seimbang, bebas deformitas kaca/furnitur, tekstur acian semen halus matte",
+    "jev_cost_benefit": "Evaluasi rasio mutu vs biaya ($0.0500 Kling 3.0 vs $0.0675 Seedream Pro)"
+  },
+  "live_trial_history": [
+    {
+      "round": 1,
+      "task_id": "951797337209324835",
+      "model": "kling-v3",
+      "executed_at": "2026-11-18T06:00:00.000Z",
+      "status": "BENCHMARK_REJECTED",
+      "decision": "TOLAK",
+      "rejection_reasons": [
+        "Courtyard terlalu besar dan kosong",
+        "Susunan rumah tidak mencerminkan lahan sempit 5–6 meter",
+        "Taman tengah kurang representatif",
+        "Komposisi editorial tidak mencapai standar Seedream Pro V2"
+      ],
+      "mandatory_hard_gates": {
+        "primary_subject_fidelity": "FAIL (Taman tengah kurang representatif sebagai inner court hunian tropis sempit)",
+        "spatial_layout_accuracy": "FAIL (Susunan rumah tidak mencerminkan denah lahan sempit 5–6 meter)",
+        "building_proportions": "FAIL (Courtyard terlalu besar dan kosong, skala kavling melanggar proporsi 5-6 meter)",
+        "constructability": "PASS (Logika struktur dinding dan bukaan tidak runtuh)",
+        "concept_fidelity": "FAIL (Courtyard kosong bertentangan dengan konsep ruang tengah fungsional artikel)"
+      },
+      "photorealism_score": 90,
+      "overall_verdict": "FAIL",
+      "gate_verdict": "REJECTED",
+      "actual_units_consumed": 8,
+      "effective_spend_usd": 0.0196,
+      "public_staging_url": "https://rancangloka-staging.chandrajoyko.workers.dev/media/staging/articles/10000/art10000_cover_kling-v3.jpg",
+      "local_binary_path": "public/experimental-media/candidates/art10000_cover_kling-v3.png",
+      "sha256": "36623e6cfcac8410aaf6a0f84896af3b1cb4c80e86c1ee44bb3489b5dd91168e",
+      "dimensions": "2720x1536",
+      "mime_type": "image/png"
+    }
+  ],
+  "prepared_retest_specification": {
+    "status": "PREPARED_WAITING_OWNER_AUTHORIZATION",
+    "description": "Retest benchmark menggunakan manual prompt terbaik dari putaran empat kandidat Seedream/Banana Pro yang terbukti lolos kurasi editorial.",
+    "model": "kling-v3",
+    "model_display": "Kling Image 3.0",
+    "resolution": "2k",
+    "aspect_ratio": "16:9",
+    "n": 1,
+    "hard_budget_cap_units": 8,
+    "list_price_per_unit_usd": 0.0035,
+    "trial_prepaid_rate_per_unit_usd": 0.00245,
+    "estimated_spend_usd": 0.0280,
+    "effective_prepaid_cost_usd": 0.0196,
+    "r2_staging_bucket": "rancangloka-media-staging",
+    "r2_storage_key": "media/staging/articles/10000/art10000_cover_kling-v3_retest.jpg",
+    "winning_manual_prompt": "Premium architectural editorial photography of a believable 5–6 meter wide Indonesian modern tropical townhouse interior, viewed from a comfortable furnished living room toward a compact open-to-sky inner courtyard. Showing the clear spatial relationship between a low sofa seating area, operable glass sliding doors, sunken gravel courtyard open directly to the sky, and a naturally illuminated central dining space. Realistic 5-meter structural spans with visible lintel beam, polished concrete floor, teak timber accents, lush tropical plants (monstera, fiddle leaf fig) in the courtyard. Warm natural daylight cascading from the open sky, lived-in but uncluttered, authentic Jakarta residential context. No empty hallways, no repetitive door slats, no people, no text, no watermarks, no CGI glossy plastic render.",
+    "negative_prompt": "empty courtyard, oversized vacant lot, bare gravel wasteland, hotel hallway trap, closed glass skylight ceiling, sealed roof greenhouse, commercial showroom staging, impossible structural spans, floating columns, oversaturated CGI render, watermark, text overlay, distorted furniture, repeated synthetic plants"
+  },
+  "execution_status": "BENCHMARK_REJECTED_RETEST_PREPARED",
+  "actual_spend_usd": 0.0196
+}

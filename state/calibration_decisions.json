@@ -1,0 +1,99 @@
+[
+  {
+    "model_key": "v2-cover-seedream-pro",
+    "decision": "LAYAK",
+    "notes": "",
+    "recorded_at": "2026-11-16T09:34:25.386Z",
+    "source": "owner_manual_calibration",
+    "operator": "owner"
+  },
+  {
+    "model_key": "v2-cover-seedream-lite",
+    "decision": "TOLAK",
+    "notes": "",
+    "recorded_at": "2026-11-16T09:34:55.281Z",
+    "source": "owner_manual_calibration",
+    "operator": "owner"
+  },
+  {
+    "model_key": "v2-inline-seedream-pro",
+    "decision": "LAYAK",
+    "notes": "",
+    "recorded_at": "2026-11-16T09:34:49.802Z",
+    "source": "owner_manual_calibration",
+    "operator": "owner"
+  },
+  {
+    "model_key": "v2-inline-seedream-lite",
+    "decision": "TOLAK",
+    "notes": "",
+    "recorded_at": "2026-11-16T09:34:51.880Z",
+    "source": "owner_manual_calibration",
+    "operator": "owner"
+  },
+  {
+    "model_key": "r2-cover-banana-pro",
+    "decision": "TERBAIK",
+    "notes": "Fotorealisme 97/100, sofa santai linen, meja kopi kayu tua, dan bukaan kaca geser besar menyatu dengan kerikil taman dalam.",
+    "recorded_at": "2026-11-16T14:45:00.000Z"
+  },
+  {
+    "model_key": "r2-cover-seedream-pro",
+    "decision": "LAYAK",
+    "notes": "Rapi dan hangat (94/100), namun sudut pandang sedikit lebih sempit dibanding V2.",
+    "recorded_at": "2026-11-16T14:45:00.000Z"
+  },
+  {
+    "model_key": "r2-inline-banana-pro",
+    "decision": "TERBAIK",
+    "notes": "Skor 98/100, void open-to-sky dengan bedeng kerikil resapan yang rapi.",
+    "recorded_at": "2026-11-16T14:45:00.000Z"
+  },
+  {
+    "model_key": "r2-inline-seedream-pro",
+    "decision": "LAYAK",
+    "notes": "Platform semen sedikit dinaikkan dengan parit kerikil keliling ($0.0675).",
+    "recorded_at": "2026-11-16T14:45:00.000Z"
+  },
+  {
+    "model_key": "nano-banana-pro",
+    "decision": "TERBAIK",
+    "notes": "Fotorealisme 98/100, konteks urban genteng Jakarta otentik, pencahayaan zenith alami sempurna.",
+    "recorded_at": "2026-11-16T14:18:00.000Z"
+  },
+  {
+    "model_key": "flux-schnell",
+    "decision": "LAYAK",
+    "notes": "Best value ($0.0035), sangat cepat 1.68s, geometri tajam. Rekomendasi utama untuk inline bervolume tinggi.",
+    "recorded_at": "2026-11-16T14:18:00.000Z"
+  },
+  {
+    "model_key": "seedream-pro",
+    "decision": "LAYAK",
+    "notes": "Detail pertukangan kayu jati pintu lipat sangat presisi dan berkarakter (skor 94/100).",
+    "recorded_at": "2026-11-16T14:18:00.000Z"
+  },
+  {
+    "model_key": "seedream-lite",
+    "decision": "LAYAK",
+    "notes": "Bukaan void langit terbuka nyata, tanaman rimbun, konsep ventilasi jelas.",
+    "recorded_at": "2026-11-16T14:18:00.000Z"
+  },
+  {
+    "model_key": "nano-banana",
+    "decision": "LAYAK",
+    "notes": "Bersih dan cepat (7s), pencahayaan simetris elegan.",
+    "recorded_at": "2026-11-16T14:18:00.000Z"
+  },
+  {
+    "model_key": "kling-v3-art10000-live1",
+    "decision": "TOLAK",
+    "status": "BENCHMARK_REJECTED",
+    "task_id": "951797337209324835",
+    "sha256": "36623e6cfcac8410aaf6a0f84896af3b1cb4c80e86c1ee44bb3489b5dd91168e",
+    "notes": "BENCHMARK_REJECTED (Evaluasi Owner/Jek): Courtyard terlalu besar dan kosong; susunan rumah tidak mencerminkan lahan sempit 5–6 meter; taman tengah kurang representatif; komposisi editorial tidak mencapai standar Seedream Pro V2.",
+    "recorded_at": "2026-11-18T06:05:00.000Z",
+    "source": "owner_jek_review",
+    "operator": "owner"
+  }
+]

@@ -21,6 +21,18 @@ export const NANO_BANANA_PRO_MODEL_ID = 'fal-ai/nano-banana-pro';
 export const SEEDREAM_PRICE_USD = 0.0675;
 export const NANO_BANANA_PRO_PRICE_USD = 0.1500;
 
+// Kling AI Image Models (Experimental Provider)
+// Official Kling rates: 2K = 8 units ($0.0280 list, $0.0196 trial prepaid)
+// 4K = 16 units ($0.0560 list, $0.0392 trial prepaid)
+export const KLING_V3_MODEL_ID = 'kling-v3';
+export const KLING_V3_OMNI_MODEL_ID = 'kling-v3-omni';
+export const KLING_V3_PRICE_USD = 0.0280; // 8 units 2K list price
+export const KLING_V3_OMNI_PRICE_USD = 0.0280; // 8 units 2K list price
+export const KLING_V3_4K_PRICE_USD = 0.0560; // 16 units 4K list price
+export const KLING_TRIAL_PREPAID_RATE_PER_UNIT_USD = 0.00245;
+export const KLING_2K_EFFECTIVE_PREPAID_USD = 0.0196; // 8 units * $0.00245
+export const KLING_4K_EFFECTIVE_PREPAID_USD = 0.0392; // 16 units * $0.00245
+
 export interface DeepPromptStructure {
   editorial_objective: string;
   primary_subject: string;
@@ -123,7 +135,9 @@ export function buildPromptMatrix(
     'bytedance/seedream/v5/lite/text-to-image': 0.0350,
     'bytedance/seedream/v5/pro/text-to-image': 0.0675,
     'fal-ai/z-image/turbo': 0.0050,
-    'fal-ai/recraft/v3/text-to-image': 0.0400
+    'fal-ai/recraft/v3/text-to-image': 0.0400,
+    'kling-v3': KLING_V3_PRICE_USD,
+    'kling-v3-omni': KLING_V3_OMNI_PRICE_USD
   };
 
   // 1. COVER HERO PROMPT

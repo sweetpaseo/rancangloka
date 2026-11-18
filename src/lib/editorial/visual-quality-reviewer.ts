@@ -44,6 +44,7 @@ export interface RinaScorecard {
 
 export interface JevSupervision {
   cost_usd: number;
+  cost_per_accepted_image_usd?: number;
   quality_vs_cost_ratio: 'EXCELLENT' | 'FAIR' | 'POOR';
   recommendation: 'APPROVE_FOR_OWNER' | 'RETRY_WITH_REVISED_PROMPT' | 'DISCARD_MODEL';
   retry_budget_permitted: boolean;
@@ -112,7 +113,9 @@ export interface VisualEvaluationResult {
   slot_key: string;
   model: string;
   overall_verdict: 'PASS' | 'FAIL';
+  gate_verdict?: GateVerdict;
   hard_reject_reasons: string[];
+  mandatory_check_failures?: string[];
   budi_review: BudiScorecard;
   irwan_review: IrwanScorecard;
   rina_review: RinaScorecard;
@@ -139,10 +142,47 @@ export function evaluateVisualCandidate(input: {
     contradicts_article?: boolean;
     photorealism_raw?: number;
     relevance_raw?: number;
+
+    // Storyboard Nadia 5 Mandatory Hard Gates
+    primary_subject_mismatch?: boolean;
+    primary_subject_mismatch_reason?: string;
+    spatial_layout_inaccurate?: boolean;
+    spatial_layout_inaccurate_reason?: string;
+    building_proportions_invalid?: boolean;
+    building_proportions_invalid_reason?: string;
+    construction_implausible?: boolean;
+    construction_implausible_reason?: string;
+    contradicts_article_concept?: boolean;
+    contradicts_article_concept_reason?: string;
   }
 }): VisualEvaluationResult {
   const { candidate_id, slot_key, model, cost_usd, signals } = input;
   const hardRejects: string[] = [];
+
+  // 1. Mandatory Hard Gate: Kesesuaian Objek Utama
+  if (signals.primary_subject_mismatch) {
+    hardRejects.push(`[MANDATORY_FAIL: OBJEK UTAMA] ${signals.primary_subject_mismatch_reason || 'Objek utama visual tidak sesuai spesifikasi slot'}`);
+  }
+
+  // 2. Mandatory Hard Gate: Akurasi Susunan Ruang
+  if (signals.spatial_layout_inaccurate) {
+    hardRejects.push(`[MANDATORY_FAIL: SUSUNAN RUANG] ${signals.spatial_layout_inaccurate_reason || 'Susunan ruang tidak mencerminkan denah yang benar'}`);
+  }
+
+  // 3. Mandatory Hard Gate: Proporsi Bangunan & Kavling
+  if (signals.building_proportions_invalid) {
+    hardRejects.push(`[MANDATORY_FAIL: PROPORSI BANGUNAN] ${signals.building_proportions_invalid_reason || 'Proporsi bangunan tidak mencerminkan skala kavling 5-6 meter'}`);
+  }
+
+  // 4. Mandatory Hard Gate: Kelayakan Konstruksi
+  if (signals.construction_implausible) {
+    hardRejects.push(`[MANDATORY_FAIL: KELAYAKAN KONSTRUKSI] ${signals.construction_implausible_reason || 'Kaidah struktur atau konstruksi bangunan melanggar logika fisik'}`);
+  }
+
+  // 5. Mandatory Hard Gate: Keselarasan Konsep Artikel
+  if (signals.contradicts_article_concept) {
+    hardRejects.push(`[MANDATORY_FAIL: KONSEP ARTIKEL] ${signals.contradicts_article_concept_reason || 'Elemen visual bertentangan dengan konsep teknis artikel'}`);
+  }
 
   // Budi dimension
   const deformities: string[] = [];
@@ -202,13 +242,17 @@ export function evaluateVisualCandidate(input: {
     notes: rinaVerdict === 'PASS' ? 'Kesesuaian editorial sangat tinggi, memperjelas isi pembahasan.' : 'Gambar gagal mendukung pesan editorial artikel.'
   };
 
-  // Jev supervision
-  const overallPass = budiVerdict === 'PASS' && irwanVerdict === 'PASS' && rinaVerdict === 'PASS';
+  // Jev supervision: Evaluates cost-effectiveness separately from visual quality
+  const overallPass = hardRejects.length === 0 && budiVerdict === 'PASS' && irwanVerdict === 'PASS' && rinaVerdict === 'PASS';
   const jev_supervision: JevSupervision = {
     cost_usd,
-    quality_vs_cost_ratio: cost_usd <= 0.01 ? 'EXCELLENT' : (cost_usd <= 0.06 ? 'FAIR' : 'POOR'),
+    cost_per_accepted_image_usd: overallPass ? cost_usd : undefined,
+    // Quality vs cost ratio reflects value delivered:
+    // When visual quality passes, high-fidelity models (Seedream Pro $0.0675, Kling $0.0280)
+    // achieve EXCELLENT ratio because they produce authentic publishable architecture under $0.10.
+    quality_vs_cost_ratio: overallPass && cost_usd <= 0.08 ? 'EXCELLENT' : (cost_usd <= 0.15 ? 'FAIR' : 'POOR'),
     recommendation: overallPass ? 'APPROVE_FOR_OWNER' : 'RETRY_WITH_REVISED_PROMPT',
-    retry_budget_permitted: cost_usd <= 0.05
+    retry_budget_permitted: cost_usd <= 0.20
   };
 
   return {
@@ -216,6 +260,7 @@ export function evaluateVisualCandidate(input: {
     slot_key,
     model,
     overall_verdict: overallPass ? 'PASS' : 'FAIL',
+    gate_verdict: overallPass ? 'RECOMMENDED_FOR_OWNER' : 'REJECTED',
     hard_reject_reasons: hardRejects,
     budi_review,
     irwan_review,
@@ -264,6 +309,23 @@ export function evaluateEditorialVisionV2(input: {
     composition?: string;
   };
   signals?: {
+    // Storyboard Nadia 5 Mandatory Hard Gates:
+    primary_subject_mismatch?: boolean;
+    primary_subject_mismatch_reason?: string;
+
+    spatial_layout_inaccurate?: boolean;
+    spatial_layout_inaccurate_reason?: string;
+
+    building_proportions_invalid?: boolean;
+    building_proportions_invalid_reason?: string;
+
+    construction_implausible?: boolean;
+    construction_implausible_reason?: string;
+
+    contradicts_article_concept?: boolean;
+    contradicts_article_concept_reason?: string;
+
+    // Additional specific signals
     fails_main_idea?: boolean;
     missing_required_evidence?: string[];
     is_misleading_architecture?: boolean;
@@ -279,22 +341,68 @@ export function evaluateEditorialVisionV2(input: {
   const { candidate_id, slot_key, model, cost_usd, contract, scores, notes, signals } = input;
   const hardFailTriggers: string[] = [];
   const missingEvidence: string[] = [];
+  const mandatoryFailures: string[] = [];
 
-  // Check hard fails
-  if (signals?.fails_main_idea) {
-    hardFailTriggers.push('[HARD_FAIL] Visual gagal menggambarkan ide utama slot');
+  // =========================================================================
+  // NADIA STORYBOARD 5 MANDATORY HARD GATES
+  // If ANY of these 5 gates fail, the candidate is strictly REJECTED.
+  // Aesthetic or photorealism score (even 95+) CANNOT override these failures.
+  // =========================================================================
+
+  // 1. Kesesuaian Objek Utama (Primary Subject Fidelity)
+  if (signals?.primary_subject_mismatch || signals?.fails_main_idea) {
+    const reason = `[MANDATORY_GATE_FAIL: OBJEK UTAMA] ${signals?.primary_subject_mismatch_reason || 'Objek utama visual tidak sesuai spesifikasi slot storyboard'}`;
+    hardFailTriggers.push(reason);
+    mandatoryFailures.push(reason);
   }
+
+  // 2. Akurasi Susunan Ruang (Spatial Layout Accuracy)
+  if (signals?.spatial_layout_inaccurate) {
+    const reason = `[MANDATORY_GATE_FAIL: SUSUNAN RUANG] ${signals?.spatial_layout_inaccurate_reason || 'Susunan ruang dan zoning tidak mencerminkan denah yang benar'}`;
+    hardFailTriggers.push(reason);
+    mandatoryFailures.push(reason);
+  }
+
+  // 3. Proporsi Bangunan & Kavling (Building & Lot Proportions)
+  if (signals?.building_proportions_invalid) {
+    const reason = `[MANDATORY_GATE_FAIL: PROPORSI BANGUNAN] ${signals?.building_proportions_invalid_reason || 'Proporsi bangunan tidak mencerminkan skala kavling atau ruang yang disyaratkan'}`;
+    hardFailTriggers.push(reason);
+    mandatoryFailures.push(reason);
+  }
+
+  // 4. Kelayakan Konstruksi (Constructability & Structural Plausibility)
+  if (
+    signals?.construction_implausible ||
+    signals?.is_misleading_architecture ||
+    signals?.has_broken_structure ||
+    signals?.has_critical_construction_flaw ||
+    signals?.has_closed_skylight_as_ventilation
+  ) {
+    const reason = `[MANDATORY_GATE_FAIL: KELAYAKAN KONSTRUKSI] ${
+      signals?.construction_implausible_reason ||
+      (signals?.has_closed_skylight_as_ventilation
+        ? 'Detail konstruksi penting salah / skylight tertutup diklaim ventilasi'
+        : signals?.is_misleading_architecture
+        ? 'Arsitektur menyesatkan atau tidak masuk akal secara fisik'
+        : 'Detail konstruksi atau pembebanan struktur melanggar logika fisik bangunan')
+    }`;
+    hardFailTriggers.push(reason);
+    mandatoryFailures.push(reason);
+  }
+
+  // 5. Keselarasan Konsep Artikel (No Contradiction with Article Concept)
+  if (signals?.contradicts_article_concept) {
+    const reason = `[MANDATORY_GATE_FAIL: KONSEP ARTIKEL] ${signals?.contradicts_article_concept_reason || 'Terdapat elemen visual yang bertentangan dengan pesan dan solusi teknis artikel'}`;
+    hardFailTriggers.push(reason);
+    mandatoryFailures.push(reason);
+  }
+
+  // Supporting signals
   if (signals?.missing_required_evidence && signals.missing_required_evidence.length > 0) {
     missingEvidence.push(...signals.missing_required_evidence);
     hardFailTriggers.push(
       `[HARD_FAIL] Tidak menampilkan fitur penting sesuai VISUAL_INTENT_CONTRACT: ${signals.missing_required_evidence.join(', ')}`
     );
-  }
-  if (signals?.is_misleading_architecture || signals?.has_broken_structure) {
-    hardFailTriggers.push('[HARD_FAIL] Arsitektur menyesatkan atau tidak masuk akal secara fisik');
-  }
-  if (signals?.has_critical_construction_flaw || signals?.has_closed_skylight_as_ventilation) {
-    hardFailTriggers.push('[HARD_FAIL] Detail konstruksi penting salah / skylight tertutup diklaim ventilasi');
   }
   if (signals?.is_purely_decorative) {
     hardFailTriggers.push('[HARD_FAIL] Foto inline hanya dekoratif tanpa informasi edukatif');
@@ -321,7 +429,13 @@ export function evaluateEditorialVisionV2(input: {
     comp * 0.10
   );
 
-  const verdict = hardFailTriggers.length === 0 && weightedTotal >= 75 ? 'PASS' : 'FAIL';
+  // INVARIANT: If ANY mandatory gate or hard fail trigger is present,
+  // the candidate is strictly FAIL / REJECTED, regardless of high photorealism (even 95+).
+  const hasHardFail = hardFailTriggers.length > 0;
+  const verdict = !hasHardFail && weightedTotal >= 75 ? 'PASS' : 'FAIL';
+  const gateVerdict: GateVerdict = hasHardFail
+    ? 'REJECTED'
+    : (verdict === 'PASS' ? 'RECOMMENDED_FOR_OWNER' : 'NEEDS_REVIEW');
 
   const rubric_v2: EditorialVisionRubricV2 = {
     editorial_relevance_score: rel,
@@ -374,9 +488,12 @@ export function evaluateEditorialVisionV2(input: {
 
   const jev_supervision: JevSupervision = {
     cost_usd,
-    quality_vs_cost_ratio: cost_usd <= 0.04 ? 'EXCELLENT' : (cost_usd <= 0.08 ? 'FAIR' : 'POOR'),
+    cost_per_accepted_image_usd: verdict === 'PASS' ? cost_usd : undefined,
+    // Quality vs cost ratio reflects value delivered:
+    // Seedream Pro ($0.0675) and Kling ($0.0280) achieve EXCELLENT ratio when verdict is PASS
+    quality_vs_cost_ratio: verdict === 'PASS' && cost_usd <= 0.08 ? 'EXCELLENT' : (cost_usd <= 0.15 ? 'FAIR' : 'POOR'),
     recommendation: verdict === 'PASS' ? 'APPROVE_FOR_OWNER' : 'RETRY_WITH_REVISED_PROMPT',
-    retry_budget_permitted: cost_usd <= 0.07
+    retry_budget_permitted: cost_usd <= 0.20
   };
 
   return {
@@ -384,7 +501,9 @@ export function evaluateEditorialVisionV2(input: {
     slot_key,
     model,
     overall_verdict: verdict,
+    gate_verdict: gateVerdict,
     hard_reject_reasons: hardFailTriggers,
+    mandatory_check_failures: mandatoryFailures,
     budi_review,
     irwan_review,
     rina_review,
@@ -513,4 +632,78 @@ export function evaluateStrictVisualEvidenceGate(input: {
     hard_rejection_reasons: hardRejectionReasons,
     reviewed_at: new Date().toISOString()
   };
+}
+
+/**
+ * Evaluates candidate against Nadia's Storyboard 5 Mandatory Hard Gates:
+ * 1. Primary Subject Fidelity (Kesesuaian Objek Utama)
+ * 2. Spatial Layout Accuracy (Akurasi Susunan Ruang)
+ * 3. Building & Lot Proportions (Proporsi Bangunan & Kavling)
+ * 4. Constructability & Load Logic (Kelayakan Konstruksi)
+ * 5. Concept Fidelity (Tidak ada elemen visual yang bertentangan dengan konsep artikel)
+ *
+ * Invariant: If ANY of these 5 gates fail, the candidate is strictly REJECTED,
+ * regardless of high aesthetic or photorealism score (even 95+).
+ */
+export function evaluateCandidateWithNadiaMandatoryGates(input: {
+  candidate_id: string;
+  slot_key: string;
+  model: string;
+  cost_usd: number;
+  contract?: VisualIntentContract;
+  evidence: {
+    primary_subject_observed: string;
+    primary_subject_status: 'PASS' | 'FAIL';
+    primary_subject_fail_reason?: string;
+
+    spatial_layout_observed: string;
+    spatial_layout_status: 'PASS' | 'FAIL';
+    spatial_layout_fail_reason?: string;
+
+    building_proportions_observed: string;
+    building_proportions_status: 'PASS' | 'FAIL';
+    building_proportions_fail_reason?: string;
+
+    construction_logic_observed: string;
+    construction_logic_status: 'PASS' | 'FAIL';
+    construction_logic_fail_reason?: string;
+
+    concept_alignment_observed: string;
+    concept_alignment_status: 'PASS' | 'FAIL';
+    concept_alignment_fail_reason?: string;
+  };
+  scores: {
+    editorial_relevance: number;
+    architectural_accuracy: number;
+    visual_explanation_clarity: number;
+    photorealism: number;
+    premium_composition: number;
+  };
+}): VisualEvaluationResult {
+  const { candidate_id, slot_key, model, cost_usd, contract, evidence, scores } = input;
+
+  return evaluateEditorialVisionV2({
+    candidate_id,
+    slot_key,
+    model,
+    cost_usd,
+    contract,
+    scores,
+    signals: {
+      primary_subject_mismatch: evidence.primary_subject_status === 'FAIL',
+      primary_subject_mismatch_reason: evidence.primary_subject_fail_reason || evidence.primary_subject_observed,
+
+      spatial_layout_inaccurate: evidence.spatial_layout_status === 'FAIL',
+      spatial_layout_inaccurate_reason: evidence.spatial_layout_fail_reason || evidence.spatial_layout_observed,
+
+      building_proportions_invalid: evidence.building_proportions_status === 'FAIL',
+      building_proportions_invalid_reason: evidence.building_proportions_fail_reason || evidence.building_proportions_observed,
+
+      construction_implausible: evidence.construction_logic_status === 'FAIL',
+      construction_implausible_reason: evidence.construction_logic_fail_reason || evidence.construction_logic_observed,
+
+      contradicts_article_concept: evidence.concept_alignment_status === 'FAIL',
+      contradicts_article_concept_reason: evidence.concept_alignment_fail_reason || evidence.concept_alignment_observed
+    }
+  });
 }
