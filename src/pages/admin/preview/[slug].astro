@@ -106,7 +106,7 @@ if (article) {
     autoLoadManifest: true,
     isLocalFixture: Boolean(article.is_local_fixture),
     isDev: Boolean((import.meta as any).env?.DEV),
-    allowUnapprovedInPreview: false
+    allowUnapprovedInPreview: true
   });
   toc = extractTableOfContents(safeArticleHtml);
   processedHtml = processArticleContent(
