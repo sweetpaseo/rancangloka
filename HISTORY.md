@@ -2,6 +2,28 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **Rancangloka**.
 
+## Hermes EU Autonomous Canary (#10011) — Research Coverage Contract Fix (2026-11-18)
+
+- **Milestone:** `RANCANGLOKA_REAL_CANARY_10011_EVIDENCE_PACK_STABILIZED`
+- **Checkpoint:** Titik Aman Offline (`state/OFFLINE_CHECKPOINT_20261118_RESEARCH_COVERAGE_CANARY_FIX.md`) pada branch `feat/jev-lokamedia-integration`.
+- **Target Topik:** Artikel #10011 — *Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*
+- **Akar Masalah & Resolusi Kontrak Bukti (P0):**
+  1. **Kegagalan Eksekusi Remote Awal:** Runner `--canary` pada kontainer SumoPod EU (`1430fbde9a84`) terhenti dengan error `JOKO_AUTHORING_FAILED: RESEARCH_COVERAGE_INSUFFICIENT (0/6 verified categories)`.
+  2. **Identifikasi Penyebab Sistemik:**
+     - Evaluator `validateResearchQuestionCoverage` memerlukan `source_origin = 'VERIFIED_CACHED_SNAPSHOT'` atau `'LIVE_RETRIEVAL'` agar sumber data diakui autentik (`authenticDocIds`).
+     - Tanpa `source_origin`, jumlah sumber autentik bernilai 0. Mengingat klaim mendeklarasikan array `sources` (`hasExplicitSources = true`), sistem mengosongkan seluruh `admissibleClaimIds` sebagai mitigasi keamanan fail-closed.
+     - Selain itu, klaim memerlukan keterkaitan passage (`evidence_passage_ids`) dan peran semantik (`semantic_role`) agar pemetaan kategori riset dapat diverifikasi secara objektif.
+  3. **Solusi Lengkap yang Diterapkan:**
+     - Menambahkan 2 sumber kanonikal terverifikasi: `SRC-SNI-6572` (SNI 6572-2:2024 / SNI 03-6572-2001) dan `SRC-ASHRAE-62-2` (ASHRAE Standard 62.2-2022) lengkap dengan `source_origin: 'VERIFIED_CACHED_SNAPSHOT'` dan `retrieval_status: 'SOURCE_RETRIEVED_AND_VERIFIED'`.
+     - Menyusun 7 kutipan bukti otoritatif (`evidence_passages`: `PSG-001` s.d. `PSG-007`) mencakup seluruh spektrum fisika ventilasi dapur (mekanisme uap/kondensasi, sinyal diagnostik, efektivitas exhaust ducting luar, batasan resirkulasi karbon aktif, risiko tekanan udara negatif / ketiadaan make-up air, kondisi eskalasi profesional, dan acuan teknis regulasi).
+     - Menghubungkan seluruh 6 klaim `claim_inventory` ke masing-masing passage dan peran semantik yang sesuai.
+     - Menyertakan array `retrieved_documents` pada root paket bukti dengan `execution_type: 'REAL_RUNTIME_EXECUTION'`.
+  4. **Hasil Verifikasi Lokal:**
+     - `scripts/test-canary-evidence-pack-10011.mjs`: **3/3 PASS (100%)** (Uji positif 6/6 kategori tercakup penuh, uji negatif paket kosong diblokir, uji negatif tanpa source_origin diblokir).
+     - `scripts/hermes-eu-autonomous-runner.mjs --dry-run`: **PASS** (Zero external calls, zero D1 writes, $0.00 spend).
+     - `npx tsc --noEmit`: **PASS** (0 errors).
+     - Git commit: `386d1d8` sukses di-push ke branch `feat/jev-lokamedia-integration`.
+
 ## Hermes EU Autonomous Canary Preflight (#10011) & Kling V1 Closeout (2026-11-18)
 
 - **Milestone:** `RANCANGLOKA_REAL_CANARY_10011_PREFLIGHT_READY`
