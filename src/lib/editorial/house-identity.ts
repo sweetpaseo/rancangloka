@@ -30,10 +30,82 @@ export interface HouseIdentityProfile {
     film_sim_or_color_science: string;
     perspective: string;
   };
+  cover_scene_lock?: CoverObservedSceneLock;
   provenance: {
     created_at: string;
-    engine_version: 'HOUSE_IDENTITY_V1.1';
+    engine_version: 'HOUSE_IDENTITY_V1.1' | 'HOUSE_IDENTITY_V1.2';
     policy: 'PHOTO_FIRST';
+  };
+}
+
+/**
+ * Detailed architectural landmarks and equipment locked from the actual accepted Cover photograph.
+ */
+export interface CoverObservedSceneLock {
+  cover_image_id: string;
+  cover_image_path?: string;
+  cover_image_sha256?: string;
+  observed_kitchen_topology: 'U_SHAPE' | 'L_SHAPE' | 'GALLEY' | 'SINGLE_WALL' | 'OPEN_PENINSULA';
+  topology_divergence_from_initial: boolean;
+  topology_notes: string;
+  observed_fixed_appliances: {
+    cooktop_type: 'FLAT_GLASS_INDUCTION' | 'FLAT_GLASS_CERAMIC' | 'GAS_TWO_BURNER' | 'GAS_MULTI_BURNER' | 'UNSPECIFIED';
+    cooktop_description: string;
+    cooktop_location_relative: string;
+    hood_type: 'SLIM_STAINLESS_UNDER_CABINET' | 'CHIMNEY_CANOPY' | 'INTEGRATED_HIDDEN';
+    hood_description: string;
+    hood_location_relative: string;
+  };
+  observed_cabinetry: {
+    lower_cabinets: string;
+    upper_cabinets: string;
+    countertop: string;
+    backsplash: string;
+  };
+  observed_flooring: string;
+  observed_wall_finish: string;
+  observed_visible_openings: string;
+  unseen_or_unverifiable_areas: string[];
+  locked_at: string;
+}
+
+/**
+ * Synchronizes and locks the initial House Identity Profile with the actual accepted Cover image.
+ * Invariant: Never silently pretend an initial profile matches; explicitly record divergence and lock truth.
+ */
+export function lockHouseIdentityFromCover(
+  initialProfile: HouseIdentityProfile,
+  coverLock: CoverObservedSceneLock
+): HouseIdentityProfile {
+  const updatedLandmarks = [
+    `Kompor: ${coverLock.observed_fixed_appliances.cooktop_description} (${coverLock.observed_fixed_appliances.cooktop_location_relative})`,
+    `Cooker hood: ${coverLock.observed_fixed_appliances.hood_description} (${coverLock.observed_fixed_appliances.hood_location_relative})`,
+    `Kabinet: ${coverLock.observed_cabinetry.lower_cabinets} (bawah) dan ${coverLock.observed_cabinetry.upper_cabinets} (atas)`,
+    `Meja & Backsplash: ${coverLock.observed_cabinetry.countertop} dan ${coverLock.observed_cabinetry.backsplash}`,
+    `Lantai: ${coverLock.observed_flooring}`,
+    `Bukaan/Relasi Spasial: ${coverLock.observed_visible_openings}`
+  ];
+
+  return {
+    ...initialProfile,
+    profile_id: `${initialProfile.profile_id}_locked_${coverLock.cover_image_id.slice(-6)}`,
+    room_topology: coverLock.topology_notes || `Dapur bentuk ${coverLock.observed_kitchen_topology} sesuai citra cover anchor ${coverLock.cover_image_id}.`,
+    wall_colors: coverLock.observed_wall_finish,
+    fixed_spatial_landmarks: updatedLandmarks,
+    material_palette: [
+      coverLock.observed_cabinetry.lower_cabinets,
+      coverLock.observed_cabinetry.upper_cabinets,
+      coverLock.observed_cabinetry.countertop,
+      coverLock.observed_cabinetry.backsplash,
+      coverLock.observed_flooring
+    ],
+    reference_image_id: coverLock.cover_image_id,
+    reference_image_url: coverLock.cover_image_path || null,
+    cover_scene_lock: coverLock,
+    provenance: {
+      ...initialProfile.provenance,
+      engine_version: 'HOUSE_IDENTITY_V1.2'
+    }
   };
 }
 
@@ -131,4 +203,160 @@ export function compileNegativeTokensFromHouseIdentity(profile: HouseIdentityPro
     'currency symbols',
     'before and after split screen text'
   ];
+}
+
+export interface StructuredInlinePromptResult {
+  prompt_text: string;
+  immutable_tokens: string;
+  mutable_tokens: string;
+  negative_prompt: string;
+  breakdown: {
+    immutable: {
+      kitchen_topology: string;
+      fixed_appliances: string;
+      cabinetry_and_countertop: string;
+      backsplash_and_walls: string;
+      flooring: string;
+    };
+    mutable: {
+      camera_angle: string;
+      camera_distance: string;
+      lighting_condition: string;
+      scene_activity_and_utensils: string;
+      temporary_conditions: string;
+    };
+  };
+}
+
+/**
+ * Builds a revised Budi prompt with strict separation of IMMUTABLE and MUTABLE elements (POLICY v1.2).
+ *
+ * IMMUTABLE: Kitchen topology, fixed appliances and their type, cabinet configuration, hood position, materials.
+ * MUTABLE: Camera angle, camera distance, focal length, realistic lighting, cooking activity, utensils, steam.
+ *
+ * Rule: An inline photograph must portray the same physical house, preserving fixed architecture and equipment.
+ * Only camera perspective and temporary scene conditions may change.
+ */
+export function buildStructuredInlinePrompt(
+  profile: HouseIdentityProfile,
+  options: {
+    slot_key: string;
+    photo_role: 'problem_condition' | 'relevant_detail' | 'realistic_solution_example';
+    camera_angle: string;
+    camera_distance: string;
+    focal_length?: string;
+    scene_activity?: string;
+    cooking_utensils?: string;
+    temporary_conditions?: string;
+    focal_element?: string;
+  }
+): StructuredInlinePromptResult {
+  const lock = profile.cover_scene_lock;
+
+  // 1. IMMUTABLE ELEMENTS
+  const topology = lock
+    ? `Kitchen topology is strictly ${lock.observed_kitchen_topology}: ${lock.topology_notes}`
+    : `Kitchen topology: ${profile.room_topology}`;
+
+  const fixedAppliances = lock
+    ? `FIXED APPLIANCES (MUST NOT CHANGE): Cooktop is strictly ${lock.observed_fixed_appliances.cooktop_description} (${lock.observed_fixed_appliances.cooktop_location_relative}). Do NOT replace with gas burner rings or protruding gas grates. Cooker hood is ${lock.observed_fixed_appliances.hood_description} (${lock.observed_fixed_appliances.hood_location_relative}).`
+    : `FIXED APPLIANCES: Flat black glass cooktop flush with countertop, slim stainless steel under-cabinet cooker hood.`;
+
+  const cabinetryAndCounter = lock
+    ? `CABINETRY & COUNTERTOP (MUST NOT CHANGE): Lower cabinets: ${lock.observed_cabinetry.lower_cabinets}; Upper cabinets: ${lock.observed_cabinetry.upper_cabinets}; Countertop: ${lock.observed_cabinetry.countertop}.`
+    : `CABINETRY: Warm teak grain laminate (HPL jati muda) lower cabinets, off-white matte solid surface countertop.`;
+
+  const backsplashAndWalls = lock
+    ? `WALLS & BACKSPLASH (MUST NOT CHANGE): Backsplash: ${lock.observed_cabinetry.backsplash}; Wall color: ${lock.observed_wall_finish}.`
+    : `WALLS & BACKSPLASH: Vertical cream-white subway tiles, warm greige matte wall paint.`;
+
+  const flooring = lock
+    ? `FLOORING: ${lock.observed_flooring}.`
+    : `FLOORING: Honed light grey terrazzo tile 60x60cm.`;
+
+  const immutableTokens = [
+    `[IMMUTABLE ARCHITECTURE & EQUIPMENT]`,
+    topology,
+    fixedAppliances,
+    cabinetryAndCounter,
+    backsplashAndWalls,
+    flooring
+  ].join('\n');
+
+  // 2. MUTABLE ELEMENTS
+  const camAngle = options.camera_angle || 'eye-level architectural view';
+  const camDistance = options.camera_distance || 'medium shot';
+  const focalLength = options.focal_length || '50mm rectilinear lens, f/5.6';
+  const lighting = 'Consistent soft warm diffused tropical residential interior lighting (3000K indirect LED + natural bounce), realistic natural shadows.';
+  const activity = options.scene_activity || 'gentle cooking preparation';
+  const utensils = options.cooking_utensils || 'single stainless steel pot on cooktop';
+  const temporaryConditions = options.temporary_conditions || 'realistic soft cooking steam gently rising from pot into the cooker hood intake';
+
+  const mutableTokens = [
+    `[MUTABLE PERSPECTIVE & SCENE CONDITIONS]`,
+    `CAMERA ANGLE: ${camAngle}.`,
+    `CAMERA DISTANCE & FOCUS: ${camDistance}, ${focalLength}.`,
+    `LIGHTING: ${lighting}.`,
+    `ACTIVITY & UTENSILS: ${activity}, using ${utensils}.`,
+    `TEMPORARY CONDITION: ${temporaryConditions}.`
+  ].join('\n');
+
+  // 3. Combined prompt text with explicit reference tag <<<image_1>>>
+  const promptParts: string[] = [
+    `In the exact same architectural room and cabinetry setting as <<<image_1>>>, maintaining 100% identical fixed appliances and materials.`,
+    `${camDistance} ${camAngle} showing ${options.focal_element || 'the cooking and ventilation zone'}.`,
+    fixedAppliances,
+    cabinetryAndCounter,
+    backsplashAndWalls,
+    `SCENE DETAILS: ${activity} with ${utensils}, ${temporaryConditions}.`,
+    `PHOTOGRAPHIC QUALITY: Hasselblad natural color science, photorealistic architectural editorial photography, crisp woodgrain and stainless steel textures, zero CGI gloss, zero text, zero diagrammatic overlays.`
+  ];
+
+  const promptText = promptParts.join(' ');
+
+  // 4. Anti-Drift Negative Prompt
+  const antiDriftNegatives = [
+    ...compileNegativeTokensFromHouseIdentity(profile),
+    'different cooktop type',
+    'gas burner rings and grates',
+    'protruding gas knobs on cooktop',
+    'cast iron pan supports',
+    'gas flame',
+    'different cooker hood',
+    'chimney hood',
+    'different cabinet doors',
+    'white cabinets',
+    'glossy finish',
+    'marble countertops',
+    'western luxury kitchen',
+    'technical diagram',
+    'arrows',
+    'schematic callouts',
+    'labels',
+    'watermark',
+    'logo'
+  ];
+
+  return {
+    prompt_text: promptText,
+    immutable_tokens: immutableTokens,
+    mutable_tokens: mutableTokens,
+    negative_prompt: antiDriftNegatives.join(', '),
+    breakdown: {
+      immutable: {
+        kitchen_topology: topology,
+        fixed_appliances: fixedAppliances,
+        cabinetry_and_countertop: cabinetryAndCounter,
+        backsplash_and_walls: backsplashAndWalls,
+        flooring
+      },
+      mutable: {
+        camera_angle: camAngle,
+        camera_distance: camDistance,
+        lighting_condition: lighting,
+        scene_activity_and_utensils: `${activity} with ${utensils}`,
+        temporary_conditions: temporaryConditions
+      }
+    }
+  };
 }

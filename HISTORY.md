@@ -2,6 +2,46 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **Rancangloka**.
 
+## Hermes EU Canary (#10011) — House Identity Lock v1.2 & Visual Continuity QA (2026-11-19)
+
+- **Milestone:** `RANCANGLOKA_HOUSE_IDENTITY_LOCK_V1_2`
+- **Checkpoint:** Titik Aman Offline (`state/OFFLINE_CHECKPOINT_20261119_HOUSE_IDENTITY_LOCK_V1_2.md`) pada branch `feat/jev-lokamedia-integration`.
+- **Target Topik:** Artikel #10011 — *Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*
+- **Staging Article ID:** 10 (Status: `DRAFT`, Persetujuan: `PENDING`)
+- **Akar Penyebab Inkonsistensi Visual Pilot:**
+  - Evaluasi pilot Kling Omni menghasilkan 1 cover + 1 inline yang konsisten secara suasana dan palet material, namun peralatan tetap (fixed appliances) bermutasi: Cover menampilkan kompor tanam flat flush kaca induksi tanpa tungku, sedangkan Inline menampilkan kompor gas 2 tungku dengan burner ring dan knob logam.
+  - Model difusi referensial mempertahankan mood dan tekstur (`<<<image_1>>>`), namun rentan memutasi peralatan fungsional jika prompt tidak memisahkan elemen immutable dan mutable secara tegas, serta tanpa penegasan negative prompt yang melarang peralatan berbeda.
+  - Quality gate sebelumnya memiliki kelemahan false-pass karena hanya memeriksa flag boolean umum tanpa memvalidasi tipe peralatan teramati secara spesifik.
+- **Implementasi & Solusi Teknis:**
+  1. **Cover-Driven House Lock (`house-identity.ts`):**
+     - Menetapkan citra cover yang diterima Owner sebagai sumber kebenaran visual (*ground truth visual anchor*).
+     - Menangkap topologi nyata (U-shape vs L-shape) dan mencatat divergensi secara eksplisit (`topology_divergence_from_initial: true`).
+     - Mengunci peralatan tetap: kompor kaca induksi (`FLAT_GLASS_INDUCTION`), cooker hood slim stainless di bawah kabinet, kabinet jati matte dan rak atas putih, serta lantai semen ekspos abu-abu.
+     - Menyinkronkan metadata profil menjadi versi `HOUSE_IDENTITY_V1.2`.
+  2. **Budi Prompt Engine v1.2 (`buildStructuredInlinePrompt`):**
+     - Memisahkan prompt secara tegas menjadi dua partisi:
+       * `IMMUTABLE ARCHITECTURE & EQUIPMENT`: Topologi dapur, jenis kompor tanam induksi, cooker hood slim stainless, kabinet jati matte, backsplash subway tile, lantai semen, dan tag `<<<image_1>>>`.
+       * `MUTABLE PERSPECTIVE & SCENE CONDITIONS`: Sudut pandang kamera, jarak tembak (wide/detail), kondisi pencahayaan siang/malam, aktivitas dan peralatan masak bergerak.
+     - Menyusun negative prompt ketat yang secara eksplisit melarang kompor gas, burner ring, cast iron grate, knob logam, api gas, serta perubahan bentuk denah dapur.
+  3. **Nadia Visual Continuity Gate v1.2 (`photo-quality-gate.ts`):**
+     - Menerapkan 9 gerbang deterministik:
+       * `photo_realism`
+       * `fixed_appliance_consistency` (FAIL jika kompor/hood tidak cocok; NEEDS_REVIEW jika terpotong/out-of-frame)
+       * `kitchen_layout_continuity` (FAIL jika denah berubah; NEEDS_REVIEW jika tidak terverifikasi)
+       * `cabinet_geometry_consistency` (FAIL jika jenis/arah kabinet berubah)
+       * `material_and_color_consistency` (FAIL jika warna/material primer berubah $\rightarrow$ `[SAME_HOUSE_FAIL]`)
+       * `architectural_landmark_match` (FAIL jika landmark fisik bertabrakan)
+       * `editorial_photo_variation` (FAIL jika sudut kamera menduplikasi cover atau tidak sesuai peran foto)
+       * `no_misleading_architecture`
+       * `monetary_silence`
+     - Menghapus celah false-pass: setiap elemen di luar bingkai kamera (`OUT_OF_FRAME`) wajib berstatus `NEEDS_REVIEW` (`UNVERIFIABLE`), tidak boleh dianggap `PASS`.
+     - Logika vonis ketat: 1 kegagalan $\rightarrow$ `REJECTED`; ada `NEEDS_REVIEW` tanpa fail $\rightarrow$ `NEEDS_REVIEW`; seluruh gerbang lolos $\rightarrow$ `RECOMMENDED_FOR_OWNER`.
+  4. **Hasil Pengujian & Verifikasi Regresi ($0.00 Spend):**
+     - `test-house-identity-lock-v12.mjs`: **5/5 PASS (100%)**.
+     - Pasangan Kling Omni riil #10011 kini tertolak secara deterministik dengan skor `fixed_appliance_consistency`: 20/100 dan `overall_verdict: 'REJECTED'`.
+     - Kandidat selaras sempurna berhasil lolos dengan skor 97/100 (`RECOMMENDED_FOR_OWNER`).
+     - Seluruh tes visual kebijakan v1.1 dan Kling payload tetap 100% lulus.
+
 ## Hermes EU Canary (#10011) — Photo-First v1.1 Integration & Kling Omni Reference Contract (2026-11-19)
 
 - **Milestone:** `RANCANGLOKA_PHOTO_FIRST_V1_1_INTEGRATION_VERIFIED_SAFE`
