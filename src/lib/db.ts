@@ -1727,9 +1727,15 @@ export async function getRelatedArticles(
       }
 
       // Single efficient query for all published candidates, ordered by recency
+      // CLOUDFLARE-P0-PILOT: Explicit minimal projection avoiding bulk transfer of content_md & content_html
       const res = await db
         .prepare(`
-          SELECT a.*, c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
+          SELECT a.id, a.slug, a.title, a.description, a.featured_image, a.image_alt,
+                 a.category_id, a.author_id, a.status, a.views, a.reading_time_minutes,
+                 a.focus_keyword, a.is_featured, a.is_sponsored,
+                 a.published_at, a.updated_at,
+                 '' as content_md, '' as content_html,
+                 c.name as category_name, c.slug as category_slug, c.color_badge as category_color,
                  au.name as author_name, au.avatar as author_avatar, au.role as author_role
           FROM articles a
           LEFT JOIN categories c ON a.category_id = c.id
