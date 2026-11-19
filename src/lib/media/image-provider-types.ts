@@ -63,6 +63,9 @@ export interface ImageGenerationRequest {
   reference_weight?: number;
   house_identity_profile_id?: string;
   photo_role?: 'context' | 'problem_condition' | 'relevant_detail' | 'realistic_solution_example';
+  // Image Series Mode (KLING-SERIES-V1)
+  result_type?: 'single' | 'series';
+  series_amount?: number;
 }
 
 export interface ImageCostMetadata {

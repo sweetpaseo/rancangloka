@@ -2,6 +2,41 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **Rancangloka**.
 
+## Hermes EU Canary (#10011) — Kling Omni Image Series Integration (2026-11-19)
+
+- **Milestone:** `RANCANGLOKA_KLING_OMNI_IMAGE_SERIES_V1`
+- **Checkpoint:** Titik Aman Offline (`state/OFFLINE_CHECKPOINT_20261119_KLING_OMNI_IMAGE_SERIES_INTEGRATION.md`) pada branch `feat/jev-lokamedia-integration`.
+- **Target Topik:** Artikel #10011 — *Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*
+- **Staging Article ID:** 10 (Status: `DRAFT`, Persetujuan: `PENDING`)
+- **Tujuan Arsitektur:**
+  - Mengadopsi kapabilitas asli Kling AI Image 3.0 Omni (`result_type: "series"`) untuk menghasilkan sequence foto editorial multi-angle dari rumah yang sama dalam satu pemanggilan task terpadu, alih-alih generasi parsial inline terpisah.
+- **Implementasi & Solusi Teknis:**
+  1. **Dukungan Image Series pada Adapter (`kling-image-adapter.ts`):**
+     - Menambahkan parameter `result_type: 'series'` dan `series_amount: 3` (rentang 2..9) pada endpoint `POST /v1/images/omni-image`.
+     - Mengotomasi penghapusan parameter `n` pada mode seri untuk mematuhi kontrak API resmi.
+     - Memperluas parser polling `pollTask()` dan `downloadSeriesImages()` agar membaca `task_result.series_images` dengan fallback aman ke `task_result.images`.
+     - Mengembalikan `series_images` dengan indeks frame berurutan (`0`, `1`, `2`) dan metadata peran bidikan (`shot_role`).
+  2. **Prompt Terstruktur Multi-Shot (`buildStructuredSeriesPrompt`):**
+     - Mengunci identitas rumah dan peralatan tetap secara mutlak di seluruh bidikan (topologi U-shape, kompor tanam flat flush kaca induksi tanpa tungku, cooker hood slim under-cabinet, kabinet jati matte, countertop krem, backsplash subway tile).
+     - Menetapkan 3 bidikan editorial beragam:
+       * Shot 1 (`cooking_perspective`): Sudut 45 derajat melihat area memasak dan uap masakan.
+       * Shot 2 (`appliance_detail`): Detail dekat cooker hood dan kompor tanam induksi rata meja.
+       * Shot 3 (`ventilation_solution`): Perspektif luas jalur sirkulasi udara dan kisi-kisi ventilasi ruang tanpa jendela.
+     - Negative prompt ketat melarang tungku gas, kenop logam, api terbuka, denah berubah, dan sudut kamera duplikat.
+  3. **Nadia Series Quality Gate (`evaluateImageSeriesQualityGate`):**
+     - Mengevaluasi 6 dimensi holistik: `SAME_HOUSE_CONSISTENCY`, `FIXED_APPLIANCE_CONSISTENCY`, `SPATIAL_CONTINUITY`, `DISTINCT_CAMERA_ANGLES`, `ARTICLE_RELEVANCE`, dan `PHOTO_REALISM`.
+     - Menolak serial jika ditemukan peralatan bermutasi atau dua bidikan menggunakan sudut pandang kamera yang identik (`[SERIES_DUPLICATE_ANGLE_FAIL]`).
+  4. **Akuntansi Biaya & Saldo:**
+     - Perhitungan biaya berbasis **JUMLAH GAMBAR OUTPUT** (3 gambar 2K = 24 unit Kling).
+     - Biaya efektif paket trial: **US$ 0.0588** (~ Rp 958). List price: **US$ 0.0840** (~ Rp 1.369).
+     - Saldo akun Kling terverifikasi via `GET /account/costs`: **960 unit tersisa** dari paket 1.000 unit.
+     - Sesi ini berhenti di tahap preflight dengan biaya riil **US$ 0.00**.
+  5. **Hasil Pengujian Otomasi Offline:**
+     - `test-kling-omni-series-contract.mjs`: **7/7 PASS (100%)**.
+     - `test-kling-image-adapter.mjs`: 15/15 PASS.
+     - `test-kling-omni-reference-payload.mjs`: 4/4 PASS.
+     - `npx tsc --noEmit`: 0 errors.
+
 ## Hermes EU Canary (#10011) — House Identity Lock v1.2 & Visual Continuity QA (2026-11-19)
 
 - **Milestone:** `RANCANGLOKA_HOUSE_IDENTITY_LOCK_V1_2`

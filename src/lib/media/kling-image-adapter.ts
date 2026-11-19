@@ -74,7 +74,13 @@ export interface KlingTaskInfo {
   created_at?: number;
   updated_at?: number;
   task_result?: {
+    result_type?: 'single' | 'series' | string;
     images?: Array<{
+      index: number;
+      url: string;
+      watermark_url?: string;
+    }>;
+    series_images?: Array<{
       index: number;
       url: string;
       watermark_url?: string;
@@ -100,6 +106,11 @@ export interface KlingBatchImageItem {
   sha256: string;
 }
 
+export interface KlingSeriesImageItem extends KlingBatchImageItem {
+  frame_index: number;
+  shot_role?: string;
+}
+
 export interface KlingCostMetadata extends ImageCostMetadata {
   actual_units_consumed: number;
   estimated_spend_usd: number; // Official list price in USD
@@ -107,6 +118,8 @@ export interface KlingCostMetadata extends ImageCostMetadata {
   list_price_usd: number;
   units_per_image: number;
   resolution: KlingResolution;
+  result_type?: 'single' | 'series';
+  series_amount?: number;
 }
 
 export interface KlingGenerationResult extends ImageGenerationResult {
@@ -115,7 +128,10 @@ export interface KlingGenerationResult extends ImageGenerationResult {
   resolution: KlingResolution;
   aspect_ratio: KlingAspectRatio;
   batch_count: number;
+  result_type?: 'single' | 'series';
+  series_amount?: number;
   batch_images?: KlingBatchImageItem[];
+  series_images?: KlingSeriesImageItem[];
   cost_metadata?: KlingCostMetadata;
 }
 
@@ -253,14 +269,35 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
     const n = this.resolveBatchCount(request);
     const externalTaskId = request.request_id || `req_kling_${Date.now()}`;
 
+    const isSeries =
+      request.result_type === 'series' ||
+      Boolean((request as any).series_mode === true) ||
+      Boolean(typeof (request as any).series_amount === 'number' && (request as any).series_amount > 1);
+
     const payload: Record<string, any> = {
       model_name: selectedModel,
       prompt: request.prompt,
       resolution,
       aspect_ratio: aspectRatio,
-      n,
       external_task_id: externalTaskId
     };
+
+    if (isSeries && submitPath === '/v1/images/omni-image') {
+      const rawSeriesAmount = Number((request as any).series_amount ?? 3);
+      if (isNaN(rawSeriesAmount) || rawSeriesAmount < 2 || rawSeriesAmount > 9) {
+        throw new ImageProviderError({
+          code: 'INVALID_RESPONSE',
+          provider: this.providerName,
+          message: `Kling Omni series_amount must be an integer between 2 and 9 (received: ${rawSeriesAmount})`,
+          isBillable: false
+        });
+      }
+      payload.result_type = 'series';
+      payload.series_amount = Math.floor(rawSeriesAmount);
+    } else {
+      payload.result_type = 'single';
+      payload.n = n;
+    }
 
     if (request.negative_prompt) {
       payload.negative_prompt = request.negative_prompt;
@@ -672,10 +709,46 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
   }
 
   /**
+   * Downloads all images produced in a series task with frame order and shot roles.
+   */
+  async downloadSeriesImages(
+    taskInfo: KlingTaskInfo,
+    options?: { signal?: AbortSignal }
+  ): Promise<KlingSeriesImageItem[]> {
+    const rawImages = (taskInfo.task_result?.series_images && taskInfo.task_result.series_images.length > 0)
+      ? taskInfo.task_result.series_images
+      : (taskInfo.task_result?.images || []);
+
+    const results: KlingSeriesImageItem[] = [];
+    const defaultShotRoles = ['cooking_perspective', 'appliance_detail', 'ventilation_solution'];
+
+    for (let i = 0; i < rawImages.length; i++) {
+      const img = rawImages[i];
+      if (!img.url) continue;
+      const materialized = await this.downloadImageBytes(img.url, options);
+      const frameIndex = typeof img.index === 'number' ? img.index : i;
+      results.push({
+        index: frameIndex,
+        frame_index: frameIndex,
+        url: img.url,
+        bytes: materialized.bytes,
+        mime_type: materialized.mimeType,
+        width: materialized.width,
+        height: materialized.height,
+        byte_size: materialized.byteSize,
+        sha256: materialized.sha256,
+        shot_role: defaultShotRoles[i] || `shot_${i + 1}`
+      });
+    }
+
+    return results;
+  }
+
+  /**
    * Full end-to-end execution implementing ImageProviderAdapter.
    * 1. Submits task via POST.
    * 2. Polls until completion (idempotent, never re-submitting).
-   * 3. Downloads generated image(s) from CDN.
+   * 3. Downloads generated image(s) from CDN (single, batch, or series).
    * 4. Validates binary headers, dimensions, and SHA-256.
    * 5. Returns canonical ImageGenerationResult.
    */
@@ -690,7 +763,6 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
     const selectedModel = request.model_override || this.model;
     const resolution = this.resolveResolution(request);
     const aspectRatio = this.resolveAspectRatio(request);
-    const batchCount = this.resolveBatchCount(request);
 
     try {
       // 1. Submit task (POST)
@@ -704,35 +776,48 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
         { signal: abortController.signal }
       );
 
-      const images = taskInfo.task_result?.images;
-      if (!Array.isArray(images) || images.length === 0 || !images[0]?.url) {
+      // Support both series_images and images arrays
+      const isSeriesTask =
+        taskInfo.task_result?.result_type === 'series' ||
+        Boolean(taskInfo.task_result?.series_images && taskInfo.task_result.series_images.length > 0) ||
+        request.result_type === 'series';
+
+      const rawImages = (taskInfo.task_result?.series_images && taskInfo.task_result.series_images.length > 0)
+        ? taskInfo.task_result.series_images
+        : taskInfo.task_result?.images;
+
+      if (!Array.isArray(rawImages) || rawImages.length === 0 || !rawImages[0]?.url) {
         throw new ImageProviderError({
           code: 'INVALID_RESPONSE',
           provider: this.providerName,
-          message: 'Kling succeeded but task_result.images is empty or missing valid URLs',
+          message: 'Kling succeeded but task_result (series_images / images) is empty or missing valid URLs',
           isBillable: false,
           details: { taskId: submission.taskId, taskInfo }
         });
       }
 
-      // 3. Download primary image (and all batch items if batch requested)
-      const primaryUrl = images[0].url;
+      // 3. Download primary image (and all series/batch items if multiple requested)
+      const primaryUrl = rawImages[0].url;
       const primaryDownload = await this.downloadImageBytes(primaryUrl, { signal: abortController.signal });
 
       let batchImages: KlingBatchImageItem[] | undefined;
-      if (images.length > 1) {
+      let seriesImages: KlingSeriesImageItem[] | undefined;
+
+      if (isSeriesTask) {
+        seriesImages = await this.downloadSeriesImages(taskInfo, { signal: abortController.signal });
+        batchImages = seriesImages;
+      } else if (rawImages.length > 1) {
         batchImages = await this.downloadBatchImages(taskInfo, { signal: abortController.signal });
       }
 
       const latencyMs = Date.now() - startTime;
       
-      // Calibrated pricing calculation:
-      // 2K = 8 units ($0.0280 list, $0.0196 effective trial rate)
-      // 4K = 16 units ($0.0560 list, $0.0392 effective trial rate)
+      // Billing is strictly based on total output images generated
+      // 2K = 8 units per image; 4K = 16 units per image
       const unitsPerImage = resolution === '4k' ? KLING_UNITS_PER_IMAGE_4K : KLING_UNITS_PER_IMAGE_2K;
-      const actualUnitsConsumed = unitsPerImage * images.length;
+      const actualUnitsConsumed = unitsPerImage * rawImages.length;
       const listPricePerImage = resolution === '4k' ? KLING_V3_4K_LIST_PRICE_USD : KLING_V3_2K_LIST_PRICE_USD;
-      const estimatedSpendUsd = listPricePerImage * images.length;
+      const estimatedSpendUsd = listPricePerImage * rawImages.length;
       const effectivePrepaidCostUsd = actualUnitsConsumed * KLING_TRIAL_PREPAID_RATE_PER_UNIT_USD;
 
       const costMetadata: KlingCostMetadata = {
@@ -743,6 +828,8 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
         list_price_usd: listPricePerImage,
         units_per_image: unitsPerImage,
         resolution,
+        result_type: isSeriesTask ? 'series' : 'single',
+        series_amount: isSeriesTask ? rawImages.length : undefined,
         billed_units: actualUnitsConsumed,
         pricing_tier: `${selectedModel}-${resolution}`,
         is_billable: true,
@@ -767,8 +854,11 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
         provider_url: primaryUrl,
         resolution,
         aspect_ratio: aspectRatio,
-        batch_count: images.length,
+        batch_count: rawImages.length,
+        result_type: isSeriesTask ? 'series' : 'single',
+        series_amount: isSeriesTask ? rawImages.length : undefined,
         batch_images: batchImages,
+        series_images: seriesImages,
         cost_metadata: costMetadata
       };
     } finally {

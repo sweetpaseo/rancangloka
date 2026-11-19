@@ -360,3 +360,113 @@ export function buildStructuredInlinePrompt(
     }
   };
 }
+
+export interface StructuredSeriesPromptResult {
+  prompt_text: string;
+  negative_prompt: string;
+  series_amount: number;
+  shot_specifications: Array<{
+    shot_number: number;
+    shot_role: string;
+    description: string;
+    camera_angle: string;
+    camera_distance: string;
+  }>;
+}
+
+/**
+ * Builds a single coherent prompt for Kling Omni Image Series Mode (3 shots).
+ * Enforces strict house identity lock while requiring distinct camera angles.
+ */
+export function buildStructuredSeriesPrompt(
+  profile: HouseIdentityProfile,
+  options?: {
+    article_title?: string;
+  }
+): StructuredSeriesPromptResult {
+  const coverLock = profile.cover_scene_lock;
+  const topology = coverLock?.observed_kitchen_topology || 'U_SHAPE';
+  const cooktopDesc = coverLock?.observed_fixed_appliances.cooktop_description || 'Kompor tanam flat flush kaca induksi hitam tanpa tungku gas';
+  const hoodDesc = coverLock?.observed_fixed_appliances.hood_description || 'Cooker hood slim stainless steel di bawah kabinet atas';
+  const lowerCab = coverLock?.observed_cabinetry.lower_cabinets || 'HPL jati muda matte dengan grain horizontal';
+  const upperCab = coverLock?.observed_cabinetry.upper_cabinets || 'Kabinet atas dan rak terbuka putih minimalis';
+  const countertop = coverLock?.observed_cabinetry.countertop || 'Solid surface light cream matte';
+  const backsplash = coverLock?.observed_cabinetry.backsplash || 'Keramik subway tile putih krem vertikal';
+  const flooring = coverLock?.observed_flooring || 'Semen ekspos / teraso honed abu-abu muda';
+
+  const shots = [
+    {
+      shot_number: 1,
+      shot_role: 'cooking_perspective',
+      description: 'Side perspective showing cooking conditions. Wide 45-degree angled view looking from dining entrance toward cooking zone. Shows U-shaped counter relation, teak lower cabinets, one stainless steel stock pot on the flat flush black glass induction cooktop with soft gentle steam rising straight up toward the cooker hood intake.',
+      camera_angle: 'WIDE_45_DEGREE_ANGLED_PERSPECTIVE',
+      camera_distance: 'MEDIUM_WIDE_SHOT'
+    },
+    {
+      shot_number: 2,
+      shot_role: 'appliance_detail',
+      description: 'Close-up architectural detail of cooker hood and cooktop. Focused tightly on the filtration and cooktop zone: sleek profile of the slim stainless steel under-cabinet cooker hood with aluminum mesh grease filters, mounted directly above the flat flush black induction glass surface. Sharp tactile texture on brushed stainless steel, teak woodgrain, and subway tile grout lines.',
+      camera_angle: 'SLIGHT_LOW_ANGLE_UPWARD_DETAIL',
+      camera_distance: 'CLOSE_ARCHITECTURAL_DETAIL'
+    },
+    {
+      shot_number: 3,
+      shot_role: 'ventilation_solution',
+      description: 'Room ventilation perspective showing solution implementation in windowless space. Looking across the preparation counter toward the upper ventilation path and high louvered air-transfer grill. Demonstrates complete airflow and capture solution in compact windowless kitchen, calm balanced residential lighting, spacious architectural dignity.',
+      camera_angle: 'BROAD_CONTEXTUAL_PERSPECTIVE',
+      camera_distance: 'FULL_SPACE_PERSPECTIVE'
+    }
+  ];
+
+  const seriesPrompt = [
+    `A coherent 3-shot architectural editorial photography series of the exact same compact modern tropical Indonesian home kitchen from <<<image_1>>>, maintaining 100% architectural and material continuity across all panels:`,
+    `[IMMUTABLE ARCHITECTURE & EQUIPMENT - ALL 3 SHOTS]`,
+    `- Kitchen Layout: Compact ${topology} layout strictly identical to <<<image_1>>>.`,
+    `- Fixed Appliances: Cooktop is strictly ${cooktopDesc} flush with countertop (STRICTLY NO gas burners, NO burner rings, NO grates, NO knobs). Cooker hood is ${hoodDesc} mounted under teak cabinet.`,
+    `- Materials: Lower cabinets in ${lowerCab}, upper cabinets in ${upperCab}, countertop in ${countertop}, backsplash in ${backsplash}, flooring in ${flooring}.`,
+    `- Lighting: Natural warm diffused tropical residential interior lighting (3000K warm-neutral balance), authentic lived-in Indonesian home atmosphere, zero CGI gloss, zero text overlays.`,
+    `[PANEL SEQUENCE SPECIFICATIONS]`,
+    `SHOT 1 (${shots[0].shot_role}): ${shots[0].description}`,
+    `SHOT 2 (${shots[1].shot_role}): ${shots[1].description}`,
+    `SHOT 3 (${shots[2].shot_role}): ${shots[2].description}`,
+    `PHOTOGRAPHIC STANDARD: Hasselblad medium-format camera, architectural magazine editorial standard, crisp natural textures, authentic depth of field.`
+  ].join('\n');
+
+  const negativePrompt = [
+    ...compileNegativeTokensFromHouseIdentity(profile),
+    'different cooktop type',
+    'gas burner rings and grates',
+    'protruding gas knobs on cooktop',
+    'cast iron pan supports',
+    'gas flame',
+    'open fire',
+    'different cooker hood',
+    'chimney hood',
+    'white glossy cabinets',
+    'marble countertops',
+    'western luxury mansion',
+    'huge island',
+    'random exterior window with bright daylight',
+    'duplicate angle',
+    'identical cropped zoom without variation',
+    'cartoon',
+    '3d render',
+    'illustration',
+    'CGI',
+    'technical diagram',
+    'arrows',
+    'flow lines',
+    'schematic callouts',
+    'labels',
+    'watermark',
+    'logo',
+    'text overlays'
+  ].join(', ');
+
+  return {
+    prompt_text: seriesPrompt,
+    negative_prompt: negativePrompt,
+    series_amount: 3,
+    shot_specifications: shots
+  };
+}

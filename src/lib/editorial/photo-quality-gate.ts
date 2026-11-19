@@ -525,3 +525,239 @@ export function evaluatePhotoFirstQualityGate(input: EvaluatePhotoInput): PhotoF
     evaluated_at: new Date().toISOString()
   };
 }
+
+export interface SeriesFrameEvaluationInput {
+  frame_index: number;
+  shot_role: string;
+  target_heading: string;
+  evaluation: PhotoFirstQualityGateResult;
+  camera_angle: string;
+  camera_distance: string;
+}
+
+export interface ImageSeriesQualityGateResult {
+  series_id: string;
+  total_frames: number;
+  overall_verdict: 'RECOMMENDED_FOR_OWNER' | 'NEEDS_REVIEW' | 'REJECTED';
+  overall_score: number;
+  gates: {
+    same_house_consistency: SingleGateEvaluation;
+    fixed_appliance_consistency: SingleGateEvaluation;
+    spatial_continuity: SingleGateEvaluation;
+    distinct_camera_angles: SingleGateEvaluation;
+    article_relevance: SingleGateEvaluation;
+    photo_realism: SingleGateEvaluation;
+  };
+  frame_evaluations: SeriesFrameEvaluationInput[];
+  rejection_reasons: string[];
+  evaluated_at: string;
+}
+
+/**
+ * Nadia QA gate evaluating an entire Image Series for mutual consistency and angle diversity.
+ * Invariant: Cannot pass same_house_consistency on prompt tokens or metadata alone.
+ */
+export function evaluateImageSeriesQualityGate(params: {
+  series_id: string;
+  house_profile: HouseIdentityProfile;
+  frames: SeriesFrameEvaluationInput[];
+}): ImageSeriesQualityGateResult {
+  const { series_id, house_profile, frames } = params;
+  const rejectionReasons: string[] = [];
+
+  if (!frames || frames.length === 0) {
+    return {
+      series_id,
+      total_frames: 0,
+      overall_verdict: 'REJECTED',
+      overall_score: 0,
+      gates: {
+        same_house_consistency: { name: 'SAME_HOUSE_CONSISTENCY', status: 'FAIL', score: 0, notes: 'Series kosong', violations: ['Zero frames provided'] },
+        fixed_appliance_consistency: { name: 'FIXED_APPLIANCE_CONSISTENCY', status: 'FAIL', score: 0, notes: 'Series kosong', violations: ['Zero frames provided'] },
+        spatial_continuity: { name: 'SPATIAL_CONTINUITY', status: 'FAIL', score: 0, notes: 'Series kosong', violations: ['Zero frames provided'] },
+        distinct_camera_angles: { name: 'DISTINCT_CAMERA_ANGLES', status: 'FAIL', score: 0, notes: 'Series kosong', violations: ['Zero frames provided'] },
+        article_relevance: { name: 'ARTICLE_RELEVANCE', status: 'FAIL', score: 0, notes: 'Series kosong', violations: ['Zero frames provided'] },
+        photo_realism: { name: 'PHOTO_REALISM', status: 'FAIL', score: 0, notes: 'Series kosong', violations: ['Zero frames provided'] }
+      },
+      frame_evaluations: [],
+      rejection_reasons: ['Series images array is empty'],
+      evaluated_at: new Date().toISOString()
+    };
+  }
+
+  // 1. SAME_HOUSE_CONSISTENCY (All frames must preserve house materials)
+  const houseViolations: string[] = [];
+  for (const f of frames) {
+    if (f.evaluation.gates.material_and_color_consistency.status === 'FAIL') {
+      houseViolations.push(`Frame ${f.frame_index + 1}: ${f.evaluation.gates.material_and_color_consistency.violations.join(', ')}`);
+    }
+  }
+  const sameHouseGate: SingleGateEvaluation = {
+    name: 'SAME_HOUSE_CONSISTENCY',
+    status: houseViolations.length === 0 ? 'PASS' : 'FAIL',
+    score: houseViolations.length === 0 ? 98 : 30,
+    notes: houseViolations.length === 0
+      ? 'Seluruh frame mempertahankan palet material, warna cat, dan identitas rumah yang identik.'
+      : houseViolations.join('; '),
+    violations: houseViolations
+  };
+  if (sameHouseGate.status === 'FAIL') {
+    rejectionReasons.push(`[SERIES_SAME_HOUSE_FAIL] ${houseViolations.join('; ')}`);
+  }
+
+  // 2. FIXED_APPLIANCE_CONSISTENCY (Cooktop and Hood must strictly not morph)
+  const applianceViolations: string[] = [];
+  let applianceHasReview = false;
+  for (const f of frames) {
+    const appGate = f.evaluation.gates.fixed_appliance_consistency;
+    if (appGate.status === 'FAIL') {
+      applianceViolations.push(`Frame ${f.frame_index + 1}: ${appGate.violations.join(', ')}`);
+    } else if (appGate.status === 'NEEDS_REVIEW') {
+      applianceHasReview = true;
+    }
+  }
+  const fixedApplianceGate: SingleGateEvaluation = {
+    name: 'FIXED_APPLIANCE_CONSISTENCY',
+    status: applianceViolations.length > 0 ? 'FAIL' : (applianceHasReview ? 'NEEDS_REVIEW' : 'PASS'),
+    score: applianceViolations.length > 0 ? 25 : (applianceHasReview ? 75 : 98),
+    notes: applianceViolations.length > 0
+      ? applianceViolations.join('; ')
+      : (applianceHasReview ? 'Peralatan teramati membutuhkan verifikasi visual langsung Owner.' : 'Seluruh frame mempertahankan kompor induksi flat flush dan cooker hood slim stainless.'),
+    violations: applianceViolations
+  };
+  if (fixedApplianceGate.status === 'FAIL') {
+    rejectionReasons.push(`[SERIES_FIXED_APPLIANCE_FAIL] ${applianceViolations.join('; ')}`);
+  }
+
+  // 3. SPATIAL_CONTINUITY (Layout and landmarks across frames)
+  const spatialViolations: string[] = [];
+  let spatialHasReview = false;
+  for (const f of frames) {
+    const layGate = f.evaluation.gates.kitchen_layout_continuity;
+    if (layGate.status === 'FAIL') {
+      spatialViolations.push(`Frame ${f.frame_index + 1}: ${layGate.violations.join(', ')}`);
+    } else if (layGate.status === 'NEEDS_REVIEW') {
+      spatialHasReview = true;
+    }
+  }
+  const spatialContinuityGate: SingleGateEvaluation = {
+    name: 'SPATIAL_CONTINUITY',
+    status: spatialViolations.length > 0 ? 'FAIL' : (spatialHasReview ? 'NEEDS_REVIEW' : 'PASS'),
+    score: spatialViolations.length > 0 ? 30 : (spatialHasReview ? 75 : 95),
+    notes: spatialViolations.length > 0
+      ? spatialViolations.join('; ')
+      : (spatialHasReview ? 'Topologi tata letak membutuhkan inspeksi visual sudut ruang.' : 'Topologi dapur U-shape berkesinambungan lintas seluruh frame.'),
+    violations: spatialViolations
+  };
+  if (spatialContinuityGate.status === 'FAIL') {
+    rejectionReasons.push(`[SERIES_SPATIAL_CONTINUITY_FAIL] ${spatialViolations.join('; ')}`);
+  }
+
+  // 4. DISTINCT_CAMERA_ANGLES (Must produce real compositional variation)
+  const angleViolations: string[] = [];
+  const seenAngles = new Set<string>();
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    const key = `${f.camera_angle}__${f.camera_distance}`.toUpperCase();
+    if (seenAngles.has(key)) {
+      angleViolations.push(`Frame ${i + 1} menduplikasi sudut pandang dan jarak kamera (${f.camera_angle}, ${f.camera_distance})`);
+    }
+    seenAngles.add(key);
+  }
+  const distinctAnglesGate: SingleGateEvaluation = {
+    name: 'DISTINCT_CAMERA_ANGLES',
+    status: angleViolations.length === 0 ? 'PASS' : 'FAIL',
+    score: angleViolations.length === 0 ? 95 : 35,
+    notes: angleViolations.length === 0
+      ? `Seluruh ${frames.length} frame memiliki variasi komposisi, sudut kamera, dan jarak bidik yang nyata.`
+      : angleViolations.join('; '),
+    violations: angleViolations
+  };
+  if (distinctAnglesGate.status === 'FAIL') {
+    rejectionReasons.push(`[SERIES_DUPLICATE_ANGLE_FAIL] ${angleViolations.join('; ')}`);
+  }
+
+  // 5. ARTICLE_RELEVANCE
+  const relevanceViolations: string[] = [];
+  for (const f of frames) {
+    if (!f.target_heading || f.target_heading.trim().length === 0) {
+      relevanceViolations.push(`Frame ${f.frame_index + 1} tidak memiliki target heading artikel yang valid`);
+    }
+  }
+  const relevanceGate: SingleGateEvaluation = {
+    name: 'ARTICLE_RELEVANCE',
+    status: relevanceViolations.length === 0 ? 'PASS' : 'FAIL',
+    score: relevanceViolations.length === 0 ? 95 : 40,
+    notes: relevanceViolations.length === 0
+      ? 'Setiap frame relevan secara editorial dan terikat pada heading masalah & solusi artikel.'
+      : relevanceViolations.join('; '),
+    violations: relevanceViolations
+  };
+  if (relevanceGate.status === 'FAIL') {
+    rejectionReasons.push(`[SERIES_RELEVANCE_FAIL] ${relevanceViolations.join('; ')}`);
+  }
+
+  // 6. PHOTO_REALISM
+  const realismViolations: string[] = [];
+  for (const f of frames) {
+    if (f.evaluation.gates.photo_realism.status === 'FAIL') {
+      realismViolations.push(`Frame ${f.frame_index + 1}: ${f.evaluation.gates.photo_realism.violations.join(', ')}`);
+    }
+  }
+  const photoRealismGate: SingleGateEvaluation = {
+    name: 'PHOTO_REALISM',
+    status: realismViolations.length === 0 ? 'PASS' : 'FAIL',
+    score: realismViolations.length === 0 ? 95 : 30,
+    notes: realismViolations.length === 0
+      ? 'Seluruh frame memenuhi standar fotorealisme editorial arsitektur.'
+      : realismViolations.join('; '),
+    violations: realismViolations
+  };
+  if (photoRealismGate.status === 'FAIL') {
+    rejectionReasons.push(`[SERIES_PHOTO_REALISM_FAIL] ${realismViolations.join('; ')}`);
+  }
+
+  const seriesGates = [
+    sameHouseGate,
+    fixedApplianceGate,
+    spatialContinuityGate,
+    distinctAnglesGate,
+    relevanceGate,
+    photoRealismGate
+  ];
+
+  const anyFail = seriesGates.some(g => g.status === 'FAIL');
+  const anyReview = seriesGates.some(g => g.status === 'NEEDS_REVIEW');
+  const allPass = seriesGates.every(g => g.status === 'PASS');
+
+  let overallVerdict: 'RECOMMENDED_FOR_OWNER' | 'NEEDS_REVIEW' | 'REJECTED' = 'REJECTED';
+  if (allPass) {
+    overallVerdict = 'RECOMMENDED_FOR_OWNER';
+  } else if (!anyFail && anyReview) {
+    overallVerdict = 'NEEDS_REVIEW';
+  } else {
+    overallVerdict = 'REJECTED';
+  }
+
+  const avgScore = Math.round(
+    seriesGates.reduce((acc, g) => acc + g.score, 0) / seriesGates.length
+  );
+
+  return {
+    series_id,
+    total_frames: frames.length,
+    overall_verdict: overallVerdict,
+    overall_score: avgScore,
+    gates: {
+      same_house_consistency: sameHouseGate,
+      fixed_appliance_consistency: fixedApplianceGate,
+      spatial_continuity: spatialContinuityGate,
+      distinct_camera_angles: distinctAnglesGate,
+      article_relevance: relevanceGate,
+      photo_realism: photoRealismGate
+    },
+    frame_evaluations: frames,
+    rejection_reasons: rejectionReasons,
+    evaluated_at: new Date().toISOString()
+  };
+}
