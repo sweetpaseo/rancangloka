@@ -19,6 +19,12 @@
  *    drainage, load-bearing walls) provided by Irwan.
  */
 
+import type { HouseIdentityProfile } from './house-identity.ts';
+import { getKitchenVentilationHouseProfile } from './house-identity.ts';
+
+export type InlinePhotoRole = 'context' | 'problem_condition' | 'relevant_detail' | 'realistic_solution_example';
+export type VisualEditorialPolicy = 'PHOTO_FIRST' | 'DIAGRAM_HYBRID' | 'LEGACY';
+
 export interface StoryboardCoverSpec {
   slot_key: 'cover_hero';
   title: string;
@@ -30,6 +36,8 @@ export interface StoryboardCoverSpec {
   recommended_aspect_ratio: '1.99:1' | '16:9' | '1312x672';
   suggested_alt_text: string;
   educational_goal: string;
+  photo_role?: 'context';
+  house_identity?: HouseIdentityProfile;
 }
 
 export type VisualMediaType = 'PHOTO_REALISTIC' | 'TECHNICAL_DIAGRAM_SVG' | 'SECTION_CUT_DIAGRAM' | 'MATERIAL_COMPARISON';
@@ -41,6 +49,8 @@ export interface StoryboardInlineSlot {
   educational_purpose: string;
   reader_takeaway: string;
   visual_media_type: VisualMediaType;
+  photo_role?: InlinePhotoRole;
+  house_identity?: HouseIdentityProfile;
   justification: string;
   must_include: string[];
   must_avoid: string[];
@@ -73,6 +83,8 @@ export interface VisualStoryboard {
   article_title: string;
   word_count: number;
   total_visual_slots: number;
+  visual_policy?: VisualEditorialPolicy;
+  house_identity?: HouseIdentityProfile;
   cover: StoryboardCoverSpec;
   inline_slots: StoryboardInlineSlot[];
   visual_intent_contracts?: Record<string, VisualIntentContract>;
@@ -97,14 +109,21 @@ function simpleHash(str: string): string {
 /**
  * Nadia reads the complete article text and parses sections into a structured Visual Storyboard.
  */
-export function generateVisualStoryboard(article: {
-  id?: number | string;
-  slug: string;
-  title: string;
-  markdown: string;
-}): VisualStoryboard {
+export function generateVisualStoryboard(
+  article: {
+    id?: number | string;
+    slug: string;
+    title: string;
+    markdown: string;
+  },
+  options?: {
+    visual_policy?: VisualEditorialPolicy;
+    house_profile?: HouseIdentityProfile;
+  }
+): VisualStoryboard {
   const { id, slug, title, markdown } = article;
   const wordCount = markdown.split(/\s+/).filter(Boolean).length;
+  const policy: VisualEditorialPolicy = options?.visual_policy || 'PHOTO_FIRST';
 
   // Extract sections by markdown headings (H2: ##)
   const lines = markdown.split('\n');
@@ -130,181 +149,240 @@ export function generateVisualStoryboard(article: {
     sections.push(currentSection);
   }
 
-  // A. COVER DEFINITION
-  const isDenahTownhouse = slug.includes('denah') || title.toLowerCase().includes('denah');
-  const cover: StoryboardCoverSpec = isDenahTownhouse ? {
-    slot_key: 'cover_hero',
-    title: title,
-    main_idea: 'Penataan denah rumah memanjang lebar 5–6 meter dengan jalur sirkulasi alami terpadu (inlet fasad, void tengah, outlet belakang).',
-    representative_scene: 'Interior rumah tinggal kontemporer Indonesia selebar 5–6 meter dengan pencahayaan alami melimpah dari inner court / void tengah, memperlihatkan kontinuitas ruang tamu dan ruang keluarga tanpa sekat gelap.',
-    reader_impression: 'Lega, sejuk, tenang, terang alami, dan membumi (bukan rumah sempit yang pengap atau gelap gulita).',
-    must_include: [
-      'Pencahayaan alami hangat dari atas (skylight/inner court lightwell)',
-      'Material alami tropis: lantai semen poles / teraso, kisi kayu jati / merbau, dinding bata ringan rapi',
-      'Proporsi ruang selebar 5–6 meter realistis',
-      'Tanaman hijau tropis dalam ruangan (monstera / pakis sarang burung / ketapang biola mini)'
-    ],
-    must_avoid: [
-      'CGI rendering glossy yang tidak realistis',
-      'Figur manusia close-up atau menghadap kamera yang mendistraksi arsitektur',
-      'Dekorasi gaya Eropa/Amerika (perapian, moulding klasik berlebih, karpet tebal salju)',
-      'Watermark, teks logo, overlay banner promosi',
-      'Geometri ruang mustahil atau kolom melayang'
-    ],
-    recommended_aspect_ratio: '1312x672',
-    suggested_alt_text: 'Interior rumah tropis lebar 5 meter dengan pencahayaan alami dari bukaan taman dalam dan sirkulasi udara terbuka.',
-    educational_goal: 'Membuktikan secara visual bahwa rumah sempit 5-6 meter bisa terasa luas dan sejuk jika sirkulasi udara dan cahaya ditata terintegrasi.'
-  } : {
-    slot_key: 'cover_hero',
-    title: title,
-    main_idea: `Visualisasi arsitektur dan interior autentik Indonesia untuk topik "${title}".`,
-    representative_scene: `Suasana hunian tropis Indonesia yang nyaman, terang alami, dan realistis terkait penanganan ${title}.`,
-    reader_impression: 'Hangat, solutif, nyata, membumi, dan tidak terasa seperti brosur CGI komersial.',
-    must_include: [
-      'Pencahayaan alami tropis seimbang tanpa glare berlebih',
-      'Material bangunan nyata: kayu alami matte, acian semen rapi, dinding bata bersih',
-      'Skala ruang proporsional hunian keluarga Indonesia',
-      'Konteks ruangan lived-in yang rapi dan fungsional'
-    ],
-    must_avoid: [
-      'CGI rendering glossy yang tidak realistis',
-      'Figur manusia close-up mendistraksi arsitektur',
-      'Elemen arsitektur asing non-tropis (perapian salju, moulding eropa tebal)',
-      'Watermark, teks logo, atau overlay banner promosi',
-      'Struktur mustahil tanpa tumpuan balok/kolom'
-    ],
-    recommended_aspect_ratio: '1312x672',
-    suggested_alt_text: `Foto arsitektur dan interior rumah tropis Indonesia membahas ${title}.`,
-    educational_goal: `Memberikan gambaran visual nyata solusi arsitektural dan penataan yang dibahas dalam ${title}.`
-  };
+  // 1. Resolve House Identity Profile
+  const isKitchenVentilation = slug.includes('ventilasi-dapur') || slug.includes('cooker-hood') || title.toLowerCase().includes('ventilasi dapur');
+  const houseProfile: HouseIdentityProfile = options?.house_profile || (
+    isKitchenVentilation
+      ? getKitchenVentilationHouseProfile(slug, title)
+      : {
+          profile_id: `hip_default_${slug.slice(0, 20)}`,
+          article_slug: slug,
+          article_title: title,
+          architectural_style: 'Modern Tropical Indonesian Urban Residence',
+          room_topology: 'Interior hunian kontemporer Indonesia dengan pencahayaan alami dan sirkulasi udara terencana.',
+          material_palette: ['Kayu alami matte', 'Acian semen halus', 'Dinding bata ringan rapi', 'Lantai teraso / semen poles'],
+          wall_colors: 'Warm greige / broken white lembut (#F2EFE9)',
+          frame_window_identity: 'Kusen aluminium anodized dark bronze dengan bukaan ventilasi silang',
+          fixed_spatial_landmarks: ['Elemen struktural balok praktis rapi', 'Pencahayaan alami terpadu'],
+          lighting_mood: 'Cahaya alami tropis seimbang 3000K-4000K tanpa glare berlebih',
+          reference_image_id: `${slug}_cover_anchor`,
+          reference_image_url: null,
+          tropical_climate_features: ['Material tahan kelembapan tropis', 'Ventilasi silang efektif'],
+          camera_language: {
+            lens_character: '35mm - 50mm architectural lens, rectilinear',
+            film_sim_or_color_science: 'Natural editorial photography, soft contrast',
+            perspective: 'Eye-level architectural perspective'
+          },
+          provenance: {
+            created_at: new Date().toISOString(),
+            engine_version: 'HOUSE_IDENTITY_V1.1',
+            policy: 'PHOTO_FIRST'
+          }
+        }
+  );
 
-  // B. INLINE SLOTS DEFINITION (Content-Grounded, Non-Quota)
+  // 2. A. COVER DEFINITION (Photo-First)
+  let cover: StoryboardCoverSpec;
+  if (isKitchenVentilation) {
+    cover = {
+      slot_key: 'cover_hero',
+      photo_role: 'context',
+      house_identity: houseProfile,
+      title: title,
+      main_idea: 'Foto arsitektur interior dapur kompak modern Indonesia tanpa jendela dengan pencahayaan hangat terencana dan tata letak ventilasi mekanis terpadu.',
+      representative_scene: 'Establishing wide shot dapur kompak modern (2.4m x 3.0m) di rumah tinggal urban Indonesia: kabinet bawah HPL jati muda matte, countertop solid surface cream, backsplash keramik subway putih, kompor induksi tanam, slim cooker hood, dan cahaya alami lembut merembes dari bukaan ruang makan di sampingnya.',
+      reader_impression: 'Hangat, bersih, tertata rapi, fungsional, dan membuktikan bahwa dapur tanpa jendela tetap bisa nyaman jika dirancang dengan benar.',
+      must_include: [
+        'Material konsisten: kabinet jati muda matte, countertop solid surface cream, keramik subway putih',
+        'Pencahayaan warm white 3000K alami tanpa overexposure',
+        'Skala ruang proporsional dapur kompak 2.4x3.0 meter',
+        'Suasana lived-in rapi keluarga Indonesia'
+      ],
+      must_avoid: [
+        'Diagram garis, teks, atau tabel',
+        'CGI rendering glossy yang tidak realistis',
+        'Jendela luar fiktif yang tiba-tiba muncul di dinding bata masif',
+        'Watermark, label harga, atau teks promosi'
+      ],
+      recommended_aspect_ratio: '16:9',
+      suggested_alt_text: 'Foto arsitektur interior dapur kompak kontemporer Indonesia tanpa jendela dengan pencahayaan hangat dan tata letak ventilasi terencana.',
+      educational_goal: 'Menghadirkan bukti visual konkret solusi tata ruang dan pencahayaan dapur tanpa jendela yang estetis dan fungsional.'
+    };
+  } else {
+    const isDenahTownhouse = slug.includes('denah') || title.toLowerCase().includes('denah');
+    cover = isDenahTownhouse ? {
+      slot_key: 'cover_hero',
+      photo_role: 'context',
+      house_identity: houseProfile,
+      title: title,
+      main_idea: 'Penataan denah rumah memanjang lebar 5–6 meter dengan jalur sirkulasi alami terpadu (inlet fasad, void tengah, outlet belakang).',
+      representative_scene: 'Interior rumah tinggal kontemporer Indonesia selebar 5–6 meter dengan pencahayaan alami melimpah dari inner court / void tengah, memperlihatkan kontinuitas ruang tamu dan ruang keluarga tanpa sekat gelap.',
+      reader_impression: 'Lega, sejuk, tenang, terang alami, dan membumi (bukan rumah sempit yang pengap atau gelap gulita).',
+      must_include: [
+        'Pencahayaan alami hangat dari atas (skylight/inner court lightwell)',
+        'Material alami tropis: lantai semen poles / teraso, kisi kayu jati / merbau, dinding bata ringan rapi',
+        'Proporsi ruang selebar 5–6 meter realistis',
+        'Tanaman hijau tropis dalam ruangan (monstera / pakis sarang burung / ketapang biola mini)'
+      ],
+      must_avoid: [
+        'CGI rendering glossy yang tidak realistis',
+        'Figur manusia close-up atau menghadap kamera yang mendistraksi arsitektur',
+        'Dekorasi gaya Eropa/Amerika (perapian, moulding klasik berlebih, karpet tebal salju)',
+        'Watermark, teks logo, overlay banner promosi',
+        'Geometri ruang mustahil atau kolom melayang'
+      ],
+      recommended_aspect_ratio: '16:9',
+      suggested_alt_text: 'Interior rumah tropis lebar 5 meter dengan pencahayaan alami dari bukaan taman dalam dan sirkulasi udara terbuka.',
+      educational_goal: 'Membuktikan secara visual bahwa rumah sempit 5-6 meter bisa terasa luas dan sejuk jika sirkulasi udara dan cahaya ditata terintegrasi.'
+    } : {
+      slot_key: 'cover_hero',
+      photo_role: 'context',
+      house_identity: houseProfile,
+      title: title,
+      main_idea: `Visualisasi fotografi arsitektur dan interior autentik Indonesia untuk topik "${title}".`,
+      representative_scene: `Suasana hunian tropis Indonesia yang nyaman, terang alami, dan realistis terkait penanganan ${title}.`,
+      reader_impression: 'Hangat, solutif, nyata, membumi, dan tidak terasa seperti brosur CGI komersial.',
+      must_include: [
+        'Pencahayaan alami tropis seimbang tanpa glare berlebih',
+        'Material bangunan nyata: kayu alami matte, acian semen rapi, dinding bata bersih',
+        'Skala ruang proporsional hunian keluarga Indonesia',
+        'Konteks ruangan lived-in yang rapi dan fungsional'
+      ],
+      must_avoid: [
+        'CGI rendering glossy yang tidak realistis',
+        'Figur manusia close-up mendistraksi arsitektur',
+        'Elemen arsitektur asing non-tropis (perapian salju, moulding eropa tebal)',
+        'Watermark, teks logo, atau overlay banner promosi',
+        'Struktur mustahil tanpa tumpuan balok/kolom'
+      ],
+      recommended_aspect_ratio: '16:9',
+      suggested_alt_text: `Foto arsitektur dan interior rumah tropis Indonesia membahas ${title}.`,
+      educational_goal: `Memberikan gambaran visual nyata solusi arsitektural dan penataan yang dibahas dalam ${title}.`
+    };
+  }
+
+  // 3. B. INLINE SLOTS DEFINITION (Photo-First: 0 Diagrams in Standard Flow)
   const inlineSlots: StoryboardInlineSlot[] = [];
 
-  // Slot 1: Inner Court (bound to Solusi 1 section if present)
-  const innerCourtSec = sections.find(s => s.title.toLowerCase().includes('inner court'));
-  if (innerCourtSec) {
+  if (policy === 'PHOTO_FIRST' && isKitchenVentilation) {
+    // Exact 3 editorial photo slots for Kitchen Ventilation (#10011)
+    const sec1 = sections[0] || { title: '1. Apa bedanya cara kerja kedua sistem?', anchor: '#1-apa-bedanya-cara-kerja-kedua-sistem' };
+    const sec2 = sections[1] || { title: '2. Kapan masing-masing sistem terasa kurang efektif?', anchor: '#2-kapan-masing-masing-sistem-terasa-kurang-efektif' };
+    const sec3 = sections[2] || { title: '3. Apa yang perlu disiapkan sebelum pemasangan?', anchor: '#3-apa-yang-perlu-disiapkan-sebelum-pemasangan' };
+
+    // Slot 1: Problem Condition
     inlineSlots.push({
-      slot_key: 'inline_inner_court_ventilation',
-      section_title: innerCourtSec.title,
-      section_anchor: innerCourtSec.anchor,
-      educational_purpose: 'Menjelaskan mekanisme cross-ventilation horizontal antara jendela depan dan bukaan taman dalam 1,5 x 2 meter.',
-      reader_takeaway: 'Pemilik rumah memahami bahwa inner court kecil berukuran 1,5 x 2 meter sudah cukup sebagai outlet pembuangan udara panas dan sumber cahaya.',
+      slot_key: 'inline_1_problem_trapped_steam',
+      section_title: sec1.title,
+      section_anchor: sec1.anchor,
+      photo_role: 'problem_condition',
+      house_identity: houseProfile,
       visual_media_type: 'PHOTO_REALISTIC',
-      justification: 'Konsep taman dalam sulit dibayangkan pembaca tanpa contoh visual proporsi nyata 1,5 x 2 meter pada kaveling 5 meter.',
+      educational_purpose: 'Memperlihatkan kondisi masalah: kepulan uap memasak dan kelembapan yang terkonsentrasi di area kompor saat ventilasi mekanis belum aktif.',
+      reader_takeaway: 'Pembaca memahami secara visual bagaimana uap air dan partikel minyak naik langsung menuju kabinet atas dan membutuhkan penangkapan di sumbernya.',
+      justification: 'Foto realistis kepulan uap di atas kompor memperlihatkan tantangan fisik nyata dapur tanpa bukaan jendela.',
       must_include: [
-        'Taman kering dalam rumah (gravel/koral putih, tanaman tropis berdaun kokoh)',
-        'Bukaan langit terlindung dengan kisi teralis pengaman',
-        'Pintu geser kaca (sliding glass doors) menghubungkan ruang makan ke inner court',
-        'Lantai dengan kemiringan menuju floor drain perimeter'
+        'Kompor induksi 2 tungku menyala dengan wajan/panci dan kepulan uap masakan tipis realistis',
+        'Kabinet atas kayu jati muda matte tepat di atas kompor dengan pencahayaan LED warm white bawah kabinet',
+        'Backsplash keramik subway putih dan countertop cream identik dengan Cover',
+        'Sudut pengambilan gambar medium-close shot setinggi dada (eye-level cooktop perspective)'
       ],
       must_avoid: [
-        'Kolam renang mewah atau taman raksasa yang tidak masuk akal di lebar 5 meter',
-        'Tanaman rontok lebat yang berpotensi menyumbat drainase',
-        'Ruang tanpa atap yang bocor ke mana-mana tanpa talang'
+        'Diagram vektor panah atau label teks',
+        'Api gas raksasa yang tidak realistis',
+        'Material kabinet atau dinding yang berbeda dari Cover',
+        'Watermark atau teks grafis'
       ],
-      caption_intent: 'Taman dalam 1,5 × 2 meter di tengah kaveling berfungsi ganda sebagai penyuplai cahaya dan corong pembuangan udara panas.',
-      draft_alt_text: 'Taman dalam rumah minimalis dengan bukaan cahaya atas, tanaman tropis, dan pintu geser kaca di samping ruang makan.',
+      caption_intent: 'Kondisi masalah: kepulan uap memasak dan kelembapan yang terkonsentrasi di atas kompor pada dapur tanpa jendela.',
+      draft_alt_text: 'Foto kondisi memasak di dapur kompak memperlihatkan kepulan uap air naik menuju kabinet atas sebelum diserap ventilasi.',
       irwan_structural_constraints: [
-        'Drainase perimeter wajib dengan kemiringan lantai 1-2% ke floor drain',
-        'Perhatikan talang atap di sekeliling bukaan agar tidak terjadi tampias ke ruang dalam',
-        'Balok pengikat kolom praktis di sekeliling bukaan taman tidak boleh dipotong'
+        'Jarak vertikal antara permukaan kompor dan dasar cooker hood minimal 65cm untuk keselamatan',
+        'Gunakan material kabinet tahan uap panas dan kelembapan'
       ]
     });
-  }
 
-  // Slot 2: Void Tangga Cerobong (bound to Stack Effect / Cerobong section if present)
-  const voidTanggaSec = sections.find(s => 
-    s.title.toLowerCase().includes('void') || 
-    s.title.toLowerCase().includes('cerobong') ||
-    s.title.toLowerCase().includes('stack effect')
-  );
-  if (voidTanggaSec) {
+    // Slot 2: Relevant Detail
     inlineSlots.push({
-      slot_key: 'inline_void_tangga_stack_effect',
-      section_title: voidTanggaSec.title,
-      section_anchor: voidTanggaSec.anchor,
-      educational_purpose: 'Memvisualisasikan prinsip thermal buoyancy (efek cerobong): udara panas naik ke atas bordes tangga dan keluar lewat kisi jalusi atas.',
-      reader_takeaway: 'Pembaca menyadari bahwa skylight kaca mati justru memerangkap panas, sementara kisi jalusi samping atas melepaskan udara panas.',
-      visual_media_type: 'TECHNICAL_DIAGRAM_SVG',
-      justification: 'Aliran udara termal (udara panas naik, udara sejuk masuk) bersifat tak kasat mata; diagram teknis panah aliran jauh lebih efektif daripada foto.',
-      must_include: [
-        'Potongan vertikal 2 lantai memperlihatkan tangga',
-        'Panah merah aliran udara panas naik ke titik tertinggi void',
-        'Panah biru udara sejuk masuk dari bukaan lantai bawah',
-        'Kisi ventilasi jalusi (clerestory) di dinding atas tangga',
-        'Catatan bahaya kaca mati tanpa ventilasi'
-      ],
-      must_avoid: [
-        'Foto tangga gelap tanpa penanda aliran',
-        'Skema fisika yang melanggar hukum termodinamika (panas bergerak ke bawah)'
-      ],
-      caption_intent: 'Diagram efek cerobong pada void tangga: udara panas plafon terdorong keluar melalui kisi atas dan menarik udara segar dari lantai bawah.',
-      draft_alt_text: 'Diagram sirkulasi efek cerobong void tangga dua lantai dengan panah aliran udara hangat ke atas dan kisi ventilasi sopi-sopi.',
-      irwan_structural_constraints: [
-        'Pelat dak beton di sekeliling lubang void tangga wajib diperkuat balok anak/balok tepi',
-        'Dilarang melubangi dak beton tanpa penulangan ekstra di sudut bukaan'
-      ]
-    });
-  }
-
-  // Slot 3: Sekat Roster & Kisi Clerestory (bound to bukaan / sekat / clerestory section if present)
-  const sekatSec = sections.find(s => 
-    s.title.toLowerCase().includes('sekat') || 
-    s.title.toLowerCase().includes('denah terbuka') ||
-    s.title.toLowerCase().includes('clerestory') ||
-    s.title.toLowerCase().includes('kisi')
-  );
-  if (sekatSec) {
-    inlineSlots.push({
-      slot_key: 'inline_sekat_bernapas_roster',
-      section_title: sekatSec.title,
-      section_anchor: sekatSec.anchor,
-      educational_purpose: 'Menunjukkan penerapan partisi roster bata tanah liat / bilah kisi kayu yang membatasi privasi visual ruang keluarga tanpa menghambat angin.',
-      reader_takeaway: 'Rumah selebar 5-6 meter tidak butuh tembok bata masif di setiap ruang; sekat bernapas memberi privasi sekaligus mempertahankan ventilasi silang.',
+      slot_key: 'inline_2_detail_cooker_hood_filter',
+      section_title: sec2.title,
+      section_anchor: sec2.anchor,
+      photo_role: 'relevant_detail',
+      house_identity: houseProfile,
       visual_media_type: 'PHOTO_REALISTIC',
-      justification: 'Membantu pemilik rumah melihat estetika modern partisi berlubang yang rapi dan elegan, bukan sekadar bata ventilasi gudang.',
+      educational_purpose: 'Menampilkan detail komponen filtrasi: unit cooker hood slimline stainless steel dengan filter grease aluminium dan kaset filter karbon aktif di bawah kabinet atas.',
+      reader_takeaway: 'Pemilik rumah melihat wujud fisik filter grease dan karbon aktif yang perlu dirawat rutin agar penyerapan bau dan minyak tetap optimal.',
+      justification: 'Detail close-up membantu pembaca mengenali fisik filter karbon aktif dan penangkap lemak secara jelas.',
       must_include: [
-        'Dinding partisi roster geometris terra-cotta atau semen ekspos rapi',
-        'Pemandangan tembus sebagian ke area ruang keluarga di baliknya',
-        'Cahaya alami menembus lubang partisi menciptakan bayangan estetik',
-        'Tata letak furnitur ruang tamu kompak proporsional'
+        'Bidikan detail close-up (macro/detail shot) di bawah kabinet atas',
+        'Unit cooker hood slimline stainless steel terpasang rapi rata dengan kabinet jati muda',
+        'Kisi filter aluminium mesh penangkap lemak bersih dan modul kaset karbon aktif',
+        'Tekstur material metal brushed dan pencahayaan LED strip linier'
       ],
       must_avoid: [
-        'Tembok bata kasar yang belum diaci atau berantakan',
-        'Ruang sempit yang sesak penuh tumpukan barang'
+        'Diagram potongan teknis atau skema sketsa',
+        'Bidikan luas seluruh ruangan yang kehilangan fokus komponen',
+        'Material kabinet berubah warna'
       ],
-      caption_intent: 'Partisi roster semen berlubang menyaring pandangan dari pintu masuk sembari membiarkan hembusan angin tetap mengalir bebas.',
-      draft_alt_text: 'Partisi roster geometris modern pembatas ruang tamu dan ruang keluarga dengan pencahayaan alami tembus pandang.',
+      caption_intent: 'Detail komponen: unit cooker hood resirkulasi dengan filter aluminium penangkap lemak dan kaset karbon aktif penyerap aroma.',
+      draft_alt_text: 'Foto detail bagian bawah cooker hood resirkulasi memperlihatkan filter aluminium mesh dan kaset karbon aktif di bawah kabinet dapur.',
       irwan_structural_constraints: [
-        'Dinding roster non-struktural harus diikat kolom praktis atau frame baja siku agar tidak roboh saat terdorong',
-        'Ketinggian partisi roster melebihi 2 meter wajib memiliki pengaku balok praktis di atasnya'
+        'Filter karbon aktif harus dapat dilepas-pasang dengan mudah tanpa membongkar rangka kabinet',
+        'Sambungan kabel listrik hood wajib tersembunyi rapi di dalam void kabinet'
       ]
     });
-  }
 
-  // DYNAMIC INLINE DISCOVERY FOR ANY ARTICLE:
-  // If specific slots did not match (e.g. topic is balkon, japandi, atap, plafon, etc.),
-  // dynamically discover 1-2 prime informative sections from the article's actual H2 headings!
-  if (inlineSlots.length === 0 && sections.length > 0) {
+    // Slot 3: Realistic Solution Example
+    inlineSlots.push({
+      slot_key: 'inline_3_solution_balanced_exhaust',
+      section_title: sec3.title,
+      section_anchor: sec3.anchor,
+      photo_role: 'realistic_solution_example',
+      house_identity: houseProfile,
+      visual_media_type: 'PHOTO_REALISTIC',
+      educational_purpose: 'Memperlihatkan solusi menyeluruh yang terpasang rapi: lubang exhaust fan dinding dengan kisi backdraft damper dan celah udara pengganti di bawah pintu dapur.',
+      reader_takeaway: 'Melihat implementasi nyata jalur buangan dinding luar yang rapi serta pentingnya celah bawah pintu agar hisapan udara berlangsung lancar tanpa vakum.',
+      justification: 'Solusi terpadu membuktikan bahwa exhaust fan dinding dan pasokan udara pengganti dapat dipasang secara estetis dan terintegrasi.',
+      must_include: [
+        'Unit exhaust fan dinding 10 inci dengan housing rapi terpasang di dinding samping greige',
+        'Pintu kayu dengan celah undercut 3cm di lantai teraso abu-abu yang menyediakan pasokan udara pengganti',
+        'Sudut pandang perspektif tiga perempat memperlihatkan keterhubungan antara kompor, exhaust, dan pintu',
+        'Pencahayaan alami dan interior bersih fungsional'
+      ],
+      must_avoid: [
+        'Diagram aliran fluida atau panah digital',
+        'Kabel berantakan atau lubang dinding jebol tanpa finishing',
+        'Denah atau warna dinding yang melenceng dari Cover'
+      ],
+      caption_intent: 'Solusi arsitektural: exhaust fan dinding dengan kisi penutup otomatis dipadukan celah pasokan udara masuk di bawah pintu dapur.',
+      draft_alt_text: 'Foto penerapan ventilasi dapur terencana dengan exhaust fan dinding dan celah pasokan udara masuk di bawah pintu.',
+      irwan_structural_constraints: [
+        'Penembusan dinding bata untuk exhaust fan wajib menggunakan sleeve pipa PVC dan waterproofing perimeter',
+        'Celah bawah pintu minimal 2-3cm untuk menjamin kontinuitas pasokan udara masuk'
+      ]
+    });
+  } else {
+    // Dynamic discovery for other topics or legacy modes
     const ignoredPatterns = /kesimpulan|faq|tanya-jawab|penutup|catatan|referensi/i;
     const eligibleSections = sections.filter(s => !ignoredPatterns.test(s.title) && s.body.trim().length > 100);
-    
-    // Select up to 2 high-value sections for visual storytelling
-    const targetSections = eligibleSections.slice(0, 2);
+    const maxSlots = policy === 'PHOTO_FIRST' ? Math.min(3, Math.max(2, eligibleSections.length)) : 2;
+    const targetSections = eligibleSections.slice(0, maxSlots);
+
+    const roles: InlinePhotoRole[] = ['problem_condition', 'relevant_detail', 'realistic_solution_example', 'context'];
 
     targetSections.forEach((sec, idx) => {
-      const isDiagram = /diagram|potongan|skema|aliran|jalur|perbandingan|komparasi|vektor/i.test(sec.title + ' ' + sec.body);
+      const isDiagram = policy !== 'PHOTO_FIRST' && /diagram|potongan|skema|aliran|jalur|perbandingan|komparasi|vektor/i.test(sec.title + ' ' + sec.body);
       const cleanSlotKey = `inline_${sec.anchor.replace(/^#/, '').replace(/[^a-z0-9_]/gi, '_').toLowerCase().slice(0, 25)}_${idx + 1}`;
       
       inlineSlots.push({
         slot_key: cleanSlotKey,
         section_title: sec.title,
         section_anchor: sec.anchor,
-        educational_purpose: `Menyajikan visualisasi konkret untuk membantu pemahaman pembaca mengenai ${sec.title}.`,
+        photo_role: roles[idx % roles.length],
+        house_identity: houseProfile,
+        educational_purpose: `Menyajikan foto editorial konkret untuk membantu pemahaman pembaca mengenai ${sec.title}.`,
         reader_takeaway: `Pembaca dapat melihat secara langsung detail implementasi dan solusi pada bagian ${sec.title}.`,
         visual_media_type: isDiagram ? 'TECHNICAL_DIAGRAM_SVG' : 'PHOTO_REALISTIC',
-        justification: `Penjelasan pada bagian "${sec.title}" membutuhkan dukungan visual agar pembaca tidak salah menafsirkan detail teknis.`,
+        justification: `Penjelasan pada bagian "${sec.title}" membutuhkan dukungan visual fotografi nyata agar pembaca memahami konteks fisik.`,
         must_include: [
           'Material konstruksi atau interior autentik iklim tropis',
           'Proporsi realistis sesuai skala hunian Indonesia',
@@ -315,8 +393,8 @@ export function generateVisualStoryboard(article: {
           'Watermark, teks logo, atau overlay banner',
           'Skala ruang yang tidak masuk akal'
         ],
-        caption_intent: `Detail visualisasi solusi praktis untuk ${sec.title}.`,
-        draft_alt_text: `Foto detail pelaksanaan dan penataan ruang terkait ${sec.title}.`,
+        caption_intent: `Foto detail pelaksanaan dan penataan ruang terkait ${sec.title}.`,
+        draft_alt_text: `Foto arsitektur dan interior realistis terkait ${sec.title}.`,
         irwan_structural_constraints: [
           'Pemasangan atau renovasi harus memperhatikan kekuatan struktur dan jalur air',
           'Gunakan material dengan spesifikasi tahan cuaca tropis'
@@ -328,137 +406,45 @@ export function generateVisualStoryboard(article: {
   const generatedAt = new Date().toISOString();
   const provHash = simpleHash(slug + title + inlineSlots.length + generatedAt);
 
-  // C. VISUAL INTENT CONTRACTS (HERMES-VISUAL-EDITORIAL-V2)
-  const visualIntentContracts: Record<string, VisualIntentContract> = {
-    cover_hero: {
-      slot_key: 'cover_hero',
-      main_problem: 'Penataan denah memanjang rumah lebar 5–6 meter yang rentan gelap dan pengap di bagian tengah akibat minimnya bukaan samping.',
-      visual_solution_idea: 'Ruang keluarga dan ruang makan yang bermandikan cahaya alami vertikal dari bukaan inner court tengah terbuka ke langit, memperlihatkan kontinuitas visual dan sirkulasi udara tanpa sekat masif.',
-      reader_takeaway: 'Memahami secara instan bahwa kaveling 5-6 meter tetap dapat terasa lapang, terang benderang, dan sejuk jika ruang tengah dirancang dengan bukaan vertikal yang fungsional.',
-      primary_elements_and_relations: 'Area duduk ruang keluarga (foreground/midground) dengan pemandangan langsung ke inner court (midground) dan area dining / tangga (background), terkoneksi secara visual.',
-      camera_and_context: 'Eye-level perspective 35mm natural, pencahayaan alami tropis Jakarta yang seimbang dan lembut, material lokal Indonesia, suasana rumah tinggal yang lived-in dan hangat.',
-      errors_to_avoid: [
-        'Empty corridor trap (lorong kosong tanpa fungsi)',
-        'Plafon tertutup kanopi kaca mati tanpa ventilasi',
-        'Furnitur showroom steril tak berpenghuni',
-        'Tanaman artifisial repetitif',
-        'Struktur mustahil tanpa balok/kolom praktis'
-      ],
-      required_visual_evidence: [
-        'Proporsi lebar ruang 5-6 meter dengan ketinggian plafon proporsional',
-        'Cahaya vertikal alami dari inner court menyinari ruang tengah',
-        'Area duduk keluarga aktif (kursi santai, meja kopi, karpet)',
-        'Bukaan kaca geser transparan ke taman dalam',
-        'Balok pengikat beton ekspos / lintel struktural di atas bukaan'
-      ],
-      visual_media_type: 'PHOTO_REALISTIC',
-      caption_intent: 'Interior rumah tropis 5 meter dengan taman tengah terbuka ke langit yang memasukkan cahaya alami dan sirkulasi udara ke ruang keluarga.',
-      draft_alt_text: 'Interior ruang keluarga rumah lebar 5 meter menghadap taman tengah terbuka dengan pencahayaan alami dan sirkulasi udara terpadu.',
-      non_duplicate_justification: 'Cover menampilkan lanskap ruang luas (living-to-dining lifestyle & spatial flow) untuk memberi inspirasi solusi tata ruang holistik.'
-    }
+  // 4. C. VISUAL INTENT CONTRACTS (Photo-First)
+  const visualIntentContracts: Record<string, VisualIntentContract> = {};
+
+  // Cover contract
+  visualIntentContracts['cover_hero'] = {
+    slot_key: 'cover_hero',
+    main_problem: cover.main_idea,
+    visual_solution_idea: cover.representative_scene,
+    reader_takeaway: cover.reader_impression,
+    primary_elements_and_relations: `Konteks arsitektur dan interior hunian nyata untuk topik ${title}`,
+    camera_and_context: 'Eye-level perspective 35mm natural, pencahayaan alami tropis seimbang, suasana rumah tinggal yang hangat.',
+    errors_to_avoid: cover.must_avoid,
+    required_visual_evidence: cover.must_include,
+    visual_media_type: 'PHOTO_REALISTIC',
+    caption_intent: cover.title,
+    draft_alt_text: cover.suggested_alt_text,
+    non_duplicate_justification: 'Cover menampilkan bidikan establishing lanskap ruang terpadu.'
   };
 
   // Populate contracts for inline slots
   for (const slot of inlineSlots) {
-    if (slot.slot_key.includes('inner_court')) {
-      visualIntentContracts[slot.slot_key] = {
-        slot_key: slot.slot_key,
-        main_problem: 'Kekhawatiran pemilik rumah bahwa inner court mungil akan menimbulkan banjir, rembesan, atau tampias air hujan ke ruang makan.',
-        visual_solution_idea: 'Rasio bukaan 1.5 x 2 meter dengan void terbuka ke langit, bedeng kerikil resapan tepi lantai (perimeter sunken gravel), drop level 5-10cm, dan pintu geser aluminium operasional.',
-        reader_takeaway: 'Melihat bukti fisik konkret bagaimana batas basah dan kering dikelola sehingga inner court kecil aman dari tampias saat hujan lebat tropis.',
-        primary_elements_and_relations: 'Bukaan void terbuka ke langit (atas), bedeng kerikil resapan di sekeliling lantai (bawah), dan pintu geser aluminium hitam membatasi ruang makan (samping).',
-        camera_and_context: 'Eye-level detail perspective 35-50mm, pencahayaan zenith daylight langsung dari langit tropis, material kerikil sungai abu-abu dan lantai beton poles.',
-        errors_to_avoid: [
-          'Skylight kaca mati tertutup yang memerangkap panas',
-          'Lantai rata tanpa drop level atau talang perimeter',
-          'Taman raksasa yang tidak realistis untuk kaveling 5 meter',
-          'Tanaman plastik atau daun berulang sintetik'
-        ],
-        section_anchor: slot.section_anchor,
-        concept_explained: 'Detail teknis pengelolaan air hujan dan pembuangan panas pada inner court 1.5 x 2 meter dengan drop level lantai dan bedeng drainase kerikil.',
-        why_needed_at_this_point: 'Pembaca perlu melihat langsung detail fisik bagaimana air hujan dialirkan dan bagaimana pintu geser melindungi ruang dalam.',
-        required_visual_evidence: [
-          'Void benar-benar terbuka ke langit (open-to-sky) tanpa kaca penutup',
-          'Bedeng kerikil resapan tepi (sunken gravel drainage) mengelilingi lantai taman',
-          'Perbedaan level lantai (drop level) 5-10cm antara taman dan ruang makan',
-          'Pintu geser kaca frame aluminium hitam operasional'
-        ],
-        visual_media_type: 'PHOTO_REALISTIC',
-        caption_intent: slot.caption_intent,
-        draft_alt_text: slot.draft_alt_text,
-        non_duplicate_justification: 'Berbeda dari Cover yang menampilkan lanskap living-room luas, visual ini adalah bidikan detail teknis arsitektur pada zona bukaan dan transisi basah/kering.'
-      };
-    } else if (slot.slot_key.includes('void_tangga')) {
-      visualIntentContracts[slot.slot_key] = {
-        slot_key: slot.slot_key,
-        main_problem: 'Udara panas terjebak di bawah plafon lantai dua dan tidak bisa keluar.',
-        visual_solution_idea: 'Potongan vertikal skematis efek cerobong void tangga dengan panah aliran termal.',
-        reader_takeaway: 'Memahami arah gerak udara panas yang naik secara termal dan membutuhkan kisi pembuangan atas.',
-        primary_elements_and_relations: 'Tangga dua lantai, inlet udara bawah, outlet kisi clerestory atas, dan panah aliran termal.',
-        camera_and_context: 'Orthographic architectural cross-section SVG.',
-        errors_to_avoid: ['Foto gelap tanpa panah penjelasan', 'Panah panas bergerak ke bawah'],
-        section_anchor: slot.section_anchor,
-        concept_explained: 'Prinsip thermal buoyancy / stack effect pada void tangga.',
-        why_needed_at_this_point: 'Sirkulasi termal tidak kasat mata sehingga diagram teknis jauh lebih efektif dari foto.',
-        required_visual_evidence: ['Panah biru inlet', 'Panah merah outlet', 'Kisi clerestory atas'],
-        visual_media_type: 'TECHNICAL_DIAGRAM_SVG',
-        caption_intent: slot.caption_intent,
-        draft_alt_text: slot.draft_alt_text,
-        non_duplicate_justification: 'Diagram teknis deterministik satu-satunya yang memvisualisasikan dinamika fluida termal tak kasat mata.'
-      };
-    } else if (slot.slot_key.includes('sekat')) {
-      visualIntentContracts[slot.slot_key] = {
-        slot_key: slot.slot_key,
-        main_problem: 'Privasi ruang tamu dan ruang keluarga tanpa mematikan hembusan angin alami.',
-        visual_solution_idea: 'Partisi roster semen atau terra-cotta geometris modern yang tembus pandang parsial.',
-        reader_takeaway: 'Partisi berlubang memberi privasi visual elegan tanpa menghalangi sirkulasi silang.',
-        primary_elements_and_relations: 'Dinding partisi roster berlubang (foreground), siluet ruang keluarga di baliknya (background).',
-        camera_and_context: 'Perspective interior detail 50mm, pencahayaan alami samping.',
-        errors_to_avoid: ['Tembok masif gelap', 'Bata gudang kasar berantakan'],
-        section_anchor: slot.section_anchor,
-        concept_explained: 'Penerapan partisi bernapas (breathable divider) untuk ventilasi silang.',
-        why_needed_at_this_point: 'Menghilangkan keraguan bahwa rumah sempit harus disekat tembok padat.',
-        required_visual_evidence: ['Lubang roster geometris', 'Bayangan pola roster di lantai', 'Tembus pandang parsial'],
-        visual_media_type: 'PHOTO_REALISTIC',
-        caption_intent: slot.caption_intent,
-        draft_alt_text: slot.draft_alt_text,
-        non_duplicate_justification: 'Fokus pada materialitas elemen interior mikro pemisah ruang (breathable divider).'
-      };
-    } else {
-      visualIntentContracts[slot.slot_key] = {
-        slot_key: slot.slot_key,
-        main_problem: slot.educational_purpose,
-        visual_solution_idea: slot.caption_intent,
-        reader_takeaway: slot.reader_takeaway,
-        primary_elements_and_relations: `Elemen utama arsitektur dan material hunian terkait ${slot.section_title}`,
-        camera_and_context: 'Eye-level realistic 35-50mm architectural perspective, pencahayaan alami tropis seimbang, lived-in context.',
-        errors_to_avoid: slot.must_avoid,
-        section_anchor: slot.section_anchor,
-        concept_explained: slot.educational_purpose,
-        why_needed_at_this_point: slot.justification,
-        required_visual_evidence: slot.must_include,
-        visual_media_type: slot.visual_media_type,
-        caption_intent: slot.caption_intent,
-        draft_alt_text: slot.draft_alt_text,
-        non_duplicate_justification: `Fokus pada penjelasan visual detail untuk bagian ${slot.section_title}.`
-      };
-    }
-  }
-
-  if (!isDenahTownhouse) {
-    visualIntentContracts['cover_hero'] = {
-      slot_key: 'cover_hero',
-      main_problem: cover.main_idea,
-      visual_solution_idea: cover.representative_scene,
-      reader_takeaway: cover.reader_impression,
-      primary_elements_and_relations: `Konteks hunian nyata untuk topik ${title}`,
-      camera_and_context: 'Eye-level perspective 35mm natural, pencahayaan alami tropis seimbang, suasana rumah tinggal yang hangat.',
-      errors_to_avoid: cover.must_avoid,
-      required_visual_evidence: cover.must_include,
-      visual_media_type: 'PHOTO_REALISTIC',
-      caption_intent: cover.title,
-      draft_alt_text: cover.suggested_alt_text,
-      non_duplicate_justification: 'Cover menampilkan lanskap utama solusi arsitektural terpadu.'
+    visualIntentContracts[slot.slot_key] = {
+      slot_key: slot.slot_key,
+      main_problem: slot.educational_purpose,
+      visual_solution_idea: slot.caption_intent,
+      reader_takeaway: slot.reader_takeaway,
+      primary_elements_and_relations: `Elemen utama arsitektur dan material hunian terkait ${slot.section_title} (${slot.photo_role || 'photo'})`,
+      camera_and_context: slot.photo_role === 'relevant_detail'
+        ? 'Close-up architectural detail perspective 50mm, sharp focus on components, warm linear LED lighting.'
+        : 'Eye-level realistic 35mm architectural perspective, natural daylight, lived-in context.',
+      errors_to_avoid: slot.must_avoid,
+      section_anchor: slot.section_anchor,
+      concept_explained: slot.educational_purpose,
+      why_needed_at_this_point: slot.justification,
+      required_visual_evidence: slot.must_include,
+      visual_media_type: slot.visual_media_type,
+      caption_intent: slot.caption_intent,
+      draft_alt_text: slot.draft_alt_text,
+      non_duplicate_justification: `Fokus pada ${slot.photo_role}: sudut dan skop visual berbeda dari cover dan slot lainnya.`
     };
   }
 
@@ -468,6 +454,8 @@ export function generateVisualStoryboard(article: {
     article_title: title,
     word_count: wordCount,
     total_visual_slots: 1 + inlineSlots.length,
+    visual_policy: policy,
+    house_identity: houseProfile,
     cover,
     inline_slots: inlineSlots,
     visual_intent_contracts: visualIntentContracts,

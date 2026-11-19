@@ -23,4 +23,6 @@ export * from './jev-quality-supervision.ts';
 export * from './nadia-visual-storyboard.ts';
 export * from './budi-prompt-engine.ts';
 export * from './budi-media-pipeline.ts';
+export * from './house-identity.ts';
+export * from './photo-quality-gate.ts';
 export * from './autonomous-workflow.ts';

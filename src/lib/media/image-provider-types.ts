@@ -57,6 +57,12 @@ export interface ImageGenerationRequest {
   slot_key?: string;
   timeout_ms?: number;
   model_override?: string;
+  // PHOTO-FIRST v1.1 reference conditioning extensions
+  reference_image_url?: string;
+  reference_image_id?: string;
+  reference_weight?: number;
+  house_identity_profile_id?: string;
+  photo_role?: 'context' | 'problem_condition' | 'relevant_detail' | 'realistic_solution_example';
 }
 
 export interface ImageCostMetadata {
