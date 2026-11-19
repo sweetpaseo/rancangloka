@@ -37,3 +37,6 @@ artifacts/
 state/staging/secrets/
 *.secret
 
+
+# Private media masters (stored in private R2, not committed to git)
+storage/masters/

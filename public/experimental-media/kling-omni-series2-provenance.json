@@ -1,0 +1,70 @@
+{
+  "execution_time": "2026-11-19T09:34:11.063Z",
+  "article_id": "10",
+  "mode": "IMAGE_SERIES",
+  "provider": "kling",
+  "model": "kling-v3-omni",
+  "task_id": "952319480679123526",
+  "series_amount": 2,
+  "units_spent": 16,
+  "reference_anchor_cover": "art10011_cover_kling_omni.png",
+  "house_identity_version": "v1.2",
+  "owner_review": {
+    "reviewed_at": "2026-11-19T09:42:00.000Z",
+    "overall_status": "PARTIAL_REVISION_REQUIRED",
+    "camera_angle_consistency": "DEFICIENT (Shot A angle clings to cover; Shot B angle shifted but not true 90° lateral profile; blanket 100% PASS strictly prohibited)",
+    "decisions": {
+      "cover": {
+        "status": "ACCEPTED",
+        "role": "Ground Truth Anchor"
+      },
+      "inline1_appliance_detail": {
+        "status": "ACCEPTED",
+        "file": "art10011_series_shot2_watermarked.webp",
+        "source": "Series 1 Task 952232986421473280 Frame 2"
+      },
+      "shot_a": {
+        "status": "NEEDS_REVISION",
+        "file": "art10011_series2_shot1_watermarked.webp",
+        "owner_notes": "Sudut kamera terlalu mirip cover, belum berhasil menjadi diagonal 45°.",
+        "cms_binding": "BLOCKED / NOT BOUND"
+      },
+      "shot_b": {
+        "status": "NEEDS_REVIEW",
+        "file": "art10011_series2_shot2_watermarked.webp",
+        "owner_notes": "Perspektif berbeda, tetapi bukan profil samping 90° dan terlihat kemungkinan knop menonjol pada kompor.",
+        "cms_binding": "BLOCKED / NOT BOUND"
+      }
+    }
+  },
+  "frames": [
+    {
+      "frame_index": 0,
+      "shot_id": "shot_a",
+      "title": "Shot A: Cooking Perspective",
+      "target_heading": "2. Kapan masing-masing sistem terasa kurang efektif?",
+      "master_file": "art10011_series2_shot1_kling_omni.png",
+      "derivative_file": "art10011_series2_shot1_watermarked.webp",
+      "derivative_url": "/experimental-media/derivatives/art10011_series2_shot1_watermarked.webp",
+      "dimensions": "2720x1536",
+      "byte_size": 6318233,
+      "entropy": 7.21,
+      "sha256": "852c5eb07903604748beb752e933f7ce5e6586fc7743784efedb156d067a1b64",
+      "review_decision": "NEEDS_REVISION"
+    },
+    {
+      "frame_index": 1,
+      "shot_id": "shot_b",
+      "title": "Shot B: Mounting Clearance Elevation",
+      "target_heading": "3. Apa yang perlu disiapkan sebelum pemasangan?",
+      "master_file": "art10011_series2_shot2_kling_omni.png",
+      "derivative_file": "art10011_series2_shot2_watermarked.webp",
+      "derivative_url": "/experimental-media/derivatives/art10011_series2_shot2_watermarked.webp",
+      "dimensions": "2720x1536",
+      "byte_size": 5851009,
+      "entropy": 7.207,
+      "sha256": "db51684dd67ff917877e0b71f489bcdafcf28ce31c629931e24c4af9a15fcd56",
+      "review_decision": "NEEDS_REVIEW"
+    }
+  ]
+}

@@ -5216,3 +5216,51 @@ Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis 
   - Production build (`npm run build`): Selesai dalam 9.73s (Exit code 0).
   - Commit `6ae080a` di-push sukses ke `feat/jev-lokamedia-integration`.
 - **Invarian Keselamatan:** `AUTO_PUBLISH = OFF`, `PRODUCTION_AUTHORITY = 0`, `JEV_MODE = shadow`, `Cron = OFF`, zero secret leaks.
+
+
+## 2026-11-19 — Milestone: RANCANGLOKA_PHOTO_FIRST_KLING_OMNI_SERIES_AND_VISUAL_HARDENING
+- **Target Topik:** Artikel #10011 (*Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*).
+- **Target Staging:** Cloudflare D1 Staging Article ID 10 (Status: `DRAFT`, Auto Publish: `OFF`).
+- **P0 Image Deduplication & Storage Architecture (Commit `269551d`):**
+  - Investigasi forensik terhadap temuan duplikasi pasangan JPG/PNG pada hasil generasi Kling Image 3.0 Omni (`art10011_cover_kling_omni`, `art10011_inline1_kling_omni`, `art10011_inline1_v2_kling_omni`).
+  - Terbukti bahwa duplikasi berasal dari konversi lokal otomatis yang tidak perlu. Kling API mengembalikan file biner asli PNG murni (`image/png`).
+  - Diberlakukan arsitektur penyimpanan tunggal deterministik: tepat satu file canonical master berformat PNG asli disimpan di storage privat (`storage/masters/art10011/`) dan dicadangkan ke Cloudflare R2 bucket privat (`rancangloka-media-staging/masters/...`) tanpa URL publik.
+  - Derivative publik yang disajikan ke web adalah WebP ber-watermark teks kanonikal `rancangloka.com` di sudut kanan bawah (`public/experimental-media/derivatives/`), menghemat bandwidth dan mencegah kebocoran file asli beresolusi penuh.
+- **Validasi Media Pipeline Cloudflare Staging (Commit `bd16b5d`):**
+  - Sinkronisasi dan pengujian remote pada Cloudflare Staging: aset derivative WebP ber-watermark terbukti mengembalikan HTTP 200 `image/webp`.
+  - Verifikasi keamanan akses anonim: path master privat di R2 tidak dapat diakses secara publik/anonim (HTTP 403/404).
+  - Verifikasi SEO & Google Images: derivative WebP ber-watermark dapat diakses bot pencari saat artikel nantinya dipublikasikan tanpa membuka file master mentah.
+- **House Identity Lock v1.2 & Kontinuitas Arsitektur (Commit `94c10d7`):**
+  - Memformalkan spesifikasi identitas rumah dan dapur tertutup: denah U-shape kompak tanpa bukaan jendela eksterior, kabinet atas kayu jati muda serat horizontal, dinding keramik krem nat rapi, pencahayaan ambien hangat bawah kabinet, dan kompor tanam induksi kaca hitam datar (*flush mount black glass induction*).
+  - Mengintegrasikan constraint negatif ketat pada Budi Prompt Engine (DeepPromptV2) yang melarang kompor gas, tatakan besi, knop putar retro, dan jendela luar.
+- **Kling Omni Image Series Mode Integration (Commit `352fd4e`):**
+  - Memutakhirkan `KlingImageProviderAdapter` untuk mendukung fitur asli Kling Image 3.0 Omni (`kling-v3-omni`): payload `result_type: "series"` dan `series_amount` (2..9 frame).
+  - Injeksi referensi visual anchor Cover asli `image_list: [{ image: cleanCoverBase64 }]` dengan penanda conditioning `<<<image_1>>>`.
+  - Akuntansi kuota: 8 Kling units / output 2K.
+- **Local Human Casting Policy v1.0 (Commit `c8c2d80`):**
+  - Menetapkan kebijakan casting manusia resmi RancangLoka (`docs/editorial/LOCAL_HUMAN_CASTING_POLICY_V1.md` dan `src/lib/editorial/local-human-casting-policy.ts`).
+  - Prioritas representasi figur manusia khas Indonesia / Asia Tenggara dalam pakaian, gestur, dan aktivitas rumah tangga alami.
+  - Larangan keras terhadap default model Western/Caucasian pada foto editorial RancangLoka.
+  - Integrasi token casting ke Budi Prompt Engine, storyboard Nadia, dan evaluasi relevansi audiens Rina tanpa reduksi esensialisme rasial wajah. Lulus 16/16 unit test.
+- **Editorial Photo-First Principle:**
+  - Standarisasi alokasi visual untuk artikel mendalam (800–1.500 kata): 1 Cover Hero + 3 Inline Photos nyata yang relevan secara fungsional.
+  - Menghapus seluruh diagram SVG dekoratif pada tampilan Artikel #10011 demi integritas fotografi arsitektur autentik.
+- **Eksekusi Image Series & Hasil Owner Visual Review:**
+  - **Task 1 (Series 3-shot, Task ID `952232986421473280`, 24 units):**
+    - Cover: `ACCEPTED` sebagai Ground Truth Anchor.
+    - Shot 2 (Detail filter jaring cooker hood): `ACCEPTED` dan terikat ke CMS Staging.
+    - Shot 1: `NEEDS_REVISION` (sudut terlalu mirip cover, kompor bertingkat tak sesuai spesifikasi).
+    - Shot 3: `REJECTED` (muncul kisi-kisi kayu louver besar yang tak dapat dibuktikan pada cover).
+  - **Task 2 (Series 2-shot Penyempurna, Task ID `952319480679123526`, 16 units):**
+    - Shot A (Cooking Perspective): `NEEDS_REVISION` (sudut kamera hampir frontal, terlalu mirip cover, belum berhasil diagonal 45°).
+    - Shot B (Mounting Clearance Elevation): `NEEDS_REVIEW` (perspektif oblique, belum profil samping murni 90°, terindikasi kemungkinan knop menonjol pada kompor).
+    - Status Binding: Shot A dan Shot B diblokir dari CMS. Target 2 inline tambahan belum terpenuhi.
+- **Temuan & Analisis Masalah Camera-Angle Clinging:**
+  - Identifikasi fenomena *Angle Clinging* pada arsitektur diffusion multi-frame Kling Omni: cross-attention visual anchor Cover mendominasi posisi spasial global sehingga model menahan transformasi kamera agar tetap mendekati sudut frontal cover.
+  - Solusi kontrol kamera native tanpa engine baru: penggunaan istilah penempatan fisik kamera sinematik/isometrik (bukan derajat matematis), negative prompt spasial (`front view, straight-on view`), dan opsi single-shot guided reference independen untuk rotasi sudut ekstrem.
+- **Status Akhir Artikel #10011:**
+  - Staging D1 Article ID 10 tetap berstatus **`draft`**.
+  - Aset terikat: Cover Hero + Inline Shot 2.
+  - Approval: `PENDING`.
+  - Auto Publish: `OFF`.
+  - Total pengeluaran Kling hari ini: 40 units (24 + 16 units) = ~US$0.098 (~Rp 1.597 IDR), saldo aman di atas 900 units.
