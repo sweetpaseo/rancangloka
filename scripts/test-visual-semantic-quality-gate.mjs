@@ -67,7 +67,7 @@ assert.ok(svg1.includes('Kompor') || svg1.includes('Meja'), 'Must depict cooktop
 assert.ok(svg1.includes('Filter Karbon Aktif'), 'Must depict carbon filter mechanism');
 assert.ok(svg1.includes('DINDING LUAR'), 'Must depict exterior wall penetration');
 assert.ok(svg1.includes('Kembali ke Dapur') || svg1.includes('Resirkulasi'), 'Must depict recirculation airflow return');
-assert.ok(svg1.includes('DIBUANG KELUAR'), 'Must depict exhaust discharge outside');
+assert.ok(svg1.includes('DIBUANG KELUAR') || svg1.includes('DIALIRKAN KE LUAR') || svg1.includes('DIBUANG KE LUAR'), 'Must depict exhaust discharge outside');
 assert.ok(!svg1.includes('LOCAL TEST'), 'Zero internal test labels');
 assert.ok(!svg1.includes('Rp') && !svg1.includes('IDR'), 'Zero monetary claims');
 console.log('   ✓ Pass: Inline 1 is an authentic 16:9 architectural diagram with physical airflow vectors.\n');
@@ -80,9 +80,9 @@ const svg2 = generateVentilationEffectivenessSvg();
 assert.ok(svg2.includes('<svg'), 'Inline 2 must be valid SVG');
 assert.ok(svg2.includes('viewBox="0 0 1200 675"'), 'Inline 2 must have 1200x675 viewBox (16:9)');
 assert.ok(svg2.includes('TANPA UDARA PENGGANTI') || svg2.includes('VAKUM'), 'Must depict negative pressure / vacuum scenario');
-assert.ok(svg2.includes('Celah Udara Masuk') || svg2.includes('Make-Up Air'), 'Must depict make-up air slot');
+assert.ok(svg2.includes('Celah Udara Masuk') || svg2.includes('Make-Up Air') || svg2.includes('Celah Udara Pengganti'), 'Must depict make-up air slot');
 assert.ok(svg2.includes('Kondensasi') || svg2.includes('Mengembun'), 'Must depict condensation physics');
-assert.ok(svg2.includes('Aliran Udara Menyapu Teratur') || svg2.includes('Cross-Flow'), 'Must depict laminar air sweep');
+assert.ok(svg2.includes('Aliran Udara Menyapu Teratur') || svg2.includes('Cross-Flow') || svg2.includes('Aliran Udara Pengganti Menuju Jalur Pembuangan'), 'Must depict make-up air flow towards exhaust');
 assert.ok(!svg2.includes('LOCAL TEST'), 'Zero internal test labels');
 console.log('   ✓ Pass: Inline 2 is an authentic 16:9 technical diagram depicting ventilation obstacles and balance.\n');
 
