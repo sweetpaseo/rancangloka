@@ -241,7 +241,8 @@ async function runTests() {
 
   assert.ok(!seriesCode.includes("fileNameJpg"), 'Series script must not generate duplicate fileNameJpg');
   assert.ok(!seriesCode.includes("frameJpgPath"), 'Series script must not write frameJpgPath');
-  assert.ok(seriesCode.includes("fileNamePng"), 'Series script must write canonical PNG master');
+  assert.ok(seriesCode.includes("fileName"), 'Series script must write canonical master');
+  assert.ok(seriesCode.includes("PRIVATE_MASTERS_DIR"), 'Series script must target private storage');
   pass('SERIES_MODE_COMPATIBLE', 'Alur Image Series Mode dikonfigurasi untuk hanya menulis 1 canonical PNG master');
 
   // ---------------------------------------------------------------------------

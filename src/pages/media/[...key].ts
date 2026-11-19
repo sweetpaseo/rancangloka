@@ -207,6 +207,8 @@ export const GET: APIRoute = async ({ params, locals, request }) => {
     } else {
       headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     }
+    // Vary on Referer to ensure Edge and browser caches strictly enforce hotlink protection per origin
+    headers.set('Vary', 'Referer');
 
     // Content-Type fallback based on key extension if metadata is missing
     let contentType = object.httpMetadata?.contentType;

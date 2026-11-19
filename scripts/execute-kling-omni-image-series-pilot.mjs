@@ -216,29 +216,43 @@ async function runAuthorizedSeries() {
     process.exit(1);
   }
 
+  const PRIVATE_MASTERS_DIR = path.join(rootDir, 'storage/masters/art10011');
+  fs.mkdirSync(PRIVATE_MASTERS_DIR, { recursive: true });
+
   const savedPaths = [];
   for (let i = 0; i < seriesImages.length; i++) {
     const frame = seriesImages[i];
-    const fileNamePng = `art10011_series_shot${i + 1}_kling_omni.png`;
-    const framePngPath = path.join(CANDIDATES_DIR, fileNamePng);
 
-    // Save Single Canonical PNG Master
-    fs.writeFileSync(framePngPath, Buffer.from(frame.bytes));
+    // Determine extension dynamically from actual binary MIME type
+    let ext = 'png';
+    if (frame.mime_type === 'image/jpeg') ext = 'jpg';
+    else if (frame.mime_type === 'image/webp') ext = 'webp';
+    else if (frame.mime_type === 'image/png') ext = 'png';
+    else if (frame.bytes && frame.bytes[0] === 0xff && frame.bytes[1] === 0xd8) ext = 'jpg';
+    else if (frame.bytes && frame.bytes[0] === 0x52 && frame.bytes[1] === 0x49) ext = 'webp';
+
+    const fileName = `art10011_series_shot${i + 1}_kling_omni.${ext}`;
+    const frameMasterPath = path.join(PRIVATE_MASTERS_DIR, fileName);
+
+    // Save Single Canonical Master in private storage (exact binary fidelity)
+    fs.writeFileSync(frameMasterPath, Buffer.from(frame.bytes));
 
     if (fs.existsSync(ARTIFACT_DIR)) {
-      fs.writeFileSync(path.join(ARTIFACT_DIR, fileNamePng), Buffer.from(frame.bytes));
+      fs.writeFileSync(path.join(ARTIFACT_DIR, fileName), Buffer.from(frame.bytes));
     }
 
     savedPaths.push({
       shot_number: i + 1,
       shot_role: frame.shot_role,
-      png_path: framePngPath,
+      file_name: fileName,
+      master_path: frameMasterPath,
+      mime_type: frame.mime_type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
       sha256: frame.sha256,
       dimensions: `${frame.width}x${frame.height}`,
       byte_size: frame.byte_size
     });
 
-    console.log(`   ✓ Frame ${i + 1} (${frame.shot_role}) tersimpan di: ${framePngPath}`);
+    console.log(`   ✓ Frame ${i + 1} (${frame.shot_role}) canonical master tersimpan di: ${frameMasterPath}`);
   }
 
   // Provenance logging
