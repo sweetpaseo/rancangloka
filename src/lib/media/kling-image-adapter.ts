@@ -227,28 +227,25 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
   /**
    * Securely redacts secrets from any error message or details.
    */
+  /**
+   * Securely redacts secrets from any error message or details.
+   */
   private sanitizeMessage(msg: string): string {
     if (!this.apiKey) return msg;
     return msg.replaceAll(this.apiKey, '[REDACTED_KLING_API_KEY]');
   }
 
   /**
-   * Submits generation task to Kling AI API (POST).
-   * Does NOT poll. Returns task_id immediately.
+   * Constructs the verified submission payload and endpoint for testing/inspection
+   * with credentials safely masked.
    */
-  async submitTask(
-    request: ImageGenerationRequest,
-    options?: { signal?: AbortSignal }
-  ): Promise<{ taskId: string; externalTaskId: string; model: string }> {
-    if (!this.apiKey) {
-      throw new ImageProviderError({
-        code: 'AUTH_ERROR',
-        provider: this.providerName,
-        message: 'Kling API credentials missing: KLING_API_KEY environment variable is not configured.',
-        isBillable: false
-      });
-    }
-
+  buildSubmissionPayload(request: ImageGenerationRequest): {
+    url: string;
+    endpoint: string;
+    model: string;
+    payload: Record<string, any>;
+    maskedHeaders: Record<string, string>;
+  } {
     const selectedModel = request.model_override || this.model;
     const { submitPath } = this.getEndpoints(selectedModel);
     const resolution = this.resolveResolution(request);
@@ -269,7 +266,62 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
       payload.negative_prompt = request.negative_prompt;
     }
 
+    // Reference Image Conditioning (PHOTO-FIRST v1.1)
+    const refRaw = request.reference_image_url || (request as any).reference_image_base64 || (request as any).reference_image;
+    if (refRaw && typeof refRaw === 'string' && refRaw.trim().length > 0) {
+      const cleanRef = refRaw.trim().replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+
+      if (submitPath === '/v1/images/omni-image') {
+        // Kling Omni uses image_list array; does NOT accept image_fidelity
+        payload.image_list = [
+          { image: cleanRef }
+        ];
+        if (!payload.prompt.includes('<<<image_1>>>') && !payload.prompt.includes('<<<object_1>>>')) {
+          payload.prompt = `In the exact same architectural room and cabinetry setting as <<<image_1>>>, ${payload.prompt}`;
+        }
+      } else {
+        // Standard endpoint uses singular image string
+        payload.image = cleanRef;
+        if (typeof request.reference_weight === 'number') {
+          payload.image_fidelity = request.reference_weight;
+        }
+      }
+    }
+
     const url = `${this.baseUrl}${submitPath}`;
+    const maskedHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': this.apiKey ? 'Bearer [REDACTED_KLING_API_KEY]' : 'Bearer [NOT_SET]'
+    };
+
+    return {
+      url,
+      endpoint: submitPath,
+      model: selectedModel,
+      payload,
+      maskedHeaders
+    };
+  }
+
+  /**
+   * Submits generation task to Kling AI API (POST).
+   * Does NOT poll. Returns task_id immediately.
+   */
+  async submitTask(
+    request: ImageGenerationRequest,
+    options?: { signal?: AbortSignal }
+  ): Promise<{ taskId: string; externalTaskId: string; model: string }> {
+    if (!this.apiKey) {
+      throw new ImageProviderError({
+        code: 'AUTH_ERROR',
+        provider: this.providerName,
+        message: 'Kling API credentials missing: KLING_API_KEY environment variable is not configured.',
+        isBillable: false
+      });
+    }
+
+    const { url, payload, model } = this.buildSubmissionPayload(request);
+    const externalTaskId = payload.external_task_id;
 
     let response: Response;
     try {
@@ -378,7 +430,7 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
     return {
       taskId,
       externalTaskId,
-      model: selectedModel
+      model
     };
   }
 

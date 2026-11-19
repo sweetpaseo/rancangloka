@@ -74,6 +74,7 @@ const args = process.argv.slice(2);
 const isReplay = args.includes('--replay') || args.includes('--reuse-disk-draft');
 const isCanary = args.includes('--canary') || isReplay;
 const isTestIngest = args.includes('--test-ingest');
+const isLegacyDiagrams = args.includes('--legacy-diagrams');
 const isDryRun = !isCanary && !isTestIngest;
 
 function getGitInfo() {
@@ -915,70 +916,123 @@ ${finalMarkdown}`;
     if (m) bodyH2Headings.push(m[1].trim());
   }
 
-  console.log('📐 [Budi & Nadia] Menyintesis diagram teknis SVG Base64 arsitektural 16:9 dari slot storyboard...');
-  const {
-    generateKitchenAirflowComparisonSvg,
-    generateVentilationEffectivenessSvg
-  } = await import('../src/lib/editorial/kitchen-ventilation-diagrams.ts');
+  if (storyboard.visual_policy === 'PHOTO_FIRST' && !isLegacyDiagrams) {
+    console.log(`📸 [Budi & Nadia] Menerapkan Kebijakan Visual PHOTO-FIRST v1.1...`);
+    console.log(`   House Identity: ${storyboard.house_identity?.architectural_style || 'Contemporary Indonesian Compact Kitchen'}`);
+    console.log(`   Cover Slot    : [${storyboard.cover_slot?.photo_role || 'context'}] ${storyboard.cover_slot?.visual_purpose || 'Main architectural view'}`);
 
-  for (let idx = 0; idx < storyboard.inline_slots.length; idx++) {
-    const slot = storyboard.inline_slots[idx];
-    let targetHeading = slot.section_title;
+    for (let idx = 0; idx < storyboard.inline_slots.length; idx++) {
+      const slot = storyboard.inline_slots[idx];
+      let targetHeading = slot.section_title;
 
-    // Ensure target_heading_text matches an actual H2 heading in the article
-    if (!bodyH2Headings.includes(targetHeading)) {
-      if (bodyH2Headings[idx]) {
-        targetHeading = bodyH2Headings[idx];
-      } else if (bodyH2Headings[0]) {
-        targetHeading = bodyH2Headings[0];
+      // Ensure target_heading_text matches an actual H2 heading in the article
+      if (!bodyH2Headings.includes(targetHeading)) {
+        if (bodyH2Headings[idx]) {
+          targetHeading = bodyH2Headings[idx];
+        } else if (bodyH2Headings[0]) {
+          targetHeading = bodyH2Headings[0];
+        }
       }
+
+      const photoTitle = slot.visual_brief?.prompt_indonesian || slot.visual_purpose;
+      const photoAlt = slot.alt_text_brief || `Foto panduan ventilasi dapur: ${slot.visual_purpose}`;
+
+      visualItems.push({
+        visual_id: `ast_${articleIdNum}_s${idx + 1}_photo`,
+        slot_key: slot.slot_key,
+        media_type: 'photograph',
+        priority: slot.priority || 'essential',
+        placement: {
+          target_heading_text: targetHeading,
+          position: 'after_heading'
+        },
+        visual_purpose: slot.visual_purpose,
+        visual_brief: {
+          prompt_indonesian: photoTitle,
+          prompt_english: slot.visual_brief?.prompt_english || '',
+          camera_angle: slot.visual_brief?.camera_angle || 'eye-level',
+          focal_element: slot.visual_brief?.focal_element || '',
+          storytelling_class: slot.visual_brief?.storytelling_class || 'EDITORIAL_PHOTOGRAPH',
+          aspect_ratio: slot.visual_brief?.aspect_ratio || '16:9',
+          intended_width: 1200,
+          intended_height: 675
+        },
+        caption: photoTitle,
+        alt_text: photoAlt,
+        asset_id: `ast_${articleIdNum}_s${idx + 1}`,
+        storage_key: '', // Pending operator-authorized generation API call
+        review_status: 'PENDING',
+        editorial_approval: 'PENDING'
+      });
+
+      console.log(`   ✓ Inline Photo ${idx + 1} [${slot.photo_role}]: "${slot.visual_purpose}" (Anchor: "${targetHeading}") - Status: PENDING (Generation Awaiting Auth)`);
     }
+  } else {
+    console.log('📐 [Budi & Nadia] Menyintesis diagram teknis SVG Base64 arsitektural 16:9 dari slot storyboard (Legacy Diagram Mode)...');
+    const {
+      generateKitchenAirflowComparisonSvg,
+      generateVentilationEffectivenessSvg
+    } = await import('../src/lib/editorial/kitchen-ventilation-diagrams.ts');
 
-    let dataUri = '';
-    let diagTitle = '';
-    let diagSubtitle = '';
-    let altText = '';
+    for (let idx = 0; idx < storyboard.inline_slots.length; idx++) {
+      const slot = storyboard.inline_slots[idx];
+      let targetHeading = slot.section_title;
 
-    if (idx === 0) {
-      const svgContent = generateKitchenAirflowComparisonSvg();
-      dataUri = `data:image/svg+xml;base64,${Buffer.from(svgContent, 'utf8').toString('base64')}`;
-      diagTitle = 'Diagram Potongan Dapur: Perbedaan Aliran Udara Cooker Hood Resirkulasi vs Exhaust Fan Dinding';
-      diagSubtitle = 'Perbedaan arah aliran udara dan pelepasan uap panas antara cooker hood resirkulasi dan exhaust fan dinding.';
-      altText = 'Diagram potongan dapur yang memperlihatkan perbedaan aliran udara antara cooker hood resirkulasi dan exhaust fan dinding yang membuang udara keluar.';
-    } else {
-      const svgContent = generateVentilationEffectivenessSvg();
-      dataUri = `data:image/svg+xml;base64,${Buffer.from(svgContent, 'utf8').toString('base64')}`;
-      diagTitle = 'Diagram Kondisi Efektivitas Ventilasi: Ruang Terisolasi vs Aliran Udara Berimbang';
-      diagSubtitle = 'Kondisi kegagalan akibat ruang vakum tanpa make-up air dibandingkan sistem ventilasi berimbang.';
-      altText = 'Diagram kondisi ventilasi kurang efektif: tanpa udara pengganti, hambatan aliran, dan kondisi sistem dengan jalur udara masuk serta pembuangan yang memadai.';
+      // Ensure target_heading_text matches an actual H2 heading in the article
+      if (!bodyH2Headings.includes(targetHeading)) {
+        if (bodyH2Headings[idx]) {
+          targetHeading = bodyH2Headings[idx];
+        } else if (bodyH2Headings[0]) {
+          targetHeading = bodyH2Headings[0];
+        }
+      }
+
+      let dataUri = '';
+      let diagTitle = '';
+      let diagSubtitle = '';
+      let altText = '';
+
+      if (idx === 0) {
+        const svgContent = generateKitchenAirflowComparisonSvg();
+        dataUri = `data:image/svg+xml;base64,${Buffer.from(svgContent, 'utf8').toString('base64')}`;
+        diagTitle = 'Diagram Potongan Dapur: Perbedaan Aliran Udara Cooker Hood Resirkulasi vs Exhaust Fan Dinding';
+        diagSubtitle = 'Perbedaan arah aliran udara dan pelepasan uap panas antara cooker hood resirkulasi dan exhaust fan dinding.';
+        altText = 'Diagram potongan dapur yang memperlihatkan perbedaan aliran udara antara cooker hood resirkulasi dan exhaust fan dinding yang membuang udara keluar.';
+      } else {
+        const svgContent = generateVentilationEffectivenessSvg();
+        dataUri = `data:image/svg+xml;base64,${Buffer.from(svgContent, 'utf8').toString('base64')}`;
+        diagTitle = 'Diagram Kondisi Efektivitas Ventilasi: Ruang Terisolasi vs Aliran Udara Berimbang';
+        diagSubtitle = 'Kondisi kegagalan akibat ruang vakum tanpa make-up air dibandingkan sistem ventilasi berimbang.';
+        altText = 'Diagram kondisi ventilasi kurang efektif: tanpa udara pengganti, hambatan aliran, dan kondisi sistem dengan jalur udara masuk serta pembuangan yang memadai.';
+      }
+
+      visualItems.push({
+        visual_id: `ast_${articleIdNum}_s${idx + 1}_diagram`,
+        slot_key: slot.slot_key,
+        media_type: 'technical_diagram',
+        priority: 'essential',
+        placement: {
+          target_heading_text: targetHeading,
+          position: 'after_heading'
+        },
+        visual_purpose: diagSubtitle,
+        visual_brief: {
+          prompt_indonesian: diagTitle,
+          storytelling_class: 'ENGINEERING_DIAGRAM',
+          aspect_ratio: '16:9',
+          intended_width: 1200,
+          intended_height: 675
+        },
+        caption: diagTitle,
+        alt_text: altText,
+        asset_id: `ast_${articleIdNum}_s${idx + 1}`,
+        storage_key: dataUri,
+        review_status: 'PENDING',
+        editorial_approval: 'PENDING'
+      });
+
+      console.log(`   ✓ Inline ${idx + 1}: ${diagTitle} (Base64 SVG: ${dataUri.length} chars, anchor: "${targetHeading}") - Status: PENDING`);
     }
-
-    visualItems.push({
-      visual_id: `ast_${articleIdNum}_s${idx + 1}_diagram`,
-      slot_key: slot.slot_key,
-      media_type: 'technical_diagram',
-      priority: 'essential',
-      placement: {
-        target_heading_text: targetHeading,
-        position: 'after_heading'
-      },
-      visual_purpose: diagSubtitle,
-      visual_brief: {
-        prompt_indonesian: diagTitle,
-        storytelling_class: 'ENGINEERING_DIAGRAM',
-        aspect_ratio: '16:9',
-        intended_width: 1200,
-        intended_height: 675
-      },
-      caption: diagTitle,
-      alt_text: altText,
-      asset_id: `ast_${articleIdNum}_s${idx + 1}`,
-      storage_key: dataUri,
-      review_status: 'PENDING',
-      editorial_approval: 'PENDING'
-    });
-
-    console.log(`   ✓ Inline ${idx + 1}: ${diagTitle} (Base64 SVG: ${dataUri.length} chars, anchor: "${targetHeading}") - Status: PENDING`);
   }
 
   const visualManifest = {

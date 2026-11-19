@@ -40,9 +40,12 @@ export interface HouseIdentityProfile {
 /**
  * Builds a deterministic House Identity Profile for Article #10011 (Ventilasi Dapur Tanpa Jendela).
  */
-export function getKitchenVentilationHouseProfile(slug: string, title: string): HouseIdentityProfile {
+export function getKitchenVentilationHouseProfile(
+  slug: string = 'ventilasi-dapur-tanpa-jendela',
+  title: string = 'Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding'
+): HouseIdentityProfile {
   return {
-    profile_id: `hip_kitchen_compact_${slug.slice(0, 20)}`,
+    profile_id: `hip_kitchen_compact_${(slug || 'default').slice(0, 20)}`,
     article_slug: slug,
     article_title: title,
     architectural_style: 'Modern Contemporary Indonesian Compact Urban Home (Apartemen / Rumah Tinggal Kompak Tropis)',

@@ -2,6 +2,86 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **Rancangloka**.
 
+## Hermes EU Canary (#10011) — Photo-First v1.1 Integration & Kling Omni Reference Contract (2026-11-19)
+
+- **Milestone:** `RANCANGLOKA_PHOTO_FIRST_V1_1_INTEGRATION_VERIFIED_SAFE`
+- **Checkpoint:** Titik Aman Offline (`state/OFFLINE_CHECKPOINT_20261119_PHOTO_FIRST_INTEGRATION_AND_KLING_OMNI_CONTRACT.md`) pada branch `feat/jev-lokamedia-integration`.
+- **Target Topik:** Artikel #10011 — *Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*
+- **Staging Article ID:** 10 (Status: `DRAFT`, Persetujuan: `PENDING`)
+- **Implementasi & Verifikasi Kontrak:**
+  1. **Kebijakan Editorial Photo-First v1.1:**
+     - Mengubah pendekatan visual default menjadi fotografi editorial arsitektur/interior (1 cover + 2–4 inline).
+     - Menugaskan 4 peran foto spesifik (`context`, `problem_condition`, `relevant_detail`, `realistic_solution_example`).
+     - Menyusun `HouseIdentityProfile` (`house-identity.ts`) untuk Article #10011 dengan arsitektur kompak tropis urban, HPL jati muda matte, countertop solid surface off-white, backsplash keramik subway, dan bukaan kisi jalusi.
+     - Mengimplementasikan 7 gerbang verifikasi ketat (`photo-quality-gate.ts`), menolak klaim palsu `SAME_HOUSE_PASS` jika material, kompor, atau tata ruang tidak konsisten.
+     - Menonaktifkan generator diagram SVG generik sebagai default; memelihara fungsi legacy melalui flag `--legacy-diagrams`.
+  2. **Verifikasi Kontrak Kling Image 3.0 Omni (`kling-v3-omni`):**
+     - Endpoint: `POST /v1/images/omni-image` dengan status polling di `GET /v1/images/omni-image/{task_id}`.
+     - Pemisahan Payload:
+       * Cover Request: Tidak mengirimkan bidang `image_list` (zero reference conditioning).
+       * Inline Request: Mengirimkan `image_list: [{ image: cleanRefUrlOrBase64 }]` dan menyematkan tag `<<<image_1>>>` ke dalam teks prompt secara otomatis.
+       * Parameter `image_fidelity` strictly tidak dikirim ke endpoint Omni.
+       * Masking Kredensial: Header `Authorization` disamarkan menjadi `Bearer [REDACTED_KLING_API_KEY]`.
+     - Estimasi Biaya Pilot (2 Gambar: 1 Cover + 1 Inline):
+       * Resolusi 2K = 8 unit/gambar $\rightarrow$ total 16 unit.
+       * Paket Hemat ($2.45 / 1000 unit): **US$ 0.0392** ($\approx$ **Rp 639**).
+       * List Price ($0.028 / 8 unit): **US$ 0.0560** ($\approx$ **Rp 913**).
+       * **Biaya Riil Saat Ini:** **US$ 0.00** (Zero paid API calls, stop before paid generation).
+  3. **Integrasi Runner Hermes EU (`hermes-eu-autonomous-runner.mjs`):**
+     - Mendeteksi kebijakan `PHOTO_FIRST` dari storyboard Nadia dan memetakan slot foto editorial (`media_type: 'photograph'`) terikat ke heading H2 naskah.
+     - Menyimpan entitas visual berstatus `review_status: 'PENDING'` dan `storage_key: ''` menunggu otorisasi generasi.
+  4. **Hasil Pengujian Otomasi (100% PASS):**
+     - `test-photo-first-visual-policy.mjs`: 9/9 PASS.
+     - `test-kling-omni-reference-payload.mjs`: 4/4 PASS.
+     - `test-visual-semantic-quality-gate.mjs`: 7/7 PASS.
+     - `test-canary-body-contract.mjs`: 6/6 PASS.
+     - `npx tsc --noEmit`: 0 errors.
+
+## Hermes EU Canary (#10011) — Inline Visual Semantic Fix & Real Chrome Browser Verification (2026-11-19)
+
+- **Milestone:** `RANCANGLOKA_CANARY_10011_INLINE_VISUALS_VERIFIED_SAFE`
+- **Checkpoint:** Titik Aman Offline (`state/OFFLINE_CHECKPOINT_20261119_VISUAL_SEMANTIC_CORRECTION_AND_REAL_BROWSER_VERIFICATION.md`) pada branch `feat/jev-lokamedia-integration`.
+- **Target Topik:** Artikel #10011 — *Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*
+- **Staging Article ID:** 10 (Status: `DRAFT`, Persetujuan: `PENDING`)
+- **Akar Masalah & Resolusi Kualitas Semantik Visual:**
+  1. **Audit Masalah Visual Awal:**
+     - Storyboard awal merender tabel teks generik alih-alih diagram arsitektural teknis.
+     - Teks mengalami clipping di kanvas dan memuat label internal test `(LOCAL TEST / NOT EDITORIALLY APPROVED)`.
+     - Terdapat klaim absolut (*"100% uap air & panas terbuang"*, *"Laminar cross-flow"*, dan ambang hasil pasti *>65% RH* / *<60% RH* tanpa konteks alat ukur empiris).
+     - Komparasi belum berimbang dan belum membedakan penangkapan lokal di kompor (*source capture*), resirkulasi tertutup (*recirculation*), dan ventilasi umum ruangan (*general room exhaust*).
+  2. **Solusi Rekayasa Visual Arsitektural (`kitchen-ventilation-diagrams.ts`):**
+     - **Inline 1:** Potongan arsitektur dapur 16:9 yang membandingkan cara kerja cooker hood resirkulasi (tangkap lokal di atas kompor, filter grease + karbon aktif, hembusan balik) vs exhaust fan dinding (make-up air celah pintu, aliran hisap ruangan, pembuangan ke dinding luar). Ditambahkan catatan teknis *hood berducting*.
+     - **Inline 2:** Diagram sirkulasi udara 16:9 yang memodelkan kegagalan akibat ruang vakum tanpa make-up air vs sirkulasi seimbang dengan celah udara pengganti.
+     - **Penghalusan Klaim Fisika:** "100% terbuang" $\rightarrow$ "udara yang terhisap dialirkan ke luar; efektivitas penangkapan bergantung pada posisi dan kapasitas alat"; "Laminar cross-flow" $\rightarrow$ "Aliran Udara Pengganti Menuju Jalur Pembuangan"; angka RH absolut dihapus dan diganti dengan deskripsi fenomena kondensasi riil pada kabinet dingin ("Kondensasi & Uap Mengendap").
+     - **Pembersihan Total:** Seluruh label internal test dihapus dari diagram dan figcaption.
+     - **Monetary Silence Mutlak:** 0 angka rupiah/mata uang.
+  3. **Visual Semantic Quality Gate:**
+     - Mengembangkan modul evaluator `src/lib/editorial/visual-semantic-gate.ts` dengan 5 pilar (Heading Alignment, Architectural Object Fidelity, Clipping Defense, Editorial Purity, Monetary Silence).
+     - `scripts/test-visual-semantic-quality-gate.mjs`: **7/7 PASS (100%)**, skor 100/100.
+  4. **Pembaruan Cloudflare D1 Staging ($0.00 Spend):**
+     - Dimutakhirkan ke `settings` table (`visual_manifest:article:10` dan `visual_manifest:slug:...`) via `scripts/update-staging-visuals-article10.mjs`.
+     - Tabel `articles` (ID 10) tidak dimodifikasi; naskah asli GPT-6 Luna 9.157 karakter dipertahankan 100%. Status persetujuan tetap `PENDING`.
+  5. **Verifikasi Peramban Nyata Google Chrome (CDP):**
+     - `scripts/verify-real-browser-preview-article10.mjs` dijalankan via Chrome DevTools Protocol pada headless Chrome:
+       * **Desktop (1280x800):** Rendered width $742.0\text{ px}$, height $417.4\text{ px}$ (exact 16:9), zero clipping, label dan panah tajam.
+       * **Mobile (375x812):** Rendered width $341.0\text{ px}$, height $191.8\text{ px}$ (exact 16:9), zero horizontal scroll (`scrollWidth = 375px`).
+       * Tangkapan layar autentik tersimpan di `brain/d4ac4fcc-279e-4275-a4ab-cb211f4bdc36/`.
+     - **Reader Preview URL:** `https://rancangloka-staging.chandrajoyko.workers.dev/admin/preview/ventilasi-dapur-tanpa-jendela-solusi-cooker-hood-resirkulasi-vs-exhaust-fan-dinding-canary-10011?mode=reader`
+  6. **Git Commit:** `b4d11ad` sukses di-push ke branch `feat/jev-lokamedia-integration`.
+
+## Hermes EU Autonomous Canary (#10011) — HTTP 409 Conflict Resolution, Zero-Spend Replay & Visual Preview (2026-11-18)
+
+- **Milestone:** `RANCANGLOKA_CANARY_10011_409_RESOLVED_AND_REPLAY_READY`
+- **Checkpoint:** Titik Aman Offline (`state/OFFLINE_CHECKPOINT_20261118_CANARY_409_RESOLUTION_AND_REPLAY.md`) pada branch `feat/jev-lokamedia-integration`.
+- **Target Topik:** Artikel #10011 — *Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding*
+- **Akar Masalah & Resolusi:**
+  1. **Keberhasilan Pemanggilan Asli GPT-6 Luna:** Model GPT-6 Luna berhasil dipanggil pada SumoPod EU (`1430fbde9a84`) menghasilkan naskah 1.267 kata / 9.157 karakter teks editorial bahasa Indonesia berkualitas tinggi (biaya nyata: US$0.0159, 3.553 input + 3.540 output token). Disimpan di `/opt/data/rancangloka-runner/scripts/content-bootstrap/trials/canary-10011-generated.md`.
+  2. **Resolusi Blocker HTTP 422 (Empty Body):** Menambahkan 3-tier fallback extraction dan fail-fast validation sebelum HMAC signing (`scripts/test-canary-body-contract.mjs` 6/6 PASS).
+  3. **Resolusi Blocker HTTP 409 (Slug Conflict):** Slug bentrok dengan Artikel ID 2 draf lama. Diatasi dengan jalur `--replay` dari disk tanpa memanggil LLM baru ($0.00 spend), menggunakan identitas staging mandiri `art_10011_canary_kitchen_v2` dan slug `ventilasi-dapur-tanpa-jendela-solusi-cooker-hood-resirkulasi-vs-exhaust-fan-dinding-canary-10011`.
+  4. **Pembaruan Staging Preview:** Memperbarui `allowUnapprovedInPreview: true` di rute pratinjau admin agar 2 diagram SVG inline dirender pada mode reader.
+  5. **Hasil Ingest:** `HTTP 201 INGEST_CREATED`, D1 Staging Article ID `10`, status `draft`, review `PENDING`.
+  6. **Git Commit:** `6ae080a` dan `cc757a8` di-push ke `feat/jev-lokamedia-integration`.
+
 ## Hermes EU Autonomous Canary (#10011) — Research Coverage Contract Fix (2026-11-18)
 
 - **Milestone:** `RANCANGLOKA_REAL_CANARY_10011_EVIDENCE_PACK_STABILIZED`

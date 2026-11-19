@@ -119,6 +119,25 @@ export function evaluateVisualSemanticGate(
       violations.push(`Item ${item.visual_id} memiliki target_heading "${targetHeading}" yang tidak ditemukan pada naskah H2.`);
     }
 
+    // If photograph, SVG-specific checks are bypassed (evaluated under PhotoQualityGate)
+    if (item.media_type === 'photograph') {
+      // Check monetary silence in caption, alt, and brief
+      const textToScan = `${item.caption} ${item.alt_text} ${item.visual_purpose} ${item.visual_brief?.prompt_indonesian || ''}`;
+      for (const pattern of MONETARY_PATTERNS) {
+        if (pattern.test(textToScan)) {
+          checks.monetary_silence.passed = false;
+          violations.push(`Item ${item.visual_id} memuat klaim harga/mata uang.`);
+        }
+      }
+      for (const testPattern of FORBIDDEN_TEST_LABELS) {
+        if (testPattern.test(textToScan)) {
+          checks.editorial_purity.passed = false;
+          violations.push(`Item ${item.visual_id} memuat label pengujian internal.`);
+        }
+      }
+      continue;
+    }
+
     // 2. SVG Extraction & Inspection
     const svgStr = extractSvgString(item.storage_key);
     if (!svgStr || !svgStr.includes('<svg')) {
