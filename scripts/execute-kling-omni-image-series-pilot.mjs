@@ -220,16 +220,13 @@ async function runAuthorizedSeries() {
   for (let i = 0; i < seriesImages.length; i++) {
     const frame = seriesImages[i];
     const fileNamePng = `art10011_series_shot${i + 1}_kling_omni.png`;
-    const fileNameJpg = `art10011_series_shot${i + 1}_kling_omni.jpg`;
     const framePngPath = path.join(CANDIDATES_DIR, fileNamePng);
-    const frameJpgPath = path.join(CANDIDATES_DIR, fileNameJpg);
 
+    // Save Single Canonical PNG Master
     fs.writeFileSync(framePngPath, Buffer.from(frame.bytes));
-    fs.writeFileSync(frameJpgPath, Buffer.from(frame.bytes));
 
     if (fs.existsSync(ARTIFACT_DIR)) {
       fs.writeFileSync(path.join(ARTIFACT_DIR, fileNamePng), Buffer.from(frame.bytes));
-      fs.writeFileSync(path.join(ARTIFACT_DIR, fileNameJpg), Buffer.from(frame.bytes));
     }
 
     savedPaths.push({

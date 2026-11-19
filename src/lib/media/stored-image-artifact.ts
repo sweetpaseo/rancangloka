@@ -66,7 +66,7 @@ export interface WatermarkDerivativeResult {
   readonly byte_size: number;
   readonly width: number;
   readonly height: number;
-  readonly mime_type: 'image/png';
+  readonly mime_type: 'image/png' | 'image/webp';
   readonly transform_id: string;
   readonly watermark_config_hash: string;
   readonly source_sha256: string;
@@ -83,6 +83,8 @@ export async function renderTextWatermarkDerivative(
     text?: string;
     position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
     opacity?: number;
+    format?: 'image/png' | 'image/webp';
+    quality?: number;
     sourceMeta?: { width?: number; height?: number; mime?: string; sha256?: string };
     engineVersion?: string;
     watermarkVersion?: number;
@@ -90,13 +92,6 @@ export async function renderTextWatermarkDerivative(
 ): Promise<WatermarkDerivativeResult> {
   const bytes = sourceBytes instanceof Uint8Array ? sourceBytes : new Uint8Array(sourceBytes);
   const sourceSha = options.sourceMeta?.sha256 || (await computeBinarySha256(bytes));
-
-  const canvasModName = '@napi-rs/' + 'canvas';
-  const { createCanvas, loadImage } = await import(/* @vite-ignore */ canvasModName);
-
-  const img = await loadImage(Buffer.from(bytes));
-  const sourceWidth = img.width;
-  const sourceHeight = img.height;
 
   const config = {
     ...DEFAULT_WATERMARK_CONFIG,
@@ -109,51 +104,128 @@ export async function renderTextWatermarkDerivative(
     }
   };
 
-  const metrics = calculateTextWatermarkMetrics({
-    width: sourceWidth,
-    height: sourceHeight,
-    config
-  });
+  let derivativeBytes: Uint8Array;
+  let sourceWidth: number;
+  let sourceHeight: number;
 
-  const canvas = createCanvas(sourceWidth, sourceHeight);
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight);
+  try {
+    const canvasModName = '@napi-rs/' + 'canvas';
+    const { createCanvas, loadImage } = await import(/* @vite-ignore */ canvasModName);
 
-  ctx.save();
-  ctx.globalAlpha = metrics.opacity;
-  ctx.font = `${metrics.fontWeight} ${metrics.fontSizePx}px ${metrics.fontFamily}`;
+    const img = await loadImage(Buffer.from(bytes));
+    sourceWidth = img.width;
+    sourceHeight = img.height;
 
-  const textMeasure = ctx.measureText(metrics.value);
-  const textWidth = textMeasure.width;
-  const textHeight = textMeasure.actualBoundingBoxAscent || metrics.fontSizePx;
+    const metrics = calculateTextWatermarkMetrics({
+      width: sourceWidth,
+      height: sourceHeight,
+      config
+    });
 
-  const placement = calculateWatermarkPlacement({
-    canvasWidth: sourceWidth,
-    canvasHeight: sourceHeight,
-    itemWidth: textWidth,
-    itemHeight: textHeight,
-    position: metrics.position,
-    marginXRatio: config.margin_x_ratio,
-    marginYRatio: config.margin_y_ratio
-  });
+    const canvas = createCanvas(sourceWidth, sourceHeight);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight);
 
-  // Subtle readability treatment: subtle shadow + crisp white text
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-  ctx.shadowBlur = Math.max(2, Math.round(metrics.fontSizePx * 0.15));
-  ctx.shadowOffsetX = 1;
-  ctx.shadowOffsetY = 1;
+    ctx.save();
+    ctx.globalAlpha = metrics.opacity;
+    ctx.font = `${metrics.fontWeight} ${metrics.fontSizePx}px ${metrics.fontFamily}`;
 
-  ctx.fillStyle = '#ffffff';
-  ctx.textBaseline = 'top';
-  ctx.fillText(metrics.value, placement.x, placement.y);
-  ctx.restore();
+    const textMeasure = ctx.measureText(metrics.value);
+    const textWidth = textMeasure.width;
+    const textHeight = textMeasure.actualBoundingBoxAscent || metrics.fontSizePx;
 
-  const derivativeBuf = canvas.toBuffer('image/png');
-  const derivativeBytes = new Uint8Array(derivativeBuf);
+    const placement = calculateWatermarkPlacement({
+      canvasWidth: sourceWidth,
+      canvasHeight: sourceHeight,
+      itemWidth: textWidth,
+      itemHeight: textHeight,
+      position: metrics.position,
+      marginXRatio: config.margin_x_ratio,
+      marginYRatio: config.margin_y_ratio
+    });
+
+    // Subtle readability treatment: subtle shadow + crisp white text
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = Math.max(2, Math.round(metrics.fontSizePx * 0.15));
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'top';
+    ctx.fillText(metrics.value, placement.x, placement.y);
+    ctx.restore();
+
+    const targetMime = options.format || 'image/png';
+    let derivativeBuf: Buffer;
+    if (targetMime === 'image/webp') {
+      const sharpMod = (await import('sharp')).default;
+      derivativeBuf = await sharpMod(canvas.toBuffer('image/png')).webp({ quality: options.quality || 88 }).toBuffer();
+    } else {
+      derivativeBuf = canvas.toBuffer('image/png');
+    }
+    derivativeBytes = new Uint8Array(derivativeBuf);
+  } catch (canvasErr) {
+    // Robust Node.js fallback using sharp
+    const sharpMod = (await import('sharp')).default;
+    const sharpImg = sharpMod(Buffer.from(bytes));
+    const meta = await sharpImg.metadata();
+    sourceWidth = meta.width || 1200;
+    sourceHeight = meta.height || 675;
+
+    const metrics = calculateTextWatermarkMetrics({
+      width: sourceWidth,
+      height: sourceHeight,
+      config
+    });
+
+    const charWidth = metrics.fontSizePx * 0.58;
+    const textWidth = Math.round(metrics.value.length * charWidth);
+    const textHeight = metrics.fontSizePx;
+
+    const placement = calculateWatermarkPlacement({
+      canvasWidth: sourceWidth,
+      canvasHeight: sourceHeight,
+      itemWidth: textWidth,
+      itemHeight: textHeight,
+      position: metrics.position,
+      marginXRatio: config.margin_x_ratio,
+      marginYRatio: config.margin_y_ratio
+    });
+
+    const svgOverlay = Buffer.from(`
+      <svg width="${sourceWidth}" height="${sourceHeight}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="1" dy="1" stdDeviation="2" flood-color="#000000" flood-opacity="0.45" />
+          </filter>
+        </defs>
+        <text
+          x="${placement.x}"
+          y="${placement.y}"
+          font-family="system-ui, -apple-system, sans-serif"
+          font-size="${metrics.fontSizePx}px"
+          font-weight="${metrics.fontWeight}"
+          fill="#ffffff"
+          fill-opacity="${metrics.opacity}"
+          filter="url(#shadow)"
+          dominant-baseline="hanging"
+        >${metrics.value}</text>
+      </svg>
+    `);
+
+    const targetMime = options.format || 'image/png';
+    const composited = sharpImg.composite([{ input: svgOverlay, top: 0, left: 0 }]);
+    const derivativeBuf = targetMime === 'image/webp'
+      ? await composited.webp({ quality: options.quality || 88 }).toBuffer()
+      : await composited.png().toBuffer();
+    derivativeBytes = new Uint8Array(derivativeBuf);
+  }
+
+  const targetMime = options.format || 'image/png';
 
   // Validate derivative binary
   const validated = await validateArtifactBinary(derivativeBytes, {
-    declaredMime: 'image/png',
+    declaredMime: targetMime,
     declaredWidth: sourceWidth,
     declaredHeight: sourceHeight,
     providerName: 'watermark_derivative_engine'
@@ -197,7 +269,7 @@ export async function renderTextWatermarkDerivative(
     byte_size: validated.byteSize,
     width: validated.width,
     height: validated.height,
-    mime_type: 'image/png',
+    mime_type: targetMime,
     transform_id: transformId,
     watermark_config_hash: watermarkConfigHash,
     source_sha256: sourceSha,

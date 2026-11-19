@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>RancangLoka — Inline 1 Replacement Preflight (House Identity Lock v1.2)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
+    .container { max-width: 1300px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: #f1f5f9; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .badge-omni { background: #3b82f6; color: #fff; }
+    .badge-lock { background: #10b981; color: #fff; }
+    .badge-warn { background: #ef4444; color: #fff; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; }
+    .card { background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+    .card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #334155; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .card-body { padding: 0; }
+    img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+    .card-footer { padding: 1.25rem; font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+    .meta-item { margin-bottom: 0.35rem; }
+    .meta-key { font-weight: 600; color: #cbd5e1; }
+    .spec-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; font-size: 0.85rem; }
+    .spec-table th, .spec-table td { padding: 0.75rem 1rem; border: 1px solid #334155; text-align: left; }
+    .spec-table th { background: #1e293b; color: #f1f5f9; }
+    .spec-table td { background: #0f172a; }
+    .prompt-box { background: #090d16; border: 1px solid #1e293b; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.8rem; line-height: 1.5; color: #93c5fd; white-space: pre-wrap; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <span class="badge badge-omni">Kling AI Image 3.0 Omni</span>
+        <span class="badge badge-lock">House Identity Lock v1.2</span>
+        <h1>Preflight Inspection: Inline 1 Replacement Candidate</h1>
+        <p style="color: #94a3b8; margin: 0;">Article #10011 — Ventilasi Dapur Tanpa Jendela: Solusi Cooker Hood Resirkulasi vs Exhaust Fan Dinding</p>
+      </div>
+      <div style="text-align: right; font-family: monospace; font-size: 0.85rem; color: #cbd5e1;">
+        <div>Required Authorization: <strong>8 Kling Units</strong></div>
+        <div>Estimated Cost: <strong>US$ 0.0196</strong> (~ Rp 320)</div>
+        <div>New Spend So Far: <strong>US$ 0.00</strong></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- COVER ANCHOR CARD -->
+      <div class="card">
+        <div class="card-header">
+          <span>COVER ANCHOR (ACCEPTED GROUND TRUTH)</span>
+          <span class="badge badge-lock">Anchor Reference</span>
+        </div>
+        <div class="card-body">
+          <img src="/experimental-media/derivatives/art10011_cover_kling_omni_watermarked.webp" alt="Cover Anchor Article 10011" onclick="window.open(this.src)" style="cursor: pointer;">
+        </div>
+        <div class="card-footer">
+          <div class="meta-item"><span class="meta-key">Peralatan Kompor:</span> Flat flush glass induction cooktop (tanpa tungku gas / tanpa burner grates)</div>
+          <div class="meta-item"><span class="meta-key">Cooker Hood:</span> Slim stainless under-cabinet hood</div>
+          <div class="meta-item"><span class="meta-key">Topologi Dapur:</span> U-shaped compact kitchen</div>
+          <div class="meta-item"><span class="meta-key">Material:</span> HPL jati muda matte, countertop solid surface krem, backsplash subway tile</div>
+          <div class="meta-item"><span class="meta-key">Dimensi Piksel:</span> 2720 x 1536 (2K, 16:9, ~7 MB)</div>
+        </div>
+      </div>
+
+      <!-- EXISTING INLINE CARD -->
+      <div class="card">
+        <div class="card-header">
+          <span>INLINE 1 (PREVIOUS RUN — DETECTED MISMATCH)</span>
+          <span class="badge badge-warn">REJECTED (Fixed Appliance Mismatch)</span>
+        </div>
+        <div class="card-body">
+          <img src="/experimental-media/derivatives/art10011_inline1_kling_omni_watermarked.webp" alt="Inline 1 Article 10011 Previous" onclick="window.open(this.src)" style="cursor: pointer;">
+        </div>
+        <div class="card-footer">
+          <div class="meta-item"><span class="meta-key">Peralatan Kompor:</span> Kompor gas 2 tungku dengan burner ring & knob logam (Bermutasi dari induksi)</div>
+          <div class="meta-item"><span class="meta-key">Nadia QA Verdict:</span> <strong style="color: #ef4444;">REJECTED</strong> (Fixed Appliance Consistency: 20/100)</div>
+          <div class="meta-item"><span class="meta-key">Akar Masalah:</span> Stochastic diffusion drift akibat ketiadaan partisi prompt tegas dan negative prompt pelarang kompor gas.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top: 2.5rem; color: #f1f5f9;">Spesifikasi Preflight Pengganti (Single Shot 8 Units)</h2>
+    <table class="spec-table">
+      <thead>
+        <tr>
+          <th>Komponen</th>
+          <th>Status Penguncian v1.2</th>
+          <th>Tindakan Eksekusi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Topologi Ruang</strong></td>
+          <td>U-shaped compact kitchen layout</td>
+          <td>Terkunci identik dengan Cover Anchor melalui &lt;&lt;&lt;image_1&gt;&gt;&gt;</td>
+        </tr>
+        <tr>
+          <td><strong>Kompor Tanam</strong></td>
+          <td>Flat black induction cooktop flush with countertop</td>
+          <td>Partisi IMMUTABLE + Negative Prompt eksplisit melarang burner grates/knobs</td>
+        </tr>
+        <tr>
+          <td><strong>Cooker Hood</strong></td>
+          <td>Slim stainless steel under-cabinet hood</td>
+          <td>Terkunci di bawah kabinet atas tepat di atas area kompor induksi</td>
+        </tr>
+        <tr>
+          <td><strong>Kabinet & Meja</strong></td>
+          <td>Matte teak lower, white open upper, cream solid surface</td>
+          <td>Terkunci palet material identik dengan Cover Anchor</td>
+        </tr>
+        <tr>
+          <td><strong>Sudut Kamera Baru</strong></td>
+          <td>45-degree medium shot focusing on cooking zone</td>
+          <td>Sudut pandang variatif (tidak duplikat sudut Cover)</td>
+        </tr>
+        <tr>
+          <td><strong>Budget & Otorisasi</strong></td>
+          <td>Maksimal 8 Kling Units (1 Gambar, 0 Retry)</td>
+          <td>Menunggu konfirmasi persetujuan Owner sebelum eksekusi API berbayar</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top: 1.5rem; color: #cbd5e1;">Prompt Terstruktur Siap Kirim (Budi Prompt Engine v1.2):</h3>
+    <div class="prompt-box">In the exact same architectural room and cabinetry setting as <<<image_1>>>, maintaining 100% identical fixed appliances and materials. MEDIUM_SHOT FORTY_FIVE_DEGREE_PERSPECTIVE showing the cooking and ventilation zone. FIXED APPLIANCES (MUST NOT CHANGE): Cooktop is strictly Kompor tanam flat flush kaca induksi hitam tanpa tungku gas (Sisi tengah meja dapur solid surface krem). Do NOT replace with gas burner rings or protruding gas grates. Cooker hood is Cooker hood slim stainless steel di bawah kabinet atas (Tepat di atas kompor induksi). CABINETRY & COUNTERTOP (MUST NOT CHANGE): Lower cabinets: HPL jati muda matte dengan grain horizontal; Upper cabinets: Kabinet atas dan rak terbuka putih minimalis; Countertop: Solid surface light cream matte. WALLS & BACKSPLASH (MUST NOT CHANGE): Backsplash: Keramik subway tile putih krem vertikal; Wall color: Cat matte warm greige. SCENE DETAILS: gentle cooking preparation with single stainless steel pot on cooktop, realistic soft cooking steam gently rising from pot into the cooker hood intake. PHOTOGRAPHIC QUALITY: Hasselblad natural color science, photorealistic architectural editorial photography, crisp woodgrain and stainless steel textures, zero CGI gloss, zero text, zero diagrammatic overlays.</div>
+
+    <h3 style="margin-top: 1rem; color: #cbd5e1;">Negative Prompt Siap Kirim:</h3>
+    <div class="prompt-box">different kitchen cabinetry, changing wall colors, different countertop material, inconsistent kitchen layout, random window appearing on interior wall, western farmhouse style kitchen, luxury mansion scale, cgi gloss rendering, oversaturated colors, floating cabinets without support, text, watermark, price tags, currency symbols, before and after split screen text, different cooktop type, gas burner rings and grates, protruding gas knobs on cooktop, cast iron pan supports, gas flame, different cooker hood, chimney hood, different cabinet doors, white cabinets, glossy finish, marble countertops, western luxury kitchen, technical diagram, arrows, schematic callouts, labels, watermark, logo</div>
+  </div>
+</body>
+</html>

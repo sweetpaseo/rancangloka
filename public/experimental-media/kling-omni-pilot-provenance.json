@@ -1,0 +1,39 @@
+{
+  "execution_time": "2026-11-19T03:48:48.943Z",
+  "article_id": "10",
+  "article_slug": "ventilasi-dapur-tanpa-jendela-solusi-cooker-hood-resirkulasi-vs-exhaust-fan-dinding-canary-10011",
+  "provider": "kling",
+  "model": "kling-v3-omni",
+  "budget_limit_units": 16,
+  "steps": [
+    {
+      "slot": "cover",
+      "role": "context",
+      "task_id": "952232021702233451",
+      "sha256": "733486f66831ddaf91b5f57da25bc808f50ac58313afae15d79dfaa85ef3d893",
+      "dimensions": "2720x1536",
+      "units_spent": 8,
+      "prompt": "Architectural interior editorial photograph of a compact modern tropical Indonesian home kitchen with no exterior window. Eye-level wide view of an L-shaped kitchen layout. Lower cabinets finished in matte warm teak grain laminate (HPL jati muda), light cream solid surface countertop, vertical off-white subway tile backsplash. Walls painted in soft warm greige matte emulsion. Honed light-grey terrazzo tile flooring (60x60cm). A black flat two-burner induction cooktop built flush into the countertop, with a slim stainless steel cooker hood mounted under the upper cabinet. Soft diffused warm ambient lighting, realistic depth of field, natural Indonesian residential atmosphere, magazine editorial quality, shot on Hasselblad 35mm lens, photorealistic architectural photography.",
+      "negative_prompt": "cartoon, 3d render, illustration, vector, diagram, blueprint, drawing, CGI, oversaturated, unrealistic luxury mansion, huge kitchen island, oversized space, window with bright outdoor sunlight, text, watermark, logo, banner, blurry, grainy, distorted proportions, deformed appliances, price tag, money",
+      "local_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\storage\\masters\\art10011\\art10011_cover_kling_omni.png",
+      "public_derivative_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\public\\experimental-media\\derivatives\\art10011_cover_kling_omni_watermarked.webp"
+    },
+    {
+      "slot": "inline_1_problem",
+      "role": "problem_condition",
+      "reference_anchor_task_id": "952232021702233451",
+      "reference_conditioning_verified": true,
+      "task_id": "952232682732930619",
+      "sha256": "fcf1e69ee998b209e6ebe14b45ae1ef5d27baf0888fbcb636e5bc35cfba2e699",
+      "dimensions": "2720x1536",
+      "units_spent": 8,
+      "prompt": "In the exact same architectural room and cabinetry setting as <<<image_1>>>, medium close-up architectural editorial photograph of the cooking and ventilation zone. Looking closely at the black two-burner induction cooktop flush with the light cream solid surface countertop, and the slim stainless steel cooker hood mounted directly beneath the upper matte teak laminate cabinetry. Vertical off-white subway tile backsplash identical to <<<image_1>>>, warm greige wall finish, realistic cooking steam gently rising above the cooktop toward the mesh filter. Same lighting mood and room topology, clean composition, zero arrows, zero text, zero diagrammatic overlays, authentic editorial photography.",
+      "negative_prompt": "cartoon, 3d render, illustration, vector, diagram, technical schematic, arrows, flow lines, text, callouts, labels, numbers, watermark, logo, different kitchen, different cabinets, painted wood, marble countertops, white cabinets, glossy cabinets, window, outdoor view, distortion, glitch, price tag",
+      "local_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\storage\\masters\\art10011\\art10011_inline1_kling_omni.png",
+      "public_derivative_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\public\\experimental-media\\derivatives\\art10011_inline1_kling_omni_watermarked.webp"
+    }
+  ],
+  "total_units_consumed": 16,
+  "total_estimated_spend_usd": "0.0560",
+  "total_effective_prepaid_usd": "0.0392"
+}

@@ -64,6 +64,7 @@ export const CANONICAL_CATEGORIES = new Set([
   'material-finishing',
   'kenyamanan-rumah',
   'eksterior-lanskap',
+  'sistem-konstruksi-rumah',
   'konstruksi-rumah'
 ]);
 
@@ -385,7 +386,7 @@ export async function evaluateArticleReadiness(
       .prepare(
         `SELECT am.id, am.asset_id, am.role, am.is_active,
                 ma.status AS asset_status, ma.media_type, ma.width, ma.height,
-                ma.alt_text, a.image_alt
+                ma.alt_text, ma.role AS media_role, ma.derivative_id, ma.source_type, a.image_alt
          FROM article_media am
          JOIN media_assets ma ON am.asset_id = ma.asset_id
          JOIN articles a ON am.article_id = a.id
@@ -421,6 +422,43 @@ export async function evaluateArticleReadiness(
       blockers.push(FAILURE_CODES.ALT_TEXT_MISSING);
       mediaPass = false;
     }
+
+    // Watermark & public derivative integrity check:
+    // Any asset marked as raw master, unwatermarked candidate, or explicitly missing derivative when generated from AI
+    const isRawMaster = activeMediaRow.media_role === 'ORIGINAL' || activeMediaRow.media_role === 'MASTER';
+    const isAiUnwatermarked = (activeMediaRow.source_type === 'fal_generated' || activeMediaRow.source_type === 'kling_generated') && !activeMediaRow.derivative_id;
+    if (isRawMaster || isAiUnwatermarked) {
+      blockers.push(FAILURE_CODES.MEDIA_WATERMARK_MISSING);
+      mediaPass = false;
+    }
+
+    // Check all active inline media rows for watermark protection
+    try {
+      const inlineRows = await db
+        .prepare(
+          `SELECT am.id, am.asset_id, am.slot_key,
+                  ma.status AS asset_status, ma.media_type, ma.width, ma.height,
+                  ma.alt_text, ma.role AS media_role, ma.derivative_id, ma.source_type
+           FROM article_media am
+           JOIN media_assets ma ON am.asset_id = ma.asset_id
+           WHERE am.article_id = ? AND am.role = 'inline' AND am.is_active = 1`
+        )
+        .bind(articleId)
+        .all();
+
+      const items = Array.isArray(inlineRows?.results) ? inlineRows.results : (Array.isArray(inlineRows) ? inlineRows : []);
+      for (const row of items) {
+        const isInlineRawMaster = row.media_role === 'ORIGINAL' || row.media_role === 'MASTER';
+        const isInlineAiUnwatermarked = (row.source_type === 'fal_generated' || row.source_type === 'kling_generated') && !row.derivative_id;
+        if (isInlineRawMaster || isInlineAiUnwatermarked) {
+          blockers.push(FAILURE_CODES.MEDIA_WATERMARK_MISSING);
+          mediaPass = false;
+          break;
+        }
+      }
+    } catch {
+      // Non-blocking query failure
+    }
   }
 
   const mediaSnapshotInfo = {
@@ -434,25 +472,6 @@ export async function evaluateArticleReadiness(
   // --- Vector 5: Human Editorial Approval ---
   let approvalPass = true;
   let latestApproval: any = null;
-
-  try {
-    latestApproval = await db
-      .prepare(
-        `SELECT id, article_id, approved_by, approved_role, approval_status,
-                approved_content_hash, approved_asset_id, created_at
-         FROM article_editorial_approvals
-         WHERE article_id = ?
-         ORDER BY id DESC
-         LIMIT 1`
-      )
-      .bind(articleId)
-      .first();
-  } catch {
-    // approval table lookup error fails closed
-    blockers.push(FAILURE_CODES.APPROVAL_MISSING);
-    approvalPass = false;
-  }
-
   let approvalSnapshotInfo = {
     has_approval: false,
     status: null as ApprovalStatus | null,
@@ -464,47 +483,186 @@ export async function evaluateArticleReadiness(
     media_matched: false
   };
 
-  if (!latestApproval) {
-    blockers.push(FAILURE_CODES.APPROVAL_MISSING);
-    approvalPass = false;
-  } else {
-    approvalSnapshotInfo.has_approval = true;
-    approvalSnapshotInfo.status = latestApproval.approval_status;
-    approvalSnapshotInfo.approved_by = latestApproval.approved_by;
-    approvalSnapshotInfo.approved_at = latestApproval.created_at;
-    approvalSnapshotInfo.approved_content_hash = latestApproval.approved_content_hash;
-    approvalSnapshotInfo.approved_asset_id = latestApproval.approved_asset_id;
+  try {
+    const approvalsRes = await db
+      .prepare(
+        `SELECT id, article_id, approved_by, approved_role, approval_status,
+                approved_content_hash, approved_asset_id, notes, created_at
+         FROM article_editorial_approvals
+         WHERE article_id = ?
+         ORDER BY id DESC
+         LIMIT 30`
+      )
+      .bind(articleId)
+      .all();
+    const rows = approvalsRes?.results || (Array.isArray(approvalsRes) ? approvalsRes : []);
+    latestApproval = rows[0] || null;
 
-    if (latestApproval.approval_status === APPROVAL_STATUS_REJECTED) {
-      blockers.push(FAILURE_CODES.APPROVAL_STATUS_REJECTED);
-      approvalPass = false;
-    } else if (latestApproval.approval_status === APPROVAL_STATUS_REVOKED) {
-      blockers.push(FAILURE_CODES.APPROVAL_STATUS_REVOKED);
-      approvalPass = false;
-    } else if (latestApproval.approval_status === APPROVAL_STATUS_APPROVED) {
-      // 1. Check content hash match
-      const contentMatched = latestApproval.approved_content_hash === currentContentHash;
-      approvalSnapshotInfo.content_hash_matched = contentMatched;
-      if (!contentMatched) {
-        blockers.push(FAILURE_CODES.APPROVAL_STALE);
-        blockers.push(FAILURE_CODES.APPROVAL_STALE_CONTENT);
-        blockers.push(FAILURE_CODES.CONTENT_CHANGED_AFTER_APPROVAL);
-        approvalPass = false;
-      }
-
-      // 2. Check featured media asset match
-      const mediaMatched = activeMediaRow && latestApproval.approved_asset_id === activeMediaRow.asset_id;
-      approvalSnapshotInfo.media_matched = Boolean(mediaMatched);
-      if (!mediaMatched) {
-        blockers.push(FAILURE_CODES.APPROVAL_STALE);
-        blockers.push(FAILURE_CODES.APPROVAL_STALE_MEDIA);
-        blockers.push(FAILURE_CODES.MEDIA_CHANGED_AFTER_APPROVAL);
-        approvalPass = false;
-      }
-    } else {
+    if (!latestApproval) {
       blockers.push(FAILURE_CODES.APPROVAL_MISSING);
       approvalPass = false;
+    } else {
+      approvalSnapshotInfo.has_approval = true;
+      approvalSnapshotInfo.status = latestApproval.approval_status;
+      approvalSnapshotInfo.approved_by = latestApproval.approved_by;
+      approvalSnapshotInfo.approved_at = latestApproval.created_at;
+
+      // Identify latest text approval record and latest featured media approval record
+      let latestTextRecord: any = null;
+      let latestFeaturedRecord: any = null;
+
+      for (const row of rows) {
+        let notesObj: any = {};
+        try {
+          notesObj = JSON.parse(row.notes || '{}');
+        } catch {
+          notesObj = {};
+        }
+
+        if (notesObj.target === 'media') {
+          if ((notesObj.slot_key === 'featured' || notesObj.slot_key === 'primary') && !latestFeaturedRecord) {
+            latestFeaturedRecord = { ...row, notesObj };
+          }
+        } else if (notesObj.target === 'text') {
+          if (!latestTextRecord) {
+            latestTextRecord = { ...row, notesObj };
+          }
+        } else {
+          // Monolithic legacy record: can satisfy both if unset
+          if (!latestTextRecord && row.approved_content_hash) {
+            latestTextRecord = { ...row, notesObj };
+          }
+          if (!latestFeaturedRecord && row.approved_asset_id) {
+            latestFeaturedRecord = { ...row, notesObj };
+          }
+        }
+      }
+
+      // Check text approval
+      if (!latestTextRecord) {
+        blockers.push(FAILURE_CODES.APPROVAL_MISSING);
+        approvalPass = false;
+      } else if (latestTextRecord.approval_status === APPROVAL_STATUS_REJECTED) {
+        blockers.push(FAILURE_CODES.APPROVAL_STATUS_REJECTED);
+        blockers.push(FAILURE_CODES.TEXT_REVISION_REQUIRED);
+        approvalPass = false;
+      } else if (latestTextRecord.approval_status === APPROVAL_STATUS_REVOKED) {
+        blockers.push(FAILURE_CODES.APPROVAL_STATUS_REVOKED);
+        approvalPass = false;
+      } else if (latestTextRecord.approval_status === APPROVAL_STATUS_APPROVED) {
+        const contentMatched = latestTextRecord.approved_content_hash === currentContentHash;
+        approvalSnapshotInfo.content_hash_matched = contentMatched;
+        approvalSnapshotInfo.approved_content_hash = latestTextRecord.approved_content_hash;
+        if (!contentMatched) {
+          blockers.push(FAILURE_CODES.APPROVAL_STALE);
+          blockers.push(FAILURE_CODES.APPROVAL_STALE_CONTENT);
+          blockers.push(FAILURE_CODES.CONTENT_CHANGED_AFTER_APPROVAL);
+          approvalPass = false;
+        }
+      } else {
+        blockers.push(FAILURE_CODES.APPROVAL_MISSING);
+        approvalPass = false;
+      }
+
+      // Check featured media approval
+      if (activeMediaRow) {
+        if (!latestFeaturedRecord) {
+          // If no specific featured record in approvals table, check media_promotion_approvals
+          let promoApproved = false;
+          try {
+            const promoRow = await db
+              .prepare(
+                "SELECT status, candidate_sha256 FROM media_promotion_approvals WHERE article_id = ? AND slot_key = 'featured' AND status = 'APPROVED' ORDER BY id DESC LIMIT 1"
+              )
+              .bind(articleId)
+              .first();
+            if (promoRow && activeMediaRow.sha256 === promoRow.candidate_sha256) {
+              promoApproved = true;
+            }
+          } catch {}
+
+          if (!promoApproved) {
+            blockers.push(FAILURE_CODES.APPROVAL_STALE);
+            blockers.push(FAILURE_CODES.APPROVAL_STALE_MEDIA);
+            blockers.push(FAILURE_CODES.MEDIA_CHANGED_AFTER_APPROVAL);
+            approvalPass = false;
+          } else {
+            approvalSnapshotInfo.media_matched = true;
+          }
+        } else if (latestFeaturedRecord.approval_status === APPROVAL_STATUS_REJECTED) {
+          blockers.push(FAILURE_CODES.APPROVAL_STATUS_REJECTED);
+          blockers.push(FAILURE_CODES.COVER_REVISION_REQUIRED);
+          approvalPass = false;
+        } else if (latestFeaturedRecord.approval_status === APPROVAL_STATUS_REVOKED) {
+          blockers.push(FAILURE_CODES.APPROVAL_STATUS_REVOKED);
+          approvalPass = false;
+        } else if (latestFeaturedRecord.approval_status === APPROVAL_STATUS_APPROVED) {
+          const mediaMatched = latestFeaturedRecord.approved_asset_id === activeMediaRow.asset_id;
+          approvalSnapshotInfo.media_matched = Boolean(mediaMatched);
+          approvalSnapshotInfo.approved_asset_id = latestFeaturedRecord.approved_asset_id;
+          if (!mediaMatched) {
+            blockers.push(FAILURE_CODES.APPROVAL_STALE);
+            blockers.push(FAILURE_CODES.APPROVAL_STALE_MEDIA);
+            blockers.push(FAILURE_CODES.MEDIA_CHANGED_AFTER_APPROVAL);
+            approvalPass = false;
+          }
+        } else {
+          blockers.push(FAILURE_CODES.APPROVAL_STALE_MEDIA);
+          approvalPass = false;
+        }
+      }
+
+      // Check inline media rejection in recent records
+      for (const row of rows) {
+        try {
+          const nObj = JSON.parse(row.notes || '{}');
+          if (nObj.target === 'media' && row.approval_status === APPROVAL_STATUS_REJECTED) {
+            if (nObj.slot_key !== 'featured' && nObj.slot_key !== 'primary') {
+              // Check if resolved by newer approval for that slot
+              const isResolved = rows.some((r: any) => {
+                if (r.id > row.id && r.approval_status === APPROVAL_STATUS_APPROVED) {
+                  try {
+                    const rObj = JSON.parse(r.notes || '{}');
+                    return rObj.slot_key === nObj.slot_key;
+                  } catch {
+                    return false;
+                  }
+                }
+                return false;
+              });
+              if (!isResolved) {
+                blockers.push(FAILURE_CODES.INLINE_MEDIA_REVISION_REQUIRED);
+                approvalPass = false;
+                break;
+              }
+            }
+          }
+        } catch {}
+      }
     }
+
+    // Check if any open media revision request exists in media_promotion_approvals
+    try {
+      const openMediaRevisions = await db
+        .prepare("SELECT slot_key FROM media_promotion_approvals WHERE article_id = ? AND status = 'REJECTED'")
+        .bind(articleId)
+        .all();
+      const openRevs = openMediaRevisions?.results || (Array.isArray(openMediaRevisions) ? openMediaRevisions : []);
+      for (const rev of openRevs) {
+        if (rev.slot_key === 'featured' || rev.slot_key === 'primary') {
+          blockers.push(FAILURE_CODES.COVER_REVISION_REQUIRED);
+          blockers.push(FAILURE_CODES.APPROVAL_STATUS_REJECTED);
+        } else {
+          blockers.push(FAILURE_CODES.INLINE_MEDIA_REVISION_REQUIRED);
+        }
+        approvalPass = false;
+      }
+    } catch {
+      // safe fallback
+    }
+  } catch {
+    blockers.push(FAILURE_CODES.APPROVAL_MISSING);
+    approvalPass = false;
   }
 
   // --- Vector 6: Publication Metadata & Anti-Conflict ---
@@ -555,7 +713,10 @@ export async function evaluateArticleReadiness(
   } else if (
     uniqueBlockers.includes(FAILURE_CODES.PUBLICATION_CONFLICT) ||
     uniqueBlockers.includes(FAILURE_CODES.INVENTORY_CONFLICT) ||
-    uniqueBlockers.includes(FAILURE_CODES.APPROVAL_STATUS_REJECTED)
+    uniqueBlockers.includes(FAILURE_CODES.APPROVAL_STATUS_REJECTED) ||
+    uniqueBlockers.includes(FAILURE_CODES.COVER_REVISION_REQUIRED) ||
+    uniqueBlockers.includes(FAILURE_CODES.INLINE_MEDIA_REVISION_REQUIRED) ||
+    uniqueBlockers.includes(FAILURE_CODES.TEXT_REVISION_REQUIRED)
   ) {
     overallStatus = PUBLICATION_STATUS_BLOCKED;
   }
@@ -664,10 +825,15 @@ export async function evaluateArticleReadiness(
       // safe fallback
     }
 
-    if (ledgerStatements.length > 0) {
+    if (ledgerStatements.length > 0 && typeof db.batch === 'function') {
       await db.batch([insertReadinessStmt, ...ledgerStatements]);
     } else {
       await insertReadinessStmt.run();
+      if (ledgerStatements.length > 0) {
+        for (const stmt of ledgerStatements) {
+          if (stmt && typeof stmt.run === 'function') await stmt.run();
+        }
+      }
     }
   } catch (err: any) {
     console.error('Failed to persist publication readiness snapshot:', err.message);
@@ -922,19 +1088,37 @@ export async function getArticleReadiness(
   options?: { skipCache?: boolean }
 ): Promise<ReadinessSnapshotPayload> {
   if (!options?.skipCache) {
-    const latest = await db
-      .prepare(
-        `SELECT snapshot_json FROM article_publication_readiness
-         WHERE article_id = ?
-         ORDER BY evaluated_at DESC, id DESC
-         LIMIT 1`
-      )
-      .bind(articleId)
-      .first();
+    const [latest, currentArticle, currentMedia] = await Promise.all([
+      db
+        .prepare(
+          `SELECT snapshot_json FROM article_publication_readiness
+           WHERE article_id = ?
+           ORDER BY evaluated_at DESC, id DESC
+           LIMIT 1`
+        )
+        .bind(articleId)
+        .first()
+        .catch(() => null),
+      db
+        .prepare('SELECT content_hash FROM articles WHERE id = ?')
+        .bind(articleId)
+        .first()
+        .catch(() => null),
+      db
+        .prepare("SELECT asset_id FROM article_media WHERE article_id = ? AND role = 'featured' AND is_active = 1 LIMIT 1")
+        .bind(articleId)
+        .first()
+        .catch(() => null)
+    ]);
 
-    if (latest && latest.snapshot_json) {
+    if (latest && latest.snapshot_json && currentArticle) {
       try {
-        return JSON.parse(latest.snapshot_json);
+        const parsed = JSON.parse(latest.snapshot_json);
+        const hashMatches = parsed.content_hash === currentArticle.content_hash;
+        const mediaMatches = (parsed.media?.asset_id || null) === (currentMedia?.asset_id || null);
+        if (hashMatches && mediaMatches) {
+          return parsed;
+        }
       } catch {
         // Parse error, re-evaluate
       }

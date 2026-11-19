@@ -1,0 +1,128 @@
+{
+  "execution_time": "2026-11-19T04:49:11.478Z",
+  "article_id": "10",
+  "slot": "inline_1_problem",
+  "provider": "kling",
+  "model": "kling-v3-omni",
+  "task_id": "952247362167128625",
+  "sha256": "c1270cdc7f60deefebc8ae93a825695b690d84b7afc8bcc37c2034148a6c814d",
+  "dimensions": "2720x1536",
+  "units_spent": 8,
+  "cost_usd": "0.0196",
+  "reference_anchor_cover_sha256": "733486f66831ddaf91b5f57da25bc808f50ac58313afae15d79dfaa85ef3d893",
+  "prompt_used": "In the exact same architectural room and cabinetry setting as <<<image_1>>>, maintaining 100% identical fixed appliances and materials. MEDIUM_SHOT FORTY_FIVE_DEGREE_PERSPECTIVE showing the cooking and ventilation zone. FIXED APPLIANCES (MUST NOT CHANGE): Cooktop is strictly Kompor tanam flat flush kaca induksi hitam tanpa tungku gas (Sisi tengah meja dapur solid surface krem). Do NOT replace with gas burner rings or protruding gas grates. Cooker hood is Cooker hood slim stainless steel di bawah kabinet atas (Tepat di atas kompor induksi). CABINETRY & COUNTERTOP (MUST NOT CHANGE): Lower cabinets: HPL jati muda matte dengan grain horizontal; Upper cabinets: Kabinet atas dan rak terbuka putih minimalis; Countertop: Solid surface light cream matte. WALLS & BACKSPLASH (MUST NOT CHANGE): Backsplash: Keramik subway tile putih krem vertikal; Wall color: Cat matte warm greige. SCENE DETAILS: gentle cooking preparation with single stainless steel pot on cooktop, realistic soft cooking steam gently rising from pot into the cooker hood intake. PHOTOGRAPHIC QUALITY: Hasselblad natural color science, photorealistic architectural editorial photography, crisp woodgrain and stainless steel textures, zero CGI gloss, zero text, zero diagrammatic overlays.",
+  "negative_prompt_used": "different kitchen cabinetry, changing wall colors, different countertop material, inconsistent kitchen layout, random window appearing on interior wall, western farmhouse style kitchen, luxury mansion scale, cgi gloss rendering, oversaturated colors, floating cabinets without support, text, watermark, price tags, currency symbols, before and after split screen text, different cooktop type, gas burner rings and grates, protruding gas knobs on cooktop, cast iron pan supports, gas flame, different cooker hood, chimney hood, different cabinet doors, white cabinets, glossy finish, marble countertops, western luxury kitchen, technical diagram, arrows, schematic callouts, labels, watermark, logo",
+  "pixel_metrics": {
+    "format": "PNG",
+    "width": 2720,
+    "height": 1536,
+    "aspect_ratio": 1.7708,
+    "aspect_ratio_16_9_compliant": true,
+    "size_bytes": 7037134,
+    "sha256": "c1270cdc7f60deefebc8ae93a825695b690d84b7afc8bcc37c2034148a6c814d",
+    "entropy": 7.164,
+    "is_valid_photograph": true,
+    "pixel_inspection_notes": []
+  },
+  "nadia_evaluation": {
+    "score": 91,
+    "verdict": "NEEDS_REVIEW",
+    "gates": {
+      "photo_realism": {
+        "name": "PHOTO_REALISM",
+        "status": "PASS",
+        "score": 95,
+        "notes": "Foto arsitektural fotorealistis dengan pencahayaan dan tekstur alami tropis.",
+        "violations": []
+      },
+      "fixed_appliance_consistency": {
+        "name": "FIXED_APPLIANCE_CONSISTENCY",
+        "status": "NEEDS_REVIEW",
+        "score": 70,
+        "notes": "Area kompor tidak terlihat pada sudut bidik ini (UNVERIFIABLE/NEEDS_REVIEW) — tidak dapat diverifikasi secara visual.",
+        "violations": []
+      },
+      "kitchen_layout_continuity": {
+        "name": "KITCHEN_LAYOUT_CONTINUITY",
+        "status": "NEEDS_REVIEW",
+        "score": 75,
+        "notes": "Topologi ruang tidak sepenuhnya terlihat pada sudut bidik ini (UNVERIFIABLE/NEEDS_REVIEW).",
+        "violations": []
+      },
+      "cabinet_geometry_consistency": {
+        "name": "CABINET_GEOMETRY_CONSISTENCY",
+        "status": "PASS",
+        "score": 95,
+        "notes": "Geometri, proporsi, dan arah serat kabinet atas dan bawah konsisten.",
+        "violations": []
+      },
+      "material_and_color_consistency": {
+        "name": "MATERIAL_AND_COLOR_CONSISTENCY",
+        "status": "PASS",
+        "score": 100,
+        "notes": "Palet material (jati, solid surface krem, subway tile vertikal, teraso) dan warna cat dinding konsisten.",
+        "violations": []
+      },
+      "architectural_landmark_match": {
+        "name": "ARCHITECTURAL_LANDMARK_MATCH",
+        "status": "PASS",
+        "score": 95,
+        "notes": "Seluruh penanda arsitektural yang tampak dalam bingkai konsisten dengan cover.",
+        "violations": []
+      },
+      "editorial_photo_variation": {
+        "name": "EDITORIAL_PHOTO_VARIATION",
+        "status": "PASS",
+        "score": 90,
+        "notes": "Sudut kamera variatif dan melayani peran foto editorial: problem_condition (MID_PROBLEM).",
+        "violations": []
+      },
+      "no_misleading_architecture": {
+        "name": "NO_MISLEADING_ARCHITECTURE",
+        "status": "PASS",
+        "score": 95,
+        "notes": "Konstruksi fisik masuk akal, dapat dibangun, dan sesuai standar tropis.",
+        "violations": []
+      },
+      "monetary_silence": {
+        "name": "MONETARY_SILENCE",
+        "status": "PASS",
+        "score": 100,
+        "notes": "Bersih 100% dari harga, mata uang, watermark, dan teks komersial.",
+        "violations": []
+      },
+      "same_house_consistency": {
+        "name": "MATERIAL_AND_COLOR_CONSISTENCY",
+        "status": "PASS",
+        "score": 100,
+        "notes": "Palet material (jati, solid surface krem, subway tile vertikal, teraso) dan warna cat dinding konsisten.",
+        "violations": []
+      },
+      "spatial_continuity": {
+        "name": "KITCHEN_LAYOUT_CONTINUITY",
+        "status": "NEEDS_REVIEW",
+        "score": 75,
+        "notes": "Topologi ruang tidak sepenuhnya terlihat pada sudut bidik ini (UNVERIFIABLE/NEEDS_REVIEW).",
+        "violations": []
+      },
+      "semantic_relevance": {
+        "name": "ARTICLE_SEMANTIC_RELEVANCE",
+        "status": "PASS",
+        "score": 95,
+        "notes": "Terkait erat dengan subbab: \"Kapan Cooker Hood Resirkulasi Masih Cukup?\".",
+        "violations": []
+      },
+      "visual_variation": {
+        "name": "EDITORIAL_PHOTO_VARIATION",
+        "status": "PASS",
+        "score": 90,
+        "notes": "Sudut kamera variatif dan melayani peran foto editorial: problem_condition (MID_PROBLEM).",
+        "violations": []
+      }
+    }
+  },
+  "local_paths": {
+    "canonical_master_png": "E:\\antigravity\\rancangloka\\rancangloka-astro\\storage\\masters\\art10011\\art10011_inline1_v2_kling_omni.png",
+    "public_derivative_webp": "E:\\antigravity\\rancangloka\\rancangloka-astro\\public\\experimental-media\\derivatives\\art10011_inline1_v2_kling_omni_watermarked.webp"
+  }
+}

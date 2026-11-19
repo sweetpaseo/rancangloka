@@ -1,0 +1,88 @@
+{
+  "article_id": "10",
+  "article_slug": "ventilasi-dapur-tanpa-jendela-solusi-cooker-hood-resirkulasi-vs-exhaust-fan-dinding-canary-10011",
+  "deduplication_timestamp": "2026-11-19T06:53:44.347Z",
+  "masters": [
+    {
+      "slot": "cover",
+      "role": "context",
+      "task_id": "952232021702233451",
+      "canonical_master": {
+        "file_name": "art10011_cover_kling_omni.png",
+        "storage_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\storage\\masters\\art10011\\art10011_cover_kling_omni.png",
+        "mime_type": "image/png",
+        "byte_size": 7017266,
+        "sha256": "733486f66831ddaf91b5f57da25bc808f50ac58313afae15d79dfaa85ef3d893",
+        "width": 2720,
+        "height": 1536
+      },
+      "public_derivative": {
+        "file_name": "art10011_cover_kling_omni_watermarked.webp",
+        "public_url_path": "/experimental-media/derivatives/art10011_cover_kling_omni_watermarked.webp",
+        "local_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\public\\experimental-media\\derivatives\\art10011_cover_kling_omni_watermarked.webp",
+        "mime_type": "image/webp",
+        "byte_size": 388836,
+        "sha256": "7ff33e7a0e3237879c75ecb1f81882453703e69b0fcb9b7a34f9e587bf0e0c73",
+        "transform_id": "7f3f097b8c84fa50fab450fb226ad01fbcdeceb67b55537b630e3abec48ed029",
+        "watermark_config_hash": "19b09d98eee37f0943e2028bac0b49d7a8da76c3eb26c0ab8c561d2147339f3a",
+        "watermark_text": "rancangloka.com",
+        "watermark_position": "bottom-right",
+        "watermark_opacity": 0.62
+      }
+    },
+    {
+      "slot": "inline1",
+      "role": "problem_condition_v1",
+      "task_id": "952232682732930619",
+      "canonical_master": {
+        "file_name": "art10011_inline1_kling_omni.png",
+        "storage_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\storage\\masters\\art10011\\art10011_inline1_kling_omni.png",
+        "mime_type": "image/png",
+        "byte_size": 5588333,
+        "sha256": "fcf1e69ee998b209e6ebe14b45ae1ef5d27baf0888fbcb636e5bc35cfba2e699",
+        "width": 2720,
+        "height": 1536
+      },
+      "public_derivative": {
+        "file_name": "art10011_inline1_kling_omni_watermarked.webp",
+        "public_url_path": "/experimental-media/derivatives/art10011_inline1_kling_omni_watermarked.webp",
+        "local_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\public\\experimental-media\\derivatives\\art10011_inline1_kling_omni_watermarked.webp",
+        "mime_type": "image/webp",
+        "byte_size": 227628,
+        "sha256": "a9728b232cc82ad8a8a94ea0c82a53d52b2c53a79d824812327f571423b5519d",
+        "transform_id": "0efc3d23fc48a6eb6e03239bcb1b8f2f4e8eb2561568103e5d3f3ce5ff9bfcf0",
+        "watermark_config_hash": "19b09d98eee37f0943e2028bac0b49d7a8da76c3eb26c0ab8c561d2147339f3a",
+        "watermark_text": "rancangloka.com",
+        "watermark_position": "bottom-right",
+        "watermark_opacity": 0.62
+      }
+    },
+    {
+      "slot": "inline1_v2",
+      "role": "problem_condition_v2",
+      "task_id": "952247362167128625",
+      "canonical_master": {
+        "file_name": "art10011_inline1_v2_kling_omni.png",
+        "storage_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\storage\\masters\\art10011\\art10011_inline1_v2_kling_omni.png",
+        "mime_type": "image/png",
+        "byte_size": 7037134,
+        "sha256": "c1270cdc7f60deefebc8ae93a825695b690d84b7afc8bcc37c2034148a6c814d",
+        "width": 2720,
+        "height": 1536
+      },
+      "public_derivative": {
+        "file_name": "art10011_inline1_v2_kling_omni_watermarked.webp",
+        "public_url_path": "/experimental-media/derivatives/art10011_inline1_v2_kling_omni_watermarked.webp",
+        "local_path": "E:\\antigravity\\rancangloka\\rancangloka-astro\\public\\experimental-media\\derivatives\\art10011_inline1_v2_kling_omni_watermarked.webp",
+        "mime_type": "image/webp",
+        "byte_size": 375282,
+        "sha256": "07952f004b915e6c1c4359f6aa68a2046c097216ebe1e0cf53d3d80b0619dfc9",
+        "transform_id": "def2a4ad5e8c242c33f1154ef9b199b270b11e78bc6496601f84a8874d53ffec",
+        "watermark_config_hash": "19b09d98eee37f0943e2028bac0b49d7a8da76c3eb26c0ab8c561d2147339f3a",
+        "watermark_text": "rancangloka.com",
+        "watermark_position": "bottom-right",
+        "watermark_opacity": 0.62
+      }
+    }
+  ]
+}

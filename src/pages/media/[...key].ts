@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 
-export const GET: APIRoute = async ({ params, locals }) => {
+export const GET: APIRoute = async ({ params, locals, request }) => {
   try {
     const rawKey = params.key;
     if (!rawKey || typeof rawKey !== 'string') {
@@ -44,6 +44,72 @@ export const GET: APIRoute = async ({ params, locals }) => {
       }
     } catch {
       // not double-encoded, ignore
+    }
+
+    // 3.1 Private namespace firewall - masters, site watermarks, and internal storage
+    const normalizedLower = trimmedKey.toLowerCase().replace(/^media\//, '');
+    const isPrivateNamespace =
+      normalizedLower.startsWith('site/') ||
+      normalizedLower.startsWith('originals/') ||
+      normalizedLower.startsWith('masters/') ||
+      normalizedLower.startsWith('private/');
+
+    if (isPrivateNamespace) {
+      return new Response('Not Found', {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'no-store, private'
+        }
+      });
+    }
+
+    // 3.2 Hotlink protection & scraper defense
+    const referer = request?.headers?.get('referer');
+    if (referer) {
+      try {
+        const refUrl = new URL(referer);
+        const refHost = refUrl.hostname.toLowerCase();
+        const currentHost = request ? new URL(request.url).hostname.toLowerCase() : 'localhost';
+
+        const isAllowedOrigin =
+          refHost === currentHost ||
+          refHost === 'localhost' ||
+          refHost === '127.0.0.1' ||
+          refHost.endsWith('.rancangloka.com') ||
+          refHost === 'rancangloka.com' ||
+          // Major search engines (Google Images, Bing, DuckDuckGo)
+          refHost.endsWith('.google.com') ||
+          refHost === 'google.com' ||
+          refHost.endsWith('.googleusercontent.com') ||
+          refHost.endsWith('.bing.com') ||
+          refHost === 'bing.com' ||
+          refHost.endsWith('.duckduckgo.com') ||
+          refHost === 'duckduckgo.com' ||
+          refHost.endsWith('.yandex.com') ||
+          refHost === 'yandex.com' ||
+          // Legitimate social & messaging platforms preview
+          refHost.endsWith('.facebook.com') ||
+          refHost.endsWith('.twitter.com') ||
+          refHost === 't.co' ||
+          refHost.endsWith('.x.com') ||
+          refHost.endsWith('.pinterest.com') ||
+          refHost.endsWith('.linkedin.com') ||
+          refHost.endsWith('.whatsapp.com') ||
+          refHost.endsWith('.telegram.org');
+
+        if (!isAllowedOrigin) {
+          return new Response('Forbidden - Hotlinking is not allowed', {
+            status: 403,
+            headers: {
+              'Content-Type': 'text/plain',
+              'Cache-Control': 'no-store, private'
+            }
+          });
+        }
+      } catch {
+        // Malformed referer - ignore and proceed
+      }
     }
 
     // Exact canonical key for R2 storage lookup

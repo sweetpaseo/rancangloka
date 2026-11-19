@@ -3,6 +3,7 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/
+Disallow: /experimental-media/
 
 # Selective AI Search & Citation (Allowed for Discovery & Traffic Attribution)
 User-agent: OAI-SearchBot
