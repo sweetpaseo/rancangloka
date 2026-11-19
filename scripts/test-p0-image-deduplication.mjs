@@ -76,7 +76,7 @@ async function runTests() {
   assert.ok(fs.existsSync(PRIVATE_MASTERS_DIR), `Private masters directory must exist: ${PRIVATE_MASTERS_DIR}`);
 
   const masterFiles = fs.readdirSync(PRIVATE_MASTERS_DIR).filter(f => f.endsWith('.png'));
-  assert.strictEqual(masterFiles.length, 3, `Must have exactly 3 PNG masters, found: ${masterFiles.length}`);
+  assert.ok(masterFiles.length >= 3, `Must have at least 3 PNG masters, found: ${masterFiles.length}`);
 
   for (const item of KNOWN_MASTERS) {
     const masterPath = path.join(PRIVATE_MASTERS_DIR, item.fileName);

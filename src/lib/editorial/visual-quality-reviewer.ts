@@ -12,6 +12,11 @@
  */
 
 import type { VisualIntentContract } from './nadia-visual-storyboard.ts';
+import {
+  evaluateRinaHumanCastingCompliance,
+  type RinaHumanCastingAuditInput,
+  type RinaHumanCastingAuditResult
+} from './local-human-casting-policy.ts';
 
 export interface BudiScorecard {
   photorealism_score: number; // 0-100
@@ -40,6 +45,12 @@ export interface RinaScorecard {
   editorial_dignity: 'PREMIUM_EDITORIAL' | 'COMMERCIAL_BROCHURE' | 'AI_SLOP';
   verdict: 'PASS' | 'FAIL';
   notes: string;
+  human_casting_compliance?: {
+    status: 'PASS' | 'NEEDS_REVIEW' | 'FAIL';
+    is_human_present: boolean;
+    notes: string;
+    evaluation_basis: string;
+  };
 }
 
 export interface JevSupervision {
@@ -142,6 +153,7 @@ export function evaluateVisualCandidate(input: {
     contradicts_article?: boolean;
     photorealism_raw?: number;
     relevance_raw?: number;
+    human_casting?: RinaHumanCastingAuditInput;
 
     // Storyboard Nadia 5 Mandatory Hard Gates
     primary_subject_mismatch?: boolean;
@@ -226,9 +238,27 @@ export function evaluateVisualCandidate(input: {
   };
 
   // Rina dimension
-  const relevance = signals.relevance_raw ?? (signals.contradicts_article ? 40 : 90);
+  let humanCastingCompliance: RinaScorecard['human_casting_compliance'] = undefined;
+  let castingFailed = false;
+
+  if (signals.human_casting) {
+    const castingAudit = evaluateRinaHumanCastingCompliance(signals.human_casting);
+    humanCastingCompliance = {
+      status: castingAudit.verdict,
+      is_human_present: signals.human_casting.has_human_present,
+      notes: castingAudit.notes.join('; '),
+      evaluation_basis: castingAudit.evaluation_basis
+    };
+
+    if (castingAudit.verdict === 'FAIL') {
+      castingFailed = true;
+      hardRejects.push(...castingAudit.rejection_reasons.map(r => `[RINA_HUMAN_CASTING] ${r}`));
+    }
+  }
+
+  const relevance = signals.relevance_raw ?? (signals.contradicts_article || castingFailed ? 40 : 90);
   const isDecorative = Boolean(signals.is_purely_decorative);
-  const rinaVerdict = relevance >= 75 && !signals.contradicts_article && !isDecorative ? 'PASS' : 'FAIL';
+  const rinaVerdict = relevance >= 75 && !signals.contradicts_article && !isDecorative && !castingFailed ? 'PASS' : 'FAIL';
   if (signals.contradicts_article) hardRejects.push('[RINA] Gambar bertentangan dengan isi naskah artikel');
   if (isDecorative) hardRejects.push('[RINA] Gambar bersifat dekoratif tanpa nilai edukatif');
 
@@ -239,7 +269,8 @@ export function evaluateVisualCandidate(input: {
     alt_text_accuracy: true,
     editorial_dignity: signals.contradicts_article ? 'AI_SLOP' : 'PREMIUM_EDITORIAL',
     verdict: rinaVerdict,
-    notes: rinaVerdict === 'PASS' ? 'Kesesuaian editorial sangat tinggi, memperjelas isi pembahasan.' : 'Gambar gagal mendukung pesan editorial artikel.'
+    notes: rinaVerdict === 'PASS' ? 'Kesesuaian editorial sangat tinggi, memperjelas isi pembahasan.' : 'Gambar gagal mendukung pesan editorial artikel.',
+    human_casting_compliance: humanCastingCompliance
   };
 
   // Jev supervision: Evaluates cost-effectiveness separately from visual quality

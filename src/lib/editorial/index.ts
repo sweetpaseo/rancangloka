@@ -25,4 +25,6 @@ export * from './budi-prompt-engine.ts';
 export * from './budi-media-pipeline.ts';
 export * from './house-identity.ts';
 export * from './photo-quality-gate.ts';
+export * from './image-pixel-inspector.ts';
+export * from './local-human-casting-policy.ts';
 export * from './autonomous-workflow.ts';

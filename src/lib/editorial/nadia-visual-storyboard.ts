@@ -21,6 +21,7 @@
 
 import type { HouseIdentityProfile } from './house-identity.ts';
 import { getKitchenVentilationHouseProfile } from './house-identity.ts';
+import type { HumanCastingSpec } from './local-human-casting-policy.ts';
 
 export type InlinePhotoRole = 'context' | 'problem_condition' | 'relevant_detail' | 'realistic_solution_example';
 export type VisualEditorialPolicy = 'PHOTO_FIRST' | 'DIAGRAM_HYBRID' | 'LEGACY';
@@ -38,6 +39,7 @@ export interface StoryboardCoverSpec {
   educational_goal: string;
   photo_role?: 'context';
   house_identity?: HouseIdentityProfile;
+  human_casting?: HumanCastingSpec;
 }
 
 export type VisualMediaType = 'PHOTO_REALISTIC' | 'TECHNICAL_DIAGRAM_SVG' | 'SECTION_CUT_DIAGRAM' | 'MATERIAL_COMPARISON';
@@ -51,6 +53,7 @@ export interface StoryboardInlineSlot {
   visual_media_type: VisualMediaType;
   photo_role?: InlinePhotoRole;
   house_identity?: HouseIdentityProfile;
+  human_casting?: HumanCastingSpec;
   justification: string;
   must_include: string[];
   must_avoid: string[];
@@ -75,6 +78,7 @@ export interface VisualIntentContract {
   caption_intent: string;
   draft_alt_text: string;
   non_duplicate_justification: string;
+  human_casting?: HumanCastingSpec;
 }
 
 export interface VisualStoryboard {
@@ -85,6 +89,7 @@ export interface VisualStoryboard {
   total_visual_slots: number;
   visual_policy?: VisualEditorialPolicy;
   house_identity?: HouseIdentityProfile;
+  human_casting_policy?: string;
   cover: StoryboardCoverSpec;
   inline_slots: StoryboardInlineSlot[];
   visual_intent_contracts?: Record<string, VisualIntentContract>;

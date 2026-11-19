@@ -11,6 +11,12 @@
  * 4. MONETARY_SILENCE: Profiles never prescribe vendor brands, prices, or speculative cost estimates.
  */
 
+import {
+  compileHumanCastingPromptTokens,
+  CANONICAL_HUMAN_CASTING_NEGATIVES,
+  type HumanCastingSpec
+} from './local-human-casting-policy.ts';
+
 export interface HouseIdentityProfile {
   profile_id: string;
   article_slug: string;
@@ -201,7 +207,8 @@ export function compileNegativeTokensFromHouseIdentity(profile: HouseIdentityPro
     'watermark',
     'price tags',
     'currency symbols',
-    'before and after split screen text'
+    'before and after split screen text',
+    ...CANONICAL_HUMAN_CASTING_NEGATIVES
   ];
 }
 
@@ -249,6 +256,7 @@ export function buildStructuredInlinePrompt(
     cooking_utensils?: string;
     temporary_conditions?: string;
     focal_element?: string;
+    human_casting?: HumanCastingSpec;
   }
 ): StructuredInlinePromptResult {
   const lock = profile.cover_scene_lock;
@@ -292,13 +300,20 @@ export function buildStructuredInlinePrompt(
   const utensils = options.cooking_utensils || 'single stainless steel pot on cooktop';
   const temporaryConditions = options.temporary_conditions || 'realistic soft cooking steam gently rising from pot into the cooker hood intake';
 
+  // Human Casting tokens (Policy v1.0)
+  const castingTokens = compileHumanCastingPromptTokens(options.human_casting);
+  const castingLine = castingTokens.is_active
+    ? `HUMAN CASTING (LOCAL v1.0): ${castingTokens.positive_tokens}.`
+    : 'HUMAN PRESENCE: None (pure architectural composition, zero models).';
+
   const mutableTokens = [
     `[MUTABLE PERSPECTIVE & SCENE CONDITIONS]`,
     `CAMERA ANGLE: ${camAngle}.`,
     `CAMERA DISTANCE & FOCUS: ${camDistance}, ${focalLength}.`,
     `LIGHTING: ${lighting}.`,
     `ACTIVITY & UTENSILS: ${activity}, using ${utensils}.`,
-    `TEMPORARY CONDITION: ${temporaryConditions}.`
+    `TEMPORARY CONDITION: ${temporaryConditions}.`,
+    castingLine
   ].join('\n');
 
   // 3. Combined prompt text with explicit reference tag <<<image_1>>>
@@ -308,15 +323,17 @@ export function buildStructuredInlinePrompt(
     fixedAppliances,
     cabinetryAndCounter,
     backsplashAndWalls,
+    castingTokens.is_active ? `HUMAN ELEMENT: ${castingTokens.positive_tokens}.` : '',
     `SCENE DETAILS: ${activity} with ${utensils}, ${temporaryConditions}.`,
     `PHOTOGRAPHIC QUALITY: Hasselblad natural color science, photorealistic architectural editorial photography, crisp woodgrain and stainless steel textures, zero CGI gloss, zero text, zero diagrammatic overlays.`
-  ];
+  ].filter(Boolean);
 
   const promptText = promptParts.join(' ');
 
   // 4. Anti-Drift Negative Prompt
   const antiDriftNegatives = [
     ...compileNegativeTokensFromHouseIdentity(profile),
+    ...castingTokens.negative_tokens,
     'different cooktop type',
     'gas burner rings and grates',
     'protruding gas knobs on cooktop',
@@ -382,6 +399,7 @@ export function buildStructuredSeriesPrompt(
   profile: HouseIdentityProfile,
   options?: {
     article_title?: string;
+    human_casting?: HumanCastingSpec;
   }
 ): StructuredSeriesPromptResult {
   const coverLock = profile.cover_scene_lock;
@@ -393,6 +411,11 @@ export function buildStructuredSeriesPrompt(
   const countertop = coverLock?.observed_cabinetry.countertop || 'Solid surface light cream matte';
   const backsplash = coverLock?.observed_cabinetry.backsplash || 'Keramik subway tile putih krem vertikal';
   const flooring = coverLock?.observed_flooring || 'Semen ekspos / teraso honed abu-abu muda';
+
+  const castingTokens = compileHumanCastingPromptTokens(options?.human_casting, { is_series: true });
+  const immutableCastingLine = castingTokens.is_active
+    ? `- Model Identity & Casting (MUST NOT DRIFT): ${castingTokens.positive_tokens}.`
+    : `- Human Presence: Unpopulated architectural interior photography (zero people, zero models).`;
 
   const shots = [
     {
@@ -425,6 +448,7 @@ export function buildStructuredSeriesPrompt(
     `- Fixed Appliances: Cooktop is strictly ${cooktopDesc} flush with countertop (STRICTLY NO gas burners, NO burner rings, NO grates, NO knobs). Cooker hood is ${hoodDesc} mounted under teak cabinet.`,
     `- Materials: Lower cabinets in ${lowerCab}, upper cabinets in ${upperCab}, countertop in ${countertop}, backsplash in ${backsplash}, flooring in ${flooring}.`,
     `- Lighting: Natural warm diffused tropical residential interior lighting (3000K warm-neutral balance), authentic lived-in Indonesian home atmosphere, zero CGI gloss, zero text overlays.`,
+    immutableCastingLine,
     `[PANEL SEQUENCE SPECIFICATIONS]`,
     `SHOT 1 (${shots[0].shot_role}): ${shots[0].description}`,
     `SHOT 2 (${shots[1].shot_role}): ${shots[1].description}`,
@@ -434,6 +458,7 @@ export function buildStructuredSeriesPrompt(
 
   const negativePrompt = [
     ...compileNegativeTokensFromHouseIdentity(profile),
+    ...castingTokens.negative_tokens,
     'different cooktop type',
     'gas burner rings and grates',
     'protruding gas knobs on cooktop',

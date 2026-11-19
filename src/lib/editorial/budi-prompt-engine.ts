@@ -15,6 +15,11 @@
  */
 
 import type { VisualStoryboard, StoryboardInlineSlot, StoryboardCoverSpec, VisualIntentContract } from './nadia-visual-storyboard.ts';
+import {
+  compileHumanCastingPromptTokens,
+  CANONICAL_HUMAN_CASTING_NEGATIVES,
+  type HumanCastingSpec
+} from './local-human-casting-policy.ts';
 
 export const SEEDREAM_PRO_MODEL_ID = 'bytedance/seedream/v5/pro/text-to-image';
 export const NANO_BANANA_PRO_MODEL_ID = 'fal-ai/nano-banana-pro';
@@ -113,7 +118,8 @@ export const CANONICAL_NEGATIVE_CONSTRAINTS = [
   'brand logos',
   'warped furniture',
   'disfigured human figures',
-  'closed ceiling without light'
+  'closed ceiling without light',
+  ...CANONICAL_HUMAN_CASTING_NEGATIVES
 ].join(', ');
 
 /**
@@ -297,6 +303,7 @@ export function buildDeepPromptV2(
     width?: number;
     height?: number;
     aspect_ratio?: string;
+    human_casting?: HumanCastingSpec;
   }
 ): DeepPromptSpecification {
   const model = options?.target_model || SEEDREAM_PRO_MODEL_ID;
@@ -413,6 +420,20 @@ export function buildDeepPromptV2(
       negative_constraints: contract.errors_to_avoid
     };
   }
+
+  // Local Human Casting Policy v1.0 Injection
+  const castingSpec = options?.human_casting || contract.human_casting;
+  const castingTokens = compileHumanCastingPromptTokens(castingSpec);
+
+  if (castingTokens.is_active) {
+    structure.human_scale_lived_in = `${structure.human_scale_lived_in} [LOCAL HUMAN CASTING v1.0] ${castingTokens.positive_tokens}`;
+  } else {
+    structure.human_scale_lived_in = `${structure.human_scale_lived_in} (Unpopulated architectural interior, pure space without human figures)`;
+  }
+
+  structure.negative_constraints = Array.from(
+    new Set([...structure.negative_constraints, ...castingTokens.negative_tokens])
+  );
 
   // Synthesize compiled prompt for Seedream / target model
   const compiledPrompt = [
