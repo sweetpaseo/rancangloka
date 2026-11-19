@@ -2,6 +2,38 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **Rancangloka**.
 
+## Production Performance Optimization & Isolated Release (2026-11-19)
+
+- **Release Tag:** `RC-PROD-INF01-OPTIMG01-OPTIMG02`
+- **Active Production Worker:** `6574b6dd-2561-48fe-9225-b591b540a1f8`
+- **Previous Production Worker:** `a97460e9-3d12-4372-b6a1-02106e3800a6`
+- **Active Staging Worker:** `bc29f784-150a-4da7-addd-1b835d5c3d3d`
+- **Release Commit:** `0dc667a` (pada branch `release/p0-production-candidate`, basis baseline `48f2d2e`)
+- **Offline Checkpoint:** `state/OFFLINE_CHECKPOINT_20261119.md`
+- **Tujuan Arsitektur:**
+  - Melakukan optimasi terisolasi dan terukur pada Cloudflare Production tanpa melibatkan kode eksperimental atau mutasi database.
+  - Memangkas pemborosan payload query SQL dan ukuran transfer gambar kartu beranda yang membengkak.
+- **Implementasi & Solusi Teknis:**
+  1. **INF-01 — Minimal SQL Projection pada `getRelatedArticles()` (`src/lib/db.ts`):**
+     - Mengganti `SELECT a.*` dengan proyeksi kolom minimal terarah (`id, title, slug, category, excerpt, cover_image, created_at, reading_time, status, quarantine_status, author_id`).
+     - Mengurangi SQL transfer payload sebesar **94.9%** (dari 205.8 KB menjadi 10.4 KB).
+     - Memangkas latensi eksekusi query median dari ~2.5 ms menjadi **0.36–0.52 ms**.
+     - Mempertahankan 100% konsistensi urutan rekomendasi, ranking, dan diversitas arketipe artikel.
+  2. **OPT-IMG-01 — First-Party Editorial Desk Avatar:**
+     - Mengeliminasi seluruh ketergantungan avatar penulis pihak ketiga (`images.unsplash.com`) pada komponen publik dan admin.
+     - Menstandarkan ke aset vektor first-party resmi: `/media/editorial/rancangloka-editorial-desk.svg`.
+     - Permintaan gambar pihak ketiga pada artikel publik turun menjadi **0**.
+  3. **OPT-IMG-02 — Responsive WebP Thumbnails:**
+     - Menghasilkan varian WebP responsif (`-480.webp`, `-640.webp`, `-960.webp`) menggunakan utilitas Sharp kanonikal (`scripts/generate-responsive-variants.mjs`) untuk cover berukuran besar di Beranda.
+     - Mereduksi payload kartu artikel hingga **-86.4% (-822 KB)**.
+  4. **Hasil Pengujian Empiris Produksi (Clean Headless Chrome CDP):**
+     - **Beranda Desktop:** Transferred payload turun dari **815.7 KB menjadi 382.0 KB (-53.2%)**; FCP turun dari **348 ms menjadi 152 ms (-56.3%)**; Page load turun dari **504.7 ms menjadi 222.4 ms (-55.9%)**; TTFB: **55.8 ms**; CLS: **0.0000**.
+     - **Beranda Mobile:** Transferred payload turun dari **818.2 KB menjadi 702.6 KB (-14.1%)**; FCP turun dari **362 ms menjadi 160 ms (-55.8%)**; Page load turun dari **521.3 ms menjadi 176.5 ms (-66.1%)**; TTFB: **41.5 ms**; CLS: **0.0000**.
+     - **Halaman Artikel:** Gambar pihak ketiga = **0**; payload mobile turun **-30.2%**; 10/10 artikel publik berstatus HTTP 200 OK.
+  5. **Prosedur Rollback Aman:**
+     - `npx wrangler rollback a97460e9-3d12-4372-b6a1-02106e3800a6` jika terjadi anomali produksi.
+
+
 ## Hermes EU Canary (#10011) — Kling Omni Image Series Integration (2026-11-19)
 
 - **Milestone:** `RANCANGLOKA_KLING_OMNI_IMAGE_SERIES_V1`
