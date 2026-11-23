@@ -41,6 +41,7 @@ import {
 
 import type { EditorialChatMessage } from './editorial-llm-provider.ts';
 import type { EditorialBrief } from './editorial-planner.ts';
+import { getGoldenArticleReference, querySharedMemory } from './shared-memory-adapter.ts';
 
 export interface JokoVisitorContextInput {
   primaryContextId: string;
@@ -58,6 +59,7 @@ export interface JokoVisitorContextInput {
 export interface JokoPromptContext {
   topic: string;
   requestedTitle?: string;
+  focusKeyword?: string;
   intentProfile?: ArticleIntentProfile;
   evidencePack: EvidencePackInput;
   authorSafeClaims?: AuthorSafeClaim[];
@@ -321,6 +323,15 @@ ${terminologyRules}
 - Pelarangan Verdict Asing / Biner: Dilarang menggunakan kata: ${bannedVerdictTerms}.
 - Larangan Klaim Pengujian Palsu: DILARANG mengarang hasil uji lab fiktif, proyek klien khayalan, atau klaim inspeksi tangan pertama palsu.
 
+# ATURAN PENEMPATAN FOCUS KEYWORD & SEARCH INTENT KANONIKAL
+1. Kalimat PERTAMA pada paragraf pembuka WAJIB memuat focus keyword secara mengalir dan alami (tanpa keyword stuffing).
+2. Kalimat TERAKHIR pada paragraf penutup artikel WAJIB memuat focus keyword atau variasi alaminya sebagai kesimpulan keputusan bagi pembaca.
+
+# ATURAN KEDALAMAN KOMPARASI MATERIAL (ANTI-GENERIC ADVISORY)
+1. Jika artikel membandingkan material atau solusi (misal opsi A vs opsi B vs opsi C):
+   - WAJIB menguraikan perbedaan fisik nyata, mekanisme kerja, dan konsekuensi praktis di lapangan berdasarkan data riset (seperti bobot mati struktur, ketahanan cuaca/UV, transmisi cahaya vs panas, peredaman suara hujan, dan risiko sambungan/sealant).
+   - DILARANG KERAS hanya mengulang-ulang anjuran prosedural generik ("minta dokumen spesifikasi ke penyedia", "tanyakan contoh produk", "sepakati penawaran tertulis") di setiap subbab tanpa memaparkan isi fisik perbandingan materialnya. Nasihat prosedural hanya pelengkap, bukan pengganti substansi teknis!
+
 # ATURAN PARAGRAF PENDEK KANONIKAL (CANONICAL SHORT PARAGRAPH RULE — ED-PARA-01)
 - Tulis langsung menggunakan pola short paragraph: ideal 25–45 kata per paragraf, MAKSIMUM 60 kata per paragraf.
 - MAKSIMUM 3 kalimat per paragraf. Dilarang menghasilkan blok teks panjang.
@@ -472,11 +483,35 @@ ${brief.optional_design_examples.map((ex) => `  * ${ex}`).join('\n')}
 ${brief.prohibited_traps.map((t) => `- ${t}`).join('\n')}`;
   }
 
+  // Shared Memory Reference (Read-Only)
+  let sharedMemoryBlock = '';
+  try {
+    const goldenRef = getGoldenArticleReference();
+    const goldenSnippet = goldenRef && goldenRef.includes('#9993')
+      ? 'Acuan Benchmark Mutlak: Golden Article #9993 ("Dinding Rembes dan Cat Menggelembung") — gunakan ritme bersahaja "kamu/rumahmu", jelaskan diagnosis fisik mendalam sebelum solusi, batasi tiap blok maksimal 60 kata, dan integrasikan focus keyword secara alami di kalimat pertama dan terakhir.'
+      : '';
+    
+    // Check if any verified material benchmarks match topic keywords
+    const topicKeywords = topic.split(/[\s,–-]+/).filter(w => w.length >= 4);
+    const matches = querySharedMemory(topicKeywords);
+    const relevantBenchmarkNotes = matches
+      .filter(m => m.category === '02-verified-knowledge')
+      .slice(0, 2)
+      .map(m => `- [Referensi Terverifikasi] ${m.matched_text}`)
+      .join('\n');
+
+    if (goldenSnippet || relevantBenchmarkNotes) {
+      sharedMemoryBlock = `\n# REFERENSI MEMORI REDAKSI BERSAMA (SHARED EDITORIAL MEMORY — READ ONLY)\n${goldenSnippet ? `- ${goldenSnippet}\n` : ''}${relevantBenchmarkNotes ? `${relevantBenchmarkNotes}\n` : ''}`;
+    }
+  } catch (_) {
+    // Graceful degradation: never crash if shared memory is absent or inaccessible
+  }
+
   return `# TUGAS PENULISAN DRAF ARTIKEL
 Topik Artikel: ${topic}
 Judul Naskah: ${title}
 Intensi Utama: ${primaryIntent}
-${visitorPainBlock}
+${sharedMemoryBlock}${visitorPainBlock}
 
 # FAKTA & KLAIM TEKNIS AMAN (AUTHOR SAFE CLAIMS)
 Hanya gunakan klaim teknis dan prinsip di bawah ini sebagai landasan ilmiah tulisan Anda:

@@ -28,3 +28,5 @@ export * from './photo-quality-gate.ts';
 export * from './image-pixel-inspector.ts';
 export * from './local-human-casting-policy.ts';
 export * from './autonomous-workflow.ts';
+export * from './master-editorial-orchestrator.ts';
+export * from './shared-memory-adapter.ts';
