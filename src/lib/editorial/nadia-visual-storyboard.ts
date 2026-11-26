@@ -22,8 +22,17 @@
 import type { HouseIdentityProfile } from './house-identity.ts';
 import { getKitchenVentilationHouseProfile } from './house-identity.ts';
 import type { HumanCastingSpec } from './local-human-casting-policy.ts';
+import {
+  detectClosingSectionHeading,
+  CANONICAL_EDITORIAL_VISUAL_TARGETS
+} from './object-first-visual-policy.ts';
 
-export type InlinePhotoRole = 'context' | 'problem_condition' | 'relevant_detail' | 'realistic_solution_example';
+export type InlinePhotoRole =
+  | 'context'
+  | 'problem_condition'
+  | 'relevant_detail'
+  | 'realistic_solution_example'
+  | 'pre_closing_decision';
 export type VisualEditorialPolicy = 'PHOTO_FIRST' | 'DIAGRAM_HYBRID' | 'LEGACY';
 
 export interface StoryboardCoverSpec {
@@ -52,6 +61,7 @@ export interface StoryboardInlineSlot {
   reader_takeaway: string;
   visual_media_type: VisualMediaType;
   photo_role?: InlinePhotoRole;
+  placement_position?: 'before_heading' | 'after_heading';
   house_identity?: HouseIdentityProfile;
   human_casting?: HumanCastingSpec;
   justification: string;
@@ -365,17 +375,55 @@ export function generateVisualStoryboard(
         'Celah bawah pintu minimal 2-3cm untuk menjamin kontinuitas pasokan udara masuk'
       ]
     });
+
+    // Slot 4: Pre-Closing Decision Visual (Permanent Rule v1.1)
+    const sec4 = sections[3] || { title: '4. Pertimbangan akhir dan keputusan pemasangan', anchor: '#4-pertimbangan-akhir' };
+    inlineSlots.push({
+      slot_key: 'inline_4_pre_closing_decision',
+      section_title: sec4.title,
+      section_anchor: sec4.anchor,
+      photo_role: 'pre_closing_decision',
+      placement_position: 'before_heading',
+      house_identity: houseProfile,
+      visual_media_type: 'PHOTO_REALISTIC',
+      educational_purpose: 'Menampilkan keselarasan hasil akhir instalasi ventilasi dapur terpadu dalam suasana interior rumah tropis sebelum pertimbangan keputusan akhir.',
+      reader_takeaway: 'Melihat keharmonisan fisik dapur yang telah terpasang ventilasi dengan estetika rapi dan nyaman digunakan sehari-hari.',
+      justification: 'Foto hasil akhir sebelum subbab keputusan memberikan keyakinan visual praktis kepada pemilik rumah.',
+      must_include: [
+        'Dapur kompak kontemporer Indonesia yang selesai terpasang rapi dengan cooker hood dan pencahayaan hangat',
+        'Suasana lived-in bersih dengan peralatan masak tersusun rapi di atas meja dapur',
+        'Pencahayaan alami tropis seimbang tanpa glare'
+      ],
+      must_avoid: [
+        'Infografis, tabel perbandingan, diagram teks, atau ikon floating',
+        'Gambar dekoratif generik atau render 3D glossy'
+      ],
+      caption_intent: 'Hasil akhir penerapan sistem ventilasi terpadu pada dapur kompak, menghadirkan kenyamanan memasak tanpa mengorbankan estetika ruang.',
+      draft_alt_text: 'Foto interior dapur kompak kontemporer yang selesai terpasang rapi dengan sistem ventilasi sebelum pertimbangan keputusan.',
+      irwan_structural_constraints: [
+        'Pemasangan final harus memenuhi standar keamanan kelistrikan dan kekuatan kabinet'
+      ]
+    });
   } else {
     // Dynamic discovery for other topics or legacy modes
-    const ignoredPatterns = /kesimpulan|faq|tanya-jawab|penutup|catatan|referensi/i;
-    const eligibleSections = sections.filter(s => !ignoredPatterns.test(s.title) && s.body.trim().length > 100);
-    const maxSlots = policy === 'PHOTO_FIRST' ? Math.min(3, Math.max(2, eligibleSections.length)) : 2;
-    const targetSections = eligibleSections.slice(0, maxSlots);
+    // Identify closing section for the pre-closing visual slot
+    const closingTitle = detectClosingSectionHeading(sections);
+    const closingSec = closingTitle ? sections.find(s => s.title === closingTitle) : null;
 
+    const nonContentPatterns = /faq|tanya-jawab|catatan|referensi|baca juga/i;
+    const eligibleSections = sections.filter(s => {
+      if (nonContentPatterns.test(s.title)) return false;
+      if (closingSec && s.title === closingSec.title) return false;
+      return s.body.trim().length > 80;
+    });
+
+    // Target 3 inline supporting visuals
+    const targetSections = eligibleSections.slice(0, 3);
     const roles: InlinePhotoRole[] = ['problem_condition', 'relevant_detail', 'realistic_solution_example', 'context'];
 
     targetSections.forEach((sec, idx) => {
-      const isDiagram = policy !== 'PHOTO_FIRST' && /diagram|potongan|skema|aliran|jalur|perbandingan|komparasi|vektor/i.test(sec.title + ' ' + sec.body);
+      const isMaterialComparison = /perbandingan|komparasi|versus|vs/i.test(sec.title + ' ' + sec.body);
+      const isDiagram = policy !== 'PHOTO_FIRST' && !isMaterialComparison && /diagram|potongan|skema|aliran|jalur|vektor/i.test(sec.title + ' ' + sec.body);
       const cleanSlotKey = `inline_${sec.anchor.replace(/^#/, '').replace(/[^a-z0-9_]/gi, '_').toLowerCase().slice(0, 25)}_${idx + 1}`;
       
       inlineSlots.push({
@@ -383,10 +431,15 @@ export function generateVisualStoryboard(
         section_title: sec.title,
         section_anchor: sec.anchor,
         photo_role: roles[idx % roles.length],
+        placement_position: 'after_heading',
         house_identity: houseProfile,
-        educational_purpose: `Menyajikan foto editorial konkret untuk membantu pemahaman pembaca mengenai ${sec.title}.`,
-        reader_takeaway: `Pembaca dapat melihat secara langsung detail implementasi dan solusi pada bagian ${sec.title}.`,
-        visual_media_type: isDiagram ? 'TECHNICAL_DIAGRAM_SVG' : 'PHOTO_REALISTIC',
+        educational_purpose: isMaterialComparison
+          ? `Menyajikan foto perbandingan sampel fisik material berdampingan untuk memperjelas perbedaan tekstur dan profil tanpa infografis/tabel.`
+          : `Menyajikan foto editorial konkret untuk membantu pemahaman pembaca mengenai ${sec.title}.`,
+        reader_takeaway: isMaterialComparison
+          ? `Pembaca dapat melihat secara langsung tekstur fisik nyata dan profil ketebalan material yang dibandingkan.`
+          : `Pembaca dapat melihat secara langsung detail implementasi dan solusi pada bagian ${sec.title}.`,
+        visual_media_type: isMaterialComparison ? 'MATERIAL_COMPARISON' : (isDiagram ? 'TECHNICAL_DIAGRAM_SVG' : 'PHOTO_REALISTIC'),
         justification: `Penjelasan pada bagian "${sec.title}" membutuhkan dukungan visual fotografi nyata agar pembaca memahami konteks fisik.`,
         must_include: [
           'Material konstruksi atau interior autentik iklim tropis',
@@ -394,6 +447,7 @@ export function generateVisualStoryboard(
           'Pencahayaan alami dan detail rapi'
         ],
         must_avoid: [
+          'Infografis, tabel perbandingan gambar, slide presentasi, atau diagram teks (Object-First Policy v1.0)',
           'CGI rendering glossy yang artifisial',
           'Watermark, teks logo, atau overlay banner',
           'Skala ruang yang tidak masuk akal'
@@ -406,6 +460,40 @@ export function generateVisualStoryboard(
         ]
       });
     });
+
+    // Dedicated Pre-Closing Decision Visual Slot (Permanent Rule v1.1)
+    const targetClosing = closingSec || (sections.length > 0 ? sections[sections.length - 1] : null);
+    if (targetClosing) {
+      inlineSlots.push({
+        slot_key: 'inline_pre_closing_decision',
+        section_title: targetClosing.title,
+        section_anchor: targetClosing.anchor,
+        photo_role: 'pre_closing_decision',
+        placement_position: 'before_heading',
+        house_identity: houseProfile,
+        educational_purpose: `Visualisasi Object-First sebelum subbab penutup (${targetClosing.title}) untuk memberikan gambaran konkret hasil penerapan dan membantu keputusan praktis pembaca.`,
+        reader_takeaway: `Pembaca melihat wujud fisik nyata dan keharmonisan hasil akhir sebelum membaca pertimbangan atau keputusan akhir.`,
+        visual_media_type: 'PHOTO_REALISTIC',
+        justification: `Distribusi visual editorial di area penutup (${targetClosing.title}) memastikan pembaca mendapatkan bukti visual konkret saat mengambil keputusan praktis tanpa grafik/tabel sintetis.`,
+        must_include: [
+          'Material dan arsitektur hunian tropis kontemporer yang selesai terpasang rapi',
+          'Pencahayaan alami hangat yang memperlihatkan keaslian tekstur dan warna',
+          'Proporsi ruang hunian Indonesia yang realistis dan fungsional'
+        ],
+        must_avoid: [
+          'Infografis, tabel perbandingan buatan, slide presentasi, atau diagram teks',
+          'Gambar dekoratif generik atau foto stock tanpa konteks arsitektural',
+          'CGI rendering glossy yang artifisial',
+          'Watermark, teks logo, atau overlay banner'
+        ],
+        caption_intent: `Penerapan rapi dan hasil akhir penataan ${title} yang mengedepankan fungsi, kenyamanan, dan keselamatan hunian tropis.`,
+        draft_alt_text: `Foto interior arsitektural hasil akhir penataan ${title} sebelum bagian pertimbangan keputusan.`,
+        irwan_structural_constraints: [
+          'Hasil akhir wajib memperhatikan kepatuhan keselamatan dan standar konstruksi',
+          'Gunakan material dengan spesifikasi tahan cuaca tropis'
+        ]
+      });
+    }
   }
 
   const generatedAt = new Date().toISOString();

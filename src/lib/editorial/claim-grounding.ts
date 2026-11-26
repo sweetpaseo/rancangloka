@@ -1416,7 +1416,7 @@ export function validateClaimGrounding(
     for (const src of evidencePack.sources) {
       const integrity = verifySourceContentIntegrity({
         sourceId: src.source_id,
-        sourceText: (src as any).full_text || (src as any).source_text || (src as any).text || (src as any).passage_text,
+        sourceText: (src as any).full_text || (src as any).source_text || (src as any).content_text || (src as any).text || (src as any).passage_text,
         expectedChecksum: (src as any).content_hash || (src as any).sha256 || (src as any).expected_checksum,
         sourceAuthenticity: (src as any).source_authenticity || ((src as any).is_local_fixture ? 'LOCAL_FIXTURE_ONLY' : 'AUTHENTIC_EXTERNAL_PRIMARY'),
         sourceTextAccessibility: (src as any).source_text_accessibility,

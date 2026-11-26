@@ -117,6 +117,41 @@ export function computeContentHash(content: string): string {
 }
 
 /**
+ * Deduplicates any duplicate <figure data-media-slot="..."> tags within HTML.
+ * Ensures strict idempotency: multiple calls will never produce duplicate figures.
+ */
+export function deduplicateFigures(html: string): string {
+  if (!html || typeof html !== 'string' || !html.includes('<figure')) return html;
+
+  const seenSlots = new Set<string>();
+  const seenSrcs = new Set<string>();
+
+  return html.replace(/<figure\b([^>]*)>([\s\S]*?)<\/figure>/gi, (fullMatch, attrs, inner) => {
+    const slotMatch = /data-media-slot\s*=\s*["']([^"']+)["']/i.exec(attrs);
+    const srcMatch = /<img[^>]+src\s*=\s*["']([^"']+)["']/i.exec(inner);
+
+    const slot = slotMatch ? slotMatch[1].toLowerCase() : null;
+    const src = srcMatch ? srcMatch[1] : null;
+
+    if (slot) {
+      if (seenSlots.has(slot)) {
+        return ''; // Remove duplicate figure with identical slot
+      }
+      seenSlots.add(slot);
+    }
+
+    if (src && !src.includes('rancangloka-editorial-desk')) {
+      if (seenSrcs.has(src)) {
+        return ''; // Remove duplicate figure with identical image source
+      }
+      seenSrcs.add(src);
+    }
+
+    return fullMatch;
+  });
+}
+
+/**
  * Resolves inline visual placements into HTML based on a placement manifest.
  * Fails closed if content hash differs or anchors cannot be precisely located.
  */
@@ -131,8 +166,11 @@ export function resolveVisualPlacements(
     return { html: '', placedCount: 0, warnings, isValid: false };
   }
 
+  // Pre-clean any accidental preexisting duplicates in the incoming HTML
+  const workingHtml = deduplicateFigures(html);
+
   if (!manifest || !Array.isArray(manifest.visual_items) || manifest.visual_items.length === 0) {
-    return { html, placedCount: 0, warnings, isValid: true };
+    return { html: workingHtml, placedCount: 0, warnings, isValid: true };
   }
 
   // 1. Content Hash Verification
@@ -185,7 +223,7 @@ export function resolveVisualPlacements(
 
   const headings: HeadingMatch[] = [];
   let m: RegExpExecArray | null;
-  while ((m = headingRegex.exec(html)) !== null) {
+  while ((m = headingRegex.exec(workingHtml)) !== null) {
     const idMatch = /id\s*=\s*["']([^"']+)["']/i.exec(m[2]);
     headings.push({
       tag: `h${m[1]}`,
@@ -201,6 +239,7 @@ export function resolveVisualPlacements(
 
   // We will build insertions: array of { index: number, content: string }
   const insertions: { index: number; content: string; visual_id: string }[] = [];
+  let alreadyPlacedCount = 0;
 
   for (const item of manifest.visual_items) {
     // 4. Validate Slot Key Format
@@ -227,6 +266,14 @@ export function resolveVisualPlacements(
         slot_key: item.slot_key,
         message: `Visual item '${item.visual_id}' is unapproved (editorial_approval: '${item.editorial_approval}'). Excluded from production render.`
       });
+      continue;
+    }
+
+    // 5a. Idempotency Guard: Do not inject duplicate figure if already present in workingHtml
+    const slotAlreadyPresent = new RegExp(`data-media-slot\\s*=\\s*["']${item.slot_key}["']`, 'i').test(workingHtml);
+    const storageKeyAlreadyPresent = Boolean(item.storage_key && workingHtml.includes(item.storage_key));
+    if (slotAlreadyPresent || storageKeyAlreadyPresent) {
+      alreadyPlacedCount++;
       continue;
     }
 
@@ -324,14 +371,17 @@ export function resolveVisualPlacements(
   // Sort insertions in descending order of index so string splicing doesn't alter remaining indices
   insertions.sort((a, b) => b.index - a.index);
 
-  let resultHtml = html;
+  let resultHtml = workingHtml;
   for (const ins of insertions) {
     resultHtml = resultHtml.slice(0, ins.index) + ins.content + resultHtml.slice(ins.index);
   }
 
+  // Deduplicate figures to guarantee strict idempotency
+  resultHtml = deduplicateFigures(resultHtml);
+
   return {
     html: resultHtml,
-    placedCount: insertions.length,
+    placedCount: insertions.length + alreadyPlacedCount,
     warnings,
     isValid: warnings.length === 0
   };

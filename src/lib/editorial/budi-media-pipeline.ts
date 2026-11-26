@@ -252,7 +252,7 @@ export async function executeBudiMediaPipeline(
       priority: 'essential',
       placement: {
         target_heading_text: slot.section_title,
-        position: 'after_heading'
+        position: slot.placement_position || (slot.photo_role === 'pre_closing_decision' ? 'before_heading' : 'after_heading')
       },
       visual_purpose: slot.educational_purpose,
       visual_brief: {

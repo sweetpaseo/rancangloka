@@ -110,7 +110,8 @@ export type DecisionPoint =
   | 'model_routing'
   | 'rewrite_routing'
   | 'retry_routing'
-  | 'media_planning';
+  | 'media_planning'
+  | 'editorial_quality_supervision';
 
 export const DECISION_POINTS: DecisionPoint[] = [
   'publication_preflight',
@@ -118,7 +119,8 @@ export const DECISION_POINTS: DecisionPoint[] = [
   'model_routing',
   'rewrite_routing',
   'retry_routing',
-  'media_planning'
+  'media_planning',
+  'editorial_quality_supervision'
 ];
 
 export type SubjectType = 'article' | 'topic' | 'task' | 'draft' | 'execution' | 'media';

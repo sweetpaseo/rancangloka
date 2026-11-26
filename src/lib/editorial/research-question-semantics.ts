@@ -78,7 +78,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'kapiler', 'kapilaritas', 'penetrasi air', 'rembesan', 'kebocoran',
       'pemuaian', 'muai susut', 'tegangan geser', 'beban termal', 'suhu permukaan',
       'kondensasi', 'embun', 'akumulasi uap', 'aliran panas', 'infiltrasi udara',
-      'transmitansi termal', 'jembatan termal'
+      'transmitansi termal', 'jembatan termal',
+      'pengawatan', 'kabel netral', 'fase', 'live wire', 'kawat fase', 'inbow doos', 'arus bocor', 'kebocoran arus', 'kapasitif', 'daya modul', 'rangkaian bypass'
     ],
     en: [
       'mechanism', 'cause', 'causes', 'causal', 'trigger', 'triggers', 'physical process',
@@ -89,7 +90,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'surface temperature', 'condensation', 'condensing', 'moisture accumulation',
       'heat flux', 'air infiltration', 'thermal bridging', 'conductive path',
       'thermal transmittance', 'heat transfer coefficient', 'solar heat gain',
-      'moisture condensation', 'heat travels'
+      'moisture condensation', 'heat travels',
+      'wiring', 'neutral wire', 'live wire', 'no-neutral', 'leakage current', 'capacitive load', 'standby current', 'standby power', 'circuit instability', 'flickering', 'ghost glow'
     ]
   },
   DIFFERENTIAL_DIAGNOSIS: {
@@ -98,7 +100,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'diagnostik', 'pola', 'deteksi', 'jalur', 'karakteristik pembeda', 'identifikasi',
       'komparasi gejala', 'sumber masalah', 'memeriksa', 'lokasi kerusakan',
       'ciri fisik', 'tanda visual', 'tahapan identifikasi', 'perbedaan suhu',
-      'pola rembesan', 'batas air', 'bocor vs embun', 'beda', 'periksa'
+      'pola rembesan', 'batas air', 'bocor vs embun', 'beda', 'periksa',
+      'sakelar vs bohlam', 'switch vs bulb', 'multi-fixture', 'titik lampu', 'grup lampu', 'sakelar dinding vs smart bulb'
     ],
     en: [
       'distinguish', 'distinguishing', 'differentiate', 'differentiation', 'differential',
@@ -107,7 +110,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'discriminating', 'failure mode', 'root cause', 'visual inspection',
       'field test', 'inspection checklist', 'manifestation', 'characteristic sign',
       'temperature difference', 'moisture pattern', 'diagnostic signal', 'symptom pattern',
-      'tide mark', 'identifying difference'
+      'tide mark', 'identifying difference',
+      'switch vs bulb', 'smart switch vs smart bulb', 'multi-downlight', 'multi-fixture', 'circuit economics', 'wall switch dilemma'
     ]
   },
   INTERVENTION_MAPPING: {
@@ -119,7 +123,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'overhang', 'teritisan', 'louver', 'kisi-kisi', 'awning', 'kanopi',
       'secondary skin', 'fasad ganda', 'exhaust fan', 'movement joint', 'dilatasi',
       'perekat', 'efektivitas', 'kinerja perbaikan', 'tindakan korektif',
-      'penghalang radiasi', 'radiant barrier', 'fungsi', 'bekerja', 'memantulkan', 'menahan'
+      'penghalang radiasi', 'radiant barrier', 'fungsi', 'bekerja', 'memantulkan', 'menahan',
+      'smart switch', 'smart bulb', 'sakelar pintar', 'bohlam pintar', 'kapasitor bypass', 'hub zigbee', 'mesh gateway', 'rgbw', 'cct tuning', 'otomasi lampu'
     ],
     en: [
       'intervention', 'solution', 'mitigation', 'remediation', 'reduction', 'reduces',
@@ -130,7 +135,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'secondary facade', 'double-skin', 'exhaust fan', 'make-up air',
       'movement joint', 'expansion joint', 'adhesive bond', 'effectiveness',
       'corrective action', 'remedial measure', 'radiant barrier', 'radiation barrier',
-      'reflects', 'barrier'
+      'reflects', 'barrier',
+      'smart switch', 'smart bulb', 'bypass capacitor', 'zigbee hub', 'mesh hub', 'rgbw tuning', 'cct tuning', 'smart lighting'
     ]
   },
   LIMITATIONS_AND_FALSE_FIXES: {
@@ -141,7 +147,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'resiko', 'risiko', 'kekeliruan', 'salah kaprah', 'penurunan fungsi',
       'debu', 'beban perawatan', 'kehilangan cahaya', 'trade-off', 'lap kaca',
       'menutup ventilasi', 'sumber kelembapan', 'bukan', 'tidak', 'hanya',
-      'kehilangan panas', 'kebocoran panas', 'kerugian energi'
+      'kehilangan panas', 'kebocoran panas', 'kerugian energi',
+      'sakelar fisik dimatikan', 'sakelar mati', 'offline', 'beban minimum', 'flicker', 'kedipan', 'ghost glow', 'biaya berlipat'
     ],
     en: [
       'limitation', 'limitations', 'limits', 'constraint', 'constraints', 'trade-off',
@@ -150,7 +157,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'risk', 'drawback', 'misconception', 'loss of daylight', 'daylight trade-off',
       'dust accumulation', 'maintenance burden', 'thermal bypass', 'durability limit',
       'not bulk insulation', 'increases emissivity', 'wiping', 'temporary measure',
-      'neutralizing', 'heat loss', 'heat losses', 'thermal loss', 'energy loss', 'heat gain and loss'
+      'neutralizing', 'heat loss', 'heat losses', 'thermal loss', 'energy loss', 'heat gain and loss',
+      'offline', 'hard power loss', 'physical switch turned off', 'minimum load', 'standby circuit instability', 'ghost glow', 'flickering'
     ]
   },
   ESCALATION_CONDITIONS: {
@@ -159,7 +167,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'korosi', 'karat', 'jamur masif', 'retak parah', 'kebocoran masif', 'amblas',
       'bahaya', 'keamanan', 'tanda darurat', 'penanganan lanjut', 'kontraktor',
       'garansi', 'kerusakan meluas', 'kapan harus menghubungi', 'rembesan struktural',
-      'kebocoran perimeter', 'pembusukan', 'syarat', 'celah', 'rongga', 'sumber air'
+      'kebocoran perimeter', 'pembusukan', 'syarat', 'celah', 'rongga', 'sumber air',
+      'mcb', 'korslet', 'korsleting', 'anomali tegangan', 'percikan api', 'grounding', 'pentanahan', 'teknisi listrik', 'ahli listrik'
     ],
     en: [
       'inspection', 'specialist', 'professional', 'escalate', 'escalation',
@@ -168,7 +177,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'settlement', 'perimeter seal failure', 'water intrusion', 'safety hazard',
       'structural engineer', 'building inspection', 'when to call',
       'structural seepage', 'perimeter leakage', 'direct contact', 'air space',
-      'must face', 'synergistically', 'soffit', 'ridge', 'drainage'
+      'must face', 'synergistically', 'soffit', 'ridge', 'drainage',
+      'mcb', 'short circuit', 'voltage anomaly', 'sparks', 'grounding', 'licensed electrician', 'electrical inspection'
     ]
   },
   EMPIRICAL_RECOMMENDATION_SUPPORT: {
@@ -177,7 +187,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'rekomendasi teknis', 'prioritas langkah', 'nilai ukur', 'spesifikasi teknis',
       'sni', 'pupr', 'acuan teknis', 'konsensus', 'terverifikasi', 'pengukuran',
       'efisiensi termal', 'koefisien', 'perhitungan', 'panduan', 'rekomendasi praktis',
-      'langkah', 'urutan', 'bukti'
+      'langkah', 'urutan', 'bukti',
+      'puil', 'puil 2011', 'sni iec', 'standar kelistrikan'
     ],
     en: [
       'standard', 'standards', 'code', 'guideline', 'guidance', 'testing', 'test',
@@ -185,7 +196,8 @@ export const CATEGORY_SEMANTIC_LEXICON: Record<ResearchQuestionCategory, { id: s
       'calculation method', 'u-factor', 'u-value', 'shgc', 'stc', 'ach', 'cfm',
       'ashrae', 'astm', 'iso', 'bsi', 'din', 'en standard', 'technical consensus',
       'engineering recommendation', 'recommended practice', 'primarily', 'proper',
-      'validated mechanism', 'technical threshold', 'practice'
+      'validated mechanism', 'technical threshold', 'practice',
+      'puil', 'iec 60669', 'ieee 802', 'ansi c78', 'ies standards'
     ]
   }
 };

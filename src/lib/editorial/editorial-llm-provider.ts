@@ -37,9 +37,25 @@ export type EditorialLlmErrorCategory =
   | 'MALFORMED'
   | 'EMPTY_RESPONSE';
 
+export interface TextContentPart {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageContentPart {
+  type: 'image_url';
+  image_url: {
+    url: string; // HTTP/HTTPS URL or data URI (data:image/jpeg;base64,...)
+    detail?: 'auto' | 'low' | 'high';
+  };
+}
+
+export type EditorialMessageContentPart = TextContentPart | ImageContentPart;
+export type EditorialMessageContent = string | EditorialMessageContentPart[];
+
 export interface EditorialChatMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: EditorialMessageContent;
 }
 
 export interface EditorialGenerationRequest {
@@ -268,12 +284,24 @@ export class EditorialLlmProvider {
     }
 
     // Prompt Budget Telemetry
+    function getMessageContentLength(m: EditorialChatMessage): number {
+      if (typeof m.content === 'string') return m.content.length;
+      if (Array.isArray(m.content)) {
+        return m.content.reduce((sum, part) => {
+          if (part.type === 'text') return sum + (part.text?.length || 0);
+          if (part.type === 'image_url') return sum + 500; // estimated token/char footprint of image reference
+          return sum;
+        }, 0);
+      }
+      return 0;
+    }
+
     const systemPromptChars = request.messages
       .filter(m => m.role === 'system')
-      .reduce((acc, m) => acc + (m.content?.length || 0), 0);
+      .reduce((acc, m) => acc + getMessageContentLength(m), 0);
     const userPromptChars = request.messages
       .filter(m => m.role !== 'system')
-      .reduce((acc, m) => acc + (m.content?.length || 0), 0);
+      .reduce((acc, m) => acc + getMessageContentLength(m), 0);
     const totalPromptChars = systemPromptChars + userPromptChars;
     const requestBodyString = JSON.stringify(payload);
     const requestBodyBytes = Buffer.byteLength(requestBodyString, 'utf8');
@@ -467,6 +495,7 @@ export class EditorialLlmProvider {
         const reasoningContent = msg?.reasoning_content || msg?.reasoning;
         const reasoningLen = typeof reasoningContent === 'string' ? reasoningContent.length : undefined;
 
+        // Strict Invariant: Do not substitute raw reasoning scratchpad as final structured content
         if (content === null || content === undefined || typeof content !== 'string') {
           lastError = 'First choice message content is missing or not a string';
           lastErrorCategory = 'PROVIDER_MISSING_CONTENT';

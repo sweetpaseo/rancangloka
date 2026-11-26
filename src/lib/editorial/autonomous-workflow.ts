@@ -22,7 +22,7 @@
  * - ZERO GRAVY STEPS: No manual scripts or SQL needed between pipeline stages.
  * - AUTO_PUBLISH = OFF: Articles remain in DRAFT status awaiting human review.
  * - ZERO UNAUTHORIZED PAID CALLS: Hard spend cap <= US$0.30; stops at paid gate if unauthorized.
- * - PRESERVE GOLDEN ARTICLE #9993: Golden Article remains 100% frozen and intact.
+ * - PRESERVE GOLDEN ARTICLE #9993 ("Dinding Rembes dan Cat Menggelembung"): Golden Article remains 100% frozen and intact.
  */
 
 import path from 'node:path';
@@ -61,6 +61,8 @@ export interface AutonomousEditorialInput {
   slug?: string;
   articleId?: number | string;
   requestedTitle?: string;
+  focusKeyword?: string;
+  focus_keyword?: string;
   evidencePack?: EvidencePackInput;
   manuscriptMd?: string; // Pre-authored or cached manuscript for testing / dry-run
   operatorAuth: {
@@ -76,7 +78,9 @@ export interface AutonomousEditorialInput {
     allowTestAdapter?: boolean;
     allowMockWhenMissing?: boolean;
     rootDir?: string;
-    editorialVoiceLevel?: 'L3' | 'L4';
+    editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
+    enableVoiceL4?: boolean;
+    enableVoiceL5?: boolean;
     dryRun?: boolean;
   };
 }
@@ -250,7 +254,11 @@ export async function executeAutonomousEditorialWorkflow(
   }
 
   // Step 2: Conversational Editorial 2.1 Enforcement (Joko & Nadia)
-  const polishResult = applyNadiaDeterministicPolish(rawDraft);
+  const polishResult = applyNadiaDeterministicPolish(rawDraft, {
+    title: input.topic,
+    focusKeyword: input.focusKeyword,
+    maxWordsPerBlock: 55
+  });
   const polishedDraft = polishResult.polishedContent;
   const readabilityAudit = auditJokoDraftReadability(polishedDraft);
 
@@ -353,15 +361,20 @@ export async function executeAutonomousEditorialWorkflow(
     message: `Budi compiled manifest (${mediaResult.manifest.visual_items.length} inline items, spend: $${mediaResult.totalSpendUsd.toFixed(4)}).`
   });
 
-  // Step 5: Render Markdown and Upsert Article Record in D1 SQLite
+  // Step 5: Render Markdown and Resolve Visual Placements
   const renderedHtml = await renderArticleMarkdownSafely(polishedDraft);
+  const placementCheck = resolveVisualPlacements(renderedHtml, mediaResult.manifest, {
+    isDev: true,
+    allowUnapprovedInPreview: true
+  });
+  const assembledHtml = (placementCheck.isValid && placementCheck.html) ? placementCheck.html : renderedHtml;
 
   upsertArticleRecord(input.db, {
     id: articleId,
     slug,
     title,
     contentMd: polishedDraft,
-    contentHtml: renderedHtml,
+    contentHtml: assembledHtml,
     featuredImage: mediaResult.manifest?.featured?.src || '',
     imageAlt: mediaResult.manifest?.featured?.alt || ''
   });
@@ -373,11 +386,6 @@ export async function executeAutonomousEditorialWorkflow(
   });
 
   // Step 6: Anchor Verification Gate
-  const placementCheck = resolveVisualPlacements(renderedHtml, mediaResult.manifest, {
-    isDev: true,
-    allowUnapprovedInPreview: true
-  });
-
   const anchorCheckPassed = placementCheck.placedCount === storyboard.inline_slots.length;
   traceLog.push({
     step: 'ANCHOR_PLACEMENT_GATE',

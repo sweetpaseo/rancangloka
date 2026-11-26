@@ -27,6 +27,7 @@ export type BuildingDomain =
   | 'FENESTRATION_WINDOW_DOOR'
   | 'FLOORING_SURFACE'
   | 'STRUCTURAL_FOUNDATION'
+  | 'ELECTRICAL_SMART_LIGHTING'
   | 'GENERAL_BUILDING';
 
 export interface TopicAlignmentResult {
@@ -67,6 +68,12 @@ const DOMAIN_VOCABULARIES: Record<BuildingDomain, string[]> = {
   STRUCTURAL_FOUNDATION: [
     'pondasi', 'retak', 'amblas', 'tanah', 'tiang', 'sloof', 'kolom',
     'settlement', 'foundation', 'soil', 'structural'
+  ],
+  ELECTRICAL_SMART_LIGHTING: [
+    'sakelar', 'switch', 'smart switch', 'bulb', 'smart bulb', 'lampu', 'lighting',
+    'netral', 'kawat netral', 'neutral', 'fase', 'live', 'inbow', 'doos', 'kapasitor',
+    'flicker', 'flickering', 'ghost glow', 'downlight', 'led', 'watt', 'daya', 'beban',
+    'puil', 'iec', 'zigbee', 'wifi', 'mcb', 'listrik', 'kelistrikan', 'instalasi listrik', 'otomasi'
   ],
   GENERAL_BUILDING: [
     'bangunan', 'rumah', 'material', 'biaya', 'renovasi', 'tukang', 'kontraktor'
@@ -116,22 +123,26 @@ export function auditTopicEvidenceAlignment(
 
   // Aggregate all textual evidence in the pack
   const passages = Array.isArray(evidencePack.evidence_passages) ? evidencePack.evidence_passages : [];
-  const claims = Array.isArray(evidencePack.claim_inventory) ? evidencePack.claim_inventory : [];
+  const claims = Array.isArray(evidencePack.claim_inventory) && evidencePack.claim_inventory.length > 0
+    ? evidencePack.claim_inventory
+    : (Array.isArray(evidencePack.author_safe_claims) ? evidencePack.author_safe_claims : []);
   const docs = Array.isArray(evidencePack.retrieved_documents) ? evidencePack.retrieved_documents : [];
+  const primarySources = Array.isArray(evidencePack.primary_sources) ? evidencePack.primary_sources : [];
 
   const evidenceTextCorp = [
-    docs.map(d => `${d.title} ${d.limitations || ''}`).join(' '),
-    passages.map(p => `${p.locator} ${p.exact_or_normalized_excerpt || (p as any).exact_text || ''}`).join(' '),
-    claims.map(c => `${c.statement} ${c.relevance || ''}`).join(' ')
+    docs.map(d => `${d.title || ''} ${d.limitations || ''}`).join(' '),
+    primarySources.map(s => `${s.name || ''} ${s.relevance || ''}`).join(' '),
+    passages.map(p => `${p.locator || ''} ${p.exact_or_normalized_excerpt || (p as any).exact_text || ''}`).join(' '),
+    claims.map(c => `${c.statement || ''} ${(c as any).relevance || ''}`).join(' ')
   ].join(' ');
 
   const evidenceClassification = classifyBuildingDomain(evidenceTextCorp);
   const evidenceDomain = evidenceClassification.domain;
   const evidenceEntities = evidenceClassification.detectedTerms;
 
-  // Check domain entity presence in evidence
+  // Check domain entity presence in evidence (support Indonesian affix variations like ke- -an, ber-)
   const matchingEntitiesInEvidence = topicEntities.filter(entity => {
-    const pattern = new RegExp(`\\b${entity}\\b`, 'i');
+    const pattern = new RegExp(`(?:\\b|ke|ber)${entity}(?:\\b|an)?`, 'i');
     return pattern.test(evidenceTextCorp);
   });
 

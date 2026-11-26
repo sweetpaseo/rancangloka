@@ -554,7 +554,7 @@ export function checkResearchReadiness(params: {
           isCategoryMatch = true;
         } else if (rqCat === 'LIMITATIONS_AND_FALSE_FIXES' && (claimCat === 'LIMITATION' || claimCat === 'RISK')) {
           isCategoryMatch = true;
-        } else if (rqCat === 'ESCALATION_CONDITIONS' && (claimCat === 'RISK' || claimCat === 'LIMITATION')) {
+        } else if (rqCat === 'ESCALATION_CONDITIONS' && (claimCat === 'RISK' || claimCat === 'LIMITATION' || claimCat === 'SAFETY_REGULATORY' || claimCat === 'INSTALLATION_GUIDANCE')) {
           isCategoryMatch = true;
         } else if (rqCat === 'EMPIRICAL_RECOMMENDATION_SUPPORT' && (claimCat === 'REGULATORY_REFERENCE' || claimCat === 'MATERIAL_BEHAVIOR')) {
           isCategoryMatch = true;
@@ -570,6 +570,8 @@ export function checkResearchReadiness(params: {
         } else if (rqCat === 'INTERVENTION_MAPPING' && /\b(?:solusi|perbaikan|mitigasi|pemasangan|pasang|ganti|sealant|thermal break|exhaust|ventilasi|nat|movement joint|spesi|lapisan|perekat)\b/i.test(statement)) {
           isCategoryMatch = true;
         } else if (rqCat === 'LIMITATIONS_AND_FALSE_FIXES' && /\b(?:batasan|tidak boleh|jangan|risiko|bukan|keterbatasan|garansi|kesalahan|cacat|kelemahan)\b/i.test(statement)) {
+          isCategoryMatch = true;
+        } else if (rqCat === 'ESCALATION_CONDITIONS' && /\b(?:eskalasi|ahli|teknisi|inspeksi|profesional|bahaya|keamanan|mcb|korslet|tegangan|arus bocor|ghost glow|flicker|bantuan)\b/i.test(statement)) {
           isCategoryMatch = true;
         } else if (rqCat === 'EMPIRICAL_RECOMMENDATION_SUPPORT' && /\b(?:standar|sni|astm|ashrae|pedoman|hvi|iso|pupr|spesifikasi|pengujian|konsensus)\b/i.test(statement)) {
           isCategoryMatch = true;

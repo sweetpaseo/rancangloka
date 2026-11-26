@@ -18,6 +18,7 @@ export interface L4EvaluationOptions {
   topic?: string;
   title?: string;
   targetAudience?: 'HOMEOWNER' | 'PROFESSIONAL';
+  editorialVoiceLevel?: 'L4' | 'L5';
 }
 
 export interface L4DimensionResult {
@@ -34,7 +35,7 @@ export interface L4DimensionResult {
 
 export interface Voice3L4AssessmentResult {
   standard: 'RANCANGLOKA EDITORIAL VOICE 3.0';
-  level: 'L4 — SANTAI BERISI';
+  level: 'L4 — SANTAI BERISI' | 'L5 — NATURAL CONVERSATIONAL';
   overallScore: number;
   passed: boolean;
   decision: 'VOICE_3_L4_PASS' | 'VOICE_3_L4_REVISION_REQUIRED';
@@ -77,18 +78,24 @@ const PROHIBITED_SLANG_PATTERNS = [
 ];
 
 // Natural conversational Indonesian transition markers (positive signals)
-// Updated per Owner Decision 2026-10-26: "Berisi seperti ahli, ngobrol seperti teman"
+// Updated per Owner Decision: "Berisi seperti ahli, ngobrol seperti teman" (L4/L5 Natural Conversational)
 const NATURAL_CONVERSATIONAL_MARKERS = [
   /\bnah\b/i,
   /\btapi tunggu dulu\b/i,
   /\btetapi kalau\b/i,
   /\bcoba perhatikan\b/i,
-  /\bcoba (?:bayangkan|cek|lihat|cari tahu|raba)\b/i,
+  /\bcoba (?:bayangkan|cek|lihat|cari tahu|raba|pikirkan)\b/i,
   /\bcoba cek (?:dulu)?\b/i,
   /\bkalau ternyata\b/i,
   /\bnggak perlu (?:buru-buru)?\b/i,
   /\bbisa jadi\b/i,
   /\bmasalahnya\b/i,
+  /\bsebenarnya\b/i,
+  /\buntungnya\b/i,
+  /\bujung-ujungnya\b/i,
+  /\bpada dasarnya\b/i,
+  /\bsingkatnya\b/i,
+  /\bgini gambarannya\b/i,
   /\bkamu\b/i,
   /\brumahmu\b/i,
   /\bkurang lebih seperti itulah\b/i,
@@ -198,7 +205,7 @@ export function evaluateVoice3L4Assessment(
     }
   }
 
-  // Academic / Bureaucratic Stiffness Penalty in L4
+  // Academic / Bureaucratic Stiffness Penalty in L4/L5
   const STIFF_FORMAL_SYNTAX_PATTERNS = [
     /\bdalam konteks\b/i,
     /\bmerupakan sebuah proses yang memerlukan pertimbangan\b/i,
@@ -213,6 +220,27 @@ export function evaluateVoice3L4Assessment(
     /\bpada hakekatnya\b/i,
     /\bdalam rangka mencapai\b/i
   ];
+
+  // Generic AI Advice & Mechanical Cliché Patterns (Owner Quality of Thinking Directive)
+  const GENERIC_AI_ADVICE_PATTERNS = [
+    /\bsesuaikan dengan kebutuhan(?: dan anggaran)?(?: anda| kamu)?\b/i,
+    /\bpilihan (?:terbaik )?tergantung pada (?:preferensi|kebutuhan)\b/i,
+    /\bkeputusan (?:akhir )?ada di tangan (?:anda|kamu)\b/i,
+    /\btidak ada salahnya (?:jika|untuk)\b/i,
+    /\bdi era modern ini\b/i,
+    /\bseperti yang telah kita ketahui bersama\b/i,
+    /\bdalam kehidupan sehari-hari yang serba cepat\b/i
+  ];
+  let genericAdviceMatches = 0;
+  const genericAdvicePassages: string[] = [];
+  for (const pat of GENERIC_AI_ADVICE_PATTERNS) {
+    const match = content.match(pat);
+    if (match) {
+      genericAdviceMatches++;
+      genericAdvicePassages.push(match[0]);
+    }
+  }
+
   let stiffSyntaxMatches = 0;
   const stiffPassages: string[] = [];
   for (const pat of STIFF_FORMAL_SYNTAX_PATTERNS) {
@@ -223,12 +251,23 @@ export function evaluateVoice3L4Assessment(
     }
   }
 
-  let naturalnessScore = Math.min(100, 60 + naturalMarkerMatches * 8);
+  // Reader Address Audit (Owner Decision: L4 defaults to "kamu/rumahmu" rather than formal "Anda")
+  const andaMatches = content.match(/\b(?:anda|rumah anda)\b/gi) || [];
+  const kamuMatches = content.match(/\b(?:kamu|rumahmu)\b/gi) || [];
+
+  // Base naturalness score: grounded in natural Indonesian flow, not mechanical token counting
+  let naturalnessScore = kamuMatches.length > 0 ? 95 : 85;
+  if (andaMatches.length > 0) {
+    naturalnessScore = Math.max(40, naturalnessScore - andaMatches.length * 15);
+  }
   if (consecutiveTransitionClustering > 0) {
-    naturalnessScore = Math.max(50, naturalnessScore - consecutiveTransitionClustering * 15);
+    naturalnessScore = Math.max(50, naturalnessScore - consecutiveTransitionClustering * 10);
   }
   if (stiffSyntaxMatches > 0) {
     naturalnessScore = Math.max(45, naturalnessScore - stiffSyntaxMatches * 15);
+  }
+  if (genericAdviceMatches > 0) {
+    naturalnessScore = Math.max(45, naturalnessScore - genericAdviceMatches * 15);
   }
 
   // Transition stuffing audit: high frequency with low variety does not confer naturalness
@@ -237,16 +276,17 @@ export function evaluateVoice3L4Assessment(
     naturalnessScore = Math.max(50, naturalnessScore - 15);
   }
 
-  // Reader Address Audit (Owner Decision 2026-10-26: L4 defaults to "kamu/rumahmu" rather than formal "Anda")
-  const andaMatches = content.match(/\b(?:anda|rumah anda)\b/gi) || [];
-  const kamuMatches = content.match(/\b(?:kamu|rumahmu)\b/gi) || [];
-
-  const naturalnessPassed = naturalnessScore >= 75 && naturalMarkerMatches >= 2 && stiffSyntaxMatches === 0 && !isTransitionStuffed;
+  // Objective gating: Hard failures on formal 'Anda', stiff academic syntax, generic AI advice, or transition stuffing.
+  // Conversational marker presence is advisory/enriching, NOT a hard failure blocker.
+  const naturalnessPassed = naturalnessScore >= 75 && stiffSyntaxMatches === 0 && andaMatches.length === 0 && !isTransitionStuffed && genericAdviceMatches === 0;
   const naturalnessNotes = [
     `Ditemukan ${naturalMarkerMatches} jenis penanda transisi percakapan alami (total kemunculan: ${totalTransitionOccurrences}).`,
     `Clustering repetisi transisi berurutan: ${consecutiveTransitionClustering}.`,
     `Sintaks formal/akademis kaku: ${stiffSyntaxMatches}.`
   ];
+  if (genericAdviceMatches > 0) {
+    naturalnessNotes.push(`Nasihat generik klise terdeteksi: ${genericAdviceMatches}x ("${genericAdvicePassages.join(', ')}").`);
+  }
   if (kamuMatches.length > 0) {
     naturalnessNotes.push(`Sapaan pembaca menggunakan diksi akrab "kamu/rumahmu" (${kamuMatches.length}x).`);
   }
@@ -262,10 +302,17 @@ export function evaluateVoice3L4Assessment(
     findings: []
   };
 
+  if (genericAdviceMatches > 0) {
+    conversationalNaturalness.findings.push({
+      type: 'IMPROVEMENT',
+      message: `Terdeteksi ${genericAdviceMatches}x nasihat generik klise ("${genericAdvicePassages.join(', ')}"). Sesuai arahan editorial Owner ("Quality of Thinking"), ganti nasihat klise ini dengan pertimbangan fisik arsitektural yang spesifik bagi pemilik rumah.`
+    });
+  }
+
   if (andaMatches.length > 0) {
     conversationalNaturalness.findings.push({
       type: 'IMPROVEMENT',
-      message: `Terdeteksi sapaan formal "Anda" (${andaMatches.length}x). Sesuai standar L4 ("Berisi seperti ahli, ngobrol seperti teman"), gunakan sapaan akrab "kamu/rumahmu" agar tidak terasa kaku korporat.`
+      message: `Terdeteksi sapaan formal "Anda" (${andaMatches.length}x). Sesuai standar L4/L5 ("Berisi seperti ahli, ngobrol seperti teman"), gunakan sapaan akrab "kamu/rumahmu" agar tidak terasa kaku korporat.`
     });
   }
 
@@ -276,23 +323,36 @@ export function evaluateVoice3L4Assessment(
     });
   }
 
+  if (naturalMarkerMatches === 0) {
+    conversationalNaturalness.findings.push({
+      type: 'IMPROVEMENT',
+      message: 'Pertimbangkan menambahkan penanda tutur alami (seperti "Nah", "Coba perhatikan", atau "Lain cerita kalau") secara kontekstual untuk memperkaya kehangatan bertutur.'
+    });
+  }
+
   if (!naturalnessPassed) {
     conversationalNaturalness.findings.push({
       type: 'IMPROVEMENT',
-      message: naturalMarkerMatches < 2
-        ? 'Naskah terasa kaku L3. Tingkatkan transisi percakapan santai seperti "Nah", "Tapi tunggu dulu", atau "Coba perhatikan" pada pergantian gagasan.'
+      message: genericAdviceMatches > 0
+        ? `Terdeteksi nasihat generik klise ("${genericAdvicePassages.join(', ')}"). Ganti dengan pertimbangan fisik konkret.`
         : stiffSyntaxMatches > 0
           ? `Terdeteksi konstruksi formal kaku ("${stiffPassages.join(', ')}"). Ganti dengan bahasa tutur alami.`
-          : isTransitionStuffed
-            ? 'Frekuensi transisi tinggi namun minim variasi. Variasikan gaya bertutur secara alami.'
-            : 'Transisi percakapan tampak menumpuk atau repetitif. Sebarkan secara proporsional.'
+          : andaMatches.length > 0
+            ? 'Hapus kata sapaan formal "Anda" dan gunakan sapaan hangat "kamu/rumahmu".'
+            : isTransitionStuffed
+              ? 'Frekuensi transisi tinggi namun minim variasi. Variasikan gaya bertutur secara alami.'
+              : 'Transisi percakapan tampak menumpuk atau repetitif. Sebarkan secara proporsional.'
     });
     revisionRequests.push({
       dimension: 'Conversational Naturalness',
       section: headings[0] || 'Pembuka',
-      issue: 'Gaya naskah belum memenuhi standar naturalitas percakapan L4 (Santai Berisi)',
-      suggestion: 'Gunakan bahasa tutur konsultan yang bersahaja dengan transisi percakapan wajar tanpa menumpuk frasa yang sama',
-      passage: paragraphs[0] ? paragraphs[0].slice(0, 120) + '...' : undefined
+      issue: genericAdviceMatches > 0
+        ? 'Naskah memuat nasihat generik klise AI ("sesuaikan dengan kebutuhan Anda" dsb)'
+        : 'Gaya naskah belum memenuhi standar naturalitas percakapan L4/L5 (Santai Berisi)',
+      suggestion: genericAdviceMatches > 0
+        ? 'Gantikan nasihat generik dengan panduan kriteria fisik spesifik (misal: "kalau tujuan utamamu meredam suara tetesan hujan, bahan berongga atau berpori jauh lebih efektif")'
+        : 'Gunakan bahasa tutur konsultan yang bersahaja dengan transisi percakapan wajar tanpa menumpuk frasa yang sama',
+      passage: genericAdvicePassages[0] || (paragraphs[0] ? paragraphs[0].slice(0, 120) + '...' : undefined)
     });
   } else {
     conversationalNaturalness.findings.push({
@@ -521,7 +581,7 @@ export function evaluateVoice3L4Assessment(
 
   return {
     standard: 'RANCANGLOKA EDITORIAL VOICE 3.0',
-    level: 'L4 — SANTAI BERISI',
+    level: options.editorialVoiceLevel === 'L5' ? 'L5 — NATURAL CONVERSATIONAL' : 'L4 — SANTAI BERISI',
     overallScore,
     passed: isL4Pass,
     decision: isL4Pass ? 'VOICE_3_L4_PASS' : 'VOICE_3_L4_REVISION_REQUIRED',

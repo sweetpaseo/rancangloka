@@ -154,6 +154,7 @@ export interface EditorialJobInput {
   articleId?: string;
   topic: string;
   requestedTitle?: string;
+  focusKeyword?: string;
   intentProfile?: ArticleIntentProfile;
   evidencePack: EvidencePackInput;
   visitorContext?: JokoVisitorContextInput;
@@ -164,9 +165,15 @@ export interface EditorialJobInput {
     timestamp?: string;
   };
   db?: any;
-  editorialVoiceLevel?: 'L3' | 'L4';
+  editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
   enableVoiceL4?: boolean;
+  enableVoiceL5?: boolean;
   expectedContentHash?: string;
+  revisionContext?: {
+    attempt: number;
+    previousDraft: string;
+    rewriteBrief: StructuredRewriteBrief;
+  };
 }
 
 export interface EditorialAttemptRecord {
@@ -240,7 +247,7 @@ export interface EditorialJobResult {
   visualBriefs?: VisualBrief[];
   dispatchedMediaJobs?: MediaJobRecord[];
   voice3L4Assessment?: Voice3L4AssessmentResult | null;
-  editorialVoiceLevel?: 'L3' | 'L4';
+  editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
   error?: string;
   errorCategory?: string;
 }
@@ -250,8 +257,9 @@ export interface EditorialRuntimeOptions {
   providerInstance?: EditorialLlmProvider;
   nadiaProviderInstance?: EditorialLlmProvider;
   enableNadiaLlmEdit?: boolean;
-  editorialVoiceLevel?: 'L3' | 'L4';
+  editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
   enableVoiceL4?: boolean;
+  enableVoiceL5?: boolean;
   allowPaidExecution?: boolean;
   expectedContentHash?: string;
   allowTestAdapter?: boolean;
@@ -301,11 +309,17 @@ export async function executeEditorialDraftJob(
   );
 
   // 1a. Source Provenance & Content Integrity Verification (Task B & D)
-  if (Array.isArray(input.evidencePack.sources) && input.evidencePack.sources.length > 0) {
-    for (const src of input.evidencePack.sources) {
+  const sourcesToVerify = Array.isArray(input.evidencePack.sources) && input.evidencePack.sources.length > 0
+    ? input.evidencePack.sources
+    : Array.isArray(input.evidencePack.retrieved_documents) && input.evidencePack.retrieved_documents.length > 0
+      ? input.evidencePack.retrieved_documents
+      : [];
+
+  if (sourcesToVerify.length > 0) {
+    for (const src of sourcesToVerify) {
       const integrity = verifySourceContentIntegrity({
         sourceId: src.source_id,
-        sourceText: (src as any).full_text || (src as any).source_text || (src as any).text || (src as any).passage_text,
+        sourceText: (src as any).full_text || (src as any).source_text || (src as any).content_text || (src as any).text || (src as any).passage_text,
         expectedChecksum: (src as any).content_hash || (src as any).sha256 || (src as any).expected_checksum,
         sourceAuthenticity: (src as any).source_authenticity || ((src as any).is_local_fixture ? 'LOCAL_FIXTURE_ONLY' : 'AUTHENTIC_EXTERNAL_PRIMARY'),
         sourceTextAccessibility: (src as any).source_text_accessibility,
@@ -449,21 +463,25 @@ export async function executeEditorialDraftJob(
     };
   }
 
-  const editorialVoiceLevel: 'L3' | 'L4' =
+  const editorialVoiceLevel: 'L3' | 'L4' | 'L5' =
     input.editorialVoiceLevel ||
     options.editorialVoiceLevel ||
-    (input.enableVoiceL4 || options.enableVoiceL4 ? 'L4' : 'L3');
+    (process.env.HERMES_EDITORIAL_VOICE_LEVEL as 'L3' | 'L4' | 'L5') ||
+    (input.enableVoiceL5 || options.enableVoiceL5 ? 'L5' : (input.enableVoiceL4 || options.enableVoiceL4 ? 'L4' : 'L4'));
   const enableVoiceL4 = editorialVoiceLevel === 'L4';
+  const enableVoiceL5 = editorialVoiceLevel === 'L5';
 
   const basePromptContext: JokoPromptContext = {
     topic: input.topic,
     requestedTitle: input.requestedTitle || input.topic,
+    focusKeyword: input.focusKeyword,
     intentProfile: intent,
     evidencePack: input.evidencePack,
     authorSafeClaims,
     visitorContext: input.visitorContext,
     editorialVoiceLevel,
-    enableVoiceL4
+    enableVoiceL4,
+    enableVoiceL5
   };
 
   // 3b. Editorial Planner: Compile Reader-Focused Editorial Brief
@@ -483,10 +501,10 @@ export async function executeEditorialDraftJob(
     }
   );
 
-  let currentDraft: string | null = null;
+  let currentDraft: string | null = input.revisionContext?.previousDraft || null;
   let lastQaResult: HumanWritingQualityResult | null = null;
   let lastLlmResult: EditorialGenerationResult | null = null;
-  let currentRewriteBrief: StructuredRewriteBrief | null = null;
+  let currentRewriteBrief: StructuredRewriteBrief | null = input.revisionContext?.rewriteBrief || null;
   let shouldContinue = true;
   let finalStatus: EditorialJobResult['status'] = 'COMPLETED';
   let finalDecision: FinalEditorialDecision = 'HUMAN_WRITING_PASS';

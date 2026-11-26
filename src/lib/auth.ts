@@ -13,6 +13,23 @@ export interface AdminSessionPayload {
 export const ADMIN_COOKIE_NAME = 'admin_session';
 export const ADMIN_SESSION_TTL_SECONDS = 8 * 3600; // 8 hours (28,800 seconds)
 
+// Revoked Session Blacklist (Revokes previously exposed or leaked session identifiers)
+export const REVOKED_SESSION_IDS = new Set<string>([
+  '92811851a5719635ba01d1ff33a884da025b5cd33522a243'
+]);
+
+export interface ReaderPreviewPayload {
+  v: number;               // Version (1)
+  type: 'reader_preview';  // Distinct type discriminator
+  slug: string;            // Exact article slug bound to token
+  article_id?: number;     // Optional article ID
+  iat: number;             // Issued at timestamp (seconds)
+  exp: number;             // Expiration timestamp (seconds)
+  scope: 'read_only';      // Read-only scope
+}
+
+export const READER_PREVIEW_DEFAULT_TTL_SECONDS = 24 * 3600; // 24 hours (86,400 seconds)
+
 // Helper: Base64URL encode
 function base64UrlEncode(data: Uint8Array | string): string {
   const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
@@ -287,8 +304,18 @@ export async function verifyAdminSession(
     return { valid: false, reason: 'invalid_payload_json' };
   }
 
+  // Security Invariant: Preview tokens are strictly read-only and can NEVER be treated as admin sessions
+  if ((payload as any)?.type === 'reader_preview') {
+    return { valid: false, payload, reason: 'preview_token_cannot_be_admin_session' };
+  }
+
   if (!payload || typeof payload !== 'object' || payload.v !== 1 || !payload.sid || typeof payload.exp !== 'number') {
     return { valid: false, reason: 'invalid_payload_structure' };
+  }
+
+  // Security Invariant: Reject explicitly revoked or leaked session identifiers
+  if (payload.sid && REVOKED_SESSION_IDS.has(payload.sid)) {
+    return { valid: false, payload, reason: 'revoked_session' };
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
@@ -321,6 +348,176 @@ export async function isValidAdminSession(cookieOrValue: any, env?: any): Promis
   if (!val.trim()) return false;
   const result = await verifyAdminSession(val, env);
   return result.valid;
+}
+
+/**
+ * Creates a cryptographically signed HMAC-SHA256 reader preview token.
+ * Strictly bounded to a specific article slug, read-only scope, and short TTL.
+ * Can NEVER be used as an admin session token.
+ */
+export async function createReaderPreviewToken(
+  slug: string,
+  articleId?: number,
+  env?: any,
+  customTtlSeconds?: number,
+  customIssuedAt?: number
+): Promise<string> {
+  if (!slug || typeof slug !== 'string' || slug.trim().length === 0) {
+    throw new Error('A valid article slug is required to create a reader preview token.');
+  }
+
+  const secret = getAdminSessionSecret(env);
+  if (!secret) {
+    throw new Error('Signing secret is not configured in production environment.');
+  }
+  const key = await getHmacKey(secret);
+
+  const nowSec = customIssuedAt !== undefined ? customIssuedAt : Math.floor(Date.now() / 1000);
+  const ttl = customTtlSeconds !== undefined ? customTtlSeconds : READER_PREVIEW_DEFAULT_TTL_SECONDS;
+  const exp = nowSec + ttl;
+
+  const payload: ReaderPreviewPayload = {
+    v: 1,
+    type: 'reader_preview',
+    slug: slug.trim(),
+    ...(articleId !== undefined && articleId !== null ? { article_id: Number(articleId) } : {}),
+    iat: nowSec,
+    exp,
+    scope: 'read_only'
+  };
+
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const sigBuffer = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(encodedPayload));
+  const encodedSig = base64UrlEncode(new Uint8Array(sigBuffer));
+
+  return `${encodedPayload}.${encodedSig}`;
+}
+
+/**
+ * Verifies the authenticity, cryptographic signature, slug binding, and expiry of a reader preview token.
+ */
+export async function verifyReaderPreviewToken(
+  token: string | null | undefined,
+  expectedSlug: string,
+  env?: any
+): Promise<{ valid: boolean; payload?: ReaderPreviewPayload; reason?: string }> {
+  if (token === null || token === undefined || typeof token !== 'string') {
+    return { valid: false, reason: 'missing_token' };
+  }
+  const cleanToken = token.trim();
+  if (!cleanToken) {
+    return { valid: false, reason: 'empty_token' };
+  }
+
+  const dotIndex = cleanToken.lastIndexOf('.');
+  if (dotIndex <= 0 || dotIndex >= cleanToken.length - 1) {
+    return { valid: false, reason: 'malformed_token' };
+  }
+
+  const encodedPayload = cleanToken.slice(0, dotIndex);
+  const encodedSig = cleanToken.slice(dotIndex + 1);
+
+  if (!/^[A-Za-z0-9_-]+$/.test(encodedSig)) {
+    return { valid: false, reason: 'invalid_signature_syntax' };
+  }
+  const sigBytes = base64UrlDecode(encodedSig);
+  if (!sigBytes) {
+    return { valid: false, reason: 'invalid_signature_encoding' };
+  }
+  if (sigBytes.length !== 32) {
+    return { valid: false, reason: 'invalid_signature_length' };
+  }
+  if (base64UrlEncode(sigBytes) !== encodedSig) {
+    return { valid: false, reason: 'non_canonical_signature_encoding' };
+  }
+
+  if (!/^[A-Za-z0-9_-]+$/.test(encodedPayload)) {
+    return { valid: false, reason: 'invalid_payload_syntax' };
+  }
+  const payloadBytes = base64UrlDecode(encodedPayload);
+  if (!payloadBytes) {
+    return { valid: false, reason: 'invalid_payload_encoding' };
+  }
+  if (base64UrlEncode(payloadBytes) !== encodedPayload) {
+    return { valid: false, reason: 'non_canonical_payload_encoding' };
+  }
+
+  const primarySecret = getAdminSessionSecret(env);
+  const previousSecretsStr = env?.RANCANGLOKA_ADMIN_PREVIOUS_SECRETS ||
+                            (globalThis as any).process?.env?.RANCANGLOKA_ADMIN_PREVIOUS_SECRETS ||
+                            '';
+  const candidateSecrets = [primarySecret].filter(s => typeof s === 'string' && s.length > 0);
+  if (previousSecretsStr) {
+    const prevList = previousSecretsStr.split(',').map((s: string) => s.trim()).filter(Boolean);
+    candidateSecrets.push(...prevList);
+  }
+
+  if (candidateSecrets.length === 0) {
+    return { valid: false, reason: 'secret_not_configured' };
+  }
+
+  const encoder = new TextEncoder();
+  const payloadBytesToVerify = encoder.encode(encodedPayload);
+
+  let isSigValid = false;
+  for (const secret of candidateSecrets) {
+    try {
+      const key = await getHmacKey(secret);
+      const verified = await crypto.subtle.verify('HMAC', key, sigBytes as BufferSource, payloadBytesToVerify);
+      if (verified) {
+        isSigValid = true;
+        break;
+      }
+    } catch {
+      // Continue to next candidate secret
+    }
+  }
+
+  if (!isSigValid) {
+    return { valid: false, reason: 'signature_mismatch' };
+  }
+
+  let payload: ReaderPreviewPayload;
+  try {
+    const jsonStr = new TextDecoder().decode(payloadBytes);
+    payload = JSON.parse(jsonStr);
+  } catch {
+    return { valid: false, reason: 'invalid_payload_json' };
+  }
+
+  if (
+    !payload ||
+    typeof payload !== 'object' ||
+    payload.v !== 1 ||
+    payload.type !== 'reader_preview' ||
+    payload.scope !== 'read_only' ||
+    !payload.slug ||
+    typeof payload.slug !== 'string' ||
+    typeof payload.exp !== 'number'
+  ) {
+    return { valid: false, reason: 'invalid_payload_structure' };
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (payload.exp <= nowSec) {
+    return { valid: false, payload, reason: 'preview_token_expired' };
+  }
+
+  // Allow up to 60s future clock skew
+  if (typeof payload.iat === 'number' && payload.iat > nowSec + 60) {
+    return { valid: false, payload, reason: 'future_issued_at' };
+  }
+
+  // Strict slug matching check if expectedSlug provided
+  if (expectedSlug) {
+    const cleanExpected = expectedSlug.trim().toLowerCase();
+    const cleanPayload = payload.slug.trim().toLowerCase();
+    if (cleanExpected !== cleanPayload) {
+      return { valid: false, payload, reason: 'slug_mismatch' };
+    }
+  }
+
+  return { valid: true, payload };
 }
 
 /**

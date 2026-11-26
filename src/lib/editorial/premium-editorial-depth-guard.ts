@@ -143,7 +143,7 @@ const WHY_MARKERS = [
 ];
 
 const WHO_MARKERS = [
-  /\b(?:cocok untuk|relevan bagi|pemilik rumah|penghuni|bagi anda yang|keluarga|hunian|pengguna)\b/i
+  /\b(?:cocok untuk|relevan bagi|pemilik rumah|penghuni|bagi (?:kamu|anda) yang|keluarga|hunian|pengguna|kamu|rumahmu|tukang)\b/i
 ];
 
 const WHEN_MARKERS = [
@@ -151,7 +151,7 @@ const WHEN_MARKERS = [
 ];
 
 const WHERE_MARKERS = [
-  /\b(?:orientasi|matahari barat|matahari timur|fasad|jendela|bukaan|kamar tidur|lantai dua|tropis|halaman|teras)\b/i
+  /\b(?:orientasi|matahari barat|matahari timur|fasad|jendela|bukaan|kamar tidur|kamar|lantai dua|lantai satu|loteng|atap|atap spandek|plafon|kanopi|carport|garasi|dinding|dapur|kamar mandi|teras|halaman|balkon|area jemur|ruangan|ruang tamu|selubung bangunan|tropis|iklim tropis)\b/i
 ];
 
 const HOW_MARKERS = [
@@ -159,7 +159,7 @@ const HOW_MARKERS = [
 ];
 
 const WHICH_MARKERS = [
-  /\b(?:komparasi|perbandingan|dibandingkan|kelebihan dan kekurangan|trade-off|opsi mana|pilihan mana|pilihan terbaik|tabel komparasi|tabel perbandingan)\b/i
+  /\b(?:komparasi|perbandingan|membandingkan|dibandingkan|dibanding|versus|vs|kelebihan dan kekurangan|trade-off|opsi mana|pilihan mana|pilihan terbaik|tabel komparasi|tabel perbandingan)\b/i
 ];
 
 const WHAT_NEXT_MARKERS = [
@@ -269,7 +269,7 @@ export function evaluatePremiumEditorialDepth(
   // 3. Failure Anatomy Evaluation
   // --------------------------------------------------------------------------
   let failureAnatomy: FailureAnatomyStatus = 'PASS';
-  const failureRegex = /\b(?:kesalahan umum|salah pasang|kegagalan|risiko|bocor|tampias|tempias|terlalu berat|sulit dibersihkan|debu menumpuk|karat|korosi|konsekuensi|kelemahan|perangkap panas)\b/i;
+  const failureRegex = /\b(?:kesalahan umum|salah pasang|salah urutan|salah pilih|kegagalan|risiko|bocor|tampias|tempias|rembes|kondensasi|titik embun|panas tetap tembus|suara tetap tembus|berisik saat hujan|kurang efektif|tidak efektif|terlalu berat|sulit dibersihkan|debu menumpuk|karat|korosi|konsekuensi|kelemahan|perangkap panas|celah udara|lapuk|rapuh|masalah|gangguan|berkedip|kedipan|flicker|flickering|ghost glow|korslet|korsleting|offline|kehilangan daya|anomali|arus bocor|kebocoran arus)\b/i;
   const horrorStoryRegex = /\b(?:bencana fatal yang menghancurkan rumah|kejadian mengerikan di lapangan yang menelan korban)\b/i;
 
   if (horrorStoryRegex.test(text)) {
@@ -299,7 +299,7 @@ export function evaluatePremiumEditorialDepth(
   // 4. Micro-Persona Scenarios Evaluation
   // --------------------------------------------------------------------------
   let microPersonaScenario: MicroPersonaScenarioStatus = 'PASS';
-  const scenarioRegex = /\b(?:skenario\s+[a-z]|contoh kasus(?: nyata)?|kamar tidur lantai dua|kamar menghadap barat|rumah yang sudah dihuni|rumah yang sudah jadi|jika rumah anda|pemilik rumah(?: klaster)?|rumah dua lantai|bagi anda yang memiliki|kondisi lahan sempit|renovasi bertahap|tanpa membongkar (?:atap|struktur|dinding)|tanpa renovasi besar|solusi cepat tanpa ribet)\b/i;
+  const scenarioRegex = /\b(?:skenario\s+[a-z]|contoh kasus(?: nyata)?|kamar tidur(?: lantai dua)?|kamar menghadap barat|rumah yang sudah dihuni|rumah yang sudah jadi|jika rumah (?:anda|kamu)|kalau rumahmu|untuk rumah yang|pada hunian|ketika kamu|bagi (?:anda|kamu) yang|pemilik rumah(?: klaster)?|rumah dua lantai|rumah satu lantai|kondisi lahan sempit|kondisi (?:atap|ruangan|lapangan)|renovasi bertahap|tanpa membongkar (?:atap|struktur|dinding)|tanpa renovasi besar|solusi (?:cepat|praktis|jangka panjang))\b/i;
 
   if (!isShortExcerpt && (isComparison || isProblemSolver || contentFamily === 'system_decision')) {
     if (!scenarioRegex.test(text)) {

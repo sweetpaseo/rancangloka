@@ -74,6 +74,30 @@ Proyek ini terdiri dari 4 lapisan teknologi yang saling terhubung:
 4. **Target Repository yang Otoritatif:**
    * Repository pengembangan utama adalah: `rancangloka-astro/`.
    * Branch aktif untuk integrasi keputusan: `feat/jev-lokamedia-integration`.
+5. **Obsidian Knowledge Hub & Long-Term Memory Invariant:**
+   * Vault resmi memori jangka panjang dan basis pengetahuan redaksi berlokasi di `rancangloka-astro/docs/` (Indeks utama: `docs/HOME.md` dan arsip artikel terbit: `docs/articles/`).
+   * Setiap kali ada keputusan redaksi penting, pembaruan pedoman arsitektur, riset baru, atau artikel yang resmi diterbitkan, AI agent wajib memutakhirkan/menyinkronkan catatan di vault Obsidian.
+   * Sebelum meriset atau menulis artikel baru, AI agent wajib membaca dan merujuk ingatan di vault Obsidian guna mencegah duplikasi riset, menghemat kuota token, serta menjaga konsistensi suara redaksi.
+6. **Batas Peran Redaksi Ketat & Larangan Peniruan Penulis (DEC-09):**
+   * **Larangan Menulis bagi Gravy:** Gravy (Antigravity AI Assistant) DILARANG KERAS menulis atau merumuskan prosa naskah artikel atas nama Joko. Tanggung jawab Gravy terbatas pada rekayasa perangkat lunak (engineering), integrasi, orkestrasi pipeline, dan troubleshooting teknis.
+   * **Joko Penulis Tunggal:** Joko (`content_writer_primary`) adalah satu-satunya juru tulis resmi artikel RancangLoka yang wajib dieksekusi melalui runtime Hermes dan model LLM terkonfigurasi (SumoPod GPT-6 Luna).
+   * **Larangan Rekayasa & Fabrikasi:** Dilarang meng-hardcode teks prosa artikel ke dalam skrip, menggantikan output Joko dengan output Gravy, mensimulasikan eksekusi penulisan Joko, memalsukan skor evaluasi semantik Nadia, atau memalsukan receipt eksekusi staf.
+   * **Evaluasi Semantik Nyata Nadia:** Nadia wajib mengevaluasi naskah Joko secara semantik nyata. Revisi naskah wajib dilakukan oleh Joko.
+   * **Pembelajaran Berkelanjutan:** Umpan balik editorial dan pelajaran yang dipetik wajib disimpan ke Primary & Second Brain agar performa Joko meningkat di masa depan.
+   * **Invarian Fail-Stop:** Jika Joko tidak dapat mengeksekusi penulisan, sistem wajib **BERHENTI DAN MELAPOR (FAIL-STOP & REPORT)** kepada Owner. Dilarang menggantikan Joko dengan penulis tiruan.
+   * **Otorisasi Biaya API:** Seluruh pemanggilan model LLM berbayar wajib mendapatkan persetujuan pagu anggaran eksplisit dari Owner.
+7. **Konsolidasi Final Editorial, Dua Benchmark & Kedaulatan Pembaca (DEC-10):**
+   * **Dua Benchmark Editorial Saling Melengkapi:** Golden Article #9993 (*Troubleshooting Guide*) dan Supplementary Benchmark #10019 (*Material Comparison & Decision Guide*, L4 Santai Berisi: *"Berisi seperti ahli, ngobrol seperti teman"*).
+   * **Kedaulatan Evaluasi Pembaca Manusia:** Skor evaluator AI internal (Nadia/Rina) bersifat penasihat (*advisory*). Skor evaluator TIDAK BOLEH mengesampingkan evaluasi keterbacaan riil dari Owner / Chief Editor. Naskah revisi dengan skor 72/100 dikonfirmasi Owner lebih ringan, mengalir, dan nyaman dibaca dibanding draf sebelumnya. Dilarang menjadikan benchmark sebagai templat kaku atau menambah aturan penulisan mekanis baru.
+   * **Invarian Media Visual MAA-V1 & Zero Broken Images:** MAA-V1 adalah otoritas tunggal penempatan media visual artikel (`components.inline_media.items`). Seluruh sintaks gambar Markdown mentah (`![...](slot_...)`) dari output Joko wajib dibersihkan secara otomatis oleh assembler agar tidak memicu broken image di browser. Naskah mentah model disimpan terpisah secara abadi (*immutable*) dari proyeksi naskah bersih hasil rakitan modular. Seluruh gambar wajib valid, decode sukses, dan 200 OK.
+8. **Invarian Sinkronisasi Tiga Lapisan & Cegah Silent Drift (DEC-23):**
+   * **`LOCAL_VERIFIED != STAGING_VERIFIED != HOSTED_RUNTIME_VERIFIED`**.
+   * Pekerjaan pengembangan (development task) yang memengaruhi operasional hosted Hermes TIDAK BOLEH dinyatakan selesai secara operasional (*operationally complete*) apabila runtime target di SumoPod masih menggunakan versi lama.
+   * Setiap perubahan yang memengaruhi operasional hosted Hermes wajib memiliki status pelacakan sinkronisasi dan verifikasi runtime terpisah:
+     - `LOCAL_VERIFIED`: Lulus typecheck, unit test, dan uji coba lokal.
+     - `STAGING_VERIFIED`: Berhasil dideploy dan tervalidasi pada Cloudflare Staging edge (`rancangloka-staging`).
+     - `HOSTED_RUNTIME_VERIFIED`: Kode sumber telah disinkronkan ke runner hosted Hermes (`/opt/data/rancangloka-runner`) dan diverifikasi lulus regression test di lingkungan SumoPod.
+   * **Observabilitas Dimas & Supervisi JEV:** Dimas (`telemetry_observer_jev`) memantau divergensi versi runtime hosted terhadap baseline staging/origin untuk memastikan JEV dan Owner mendapatkan sinyal telemetri peringatan dini jika runtime operasional tertinggal (*silent version drift prevention*).
 
 ---
 
@@ -262,7 +286,9 @@ npm run build
 
 *Invarian Durabel Kling Omni Image Series & Coherent Multi-Angle Generation (2026-11-19): Milestone RANCANGLOKA_KLING_OMNI_IMAGE_SERIES_V1 menetapkan dukungan mode Image Series asli (result_type: 'series', series_amount: 2..9 via POST /v1/images/omni-image) pada adapter Kling Image 3.0 Omni (kling-image-adapter.ts) dan runner Hermes EU, menghasilkan beberapa sudut pandang foto editorial dari satu rumah yang sama dalam satu eksekusi terpadu. Perhitungan unit Kling strictly berbasis jumlah output gambar yang dihasilkan (OUTPUT_IMAGES_COUNT * 8 units pada 2K resolution = 24 units untuk 3 gambar). Anchor visual cover asli dilewatkan melalui image_list dan ditautkan dalam prompt dengan tag conditioning <<<image_1>>>. Mesin prompt terstruktur Budi (buildStructuredSeriesPrompt) membagi spesifikasi menjadi [IMMUTABLE ARCHITECTURE & EQUIPMENT - ALL 3 SHOTS] (topologi U-shape, kompor induksi tanam kaca datar, slim stainless hood, kabinet jati matte, countertop cream) dan [PANEL SEQUENCE SPECIFICATIONS] (Shot 1: Cooking perspective, Shot 2: Appliance & filtration detail, Shot 3: Windowless room ventilation perspective) disertai negative prompt tegas anti-perubahan peralatan. Nadia Series QA Gate (evaluateImageSeriesQualityGate) memverifikasi 6 dimensi mutlak: SAME_HOUSE_CONSISTENCY, FIXED_APPLIANCE_CONSISTENCY, SPATIAL_CONTINUITY, DISTINCT_CAMERA_ANGLES (menolak sudut pandang duplikat/redundant), ARTICLE_RELEVANCE, dan PHOTO_REALISM. Dilarang mengklaim kelulusan series dari metadata semata; seluruh panggilan API berbayar diblokir hingga otorisasi eksplisit Owner ($0.00 current spend).*
 
-*Dokumen ini diperbarui pada 19 November 2026 setelah implementasi dan verifikasi RANCANGLOKA_KLING_OMNI_IMAGE_SERIES_V1.*
+*Invarian Durabel Permanent Pre-Closing Visual Placement Rule v1.1 (2026-11-22): Milestone RANCANGLOKA_PERMANENT_PRE_CLOSING_VISUAL_RULE_ESTABLISHED menetapkan bahwa setiap artikel editorial RancangLoka wajib memiliki 1 visual khusus Object-First pra-penutup yang ditempatkan sebelum section closing/pertimbangan keputusan akhir (posisi before_heading pada sub-bab penutup). Visual ini wajib relevan dengan rangkuman pilihan, rekomendasi praktis, atau keputusan akhir hunian, dan dilarang menggunakan gambar dekoratif generik, diagram, tabel, atau infografis. Target minimum baku artikel baru: 1 cover hero + 3 inline pendukung + 1 pre-closing visual (total 5 visual per artikel). Kebijakan ini aktif secara default pada pipeline Budi, storyboard Nadia, anchor resolver, binding media, dan evaluasi Definition of Done Gate B.*
+
+*Dokumen ini diperbarui pada 22 November 2026 setelah penetapan RANCANGLOKA_PERMANENT_PRE_CLOSING_VISUAL_RULE_ESTABLISHED.*
 
 ## 5. Aturan Operasional Sinkronisasi & Handoff (2026-11-14)
 

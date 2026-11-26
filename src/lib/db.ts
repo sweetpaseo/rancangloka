@@ -120,7 +120,7 @@ const MOCK_AUTHORS: Author[] = [
     name: 'RancangLoka Editorial Desk',
     slug: 'dewan-redaksi-spasial',
     bio: 'Tim kurasi independen RancangLoka yang fokus pada analisis sirkulasi udara, pencahayaan alami, dan efisiensi spasial hunian tropis kontemporer.',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    avatar: '/media/editorial/rancangloka-editorial-desk.svg',
     role: 'Kurator Utama Tata Ruang Tropis',
     social_links: JSON.stringify({ email: 'redaksi@rancangloka.com' })
   },
@@ -129,7 +129,7 @@ const MOCK_AUTHORS: Author[] = [
     name: 'RancangLoka Research Desk',
     slug: 'tim-riset-materialitas',
     bio: 'Kolektif riset spesifikasi material bangunan ramah lingkungan, isolasi termal pasif, dan pengujian durabilitas iklim tropis lembap.',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    avatar: '/media/editorial/rancangloka-editorial-desk.svg',
     role: 'Editor Spesifikasi & Material',
     social_links: JSON.stringify({ email: 'redaksi@rancangloka.com' })
   }
@@ -1874,7 +1874,7 @@ export async function insertAuthor(db: any, author: Partial<Author>): Promise<Au
     name: author.name || 'Penulis Baru',
     slug: author.slug || `author-${newId}`,
     bio: author.bio || '',
-    avatar: author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    avatar: author.avatar || '/media/editorial/rancangloka-editorial-desk.svg',
     role: author.role || 'Contributor',
     social_links: author.social_links || '{}'
   };
@@ -2901,9 +2901,9 @@ export async function insertHermesArticleAndReceipt(
       id, slug, title, description, content_md, content_html, featured_image, image_alt,
       category_id, author_id, status, reading_time_minutes, key_takeaways,
       focus_keyword, content_hash, is_featured, is_trending, is_sponsored,
-      disable_internal_links, published_at, updated_at
+      disable_internal_links, manual_hold, manual_hold_reason, published_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     insertedArticleId,
     articleData.slug,
@@ -2924,6 +2924,8 @@ export async function insertHermesArticleAndReceipt(
     0, // Not trending
     0, // Not sponsored
     0, // Default internal links
+    1, // Strictly manual_hold = 1 (Awaiting owner approval)
+    'HERMES_M2M_INGEST_AWAITING_OWNER_APPROVAL',
     articleData.published_at || new Date().toISOString(),
     articleData.updated_at || new Date().toISOString()
   );

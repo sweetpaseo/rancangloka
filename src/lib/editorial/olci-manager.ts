@@ -1,0 +1,262 @@
+/**
+ * RancangLoka — Organizational Learning & Continuous Improvement (OLCI) Memory Manager
+ * File: src/lib/editorial/olci-manager.ts
+ *
+ * Implements Section 5, 6, 8, and 10 of RANCANGLOKA_OLCI_IMPLEMENTATION_BLUEPRINT.md
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { resolveSharedMemoryDir } from './shared-memory-adapter.ts';
+import {
+  type OlciExperienceRecord,
+  type OlciInnovationProposal,
+  type OlciCollaborationThread,
+  type OlciProposalStatus,
+  formatExperienceAsMarkdown,
+  formatProposalAsMarkdown
+} from './olci-contracts.ts';
+
+const ROLE_DIR_MAP: Record<string, string> = {
+  'content_strategy_primary': 'maya-content-strategy',
+  'social_distribution_operator': 'maya-content-strategy',
+  'maya': 'maya-content-strategy',
+  'media_director_primary': 'budi-media-director',
+  'budi': 'budi-media-director',
+  'researcher_primary': 'irwan-researcher',
+  'irwan': 'irwan-researcher',
+  'content_writer_primary': 'joko-author',
+  'joko': 'joko-author',
+  'voice_evaluator_primary': 'nadia-voice-editor',
+  'nadia': 'nadia-voice-editor',
+  'qa_lead_primary': 'rina-qa',
+  'rina': 'rina-qa',
+  'seo_specialist_primary': 'seon-seo',
+  'seon': 'seon-seo',
+  'assembler_primary': 'dimas-assembler',
+  'dimas': 'dimas-assembler',
+  'publisher_primary': 'sari-publisher',
+  'sari': 'sari-publisher',
+  'coordinator_primary': 'jefry-coordinator',
+  'jefry': 'jefry-coordinator'
+};
+
+export function resolveStaffMemoryDir(staffId: string): string {
+  const baseDir = resolveSharedMemoryDir();
+  const roleSub = ROLE_DIR_MAP[staffId.toLowerCase()] || staffId.toLowerCase();
+  const dir = path.join(baseDir, '06-staff-memory', roleSub);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+export function resolveInnovationInboxDir(): string {
+  const baseDir = resolveSharedMemoryDir();
+  const dir = path.join(baseDir, '00-innovation-inbox');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+export function resolveCollaborationThreadsDir(): string {
+  const baseDir = resolveSharedMemoryDir();
+  const dir = path.join(baseDir, '07-collaboration-threads');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+/**
+ * Record a professional experience record for a staff member.
+ */
+export function recordExperience(record: OlciExperienceRecord): { success: boolean; filePath: string } {
+  const targetDir = resolveStaffMemoryDir(record.staff_id);
+  const fileName = `${record.experience_id}.md`;
+  const filePath = path.join(targetDir, fileName);
+
+  const content = formatExperienceAsMarkdown(record);
+  fs.writeFileSync(filePath, content, 'utf8');
+
+  return { success: true, filePath };
+}
+
+/**
+ * Get relevant experiences for a staff member or topic.
+ */
+export function getStaffExperiences(staffId: string, filter?: { article_ref?: string; kind?: string }): OlciExperienceRecord[] {
+  const targetDir = resolveStaffMemoryDir(staffId);
+  if (!fs.existsSync(targetDir)) return [];
+
+  const files = fs.readdirSync(targetDir).filter(f => f.endsWith('.md'));
+  const records: OlciExperienceRecord[] = [];
+
+  for (const file of files) {
+    const raw = fs.readFileSync(path.join(targetDir, file), 'utf8');
+    const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!fmMatch) continue;
+
+    const fm = fmMatch[1];
+    const expId = (fm.match(/experience_id:\s*"([^"]+)"/) || [])[1] || path.basename(file, '.md');
+    const staff = (fm.match(/staff_id:\s*"([^"]+)"/) || [])[1] || staffId;
+    const artRef = (fm.match(/article_ref:\s*"([^"]+)"/) || [])[1] || '';
+    const kind = (fm.match(/kind:\s*"([^"]+)"/) || [])[1] as any || 'observation';
+    const validation = (fm.match(/validation:\s*"([^"]+)"/) || [])[1] as any || 'observed';
+    const observedAt = (fm.match(/observed_at:\s*"([^"]+)"/) || [])[1] || '';
+
+    if (filter?.article_ref && artRef !== filter.article_ref) continue;
+    if (filter?.kind && kind !== filter.kind) continue;
+
+    // Extract observation
+    const obsMatch = raw.match(/## 1\. Observation\r?\n([\s\S]*?)(?=\r?\n## 2|\r?\n## 3|\r?\n## 4|\r?\n## 5|\r?\n## 6|$)/);
+    const observation = obsMatch ? obsMatch[1].trim() : '';
+
+    // Extract lesson
+    const lessonMatch = raw.match(/## 6\. Durable Lesson Learned\r?\n([\s\S]*?)(?=\r?\n## |$)/);
+    const lesson = lessonMatch ? lessonMatch[1].trim() : '';
+
+    records.push({
+      experience_id: expId,
+      staff_id: staff,
+      article_ref: artRef,
+      observed_at: observedAt,
+      kind,
+      validation,
+      observation,
+      lesson
+    });
+  }
+
+  return records;
+}
+
+/**
+ * Submit an innovation proposal to the Innovation Inbox.
+ */
+export function submitProposal(proposal: OlciInnovationProposal): { success: boolean; filePath: string } {
+  const inboxDir = resolveInnovationInboxDir();
+  const fileName = `${proposal.proposal_id}.md`;
+  const filePath = path.join(inboxDir, fileName);
+
+  const content = formatProposalAsMarkdown(proposal);
+  fs.writeFileSync(filePath, content, 'utf8');
+
+  return { success: true, filePath };
+}
+
+/**
+ * List all proposals in the Innovation Inbox.
+ */
+export function listProposals(statusFilter?: OlciProposalStatus): OlciInnovationProposal[] {
+  const inboxDir = resolveInnovationInboxDir();
+  if (!fs.existsSync(inboxDir)) return [];
+
+  const files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
+  const proposals: OlciInnovationProposal[] = [];
+
+  for (const file of files) {
+    const raw = fs.readFileSync(path.join(inboxDir, file), 'utf8');
+    const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!fmMatch) continue;
+
+    const fm = fmMatch[1];
+    const proposalId = (fm.match(/proposal_id:\s*"([^"]+)"/) || [])[1] || path.basename(file, '.md');
+    const proposer = (fm.match(/proposer_role:\s*"([^"]+)"/) || [])[1] || '';
+    const status = (fm.match(/status:\s*"([^"]+)"/) || [])[1] as OlciProposalStatus || 'submitted';
+    const category = (fm.match(/category:\s*"([^"]+)"/) || [])[1] as any || 'process_improvement';
+    const submittedAt = (fm.match(/submitted_at:\s*"([^"]+)"/) || [])[1] || '';
+
+    if (statusFilter && status !== statusFilter) continue;
+
+    const titleMatch = raw.match(/^# Innovation Proposal:\s*(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : proposalId;
+
+    const probMatch = raw.match(/## 1\. Problem or Opportunity\r?\n([\s\S]*?)(?=\r?\n## |$)/);
+    const solMatch = raw.match(/## 2\. Proposed Solution\r?\n([\s\S]*?)(?=\r?\n## |$)/);
+    const benMatch = raw.match(/## 4\. Expected Benefit\r?\n([\s\S]*?)(?=\r?\n## |$)/);
+
+    proposals.push({
+      proposal_id: proposalId,
+      proposer_role: proposer,
+      submitted_at: submittedAt,
+      category,
+      title,
+      problem_or_opportunity: probMatch ? probMatch[1].trim() : '',
+      proposed_solution: solMatch ? solMatch[1].trim() : '',
+      expected_benefit: benMatch ? benMatch[1].trim() : '',
+      estimated_cost_or_risk: '',
+      success_metrics: '',
+      evidence_refs: [],
+      status
+    });
+  }
+
+  return proposals;
+}
+
+/**
+ * Record or update an event-driven collaboration thread.
+ */
+export function recordCollaborationThread(thread: OlciCollaborationThread): { success: boolean; filePath: string } {
+  const threadsDir = resolveCollaborationThreadsDir();
+  const fileName = `${thread.thread_id}.md`;
+  const filePath = path.join(threadsDir, fileName);
+
+  const frontmatter = [
+    '---',
+    `thread_id: "${thread.thread_id}"`,
+    `initiated_by: "${thread.initiated_by}"`,
+    `participants:\n${thread.participants.map(p => `  - "${p}"`).join('\n')}`,
+    `trigger_event: "${thread.trigger_event}"`,
+    `article_ref: "${thread.article_ref}"`,
+    `created_at: "${thread.created_at}"`,
+    `status: "${thread.status}"`,
+    '---'
+  ].join('\n');
+
+  const messagesFormatted = thread.messages.map((m, idx) => {
+    return [
+      `### Message ${idx + 1}: \`${m.sender_role}\` (${m.timestamp})`,
+      '',
+      m.content,
+      ''
+    ].join('\n');
+  }).join('\n---\n\n');
+
+  const conclusionFormatted = thread.conclusion ? [
+    '## Conclusion & Agreed Action Items',
+    '',
+    `**Concluded At:** ${thread.conclusion.concluded_at}  `,
+    '',
+    '### Summary',
+    thread.conclusion.summary,
+    '',
+    '### Agreed Action Items',
+    thread.conclusion.action_items.map(a => `- ${a}`).join('\n'),
+    '',
+    '### Agreed Lessons for Professional Memory',
+    thread.conclusion.agreed_lessons.map(l => `- ${l}`).join('\n'),
+    ''
+  ].join('\n') : '';
+
+  const body = [
+    `# Collaboration Thread: ${thread.thread_id}`,
+    '',
+    `**Initiated By:** \`${thread.initiated_by}\`  `,
+    `**Participants:** ${thread.participants.map(p => `\`${p}\``).join(', ')}  `,
+    `**Trigger:** ${thread.trigger_event}  `,
+    `**Article Ref:** \`${thread.article_ref}\`  `,
+    `**Status:** \`${thread.status.toUpperCase()}\`  `,
+    '',
+    '## Dialogue Transcript',
+    '',
+    messagesFormatted,
+    conclusionFormatted
+  ].join('\n');
+
+  fs.writeFileSync(filePath, `${frontmatter}\n\n${body}\n`, 'utf8');
+
+  return { success: true, filePath };
+}

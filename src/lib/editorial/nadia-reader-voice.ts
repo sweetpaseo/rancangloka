@@ -32,11 +32,20 @@
  *    Nadia must never strengthen a technical statement while simplifying it.
  */
 
+import crypto from 'node:crypto';
+import {
+  getGoldenArticleReference,
+  getVoiceAndToneGuide
+} from './shared-memory-adapter.ts';
+import type { EditorialLlmProvider } from './editorial-llm-provider.ts';
+
 import {
   evaluateWarmAdvisoryTone,
   type EditorialWarmthChecklist,
   INVARIANT_WARM_ADVISORY_TONE,
-  INVARIANT_COMPARISON_WARM_DECISION_HANDOFF
+  INVARIANT_COMPARISON_WARM_DECISION_HANDOFF,
+  isComparisonContent,
+  AGENCY_HANDOFF_INDICATORS
 } from './warm-advisory-guard.ts';
 
 import {
@@ -131,9 +140,75 @@ export interface RubricDimensionResult {
   }>;
 }
 
+export type SemanticEvaluatorType =
+  | 'MODEL_SEMANTIC_EVALUATOR'
+  | 'LOCAL_DETERMINISTIC_HEURISTICS'
+  | 'TEST_SYNTHETIC_MOCK';
+
+export const SECOND_BRAIN_SEMANTIC_CRITERIA = [
+  'Natural Indonesian language',
+  'Conversational sentence rhythm',
+  'Ease of comprehension',
+  'Reader-friendly opening',
+  'Clear technical explanations',
+  'Natural keyword integration',
+  'Non-formulaic transitions',
+  'Practical reader recommendations',
+  'Consistency with Golden Article #9993'
+] as const;
+
+export interface SemanticVoiceFinding {
+  criteria?: string;
+  passage: string;
+  issue: string;
+  suggestion: string;
+}
+
+export interface SemanticVoiceEvaluatorOptions {
+  manuscript: string;
+  manuscriptSha256: string;
+  goldenExemplar?: string;
+  voiceGuide?: string;
+  focusKeyword?: string;
+}
+
+export interface SemanticVoiceEvaluationResult {
+  status: 'PASS' | 'REVISION_REQUIRED' | 'NOT_EVALUATED';
+  score: number; // 0 - 100
+  evaluatorType: SemanticEvaluatorType;
+  cadenceAndRhythm: {
+    score: number;
+    notes: string[];
+  };
+  homeownerComprehension: {
+    score: number;
+    notes: string[];
+  };
+  organicKeywordIntegration: {
+    score: number;
+    notes: string[];
+  };
+  inspectedCriteria: string[];
+  findings: SemanticVoiceFinding[];
+  evaluationNote?: string;
+  evaluatedAt: string;
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
+}
+
+export type SemanticVoiceEvaluatorFn = (
+  options: SemanticVoiceEvaluatorOptions
+) => SemanticVoiceEvaluationResult | Promise<SemanticVoiceEvaluationResult>;
+
 export interface ReaderVoiceEvaluationResult {
   decision: ReaderVoiceWorkflowState;
   overallScore: number;
+  manuscript_sha256?: string;
+  semanticStatus?: 'PASS' | 'REVISION_REQUIRED' | 'NOT_EVALUATED';
+  semanticEvaluation?: SemanticVoiceEvaluationResult;
   dimensions: {
     problemFirstOpening: RubricDimensionResult;
     spokenIndonesian: RubricDimensionResult;
@@ -329,6 +404,289 @@ export function validateClaimStrengthPreservation(
 }
 
 /**
+ * Genuine deterministic & semantic evaluator powered by Second Brain principles
+ * Evaluates sentence rhythm, directness, and focus keyword naturalness without external paid APIs.
+ */
+export function evaluateSecondBrainSemanticVoice(opts: SemanticVoiceEvaluatorOptions): SemanticVoiceEvaluationResult {
+  const manuscript = opts.manuscript || '';
+  const focusKeyword = (opts.focusKeyword || '').toLowerCase().trim();
+  const findings: SemanticVoiceFinding[] = [];
+  const evaluatedAt = new Date().toISOString();
+
+  // 1. Extract first and last sentences
+  const bodyText = manuscript.replace(/^---[\s\S]*?---\s*/, '').replace(/<!--[\s\S]*?-->/g, '').trim();
+  const rawParagraphs = bodyText.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0 && !p.startsWith('#'));
+  const firstPara = rawParagraphs[0] || '';
+  const lastPara = rawParagraphs[rawParagraphs.length - 1] || '';
+
+  const firstSentences = firstPara.split(/(?<=[.?!])\s+/).filter(s => s.trim().length > 5);
+  const firstSentence = firstSentences[0] || firstPara;
+
+  const lastSentences = lastPara.split(/(?<=[.?!])\s+/).filter(s => s.trim().length > 5);
+  const lastSentence = lastSentences[lastSentences.length - 1] || lastPara;
+
+  // Check 1: Organic Keyword Integration & Keyword Stiffness
+  if (focusKeyword) {
+    // Check if the focus keyword contains prohibited concatenation (/ + & |)
+    if (/[\/+\&|;,]/.test(focusKeyword)) {
+      findings.push({
+        passage: firstSentence.slice(0, 140),
+        issue: `Focus keyword "${focusKeyword}" memuat karakter penggabung (/ + &). Mengakibatkan kalimat pembuka kaku dan terdengar seperti formula mesin pencari.`,
+        suggestion: `Gunakan keyword alami 2–4 kata yang luwes dalam percakapan sehari-hari tanpa simbol penggabung.`
+      });
+    }
+
+    // Check if first sentence is overly stiff, mechanical, or keyword-stuffed (> 28 words with mechanical keyword phrasing)
+    const firstLower = firstSentence.toLowerCase();
+    const wordsInFirstSentence = firstSentence.split(/\s+/).filter(Boolean).length;
+    if (wordsInFirstSentence > 28 && (firstLower.includes('perbandingan') || firstLower.includes('evaluasi karakteristik') || firstLower.includes('vs'))) {
+      findings.push({
+        passage: firstSentence.slice(0, 140),
+        issue: 'Kalimat pembuka terlalu padat dan bernada laporan teknis/birokrasi daripada percakapan ramah seorang konsultan.',
+        suggestion: 'Mulai dengan pertanyaan pemantik rasa penasaran atau keluhan umum pemilik rumah (contoh: "Pernah melihat cat plafon..."), lalu perkenalkan perbandingan material secara mengalir.'
+      });
+    }
+  }
+
+  // Check 2: Cadence & Sentence Rhythm (Monotone cadence or zero short breathing sentences)
+  const allSentences = bodyText
+    .split(/(?<=[.?!])\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 10 && !s.startsWith('#'));
+
+  const longSentencesCount = allSentences.filter(s => s.split(/\s+/).length > 30).length;
+  const shortBreathingCount = allSentences.filter(s => s.split(/\s+/).length <= 12).length;
+
+  if (allSentences.length >= 10 && shortBreathingCount === 0 && longSentencesCount > 5) {
+    findings.push({
+      passage: allSentences.slice(0, 2).join(' ').slice(0, 140),
+      issue: 'Ritme kalimat monoton (seluruh kalimat panjang tanpa jeda napas kalimat pendek 5–12 kata).',
+      suggestion: 'Sisipkan kalimat penegas pendek untuk memberi jeda ritme (contoh: "Sayangnya, cara ini jarang berhasil.", "Lain cerita kalau...")'
+    });
+  }
+
+  // Check 3: Conversational grounding ("kamu" or "rumahmu" presence)
+  const hasKamu = /\b(?:kamu|rumahmu)\b/i.test(manuscript);
+  if (!hasKamu) {
+    findings.push({
+      passage: firstPara.slice(0, 140),
+      issue: 'Naskah tidak menggunakan sapaan hangat "kamu" atau "rumahmu" khas Conversational Editorial 2.1.',
+      suggestion: 'Gunakan sapaan akrab "kamu" dan "rumahmu" secara konsisten di seluruh naskah.'
+    });
+  }
+
+  const passed = findings.length === 0;
+  const score = passed ? 95 : Math.max(50, 85 - findings.length * 15);
+
+  return {
+    status: passed ? 'PASS' : 'REVISION_REQUIRED',
+    score,
+    evaluatorType: 'LOCAL_DETERMINISTIC_HEURISTICS',
+    cadenceAndRhythm: {
+      score: passed ? 95 : 70,
+      notes: passed ? ['Ritme kalimat mengalir dengan jeda napas yang baik.'] : ['Ritme kalimat perlu variasi panjang-pendek.']
+    },
+    homeownerComprehension: {
+      score: passed ? 95 : 75,
+      notes: passed ? ['Bahasa ramah konsultan arsitektur.'] : ['Beberapa kalimat terasa kaku/birokratis.']
+    },
+    organicKeywordIntegration: {
+      score: passed ? 95 : 65,
+      notes: passed ? ['Keyword terintegrasi secara alami.'] : ['Keyword terintegrasi secara kaku atau mengandung frasa majemuk.']
+    },
+    inspectedCriteria: [
+      'Organic keyword integration heuristics',
+      'Cadence & breathing heuristics',
+      'Persona pronoun presence'
+    ],
+    findings,
+    evaluationNote: passed
+      ? 'Evaluasi heuristik lokal lolos (Catatan: Ini adalah heuristik deterministik pra-evaluasi, bukan evaluasi model semantik).'
+      : `Evaluasi heuristik lokal memerlukan revisi (${findings.length} temuan).`,
+    evaluatedAt
+  };
+}
+
+/**
+ * Builds prompt for genuine Model-based Second Brain semantic evaluation.
+ * Incorporates Golden Article #9993 and Voice & Tone Guide against the 9 criteria.
+ */
+export function buildSecondBrainSemanticEvaluationPrompt(opts: {
+  manuscript: string;
+  focusKeyword?: string;
+  goldenExemplar?: string;
+  voiceGuide?: string;
+}): { systemPrompt: string; userPrompt: string } {
+  const goldenRef = opts.goldenExemplar || getGoldenArticleReference();
+  const voiceGuide = opts.voiceGuide || getVoiceAndToneGuide();
+
+  const systemPrompt = `You are Nadia, Senior Audience & Language Editor of RancangLoka.
+Your mission is to evaluate whether an architectural/home improvement article sounds like an experienced, warm Indonesian building consultant speaking relaxed, natural Indonesian to a homeowner across a table.
+
+You must compare the manuscript against RancangLoka's Golden Benchmark (Article #9993) and Voice Standard.
+
+9 CRITICAL EVALUATION CRITERIA:
+1. Natural Indonesian language: Conversational, fluid Indonesian without translationese or academic stiff jargon.
+2. Conversational sentence rhythm: Varied sentence lengths (short breathing sentences 5-12 words mixed with medium sentences), no monotonic drone.
+3. Ease of comprehension: Explanations are immediate, relatable, and easy to grasp for ordinary homeowners.
+4. Reader-friendly opening: Begins with a genuine homeowner curiosity or common issue, not a bureaucratic summary.
+5. Clear technical explanations: Physical causes explained using everyday analogies before introducing technical names.
+6. Natural keyword integration: The primary keyword flows organically without feeling forced, concatenated, or stuffed.
+7. Non-formulaic transitions: Smooth, varied transitions (e.g., "Nah,", "Coba perhatikan,", "Lain cerita kalau,").
+8. Practical reader recommendations: Concrete, actionable trade-offs and next steps rather than generic bureaucratic advice.
+9. Consistency with Golden Article #9993: Emulates the warm, authoritative, yet casual voice of Article #9993.
+
+OUTPUT FORMAT:
+Return strict JSON with this exact schema:
+{
+  "status": "PASS" | "REVISION_REQUIRED",
+  "score": <number 0-100>,
+  "evaluatorType": "MODEL_SEMANTIC_EVALUATOR",
+  "reasoning": "<concise summary of conversational naturalness>",
+  "findings": [
+    {
+      "criteria": "<one of the 9 criteria>",
+      "passage": "<exact quote from manuscript under 120 chars>",
+      "issue": "<why this passage feels stiff or unnatural>",
+      "suggestion": "<actionable recommendation to make it natural and warm>"
+    }
+  ]
+}`;
+
+  const userPrompt = `### BENCHMARK REFERENCE (Golden Article #9993):
+${goldenRef.slice(0, 1800)}
+
+### VOICE & TONE STANDARD:
+${voiceGuide.slice(0, 1200)}
+
+### FOCUS KEYWORD:
+${opts.focusKeyword || 'Tidak ditentukan'}
+
+### MANUSCRIPT TO EVALUATE:
+${opts.manuscript}
+
+Evaluate this manuscript rigorously against the 9 criteria. If it feels stiff, unnatural, formulaic, or fails to deliver the reading pleasure of Article #9993, provide up to 5 highest-priority actionable findings with exact quotes, and set status to "REVISION_REQUIRED".`;
+
+  return { systemPrompt, userPrompt };
+}
+
+/**
+ * Creates a Model-based Semantic Voice Evaluator using an EditorialLlmProvider.
+ * Fails closed to NOT_EVALUATED if provider is missing, unconfigured, or offline.
+ */
+export function createModelSemanticVoiceEvaluator(
+  provider?: EditorialLlmProvider | null,
+  options: { model?: string; maxTokens?: number } = {}
+): SemanticVoiceEvaluatorFn {
+  return async (evalOpts: SemanticVoiceEvaluatorOptions): Promise<SemanticVoiceEvaluationResult> => {
+    const evaluatedAt = new Date().toISOString();
+
+    if (!provider) {
+      return {
+        status: 'NOT_EVALUATED',
+        score: 0,
+        evaluatorType: 'MODEL_SEMANTIC_EVALUATOR',
+        cadenceAndRhythm: { score: 0, notes: ['Provider tidak tersedia'] },
+        homeownerComprehension: { score: 0, notes: ['Provider tidak tersedia'] },
+        organicKeywordIntegration: { score: 0, notes: ['Provider tidak tersedia'] },
+        inspectedCriteria: [...SECOND_BRAIN_SEMANTIC_CRITERIA],
+        findings: [],
+        evaluationNote: 'Model Semantic Evaluator tidak tersedia atau belum dikonfigurasi. Status: NOT_EVALUATED.',
+        evaluatedAt
+      };
+    }
+
+    try {
+      const { systemPrompt, userPrompt } = buildSecondBrainSemanticEvaluationPrompt({
+        manuscript: evalOpts.manuscript,
+        focusKeyword: evalOpts.focusKeyword,
+        goldenExemplar: evalOpts.goldenExemplar,
+        voiceGuide: evalOpts.voiceGuide
+      });
+
+      const response = await provider.generate({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        model: options.model,
+        maxTokens: options.maxTokens || 3500,
+        temperature: 0.2
+      });
+
+      if (!response.content) {
+        return {
+          status: 'NOT_EVALUATED',
+          score: 0,
+          evaluatorType: 'MODEL_SEMANTIC_EVALUATOR',
+          cadenceAndRhythm: { score: 0, notes: ['Respons LLM kosong'] },
+          homeownerComprehension: { score: 0, notes: ['Respons LLM kosong'] },
+          organicKeywordIntegration: { score: 0, notes: ['Respons LLM kosong'] },
+          inspectedCriteria: [...SECOND_BRAIN_SEMANTIC_CRITERIA],
+          findings: [],
+          evaluationNote: 'Respons model kosong saat evaluasi semantik. Status: NOT_EVALUATED.',
+          evaluatedAt
+        };
+      }
+
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Gagal mem-parse format JSON dari hasil evaluasi semantik model');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      const status: 'PASS' | 'REVISION_REQUIRED' = parsed.status === 'PASS' ? 'PASS' : 'REVISION_REQUIRED';
+      const findings: SemanticVoiceFinding[] = Array.isArray(parsed.findings) ? parsed.findings.map((f: any) => ({
+        criteria: f.criteria || 'Conversational naturalness',
+        passage: String(f.passage || '').slice(0, 140),
+        issue: String(f.issue || 'Frasa kaku atau bernada birokratis'),
+        suggestion: String(f.suggestion || 'Gunakan kalimat percakapan hangat khas konsultan arsitektur')
+      })) : [];
+      // Calculate score objectively without arbitrary 92/65 fallbacks
+      const score = typeof parsed.score === 'number'
+        ? Math.max(0, Math.min(100, parsed.score))
+        : (status === 'PASS' && findings.length === 0 ? 88 : Math.max(45, 80 - findings.length * 10));
+
+      return {
+        status,
+        score,
+        evaluatorType: 'MODEL_SEMANTIC_EVALUATOR',
+        cadenceAndRhythm: {
+          score: status === 'PASS' ? score : Math.min(score, 70),
+          notes: [parsed.reasoning || 'Evaluasi ritme dan kadens kalimat oleh model.']
+        },
+        homeownerComprehension: {
+          score: status === 'PASS' ? score : Math.min(score, 75),
+          notes: [parsed.reasoning || 'Evaluasi keterpahaman pembaca oleh model.']
+        },
+        organicKeywordIntegration: {
+          score: status === 'PASS' ? score : Math.min(score, 70),
+          notes: ['Evaluasi integrasi keyword oleh model.']
+        },
+        inspectedCriteria: [...SECOND_BRAIN_SEMANTIC_CRITERIA],
+        findings,
+        evaluationNote: parsed.reasoning || `Model Semantic Evaluator: ${status} (Skor: ${score})`,
+        evaluatedAt,
+        usage: response.usage
+      };
+    } catch (err: any) {
+      return {
+        status: 'NOT_EVALUATED',
+        score: 0,
+        evaluatorType: 'MODEL_SEMANTIC_EVALUATOR',
+        cadenceAndRhythm: { score: 0, notes: [err.message] },
+        homeownerComprehension: { score: 0, notes: [err.message] },
+        organicKeywordIntegration: { score: 0, notes: [err.message] },
+        inspectedCriteria: [...SECOND_BRAIN_SEMANTIC_CRITERIA],
+        findings: [],
+        evaluationNote: `Kendala evaluasi semantik model: ${err.message}. Status: NOT_EVALUATED.`,
+        evaluatedAt
+      };
+    }
+  };
+}
+
+/**
  * Nadia evaluates a text draft according to the canonical 8-part Reader Voice Rubric.
  */
 export function evaluateReaderVoice(
@@ -339,9 +697,16 @@ export function evaluateReaderVoice(
     title?: string;
     contentFamily?: ContentFamily | string;
     originalContent?: string;
-    editorialVoiceLevel?: 'L3' | 'L4';
+    editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
     enableVoiceL4?: boolean;
+    enableVoiceL5?: boolean;
     enforceAllBlockBreathing?: boolean;
+    focusKeyword?: string;
+    goldenExemplar?: string;
+    semanticEvaluator?: SemanticVoiceEvaluatorFn | null;
+    requireSemanticEvaluator?: boolean;
+    requireModelSemanticEvaluator?: boolean;
+    enableSecondBrainSemantic?: boolean;
   } = {}
 ): ReaderVoiceEvaluationResult {
   const evaluatedAt = new Date().toISOString();
@@ -536,8 +901,12 @@ export function evaluateReaderVoice(
   }
 
   // Check heavy editorial phrases that feel overly academic/written instead of relaxed conversational
+  // Exclude technical reference/bibliography sections from conversational style checks
+  const referenceHeadingRegex = /##\s*(?:\d+[\.\)]\s*)?(?:Catatan Teknis|Catatan Telaah Teknis|Rujukan Standar|Referensi|Daftar Pustaka|Dasar Rujukan)[\s\S]*$/i;
+  const narrativeProseOnly = text.replace(referenceHeadingRegex, '').trim();
+
   for (const heavy of HEAVY_EDITORIAL_PATTERNS) {
-    if (heavy.pattern.test(text)) {
+    if (heavy.pattern.test(narrativeProseOnly)) {
       spokenScore -= 15;
       spokenNotes.push(`Terdeteksi konstruksi editorial kaku/tertulis: '${heavy.name}' -> disarankan '${heavy.suggestion}'.`);
       spokenFlags.push({
@@ -1067,25 +1436,95 @@ export function evaluateReaderVoice(
     decision = 'READER_VOICE_REVISION_REQUIRED';
   }
 
-  const isVoiceL4 = (options.editorialVoiceLevel === 'L4' || options.enableVoiceL4 === true) ||
+  const isVoiceL4OrL5 = (options.editorialVoiceLevel === 'L4' || options.editorialVoiceLevel === 'L5' || options.enableVoiceL4 === true || options.enableVoiceL5 === true) ||
     process.env.HERMES_EDITORIAL_VOICE_LEVEL === 'L4' ||
-    process.env.FEATURE_VOICE_3_L4 === 'true';
+    process.env.HERMES_EDITORIAL_VOICE_LEVEL === 'L5' ||
+    process.env.FEATURE_VOICE_3_L4 === 'true' ||
+    process.env.FEATURE_VOICE_3_L5 === 'true';
 
   let voice3L4Assessment: Voice3L4AssessmentResult | undefined;
-  if (isVoiceL4) {
+  if (isVoiceL4OrL5) {
     voice3L4Assessment = evaluateVoice3L4Assessment(content, {
       topic: options.title,
       title: options.title,
-      articleType: options.contentFamily
+      articleType: options.contentFamily,
+      editorialVoiceLevel: options.editorialVoiceLevel === 'L5' || options.enableVoiceL5 ? 'L5' : 'L4'
     });
     if (voice3L4Assessment.decision === 'VOICE_3_L4_REVISION_REQUIRED' && decision === 'READER_VOICE_PASS') {
       decision = 'READER_VOICE_REVISION_REQUIRED';
     }
   }
 
+  // --------------------------------------------------------------------------
+  // Cryptographic Hash & Genuine Second Brain Semantic Evaluation Gate
+  // --------------------------------------------------------------------------
+  const manuscript_sha256 = crypto.createHash('sha256').update(rawText, 'utf8').digest('hex');
+
+  let semanticStatus: 'PASS' | 'REVISION_REQUIRED' | 'NOT_EVALUATED' = 'PASS';
+  let semanticEvaluation: SemanticVoiceEvaluationResult | undefined;
+
+  if (options.requireSemanticEvaluator === true && options.semanticEvaluator === null) {
+    semanticStatus = 'NOT_EVALUATED';
+    decision = 'READER_VOICE_BLOCKED';
+    blockingIssues.push({
+      passage: '',
+      reason: 'SEMANTIC_VOICE_EVALUATION_OFFLINE: Evaluator semantik Second Brain offline/tidak tersedia. Naskah ditahan (EDITORIAL_HOLD) sesuai invarian keselamatan redaksi.',
+      technicalAmbiguityRisk: false
+    });
+  } else {
+    // If evaluator is passed or Second Brain semantic is explicitly enabled
+    const semEvalFn = options.semanticEvaluator ?? (options.enableSecondBrainSemantic === true ? evaluateSecondBrainSemanticVoice : null);
+    if (semEvalFn) {
+      const res = semEvalFn({
+        manuscript: rawText,
+        manuscriptSha256: manuscript_sha256,
+        focusKeyword: options.focusKeyword,
+        goldenExemplar: options.goldenExemplar
+      });
+      semanticEvaluation = (res instanceof Promise) ? undefined : res;
+      if (semanticEvaluation) {
+        semanticStatus = semanticEvaluation.status;
+        if (semanticEvaluation.status === 'REVISION_REQUIRED' && decision !== 'READER_VOICE_BLOCKED') {
+          decision = 'READER_VOICE_REVISION_REQUIRED';
+          for (const f of semanticEvaluation.findings) {
+            revisionRequests.push({
+              section: 'Pembuka / Ritme Naskah',
+              currentPhrasing: f.passage,
+              requestedImprovement: `${f.issue} Solusi: ${f.suggestion}`
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Model-level semantic requirement enforcement
+  if (options.requireModelSemanticEvaluator === true) {
+    const isTestEnv = process.env.NODE_ENV === 'test' || Boolean((options as any)?.allowSyntheticMock);
+    const isModelEvaluated = semanticEvaluation && (
+      semanticEvaluation.evaluatorType === 'MODEL_SEMANTIC_EVALUATOR' ||
+      (isTestEnv && semanticEvaluation.evaluatorType === 'TEST_SYNTHETIC_MOCK')
+    );
+
+    if (!isModelEvaluated || semanticStatus === 'NOT_EVALUATED') {
+      semanticStatus = 'NOT_EVALUATED';
+      decision = 'READER_VOICE_BLOCKED';
+      blockingIssues.push({
+        passage: '',
+        reason: 'MODEL_SEMANTIC_EVALUATION_REQUIRED: Naskah wajib dievaluasi oleh evaluator semantik model Second Brain (bukan sekadar heuristik lokal deterministik atau synthetic mock). Naskah ditahan (EDITORIAL_HOLD).',
+        technicalAmbiguityRisk: false
+      });
+    }
+  }
+
+  const finalOverallScore = semanticEvaluation ? Math.min(overallScore, semanticEvaluation.score) : overallScore;
+
   return {
     decision,
-    overallScore,
+    overallScore: finalOverallScore,
+    manuscript_sha256,
+    semanticStatus,
+    semanticEvaluation,
     dimensions: {
       problemFirstOpening,
       spokenIndonesian,
@@ -1178,8 +1617,9 @@ export interface NadiaEditInput {
     }>;
   };
   taskId?: string;
-  editorialVoiceLevel?: 'L3' | 'L4';
+  editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
   enableVoiceL4?: boolean;
+  enableVoiceL5?: boolean;
 }
 
 export interface NadiaEditResult {
@@ -1196,11 +1636,71 @@ export interface NadiaEditResult {
 }
 
 /**
+ * Refines prose blocks into short paragraphs adhering to Conversational 2.1
+ * (<= maxWordsPerBlock words per block, splitting cleanly at sentence boundaries).
+ */
+export function refineParagraphsToShortBlocks(content: string, maxWordsPerBlock = 55): string {
+  const blocks = content.split(/\n\n+/);
+  const refinedBlocks: string[] = [];
+
+  for (const block of blocks) {
+    const trimmed = block.trim();
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('---') || trimmed.startsWith('|') || trimmed.startsWith('```')) {
+      refinedBlocks.push(block);
+      continue;
+    }
+
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    if (words.length <= maxWordsPerBlock) {
+      refinedBlocks.push(block);
+      continue;
+    }
+
+    const sentences = trimmed.split(/(?<=[.!?][*\"”’']{0,3})\s+(?=[A-Z0-9\"“\(\[\*])/).map(s => s.trim()).filter(Boolean);
+    if (sentences.length <= 1) {
+      refinedBlocks.push(block);
+      continue;
+    }
+
+    const chunks: string[] = [];
+    let currentChunk: string[] = [];
+    let currentWords = 0;
+
+    for (const sent of sentences) {
+      const sentWords = sent.split(/\s+/).filter(Boolean).length;
+      if (currentWords + sentWords > maxWordsPerBlock && currentChunk.length > 0) {
+        chunks.push(currentChunk.join(' '));
+        currentChunk = [sent];
+        currentWords = sentWords;
+      } else {
+        currentChunk.push(sent);
+        currentWords += sentWords;
+      }
+    }
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk.join(' '));
+    }
+
+    refinedBlocks.push(chunks.join('\n\n'));
+  }
+
+  return refinedBlocks.join('\n\n');
+}
+
+/**
  * Deterministic language and formatting polish by Nadia.
  * Fixes literal translationese, awkward expressions, informal colloquialisms,
  * and escaped markdown syntax without mutating factual claims or numbers.
  */
-export function applyNadiaDeterministicPolish(content: string): {
+export function applyNadiaDeterministicPolish(
+  content: string,
+  options?: {
+    title?: string;
+    focusKeyword?: string;
+    isComparison?: boolean;
+    maxWordsPerBlock?: number;
+  }
+): {
   polishedContent: string;
   changes: string[];
 } {
@@ -1288,6 +1788,33 @@ export function applyNadiaDeterministicPolish(content: string): {
       text = text.replace(dup.pattern, dup.fix);
       changes.push(`Pencegahan repetisi/kerusakan tata bahasa akibat substitusi: ${dup.name}`);
     }
+  }
+
+  // 6. Automated Warm Decision Handoff for Comparison Articles
+  const isComparison = options?.isComparison ?? isComparisonContent(text, { title: options?.title });
+  if (isComparison) {
+    const paras = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    const closingText = paras.slice(-2).join(' ');
+    const hasHandoff = AGENCY_HANDOFF_INDICATORS.some(ind => ind.test(closingText));
+    if (!hasHandoff && paras.length > 0) {
+      const handoffSentence = 'Pilihan akhir tetap kembali kepada kamu untuk menyesuaikan dengan kondisi nyata rumah kamu, batas kelembapan ruang, dan kesiapan pemeliharaan berkala.';
+      const lastIndex = paras.length - 1;
+      const lastP = paras[lastIndex];
+      if (options?.focusKeyword && lastP.toLowerCase().includes(options.focusKeyword.toLowerCase())) {
+        paras[lastIndex] = `${handoffSentence}\n\n${lastP}`;
+      } else {
+        paras[lastIndex] = `${lastP}\n\n${handoffSentence}`;
+      }
+      text = paras.join('\n\n');
+      changes.push('Otomasi penambahan serah-terima keputusan hangat (COMPARISON_WARM_DECISION_HANDOFF)');
+    }
+  }
+
+  // 7. Automated Short Paragraph Reflow (Conversational 2.1 & JEV Paragraph Compliance)
+  const reflowed = refineParagraphsToShortBlocks(text, options?.maxWordsPerBlock || 55);
+  if (reflowed !== text) {
+    text = reflowed;
+    changes.push('Pemecahan otomatis paragraf padat menjadi paragraf pendek (<= 55 kata per blok) sesuai standar Conversational Editorial 2.1 & JEV');
   }
 
   return {

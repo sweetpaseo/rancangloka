@@ -39,6 +39,10 @@ import {
   INVARIANT_CONCEPTUAL_VISUAL_TRUTH,
   evaluatePremiumEditorialDepth
 } from './premium-editorial-depth-guard.ts';
+import {
+  detectForbiddenVisualStyles,
+  OBJECT_FIRST_POLICY_VERSION
+} from './object-first-visual-policy.ts';
 
 import {
   assertValidSlotKey,
@@ -203,7 +207,7 @@ export function generateEditorialVisualBriefs(params: {
     defaultSources.push('Peraturan Menteri PUPR No. 02/PRT/M/2015');
   }
 
-  // 1. Decision Matrix / Comparative Visual
+  // 1. Decision Matrix / Comparative Visual (OBJECT-FIRST: Real physical samples/objects photographed side by side)
   if (
     recommendedClasses.includes('DECISION_MATRIX') ||
     recommendedClasses.includes('COMPARATIVE_VISUAL') ||
@@ -212,19 +216,20 @@ export function generateEditorialVisualBriefs(params: {
     briefs.push({
       brief_id: `vb-${article_slug}-decision-matrix-01`,
       article_slug,
-      content_section: 'Tabel Komparasi & Pertimbangan Trade-Off',
-      reader_problem: 'Pembaca kesulitan membandingkan kelebihan, kelemahan, dan kebutuhan perawatan dari beberapa alternatif sistem secara simultan.',
-      visual_goal: 'Menyajikan matriks perbandingan responsif yang merangkum parameter teknis utama (daya tahan cuaca, kemudahan perawatan, fleksibilitas) guna mengurangi beban kognitif membaca teks panjang.',
-      visual_class: 'DECISION_MATRIX',
-      technical_truth_to_preserve: 'Setiap sistem memiliki trade-off yang seimbang; tidak ada sistem yang unggul mutlak tanpa kelemahan perawatan atau keterbatasan orientasi hadap.',
+      content_section: 'Perbandingan Fisik Material & Pertimbangan Trade-Off',
+      reader_problem: 'Pembaca kesulitan membayangkan perbedaan fisik, ketebalan, dan tekstur dari material yang dibandingkan secara nyata.',
+      visual_goal: 'Menampilkan fotografi still-life editorial makro dari dua sampel material fisik nyata yang diletakkan berdampingan di atas permukaan netral dengan pencahayaan alami jendela, menonjolkan tekstur permukaan dan profil potongan fisik (Object-First Policy v1.0).',
+      visual_class: 'COMPARATIVE_VISUAL',
+      technical_truth_to_preserve: 'Setiap sistem memiliki perbedaan fisik nyata (profil, ketebalan, fleksibilitas) dan trade-off fungsional yang objektif tanpa rekayasa klaim.',
       misrepresentation_risks: [
+        'Dilarang menghasilkan infografis, tabel perbandingan, diagram teks, atau slide presentasi sebagai gambar sesuai kebijakan Object-First Visuals Policy v1.0.',
         'Dilarang memberi rating subjektif tanpa parameter jelas',
         'Dilarang menampilkan visual produk komersial tertentu seolah didukung oleh RancangLoka'
       ],
       source_references: defaultSources.length > 0 ? defaultSources : ['Standar Teknis Arsitektur Tropis & Riset Redaksional'],
       evidence_references: defaultSources,
-      caption_intent: 'Matriks komparasi ringkas parameter teknis dan trade-off operasional untuk hunian tropis.',
-      alt_text_intent: 'Tabel komparasi karakteristik teknis, durabilitas, dan perawatan sistem bangunan tropis.',
+      caption_intent: 'Foto still-life perbandingan sampel fisik material berdampingan dengan pencahayaan alami.',
+      alt_text_intent: 'Dua sampel fisik material bangunan diletakkan berdampingan untuk perbandingan visual tekstur dan ketebalan.',
       assigned_operator: 'lokamedia_worker_primary',
       visual_truth_label: 'EDITORIAL_CONCEPT_VISUAL',
       requires_editorial_qa: true,
@@ -728,5 +733,21 @@ export async function evaluateAndDispatchEditorialVisuals(params: {
     checklist,
     briefs,
     dispatchResult
+  };
+}
+
+/**
+ * Validates a VisualBrief against the Object-First Editorial Visuals Policy.
+ */
+export function evaluateVisualBriefObjectFirstCompliance(brief: VisualBrief): { compliant: boolean; violations: string[] } {
+  const violations: string[] = [];
+  const textToScan = `${brief.visual_goal} ${brief.caption_intent} ${brief.alt_text_intent}`;
+  const detected = detectForbiddenVisualStyles(textToScan);
+  if (detected.hasForbiddenStyles) {
+    violations.push(...detected.detectedViolations);
+  }
+  return {
+    compliant: violations.length === 0,
+    violations
   };
 }

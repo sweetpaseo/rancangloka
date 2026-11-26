@@ -13,6 +13,10 @@
  */
 
 import type { HouseIdentityProfile } from './house-identity.ts';
+import {
+  evaluateObjectFirstPolicyGate,
+  type ObjectFirstGateResult
+} from './object-first-visual-policy.ts';
 
 export type GateCheckStatus = 'PASS' | 'FAIL' | 'NEEDS_REVIEW';
 
@@ -42,6 +46,7 @@ export interface PhotoFirstQualityGateResult {
     editorial_photo_variation: SingleGateEvaluation;
     no_misleading_architecture: SingleGateEvaluation;
     monetary_silence: SingleGateEvaluation;
+    object_first_editorial: SingleGateEvaluation;
     // Legacy gate aliases for backward compatibility:
     same_house_consistency: SingleGateEvaluation;
     spatial_continuity: SingleGateEvaluation;
@@ -107,6 +112,10 @@ export interface EvaluatePhotoInput {
   caption: string;
   alt_text: string;
   house_profile: HouseIdentityProfile;
+  prompt?: string;
+  negative_prompt?: string;
+  allow_infographic_override?: boolean;
+  owner_authorization_token?: string;
   /**
    * Evidence metrics observed from actual image inspection / metadata
    */
@@ -465,6 +474,29 @@ export function evaluatePhotoFirstQualityGate(input: EvaluatePhotoInput): PhotoF
     rejectionReasons.push(`[MONETARY_SILENCE_FAIL] ${monetaryViolations.join('; ')}`);
   }
 
+  // Gate 8: OBJECT_FIRST_EDITORIAL (Policy v1.0)
+  const objectFirstEval = evaluateObjectFirstPolicyGate({
+    candidate_id,
+    prompt: input.prompt,
+    negative_prompt: input.negative_prompt,
+    caption: input.caption,
+    media_type: observed.is_diagram_or_vector ? 'diagram' : 'photograph',
+    is_infographic_flagged: observed.is_diagram_or_vector && !input.allow_infographic_override,
+    allow_infographic_override: input.allow_infographic_override,
+    owner_authorization_token: input.owner_authorization_token
+  });
+
+  const objectFirstGate: SingleGateEvaluation = {
+    name: 'OBJECT_FIRST_EDITORIAL',
+    status: objectFirstEval.passed ? 'PASS' : 'FAIL',
+    score: objectFirstEval.score,
+    notes: objectFirstEval.notes,
+    violations: objectFirstEval.violations
+  };
+  if (objectFirstGate.status === 'FAIL') {
+    rejectionReasons.push(`[OBJECT_FIRST_FAIL] ${objectFirstEval.violations.join('; ')}`);
+  }
+
   // Final Verdict Assembly
   const gates = {
     photo_realism: photoRealismGate,
@@ -476,6 +508,7 @@ export function evaluatePhotoFirstQualityGate(input: EvaluatePhotoInput): PhotoF
     editorial_photo_variation: editorialVariationGate,
     no_misleading_architecture: noMisleadingArchGate,
     monetary_silence: monetarySilenceGate,
+    object_first_editorial: objectFirstGate,
     // Legacy aliases for backward compatibility
     same_house_consistency: materialAndColorGate,
     spatial_continuity: kitchenLayoutGate,
@@ -492,7 +525,8 @@ export function evaluatePhotoFirstQualityGate(input: EvaluatePhotoInput): PhotoF
     landmarkMatchGate,
     editorialVariationGate,
     noMisleadingArchGate,
-    monetarySilenceGate
+    monetarySilenceGate,
+    objectFirstGate
   ];
 
   const anyFailed = coreGates.some(g => g.status === 'FAIL');

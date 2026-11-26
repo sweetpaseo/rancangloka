@@ -23,6 +23,7 @@
  *    safely excluded from formal pronoun checks to guarantee zero false positives.
  */
 
+import crypto from 'node:crypto';
 import {
   CANONICAL_EDITORIAL_SUPERVISION_RULES,
   CANONICAL_SHORT_PARAGRAPH_RULE,
@@ -31,6 +32,10 @@ import {
 } from '../article/editorial-knowledge.ts';
 import { recordDecisionObservation } from '../decision/decision-telemetry.ts';
 import { type DecisionObservation } from '../decision/decision-types.ts';
+import {
+  detectForbiddenVisualStyles,
+  OBJECT_FIRST_POLICY_VERSION
+} from './object-first-visual-policy.ts';
 
 // ============================================================================
 // Types & Contracts
@@ -73,7 +78,7 @@ export interface JevSupervisionAuditReceipt {
   supervision_phase: SupervisionPhase;
   
   // Input Decisions
-  nadia_decision: 'READER_VOICE_PASS' | 'READER_VOICE_REVISION_REQUIRED' | 'READER_VOICE_BLOCKED';
+  nadia_decision: 'READER_VOICE_PASS' | 'READER_VOICE_REVISION_REQUIRED' | 'READER_VOICE_BLOCKED' | 'READER_VOICE_REVIEW_REQUIRED' | string;
   nadia_score: number;
   
   // Independent Outcome
@@ -125,16 +130,8 @@ let currentSupervisionPhase: SupervisionPhaseState = {
 // ============================================================================
 
 export function computeRevisionHash(content: string): string {
-  if (!content) return '0000000000000000';
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    const char = content.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0; // Convert to 32bit integer
-  }
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  const len = content.length.toString(16).padStart(8, '0');
-  return `rev_${hex}_${len}`;
+  if (!content) return '0000000000000000000000000000000000000000000000000000000000000000';
+  return crypto.createHash('sha256').update(String(content || '').trim(), 'utf8').digest('hex');
 }
 
 // ============================================================================
@@ -199,10 +196,14 @@ export function extractSegmentedProse(markdown: string): SegmentedProse {
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`[^`\n]+`/g, ' ');
 
-  // 7. Extract first and last sentences of narrative body
-  const cleanedSentences = authorNarrativeProse
+  // 7. Extract first and last sentences of narrative body (excluding headings)
+  const bodyWithoutHeadings = authorNarrativeProse
+    .replace(/^[ \t]*#+.*$/gm, ' ')
+    .trim();
+
+  const cleanedSentences = bodyWithoutHeadings
     .split(/(?<=[.!?])\s+|\n{2,}/)
-    .map((s) => s.replace(/<[^>]+>/g, '').replace(/^[#\-*\d.]+\s*/, '').replace(/[*_~`]/g, '').trim())
+    .map((s) => s.replace(/<[^>]+>/g, '').replace(/^[\-*\d.]+\s*/, '').replace(/[*_~`]/g, '').trim())
     .filter((s) => s.length > 15 && !s.startsWith('#'));
 
   const firstSentence = cleanedSentences.length > 0 ? cleanedSentences[0] : '';
@@ -353,21 +354,35 @@ export function evaluateIndependentEditorialRules(
     });
   }
 
-  // 6. RULE ED-PARA-01: Canonical Short Paragraph Rule
+  // 6. RULE ED-PARA-01: Canonical Short Paragraph Rule (Flexible Readability Indicator)
   const paraAudit = auditShortParagraphs(markdown);
   let shortParagraphViolationsCount = 0;
   if (!paraAudit.passed) {
-    for (const item of paraAudit.items.filter((i) => i.isViolation)) {
+    // Only flag true hard walls (>90 words / >5 sentences) as blocking violations
+    for (const item of paraAudit.items.filter((i) => i.isHardViolation)) {
       shortParagraphViolationsCount++;
       violations.push({
         rule_id: 'ED-PARA-01',
         rule_name: 'Aturan Paragraf Pendek Kanonikal (Short Paragraph Rule)',
         problem_type: 'SHORT_PARAGRAPH_VIOLATION',
         location: `Paragraf narasi ke-${item.index}`,
-        evidence: `Paragraf berisi ${item.wordCount} kata dan ${item.sentenceCount} kalimat (${item.violationReasons.join(', ')}). Cuplikan: "${item.text.slice(0, 80)}..."`,
-        recommendation: `Pecah paragraf menjadi 1–3 kalimat dengan rentang ideal ${CANONICAL_SHORT_PARAGRAPH_RULE.ideal_words_min}–${CANONICAL_SHORT_PARAGRAPH_RULE.ideal_words_max} kata (maksimum ${CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph} kata dan maksimum ${CANONICAL_SHORT_PARAGRAPH_RULE.max_sentences_per_paragraph} kalimat) dengan satu gagasan yang jelas.`
+        evidence: `Paragraf melebihi batas kenyamanan baca keras (${item.wordCount} kata, ${item.sentenceCount} kalimat). Cuplikan: "${item.text.slice(0, 80)}..."`,
+        recommendation: `Pecah paragraf menjadi 1–3 kalimat dengan rentang ideal ${CANONICAL_SHORT_PARAGRAPH_RULE.ideal_words_min}–${CANONICAL_SHORT_PARAGRAPH_RULE.ideal_words_max} kata dengan satu gagasan yang jelas.`
       });
     }
+  }
+
+  // 6. RULE ED-VISUAL-01: Object-First Editorial Visuals Policy (Jefry Supervision)
+  const forbiddenVisualCheck = detectForbiddenVisualStyles(markdown);
+  if (forbiddenVisualCheck.hasForbiddenStyles) {
+    violations.push({
+      rule_id: 'ED-VISUAL-01',
+      rule_name: 'Object-First Editorial Visuals Policy',
+      problem_type: 'FORBIDDEN_INFOGRAPHIC_STYLE',
+      location: 'Naskah / Caption / Visual Element',
+      evidence: `Terdeteksi indikasi gaya visual yang dilarang (${forbiddenVisualCheck.detectedViolations.join(', ')}).`,
+      recommendation: 'Gunakan fotografi still-life material/objek fisik nyata berdampingan, bukan infografis, tabel perbandingan, atau slide presentasi.'
+    });
   }
 
   const words = authorNarrativeProse.split(/\s+/).filter(Boolean);
@@ -401,8 +416,10 @@ export interface JevSupervisionExecutionOptions {
   candidateContent: string;
   focusKeyword: string;
   nadiaResult: {
-    decision: 'READER_VOICE_PASS' | 'READER_VOICE_REVISION_REQUIRED' | 'READER_VOICE_BLOCKED';
+    decision: 'READER_VOICE_PASS' | 'READER_VOICE_REVISION_REQUIRED' | 'READER_VOICE_BLOCKED' | 'READER_VOICE_REVIEW_REQUIRED' | string;
     overallScore: number;
+    manuscript_sha256?: string;
+    semanticStatus?: 'PASS' | 'REVISION_REQUIRED' | 'NOT_EVALUATED';
   };
   timeoutMs?: number;
   db?: any;
@@ -442,6 +459,82 @@ export async function runJevQualitySupervision(
       advisory_summary: `Audit dilewati karena Nadia tidak memberikan READER_VOICE_PASS (status: ${options.nadiaResult.decision}).`,
       forwarded_to_rina: false,
       forwarded_to_mission_control: false,
+      attribution: {
+        agent_id: 'management_advisor_jefry',
+        staff_name: 'Jefry',
+        operating_mode: 'SHADOW_MODE_ONLY',
+        production_authority: 0
+      },
+      duration_ms: Date.now() - startTime
+    };
+  }
+
+  // Cryptographic Stale QA Defense: Verify candidate content matches Nadia evaluated hash
+  const nadiaEvaluationHash = (options.nadiaResult as any).manuscript_sha256;
+  if (nadiaEvaluationHash && nadiaEvaluationHash !== revisionHash) {
+    return {
+      audit_id: auditId,
+      article_id: options.articleId,
+      slug: options.slug,
+      revision_hash: revisionHash,
+      evaluated_at: new Date().toISOString(),
+      supervision_phase: currentSupervisionPhase.current_phase,
+      nadia_decision: options.nadiaResult.decision,
+      nadia_score: options.nadiaResult.overallScore,
+      independent_audit_result: 'VIOLATIONS_FOUND',
+      supervision_decision: 'FLAG_DISCREPANCY',
+      discrepancy_detected: true,
+      violations: [
+        {
+          rule_id: 'ED-HASH-01',
+          rule_name: 'Cryptographic Hash Mismatch (Stale QA)',
+          problem_type: 'STALE_HASH',
+          location: 'Manuscript Envelope',
+          evidence: `Candidate hash ${revisionHash} does not match Nadia evaluated hash ${nadiaEvaluationHash}`,
+          recommendation: 'Re-run Nadia evaluation on the modified manuscript.'
+        }
+      ],
+      advisory_summary: `STALE_HASH: Hash naskah kandidat (${revisionHash.slice(0, 16)}...) tidak cocok dengan hash evaluasi Nadia (${nadiaEvaluationHash.slice(0, 16)}...).`,
+      forwarded_to_rina: true,
+      forwarded_to_mission_control: true,
+      attribution: {
+        agent_id: 'management_advisor_jefry',
+        staff_name: 'Jefry',
+        operating_mode: 'SHADOW_MODE_ONLY',
+        production_authority: 0
+      },
+      duration_ms: Date.now() - startTime
+    };
+  }
+
+  // Second Brain Semantic Evaluation Prerequisite
+  const nadiaSemanticStatus = (options.nadiaResult as any).semanticStatus;
+  if (nadiaSemanticStatus === 'NOT_EVALUATED') {
+    return {
+      audit_id: auditId,
+      article_id: options.articleId,
+      slug: options.slug,
+      revision_hash: revisionHash,
+      evaluated_at: new Date().toISOString(),
+      supervision_phase: currentSupervisionPhase.current_phase,
+      nadia_decision: options.nadiaResult.decision,
+      nadia_score: options.nadiaResult.overallScore,
+      independent_audit_result: 'VIOLATIONS_FOUND',
+      supervision_decision: 'FLAG_DISCREPANCY',
+      discrepancy_detected: true,
+      violations: [
+        {
+          rule_id: 'ED-SEM-01',
+          rule_name: 'Semantic Voice Evaluation Required',
+          problem_type: 'NOT_EVALUATED',
+          location: 'Nadia Evaluation',
+          evidence: 'Nadia semantic voice evaluation status is NOT_EVALUATED / offline',
+          recommendation: 'Draft must be held in EDITORIAL_HOLD until genuine semantic evaluation passes.'
+        }
+      ],
+      advisory_summary: 'NOT_EVALUATED: Evaluasi semantik suara pembaca offline/tidak tersedia. Naskah ditahan (EDITORIAL_HOLD).',
+      forwarded_to_rina: true,
+      forwarded_to_mission_control: true,
       attribution: {
         agent_id: 'management_advisor_jefry',
         staff_name: 'Jefry',

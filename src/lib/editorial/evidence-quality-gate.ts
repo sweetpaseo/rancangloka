@@ -550,6 +550,25 @@ export class DocumentTopicRelevanceEvaluator {
       }
     }
 
+    // Check Electrical / Smart Lighting Domain Match
+    if (topicDomain === 'ELECTRICAL_SMART_LIGHTING') {
+      const hasElectricalPhysics = /\b(?:smart switch|smart bulb|sakelar|kabel netral|no-neutral|neutral wire|kapasitor|flicker|flickering|ghost glow|inbow doos|puil|iec|sni\s*0225|iec\s*60669|downlight|daya minimum|arus bocor|mcb|zigbee|mesh|watt|cct|rgbw)\b/i.test(combinedDoc);
+      const hasElectricalTerms = /\b(?:sakelar|switch|lampu|bulb|lighting|kelistrikan|listrik|otomasi)\b/i.test(combinedDoc);
+      if (hasElectricalPhysics && hasElectricalTerms) {
+        return {
+          relevance_level: 'HIGHLY_RELEVANT',
+          topic,
+          document_title: docTitle,
+          topic_domain: topicDomain,
+          topic_concepts: topicWords,
+          matched_topic_concepts: matchedConcepts,
+          off_topic_domains: [],
+          is_topic_authority: true,
+          reason: 'HIGHLY_RELEVANT: Dokumen langsung menganalisis regulasi kelistrikan, pengawatan sakelar, standar beban LED, atau teknologi pencahayaan pintar.'
+        };
+      }
+    }
+
     // Direct condensation / dew point / fenestration physics
     const hasFenestrationPhysics = /\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|pemutus termal|konduktivitas|u-factor|conductivity|thermal\s*breaks?|condensation)\b/i.test(combinedDoc);
     const hasFenestrationMaterials = /\b(?:kusen|jendela|aluminium|upvc|kaca|profil|window|frame|glazing|glass|fenestration)\b/i.test(combinedDoc);
@@ -727,12 +746,12 @@ export function evaluatePassageRelevance(
 
   // If document is PARTIALLY_RELEVANT (e.g. Batang aluminium frame case study)
   if (documentRelevance === 'PARTIALLY_RELEVANT') {
-    if (/\b(?:kusen|aluminium|profil|pintu|jendela|keawetan|rayap|daya tahan|presisi|window|glass|glazing|frame|door|profile|facade|thermal|moisture|condensation|dew point|u-factor)\b/i.test(pText)) {
+    if (/\b(?:kusen|aluminium|profil|pintu|jendela|keawetan|rayap|daya tahan|presisi|window|glass|glazing|frame|door|profile|facade|thermal|moisture|condensation|dew point|u-factor|sakelar|switch|bulb|lampu|netral|kapasitor|led|daya|listrik|puil|iec|zigbee|wifi)\b/i.test(pText)) {
       return {
         relevance_level: 'SUPPORTING_BACKGROUND',
         allows_substantive_claims: true,
         allows_context_only: true,
-        reason: 'SUPPORTING_BACKGROUND: Karakteristik material kusen aluminium atau bukaan dari dokumen pendukung berstatus partially relevant.'
+        reason: 'SUPPORTING_BACKGROUND: Karakteristik material atau komponen teknis dari dokumen pendukung berstatus partially relevant.'
       };
     }
     return {
@@ -756,7 +775,7 @@ export function evaluatePassageRelevance(
       return reg.test(pText);
     });
 
-    if (hasTopicConceptInPassage || /\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|pemutus termal|konduktivitas|u-factor|jembatan termal|kelembapan|suhu permukaan|conductivity|thermal\s*breaks?|thermal\s*conduct(?:ivity|ance)|condensation|dew\s*point|airtightness|acoustic|insulation|radiant\s*barrier|shading|overhang|louver|solar|heat transfer|facade|tile|popping|adhesion)\b/i.test(pText)) {
+    if (hasTopicConceptInPassage || /\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|pemutus termal|konduktivitas|u-factor|jembatan termal|kelembapan|suhu permukaan|conductivity|thermal\s*breaks?|thermal\s*conduct(?:ivity|ance)|condensation|dew\s*point|airtightness|acoustic|insulation|radiant\s*barrier|shading|overhang|louver|solar|heat transfer|facade|tile|popping|adhesion|sakelar|smart switch|smart bulb|lampu|kabel netral|no-neutral|kapasitor|flicker|ghost glow|inbow doos|downlight|led|watt|mcb|zigbee|mesh|cct|rgbw|puil|iec)\b/i.test(pText)) {
       return {
         relevance_level: 'DIRECTLY_RELEVANT',
         allows_substantive_claims: true,
@@ -1042,9 +1061,9 @@ export function evaluateClaimQuality(
   if (bestPassageRel === 'OFF_TOPIC') {
     topicRelevance = 'IRRELEVANT';
     rejection_reasons.push('CLAIM_TOPIC_RELEVANCE_OFF_TOPIC: Klaim merujuk passage yang berada di luar topik aktif.');
-  } else if (hasCoreMatch || /\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|kusen|kaca|ventilasi|kelembapan)\b/i.test(claimStmtLower)) {
+  } else if (hasCoreMatch || /\b(?:kondensasi|embun|berembun|titik embun|dew point|thermal break|kusen|kaca|ventilasi|kelembapan|smart switch|smart bulb|sakelar|lampu|kabel netral|no-neutral|kapasitor|flicker|ghost glow|inbow doos|downlight|led|watt|mcb|zigbee|mesh|puil|iec)\b/i.test(claimStmtLower)) {
     topicRelevance = 'DIRECT';
-  } else if (hasSupportingMatch || /\b(?:aluminium|upvc|material|performa termal|konduktivitas|bukaan|shading|overhang|louver|fasad|keramik|tile|roof|drainage)\b/i.test(claimStmtLower)) {
+  } else if (hasSupportingMatch || /\b(?:aluminium|upvc|material|performa termal|konduktivitas|bukaan|shading|overhang|louver|fasad|keramik|tile|roof|drainage|kelistrikan|listrik|daya|arus|beban|fitting|otomasi)\b/i.test(claimStmtLower)) {
     topicRelevance = 'SUPPORTING';
   } else if (bestPassageRel === 'DIRECTLY_RELEVANT' || bestPassageRel === 'SUPPORTING_BACKGROUND') {
     topicRelevance = 'SUPPORTING';

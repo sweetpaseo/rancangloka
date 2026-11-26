@@ -203,8 +203,14 @@ export function validateResearchQuestionCoverage(
   evidencePack: EvidencePackInput,
   options?: CoverageValidationOptions
 ): ResearchCoverageResult {
-  const claims = Array.isArray(evidencePack.claim_inventory) ? evidencePack.claim_inventory : [];
-  const passages = Array.isArray(evidencePack.evidence_passages) ? evidencePack.evidence_passages : [];
+  const claims = Array.isArray(evidencePack.claim_inventory)
+    ? evidencePack.claim_inventory
+    : (Array.isArray(evidencePack.author_safe_claims)
+      ? evidencePack.author_safe_claims
+      : (Array.isArray((evidencePack as any).technical_claims) ? (evidencePack as any).technical_claims : []));
+  const passages = Array.isArray(evidencePack.evidence_passages)
+    ? evidencePack.evidence_passages
+    : (Array.isArray((evidencePack as any).passages) ? (evidencePack as any).passages : []);
   const docs = Array.isArray(evidencePack.retrieved_documents) ? evidencePack.retrieved_documents : [];
   const executionType = options?.executionType || evidencePack.execution_type || 'TEST';
 
@@ -232,7 +238,7 @@ export function validateResearchQuestionCoverage(
     }
   }
 
-  const hasExplicitSources = docs.length > 0 || claims.some(c => c.sources && c.sources.length > 0);
+  const hasExplicitSources = docs.length > 0 || claims.some((c: any) => c.sources && c.sources.length > 0);
   const authenticSourceCount = authenticDocIds.size;
 
   // 2. Classify Admissible Passages and Claims
@@ -246,9 +252,9 @@ export function validateResearchQuestionCoverage(
   const admissibleClaimIds = new Set<string>();
   for (const c of claims) {
     let isAdmissible = false;
-    if (c.sources && c.sources.some(s => authenticDocIds.has(s.source_id))) {
+    if (c.sources && c.sources.some((s: any) => authenticDocIds.has(s.source_id))) {
       isAdmissible = true;
-    } else if (c.evidence_passage_ids && c.evidence_passage_ids.some(pid => admissiblePassageIds.has(pid))) {
+    } else if (c.evidence_passage_ids && c.evidence_passage_ids.some((pid: string) => admissiblePassageIds.has(pid))) {
       isAdmissible = true;
     }
     if (isAdmissible) {

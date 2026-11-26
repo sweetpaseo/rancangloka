@@ -1028,6 +1028,11 @@ export interface IrwanEvidenceKnowledgeView {
   claim_hierarchy: EditorialLayer5_TrustAndIntegrity['claim_hierarchy'];
   uncertainty_calibration: EditorialLayer5_TrustAndIntegrity['confidence_and_uncertainty_calibration'];
   canonical_terms: EditorialLayer2_LanguageCohesion['terminology_consistency']['canonical_terms'];
+  journalistic_5w1h?: {
+    framework: '5W+1H';
+    purpose: 'Checklist kelengkapan riset & cakupan bukti sebelum naskah ditulis';
+    dimensions: ['What', 'Who', 'When', 'Where', 'Why', 'How'];
+  };
 }
 
 export interface JokoAuthoringKnowledgeView {
@@ -1045,12 +1050,24 @@ export interface JokoAuthoringKnowledgeView {
   expert_consultation: EditorialLayer3_ExpertConsultation;
   decision_support: EditorialLayer4_DecisionSupport;
   native_indonesian_authoring: NativeIndonesianAuthoringRule;
+  role_boundaries_dec09?: {
+    designated_author: string;
+    prohibited_substitute: string;
+    prohibited_practices: string[];
+    fail_stop_policy: string;
+  };
   joko_authoring_rules: string[];
   trust_boundaries: {
     no_fabricated_experience: EditorialLayer5_TrustAndIntegrity['no_fabricated_experience'];
     commercial_integrity: EditorialLayer5_TrustAndIntegrity['commercial_integrity'];
     monetary_silence: string;
     confidence_calibration: EditorialLayer5_TrustAndIntegrity['confidence_and_uncertainty_calibration'];
+  };
+  people_first_content?: {
+    framework: string;
+    eeat_journalistic_foundation?: string;
+    non_commodity_value: string;
+    journalistic_completeness: string;
   };
 }
 
@@ -1114,6 +1131,88 @@ export interface JefryAdvisoryKnowledgeView {
     authoring_authority: boolean;
   };
   observation_scope: string[];
+  unsupported_seo_detection?: {
+    scope: 'Deteksi aturan SEO mitos / non-resmi Google';
+    prohibited_prescriptions: string[];
+  };
+}
+
+export interface SeonSearchKnowledgeView {
+  persona: string;
+  role: string;
+  search_intent_model: string;
+  semantic_search_principles: string[];
+  entity_matching: {
+    approach: string;
+    publisher_vs_local_seo: string;
+  };
+  google_ai_search: {
+    overview: string;
+    guidance: string;
+  };
+  google_spam_policies: string[];
+  performance_intelligence: {
+    search_console_model: string;
+    cannibalization_mitigation: boolean;
+  };
+}
+
+export interface NadiaVoiceKnowledgeView {
+  persona: string;
+  role: string;
+  reader_satisfaction: string;
+  clarity_and_flow: string[];
+  natural_language_rubric: string[];
+  useful_content_evaluation: {
+    information_gain: string;
+    meaningful_depth: string;
+  };
+}
+
+export interface MayaContentStrategyKnowledgeView {
+  persona: string;
+  role: string;
+  category_balance: {
+    target_categories: string[];
+    distribution_policy: string;
+    starvation_threshold: number;
+  };
+  audience_intelligence: {
+    homeowner_stages: string[];
+    intent_signals: string[];
+    problem_solving_focus: string;
+  };
+  production_planning: {
+    prioritization_criteria: string[];
+    handoff_protocol: string;
+  };
+  continuous_learning: {
+    feedback_loops: string[];
+    adaptation_triggers: string[];
+  };
+}
+
+export interface BudiVisualKnowledgeView {
+  persona: string;
+  role: string;
+  image_seo: {
+    google_image_best_practices: string[];
+    google_discover_requirements: string;
+  };
+  visual_relevance: string;
+  provenance_and_licensing: string;
+}
+
+export interface DimasTechnicalKnowledgeView {
+  persona: string;
+  role: string;
+  technical_seo_requirements: {
+    semantic_html: string;
+    structured_data: string[];
+    faq_status: string;
+    canonicalization: string;
+    core_web_vitals: string;
+  };
 }
 
 export interface CanonicalSupervisionRule {
@@ -1197,6 +1296,8 @@ export const CANONICAL_SHORT_PARAGRAPH_RULE = {
   ideal_words_max: 45,
   max_words_per_paragraph: 60,
   max_sentences_per_paragraph: 3,
+  hard_max_words_per_paragraph: 90,
+  hard_max_sentences_per_paragraph: 5,
   core_principle: 'ONE_IDEA_PER_PARAGRAPH',
   mechanical_split_forbidden: true,
   excessive_single_sentence_avoided: true,
@@ -1238,6 +1339,7 @@ export interface ParagraphAuditItem {
   wordCount: number;
   sentenceCount: number;
   isViolation: boolean;
+  isHardViolation: boolean;
   violationReasons: string[];
 }
 
@@ -1245,10 +1347,12 @@ export interface ShortParagraphAuditResult {
   passed: boolean;
   totalNarrativeParagraphs: number;
   violatingParagraphsCount: number;
+  hardViolatingParagraphsCount: number;
   longestParagraphWords: number;
   maxSentencesInParagraph: number;
   paragraphsExceeding3SentencesCount: number;
   paragraphsExceeding60WordsCount: number;
+  densityScore: number;
   items: ParagraphAuditItem[];
 }
 
@@ -1258,10 +1362,12 @@ export function auditShortParagraphs(markdown: string): ShortParagraphAuditResul
       passed: true,
       totalNarrativeParagraphs: 0,
       violatingParagraphsCount: 0,
+      hardViolatingParagraphsCount: 0,
       longestParagraphWords: 0,
       maxSentencesInParagraph: 0,
       paragraphsExceeding3SentencesCount: 0,
       paragraphsExceeding60WordsCount: 0,
+      densityScore: 100,
       items: []
     };
   }
@@ -1279,6 +1385,7 @@ export function auditShortParagraphs(markdown: string): ShortParagraphAuditResul
   let longestWords = 0;
   let maxSentences = 0;
   let violatingCount = 0;
+  let hardViolatingCount = 0;
   let exceedingWordsCount = 0;
   let exceedingSentencesCount = 0;
 
@@ -1293,17 +1400,31 @@ export function auditShortParagraphs(markdown: string): ShortParagraphAuditResul
     if (sentenceCount > maxSentences) maxSentences = sentenceCount;
 
     const reasons: string[] = [];
+    let isHard = false;
+
     if (wordCount > CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph) {
-      reasons.push(`MELEBIHI_BATAS_KATA: ${wordCount} kata (maksimum ${CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph} kata)`);
+      if (wordCount > CANONICAL_SHORT_PARAGRAPH_RULE.hard_max_words_per_paragraph) {
+        reasons.push(`MELEBIHI_BATAS_KATA_KERAS: ${wordCount} kata (maksimum mutlak ${CANONICAL_SHORT_PARAGRAPH_RULE.hard_max_words_per_paragraph} kata)`);
+        isHard = true;
+      } else {
+        reasons.push(`ANJURAN_PERINGKASAN_KATA: ${wordCount} kata (disarankan <= ${CANONICAL_SHORT_PARAGRAPH_RULE.max_words_per_paragraph} kata untuk kenyamanan mobile)`);
+      }
       exceedingWordsCount++;
     }
+
     if (sentenceCount > CANONICAL_SHORT_PARAGRAPH_RULE.max_sentences_per_paragraph) {
-      reasons.push(`MELEBIHI_BATAS_KALIMAT: ${sentenceCount} kalimat (maksimum ${CANONICAL_SHORT_PARAGRAPH_RULE.max_sentences_per_paragraph} kalimat)`);
+      if (sentenceCount > CANONICAL_SHORT_PARAGRAPH_RULE.hard_max_sentences_per_paragraph) {
+        reasons.push(`MELEBIHI_BATAS_KALIMAT_KERAS: ${sentenceCount} kalimat (maksimum mutlak ${CANONICAL_SHORT_PARAGRAPH_RULE.hard_max_sentences_per_paragraph} kalimat)`);
+        isHard = true;
+      } else {
+        reasons.push(`ANJURAN_PEMBAGIAN_KALIMAT: ${sentenceCount} kalimat (disarankan <= ${CANONICAL_SHORT_PARAGRAPH_RULE.max_sentences_per_paragraph} kalimat)`);
+      }
       exceedingSentencesCount++;
     }
 
     const isViolation = reasons.length > 0;
     if (isViolation) violatingCount++;
+    if (isHard) hardViolatingCount++;
 
     items.push({
       index: pIndex,
@@ -1311,18 +1432,26 @@ export function auditShortParagraphs(markdown: string): ShortParagraphAuditResul
       wordCount,
       sentenceCount,
       isViolation,
+      isHardViolation: isHard,
       violationReasons: reasons
     });
   }
 
+  // Flexible Readability Indicator: Pass unless there are hard density blockers (>90 words / >5 sentences)
+  const densityScore = items.length > 0
+    ? Math.max(40, 100 - (hardViolatingCount * 25) - (Math.max(0, violatingCount - hardViolatingCount) * 5))
+    : 100;
+
   return {
-    passed: violatingCount === 0,
+    passed: hardViolatingCount === 0,
     totalNarrativeParagraphs: items.length,
     violatingParagraphsCount: violatingCount,
+    hardViolatingParagraphsCount: hardViolatingCount,
     longestParagraphWords: longestWords,
     maxSentencesInParagraph: maxSentences,
     paragraphsExceeding3SentencesCount: exceedingSentencesCount,
     paragraphsExceeding60WordsCount: exceedingWordsCount,
+    densityScore,
     items
   };
 }
@@ -1537,12 +1666,19 @@ export function getIrwanEvidenceKnowledge(): IrwanEvidenceKnowledgeView {
     },
     claim_hierarchy: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity.claim_hierarchy,
     uncertainty_calibration: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity.confidence_and_uncertainty_calibration,
-    canonical_terms: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer2_language_cohesion.terminology_consistency.canonical_terms
+    canonical_terms: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer2_language_cohesion.terminology_consistency.canonical_terms,
+    journalistic_5w1h: {
+      framework: '5W+1H',
+      purpose: 'Checklist kelengkapan riset & cakupan bukti sebelum naskah ditulis',
+      dimensions: ['What', 'Who', 'When', 'Where', 'Why', 'How']
+    }
   };
 }
 
 /**
  * Derives role-specific view of canonical knowledge for Joko (Human-First Authoring).
+ * DEC-09 STRICT ROLE BOUNDARY: Joko is the sole designated article author.
+ * Gravy (Antigravity) is strictly forbidden from writing or rewriting article prose on behalf of Joko.
  */
 export function getJokoAuthoringKnowledge(): JokoAuthoringKnowledgeView {
   return {
@@ -1560,6 +1696,19 @@ export function getJokoAuthoringKnowledge(): JokoAuthoringKnowledgeView {
     expert_consultation: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer3_expert_consultation,
     decision_support: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer4_decision_support,
     native_indonesian_authoring: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer2_language_cohesion.native_indonesian_authoring,
+    role_boundaries_dec09: {
+      designated_author: 'Joko (content_writer_primary via SumoPod GPT-6 Luna)',
+      prohibited_substitute: 'Gravy / Antigravity / Any Orchestration Agent',
+      prohibited_practices: [
+        'Gravy writing articles on behalf of Joko',
+        'Hardcoding article prose into scripts',
+        'Substituting Gravy output for Joko output',
+        'Simulating Joko writing execution or fabricating execution receipts',
+        'Fabricating Nadia semantic evaluation scores without real evaluation',
+        'Bypassing the actual Hermes editorial pipeline'
+      ],
+      fail_stop_policy: 'IF_JOKO_CANNOT_EXECUTE_STOP_AND_REPORT'
+    },
     joko_authoring_rules: [
       'Formulasikan naskah artikel langsung dalam bahasa Indonesia sejak awal alur pemikiran.',
       'Terapkan pola Short Paragraph: ideal 25–45 kata per paragraf, maksimum 60 kata dan maksimum 3 kalimat per paragraf (ED-PARA-01).',
@@ -1579,6 +1728,12 @@ export function getJokoAuthoringKnowledge(): JokoAuthoringKnowledgeView {
       commercial_integrity: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity.commercial_integrity,
       monetary_silence: 'STRICT_EMPIRICAL_RESEARCH_ONLY_NO_GUESSES',
       confidence_calibration: CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity.confidence_and_uncertainty_calibration
+    },
+    people_first_content: {
+      framework: 'Google People-First Content Guidance',
+      eeat_journalistic_foundation: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) sebagai prinsip pemahaman pembaca dan pembuktian fakta nyata (bukan skor metrik buatan)',
+      non_commodity_value: 'Memberikan wawasan nyata beyond ringkasan dasar SERP',
+      journalistic_completeness: 'Menjawab kebutuhan pembaca secara menyeluruh dan membumi'
     }
   };
 }
@@ -1675,7 +1830,182 @@ export function getJefryAdvisoryKnowledge(): JefryAdvisoryKnowledgeView {
       'quality_scores_distribution',
       'common_revision_reasons',
       'editorial_velocity_telemetry'
-    ]
+    ],
+    unsupported_seo_detection: {
+      scope: 'Deteksi aturan SEO mitos / non-resmi Google',
+      prohibited_prescriptions: [
+        'Mandatory title length exactly 40-65 chars as ranking factor',
+        'Mandatory meta description length exactly 120-160 chars',
+        'Mandatory paragraph length <= 60 words as an SEO ranking requirement',
+        'Mandatory keyword in first/last sentence as an SEO ranking requirement',
+        'Mandatory FAQ rich-result readiness (deprecated by Google May 7, 2026)',
+        'Mandatory word count for Google rankings',
+        'Numerical E-E-A-T score as a Google ranking factor'
+      ]
+    }
+  };
+}
+
+/**
+ * Derives role-specific view of canonical knowledge for SEON (Search Intelligence).
+ */
+export function getSeonSearchKnowledge(): SeonSearchKnowledgeView {
+  return {
+    persona: 'SEON — Search Intelligence Specialist',
+    role: 'SEON — Lead Search & Intent Specialist',
+    search_intent_model: 'Google Search Essentials: Memahami intent pengguna (informational, navigational, transactional) tanpa keyword stuffing.',
+    semantic_search_principles: [
+      'Entity recognition & disambiguation (membedakan material, standar, dan fungsi)',
+      'Topical authority & comprehensive cluster coverage',
+      'Natural conversational query matching',
+      'Mitigasi kanibalisasi topik antar-artikel di database D1'
+    ],
+    entity_matching: {
+      approach: 'Semantic entity matching & topic clustering',
+      publisher_vs_local_seo: 'RancangLoka adalah publikasi digital nasional; fokus pada entitas arsitektur/material, bukan NAP lokal bisnis.'
+    },
+    google_ai_search: {
+      overview: 'Google AI Overviews & AI Search: Mengutamakan konten dengan information gain tinggi, struktur data valid, dan sitasi jelas.',
+      guidance: 'Fokus pada kejelasan penjelasan teknis dan pemecahan masalah praktis tanpa format kaku buatan.'
+    },
+    google_spam_policies: [
+      'Anti-keyword stuffing',
+      'Anti-scaled commodity AI content without human curation',
+      'Anti-scraped or thin unoriginal content'
+    ],
+    performance_intelligence: {
+      search_console_model: 'Evaluasi berkala CTR, impresi, dan posisi rata-rata tanpa dependensi API real-time yang membebani runtime.',
+      cannibalization_mitigation: true
+    }
+  };
+}
+
+/**
+ * Derives role-specific view of canonical knowledge for Nadia (Audience & Language Editor).
+ */
+export function getNadiaVoiceKnowledge(): NadiaVoiceKnowledgeView {
+  return {
+    persona: 'Nadia — Audience & Language Editor',
+    role: 'Nadia — Audience & Language Editor',
+    reader_satisfaction: 'Memastikan artikel terasa seperti konsultasi ramah, mengalir lancar, dan mudah dipahami pemilik rumah.',
+    clarity_and_flow: [
+      'Sapaan akrab kamu/rumahmu tanpa formalitas kaku Anda',
+      'Pembersihan diksi terjemahan kaku (anti-translationese)',
+      'Ritme paragraf yang bernapas dan nyaman di layar seluler',
+      'Kehangatan nada bicara (warm advisory tone)'
+    ],
+    natural_language_rubric: [
+      'Problem-first opening',
+      'Spoken Indonesian natural syntax',
+      'Jargon budget (penjelasan istilah teknis)',
+      'Homeowner comprehension'
+    ],
+    useful_content_evaluation: {
+      information_gain: 'Menilai apakah naskah menyajikan perspektif bernilai tambah beyond hasil pencarian umum.',
+      meaningful_depth: 'Memastikan artikel membahas kompromi nyata (trade-off) dan pertimbangan lapangan.'
+    }
+  };
+}
+
+/**
+ * Derives role-specific view of canonical knowledge for Budi (Visual Media Specialist).
+ */
+export function getBudiVisualKnowledge(): BudiVisualKnowledgeView {
+  return {
+    persona: 'Budi — Visual Media Specialist',
+    role: 'Budi — Visual Media & Storyboard Specialist',
+    image_seo: {
+      google_image_best_practices: [
+        'Descriptive alt text yang terikat secara semantik ke konteks naskah',
+        'Aspek rasio responsif 16:9',
+        'Format WebP/JPEG terkompresi dengan performa Core Web Vitals tinggi'
+      ],
+      google_discover_requirements: 'Gambar sampul beresolusi minimal 1200px lebar dengan deklarasi robots max-image-preview:large.'
+    },
+    visual_relevance: 'Object-First Visual Policy: Menampilkan material, detail konstruksi, dan ruang arsitektur asli tanpa infografis teks atau tabel buatan di dalam gambar.',
+    provenance_and_licensing: 'Integritas fingerprint gambar, receipt persetujuan manusia sebelum upload, dan zero duplicate upload.'
+  };
+}
+
+/**
+ * Derives role-specific view of canonical knowledge for Dimas (Technical SEO Specialist).
+ */
+export function getDimasTechnicalKnowledge(): DimasTechnicalKnowledgeView {
+  return {
+    persona: 'Dimas — Technical SEO Specialist',
+    role: 'Dimas — Technical Infrastructure & Edge SEO Specialist',
+    technical_seo_requirements: {
+      semantic_html: '100% semantic HTML5, zero-JS SSR di edge Cloudflare Workers.',
+      structured_data: [
+        'Schema.org Article (headline, image, datePublished, author, publisher)',
+        'Schema.org BreadcrumbList (hierarki Beranda -> Kategori -> Artikel)'
+      ],
+      faq_status: 'Google menghentikan hasil kaya FAQ pada 7 Mei 2026 (dokumentasi dihapus 15 Juni 2026). FAQ dipertahankan sebagai komponen akordeon pembaca murni.',
+      canonicalization: 'Self-referencing canonical URL mutlak untuk setiap artikel terbit.',
+      core_web_vitals: 'CLS = 0, FID/INP optimal, LCP cepat via preloading gambar hero.'
+    }
+  };
+}
+
+/**
+ * Derives role-specific view of canonical knowledge for Maya (Head of Content Strategy).
+ */
+export function getMayaContentStrategyKnowledge(): MayaContentStrategyKnowledgeView {
+  return {
+    persona: 'Maya — Head of Content Strategy, Planning & Audience Intelligence',
+    role: 'Maya — Head of Content Strategy, Planning & Audience Intelligence',
+    category_balance: {
+      target_categories: [
+        'Arsitektur & Renovasi',
+        'Interior & Tata Ruang',
+        'Material & Finishing',
+        'Sistem & Konstruksi Rumah',
+        'Kenyamanan Rumah',
+        'Smart Home & Otomasi',
+        'Eksterior & Lanskap',
+        'Gaya Hidup & Hunian'
+      ],
+      distribution_policy: 'Pemerataan portofolio editorial agar tidak timpang; pencegahan kanibalisasi topik; mitigasi starvation kategori dengan prioritas scoring terukur.',
+      starvation_threshold: 0.05
+    },
+    audience_intelligence: {
+      homeowner_stages: [
+        'Tahap Perencanaan & Desain Awal',
+        'Tahap Renovasi & Eksekusi Konstruksi',
+        'Tahap Pemilihan & Komparasi Material',
+        'Tahap Penataan Ruang & Finishing',
+        'Tahap Perawatan & Troubleshooting Kerusakan'
+      ],
+      intent_signals: [
+        'Pencarian solusi masalah spesifik hunian (troubleshooting)',
+        'Komparasi material dengan pertimbangan biaya & keawetan riil',
+        'Panduan tata ruang untuk lahan terbatas dan iklim tropis',
+        'Pertanyaan operasional smart home dan kenyamanan termal'
+      ],
+      problem_solving_focus: 'Konten harus menjawab kebutuhan nyata orang rumah dengan bahasa membumi, berbasis bukti teknis, dan mengedepankan kompromi lapangan (trade-off).'
+    },
+    production_planning: {
+      prioritization_criteria: [
+        'Skor Starvasi Kategori (bobot 30%)',
+        'Kelayakan Bukti & SEON Keyword Intent (bobot 25%)',
+        'Relevansi Masalah Pemilik Rumah (bobot 20%)',
+        'Kelengkapan Arsitektur & Kedalaman Teknis (bobot 15%)',
+        'Kesiapan Riset & Efisiensi Produksi (bobot 10%)'
+      ],
+      handoff_protocol: 'Maya mengorkestrasi prioritas backlog; riset bukti dieksekusi oleh Irwan; penulisan naskah dilakukan secara eksklusif oleh Joko (DEC-09).'
+    },
+    continuous_learning: {
+      feedback_loops: [
+        'Audit berkala sebaran kategori setelah setiap artikel terbit',
+        'Sinkronisasi Second Brain untuk pola topik dan retensi pembaca',
+        'Rekonsiliasi konsumsi kuota riset dan efisiensi produksi'
+      ],
+      adaptation_triggers: [
+        'Kategori berada di status STARVED (<5% share)',
+        'Terdeteksi kanibalisasi topik atau kata kunci duplikat',
+        'Umpan balik editorial Owner terkait arah strategis'
+      ]
+    }
   };
 }
 

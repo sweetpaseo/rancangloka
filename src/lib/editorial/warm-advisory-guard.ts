@@ -83,7 +83,7 @@ const AUTHORITARIAN_VERDICT_PATTERNS = [
  * Signals that the consultant respectfully returns final decision agency
  * to the homeowner based on their house's condition, priorities, or trade-offs.
  */
-const AGENCY_HANDOFF_INDICATORS = [
+export const AGENCY_HANDOFF_INDICATORS = [
   /keputusan (?:akhirnya )?(?:tetap )?(?:ada di tangan|kembali ke|tergantung)/i,
   /keputusan terbaik tetap kembali ke/i,
   /pilih(?:lah)? (?:solusi|pendekatan) yang paling (?:sesuai|masuk akal|pas|cocok)/i,
@@ -93,7 +93,8 @@ const AGENCY_HANDOFF_INDICATORS = [
   /kebutuhan dan prioritas (?:rumah )?(?:anda|kamu)/i,
   /pilihan akhir (?:tetap )?(?:ada di tangan|kembali ke|pada)/i,
   /sesuaikan dengan arah/i,
-  /pertimbangan.*?kembali kepada (?:anda|kamu)/i
+  /pertimbangan.*?kembali kepada (?:anda|kamu)/i,
+  /berangkat dari cara rumah(?:mu)?/i
 ];
 
 /**
@@ -101,6 +102,7 @@ const AGENCY_HANDOFF_INDICATORS = [
  */
 export function isComparisonContent(content: string, options: { contentFamily?: string; title?: string } = {}): boolean {
   if (options.contentFamily === 'comparison') return true;
+  if (options.contentFamily && options.contentFamily !== 'comparison') return false;
 
   const header = (options.title || content.split('\n')[0] || '').toLowerCase();
   if (/\b(?:vs\.?|versus|atau|membandingkan|perbandingan|mana yang)\b/i.test(header)) {

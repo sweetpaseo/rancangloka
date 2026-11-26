@@ -17,6 +17,10 @@ import {
   type RinaHumanCastingAuditInput,
   type RinaHumanCastingAuditResult
 } from './local-human-casting-policy.ts';
+import {
+  detectForbiddenVisualStyles,
+  OBJECT_FIRST_POLICY_VERSION
+} from './object-first-visual-policy.ts';
 
 export interface BudiScorecard {
   photorealism_score: number; // 0-100
@@ -154,6 +158,11 @@ export function evaluateVisualCandidate(input: {
     photorealism_raw?: number;
     relevance_raw?: number;
     human_casting?: RinaHumanCastingAuditInput;
+    caption?: string;
+    prompt?: string;
+    negative_prompt?: string;
+    allow_infographic_override?: boolean;
+    owner_authorization_token?: string;
 
     // Storyboard Nadia 5 Mandatory Hard Gates
     primary_subject_mismatch?: boolean;
@@ -258,18 +267,33 @@ export function evaluateVisualCandidate(input: {
 
   const relevance = signals.relevance_raw ?? (signals.contradicts_article || castingFailed ? 40 : 90);
   const isDecorative = Boolean(signals.is_purely_decorative);
-  const rinaVerdict = relevance >= 75 && !signals.contradicts_article && !isDecorative && !castingFailed ? 'PASS' : 'FAIL';
+  
+  // Object-First Editorial Policy Check for Rina
+  const isOverride = Boolean(
+    (signals as any).allow_infographic_override &&
+    (signals as any).owner_authorization_token?.startsWith('OWNER_AUTH_')
+  );
+  const textToCheck = `${signals.caption || ''} ${signals.prompt || ''} ${signals.negative_prompt || ''}`;
+  const styleViolation = detectForbiddenVisualStyles(textToCheck);
+  const objectFirstFailed = styleViolation.hasForbiddenStyles && !isOverride;
+  if (objectFirstFailed) {
+    hardRejects.push(`[RINA] Gambar melanggar kebijakan Object-First Editorial (${OBJECT_FIRST_POLICY_VERSION}): ${styleViolation.detectedViolations.join(', ')}`);
+  }
+
+  const rinaVerdict = relevance >= 75 && !signals.contradicts_article && !isDecorative && !castingFailed && !objectFirstFailed ? 'PASS' : 'FAIL';
   if (signals.contradicts_article) hardRejects.push('[RINA] Gambar bertentangan dengan isi naskah artikel');
   if (isDecorative) hardRejects.push('[RINA] Gambar bersifat dekoratif tanpa nilai edukatif');
 
   const rina_review: RinaScorecard = {
-    editorial_relevance_score: relevance,
+    editorial_relevance_score: objectFirstFailed ? Math.min(relevance, 40) : relevance,
     educational_value: isDecorative ? 'PURELY_DECORATIVE' : 'HIGH',
     caption_match: !signals.contradicts_article,
     alt_text_accuracy: true,
-    editorial_dignity: signals.contradicts_article ? 'AI_SLOP' : 'PREMIUM_EDITORIAL',
+    editorial_dignity: signals.contradicts_article ? 'AI_SLOP' : (objectFirstFailed ? 'COMMERCIAL_BROCHURE' : 'PREMIUM_EDITORIAL'),
     verdict: rinaVerdict,
-    notes: rinaVerdict === 'PASS' ? 'Kesesuaian editorial sangat tinggi, memperjelas isi pembahasan.' : 'Gambar gagal mendukung pesan editorial artikel.',
+    notes: rinaVerdict === 'PASS'
+      ? 'Kesesuaian editorial sangat tinggi, memperjelas isi pembahasan dengan estetika editorial premium.'
+      : (objectFirstFailed ? 'Gambar melanggar kebijakan Object-First (infografis/tabel dilarang, wajib foto objek/material fisik).' : 'Gambar gagal mendukung pesan editorial artikel.'),
     human_casting_compliance: humanCastingCompliance
   };
 

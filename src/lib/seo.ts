@@ -248,7 +248,7 @@ export function injectTableOfContents(html: string, toc: TableOfContentItem[]): 
     .join('\n');
 
   const tocHtml = `
-<div class="my-10 overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-slate-50/70 dark:border-white/[0.08] dark:bg-slate-900/60 p-5 sm:p-6 backdrop-blur-md shadow-2xs">
+<div id="daftar-isi" class="my-10 lg:hidden overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-slate-50/70 dark:border-white/[0.08] dark:bg-slate-900/60 p-5 sm:p-6 backdrop-blur-md shadow-2xs not-prose" aria-label="Daftar Isi Artikel">
   <details class="group" open>
     <summary class="flex cursor-pointer items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm list-none">
       <span class="flex items-center gap-2.5">
@@ -258,7 +258,7 @@ export function injectTableOfContents(html: string, toc: TableOfContentItem[]): 
       <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold group-open:hidden">Buka +</span>
       <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold hidden group-open:inline">Tutup −</span>
     </summary>
-    <nav class="mt-4 border-t border-black/[0.04] dark:border-white/[0.06] pt-3">
+    <nav class="mt-4 border-t border-black/[0.04] dark:border-white/[0.06] pt-3" aria-label="Navigasi Daftar Isi">
       <ul class="space-y-1.5 text-xs sm:text-sm">
         ${listItems}
       </ul>

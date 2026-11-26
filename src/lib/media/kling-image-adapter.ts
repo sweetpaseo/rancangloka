@@ -31,31 +31,59 @@ import {
 export const KLING_API_BASE = 'https://api-singapore.klingai.com';
 export const KLING_MODEL_V3 = 'kling-v3';
 export const KLING_MODEL_V3_OMNI = 'kling-v3-omni';
+export const KLING_MODEL_V4 = 'kling-v4';
 export const DEFAULT_KLING_MODEL = KLING_MODEL_V3;
-export const KLING_SUPPORTED_MODELS = [KLING_MODEL_V3, KLING_MODEL_V3_OMNI] as const;
+export const KLING_SUPPORTED_MODELS = [KLING_MODEL_V3, KLING_MODEL_V3_OMNI, KLING_MODEL_V4] as const;
 
 export const DEFAULT_KLING_TIMEOUT_MS = 180000; // 3 minutes
 export const DEFAULT_KLING_POLL_INTERVAL_MS = 3000; // 3 seconds
 
 // Official Kling AI Credit Units & Pricing Rates
 // Kling Image 3.0 & 3.0 Omni consumption is unit-based:
+// 1K Resolution: 4 units ($0.0140 list price at $0.0035/unit)
 // 2K Resolution: 8 units ($0.0280 list price at $0.0035/unit)
 // 4K Resolution: 16 units ($0.0560 list price at $0.0035/unit)
+//
+// Kling Image 4.0 consumption is unit-based:
+// 1K Resolution: 6 units ($0.0210 list price at $0.0035/unit)
+// 2K Resolution: 12 units ($0.0420 list price at $0.0035/unit)
+// 4K Resolution: 24 units ($0.0840 list price at $0.0035/unit)
+//
 // Trial Package: $2.45 for 1,000 units = $0.00245 / unit effective prepaid rate
-export const KLING_UNITS_PER_IMAGE_2K = 8;
-export const KLING_UNITS_PER_IMAGE_4K = 16;
+export const KLING_V3_UNITS_PER_IMAGE_1K = 4;
+export const KLING_V3_UNITS_PER_IMAGE_2K = 8;
+export const KLING_V3_UNITS_PER_IMAGE_4K = 16;
+
+export const KLING_V4_UNITS_PER_IMAGE_1K = 6;
+export const KLING_V4_UNITS_PER_IMAGE_2K = 12;
+export const KLING_V4_UNITS_PER_IMAGE_4K = 24;
+
+// Legacy constants aliases
+export const KLING_UNITS_PER_IMAGE_2K = KLING_V3_UNITS_PER_IMAGE_2K;
+export const KLING_UNITS_PER_IMAGE_4K = KLING_V3_UNITS_PER_IMAGE_4K;
 export const KLING_LIST_PRICE_PER_UNIT_USD = 0.0035; // $0.028 / 8 units
 export const KLING_TRIAL_PREPAID_RATE_PER_UNIT_USD = 0.00245; // $2.45 / 1000 units
 
-// List prices per image
+// List prices per image - Kling 3.0
+export const KLING_V3_1K_LIST_PRICE_USD = 0.0140; // 4 units
 export const KLING_V3_2K_LIST_PRICE_USD = 0.0280; // 8 units
 export const KLING_V3_4K_LIST_PRICE_USD = 0.0560; // 16 units
 export const KLING_V3_OMNI_2K_LIST_PRICE_USD = 0.0280; // 8 units
 export const KLING_V3_OMNI_4K_LIST_PRICE_USD = 0.0560; // 16 units
 
+// List prices per image - Kling 4.0
+export const KLING_V4_1K_LIST_PRICE_USD = 0.0210; // 6 units
+export const KLING_V4_2K_LIST_PRICE_USD = 0.0420; // 12 units
+export const KLING_V4_4K_LIST_PRICE_USD = 0.0840; // 24 units
+
 // Effective prepaid costs per image (Trial Package: $0.00245/unit)
-export const KLING_2K_EFFECTIVE_PREPAID_USD = 0.0196; // 8 units * $0.00245
-export const KLING_4K_EFFECTIVE_PREPAID_USD = 0.0392; // 16 units * $0.00245
+export const KLING_V3_2K_EFFECTIVE_PREPAID_USD = 0.0196; // 8 units * $0.00245
+export const KLING_V3_4K_EFFECTIVE_PREPAID_USD = 0.0392; // 16 units * $0.00245
+export const KLING_V4_2K_EFFECTIVE_PREPAID_USD = 0.0294; // 12 units * $0.00245
+export const KLING_V4_4K_EFFECTIVE_PREPAID_USD = 0.0588; // 24 units * $0.00245
+
+export const KLING_2K_EFFECTIVE_PREPAID_USD = KLING_V3_2K_EFFECTIVE_PREPAID_USD;
+export const KLING_4K_EFFECTIVE_PREPAID_USD = KLING_V3_4K_EFFECTIVE_PREPAID_USD;
 
 // Legacy compatibility aliases
 export const KLING_V3_UNIT_COST_USD = KLING_V3_2K_LIST_PRICE_USD;
@@ -199,19 +227,22 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
   }
 
   /**
-   * Resolves resolution (1k, 2k, or 4k). Defaults to 2k for architectural fidelity.
-   * 2K: 8 units ($0.028 list price, $0.0196 effective trial rate)
-   * 4K: 16 units ($0.056 list price, $0.0392 effective trial rate)
+   * Resolves resolution (1k, 2k, or 4k).
+   * OWNER DIRECTIVE (2026-11-25): Kling Image 3.0 Native 1K is the new default.
+   * - 1K: 4 units ($0.0140 list price, $0.0098 effective trial rate) — DEFAULT
+   * - 2K: 8 units ($0.0280 list price, $0.0196 effective trial rate) — Exception requiring justification
+   * - 4K: 16 units ($0.0560 list price, $0.0392 effective trial rate)
    */
   resolveResolution(request: ImageGenerationRequest): KlingResolution {
     const rawRes = ((request as any).resolution || '').toLowerCase().trim();
     if (rawRes === '4k' || (request.width && request.width >= 3840)) {
       return '4k';
     }
-    if (rawRes === '1k' || (request.quality === 'standard' && (request.width && request.width <= 1024))) {
-      return '1k';
+    if (rawRes === '2k' || (request.quality === 'hd' && (request.width && request.width >= 1920))) {
+      return '2k';
     }
-    return '2k';
+    // Default to Native 1K for all standard editorial cover and inline images
+    return '1k';
   }
 
   /**
@@ -360,18 +391,33 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
     const { url, payload, model } = this.buildSubmissionPayload(request);
     const externalTaskId = payload.external_task_id;
 
-    let response: Response;
-    try {
-      response = await this.fetchFn(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify(payload),
-        signal: options?.signal
-      });
-    } catch (netErr: any) {
+    let response: Response | undefined;
+    let lastNetErr: any = null;
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        response = await this.fetchFn(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify(payload),
+          signal: options?.signal
+        });
+        lastNetErr = null;
+        break;
+      } catch (netErr: any) {
+        lastNetErr = netErr;
+        if (options?.signal?.aborted) break;
+        if (attempt < 5) {
+          console.warn(`[KlingAdapter] Transient submission error on attempt ${attempt}/5: ${netErr?.message || netErr}. Retrying in ${attempt * 1500}ms...`);
+          await new Promise(r => setTimeout(r, attempt * 1500));
+        }
+      }
+    }
+
+    if (!response) {
+      const netErr = lastNetErr;
       if (options?.signal?.aborted) {
         throw new ImageProviderError({
           code: 'TIMEOUT',
@@ -380,10 +426,12 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
           isBillable: false
         });
       }
+      const causeMsg = netErr?.cause?.message || netErr?.cause?.code || '';
+      const fullMsg = [netErr?.message || String(netErr), causeMsg].filter(Boolean).join(' - ');
       throw new ImageProviderError({
         code: 'UNKNOWN_PROVIDER_ERROR',
         provider: this.providerName,
-        message: `Kling network submission failure: ${this.sanitizeMessage(netErr?.message || String(netErr))}`,
+        message: `Kling network submission failure: ${this.sanitizeMessage(fullMsg)}`,
         isBillable: false
       });
     }
@@ -636,28 +684,37 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
     byteSize: number;
     sha256: string;
   }> {
-    let dlResponse: Response;
-    try {
-      dlResponse = await this.fetchFn(imageUrl, {
-        method: 'GET',
-        signal: options?.signal
-      });
-    } catch (dlErr: any) {
-      throw new ImageProviderError({
-        code: 'DOWNLOAD_FAILURE',
-        provider: this.providerName,
-        message: `Failed to connect to Kling image CDN: ${this.sanitizeMessage(dlErr?.message)}`,
-        isBillable: true,
-        details: { imageUrl }
-      });
+    let dlResponse: Response | undefined;
+    let lastDlErr: any = null;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        dlResponse = await this.fetchFn(imageUrl, {
+          method: 'GET',
+          signal: options?.signal
+        });
+        if (dlResponse.ok) {
+          lastDlErr = null;
+          break;
+        }
+      } catch (dlErr: any) {
+        lastDlErr = dlErr;
+        if (options?.signal?.aborted) break;
+      }
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, attempt * 1500));
+      }
     }
 
-    if (!dlResponse.ok) {
+    if (!dlResponse || !dlResponse.ok) {
+      const errMsg = lastDlErr
+        ? `Failed to connect to Kling image CDN: ${this.sanitizeMessage(lastDlErr?.message)}`
+        : `Failed to download Kling image: HTTP ${dlResponse?.status} ${dlResponse?.statusText}`;
       throw new ImageProviderError({
         code: 'DOWNLOAD_FAILURE',
         provider: this.providerName,
-        message: `Failed to download Kling image: HTTP ${dlResponse.status} ${dlResponse.statusText}`,
-        httpStatus: dlResponse.status,
+        message: errMsg,
+        httpStatus: dlResponse?.status,
         isBillable: true,
         details: { imageUrl }
       });
@@ -812,11 +869,20 @@ export class KlingImageProviderAdapter implements ImageProviderAdapter {
 
       const latencyMs = Date.now() - startTime;
       
-      // Billing is strictly based on total output images generated
-      // 2K = 8 units per image; 4K = 16 units per image
-      const unitsPerImage = resolution === '4k' ? KLING_UNITS_PER_IMAGE_4K : KLING_UNITS_PER_IMAGE_2K;
+      // Billing is strictly based on total output images generated and selected model
+      const isV4 = selectedModel === KLING_MODEL_V4;
+      let unitsPerImage = isV4 ? KLING_V4_UNITS_PER_IMAGE_2K : KLING_V3_UNITS_PER_IMAGE_2K;
+      let listPricePerImage = isV4 ? KLING_V4_2K_LIST_PRICE_USD : KLING_V3_2K_LIST_PRICE_USD;
+
+      if (resolution === '4k') {
+        unitsPerImage = isV4 ? KLING_V4_UNITS_PER_IMAGE_4K : KLING_V3_UNITS_PER_IMAGE_4K;
+        listPricePerImage = isV4 ? KLING_V4_4K_LIST_PRICE_USD : KLING_V3_4K_LIST_PRICE_USD;
+      } else if (resolution === '1k') {
+        unitsPerImage = isV4 ? KLING_V4_UNITS_PER_IMAGE_1K : KLING_V3_UNITS_PER_IMAGE_1K;
+        listPricePerImage = isV4 ? KLING_V4_1K_LIST_PRICE_USD : KLING_V3_1K_LIST_PRICE_USD;
+      }
+
       const actualUnitsConsumed = unitsPerImage * rawImages.length;
-      const listPricePerImage = resolution === '4k' ? KLING_V3_4K_LIST_PRICE_USD : KLING_V3_2K_LIST_PRICE_USD;
       const estimatedSpendUsd = listPricePerImage * rawImages.length;
       const effectivePrepaidCostUsd = actualUnitsConsumed * KLING_TRIAL_PREPAID_RATE_PER_UNIT_USD;
 
@@ -961,10 +1027,11 @@ export async function persistKlingCandidateToR2Staging(params: {
   // 3. If executeWranglerUpload is true and local file exists
   if (executeWranglerUpload && localFilePath && !persistedToR2) {
     try {
-      const { execSync } = await import('node:child_process');
+      const dynamicImport = new Function('specifier', 'return import(specifier)');
+      const cp: any = await dynamicImport('node:child_process');
       const cmd = `npx wrangler r2 object put "${r2BucketName}/${storageKey}" --file="${localFilePath}" --content-type="${mimeType}"`;
       console.log(`   [R2 PUT] Executing: ${cmd}`);
-      execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+      cp.execSync(cmd, { stdio: 'inherit', timeout: 60000 });
       persistedToR2 = true;
     } catch (cmdErr: any) {
       console.warn(`   ⚠️ Wrangler R2 Upload Warning: ${cmdErr?.message || cmdErr}`);

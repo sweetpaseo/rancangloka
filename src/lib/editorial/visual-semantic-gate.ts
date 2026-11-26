@@ -11,6 +11,10 @@
  */
 
 import type { VisualPlacementManifest, VisualManifestItem } from '../media/anchor-resolver.ts';
+import {
+  detectForbiddenVisualStyles,
+  OBJECT_FIRST_POLICY_VERSION
+} from './object-first-visual-policy.ts';
 
 export interface VisualSemanticCheckResult {
   passed: boolean;
@@ -117,6 +121,18 @@ export function evaluateVisualSemanticGate(
     if (!matchesH2) {
       checks.heading_alignment.passed = false;
       violations.push(`Item ${item.visual_id} memiliki target_heading "${targetHeading}" yang tidak ditemukan pada naskah H2.`);
+    }
+
+    // Object-First Editorial Policy Check (Owner directive: no infographics / comparison tables embedded in images)
+    const isOverride = Boolean(
+      (item as any).allow_infographic_override &&
+      (item as any).owner_authorization_token?.startsWith('OWNER_AUTH_')
+    );
+    const textToScanStyles = `${item.caption || ''} ${item.alt_text || ''} ${item.visual_purpose || ''} ${(item as any).visual_brief?.prompt_indonesian || ''}`;
+    const forbiddenStyleCheck = detectForbiddenVisualStyles(textToScanStyles);
+    if (forbiddenStyleCheck.hasForbiddenStyles && !isOverride) {
+      checks.object_alignment.passed = false;
+      violations.push(`Item ${item.visual_id} melanggar kebijakan Object-First Editorial (${OBJECT_FIRST_POLICY_VERSION}): ${forbiddenStyleCheck.detectedViolations.join('; ')}.`);
     }
 
     // If photograph, SVG-specific checks are bypassed (evaluated under PhotoQualityGate)

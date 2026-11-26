@@ -20,6 +20,14 @@ import {
   CANONICAL_HUMAN_CASTING_NEGATIVES,
   type HumanCastingSpec
 } from './local-human-casting-policy.ts';
+import {
+  OBJECT_FIRST_POLICY_VERSION,
+  CANONICAL_OBJECT_FIRST_NEGATIVES,
+  CANONICAL_OBJECT_FIRST_POSITIVE_DIRECTION,
+  compileObjectFirstPromptTokens,
+  detectForbiddenVisualStyles,
+  type ObjectFirstPromptConfig
+} from './object-first-visual-policy.ts';
 
 export const SEEDREAM_PRO_MODEL_ID = 'bytedance/seedream/v5/pro/text-to-image';
 export const NANO_BANANA_PRO_MODEL_ID = 'fal-ai/nano-banana-pro';
@@ -119,6 +127,7 @@ export const CANONICAL_NEGATIVE_CONSTRAINTS = [
   'warped furniture',
   'disfigured human figures',
   'closed ceiling without light',
+  ...CANONICAL_OBJECT_FIRST_NEGATIVES,
   ...CANONICAL_HUMAN_CASTING_NEGATIVES
 ].join(', ');
 
@@ -249,6 +258,13 @@ export function buildPromptMatrix(
           'Geometric lattice pattern casting subtle geometric daylight shadows across a polished concrete floor.',
           'View looking through the perforations toward a softly blurred contemporary dining room in the background.',
           'Warm tropical daylight, authentic Indonesian artisanal masonry, clean mortar joints, true material texture.'
+        ].join(' ');
+      } else if (slot.slot_key.includes('pre_closing') || (slot as any).photo_role === 'pre_closing_decision') {
+        prompt = [
+          `Editorial architectural photography illustrating the practical decision outcome and harmonious installation for ${storyboard.article_title}.`,
+          'Showing the authentic, lived-in result of following the recommendations in a contemporary Indonesian home.',
+          'Natural soft window daylight, authentic building materials and tactile textures, balanced residential composition, 35mm lens, eye-level perspective.',
+          'No infographics, no diagrams, no comparison tables, no text overlays, no advertising banner.'
         ].join(' ');
       } else {
         prompt = `Architectural photograph illustrating ${slot.educational_purpose} in an Indonesian residential context with natural daylight and realistic materials.`;
@@ -406,6 +422,64 @@ export function buildDeepPromptV2(
         'distorted door frame'
       ]
     };
+  } else if (
+    contract.visual_media_type === 'MATERIAL_COMPARISON' ||
+    contract.slot_key.includes('material') ||
+    contract.slot_key.includes('comparison') ||
+    (contract.main_problem && /spc.*vinyl|vinyl.*spc|komparasi|perbandingan/i.test(contract.main_problem)) ||
+    (slug && /spc.*vinyl|komparasi/i.test(slug) && !isCover)
+  ) {
+    const isOverride = Boolean(
+      (contract as any).allow_infographic_override &&
+      (contract as any).owner_authorization_token?.startsWith('OWNER_AUTH_')
+    );
+
+    if (isOverride) {
+      structure = {
+        editorial_objective: contract.reader_takeaway ? `Technical architectural comparison schematic: ${contract.reader_takeaway}` : 'Technical architectural comparison schematic.',
+        primary_subject: contract.primary_elements_and_relations ? `Technical schematic comparison: ${contract.primary_elements_and_relations}` : 'Technical schematic comparison.',
+        spatial_relationships: 'Clean architectural graphic arrangement.',
+        buildable_architecture: 'Identified manufacturer cross-section specifications.',
+        camera_composition: 'Flat elevation / cross-section view.',
+        lighting: 'Neutral clean technical presentation.',
+        material_realism: 'Clear layered technical material distinction.',
+        human_scale_lived_in: 'Technical diagram without human figures.',
+        required_visual_evidence: contract.required_visual_evidence || ['Physical layers', 'Clear annotations'],
+        negative_constraints: ['watermark', 'commercial advertisement', 'distorted geometry']
+      };
+    } else {
+      // OBJECT-FIRST EDITORIAL VISUALS POLICY v1.0 (Owner approved permanent directive)
+      structure = {
+        editorial_objective:
+          'Demonstrate the tangible physical material differences between rigid-core SPC flooring and flexible vinyl LVP through authentic editorial still-life photography, without infographics, comparison tables, or diagrams.',
+        primary_subject:
+          'Close-up still-life photograph of two genuine flooring material samples placed side by side on a clean neutral surface in soft natural window daylight. One sample clearly shows rigid-core SPC with a dense, thick, straight edge profile. The other sample clearly shows flexible vinyl LVP, thinner and slightly lifted at one corner to display physical flexibility.',
+        spatial_relationships:
+          'Two material sample planks lying side by side in macro perspective, clean neutral architectural tabletop or floor background, soft natural daylight entering from the side.',
+        buildable_architecture:
+          'Authentic commercial flooring physical construction: solid limestone composite rigid core on the SPC plank with click-lock joint profile; multi-layer virgin PVC on the LVP plank with smooth glue-down backing.',
+        camera_composition:
+          'Refined editorial macro photography, 50mm-85mm architectural lens, subtle shallow depth of field focusing on the tactile surface texture and physical cut-edge profiles, minimal elegant composition.',
+        lighting:
+          'Soft directional natural window daylight, balanced fill light, gentle contact shadows, authentic material sheen without synthetic specular glare or dark tech gradients.',
+        material_realism:
+          'Photorealistic physical materials: matte embossed woodgrain surface texture, realistic thickness contrast (4-5mm rigid core vs 2-3mm flexible plank), realistic acoustic underlayment backing.',
+        human_scale_lived_in:
+          'Editorial material sample still-life (pure material focus, no human figures, no commercial brochure overlays).',
+        required_visual_evidence: [
+          'Photorealistic physical material samples side by side',
+          'Distinct thickness and rigidity contrast visible on cut edges',
+          'Natural matte surface textures in soft window daylight',
+          'Zero embedded text, zero callout arrows, zero comparison tables'
+        ],
+        negative_constraints: [
+          ...CANONICAL_OBJECT_FIRST_NEGATIVES,
+          'watermark',
+          'brand logos',
+          'text overlay'
+        ]
+      };
+    }
   } else {
     structure = {
       editorial_objective: contract.reader_takeaway,
@@ -431,8 +505,15 @@ export function buildDeepPromptV2(
     structure.human_scale_lived_in = `${structure.human_scale_lived_in} (Unpopulated architectural interior, pure space without human figures)`;
   }
 
+  const isOverrideAuthorized = Boolean(
+    (contract as any).allow_infographic_override &&
+    (contract as any).owner_authorization_token?.startsWith('OWNER_AUTH_')
+  );
+
+  const objectFirstNegatives = isOverrideAuthorized ? [] : Array.from(CANONICAL_OBJECT_FIRST_NEGATIVES);
+
   structure.negative_constraints = Array.from(
-    new Set([...structure.negative_constraints, ...castingTokens.negative_tokens])
+    new Set([...structure.negative_constraints, ...objectFirstNegatives, ...castingTokens.negative_tokens])
   );
 
   // Synthesize compiled prompt for Seedream / target model
