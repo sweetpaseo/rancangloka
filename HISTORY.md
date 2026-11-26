@@ -2,6 +2,29 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **RancangLoka**.
 
+## DEC-23-R1: Corrective Release, Transitive Dependency Closure & Final Hosted Runtime Acceptance (2026-11-26 Pukul 23:15 WIB)
+
+- **Milestone:** `DEC-23-R1-FINAL-RUNTIME-ACCEPTANCE`
+- **Active Git Branch:** `feat/jev-lokamedia-integration`
+- **Corrective Release Commit SHA:** `f6455dc9845021cc689226d57bc0ec7e2cfe4e56` (Parent: `1a32a2e`)
+- **Mandat & Keputusan Owner:**
+  - Owner menyetujui rilis korektif DEC-23-R1 untuk menutup kegagalan `ERR_MODULE_NOT_FOUND` pada clean hosted environment.
+  - Penegakan verifikasi penuh di isolated clean worktree sebelum rilis dikirim ke origin.
+  - Hosted Hermes SumoPod EU sukses diverifikasi langsung di container oleh Owner dengan hasil:
+    * 870 tracked files scanned.
+    * 0 missing dependencies.
+    * 0 unresolved imports.
+    * 12/12 regression tests PASS (100% GREEN).
+    * Hosted dry-run PASS ($0.00 spend, zero D1 mutations).
+- **Hasil Audit & Perbaikan Teknis:**
+  - Pembangunan skrip penutup dependensi transitif otomatis `scripts/audit-release-dependencies.mjs`.
+  - Staging dan komit seluruh dependensi modular: `object-first-visual-policy.ts`, `modular/types.ts`, `modular/gateway.ts`, `modular/integrity-gate.ts`, `modular/article-blueprint.ts`, `modular/seo-standard.ts`, `modular/ownership.ts`, `modular/dependency-invalidation.ts`, `image-pixel-inspector.ts`, `references.ts`, `EditorialReferences.astro`, `manifest-synchronizer.ts`, `editorial-review-service.ts`, `image-provider-types.ts`, `publication/types.ts`, serta file LokaMedia.
+  - Perbaikan `test-article-integrity-regression-suite.mjs` dengan embedding narasi mandiri agar tidak bergantung pada disk fixture untracked di host mana pun.
+- **Invarian Keselamatan:**
+  - `manual_hold = 1`, `AUTO_PUBLISH = OFF`. Zero mutation to Cloudflare Production. Checkpoint disimpan di `state/OFFLINE_CHECKPOINT_20261126_DEC23_R1_RUNTIME_ACCEPTANCE.md`.
+
+---
+
 ## FULL-RUNTIME-RECONCILIATION: Version Gap Audit, Article Integrity & Controlled Release (DEC-23) (2026-11-26 Pukul 22:15 WIB)
 
 - **Milestone:** `FULL-RUNTIME-RECONCILIATION-AND-CONTROLLED-RELEASE-DEC23`

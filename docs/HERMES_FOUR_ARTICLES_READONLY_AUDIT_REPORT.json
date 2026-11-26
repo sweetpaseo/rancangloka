@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-11-26T16:21:40.067Z",
+  "audit_type": "READONLY_FOUR_ARTICLES_AUDIT",
+  "executor": "Gravy (Engineering Only — DEC-09 Strict Boundary)",
+  "financial_spend_usd": 0,
+  "d1_mutations": 0,
+  "network_calls": 0,
+  "articles": [
+    {
+      "article_id": 10034,
+      "slug": "panduan-membuat-patio-kerikil-taman-belakang-rumah",
+      "topic_id": "TOPIC-DAY4-A",
+      "word_count": 813,
+      "paragraph_count": 21,
+      "focus_keyword": "patio kerikil taman belakang",
+      "keyword_in_opening": true,
+      "keyword_in_closing": true,
+      "inline_figures_found": 3,
+      "expected_inline_count": 3,
+      "gate_a_status": "PASS",
+      "gate_b_status": "BLOCKED",
+      "overall_status": "VERIFIED"
+    },
+    {
+      "article_id": 10035,
+      "slug": "panduan-merawat-rumah-bebas-lembap-dan-bau-apek",
+      "topic_id": "TOPIC-DAY4-LIFESTYLE",
+      "word_count": 877,
+      "paragraph_count": 22,
+      "focus_keyword": "merawat rumah tropis",
+      "keyword_in_opening": false,
+      "keyword_in_closing": false,
+      "inline_figures_found": 3,
+      "expected_inline_count": 3,
+      "gate_a_status": "PASS",
+      "gate_b_status": "BLOCKED",
+      "overall_status": "VERIFIED"
+    },
+    {
+      "article_id": 10036,
+      "slug": "cara-meredam-panas-dan-suara-hujan-atap-spandek",
+      "topic_id": "TOPIC-DAY6-B",
+      "word_count": 686,
+      "paragraph_count": 15,
+      "focus_keyword": "atap spandek",
+      "keyword_in_opening": true,
+      "keyword_in_closing": true,
+      "inline_figures_found": 4,
+      "expected_inline_count": 4,
+      "gate_a_status": "BLOCKED",
+      "gate_b_status": "BLOCKED",
+      "overall_status": "NEEDS_ATTENTION"
+    },
+    {
+      "article_id": 10037,
+      "slug": "smart-switch-vs-smart-bulb-mana-yang-lebih-praktis-dan-hemat",
+      "topic_id": "TOPIC-DAY2-B",
+      "word_count": 1335,
+      "paragraph_count": 31,
+      "focus_keyword": "smart switch vs smart bulb",
+      "keyword_in_opening": true,
+      "keyword_in_closing": true,
+      "inline_figures_found": 4,
+      "expected_inline_count": 4,
+      "gate_a_status": "PASS",
+      "gate_b_status": "BLOCKED",
+      "overall_status": "VERIFIED"
+    }
+  ]
+}
