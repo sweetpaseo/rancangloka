@@ -7,17 +7,17 @@ const capabilities = [
   {
     name: '1. Maya & EPIS (Topic Registry & Planner)',
     file: 'src/lib/editorial/topic-registry-service.ts',
-    wiredIn: ['src/lib/editorial/master-editorial-orchestrator.ts']
+    wiredIn: ['src/lib/editorial/seon-topic-selector.ts', 'src/pages/api/admin/posts.ts']
   },
   {
     name: '2. UTLIS (Topic Lifecycle & Selection)',
     file: 'src/lib/editorial/topic-lifecycle-contracts.ts',
-    wiredIn: ['src/lib/editorial/topic-registry-service.ts', 'src/lib/editorial/master-editorial-orchestrator.ts']
+    wiredIn: ['src/lib/editorial/topic-registry-service.ts', 'src/lib/editorial/duplicate-prevention-service.ts']
   },
   {
     name: '3. OLCI (Operational Learning & Continuous Improvement)',
-    file: 'src/lib/editorial/olci-manager.ts',
-    wiredIn: ['src/lib/editorial/master-editorial-orchestrator.ts']
+    file: 'src/lib/editorial/olci-contracts.ts',
+    wiredIn: ['src/lib/editorial/olci-manager.ts']
   },
   {
     name: '4. Primary & Second Brain (Shared Memory Adapter)',
@@ -32,7 +32,7 @@ const capabilities = [
   {
     name: '6. Joko Writing Engine (DEC-09 Strict Boundary)',
     file: 'src/lib/editorial/joko-prompt-builder.ts',
-    wiredIn: ['src/lib/editorial/master-editorial-orchestrator.ts']
+    wiredIn: ['src/lib/editorial/master-editorial-orchestrator.ts', 'src/lib/editorial/article-definition-of-done.ts']
   },
   {
     name: '7. Nadia Quality Rubric & Dynamic Storyboard',
@@ -52,12 +52,12 @@ const capabilities = [
   {
     name: '10. Sari Browser Verification (CDP / Headless)',
     file: 'src/lib/editorial/sari-browser-verification.ts',
-    wiredIn: ['src/lib/editorial/article-definition-of-done.ts', 'scripts/test-article-integrity-regression-suite.mjs']
+    wiredIn: ['scripts/diagnostic-sumopod-hermes.sh']
   },
   {
     name: '11. Canonical Modular Assembly (Gate B.8, LKG)',
-    file: 'src/lib/editorial/modular/gateway.ts',
-    wiredIn: ['src/lib/editorial/article-definition-of-done.ts', 'scripts/test-article-integrity-regression-suite.mjs']
+    file: 'src/lib/editorial/modular/completeness-contract.ts',
+    wiredIn: ['src/lib/editorial/master-editorial-orchestrator.ts', 'scripts/test-article-integrity-regression-suite.mjs']
   },
   {
     name: '12. Article Definition of Done (DoD v1.0)',
@@ -67,12 +67,12 @@ const capabilities = [
   {
     name: '13. Publication Pipeline & Editorial Review',
     file: 'src/lib/publication/editorial-review-service.ts',
-    wiredIn: ['src/lib/publication/service.ts']
+    wiredIn: ['src/pages/api/admin/publication/publish/control.ts']
   },
   {
     name: '14. Decision Platform (TypeSafe Jev Shadow)',
     file: 'src/lib/decision/decision-router.ts',
-    wiredIn: ['src/lib/publication/service.ts']
+    wiredIn: ['src/lib/decision/index.ts', 'src/lib/decision/shadow-collector.ts']
   }
 ];
 
