@@ -1,22 +1,24 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
-import TableOfContents from '../components/TableOfContents.astro';
 import AuthorCard from '../components/AuthorCard.astro';
 import RelatedArticles from '../components/RelatedArticles.astro';
 import SocialShareBar from '../components/SocialShareBar.astro';
 import ArticleSupportModule from '../components/ArticleSupportModule.astro';
 import ScrollToTop from '../components/ScrollToTop.astro';
 import EditorialFAQ from '../components/EditorialFAQ.astro';
-import { getDb, getPublishedArticleBySlug, getPageBySlug, getRelatedArticles, getInternalLinkCandidates, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
+import EditorialReferences from '../components/EditorialReferences.astro';
+import { getDb, getPublishedArticleBySlug, getArticleBySlug, getPageBySlug, getRelatedArticles, getInternalLinkCandidates, getAllArticles, getAllCategories, getSiteSettings } from '../lib/db';
 import { extractEditorialFaqs, stripFaqCommentMarkers, type EditorialFaqItem } from '../lib/editorial/faq';
+import { extractTechnicalReferences } from '../lib/editorial/references.ts';
 import { extractTableOfContents, injectHeadingIds, generateArticleSchema, processArticleContent } from '../lib/seo';
 import { getActivePlaneALinks } from '../lib/internal-link/index.ts';
-import { sanitizeArticleHtml, renderArticleMarkdownSafely } from '../lib/article/renderer.ts';
+import { sanitizeArticleHtml, renderArticleMarkdownSafely, wrapStandaloneTables } from '../lib/article/renderer.ts';
 import { renderMediaSlotAnchors } from '../lib/media/renderer.ts';
 import { getQuarantineRedirect, getArticleRobotsDirective, getArticleXRobotsTag } from '../lib/quarantine';
 import { getArticleCacheTags } from '../lib/cache/index.ts';
 import { getResponsiveImageAttrs } from '../lib/image';
+import { isValidAdminSession, verifyReaderPreviewToken } from '../lib/auth';
 
 const { slug } = Astro.params;
 
@@ -34,6 +36,27 @@ let [article, page, categories, siteSettings] = await Promise.all([
   getAllCategories(db),
   getSiteSettings(db)
 ]);
+
+const sessionCookie = Astro.cookies.get('admin_session');
+const queryPreviewToken = Astro.url.searchParams.get('preview_token') || Astro.url.searchParams.get('token');
+const env = (Astro.locals as any)?.runtime?.env || (import.meta as any).env || {};
+
+let isAuthorizedDraftPreview = false;
+if (sessionCookie?.value && await isValidAdminSession(sessionCookie, env)) {
+  isAuthorizedDraftPreview = true;
+} else if (queryPreviewToken && slug) {
+  const previewCheck = await verifyReaderPreviewToken(queryPreviewToken, slug, env);
+  if (previewCheck.valid) {
+    isAuthorizedDraftPreview = true;
+    Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+    Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+    Astro.response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+  }
+}
+
+if (!article && isAuthorizedDraftPreview) {
+  article = await getArticleBySlug(db, slug || '');
+}
 
 // In local development, allow rendering Batch 1 fixtures (e.g. Article 4 & C) if not seeded in local in-memory DB
 if (!article && !page && Boolean((import.meta as any).env?.DEV)) {
@@ -86,6 +109,7 @@ let jsonLdSchema: any = null;
 let breadcrumbItems: any[] = [];
 let authorObj: any = null;
 let articleFaqs: EditorialFaqItem[] = [];
+let technicalReferencesHtml: string | null = null;
 const robotsDirective = article ? getArticleRobotsDirective(article.slug, siteSettings.allow_indexing) : undefined;
 const xRobotsTag = article ? getArticleXRobotsTag(article.slug, siteSettings.allow_indexing) : null;
 if (xRobotsTag) {
@@ -124,6 +148,13 @@ if (article) {
   Astro.response.headers.set('Cache-Control', 'public, max-age=60');
   Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
 
+  let articleContentMd = article.content_md || '';
+  if (articleContentMd) {
+    const refResult = await extractTechnicalReferences(articleContentMd);
+    technicalReferencesHtml = refResult.referencesHtml;
+    articleContentMd = refResult.cleanContentMd;
+  }
+
   let rawContentHtml = stripFaqCommentMarkers(article.content_html || '');
   const hasLeakedMetadata =
     rawContentHtml.includes('title:') &&
@@ -137,12 +168,12 @@ if (article) {
     rawContentHtml.trim().length < 50 ||
     hasLeakedMetadata;
 
-  if (isMalformedHtml && article.content_md) {
-    rawContentHtml = stripFaqCommentMarkers(await renderArticleMarkdownSafely(article.content_md));
+  if ((isMalformedHtml || technicalReferencesHtml) && articleContentMd) {
+    rawContentHtml = stripFaqCommentMarkers(await renderArticleMarkdownSafely(articleContentMd));
   }
 
 
-  const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(rawContentHtml), {
+  const safeArticleHtml = await renderMediaSlotAnchors(db, article.id, sanitizeArticleHtml(wrapStandaloneTables(rawContentHtml)), {
     articleSlug: article.slug,
     contentMd: article.content_md,
     manifest: article.visual_manifest,
@@ -356,7 +387,7 @@ if (article) {
     </div>
 
     <!-- 2. Editorial Article Header (Atlas T05) -->
-    <header class="mb-8 max-w-[830px]">
+    <header class="mb-8 w-full">
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <span class="eyebrow">{article.category_name || 'ARSITEKTUR & HUNIAN'}</span>
         {article.is_sponsored === 1 && (
@@ -371,7 +402,7 @@ if (article) {
       </h1>
 
       {article.description && (
-        <p class="text-base sm:text-lg text-[var(--muted)] leading-relaxed max-w-[760px] mb-6">
+        <p class="text-base sm:text-lg text-[var(--muted)] leading-relaxed mb-6">
           {article.description}
         </p>
       )}
@@ -380,7 +411,7 @@ if (article) {
       <div class="flex flex-wrap items-center justify-between gap-4 py-3.5 border-y border-[var(--line)] text-xs text-[var(--muted)]">
         <div class="flex items-center gap-3">
           <img
-            src={article.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'}
+            src={(article.author_avatar && !article.author_avatar.includes('images.unsplash.com')) ? article.author_avatar : '/media/editorial/rancangloka-editorial-desk.svg'}
             alt={article.author_name || 'Redaksi'}
             class="h-9 w-9 rounded-full object-cover border border-[var(--line)]"
           />
@@ -407,7 +438,7 @@ if (article) {
 
     <!-- 3. Featured Cover Image (Atlas T05) -->
     {article.featured_image && (
-      <figure class="my-8 rounded-lg overflow-hidden border border-[var(--line)] bg-[var(--warm)] max-w-[1000px]">
+      <figure class="my-8 rounded-lg overflow-hidden border border-[var(--line)] bg-[var(--warm)] w-full">
         {articleCoverAttrs ? (
           <img
             src={articleCoverAttrs.src}
@@ -444,22 +475,65 @@ if (article) {
     <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,740px)_250px] gap-10 justify-center mt-8">
       <!-- Left Column: Core Reading Body -->
       <div class="min-w-0">
-        <!-- Key Takeaways Box (if available) -->
-        {article.description && (
-          <div class="soft-note mb-8">
+        <!-- Editorial Key Takeaways (Ringkasan Pokok Kajian) -->
+        {keyTakeaways.length > 0 ? (
+          <aside class="my-6 rounded-2xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40 border-l-4 border-l-primary p-5 sm:p-6 shadow-xs" aria-label="Pokok Kajian Utama">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                <span>💡</span>
+                <span>POKOK KAJIAN UTAMA</span>
+              </span>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono hidden sm:inline">· Ringkasan Editorial</span>
+            </div>
+            <ul class="space-y-2 text-xs sm:text-[13px] leading-relaxed text-[var(--ink)]">
+              {keyTakeaways.map((item) => (
+                <li class="flex items-start gap-2.5">
+                  <span class="text-primary font-bold select-none text-sm leading-none mt-0.5">▪</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        ) : (article.description && (
+          <aside class="soft-note my-6" aria-label="Ringkasan Utama">
             <b>Ringkasan Utama:</b>
             <p class="mt-1 text-sm">{article.description}</p>
-          </div>
-        )}
+          </aside>
+        ))}
 
         <!-- Main Prose Article Body (With In-Article TOC, Dateline, and BACA JUGA) -->
-        <div id="article-body" class="prose-magazine text-[var(--ink)]" set:html={processedHtml} />
+        <div id="article-body" class="prose-magazine text-[var(--ink)] w-full" set:html={processedHtml} />
 
         <!-- Optional Contextual Editorial FAQ (Zero markup if unapproved/empty) -->
         <EditorialFAQ faqs={articleFaqs} />
 
+        <!-- Optional Contextual Technical References (Rendered strictly after FAQ, before Plane A / Author Box) -->
+        <EditorialReferences referencesHtml={technicalReferencesHtml} />
+
         <!-- Plane A Dynamic Support Module -->
         <ArticleSupportModule links={planeALinks} />
+
+        <!-- Quick Action / Bookmark Card (Mobile & Tablet: lg:hidden) -->
+        <div class="my-6 p-5 rounded-lg bg-[var(--warm)] border border-[var(--line)] text-xs text-[var(--muted)] flex flex-col sm:flex-row items-center justify-between gap-4 lg:hidden">
+          <div>
+            <span class="meta block">SIMPAN & BAGIKAN</span>
+            <p class="text-[11px] leading-relaxed mt-1">
+              Simpan kajian ini untuk referensi saat renovasi atau konsultasi dengan arsitek & tukang.
+            </p>
+          </div>
+          <button
+            id="article-bookmark-btn-mobile"
+            type="button"
+            class="btn btn-secondary text-xs flex-shrink-0"
+            data-slug={article.slug}
+            data-title={article.title}
+            data-image={article.featured_image}
+            data-category={article.category_name}
+          >
+            <span>🔖</span>
+            <span id="bookmark-btn-text-mobile">Simpan Inspirasi</span>
+          </button>
+        </div>
 
         <!-- Social Share Bar -->
         <SocialShareBar title={article.title} siteSettings={siteSettings} />
@@ -470,7 +544,6 @@ if (article) {
           authorAvatar={article.author_avatar}
           authorRole={article.author_role}
         />
-
       </div>
 
       <!-- Right Column: Sticky Aside with Table of Contents & Quick Action (Atlas T05) -->
@@ -497,7 +570,7 @@ if (article) {
           )}
 
           <!-- Quick Action Card -->
-          <div class="p-5 rounded-lg bg-white border border-[var(--line)] text-xs text-[var(--muted)] space-y-3 shadow-xs">
+          <div class="p-5 rounded-lg bg-white dark:bg-slate-900 border border-[var(--line)] text-xs text-[var(--muted)] space-y-3 shadow-xs">
             <span class="meta block">SIMPAN & BAGIKAN</span>
             <p class="text-[11px] leading-relaxed">
               Simpan kajian ini untuk referensi saat renovasi atau konsultasi dengan tukang.
@@ -526,7 +599,7 @@ if (article) {
   )}
 
   <!-- 9. Next Action Loop / Decision Conversion CTA (Atlas T05) -->
-  <section class="editorial-container my-10 sm:my-14">
+  <section class="editorial-container my-10 sm:my-14" style="--max: 860px;">
     <div class="p-6 sm:p-10 rounded-2xl bg-[var(--wash)] border border-[var(--line)]">
       <span class="meta">PANDUAN KEPUTUSAN</span>
       <h3 class="font-heading text-xl sm:text-2xl font-bold text-[var(--ink)] my-2">
@@ -561,26 +634,32 @@ if (article) {
       if (bar) bar.style.width = scrolled + '%';
     });
 
-    // Bookmark Toggle Button (Header / Inline / Floating)
+    // Bookmark Toggle Button (Header / Inline / Floating / Mobile)
     const bookmarkBtn = document.getElementById('article-bookmark-btn');
+    const bookmarkBtnMobile = document.getElementById('article-bookmark-btn-mobile');
     const floatBookmarkBtn = document.getElementById('floating-bookmark-btn');
 
     function triggerBookmark() {
-      const slug = bookmarkBtn?.getAttribute('data-slug') || '';
-      const title = bookmarkBtn?.getAttribute('data-title') || '';
-      const image = bookmarkBtn?.getAttribute('data-image') || '';
-      const category = bookmarkBtn?.getAttribute('data-category') || '';
+      const activeBtn = bookmarkBtn || bookmarkBtnMobile;
+      const slug = activeBtn?.getAttribute('data-slug') || '';
+      const title = activeBtn?.getAttribute('data-title') || '';
+      const image = activeBtn?.getAttribute('data-image') || '';
+      const category = activeBtn?.getAttribute('data-category') || '';
 
       if (typeof window.toggleSaveBookmark === 'function') {
         const isSaved = window.toggleSaveBookmark({ slug, title, image, category });
         const textSpan = document.getElementById('bookmark-btn-text');
+        const textSpanMobile = document.getElementById('bookmark-btn-text-mobile');
         const floatIcon = document.getElementById('floating-bookmark-icon');
-        if (textSpan) textSpan.innerText = isSaved ? 'Tersimpan ✓' : 'Simpan Inspirasi';
+        const label = isSaved ? 'Tersimpan ✓' : 'Simpan Inspirasi';
+        if (textSpan) textSpan.innerText = label;
+        if (textSpanMobile) textSpanMobile.innerText = label;
         if (floatIcon) floatIcon.innerText = isSaved ? '✅' : '🔖';
       }
     }
 
     bookmarkBtn?.addEventListener('click', triggerBookmark);
+    bookmarkBtnMobile?.addEventListener('click', triggerBookmark);
     floatBookmarkBtn?.addEventListener('click', triggerBookmark);
 
     // Floating Copy Link
@@ -595,10 +674,24 @@ if (article) {
         }
       } catch (e) {
         prompt('Salin link artikel:', window.location.href);
+      }
     });
   </script>
 
   <!-- Desktop-Only Scroll to Top Component (Bounded to Article Body) -->
   <ScrollToTop />
+
+  <style>
+    /* Desktop Responsive TOC Invariant:
+     * On desktop viewports (>= 1024px), the in-article TOC (#daftar-isi) is strictly hidden
+     * in favor of the right-hand sticky sidebar TOC (<aside class="hidden lg:block">).
+     * On mobile & tablet viewports (< 1024px), the sidebar is hidden and #daftar-isi is visible.
+     */
+    @media (min-width: 1024px) {
+      :global(#daftar-isi) {
+        display: none !important;
+      }
+    }
+  </style>
 </BaseLayout>
 )}

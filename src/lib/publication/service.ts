@@ -41,6 +41,7 @@ import {
   buildCanonicalPublicationPreflightState,
   computeCanonicalPreflightHash
 } from '../decision/publication-preflight-state.ts';
+import { evaluateArticleDoDFromDb } from '../editorial/article-definition-of-done.ts';
 
 export const BANNED_PLACEHOLDERS = [
   '[EVIDENCE NEEDED]',
@@ -701,6 +702,27 @@ export async function evaluateArticleReadiness(
     // ignore
   }
 
+  // --- Vector 7: Canonical Article Definition of Done (DoD v1.0) ---
+  let dodPass = true;
+  let dodResult: any = null;
+  try {
+    dodResult = await evaluateArticleDoDFromDb(db, articleId);
+    if (dodResult.gateA.status !== 'PASS') {
+      blockers.push(FAILURE_CODES.DOD_CONTENT_INCOMPLETE);
+      editorialPass = false;
+      dodPass = false;
+    }
+    if (dodResult.gateB.status !== 'PASS') {
+      blockers.push(FAILURE_CODES.DOD_MEDIA_INSUFFICIENT);
+      mediaPass = false;
+      dodPass = false;
+    }
+  } catch {
+    // Fail-closed on DoD execution error
+    blockers.push(FAILURE_CODES.DOD_GATE_BLOCKED);
+    dodPass = false;
+  }
+
   // Deduplicate blockers deterministically
   const uniqueBlockers = Array.from(new Set(blockers));
 
@@ -716,7 +738,8 @@ export async function evaluateArticleReadiness(
     uniqueBlockers.includes(FAILURE_CODES.APPROVAL_STATUS_REJECTED) ||
     uniqueBlockers.includes(FAILURE_CODES.COVER_REVISION_REQUIRED) ||
     uniqueBlockers.includes(FAILURE_CODES.INLINE_MEDIA_REVISION_REQUIRED) ||
-    uniqueBlockers.includes(FAILURE_CODES.TEXT_REVISION_REQUIRED)
+    uniqueBlockers.includes(FAILURE_CODES.TEXT_REVISION_REQUIRED) ||
+    uniqueBlockers.includes(FAILURE_CODES.DOD_GATE_BLOCKED)
   ) {
     overallStatus = PUBLICATION_STATUS_BLOCKED;
   }
@@ -728,6 +751,7 @@ export async function evaluateArticleReadiness(
     evidencePass &&
     mediaPass &&
     metadataPass &&
+    dodPass &&
     article.status === 'draft'
   );
   const humanApprovalPass = Boolean(approvalPass);
@@ -748,8 +772,10 @@ export async function evaluateArticleReadiness(
       evidence_and_citations: evidencePass ? 'PASS' : 'FAIL',
       visual_media: mediaPass ? 'PASS' : 'FAIL',
       human_approval: approvalPass ? 'PASS' : 'FAIL',
-      publication_metadata: metadataPass ? 'PASS' : 'FAIL'
+      publication_metadata: metadataPass ? 'PASS' : 'FAIL',
+      dod: dodPass ? 'PASS' : 'FAIL'
     },
+    dod: dodResult,
     policy: {
       system_policy_pass: systemPolicyPass,
       human_approval_pass: humanApprovalPass

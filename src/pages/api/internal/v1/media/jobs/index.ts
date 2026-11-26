@@ -43,7 +43,7 @@ export const GET: APIRoute = async ({ request, url, locals }) => {
   const db = (await getDb(locals)) || env.DB || (locals as any)?.db;
 
   if (!db) {
-    if (import.meta.env.DEV) {
+    if ((import.meta as any).env?.DEV) {
       console.warn('[MEDIA_JOBS_API] locals.runtime.env.DB is unavailable (dev HMR reload window).');
     }
     return errorResponse(500, 'DATABASE_UNAVAILABLE', 'Koneksi database D1 tidak tersedia.');
@@ -54,7 +54,7 @@ export const GET: APIRoute = async ({ request, url, locals }) => {
   try {
     auth = await authenticateDeviceRequest(request, db, env);
   } catch (authErr: any) {
-    if (import.meta.env.DEV) {
+    if ((import.meta as any).env?.DEV) {
       console.error('[MEDIA_JOBS_API] Unexpected authentication exception:', authErr?.message || authErr);
     }
     return errorResponse(500, 'AUTH_INTERNAL_ERROR', 'Terjadi kesalahan internal saat memverifikasi autentikasi perangkat.');
@@ -80,7 +80,7 @@ export const GET: APIRoute = async ({ request, url, locals }) => {
       jobs
     });
   } catch (err: any) {
-    if (import.meta.env.DEV) {
+    if ((import.meta as any).env?.DEV) {
       console.error('[MEDIA_JOBS_API] Unexpected error in listMediaJobs:', err?.message || err);
     }
     return errorResponse(500, 'INTERNAL_ERROR', 'Gagal mengambil daftar pekerjaan media.');

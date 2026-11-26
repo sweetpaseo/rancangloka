@@ -49,6 +49,7 @@ export interface ImageGenerationRequest {
   aspect_ratio?: string; // e.g. '1315:660', '16:9', 'landscape'
   output_format?: 'png' | 'webp' | 'jpeg';
   quality?: 'standard' | 'hd';
+  resolution?: '1k' | '2k' | '4k';
   seed?: number;
   safety_profile?: Record<string, any>;
   purpose: string; // e.g. 'canary', 'featured_editorial'

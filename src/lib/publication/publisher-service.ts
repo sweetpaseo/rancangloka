@@ -79,6 +79,7 @@ import {
   CONTENT_HASH_CONTRACT_MARKDOWN_V1,
   SOURCE_FIDELITY_BYTE_EXACT
 } from '../content-protection/publication-dna.ts';
+import { evaluateArticleDoDFromDb } from '../editorial/article-definition-of-done.ts';
 
 export {
   resolvePublicationAuthorization,
@@ -517,6 +518,22 @@ export async function validatePrepublishInvariants(
       errorClass: ERROR_CLASS_TERMINAL,
       reasonCode: (auth.reason as PublisherReasonCode) || 'APPROVAL_REVOKED_OR_STALE',
       details: auth.details || { error: auth.reason }
+    };
+  }
+
+  // 8. Canonical Article Definition of Done & Readiness Gate (DoD v1.0)
+  // Revalidates that the article has achieved full content & media readiness
+  const latestReadiness = await db
+    .prepare('SELECT is_ready, snapshot_json FROM article_publication_readiness WHERE article_id = ? ORDER BY evaluated_at DESC, id DESC LIMIT 1')
+    .bind(article.id)
+    .first();
+
+  if (latestReadiness && latestReadiness.is_ready === 0) {
+    return {
+      isValid: false,
+      errorClass: ERROR_CLASS_TERMINAL,
+      reasonCode: 'READINESS_STALE_OR_INVALID',
+      details: { error: 'Latest publication readiness evaluation is not ready (DoD gate blocked)' }
     };
   }
 
@@ -1424,6 +1441,11 @@ export async function publishNow(
       .prepare('SELECT * FROM article_publication_plans WHERE plan_id = ? LIMIT 1')
       .bind(planOrExecutionId)
       .first();
+
+    // Gate 24: Publish Now is strictly human-only. Cannot bypass auto_policy without explicit human approval.
+    if (plan && plan.scheduling_mode === 'auto_policy') {
+      throw new Error('PUBLISH_NOW_WITHOUT_HUMAN_APPROVAL_FORBIDDEN: Manual Publish Now cannot be used for auto_policy plans');
+    }
 
     // Find or create execution for plan
     let existing = await db

@@ -377,3 +377,338 @@ button:disabled {
     max-width: 48%;
   }
 }
+
+/* ===================================================================
+   LOKABRIDGE STUDIO V1 — WORKSTATION STYLES
+   =================================================================== */
+.studio-workstation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.studio-header {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.studio-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.studio-brand {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.studio-version {
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 4px;
+  font-family: monospace;
+}
+
+.studio-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.badge-success { background: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+.badge-warning { background: #fef7e0; color: #b06000; border: 1px solid #feefc3; }
+.badge-danger { background: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+.badge-neutral { background: #f1f3f4; color: #5f6368; border: 1px solid #dadce0; }
+
+.studio-subbar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+}
+
+.subbar-link {
+  background: none;
+  border: none;
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.subbar-link:hover, .subbar-link.active {
+  color: var(--ink);
+  background: var(--line);
+  font-weight: 600;
+}
+
+.notif-pill {
+  background: var(--danger);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 8px;
+}
+
+.studio-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--line);
+}
+
+.studio-tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  text-align: center;
+}
+
+.studio-tab-btn:hover {
+  color: var(--ink);
+}
+
+.studio-tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.studio-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.card-head h3, .card-head h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.session-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: monospace;
+}
+
+.studio-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.studio-form-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.studio-input, .studio-select, .studio-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font: 11px/1.4 system-ui, sans-serif;
+  padding: 5px 6px;
+  border-radius: 3px;
+}
+
+.studio-textarea {
+  resize: vertical;
+}
+
+.studio-textarea.prompt-box {
+  min-height: 120px;
+  max-height: 200px;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+.studio-action-row {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-link-action {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.banner-box {
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.banner-error {
+  background: #fce8e6;
+  border: 1px solid #fad2cf;
+  color: #c5221f;
+}
+
+.banner-warning {
+  background: #fef7e0;
+  border: 1px solid #feefc3;
+  color: #b06000;
+}
+
+.meta-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slot-card {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.slot-body {
+  display: flex;
+  gap: 8px;
+}
+
+.slot-preview-box {
+  width: 80px;
+  height: 60px;
+  flex-shrink: 0;
+  background: #f4efe6;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-img-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slot-placeholder {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+  padding: 4px;
+}
+
+.slot-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.approval-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.pipeline-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pipeline-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  padding: 4px 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+
+.studio-toast {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 9999;
+}
+
+.toast-info { background: #181713; color: #fff; }
+.toast-success { background: #137333; color: #fff; }
+.toast-warning { background: #b06000; color: #fff; }
+.toast-danger { background: #c5221f; color: #fff; }
+
+.history-item-card, .notif-card, .cal-slot-item {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 3px;
+  padding: 8px;
+  margin-bottom: 6px;
+}
+
+.cal-slots-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slot-avail { border-left: 3px solid #137333; }
+.slot-busy { border-left: 3px solid #b06000; }
+

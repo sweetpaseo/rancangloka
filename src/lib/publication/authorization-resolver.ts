@@ -231,23 +231,45 @@ export async function resolvePublicationAuthorization(
   // PATH A: EDITORIAL SIGNOFF (Human Approval Required)
   // =========================================================================
   if (targetAuthMode === 'editorial_signoff') {
-    const latestApproval = await db
+    // Check if there is an active text approval matching content_hash
+    const textApproval = await db
       .prepare(`
-        SELECT approval_status, approved_content_hash, approved_asset_id
+        SELECT approval_status, approved_content_hash, notes
         FROM article_editorial_approvals
-        WHERE article_id = ?
+        WHERE article_id = ? AND approval_status = 'APPROVED' AND approved_content_hash = ?
         ORDER BY created_at DESC, id DESC
         LIMIT 1
       `)
-      .bind(articleId)
+      .bind(articleId, article.content_hash)
       .first();
 
-    if (
-      !latestApproval ||
-      latestApproval.approval_status !== 'APPROVED' ||
-      latestApproval.approved_content_hash !== article.content_hash ||
-      latestApproval.approved_asset_id !== activeMedia.asset_id
-    ) {
+    // Check if there is an active featured media approval matching asset_id
+    const featuredApproval = await db
+      .prepare(`
+        SELECT approval_status, approved_asset_id, notes
+        FROM article_editorial_approvals
+        WHERE article_id = ? AND approval_status = 'APPROVED' AND (approved_asset_id = ? OR notes LIKE ?)
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      `)
+      .bind(articleId, activeMedia.asset_id, `%"asset_id":"${activeMedia.asset_id}"%`)
+      .first();
+
+    // Support legacy monolithic approval row matching both simultaneously
+    const legacyMonolithic = await db
+      .prepare(`
+        SELECT approval_status, approved_content_hash, approved_asset_id
+        FROM article_editorial_approvals
+        WHERE article_id = ? AND approval_status = 'APPROVED' AND approved_content_hash = ? AND approved_asset_id = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      `)
+      .bind(articleId, article.content_hash, activeMedia.asset_id)
+      .first();
+
+    const isEditorialApproved = Boolean(legacyMonolithic || (textApproval && featuredApproval));
+
+    if (!isEditorialApproved) {
       return {
         authorized: false,
         authorization_mode: 'editorial_signoff',
@@ -256,7 +278,7 @@ export async function resolvePublicationAuthorization(
         plan_id: plan.plan_id,
         content_hash: article.content_hash,
         featured_asset_id: activeMedia.asset_id,
-        details: { approval_status: latestApproval?.approval_status }
+        details: { textApproved: Boolean(textApproval), featuredApproved: Boolean(featuredApproval) }
       };
     }
 

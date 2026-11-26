@@ -17,6 +17,14 @@
         <span id="panel-status" role="status" aria-live="polite">Starting...</span>
       </header>
 
+      <nav class="panel-nav-tabs" style="display: flex; gap: 4px; margin: 10px 0; background: var(--surface-2); padding: 3px; border-radius: 6px; border: 1px solid var(--line);">
+        <button id="tab-btn-media" type="button" class="tab-btn active" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; background: var(--surface); cursor: pointer; color: var(--text);">🖼️ LokaMedia</button>
+        <button id="tab-btn-bridge" type="button" class="tab-btn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; background: transparent; cursor: pointer; color: var(--muted);">✍️ LokaBridge Studio</button>
+      </nav>
+
+      <div id="panel-tab-bridge" style="display: none;"></div>
+
+      <div id="panel-tab-media">
       <section class="workflow-stage-card">
         <h2>Operator Workflow</h2>
         <div class="stage-banner">
@@ -264,6 +272,7 @@
         </div>
         <div id="audit-log" class="audit-log">No audit events</div>
       </details>
+      </div>
     </main>
     <script type="module" src="side-panel.js"></script>
   </body>

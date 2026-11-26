@@ -15,6 +15,8 @@ import { isRecoverableResultCheckpoint } from './providers/chatgpt/correlation.j
 import { EXTENSION_VERSION, PROVIDER_OPERATION_TIMEOUT_MS, detectEnvironment } from './constants.js';
 import { isProviderExecutionInFlight } from './execution-state.js';
 import { collectDiagnosticSnapshot, formatDiagnosticSnapshotText } from './diagnostic-snapshot.js';
+import { BridgeApiClient } from './bridge/bridge-api.js';
+import { BridgeUiManager } from './bridge/bridge-ui.js';
 
 const boot = new Set([SIDE_PANEL_BOOT_FLAGS.SCRIPT_LOADED]);
 let bound = false;
@@ -1463,6 +1465,44 @@ function bindSidePanel() {
     switchEnvBtn.addEventListener('click', () => {
       void switchBackendEnvironment().catch((err) => setStatus(boundedError(err), true));
     });
+  }
+
+  // LokaBridge Editorial Tab Binding
+  const tabBtnMedia = document.querySelector('#tab-btn-media');
+  const tabBtnBridge = document.querySelector('#tab-btn-bridge');
+  const tabMedia = document.querySelector('#panel-tab-media');
+  const tabBridge = document.querySelector('#panel-tab-bridge');
+
+  if (tabBtnMedia && tabBtnBridge && tabMedia && tabBridge) {
+    tabBtnMedia.addEventListener('click', () => {
+      tabBtnMedia.style.background = 'var(--surface)';
+      tabBtnMedia.style.color = 'var(--text)';
+      tabBtnBridge.style.background = 'transparent';
+      tabBtnBridge.style.color = 'var(--muted)';
+      tabMedia.style.display = 'block';
+      tabBridge.style.display = 'none';
+    });
+
+    tabBtnBridge.addEventListener('click', () => {
+      tabBtnBridge.style.background = 'var(--surface)';
+      tabBtnBridge.style.color = 'var(--text)';
+      tabBtnMedia.style.background = 'transparent';
+      tabBtnMedia.style.color = 'var(--muted)';
+      tabBridge.style.display = 'block';
+      tabMedia.style.display = 'none';
+    });
+
+    try {
+      const serverInput = document.querySelector('#server');
+      const tokenInput = document.querySelector('#token');
+      const baseUrl = serverInput?.value || 'https://rancangloka-staging.chandrajoyko.workers.dev';
+      const deviceToken = tokenInput?.value || '';
+      const bridgeApi = new BridgeApiClient({ baseUrl, deviceToken });
+      const bridgeUi = new BridgeUiManager({ container: tabBridge, apiClient: bridgeApi });
+      void bridgeUi.init().catch(err => console.warn('[LokaBridge] Tab init warning:', err));
+    } catch (err) {
+      console.warn('[LokaBridge] Setup warning:', err);
+    }
   }
   element('#diagnostic').addEventListener('click', () => {
     void providerCheck().catch((error) => setStatus(boundedError(error), true));

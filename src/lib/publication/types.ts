@@ -75,6 +75,11 @@ export const FAILURE_CODES = {
   METADATA_INCOMPLETE: 'METADATA_INCOMPLETE',
   TAKEAWAYS_INVALID: 'TAKEAWAYS_INVALID',
 
+  // Canonical Article Definition of Done (DoD v1.0)
+  DOD_GATE_BLOCKED: 'DOD_GATE_BLOCKED',
+  DOD_CONTENT_INCOMPLETE: 'DOD_CONTENT_INCOMPLETE',
+  DOD_MEDIA_INSUFFICIENT: 'DOD_MEDIA_INSUFFICIENT',
+
   // Fail-Closed
   GUARD_STATE_UNKNOWN: 'GUARD_STATE_UNKNOWN',
   FAIL_CLOSED: 'FAIL_CLOSED'
@@ -120,7 +125,9 @@ export interface ReadinessSnapshotPayload {
     visual_media: 'PASS' | 'FAIL';
     human_approval: 'PASS' | 'FAIL';
     publication_metadata: 'PASS' | 'FAIL';
+    dod?: 'PASS' | 'FAIL';
   };
+  dod?: any;
   policy?: {
     system_policy_pass: boolean;
     human_approval_pass: boolean;

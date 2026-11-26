@@ -64,10 +64,64 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-const baseNarrative = fs.readFileSync(
-  path.join(rootDir, 'storage/masters/art10034/manuscript_art10034_revised.md'),
-  'utf8'
-);
+const DEFAULT_TEST_NARRATIVE = `# Panduan Membuat Patio Kerikil Koral Sikat dan Batu Split untuk Taman Belakang Minim Perawatan
+
+Patio kerikil taman belakang bisa jadi pilihan kalau kamu ingin punya sudut duduk yang tidak terus berubah jadi tanah becek, tanpa menutup seluruh halaman dengan beton. Tapi supaya batu tetap rapi dan nyaman dipijak, pekerjaan utamanya justru dimulai sebelum kerikil ditebar.
+
+Bayangkan halaman setelah hujan: kalau air mengalir ke arah rumah, atau batu bercampur tanah, patio yang baru dibuat bisa cepat terasa berantakan. Jadi, bukan cuma soal memilih warna kerikil. Aliran air, lapisan di bawahnya, dan batas tepi sama pentingnya.
+
+## Menyiapkan Fondasi dan Kemiringan Drainase Tanah Dasar
+
+Sebelum menentukan bentuk patio, lihat dulu permukaan halaman dan arah air mengalir. Air hujan sebaiknya bergerak menjauhi dinding pondasi atau sloof rumah, bukan tertahan di area duduk atau diarahkan ke bawah bangunan.
+
+Kupas tanah dasar 10–12 cm, padatkan, lalu bentuk kemiringan 1%–2%—setara penurunan 1–2 cm per meter—menjauhi dinding pondasi atau sloof menuju parit resapan, taman serapan, sumur resapan, atau biopori.
+
+Kemiringan itu tidak harus terlihat mencolok. Yang penting, permukaannya punya arah yang jelas dan tidak membentuk cekungan di dekat rumah. Kalau arah aliran belum beres, jangan buru-buru menambah lapisan batu; kerikil tidak akan menyelesaikan masalah air yang bergerak ke tempat yang keliru.
+
+## Pisahkan kerikil dari tanah dengan Geotekstil
+
+Setelah tanah dipadatkan dan kemiringannya dibentuk, hamparkan geotekstil di atasnya. Fungsinya seperti lapisan pemisah: butiran kerikil tidak mudah bercampur dengan tanah berlumpur saat diinjak atau terkena hujan, sementara air tetap bisa meresap ke tanah alami.
+
+Gunakan membran geotekstil non-woven needle-punched dari polypropylene kontinu dengan kerapatan 100–150 g/m² dan rentang pori AOS 0,15–0,21 mm di atas tanah yang sudah dipadatkan.
+
+Lapisan ini juga membantu menghambat akar gulma dari bawah tanpa menutup jalur peresapan air. Jadi, geotekstil bukan alas kedap air; perannya adalah memisahkan lapisan tanah dan batu sekaligus mengurangi risiko kerikil amblas bercampur lumpur atau mengalami mud pumping.
+
+## Kunci Kerapian: Pembatas Tepi dan Jalur Pijakan Nyaman
+
+Butiran kerikil bisa terdorong saat tersenggol kaki, kursi, atau alat berkebun. Tanpa batas yang kokoh, batu perlahan menyebar ke rumput dan tanah taman. Karena itu, pembatas tepi bukan sekadar aksen: ia mengurung hamparan agar bentuk patio tetap rapi.
+
+Patio kerikil memerlukan pembatas tepi kaku, yang bisa dibuat dari bata merah dengan spesi mortar 1:4 tertanam minimal 5 cm di bawah permukaan, paving block beton pengunci, atau edging strip logam maupun aluminium bersiku tebal dengan pasak angkur baja setiap 60 cm.
+
+Pasang pembatas setelah batas area dan ketinggian permukaan direncanakan, tetapi sebelum batu dihamparkan. Dengan begitu, kamu bisa merapikan kerikil sampai ke tepi tanpa terus mengembalikan butiran yang keluar dari area patio.
+
+## Memilih Jenis Batu: Karakter Pecahan Split vs Koral Sikat
+
+Batu split abu-abu punya bidang pecahan yang tajam dan bersudut. Bentuk ini membuat butirannya saling mengunci, sehingga pijakan dan kaki meja atau kursi lebih stabil. Karakternya cocok untuk bagian patio yang sering dipakai duduk.
+
+Koral sikat berbentuk bulat lonjong alami dengan tekstur lebih halus, jadi lebih nyaman diinjak tanpa alas kaki. Namun, bentuknya membuat batu lebih mudah bergeser. Untuk jalur yang sering dilalui, koral lebih nyaman dipadukan dengan batu pijakan daripada dijadikan satu-satunya permukaan pijak.
+
+Di atas geotekstil, hamparkan pasir pasang atau pasir pengunci kasar setebal 3–5 cm sebagai alas perata, lalu tambahkan kerikil bersih berukuran nominal 10–20 mm setebal 4–5 cm, sehingga total kedalaman patio menjadi 8–10 cm.
+
+Ukuran 10–20 mm menjadi pilihan yang seimbang untuk pijakan: batunya tidak mudah tersapu sandal atau sepatu, tidak mudah amblas saat diinjak, dan punya rongga yang membantu air hujan meresap tanpa cipratan lumpur. Ratakan lapisan sebelum patio dipakai agar permukaannya lebih nyaman dilalui.
+
+## Buat jalur pijakan dan rawat seperlunya
+
+Di area koral, batu pijakan membantu langkah terasa lebih mantap. Susun batu andesit beralur atau batu lempeng alam mengikuti jalur yang paling sering kamu lewati, bukan sekadar pola yang terlihat bagus dari satu sudut.
+
+Pasang batu pijakan andesit beralur atau batu lempeng alam dengan jarak 60–65 cm dari pusat ke pusat.
+
+Perawatannya cukup ringan: bersihkan daun kering secara berkala memakai sapu lidi atau leaf rake fleksibel, lalu sesekali semprot dengan air bertekanan sedang untuk membilas debu. Kerikil tidak perlu dipel atau disemir.
+
+## Rancang patio mengikuti cara halaman dipakai
+
+Patio yang rapi bertumpu pada urutan kerja yang sederhana: arahkan air menjauhi rumah, pisahkan tanah dari kerikil, tahan tepinya, lalu pilih batu sesuai kegiatan. Split lebih stabil untuk area duduk aktif, sedangkan koral terasa lebih halus tetapi lebih mudah bergeser dan terbantu oleh batu pijakan.
+
+Sebelum mulai, tandai area duduk dan jalur yang akan sering dilalui, lalu periksa arah aliran air serta batas patio. Setelah itu, susun lapisan dari tanah dasar sampai kerikil mengikuti ukuran yang tepat, supaya patio kerikil taman belakang terasa nyaman dipakai dan tidak merepotkan dirawat.`;
+
+const localNarrativeFile = path.join(rootDir, 'storage/masters/art10034/manuscript_art10034_revised.md');
+const baseNarrative = fs.existsSync(localNarrativeFile)
+  ? fs.readFileSync(localNarrativeFile, 'utf8')
+  : DEFAULT_TEST_NARRATIVE;
 
 const baseManifest = {
   article_id: 10034,
