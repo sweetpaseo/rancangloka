@@ -293,7 +293,7 @@ export interface MemoryWriteAuthorization {
   authorized: boolean;
   staff_id: string;
   reason: string;
-  approved_by?: string;
+  approved_by: string;
 }
 
 let activeWriteAuthorization: MemoryWriteAuthorization | null = null;
@@ -317,7 +317,8 @@ export function withMemoryWriteAuthorization<T>(
 /**
  * Write a handoff, research note, or OLCI record into shared memory.
  * STRICT SAFETY ENFORCEMENT:
- * - Blocked if write is not permitted (requires explicit authorization or isSharedMemoryWriteEnabled()).
+ * - Blocked if write is not permitted (requires valid, unforgeable authorization or isSharedMemoryWriteEnabled()).
+ * - Author staff_id MUST strictly match the authorized staff_id.
  * - Allowed ONLY in designated shared memory namespaces.
  * - Defends against path traversal attacks.
  * - Rejects any content containing secret signatures.
@@ -329,19 +330,41 @@ export function writeMemoryNote(params: {
   authorStaff: string;
   content: string;
   authorization?: MemoryWriteAuthorization;
-  allowWriteOverride?: boolean;
   preserveRawContent?: boolean;
 }): { success: boolean; subpath: string } {
   const isEnvWriteEnabled = isSharedMemoryWriteEnabled();
   const explicitAuth = params.authorization || activeWriteAuthorization;
-  const isExplicitlyAuthorized = Boolean(
-    explicitAuth &&
-    explicitAuth.authorized &&
-    explicitAuth.staff_id &&
-    explicitAuth.reason
-  );
 
-  const writePermitted = isEnvWriteEnabled || isExplicitlyAuthorized || params.allowWriteOverride === true;
+  if (explicitAuth) {
+    const isWellFormed = Boolean(
+      explicitAuth.authorized === true &&
+      typeof explicitAuth.staff_id === 'string' &&
+      explicitAuth.staff_id.trim().length > 0 &&
+      typeof explicitAuth.reason === 'string' &&
+      explicitAuth.reason.trim().length >= 5 &&
+      typeof explicitAuth.approved_by === 'string' &&
+      explicitAuth.approved_by.trim().length > 0
+    );
+
+    if (!isWellFormed) {
+      throw new Error(
+        `[SharedMemory:FORGED_AUTHORIZATION_VIOLATION] Invalid or forged memory write authorization. ` +
+        `Authorization requires authorized=true, valid staff_id, approved_by, and reason (minimum 5 chars).`
+      );
+    }
+
+    const authorNormalized = String(params.authorStaff || '').trim().toLowerCase();
+    const authStaffNormalized = String(explicitAuth.staff_id || '').trim().toLowerCase();
+
+    if (authorNormalized !== authStaffNormalized) {
+      throw new Error(
+        `[SharedMemory:MISMATCHED_STAFF_AUTHORIZATION_VIOLATION] Authorization staff_id '${explicitAuth.staff_id}' ` +
+        `does not match authorStaff '${params.authorStaff}'. Write rejected.`
+      );
+    }
+  }
+
+  const writePermitted = isEnvWriteEnabled || Boolean(explicitAuth && explicitAuth.authorized === true);
   
   if (!writePermitted) {
     throw new Error(

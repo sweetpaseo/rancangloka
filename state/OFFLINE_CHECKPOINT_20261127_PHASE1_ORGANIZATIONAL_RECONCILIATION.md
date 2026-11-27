@@ -41,11 +41,13 @@
    - Provenance (`experience_id`, `article_ref`, `observed_at`, `validation`) tetap utuh.
    - Telemetri aktif `retrievedExperiences` dicatat pada metadata prompt Joko, prompt Nadia, dan store `getExperienceRetrievalTelemetry()`.
 
-6. **Tata Kelola Penulisan Memori OLCI (Memory Write Governance):**
-   - Menghapus bypass `allowWriteOverride: true` yang sebelumnya melewati `ENABLE_SHARED_MEMORY_WRITES`.
-   - Menggantikan dengan otorisasi berbasis lingkup eksplisit (`withMemoryWriteAuthorization` atau `MemoryWriteAuthorization`).
-   - Tanpa otorisasi aktif atau bendera env, seluruh jalur penulisan memori beroperasi secara mutlak **fail-closed** (`READ_ONLY_VIOLATION`).
+6. **Tata Kelola Penulisan Memori OLCI (Final Memory Governance Patch):**
+   - Menghapus total `allowWriteOverride: true` dan seluruh mekanisme bypass terkait dari `shared-memory-adapter.ts`.
+   - Menegakkan validasi ketat pada `MemoryWriteAuthorization`: wajib memiliki `authorized === true`, `staff_id` sah, `approved_by` sah, dan `reason` minimal 5 karakter. Otorisasi tidak lengkap/palsu diblokir dengan `FORGED_AUTHORIZATION_VIOLATION`.
+   - Menegakkan kesesuaian identitas staf: `params.authorStaff` wajib cocok dengan `authorization.staff_id`. Ketidakcocokan diblokir dengan `MISMATCHED_STAFF_AUTHORIZATION_VIOLATION`.
+   - Tanpa otorisasi aktif atau bendera env, seluruh jalur penulisan memori beroperasi secara mutlak **fail-closed** (`READ_ONLY_VIOLATION`), termasuk pemanggilan lama yang mencoba mengirimkan `allowWriteOverride: true`.
    - Penulisan memori yang sah oleh staf tetap dapat berjalan melalui otorisasi resmi.
+   - Isolasi pengujian diperbaiki dengan mengendalikan kedua variabel lingkungan (`RANCANGLOKA_SHARED_MEMORY_DIR` dan `SHARED_MEMORY_DIR`), menjamin seluruh pengujian berjalan di direktori sementara tanpa menyentuh memori operasional.
 
 7. **Penegakan Editorial Curiosity Principle pada Quality Gates:**
    - ECP ditegakkan secara semantik pada Gate A.1b:
@@ -64,6 +66,7 @@
 
 | Suite Pengujian | Jumlah Kasus | Status | Catatan |
 | :--- | :---: | :---: | :--- |
+| `test-phase1-targeted-remediation.mjs` | **14** | ✅ **PASS** | Final Memory Governance, Test Isolation, ECP, Staff Registry |
 | `test-canonical-dod-runtime-integration.mjs` | **30** | ✅ **PASS** | 11 Skenario Canonical DoD Matrix A–B |
 | `test-phase1-organizational-reconciliation.mjs` | **11** | ✅ **PASS** | Roster 10 Staf, Alias Map, ECP, OLCI, Telemetri |
 | `test-article-integrity-regression-suite.mjs` | **12** | ✅ **PASS** | Invarian Integritas Artikel A s/d L, Zero Broken Images |

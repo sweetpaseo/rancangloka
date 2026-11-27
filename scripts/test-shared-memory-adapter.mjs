@@ -128,14 +128,19 @@ it('T09: writeMemoryNote blocks autonomous writes when isSharedMemoryWriteEnable
 });
 
 // T10: Secret leakage defense
-it('T10: writeMemoryNote rejects content containing secret signatures even with override', () => {
+it('T10: writeMemoryNote rejects content containing secret signatures even with valid authorization', () => {
   assert.throws(() => {
     writeMemoryNote({
       category: '04-agent-handoffs',
       filename: 'test-secret.md',
       authorStaff: 'Sari',
       content: 'Here is the key: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-      allowWriteOverride: true
+      authorization: {
+        authorized: true,
+        staff_id: 'Sari',
+        reason: 'Security check test',
+        approved_by: 'owner_test_harness'
+      }
     });
   }, /SharedMemory:SECURITY_VIOLATION/);
 });

@@ -203,29 +203,78 @@ async function runPhase1Suite() {
   {
     console.log('Test 6: Memory Write Permission Reconciliation');
     
-    // Attempt unauthorized write without override
+    // Attempt unauthorized write without authorization
     assert.throws(() => {
       writeMemoryNote({
         category: '04-agent-handoffs',
         filename: 'unauthorized-test',
         authorStaff: 'test_agent',
-        content: 'This should fail when writes are disabled',
-        allowWriteOverride: false
+        content: 'This should fail when writes are disabled'
       });
     }, /READ_ONLY_VIOLATION/, 'Unauthorized write must be rejected with READ_ONLY_VIOLATION');
 
-    // Attempt writing secrets
+    // Attempt legacy allowWriteOverride without valid authorization -> MUST BE BLOCKED
+    assert.throws(() => {
+      // @ts-ignore - testing legacy call pattern rejection
+      writeMemoryNote({
+        category: '04-agent-handoffs',
+        filename: 'legacy-override-test',
+        authorStaff: 'test_agent',
+        content: 'Attempting write with deprecated allowWriteOverride flag',
+        allowWriteOverride: true
+      });
+    }, /READ_ONLY_VIOLATION/, 'Legacy allowWriteOverride must be completely ignored and fail closed');
+
+    // Attempt forged authorization (missing approved_by / invalid)
+    assert.throws(() => {
+      writeMemoryNote({
+        category: '04-agent-handoffs',
+        filename: 'forged-auth-test',
+        authorStaff: 'test_agent',
+        content: 'Forged authorization test',
+        // @ts-ignore
+        authorization: {
+          authorized: true,
+          staff_id: 'test_agent',
+          reason: 'test'
+          // missing approved_by
+        }
+      });
+    }, /FORGED_AUTHORIZATION_VIOLATION/, 'Forged or incomplete authorization must be rejected');
+
+    // Attempt mismatched staff authorization
+    assert.throws(() => {
+      writeMemoryNote({
+        category: '04-agent-handoffs',
+        filename: 'mismatched-staff-test',
+        authorStaff: 'malicious_impersonator',
+        content: 'Attempting write with mismatched staff ID',
+        authorization: {
+          authorized: true,
+          staff_id: 'test_agent',
+          reason: 'Valid reason for test_agent',
+          approved_by: 'owner_test_harness'
+        }
+      });
+    }, /MISMATCHED_STAFF_AUTHORIZATION_VIOLATION/, 'Mismatched staff ID must be rejected');
+
+    // Attempt writing secrets (with valid authorization)
     assert.throws(() => {
       writeMemoryNote({
         category: '04-agent-handoffs',
         filename: 'secret-leak-test',
         authorStaff: 'test_agent',
         content: 'Dangerous leak with API key sk-abc1234567890123456789012345',
-        allowWriteOverride: true
+        authorization: {
+          authorized: true,
+          staff_id: 'test_agent',
+          reason: 'Security check test',
+          approved_by: 'owner_test_harness'
+        }
       });
     }, /SECURITY_VIOLATION/, 'Credential-like content must be rejected with SECURITY_VIOLATION');
 
-    // Attempt path traversal
+    // Attempt path traversal (with valid authorization)
     assert.throws(() => {
       writeMemoryNote({
         category: '04-agent-handoffs',
@@ -233,11 +282,16 @@ async function runPhase1Suite() {
         filename: 'traversal-test',
         authorStaff: 'test_agent',
         content: 'Attack content',
-        allowWriteOverride: true
+        authorization: {
+          authorized: true,
+          staff_id: 'test_agent',
+          reason: 'Path traversal test',
+          approved_by: 'owner_test_harness'
+        }
       });
     }, /PATH_VIOLATION/, 'Path traversal attempt must be rejected');
 
-    console.log('  ✅ PASS: Shared memory adapter enforces fail-closed read-only and credential security.\n');
+    console.log('  ✅ PASS: Shared memory adapter enforces fail-closed read-only, strict authorization and credential security.\n');
     passed++;
   }
 

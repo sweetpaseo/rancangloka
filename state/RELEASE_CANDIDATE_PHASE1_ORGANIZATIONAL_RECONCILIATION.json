@@ -1,9 +1,9 @@
 {
-  "release_id": "RC-PHASE1-TARGETED-REMEDIATION-20261127-FINAL",
-  "created_at": "2026-11-27T03:34:15.912Z",
+  "release_id": "RC-PHASE1-FINAL-MEMORY-GOVERNANCE-20261127",
+  "created_at": "2026-11-27T03:57:02.571Z",
   "milestone": "PHASE-1-ORGANIZATIONAL-RECONCILIATION",
   "branch": "feat/jev-lokamedia-integration",
-  "git_baseline_hosted": "4ee16c15bd50b11ae19569d19443048d1f7a99ad",
+  "git_baseline_hosted": "f96dfb7bc1c4d2a8f123ae551b7a935dc7ab487c",
   "author": "Gravy (Engineering Lead)",
   "status": "AUTHORIZED_RELEASE_CANDIDATE",
   "files": {
@@ -28,8 +28,8 @@
       "sha256": "483b9393dc2d755604635ceb6a18588eaa368535449ccc932bae87358535d209"
     },
     "src/lib/editorial/shared-memory-adapter.ts": {
-      "bytes": 13180,
-      "sha256": "bd8e928d760bd5cf141e3ad1496935e1708c4e59ca01c3d1fd895a84ed6360cf"
+      "bytes": 14220,
+      "sha256": "3b1e50fde9f302cb005df1a17fd22b32bb0d2ab23d69ef12778998ada865292e"
     },
     "src/lib/editorial/autonomous-workflow.ts": {
       "bytes": 15285,
@@ -76,8 +76,8 @@
       "sha256": "8c5bf04389b51042860ef5913eb860ffc370281fd4187022f5620da1dd8ad14f"
     },
     "scripts/test-phase1-organizational-reconciliation.mjs": {
-      "bytes": 18920,
-      "sha256": "3471140f05ba709a0a7a3b98c27cdccbc9da8a47645d5fda2748a8b98ffaa503"
+      "bytes": 20943,
+      "sha256": "245085568fff7d37f73165426d2d29ad9948052e210708afb1d602e9114eab20"
     },
     "scripts/test-canonical-dod-runtime-integration.mjs": {
       "bytes": 37043,
@@ -88,20 +88,20 @@
       "sha256": "06bdc67735bfa1d544367ec307587b311cdacdf00e01b20c60a586e9e17c1dc1"
     },
     "HISTORY.md": {
-      "bytes": 794970,
-      "sha256": "6bf28b5b6be271ca46d40b908b29a98d8026043d100671883dca229a3a5e52aa"
+      "bytes": 797237,
+      "sha256": "1b9622dc8439b068033d4fffd8945178e2bf6edc8c8629e5b56d79748087b7db"
     },
     "state/ANTIGRAVITY_HANDOFF.md": {
-      "bytes": 51086,
-      "sha256": "d95d320d35efe7658d8b97f1aef497526dc735ab54708e952a21e4e5802e7b5d"
+      "bytes": 50884,
+      "sha256": "be8e13a096e38eb214d2b5c0af0f2083774b694752df40e4df82dc6cf4145c74"
     },
     "state/OFFLINE_CHECKPOINT_20261127_PHASE1_ORGANIZATIONAL_RECONCILIATION.md": {
-      "bytes": 7087,
-      "sha256": "562bdad5fe34717502f0b69137330b2da4c1a4c1659f8734313a2d8f2d6c4b2a"
+      "bytes": 7856,
+      "sha256": "5f7c0028c43eda4cc991984dd37d72cac1b8c7e874f860bb15e7cf8d5a0ff067"
     },
     "scripts/test-phase1-targeted-remediation.mjs": {
-      "bytes": 13618,
-      "sha256": "fc2d4c5b632845f58c0eb4b32595d063698336f534e4ea8bf99c7063f1972254"
+      "bytes": 18140,
+      "sha256": "16f1a9c08e0c424d797b6209df071f678b9d8fc2788563474c76ffa5f4f41a0d"
     }
   }
 }

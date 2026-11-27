@@ -1,11 +1,17 @@
 /**
- * Test Suite: Phase 1 Targeted Remediation Verification
- * Verifies the 5 targeted remediation fixes identified in Hosted Hermes's authentic operational audit:
- * 1. OLCI Memory Write Governance (fail-closed, explicit authorization scope)
- * 2. Second Brain Retrieval (onlyValidated enforcement)
- * 3. Editorial Curiosity Principle (Gate A.1b blocking on new drafts, exempt on legacy)
- * 4. Canonical Staff Runtime Integration (Maya, SEON, Dimas, JEV in active roster)
- * 5. Primary Brain loader for SEON and Maya
+ * Test Suite: Phase 1 Targeted Remediation & Memory Governance Verification
+ * 
+ * Verifies the final memory governance acceptance criteria:
+ * - TEST ISOLATION: PASS (Controlling RANCANGLOKA_SHARED_MEMORY_DIR & SHARED_MEMORY_DIR)
+ * - UNAUTHORIZED: WRITE BLOCKED (Throws READ_ONLY_VIOLATION)
+ * - AUTHORIZED: WRITE ALLOWED (Succeeds inside isolated tempDir)
+ * - LEGACY OVERRIDE: WRITE BLOCKED (allowWriteOverride: true fails closed)
+ * - FORGED AUTHORIZATION: WRITE BLOCKED (Throws FORGED_AUTHORIZATION_VIOLATION)
+ * - MISMATCHED STAFF AUTHORIZATION: WRITE BLOCKED (Throws MISMATCHED_STAFF_AUTHORIZATION_VIOLATION)
+ * - SECOND BRAIN RETRIEVAL: PASS (onlyValidated: true filters strictly verified records)
+ * - EDITORIAL CURIOSITY PRINCIPLE: PASS (Gate A.1b blocks non-compliant new drafts, exempts legacy)
+ * - CANONICAL STAFF RUNTIME INTEGRATION: PASS (Maya, SEON, Dimas, JEV distinct in active roster)
+ * - PRIMARY BRAIN LOADER: PASS (SEON & Maya Primary Brains loaded)
  */
 
 import assert from 'node:assert';
@@ -16,7 +22,8 @@ import os from 'node:os';
 import {
   writeMemoryNote,
   withMemoryWriteAuthorization,
-  isSharedMemoryWriteEnabled
+  isSharedMemoryWriteEnabled,
+  resolveSharedMemoryDir
 } from '../src/lib/editorial/shared-memory-adapter.ts';
 
 import {
@@ -29,7 +36,7 @@ import { evaluateArticleDoD } from '../src/lib/editorial/article-definition-of-d
 import { getMissionControlOrganization } from '../src/lib/mission-control/index.ts';
 import { getStaffDefinitionByAgentId } from '../src/lib/mission-control/staff-registry.ts';
 
-console.log('=== TEST SUITE: PHASE 1 TARGETED REMEDIATION ===\n');
+console.log('=== TEST SUITE: PHASE 1 FINAL MEMORY GOVERNANCE & REMEDIATION ===\n');
 
 let passedTests = 0;
 let totalTests = 0;
@@ -47,13 +54,52 @@ function runTest(name, fn) {
   }
 }
 
-// -------------------------------------------------------------
-// 1. OLCI Memory Write Governance
-// -------------------------------------------------------------
-console.log('--- 1. OLCI Memory Write Governance ---');
+/**
+ * Execute a test function with complete directory isolation by controlling
+ * BOTH RANCANGLOKA_SHARED_MEMORY_DIR and SHARED_MEMORY_DIR environment variables.
+ */
+function withIsolatedMemory(fn) {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rl-mem-iso-'));
+  const prevRancangloka = process.env.RANCANGLOKA_SHARED_MEMORY_DIR;
+  const prevShared = process.env.SHARED_MEMORY_DIR;
 
-runTest('1.1 Unauthorized memory write throws READ_ONLY_VIOLATION by default', () => {
-  // Ensure write is not globally enabled
+  process.env.RANCANGLOKA_SHARED_MEMORY_DIR = tempDir;
+  process.env.SHARED_MEMORY_DIR = tempDir;
+
+  try {
+    return fn(tempDir);
+  } finally {
+    if (prevRancangloka !== undefined) {
+      process.env.RANCANGLOKA_SHARED_MEMORY_DIR = prevRancangloka;
+    } else {
+      delete process.env.RANCANGLOKA_SHARED_MEMORY_DIR;
+    }
+    if (prevShared !== undefined) {
+      process.env.SHARED_MEMORY_DIR = prevShared;
+    } else {
+      delete process.env.SHARED_MEMORY_DIR;
+    }
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+// -------------------------------------------------------------
+// 1. Memory Governance & Test Isolation
+// -------------------------------------------------------------
+console.log('--- 1. Memory Governance & Test Isolation ---');
+
+runTest('1.1 TEST ISOLATION: Environment variables route directory exclusively to isolated tempDir', () => {
+  withIsolatedMemory((tempDir) => {
+    const resolved = resolveSharedMemoryDir();
+    assert.strictEqual(
+      path.resolve(resolved),
+      path.resolve(tempDir),
+      'resolveSharedMemoryDir() must resolve to tempDir when env vars are set'
+    );
+  });
+});
+
+runTest('1.2 UNAUTHORIZED: WRITE BLOCKED - Attempting write without authorization throws READ_ONLY_VIOLATION', () => {
   delete process.env.ENABLE_SHARED_MEMORY_WRITES;
   assert.strictEqual(isSharedMemoryWriteEnabled(), false);
 
@@ -71,20 +117,13 @@ runTest('1.1 Unauthorized memory write throws READ_ONLY_VIOLATION by default', (
         validation: 'unverified'
       });
     },
-    (err) => {
-      return err.message.includes('[SharedMemory:READ_ONLY_VIOLATION]');
-    },
+    (err) => err.message.includes('[SharedMemory:READ_ONLY_VIOLATION]'),
     'Should throw READ_ONLY_VIOLATION when not authorized'
   );
 });
 
-runTest('1.2 Authorized memory write succeeds inside withMemoryWriteAuthorization scope', () => {
-  // Temporary isolated folder for test write
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rl-mem-test-'));
-  const prevEnv = process.env.SHARED_MEMORY_DIR;
-  process.env.SHARED_MEMORY_DIR = tempDir;
-
-  try {
+runTest('1.3 AUTHORIZED: WRITE ALLOWED - Valid MemoryWriteAuthorization succeeds inside isolated tempDir', () => {
+  withIsolatedMemory((tempDir) => {
     const auth = {
       authorized: true,
       staff_id: 'content_writer_primary',
@@ -108,10 +147,109 @@ runTest('1.2 Authorized memory write succeeds inside withMemoryWriteAuthorizatio
 
     assert.strictEqual(result.success, true);
     assert.ok(fs.existsSync(result.filePath), 'Target file should exist on disk');
-  } finally {
-    process.env.SHARED_MEMORY_DIR = prevEnv;
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
+    assert.ok(result.filePath.startsWith(tempDir), 'File must be written strictly inside isolated tempDir');
+  });
+});
+
+runTest('1.4 LEGACY OVERRIDE: WRITE BLOCKED - Passing allowWriteOverride: true fails closed', () => {
+  delete process.env.ENABLE_SHARED_MEMORY_WRITES;
+  assert.throws(
+    () => {
+      // @ts-ignore - testing deprecated legacy override rejection
+      writeMemoryNote({
+        category: '04-agent-handoffs',
+        filename: 'legacy-override-attempt.md',
+        authorStaff: 'content_writer_primary',
+        content: 'Attempting write with legacy allowWriteOverride flag',
+        allowWriteOverride: true
+      });
+    },
+    (err) => err.message.includes('[SharedMemory:READ_ONLY_VIOLATION]'),
+    'Legacy allowWriteOverride must be completely ignored and fail closed'
+  );
+});
+
+runTest('1.5 FORGED AUTHORIZATION: WRITE BLOCKED - Incomplete or invalid authorization rejected', () => {
+  // Test case A: authorized: false
+  assert.throws(
+    () => {
+      writeMemoryNote({
+        category: '04-agent-handoffs',
+        filename: 'forged-auth-1.md',
+        authorStaff: 'content_writer_primary',
+        content: 'Forged authorization test',
+        authorization: {
+          authorized: false,
+          staff_id: 'content_writer_primary',
+          reason: 'Unauthorized reason',
+          approved_by: 'unauthorized_entity'
+        }
+      });
+    },
+    (err) => err.message.includes('[SharedMemory:FORGED_AUTHORIZATION_VIOLATION]'),
+    'authorized: false must be rejected'
+  );
+
+  // Test case B: missing approved_by
+  assert.throws(
+    () => {
+      writeMemoryNote({
+        category: '04-agent-handoffs',
+        filename: 'forged-auth-2.md',
+        authorStaff: 'content_writer_primary',
+        content: 'Forged authorization test missing approved_by',
+        // @ts-ignore
+        authorization: {
+          authorized: true,
+          staff_id: 'content_writer_primary',
+          reason: 'Valid reason but missing approved_by'
+        }
+      });
+    },
+    (err) => err.message.includes('[SharedMemory:FORGED_AUTHORIZATION_VIOLATION]'),
+    'Missing approved_by must be rejected'
+  );
+
+  // Test case C: reason too short or missing
+  assert.throws(
+    () => {
+      writeMemoryNote({
+        category: '04-agent-handoffs',
+        filename: 'forged-auth-3.md',
+        authorStaff: 'content_writer_primary',
+        content: 'Forged authorization test reason too short',
+        authorization: {
+          authorized: true,
+          staff_id: 'content_writer_primary',
+          reason: 'no',
+          approved_by: 'owner'
+        }
+      });
+    },
+    (err) => err.message.includes('[SharedMemory:FORGED_AUTHORIZATION_VIOLATION]'),
+    'Reason shorter than 5 characters must be rejected'
+  );
+});
+
+runTest('1.6 MISMATCHED STAFF AUTHORIZATION: WRITE BLOCKED - authorStaff must match authorization staff_id', () => {
+  assert.throws(
+    () => {
+      writeMemoryNote({
+        category: '04-agent-handoffs',
+        filename: 'mismatched-staff.md',
+        authorStaff: 'rina',
+        content: 'Attempting to write note as Rina using Joko authorization',
+        authorization: {
+          authorized: true,
+          staff_id: 'joko',
+          reason: 'Testing staff ID mismatch',
+          approved_by: 'owner_test_harness'
+        }
+      });
+    },
+    (err) => err.message.includes('[SharedMemory:MISMATCHED_STAFF_AUTHORIZATION_VIOLATION]'),
+    'Mismatched staff_id between author and authorization must be blocked'
+  );
 });
 
 // -------------------------------------------------------------
@@ -120,11 +258,7 @@ runTest('1.2 Authorized memory write succeeds inside withMemoryWriteAuthorizatio
 console.log('\n--- 2. Second Brain Retrieval & onlyValidated ---');
 
 runTest('2.1 getStaffExperiences with onlyValidated: true excludes unverified records', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rl-sb-test-'));
-  const prevEnv = process.env.SHARED_MEMORY_DIR;
-  process.env.SHARED_MEMORY_DIR = tempDir;
-
-  try {
+  withIsolatedMemory((tempDir) => {
     const jokoDir = path.join(tempDir, '06-staff-memory', 'joko-author');
     fs.mkdirSync(jokoDir, { recursive: true });
 
@@ -194,10 +328,7 @@ Unverified acoustics observation without experimental evidence.
       context_ref: 'acoustics'
     });
     assert.strictEqual(all.length, 2, 'Should return both when onlyValidated is false');
-  } finally {
-    process.env.SHARED_MEMORY_DIR = prevEnv;
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
+  });
 });
 
 // -------------------------------------------------------------
@@ -208,9 +339,8 @@ console.log('\n--- 3. Editorial Curiosity Principle Gate Enforcement ---');
 runTest('3.1 Non-compliant headline on new draft article is BLOCKED', () => {
   const evalResult = evaluateArticleDoD({
     id: 10040,
-    title: 'Panduan Lengkap Memilih Seng Gelombang Anti Karat untuk Atap Rumah', // Statement, no '?'
+    title: 'Panduan Lengkap Memilih Seng Gelombang Anti Karat untuk Atap Rumah',
     slug: 'panduan-memilih-seng-gelombang',
-    category: 'Material',
     content_md: `
 # Panduan Lengkap Memilih Seng Gelombang Anti Karat untuk Atap Rumah
 
@@ -239,7 +369,6 @@ runTest('3.2 Compliant natural question headline on new draft article is PASS', 
     id: 10041,
     title: 'Kenapa Seng Gelombang Cepat Panas dan Berisik Saat Hujan?',
     slug: 'kenapa-seng-gelombang-cepat-panas',
-    category: 'Material',
     content_md: `
 Pernahkah Anda terbangun di tengah malam karena suara hujan deras di atas atap seng gelombang terdengar seperti dentuman drum? Rasa penasaran pemilik rumah tentang peredaman suara ini sangat wajar.
 
@@ -250,7 +379,6 @@ Pilihlah material insulasi yang tepat agar rumah tetap sejuk dan senyap.
     reading_time: 4,
     focus_keyword: 'seng gelombang',
     status: 'draft',
-    // Supply other minimums to let other checks pass or check gate A specifically
     hero_image: '/images/hero.webp',
     reading_path_category: 'Material'
   });
@@ -263,9 +391,8 @@ Pilihlah material insulasi yang tepat agar rumah tetap sejuk dan senyap.
 runTest('3.3 Legacy published article is exempted from forced ECP BLOCKED status', () => {
   const evalResult = evaluateArticleDoD({
     id: 10,
-    title: 'Tips Memilih Cat Tembok Eksterior Tahan Cuaca', // Non-question legacy title
+    title: 'Tips Memilih Cat Tembok Eksterior Tahan Cuaca',
     slug: 'tips-memilih-cat-tembok',
-    category: 'Material',
     content_md: `
 Memilih cat tembok eksterior membutuhkan ketelitian.
 
