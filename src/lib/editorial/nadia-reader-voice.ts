@@ -37,6 +37,8 @@ import {
   getGoldenArticleReference,
   getVoiceAndToneGuide
 } from './shared-memory-adapter.ts';
+import { getStaffExperiences } from './olci-manager.ts';
+import { evaluateEditorialCuriosityPrinciple } from './editorial-curiosity-principle.ts';
 import type { EditorialLlmProvider } from './editorial-llm-provider.ts';
 
 import {
@@ -516,9 +518,36 @@ export function buildSecondBrainSemanticEvaluationPrompt(opts: {
   focusKeyword?: string;
   goldenExemplar?: string;
   voiceGuide?: string;
-}): { systemPrompt: string; userPrompt: string } {
+}): {
+  systemPrompt: string;
+  userPrompt: string;
+  retrievedExperiences?: Array<{ experience_id: string; article_ref: string; validation: string; lesson_excerpt: string }>;
+} {
   const goldenRef = opts.goldenExemplar || getGoldenArticleReference();
   const voiceGuide = opts.voiceGuide || getVoiceAndToneGuide();
+
+  let nadiaLessonsBlock = '';
+  let retrievedExperiences: Array<{ experience_id: string; article_ref: string; validation: string; lesson_excerpt: string }> = [];
+  try {
+    const experiences = getStaffExperiences('audience_language_editor');
+    if (experiences && experiences.length > 0) {
+      retrievedExperiences = experiences.slice(0, 3).map(e => ({
+        experience_id: e.experience_id,
+        article_ref: e.article_ref,
+        validation: e.validation,
+        lesson_excerpt: (e.lesson || '').slice(0, 100)
+      }));
+      const lessons = experiences
+        .filter(e => typeof e.lesson === 'string' && e.lesson.trim().length > 0)
+        .slice(0, 3)
+        .map((e, idx) => `[Pelajaran Editor ${idx + 1} (${e.experience_id})]: ${e.lesson!.trim()}`);
+      if (lessons.length > 0) {
+        nadiaLessonsBlock = `\n\n### LESSONS FROM SECOND BRAIN (EDITOR MEMORY):\n${lessons.join('\n')}\n(Terapkan evaluasi masa lalu ini pada peninjauan draf).\n`;
+      }
+    }
+  } catch {
+    // Fail-safe: retrieval does not block prompt building
+  }
 
   const systemPrompt = `You are Nadia, Senior Audience & Language Editor of RancangLoka.
 Your mission is to evaluate whether an architectural/home improvement article sounds like an experienced, warm Indonesian building consultant speaking relaxed, natural Indonesian to a homeowner across a table.
@@ -529,7 +558,7 @@ You must compare the manuscript against RancangLoka's Golden Benchmark (Article 
 1. Natural Indonesian language: Conversational, fluid Indonesian without translationese or academic stiff jargon.
 2. Conversational sentence rhythm: Varied sentence lengths (short breathing sentences 5-12 words mixed with medium sentences), no monotonic drone.
 3. Ease of comprehension: Explanations are immediate, relatable, and easy to grasp for ordinary homeowners.
-4. Reader-friendly opening: Begins with a genuine homeowner curiosity or common issue, not a bureaucratic summary.
+4. Editorial Curiosity Principle: Headline must be a genuine question ending with '?', opening arouses homeowner curiosity with focus keyword naturally in the first sentence, and closing weaves focus keyword into the final sentence.
 5. Clear technical explanations: Physical causes explained using everyday analogies before introducing technical names.
 6. Natural keyword integration: The primary keyword flows organically without feeling forced, concatenated, or stuffed.
 7. Non-formulaic transitions: Smooth, varied transitions (e.g., "Nah,", "Coba perhatikan,", "Lain cerita kalau,").
@@ -561,14 +590,16 @@ ${voiceGuide.slice(0, 1200)}
 
 ### FOCUS KEYWORD:
 ${opts.focusKeyword || 'Tidak ditentukan'}
-
+${nadiaLessonsBlock}
 ### MANUSCRIPT TO EVALUATE:
 ${opts.manuscript}
 
 Evaluate this manuscript rigorously against the 9 criteria. If it feels stiff, unnatural, formulaic, or fails to deliver the reading pleasure of Article #9993, provide up to 5 highest-priority actionable findings with exact quotes, and set status to "REVISION_REQUIRED".`;
 
-  return { systemPrompt, userPrompt };
+  return { systemPrompt, userPrompt, retrievedExperiences };
 }
+
+export const buildSemanticVoiceEvaluationPrompt = buildSecondBrainSemanticEvaluationPrompt;
 
 /**
  * Creates a Model-based Semantic Voice Evaluator using an EditorialLlmProvider.

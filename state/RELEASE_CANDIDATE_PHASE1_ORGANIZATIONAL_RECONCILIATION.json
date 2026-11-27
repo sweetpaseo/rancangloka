@@ -1,0 +1,103 @@
+{
+  "release_id": "RC-PHASE1-ORGANIZATIONAL-RECONCILIATION-20261127-FINAL",
+  "created_at": "2026-11-27T02:38:03.760Z",
+  "milestone": "PHASE-1-ORGANIZATIONAL-RECONCILIATION",
+  "branch": "feat/jev-lokamedia-integration",
+  "git_baseline_hosted": "f6455dc",
+  "author": "Gravy (Engineering Lead)",
+  "status": "AUTHORIZED_RELEASE_CANDIDATE",
+  "files": {
+    "src/lib/editorial/editorial-curiosity-principle.ts": {
+      "bytes": 11256,
+      "sha256": "4cb14e033fd5b1be06b0f34ae66e9fa4a12327df7f0caad9afd7892dd041afcc"
+    },
+    "src/lib/editorial/article-definition-of-done.ts": {
+      "bytes": 42907,
+      "sha256": "67d5310b50129265f1fdfe46fe3e28f8293285b843ad9185f187e1d1910952fe"
+    },
+    "src/lib/editorial/joko-prompt-builder.ts": {
+      "bytes": 67243,
+      "sha256": "854d01c88b2793dfbfccb9381c40e21bf7b33f9db1723b6a8d68ce9dc6854ebf"
+    },
+    "src/lib/editorial/nadia-reader-voice.ts": {
+      "bytes": 85525,
+      "sha256": "df639ddb80b894580bd7a35b2d7e919a34b0951c6665ee56b85eda63d78f58b1"
+    },
+    "src/lib/editorial/olci-manager.ts": {
+      "bytes": 13434,
+      "sha256": "9526cb6059715034387595048d9fdea0a14a16553574cf7222aad443d4ce23c4"
+    },
+    "src/lib/editorial/shared-memory-adapter.ts": {
+      "bytes": 11815,
+      "sha256": "669eef34500ac925001397576f4f00e46580feecbd68c92f3f6f0b318a936b5a"
+    },
+    "src/lib/editorial/autonomous-workflow.ts": {
+      "bytes": 14611,
+      "sha256": "4b741f708cfff06ecc80db00fd319eb37f3c20c71a95b1d3eb63af64129f0658"
+    },
+    "src/lib/editorial/editorial-runtime.ts": {
+      "bytes": 43658,
+      "sha256": "06203cb0b1a9921065a29ce1c14b76e1e153b9148cb3d5b9896fdf690e7f8628"
+    },
+    "src/lib/mission-control/staff-registry.ts": {
+      "bytes": 65633,
+      "sha256": "3f4e07c52d38cbc4b46d6c8a16dd182a2539fcf0552337f3509e6a6cab6d642c"
+    },
+    "src/lib/mission-control/pixel-office.ts": {
+      "bytes": 22865,
+      "sha256": "53f1318344ebe5d583a73a422b318785bf7839ba438fe19336d5cf03adada37d"
+    },
+    "src/lib/mission-control/department-registry.ts": {
+      "bytes": 44179,
+      "sha256": "592d50be8a7db5f45ab082f3993b1a3dfe11d80853454d3dfe60dbdac6961b70"
+    },
+    "src/lib/mission-control/capability-registry.ts": {
+      "bytes": 25540,
+      "sha256": "d7632a09fee1ac014195396c3418f9a8f852bada78f3a4ab7fde89e48171c671"
+    },
+    "src/lib/mission-control/chat.ts": {
+      "bytes": 68050,
+      "sha256": "8502562cc580a78b14f2a1485c688397a12915a10c3a0a3fa7b395512e6d1309"
+    },
+    "src/lib/mission-control/index.ts": {
+      "bytes": 9684,
+      "sha256": "45cc9763309f77ef77493611bfa90f14ad827044f3d4b9e529d8cd9b07460079"
+    },
+    "src/lib/mission-control/job-animation-registry.ts": {
+      "bytes": 44705,
+      "sha256": "b3fef63dce8dbf251c844c20fd86d98ad4b2beeee067046b2d997423b5ff9827"
+    },
+    "src/lib/mission-control/office-route-graph.ts": {
+      "bytes": 17795,
+      "sha256": "746f5dbe58cbfabef693e4e401a59630113e3efe5e582ba25fdc23f2c479ca82"
+    },
+    "docs/shared-memory/06-staff-memory/seon-seo/PRIMARY_BRAIN_SEON_SEARCH_INTENT_V1.md": {
+      "bytes": 1953,
+      "sha256": "8c5bf04389b51042860ef5913eb860ffc370281fd4187022f5620da1dd8ad14f"
+    },
+    "scripts/test-phase1-organizational-reconciliation.mjs": {
+      "bytes": 18920,
+      "sha256": "3471140f05ba709a0a7a3b98c27cdccbc9da8a47645d5fda2748a8b98ffaa503"
+    },
+    "scripts/test-canonical-dod-runtime-integration.mjs": {
+      "bytes": 37043,
+      "sha256": "64ffa239804ec9dbd853c916090c558e30749380531d5570d6f21ef74ca0e694"
+    },
+    "docs/HOME.md": {
+      "bytes": 22973,
+      "sha256": "06bdc67735bfa1d544367ec307587b311cdacdf00e01b20c60a586e9e17c1dc1"
+    },
+    "HISTORY.md": {
+      "bytes": 791849,
+      "sha256": "840bbf5ab79a1e21388e2d52b457ed4bdb4d7da59388428ff5a4831330efaac6"
+    },
+    "state/ANTIGRAVITY_HANDOFF.md": {
+      "bytes": 51309,
+      "sha256": "f50dd603086bd9ca6dd2a1df8e481a40c95fa248b9463da5745193d8eb6fb59f"
+    },
+    "state/OFFLINE_CHECKPOINT_20261127_PHASE1_ORGANIZATIONAL_RECONCILIATION.md": {
+      "bytes": 6514,
+      "sha256": "614ec3e0b86570b728fce4f8252e6ab0ea5971c0ef4ad5ebf607203e811a3c8a"
+    }
+  }
+}

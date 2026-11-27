@@ -13,6 +13,7 @@
  * 8. JEV remains shadow/advisory; Dimas must never be presented as having publication authority.
  * 9. Low-confidence activity attribution must be 'System' or 'Unassigned' — never guess.
  * 10. Social department remains unstaffed/not available in MC-2.
+ * 11. DEC-09 Strict Role Boundary: Gravy (Antigravity/orchestrator) is strictly prohibited from authoring or rewriting article prose. Joko (content_writer_primary) is the sole authorized writer executing through the configured Hermes LLM runtime. If Joko cannot execute, fail-stop and report to Owner.
  */
 
 import type {
@@ -273,9 +274,9 @@ const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
     display_name: 'Dimas',
     role: 'Telemetry & JEV Systems Operator',
     department_id: 'engineering_telemetry',
-    description: 'Operator sistem telemetri edge dan observasi keputusan TypeSafe JEV (strictly shadow mode, zero execution authority; provider health, latency, heartbeat, dan circuit breakers).',
+    description: 'Arsitek sistem edge, observabilitas telemetri, evaluasi keputusan bayangan TypeSafe JEV, dan penjaga integritas teknis assembly media (strictly shadow mode, zero execution authority, zero publication authority).',
     avatar_key: 'telemetry_01',
-    capabilities: ['SYSTEM_TELEMETRY'],
+    capabilities: ['SYSTEM_TELEMETRY', 'TECHNICAL_INTEGRITY_GUARD', 'LAYOUT_ASSEMBLY_VERIFICATION'],
     source_system: 'typesafe_jev',
     active: true,
     sort_order: 6
@@ -283,15 +284,15 @@ const DEFAULT_STAFF_DEFINITIONS: StaffDefinition[] = [
 ];
 
 /**
- * Canonical Social Department Staff Member (Milestone: SOCIAL-S2)
- * Maya — Social Content & Distribution Specialist (Shadow / Read-only)
+ * Secondary Social Distribution Adapter (Milestone: SOCIAL-S2)
+ * Note: Maya's primary canonical organizational role is Head of Content Strategy (CANONICAL_MAYA_STAFF_DEFINITION).
  */
 export const CANONICAL_SOCIAL_STAFF_DEFINITION: MissionControlStaffDefinition = {
   agent_id: 'social_distribution_operator',
   display_name: 'Maya',
   role: 'Social Content & Distribution Specialist',
   department_id: 'social',
-  description: 'Spesialis kurasi konten visual dan distribusi media sosial RancangLoka (mode shadow / read-only, zero authority).',
+  description: 'Adapter kurasi konten visual dan distribusi media sosial RancangLoka (mode shadow / read-only, zero authority). Peran utama Maya adalah Head of Content Strategy.',
   avatar_key: 'social_specialist_01',
   capabilities: [
     'SOCIAL_DISTRIBUTION',
@@ -333,6 +334,80 @@ export function registerNadiaStaffMember(): void {
   if (!dynamicStaffStore.has(CANONICAL_NADIA_STAFF_DEFINITION.agent_id)) {
     registerStaffMember(CANONICAL_NADIA_STAFF_DEFINITION);
   }
+}
+
+/**
+ * Canonical Head of Content Strategy Staff Member (Milestone: MAYA-AGENT-INTEGRATION-V1 & DEC-13)
+ * Maya — Head of Content Strategy, Planning & Audience Intelligence (Department: content_strategy)
+ */
+export const CANONICAL_MAYA_STAFF_DEFINITION: MissionControlStaffDefinition = {
+  agent_id: 'maya',
+  display_name: 'Maya',
+  role: 'Head of Content Strategy, Planning & Audience Intelligence',
+  department_id: 'content_strategy',
+  description: 'Kepala strategi konten, perencana portofolio editorial, pemerataan 8 kategori hunian, riset intensi pembaca, dan orkestrasi backlog produksi.',
+  avatar_key: 'strategy_maya_01',
+  capabilities: [
+    'CONTENT_STRATEGY',
+    'CATEGORY_BALANCE_MANAGEMENT',
+    'AUDIENCE_INTELLIGENCE',
+    'CATEGORY_INCUBATION',
+    'EDITORIAL_PRODUCTION_PLANNING',
+    'CONTENT_PORTFOLIO_MANAGEMENT',
+    'STRATEGIC_CONTINUOUS_LEARNING'
+  ],
+  source_system: 'hermes_content_strategy',
+  active: true,
+  sort_order: 9
+};
+
+/**
+ * Register Maya as permanent strategic staff member in Mission Control.
+ */
+export function registerMayaStaffMember(): void {
+  if (!dynamicStaffStore.has(CANONICAL_MAYA_STAFF_DEFINITION.agent_id)) {
+    registerStaffMember(CANONICAL_MAYA_STAFF_DEFINITION);
+  }
+}
+
+/**
+ * Canonical Search Intent & Topic Selector Staff Member (Milestone: DEC-08 & DEC-23-R1)
+ * SEON — Search Intent & Topic Selector Specialist (Department: editorial)
+ */
+export const CANONICAL_SEON_STAFF_DEFINITION: MissionControlStaffDefinition = {
+  agent_id: 'seo_specialist_lead',
+  display_name: 'SEON',
+  role: 'Search Intent & Topic Selector Specialist',
+  department_id: 'editorial',
+  description: 'Spesialis audit search intent Google (DEC-08), seleksi topik berbasis data pencarian, validasi keyword alami, dan mitigasi kanibalisasi topik.',
+  avatar_key: 'seo_specialist_01',
+  capabilities: [
+    'SEO_SEARCH_INTENT',
+    'TOPIC_SELECTION',
+    'KEYWORD_VALIDATION',
+    'CANNIBALIZATION_DEFENSE'
+  ],
+  source_system: 'hermes_seo',
+  active: true,
+  sort_order: 10
+};
+
+/**
+ * Register SEON as permanent SEO/search intent staff member in Mission Control.
+ */
+export function registerSeonStaffMember(): void {
+  if (!dynamicStaffStore.has(CANONICAL_SEON_STAFF_DEFINITION.agent_id)) {
+    registerStaffMember(CANONICAL_SEON_STAFF_DEFINITION);
+  }
+}
+
+/**
+ * Register all canonical extended staff members (Nadia, Maya, SEON) into Mission Control.
+ */
+export function registerAllCanonicalStaffMembers(): void {
+  registerNadiaStaffMember();
+  registerMayaStaffMember();
+  registerSeonStaffMember();
 }
 
 
@@ -402,19 +477,71 @@ export function getStaffDefinitions(): StaffDefinition[] {
   }));
 }
 
+const CANONICAL_ALIAS_MAP: Record<string, string> = {
+  joko: 'content_writer_primary',
+  content_writer: 'content_writer_primary',
+  irwan: 'evidence_researcher_lead',
+  evidence_researcher: 'evidence_researcher_lead',
+  rina: 'editorial_qa_primary',
+  editorial_qa: 'editorial_qa_primary',
+  budi: 'lokamedia_worker_primary',
+  lokamedia: 'lokamedia_worker_primary',
+  sari: 'publication_dispatcher_core',
+  publication_dispatcher: 'publication_dispatcher_core',
+  dimas: 'telemetry_observer_jev',
+  telemetry_observer: 'telemetry_observer_jev',
+  jefry: 'management_advisor_jefry',
+  jev: 'management_advisor_jefry',
+  management_advisor: 'management_advisor_jefry',
+  nadia: 'audience_language_editor',
+  maya: 'maya',
+  content_strategy_primary: 'maya',
+  content_strategy_lead: 'maya',
+  seon: 'seo_specialist_lead',
+  seo_specialist_primary: 'seo_specialist_lead'
+};
+
 /**
- * Get a specific staff definition by authoritative machine ID.
+ * Get a specific staff definition by authoritative machine ID or historical alias.
  */
 export function getStaffDefinitionByAgentId(agentId: string): StaffDefinition | null {
   const definitions = getStaffDefinitions();
-  const found = definitions.find((d) => d.agent_id === agentId);
+  const normalizedId = String(agentId || '').trim().toLowerCase();
+  const targetId = CANONICAL_ALIAS_MAP[normalizedId] || agentId;
+
+  const found = definitions.find((d) => d.agent_id === targetId || d.agent_id.toLowerCase() === normalizedId);
   if (found) return found;
 
   // Canonical fallback for Nadia if not dynamically in store
-  if (agentId === 'audience_language_editor' || agentId === 'nadia') {
+  if (targetId === 'audience_language_editor') {
     return {
       ...CANONICAL_NADIA_STAFF_DEFINITION,
       display_name: customDisplayNames[CANONICAL_NADIA_STAFF_DEFINITION.agent_id] || CANONICAL_NADIA_STAFF_DEFINITION.display_name
+    };
+  }
+
+  // Canonical fallback for Maya if not dynamically in store
+  if (targetId === 'maya') {
+    return {
+      ...CANONICAL_MAYA_STAFF_DEFINITION,
+      display_name: customDisplayNames[CANONICAL_MAYA_STAFF_DEFINITION.agent_id] || CANONICAL_MAYA_STAFF_DEFINITION.display_name
+    };
+  }
+
+  // Canonical fallback for SEON if not dynamically in store
+  if (targetId === 'seo_specialist_lead') {
+    return {
+      ...CANONICAL_SEON_STAFF_DEFINITION,
+      display_name: customDisplayNames[CANONICAL_SEON_STAFF_DEFINITION.agent_id] || CANONICAL_SEON_STAFF_DEFINITION.display_name
+    };
+  }
+
+  // Initial canonical roster fallback
+  const initial = DEFAULT_STAFF_DEFINITIONS.find((d: StaffDefinition) => d.agent_id === targetId);
+  if (initial) {
+    return {
+      ...initial,
+      display_name: customDisplayNames[initial.agent_id] || initial.display_name
     };
   }
 
@@ -456,7 +583,7 @@ export function attributeActivityEvent(event: ActivityEvent): ActivityAttributio
   }
 
   // 2A. Management Advisory Observation -> Jefry (management_advisor_jefry)
-  if (evType === 'JEV_ADVISORY_OBSERVATION' || (sub === 'management' && evType.includes('ADVISORY'))) {
+  if (evType === 'JEV_ADVISORY_OBSERVATION' || evType.includes('JEV_SUPERVISION') || (sub === 'management' && evType.includes('ADVISORY'))) {
     return {
       attributedAgentId: 'management_advisor_jefry',
       attributedStaffName: getStaffName('management_advisor_jefry'),
@@ -534,6 +661,25 @@ export function attributeActivityEvent(event: ActivityEvent): ActivityAttributio
     return {
       attributedAgentId: 'audience_language_editor',
       attributedStaffName: getStaffName('audience_language_editor') || 'Nadia',
+      confidence: 'HIGH'
+    };
+  }
+
+  // 6C. Content Strategy & Audience Intelligence Events -> Maya (maya)
+  if (
+    evType.includes('STRATEGY') ||
+    evType.includes('CATEGORY_BALANCE') ||
+    evType.includes('AUDIENCE_INTENT') ||
+    evType.includes('CATEGORY_INCUBATION') ||
+    evType.includes('EDITORIAL_PLANNING') ||
+    sub === 'content_strategy' ||
+    (event as any).capability === 'CONTENT_STRATEGY' ||
+    (event as any).capability === 'CATEGORY_BALANCE_MANAGEMENT' ||
+    (event as any).capability === 'AUDIENCE_INTELLIGENCE'
+  ) {
+    return {
+      attributedAgentId: 'maya',
+      attributedStaffName: getStaffName('maya') || 'Maya',
       confidence: 'HIGH'
     };
   }
@@ -896,6 +1042,45 @@ export function deriveStaffCurrentTask(
           (t.blockerOrError?.toLowerCase().includes('voice') ||
             t.blockerOrError?.toLowerCase().includes('language') ||
             t.blockerOrError?.toLowerCase().includes('jargon'))
+      );
+      if (blocked) {
+        return {
+          current_task_id: blocked.taskId,
+          current_task_title: blocked.title,
+          current_task_status: 'BLOCKED',
+          current_task_updated_at: blocked.lastUpdate
+        };
+      }
+
+      return null;
+    }
+
+    case 'maya':
+    case 'content_strategy_primary':
+    case 'content_strategy_lead': {
+      // 1. Active content strategy / planning task
+      const active = tasks.find(
+        (t) =>
+          (t as any).stage === 'content_strategy' ||
+          (t as any).subsystem === 'content_strategy' ||
+          (t as any).capability_id === 'CONTENT_STRATEGY' ||
+          (t as any).capability_id === 'CATEGORY_BALANCE_MANAGEMENT' ||
+          (t as any).capability_id === 'EDITORIAL_PRODUCTION_PLANNING'
+      );
+      if (active) {
+        return {
+          current_task_id: active.taskId,
+          current_task_title: active.title,
+          current_task_status: 'STRATEGY_PLANNING',
+          current_task_updated_at: active.lastUpdate
+        };
+      }
+
+      // 2. Blocked task
+      const blocked = tasks.find(
+        (t) =>
+          ((t as any).stage === 'content_strategy' || (t as any).subsystem === 'content_strategy') &&
+          (t.status === 'BLOCKED' || t.status === 'FAILED')
       );
       if (blocked) {
         return {
@@ -1375,6 +1560,104 @@ export function deriveStaffState(
       return {
         state: 'IDLE',
         evidence: 'Antrean peninjauan bahasa pembaca bersih; siap meninjau draf baru Joko.'
+      };
+    }
+
+    case 'maya':
+    case 'content_strategy_primary':
+    case 'content_strategy_lead': {
+      // 1. Offline telemetry check
+      if (scheduler?.hermes?.status === 'offline') {
+        return {
+          state: 'OFFLINE',
+          evidence: 'Daemon strategi editorial Hermes offline.'
+        };
+      }
+
+      // 2. Blocked check
+      const tasks = pipeline?.tasks || [];
+      const blockedTask = tasks.find(
+        (t) =>
+          ((t as any).stage === 'content_strategy' || (t as any).subsystem === 'content_strategy') &&
+          (t.status === 'BLOCKED' || t.status === 'FAILED')
+      );
+      if (blockedTask) {
+        return {
+          state: 'BLOCKED',
+          evidence: `Strategi konten terhambat: ${blockedTask.blockerOrError || 'Perlu penyesuaian arah portofolio editorial'}.`
+        };
+      }
+
+      // 3. Reviewing / Working check
+      const stratTask = tasks.find((t) => (t as any).stage === 'content_strategy' || (t as any).subsystem === 'content_strategy');
+      if (stratTask) {
+        return {
+          state: 'WORKING',
+          evidence: `Sedang menyusun strategi konten dan evaluasi portofolio untuk [${stratTask.title}].`
+        };
+      }
+
+      // 4. Unknown telemetry check
+      if (!health || scheduler?.hermes?.status === 'unknown') {
+        return {
+          state: 'UNKNOWN',
+          evidence: 'Telemetri strategi konten belum tersedia.'
+        };
+      }
+
+      return {
+        state: 'IDLE',
+        evidence: 'Portofolio editorial terkendali; siaga mengevaluasi pemerataan 8 kategori dan backlog produksi.'
+      };
+    }
+
+    case 'seo_specialist_lead':
+    case 'seon':
+    case 'seo_specialist_primary': {
+      // 1. Offline telemetry check
+      if (scheduler?.hermes?.status === 'offline') {
+        return {
+          state: 'OFFLINE',
+          evidence: 'Daemon riset/SEO Hermes offline.'
+        };
+      }
+
+      // 2. Blocked check
+      const tasks = pipeline?.tasks || [];
+      const blockedTask = tasks.find(
+        (t) => (t.subsystem === 'seo' || (t as any).capability_id?.startsWith('SEO_')) &&
+               (t.status === 'BLOCKED' || t.status === 'FAILED')
+      );
+      if (blockedTask) {
+        return {
+          state: 'BLOCKED',
+          evidence: `Pemeriksaan SEO terhambat: ${blockedTask.blockerOrError || 'Perlu penyesuaian search intent'}.`
+        };
+      }
+
+      // 3. Working check
+      const seoTask = tasks.find(
+        (t) => (t.subsystem === 'seo' || (t as any).stage === 'topic_selection' || (t as any).capability_id?.startsWith('SEO_')) &&
+               (t.stage === 'researching' || t.status === 'WORKING' || t.status === 'ANALYZING')
+      );
+      if (seoTask) {
+        return {
+          state: 'WORKING',
+          evidence: `Sedang menganalisis search intent dan perlindungan kanibalisasi untuk [${seoTask.title}].`
+        };
+      }
+
+      // 4. Unknown telemetry check
+      if (!health || scheduler?.hermes?.status === 'unknown') {
+        return {
+          state: 'UNKNOWN',
+          evidence: 'Telemetri analisis SEO belum tersedia.'
+        };
+      }
+
+      return {
+        state: 'IDLE',
+        evidence: 'Analisis kata kunci dan search intent siaga; proteksi kanibalisasi topik aktif.'
       };
     }
 

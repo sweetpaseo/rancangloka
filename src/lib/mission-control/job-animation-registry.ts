@@ -51,7 +51,9 @@ export type JobAnimationKey =
   | 'ADVISOR_DEGRADED'
   | 'ADVISOR_UNKNOWN'
   | 'READER_VOICE_READING'
-  | 'READER_VOICE_EDITING';
+  | 'READER_VOICE_EDITING'
+  | 'STRATEGY_PLANNING'
+  | 'AUDIENCE_ANALYSIS';
 
 export type AnimationFreshness = 'REALTIME' | 'RECENT' | 'STALE' | 'UNKNOWN';
 
@@ -101,7 +103,8 @@ export const JOB_ANIMATION_REGISTRY: Record<JobAnimationKey, JobAnimationDefinit
       'publication_dispatcher_core',
       'telemetry_observer_jev',
       'lokamedia_worker_primary',
-      'audience_language_editor'
+      'audience_language_editor',
+      'maya'
     ],
     capabilities: [],
     workstation_key: 'lounge',
@@ -222,6 +225,34 @@ export const JOB_ANIMATION_REGISTRY: Record<JobAnimationKey, JobAnimationDefinit
     css_animation_class: 'animate-rewrite-pulse',
     reduced_motion_class: 'motion-reduce:animate-none',
     prop_icon: '✏️'
+  },
+
+  STRATEGY_PLANNING: {
+    animation_key: 'STRATEGY_PLANNING',
+    label: 'Penyusunan Strategi & Portofolio Konten',
+    description: 'Maya sedang menganalisis distribusi 8 kategori, backlog produksi, dan roadmap editorial di meja strategi.',
+    target_agent_ids: ['maya'],
+    capabilities: ['CONTENT_STRATEGY', 'CATEGORY_BALANCE_MANAGEMENT', 'EDITORIAL_PRODUCTION_PLANNING'],
+    workstation_key: 'editorial_strategy_desk',
+    visual_detail: 'Maya duduk di meja strategi, menelaah grafik sebaran kategori dan matriks topik hunian pada monitor ganda.',
+    is_work_animation: true,
+    css_animation_class: 'animate-strategy-planning',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '📊'
+  },
+
+  AUDIENCE_ANALYSIS: {
+    animation_key: 'AUDIENCE_ANALYSIS',
+    label: 'Analisis Intensi & Kebutuhan Pembaca',
+    description: 'Maya sedang meneliti sinyal pencarian organik dan kebutuhan riil pemilik rumah.',
+    target_agent_ids: ['maya'],
+    capabilities: ['AUDIENCE_INTELLIGENCE', 'CATEGORY_INCUBATION'],
+    workstation_key: 'editorial_strategy_desk',
+    visual_detail: 'Maya memeriksa kata kunci SEON dan profil demografi pembaca.',
+    is_work_animation: true,
+    css_animation_class: 'animate-audience-analysis',
+    reduced_motion_class: 'motion-reduce:animate-none',
+    prop_icon: '🎯'
   },
 
   MEDIA_PROCESSING: {
@@ -890,6 +921,19 @@ function resolveRunningCommandToVisualState(
       }
       break;
     }
+
+    case 'maya':
+    case 'content_strategy_primary':
+    case 'content_strategy_lead': {
+      if (cmdType.includes('AUDIENCE') || cmdType.includes('INTENT')) {
+        animKey = 'AUDIENCE_ANALYSIS';
+        taskLabel = `Analisis audiens: ${cmdTitle}`;
+      } else {
+        animKey = 'STRATEGY_PLANNING';
+        taskLabel = `Strategi konten: ${cmdTitle}`;
+      }
+      break;
+    }
   }
 
   const animDef = getAnimationDefinition(animKey);
@@ -1040,6 +1084,20 @@ function resolveTaskToVisualState(
       } else {
         animKey = 'READER_VOICE_READING';
         taskLabel = `Evaluasi bahasa pembaca: ${taskTitle}`;
+      }
+      break;
+    }
+
+    case 'maya':
+    case 'content_strategy_primary':
+    case 'content_strategy_lead': {
+      const lowerTitle = taskTitle.toLowerCase();
+      if (lowerTitle.includes('audiens') || lowerTitle.includes('intent') || lowerTitle.includes('pembaca')) {
+        animKey = 'AUDIENCE_ANALYSIS';
+        taskLabel = `Analisis audiens: ${taskTitle}`;
+      } else {
+        animKey = 'STRATEGY_PLANNING';
+        taskLabel = `Strategi konten: ${taskTitle}`;
       }
       break;
     }

@@ -2,9 +2,15 @@
  * RancangLoka — Hermes Autonomous Editorial V1 Master Workflow Engine
  * Milestone: HERMES-AUTONOMOUS-EDITORIAL-V1
  *
- * Provides a fully unified, autonomous editorial pipeline that runs from topic
+ * Provides a unified automated editorial pipeline that runs from topic
  * or draft to a complete, visual-integrated article in CMS D1 without requiring
- * manual Antigravity (Gravy) interventions.
+ * manual Antigravity (Gravy) script stitching.
+ *
+ * OPERATIONAL BOUNDARY & GOVERNANCE:
+ * - Supervised Execution: Pipeline dipicu secara terkontrol (operator atau scheduler).
+ * - Autonomous Pipeline Capability: Transisi teknis antartahap (riset -> draf -> QA -> visual) berjalan mandiri tanpa intervensi manual Gravy.
+ * - Zero Publishing Authority: Semua draf berhenti pada status 'DRAFT' di CMS D1 (AUTO_PUBLISH = OFF).
+ * - Otoritas publikasi ke publik mutlak berada di tangan Owner / Chief Editor.
  *
  * CANONICAL WORKFLOW:
  * 1. SEON + Irwan: Evidence pack & topic intent alignment

@@ -2,6 +2,34 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **RancangLoka**.
 
+## PHASE-1-FINAL-CLOSURE: Canonical DoD Re-run, Alias Compatibility, ECP Hardening & Release Candidate (2026-11-27 Pukul 09:30 WIB)
+
+- **Milestone:** `PHASE-1-FINAL-CLOSURE-AND-HOSTED-READINESS`
+- **Active Git Branch:** `feat/jev-lokamedia-integration`
+- **Native Hermes Peer:** `sumopod` (`https://hermes-iklme1-8642.eu6.sumopod.my.id`, Port 8642 terpetakan dan terautentikasi)
+- **Mandat & Keputusan Owner:**
+  - Owner menerima hasil Phase 1 secara provisional dan memerintahkan final closure sebelum memulai Phase 2.
+  - Penegasan untuk menjalankan kembali `test-canonical-dod-runtime-integration.mjs` yang sebelumnya gagal, bukan menutupinya dengan test suite lain.
+  - Larangan melakukan commit, push, deployment, atau eksekusi paid inference tambahan tanpa otorisasi eksplisit Owner.
+- **Hasil Audit & Perbaikan Teknis Final Closure:**
+  - **DoD Test Re-run & Density Fix:** Menjalankan kembali `test-canonical-dod-runtime-integration.mjs` dan menuntaskan 30/30 skenario integrasi PASS (100% GREEN). Memperbaiki logika evaluasi Gate A.6 pada `article-definition-of-done.ts` sehingga paragraf 61–90 kata tetap menjadi advisory warning fleksibel (`WARNING` per DEC-22), sedangkan paragraf > 90 kata ditegakkan secara absolut sebagai hard blocker (`BLOCKED`).
+  - **Dependency Audit & Astro Production Build:** `scripts/audit-release-dependencies.mjs` memverifikasi seluruh dependensi transitif. `npm run build` terkompilasi bersih dalam 38.62s dengan pembersihan otomatis aset unapproved dari `dist/`.
+  - **ECP Hardening & Non-Regeneration:** Mengintegrasikan `ECP-07-BODY-ANSWERS-QUESTION` untuk memastikan teks naskah secara metodologis menjawab pertanyaan judul. Artikel legacy/yang telah disetujui sebelumnya tidak dipaksa regenerasi.
+  - **Historical Alias Compatibility:** Mendaftarkan 11 alias historis (`joko`, `irwan`, `rina`, `budi`, `sari`, `dimas`, `jev`, `jefry`, `nadia`, `maya`, `seon`) pada `CANONICAL_ALIAS_MAP` di `staff-registry.ts` sehingga seluruh histori memori, telemetri, dan OLCI kompatibel 100% dengan zero duplicate identity.
+  - **Experience Retrieval Telemetry:** Memprioritaskan pembelajaran tervalidasi (`validation: 'verified'`), menyaring upaya injeksi perintah, mempertahankan provenance, dan mencatat telemetri aktif pengambilan pengalaman pada metadata prompt Joko & Nadia.
+  - **Release Candidate Manifest:** Dibuat di `state/RELEASE_CANDIDATE_PHASE1_ORGANIZATIONAL_RECONCILIATION.json` memuat 15 berkas eksak dengan ukuran bita dan SHA-256 kriptografis.
+- **Hasil Verifikasi Teknis & Regresi (100% GREEN):**
+  - `scripts/test-canonical-dod-runtime-integration.mjs`: 30/30 PASS.
+  - `scripts/test-phase1-organizational-reconciliation.mjs`: 11/11 PASS.
+  - `scripts/test-article-integrity-regression-suite.mjs`: 12/12 PASS.
+  - `scripts/audit-release-dependencies.mjs`: 873 files scanned, 100% closed.
+  - `npm run build`: 0 error (100% PASS).
+  - `npx tsc --noEmit`: 0 error (100% PASS).
+- **Invarian Keselamatan:**
+  - `manual_hold = 1`, `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `JEV_MODE = shadow`. Zero mutation to Cloudflare Production. Checkpoint aman disimpan di `state/OFFLINE_CHECKPOINT_20261127_PHASE1_ORGANIZATIONAL_RECONCILIATION.md`.
+
+---
+
 ## DEC-23-R1: Corrective Release, Transitive Dependency Closure & Final Hosted Runtime Acceptance (2026-11-26 Pukul 23:15 WIB)
 
 - **Milestone:** `DEC-23-R1-FINAL-RUNTIME-ACCEPTANCE`

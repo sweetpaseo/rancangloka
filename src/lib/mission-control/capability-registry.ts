@@ -406,5 +406,171 @@ export function ensureNadiaCapabilitiesRegistered(): void {
   }
 }
 
+/**
+ * Canonical Head of Content Strategy Capabilities (Milestone: MAYA-AGENT-INTEGRATION-V1)
+ * Maya — Head of Content Strategy, Planning & Audience Intelligence
+ */
+export const CANONICAL_MAYA_CAPABILITIES: MissionControlCapabilityDefinition[] = [
+  {
+    capability_id: 'CONTENT_STRATEGY',
+    display_name: 'Strategi & Roadmap Konten Hunian',
+    description: 'Penyusunan peta jalan konten arsitektur, diversifikasi tema, dan arah strategis portofolio editorial RancangLoka.',
+    owning_department_id: 'content_strategy',
+    default_agent_id: 'maya',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_content_strategy', 'epis_engine'],
+    command_families: ['STRATEGY_AUDIT_REQUEST', 'CONTENT_CALENDAR_REQUEST', 'STRATEGY_REVIEW_REQUEST'],
+    read_models: ['content.strategy', 'articles.inventory'],
+    anomaly_classes: ['STRATEGY_ANOMALY', 'CATEGORY_IMBALANCE']
+  },
+  {
+    capability_id: 'CATEGORY_BALANCE_MANAGEMENT',
+    display_name: 'Pemerataan 8 Kategori & Mitigasi Starvasi',
+    description: 'Pemantauan kuota proporsional 8 kategori hunian, pencegahan topik dominan, dan mitigasi kategori kelaparan (starved).',
+    owning_department_id: 'content_strategy',
+    default_agent_id: 'maya',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['epis_engine', 'd1_articles'],
+    command_families: ['CATEGORY_BALANCE_REQUEST', 'CATEGORY_DISTRIBUTION_AUDIT'],
+    read_models: ['category.balance', 'articles.categories'],
+    anomaly_classes: ['CATEGORY_STARVATION_DETECTED']
+  },
+  {
+    capability_id: 'AUDIENCE_INTELLIGENCE',
+    display_name: 'Inteligensi Audiens & Intensi Pemilik Rumah',
+    description: 'Penyelarasan topik dengan kebutuhan riil pemilik rumah Indonesia, penelusuran search intent, dan sinyal pencarian organik.',
+    owning_department_id: 'content_strategy',
+    default_agent_id: 'maya',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_audience', 'search_console_signals'],
+    command_families: ['AUDIENCE_INTENT_ALIGNMENT', 'SEARCH_INTENT_AUDIT'],
+    read_models: ['audience.intent', 'seon.keywords'],
+    anomaly_classes: ['AUDIENCE_DRIFT_DETECTED']
+  },
+  {
+    capability_id: 'CATEGORY_INCUBATION',
+    display_name: 'Inkubasi & Eksplorasi Kategori Baru',
+    description: 'Pengembangan topik perintis untuk kategori dengan cakupan rendah (Eksterior, Lanskap, Gaya Hidup) hingga stabil.',
+    owning_department_id: 'content_strategy',
+    default_agent_id: 'maya',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['epis_engine'],
+    command_families: ['INCUBATE_CATEGORY_REQUEST', 'PILOT_TOPIC_REQUEST'],
+    read_models: ['category.incubation'],
+    anomaly_classes: []
+  },
+  {
+    capability_id: 'EDITORIAL_PRODUCTION_PLANNING',
+    display_name: 'Perencanaan & Prioritisasi Backlog Produksi',
+    description: 'Skoring dan pengurutan prioritas backlog topik untuk riset Irwan dan penulisan naskah Joko berdasarkan urgensi strategis.',
+    owning_department_id: 'content_strategy',
+    default_agent_id: 'maya',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['epis_engine', 'hermes_pipeline'],
+    command_families: ['PRIORITIZE_TASK_REQUEST', 'PRODUCTION_BACKLOG_DISPATCH'],
+    read_models: ['editorial.backlog', 'pipeline.tasks'],
+    anomaly_classes: ['PRODUCTION_BACKLOG_STALLED']
+  },
+  {
+    capability_id: 'CONTENT_PORTFOLIO_MANAGEMENT',
+    display_name: 'Manajemen Portofolio & Kesehatan Konten',
+    description: 'Observabilitas inventaris artikel terbit, pencegahan kanibalisasi kata kunci, dan audit relevansi konten hidup.',
+    owning_department_id: 'content_strategy',
+    default_agent_id: 'maya',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['epis_engine', 'd1_articles'],
+    command_families: ['PORTFOLIO_AUDIT_REQUEST'],
+    read_models: ['portfolio.health'],
+    anomaly_classes: []
+  },
+  {
+    capability_id: 'STRATEGIC_CONTINUOUS_LEARNING',
+    display_name: 'Pembelajaran Strategis Berkelanjutan (OLCI)',
+    description: 'Konsolidasi wawasan performa konten ke Second Brain Maya guna peningkatan presisi perencanaan masa depan.',
+    owning_department_id: 'content_strategy',
+    default_agent_id: 'maya',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['olci_manager'],
+    command_families: ['STRATEGY_LEARNING_SYNC'],
+    read_models: ['olci.experiences'],
+    anomaly_classes: []
+  }
+];
+
+/**
+ * Ensure Maya's capabilities are registered in the active capability registry.
+ */
+export function ensureMayaCapabilitiesRegistered(): void {
+  for (const cap of CANONICAL_MAYA_CAPABILITIES) {
+    if (!capabilityRegistry.has(cap.capability_id)) {
+      capabilityRegistry.set(cap.capability_id, { ...cap });
+    }
+  }
+}
+
+export const CANONICAL_SEON_CAPABILITIES: MissionControlCapabilityDefinition[] = [
+  {
+    capability_id: 'SEO_SEARCH_INTENT',
+    display_name: 'Audit Search Intent & Kata Kunci Google',
+    description: 'Analisis mendalam terhadap search intent audiens Indonesia dan penelusuran kata kunci alami berbasis pedoman Google Search Central (DEC-08).',
+    owning_department_id: 'editorial',
+    default_agent_id: 'seo_specialist_lead',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_seo', 'seon_topic_selector'],
+    command_families: ['SEARCH_INTENT_AUDIT', 'KEYWORD_INTENT_REQUEST'],
+    read_models: ['seo.intent', 'articles.inventory'],
+    anomaly_classes: ['SEARCH_INTENT_MISALIGNMENT']
+  },
+  {
+    capability_id: 'TOPIC_SELECTION',
+    display_name: 'Seleksi Topik Berbasis Permintaan Riil',
+    description: 'Seleksi topik yang tepat sasaran untuk memecahkan persoalan hunian pemilik rumah tanpa topik rekaan.',
+    owning_department_id: 'editorial',
+    default_agent_id: 'seo_specialist_lead',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['seon_topic_selector'],
+    command_families: ['TOPIC_SELECTION_REQUEST'],
+    read_models: ['editorial.topics'],
+    anomaly_classes: []
+  },
+  {
+    capability_id: 'KEYWORD_VALIDATION',
+    display_name: 'Validasi Kata Kunci Alami',
+    description: 'Memastikan penempatan kata kunci ditenun secara mengalir di kalimat pertama dan kalimat penutup artikel tanpa keyword stuffing.',
+    owning_department_id: 'editorial',
+    default_agent_id: 'seo_specialist_lead',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['hermes_seo'],
+    command_families: ['KEYWORD_VALIDATION_REQUEST'],
+    read_models: ['articles.draft'],
+    anomaly_classes: ['KEYWORD_STUFFING_DETECTED']
+  },
+  {
+    capability_id: 'CANNIBALIZATION_DEFENSE',
+    display_name: 'Pertahanan Anti-Kanibalisasi Topik',
+    description: 'Proteksi terhadap duplikasi topik dan persaingan internal antar-artikel yang sudah terbit di RancangLoka.',
+    owning_department_id: 'editorial',
+    default_agent_id: 'seo_specialist_lead',
+    operational_availability: 'AVAILABLE',
+    source_systems: ['seon_topic_selector', 'd1_articles'],
+    command_families: ['CANNIBALIZATION_AUDIT_REQUEST'],
+    read_models: ['articles.slugs', 'articles.titles'],
+    anomaly_classes: ['TOPIC_CANNIBALIZATION_RISK']
+  }
+];
+
+/**
+ * Ensure SEON's capabilities are registered in the active capability registry.
+ */
+export function ensureSeonCapabilitiesRegistered(): void {
+  for (const cap of CANONICAL_SEON_CAPABILITIES) {
+    if (!capabilityRegistry.has(cap.capability_id)) {
+      capabilityRegistry.set(cap.capability_id, { ...cap });
+    }
+  }
+}
+
 // Ensure registered on startup
 ensureNadiaCapabilitiesRegistered();
+ensureMayaCapabilitiesRegistered();
+ensureSeonCapabilitiesRegistered();

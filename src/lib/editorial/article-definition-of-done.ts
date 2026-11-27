@@ -22,6 +22,7 @@ import {
   detectForbiddenVisualStyles,
   OBJECT_FIRST_POLICY_VERSION
 } from './object-first-visual-policy.ts';
+import { evaluateEditorialCuriosityPrinciple } from './editorial-curiosity-principle.ts';
 
 export type DoDStatus = 'PASS' | 'WARNING' | 'BLOCKED' | 'NOT_APPLICABLE';
 
@@ -177,6 +178,23 @@ export function evaluateArticleDoD(input: ArticleInputForDoD): ArticleDoDEvaluat
     });
   }
 
+  // A.1b Editorial Curiosity Principle (Owner Decision: Headline must end with '?' and opening awaken curiosity)
+  const isQuestionHeadline = title.endsWith('?');
+  const ecpEval = evaluateEditorialCuriosityPrinciple({
+    headline: title,
+    manuscript: contentMd,
+    focusKeyword: String(input.focus_keyword || (input as any).primary_keyword || '')
+  });
+
+  checksA.push({
+    id: 'A.1b_EDITORIAL_CURIOSITY',
+    name: 'Editorial Curiosity Principle (Headline & Opening)',
+    status: isQuestionHeadline ? 'PASS' : 'WARNING',
+    message: isQuestionHeadline
+      ? `Headline mematuhi Editorial Curiosity Principle (diakhiri tanda tanya, skor ECP: ${ecpEval.overall_score}/100).`
+      : `Advisori Redaksi (Editorial Curiosity Principle): Headline "${title}" belum diakhiri tanda tanya (?). Sesuai arahan Owner, headline draf baru wajib berupa pertanyaan alami yang berangkat dari rasa ingin tahu pemilik rumah.`
+  });
+
   // A.2 Search Intent First
   const wordCount = contentMd.split(/\s+/).filter(Boolean).length;
   const hasSubstantiveBody = wordCount >= 700;
@@ -270,7 +288,7 @@ export function evaluateArticleDoD(input: ArticleInputForDoD): ArticleDoDEvaluat
   // Clean prose markdown by removing embedded FAQ/media comment markers before prose audit
   const cleanProseMd = stripFaqCommentMarkers(contentMd);
 
-  // A.6 Joko Readability (Short Paragraphs <= 60 words, common words)
+  // A.6 Joko Readability (Conversational Editorial L5: Paragraph density is advisory warning per DEC-10/DEC-22, not mechanical hard blocker)
   const jokoResult: JokoDraftReadabilityAuditResult = auditJokoDraftReadability(cleanProseMd);
   const onlyParagraphDensityIssues = jokoResult.issues.length > 0 && jokoResult.issues.every(i => i.includes('paragraf padat'));
   const readabilityStatus = jokoResult.passed ? 'PASS' : (onlyParagraphDensityIssues ? 'WARNING' : 'BLOCKED');

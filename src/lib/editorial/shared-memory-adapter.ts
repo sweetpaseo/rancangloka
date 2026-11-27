@@ -275,18 +275,21 @@ export function querySharedMemory(keywords: string[]): KnowledgeMatch[] {
 }
 
 /**
- * Write a handoff or research note into shared memory.
+ * Write a handoff, research note, or OLCI record into shared memory.
  * STRICT SAFETY ENFORCEMENT:
- * - Blocked if isSharedMemoryWriteEnabled() is false.
- * - Allowed ONLY in 04-agent-handoffs/ or 02-verified-knowledge/.
+ * - Blocked if write is not permitted (requires allowWriteOverride or isSharedMemoryWriteEnabled()).
+ * - Allowed ONLY in designated shared memory namespaces.
+ * - Defends against path traversal attacks.
  * - Rejects any content containing secret signatures.
  */
 export function writeMemoryNote(params: {
-  category: '04-agent-handoffs' | '02-verified-knowledge';
+  category: '04-agent-handoffs' | '02-verified-knowledge' | '06-staff-memory' | '00-innovation-inbox' | '07-collaboration-threads';
+  subfolder?: string;
   filename: string;
   authorStaff: string;
   content: string;
   allowWriteOverride?: boolean;
+  preserveRawContent?: boolean;
 }): { success: boolean; subpath: string } {
   const writePermitted = params.allowWriteOverride || isSharedMemoryWriteEnabled();
   
@@ -305,22 +308,46 @@ export function writeMemoryNote(params: {
     );
   }
 
+  // Path traversal check on input arguments
+  if (params.subfolder && (params.subfolder.includes('..') || path.isAbsolute(params.subfolder))) {
+    throw new Error(`[SharedMemory:PATH_VIOLATION] Path traversal denied for subfolder: ${params.subfolder}`);
+  }
+  if (params.filename && (params.filename.includes('..') || params.filename.includes('/') || params.filename.includes('\\'))) {
+    throw new Error(`[SharedMemory:PATH_VIOLATION] Path traversal denied for filename: ${params.filename}`);
+  }
+
   // Ensure clean filename
   const cleanFilename = params.filename.replace(/[^a-zA-Z0-9_\-\.]/g, '_').replace(/\.md$/, '') + '.md';
   const baseDir = resolveSharedMemoryDir();
-  const targetDir = path.join(baseDir, params.category);
+  
+  // Resolve safe target directory
+  const targetDir = params.subfolder ? path.join(baseDir, params.category, params.subfolder) : path.join(baseDir, params.category);
+
+  // Path traversal check against category root
+  const resolvedTarget = path.resolve(targetDir);
+  const allowedParent = path.resolve(path.join(baseDir, params.category));
+  if (!resolvedTarget.startsWith(allowedParent)) {
+    throw new Error(`[SharedMemory:PATH_VIOLATION] Path traversal denied for target directory: ${params.category}/${params.subfolder}`);
+  }
 
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
   const fullPath = path.join(targetDir, cleanFilename);
-  const attributedContent = `<!-- Author: ${params.authorStaff} | Generated: ${new Date().toISOString()} -->\n\n` + params.content.trim() + '\n';
+  if (!path.resolve(fullPath).startsWith(path.resolve(baseDir))) {
+    throw new Error(`[SharedMemory:PATH_VIOLATION] Path traversal denied for file: ${cleanFilename}`);
+  }
 
-  fs.writeFileSync(fullPath, attributedContent, 'utf8');
+  const finalContent = params.preserveRawContent
+    ? params.content.trim() + '\n'
+    : `<!-- Author: ${params.authorStaff} | Generated: ${new Date().toISOString()} -->\n\n` + params.content.trim() + '\n';
 
+  fs.writeFileSync(fullPath, finalContent, 'utf8');
+
+  const relativeSubpath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
   return {
     success: true,
-    subpath: `${params.category}/${cleanFilename}`
+    subpath: relativeSubpath
   };
 }

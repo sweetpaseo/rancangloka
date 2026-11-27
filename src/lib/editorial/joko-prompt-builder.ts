@@ -42,6 +42,8 @@ import {
 import type { EditorialChatMessage } from './editorial-llm-provider.ts';
 import type { EditorialBrief } from './editorial-planner.ts';
 import { getGoldenArticleReference, querySharedMemory } from './shared-memory-adapter.ts';
+import { getStaffExperiences } from './olci-manager.ts';
+import { evaluateEditorialCuriosityPrinciple } from './editorial-curiosity-principle.ts';
 
 export const INDONESIAN_STOPWORDS = new Set([
   'yang', 'mana', 'lebih', 'untuk', 'pada', 'bisa', 'akan', 'atau', 'dari', 'dengan',
@@ -110,6 +112,12 @@ export interface JokoCompiledPrompt {
     editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
     enableVoiceL4?: boolean;
     enableVoiceL5?: boolean;
+    retrievedExperiences?: Array<{
+      experience_id: string;
+      article_ref: string;
+      validation: string;
+      lesson_excerpt: string;
+    }>;
   };
 }
 
@@ -284,7 +292,7 @@ export function resolveEditorialVoiceLevel(context?: {
   if (process.env.HERMES_EDITORIAL_VOICE_LEVEL === 'L5') return 'L5';
   if (context?.enableVoiceL4 || process.env.HERMES_EDITORIAL_VOICE_LEVEL === 'L4' || process.env.FEATURE_VOICE_3_L4 === 'true') return 'L4';
   if (process.env.HERMES_EDITORIAL_VOICE_LEVEL === 'L3') return 'L3';
-  return 'L4';
+  return 'L5';
 }
 
 /**
@@ -361,6 +369,19 @@ ATURAN KERAS (HARD INVARIANTS — WAJIB PATUH)
    - Bicaralah dari kacamata pengamat arsitektur dan teman diskusi yang memahami prinsip konstruksi dan iklim tropis.
 6. Penyederhanaan Bahasa Teknis Tanpa Mengurangi Akurasi:
    - Terjemahkan konsep teknis dan sains bangunan ke dalam istilah yang mudah dipahami (misal: jelaskan mekanisme kerja fisik atau kelistrikan secara gamblang agar pembaca paham alasan di balik tiap rekomendasi).
+
+==================================================
+PRINSIP RASA INGIN TAHU REDAKSIONAL (EDITORIAL CURIOSITY PRINCIPLE — WAJIB)
+==================================================
+1. Headline/Judul Naskah WAJIB Berupa Pertanyaan Natural & Diakhiri Tanda Tanya (?):
+   - Judul artikel WAJIB dirumuskan sebagai pertanyaan alami yang berangkat dari keresahan atau rasa ingin tahu nyata pemilik rumah (misal: "Mengapa Dinding Rembes dan Cat Menggelembung Saat Hujan?", "Pilih Rangka Kayu Solid atau Busa Densitas Tinggi untuk Sofa Ruang Keluarga?").
+   - Judul naskah WAJIB diakhiri tanda tanya (?). DILARANG membuat judul deklaratif datar atau clickbait formulaik ("Ini Dia...", "Wajib Tahu!").
+2. Pembuka Membangkitkan Rasa Ingin Tahu (Curiosity Hook):
+   - Paragraf pertama langsung menghadirkan situasi keresahan nyata di rumah tanpa basa-basi pengantar ("Pada era modern...", "Artikel ini akan membahas...").
+   - Kalimat pertama pembuka WAJIB memuat focus keyword secara mengalir dan alami.
+3. Penutup Substantif & Keyword Alami:
+   - Terdiri dari tepat 2 paragraf penutup (sintesis inti + rekomendasi langkah bijak).
+   - Kalimat terakhir artikel WAJIB memuat focus keyword secara wajar tanpa pemaksaan kalimat kaku.
 
 ==================================================
 PANDUAN ADVISORI & FLEKSIBILITAS GAYA
@@ -444,6 +465,19 @@ PANDUAN ADVISORI & FLEKSIBILITAS GAYA (STYLING GUIDANCE)
 - Penanda Percakapan Alami: Gunakan transisi wajar yang mengalir (misal: "Nah", "Coba perhatikan", "Tapi tunggu dulu", "Lain cerita kalau"). Transisi harus lahir dari alur pemikiran, bukan ditempel secara mekanis.
 - Diagnosis Mendahului Solusi: Jelaskan akar persoalan fisik sebelum menyarankan opsi penanganan atau renovasi.
 - Komparasi Berimbang: Jika membandingkan dua opsi, urai karakter fisik nyata, kelebihan, batas penggunaan, serta konsekuensi perawatan di iklim tropis.
+
+==================================================
+PRINSIP RASA INGIN TAHU REDAKSIONAL (EDITORIAL CURIOSITY PRINCIPLE — WAJIB)
+==================================================
+1. Headline/Judul Naskah WAJIB Berupa Pertanyaan Natural & Diakhiri Tanda Tanya (?):
+   - Judul artikel WAJIB dirumuskan sebagai pertanyaan alami yang berangkat dari keresahan atau rasa ingin tahu nyata pemilik rumah (misal: "Mengapa Dinding Rembes dan Cat Menggelembung Saat Hujan?", "Pilih Rangka Kayu Solid atau Busa Densitas Tinggi untuk Sofa Ruang Keluarga?").
+   - Judul naskah WAJIB diakhiri tanda tanya (?). DILARANG membuat judul deklaratif datar atau clickbait formulaik ("Ini Dia...", "Wajib Tahu!").
+2. Pembuka Membangkitkan Rasa Ingin Tahu (Curiosity Hook):
+   - Paragraf pertama langsung menghadirkan situasi keresahan nyata di rumah tanpa basa-basi pengantar ("Pada era modern...", "Artikel ini akan membahas...").
+   - Kalimat pertama pembuka WAJIB memuat focus keyword secara mengalir dan alami.
+3. Penutup Substantif & Keyword Alami:
+   - Terdiri dari tepat 2 paragraf penutup (sintesis inti + rekomendasi langkah bijak).
+   - Kalimat terakhir artikel WAJIB memuat focus keyword secara wajar tanpa pemaksaan kalimat kaku.
 
 # LAPISAN KEDALAMAN REDAKSI PREMIUM (PREMIUM EDITORIAL DEPTH)
 - DECISION_DEPTH_7Q_NEXT: Sajikan kedalaman keputusan secara utuh (what, why, who, when, where, how, which, what next).
@@ -784,6 +818,23 @@ ${safeClaimsFormatted}
 # KLAIM DILARANG & BATASAN ETIKA
 ${prohibitedFormatted || '- Jangan mengarang nominal harga rupiah.\n- Jangan mengarang pengujian laboratorium palsu.'}
 
+${(() => {
+  try {
+    const experiences = getStaffExperiences('content_writer_primary');
+    if (experiences && experiences.length > 0) {
+      const lessons = experiences
+        .filter(e => typeof e.lesson === 'string' && e.lesson.trim().length > 0)
+        .slice(0, 3)
+        .map((e, idx) => `[Pelajaran ${idx + 1} (${e.experience_id})]: ${e.lesson!.trim()}`);
+      if (lessons.length > 0) {
+        return `# REFLEKSI & PEMBELAJARAN TERAKHIR (SECOND BRAIN RETRIEVAL):\n${lessons.join('\n')}\n(Terapkan pembelajaran di atas agar kesalahan kualitas berpikir masa lalu tidak terulang).\n`;
+      }
+    }
+  } catch {
+    // Fail-safe: retrieval does not block prompt building
+  }
+  return '';
+})()}
 ${briefBlock || staticStructureBlock}
 ${revisionBlock}
 
@@ -853,6 +904,19 @@ Sebagai panduan umum yang fleksibel:
     dynamicRevisionBlock: context.revisionContext ? JSON.stringify(context.revisionContext.rewriteBrief) : undefined
   };
 
+  let retrievedExperiences: Array<{ experience_id: string; article_ref: string; validation: string; lesson_excerpt: string }> = [];
+  try {
+    const rawExp = getStaffExperiences('content_writer_primary', { context_ref: context.topic });
+    retrievedExperiences = rawExp.slice(0, 3).map(e => ({
+      experience_id: e.experience_id,
+      article_ref: e.article_ref,
+      validation: e.validation,
+      lesson_excerpt: (e.lesson || '').slice(0, 100)
+    }));
+  } catch {
+    // Fail-safe
+  }
+
   return {
     systemPrompt,
     userPrompt,
@@ -871,7 +935,8 @@ Sebagai panduan umum yang fleksibel:
       evidence_pack_id: context.editorialBrief?.evidence_pack_id || (context.evidencePack as any)?.evidence_pack_id || (context.evidencePack as any)?.pack_id,
       editorialVoiceLevel: voiceLevel,
       enableVoiceL4: isVoiceL4,
-      enableVoiceL5: isVoiceL5
+      enableVoiceL5: isVoiceL5,
+      retrievedExperiences
     }
   };
 }

@@ -184,6 +184,18 @@ export const OFFICE_ROUTE_NODES: Record<string, OfficeRouteNode> = {
     is_workstation: true,
     is_lounge_seat: false
   },
+  editorial_strategy_desk: {
+    id: 'editorial_strategy_desk',
+    label: 'Meja Strategi & Audiens Maya (Editorial)',
+    room_key: 'editorial_room',
+    level: 1,
+    wing: 'LEFT',
+    x: 34,
+    y: 16,
+    is_doorway: false,
+    is_workstation: true,
+    is_lounge_seat: false
+  },
 
   // --- LEFT WING: LEVEL 2 (LOKAMEDIA STUDIO) ---
   media_door: {
@@ -386,6 +398,18 @@ export const OFFICE_ROUTE_NODES: Record<string, OfficeRouteNode> = {
     is_workstation: false,
     is_lounge_seat: true
   },
+  lounge_seat_8: {
+    id: 'lounge_seat_8',
+    label: 'Sofa Santai Strategi (Maya)',
+    room_key: 'lounge',
+    level: 3,
+    wing: 'RIGHT',
+    x: 92,
+    y: 76,
+    is_doorway: false,
+    is_workstation: false,
+    is_lounge_seat: true
+  },
 
   // --- SOUTHERN ANNEX: ZONE S (SOCIAL DISTRIBUTION) ---
   social_door: {
@@ -450,6 +474,8 @@ export const OFFICE_ROUTE_EDGES: OfficeRouteEdge[] = [
   { from: 'editorial_review_desk', to: 'editorial_writer_desk', weight: 1 },
   { from: 'editorial_door', to: 'editorial_writer_desk', weight: 1 },
   { from: 'editorial_door', to: 'editorial_language_desk', weight: 1 },
+  { from: 'editorial_door', to: 'editorial_strategy_desk', weight: 1 },
+  { from: 'editorial_review_desk', to: 'editorial_strategy_desk', weight: 1 },
 
   // LokaMedia Studio:
   { from: 'media_door', to: 'media_console', weight: 1 },
@@ -471,6 +497,7 @@ export const OFFICE_ROUTE_EDGES: OfficeRouteEdge[] = [
   { from: 'lounge_door', to: 'lounge_seat_5', weight: 1 },
   { from: 'lounge_door', to: 'lounge_seat_6', weight: 1 },
   { from: 'lounge_door', to: 'lounge_seat_7', weight: 1 },
+  { from: 'lounge_door', to: 'lounge_seat_8', weight: 1 },
 
   // Zone S Interior:
   { from: 'social_door', to: 'social_workstation', weight: 1 }

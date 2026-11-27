@@ -26,12 +26,17 @@ import {
   unregisterStaffMember,
   CANONICAL_SOCIAL_STAFF_DEFINITION,
   CANONICAL_NADIA_STAFF_DEFINITION,
-  registerNadiaStaffMember
+  registerNadiaStaffMember,
+  CANONICAL_MAYA_STAFF_DEFINITION,
+  registerMayaStaffMember
 } from './staff-registry.ts';
 import {
   getOrganizationSnapshot,
   updateDepartment,
-  CANONICAL_SOCIAL_DEPARTMENT_DEFINITION
+  registerDepartment,
+  CANONICAL_SOCIAL_DEPARTMENT_DEFINITION,
+  CANONICAL_CONTENT_STRATEGY_DEPARTMENT_DEFINITION,
+  registerContentStrategyDepartment
 } from './department-registry.ts';
 import { getPixelOfficeState } from './pixel-office.ts';
 import { getAnomaliesSnapshot } from './anomalies.ts';
@@ -40,7 +45,9 @@ import { getRegisteredCapabilities,
   unregisterCapability,
   updateCapability,
   CANONICAL_SOCIAL_CAPABILITIES,
-  CANONICAL_NADIA_CAPABILITIES
+  CANONICAL_NADIA_CAPABILITIES,
+  CANONICAL_MAYA_CAPABILITIES,
+  ensureMayaCapabilitiesRegistered
 } from './capability-registry.ts';
 import { getLiveOperationsSnapshot } from './live-operations.ts';
 
@@ -184,6 +191,35 @@ export function activateNadiaReaderVoiceEditor(): void {
   // 2. Register Staff Member Nadia
   try {
     registerStaffMember(CANONICAL_NADIA_STAFF_DEFINITION);
+  } catch {
+    // Already registered
+  }
+}
+
+/**
+ * Activates Maya as Head of Content Strategy, Planning & Audience Intelligence
+ * and registers the Content Strategy & Planning department in Mission Control.
+ */
+export function activateMayaContentStrategy(): void {
+  // 1. Register Capabilities
+  for (const cap of CANONICAL_MAYA_CAPABILITIES) {
+    try {
+      registerCapability(cap);
+    } catch {
+      updateCapability(cap.capability_id, cap);
+    }
+  }
+
+  // 2. Register Department
+  try {
+    registerContentStrategyDepartment();
+  } catch {
+    // Already registered
+  }
+
+  // 3. Register Staff Member Maya
+  try {
+    registerMayaStaffMember();
   } catch {
     // Already registered
   }

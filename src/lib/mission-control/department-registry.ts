@@ -237,6 +237,40 @@ export const CANONICAL_DEPARTMENTS: DepartmentCanonicalConfig[] = [
   }
 ];
 
+/**
+ * Canonical Content Strategy & Planning Department Definition (Milestone: MAYA-AGENT-INTEGRATION-V1)
+ */
+export const CANONICAL_CONTENT_STRATEGY_DEPARTMENT_DEFINITION: MissionControlDepartmentDefinition = {
+  department_id: 'content_strategy',
+  display_name: 'Content Strategy & Planning',
+  short_name: 'Strategy',
+  description: 'Perencanaan strategis portofolio editorial, pemerataan 8 kategori hunian, riset intensi pembaca, dan prioritas backlog produksi.',
+  availability: 'AVAILABLE',
+  is_staffed: true,
+  capabilities: [
+    'CONTENT_STRATEGY',
+    'CATEGORY_BALANCE_MANAGEMENT',
+    'AUDIENCE_INTELLIGENCE',
+    'CATEGORY_INCUBATION',
+    'EDITORIAL_PRODUCTION_PLANNING',
+    'CONTENT_PORTFOLIO_MANAGEMENT',
+    'STRATEGIC_CONTINUOUS_LEARNING'
+  ],
+  source_systems: ['hermes_content_strategy', 'epis_engine'],
+  room_key: 'strategy_room',
+  workstation_zone: 'Zone CS - Content Strategy & Audience Intelligence Hub',
+  display_order: 7
+};
+
+/**
+ * Register Content Strategy department dynamically if not yet registered.
+ */
+export function registerContentStrategyDepartment(): void {
+  if (!dynamicDepartmentStore.has(CANONICAL_CONTENT_STRATEGY_DEPARTMENT_DEFINITION.department_id)) {
+    registerDepartment(CANONICAL_CONTENT_STRATEGY_DEPARTMENT_DEFINITION);
+  }
+}
+
 // In-memory dynamic department store initialized with canonical baseline
 let dynamicDepartmentStore: Map<string, MissionControlDepartmentDefinition> = new Map(
   CANONICAL_DEPARTMENTS.map((d) => [d.department_id, { ...d }])
@@ -336,6 +370,11 @@ export const STAFF_ROOM_MAP: Record<string, string> = {
   management_advisor_jefry: 'management_room',
   content_writer_primary: 'editorial_room',
   editorial_qa_primary: 'editorial_room',
+  audience_language_editor: 'editorial_room',
+  maya: 'editorial_room',
+  content_strategy_primary: 'editorial_room',
+  seo_specialist_lead: 'editorial_room',
+  seon: 'editorial_room',
   evidence_researcher_lead: 'research_lab',
   lokamedia_worker_primary: 'media_room',
   publication_dispatcher_core: 'publication_room',

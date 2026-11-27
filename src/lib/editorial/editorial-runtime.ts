@@ -7,7 +7,7 @@
  *
  * Strict Invariants:
  * - REAL_RUNTIME_EXECUTION is attributed ONLY when a real LLM request actually occurred.
- * - Operator-triggered only. Zero autonomous content creation. Zero publication authority.
+ * - Supervised Execution Boundary: Setiap eksekusi dipicu secara terkontrol (operator-initiated atau scheduler-governed). Memiliki kapabilitas alur otomatis antartahap teknis (autonomous workflow capability), namun tidak ada kreasi konten tanpa izin (zero unprompted autonomous creation), dan kewenangan publikasi mandiri adalah nol (zero autonomous publishing authority, AUTO_PUBLISH = OFF).
  * - Final state is ALWAYS 'DRAFT' and stops at 'HUMAN_REVIEW_REQUIRED'.
  * - Bounded retries (max 2). Critical research gaps stop immediately (fail-closed, no fabrication).
  * - Secrets are strictly redacted from trace events and metadata.

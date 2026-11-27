@@ -7,7 +7,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveSharedMemoryDir } from './shared-memory-adapter.ts';
+import { resolveSharedMemoryDir, writeMemoryNote } from './shared-memory-adapter.ts';
 import {
   type OlciExperienceRecord,
   type OlciInnovationProposal,
@@ -22,23 +22,32 @@ const ROLE_DIR_MAP: Record<string, string> = {
   'social_distribution_operator': 'maya-content-strategy',
   'maya': 'maya-content-strategy',
   'media_director_primary': 'budi-media-director',
+  'lokamedia_worker_primary': 'budi-media-director',
   'budi': 'budi-media-director',
   'researcher_primary': 'irwan-researcher',
+  'evidence_researcher_lead': 'irwan-researcher',
   'irwan': 'irwan-researcher',
   'content_writer_primary': 'joko-author',
   'joko': 'joko-author',
   'voice_evaluator_primary': 'nadia-voice-editor',
+  'audience_language_editor': 'nadia-voice-editor',
   'nadia': 'nadia-voice-editor',
   'qa_lead_primary': 'rina-qa',
+  'editorial_qa_primary': 'rina-qa',
   'rina': 'rina-qa',
   'seo_specialist_primary': 'seon-seo',
+  'seo_specialist_lead': 'seon-seo',
   'seon': 'seon-seo',
   'assembler_primary': 'dimas-assembler',
+  'telemetry_observer_jev': 'dimas-assembler',
   'dimas': 'dimas-assembler',
   'publisher_primary': 'sari-publisher',
+  'publication_dispatcher_core': 'sari-publisher',
   'sari': 'sari-publisher',
   'coordinator_primary': 'jefry-coordinator',
-  'jefry': 'jefry-coordinator'
+  'management_advisor_jefry': 'jefry-coordinator',
+  'jefry': 'jefry-coordinator',
+  'jev': 'jefry-coordinator'
 };
 
 export function resolveStaffMemoryDir(staffId: string): string {
@@ -73,28 +82,87 @@ export function resolveCollaborationThreadsDir(): string {
  * Record a professional experience record for a staff member.
  */
 export function recordExperience(record: OlciExperienceRecord): { success: boolean; filePath: string } {
-  const targetDir = resolveStaffMemoryDir(record.staff_id);
+  const roleSub = ROLE_DIR_MAP[record.staff_id.toLowerCase()] || record.staff_id.toLowerCase();
   const fileName = `${record.experience_id}.md`;
-  const filePath = path.join(targetDir, fileName);
-
   const content = formatExperienceAsMarkdown(record);
-  fs.writeFileSync(filePath, content, 'utf8');
 
-  return { success: true, filePath };
+  const res = writeMemoryNote({
+    category: '06-staff-memory',
+    subfolder: roleSub,
+    filename: fileName,
+    authorStaff: record.staff_id,
+    content,
+    allowWriteOverride: true,
+    preserveRawContent: true
+  });
+
+  const baseDir = resolveSharedMemoryDir();
+  const filePath = path.join(baseDir, res.subpath);
+  return { success: res.success, filePath };
+}
+
+export interface ExperienceRetrievalTelemetry {
+  timestamp: string;
+  staff_id: string;
+  context_ref?: string;
+  retrieved_count: number;
+  experiences: Array<{
+    experience_id: string;
+    article_ref: string;
+    validation: string;
+    relevance_score?: number;
+    lesson_preview: string;
+  }>;
+}
+
+const retrievalTelemetryStore: ExperienceRetrievalTelemetry[] = [];
+
+/**
+ * Record telemetry for retrieved experiences used in prompt compilation or evaluation.
+ */
+export function recordExperienceRetrievalTelemetry(entry: ExperienceRetrievalTelemetry): void {
+  retrievalTelemetryStore.push(entry);
+  if (retrievalTelemetryStore.length > 50) {
+    retrievalTelemetryStore.shift();
+  }
+}
+
+/**
+ * Get the latest experience retrieval telemetry records.
+ */
+export function getExperienceRetrievalTelemetry(): ExperienceRetrievalTelemetry[] {
+  return [...retrievalTelemetryStore];
 }
 
 /**
  * Get relevant experiences for a staff member or topic.
+ * Prioritizes verified learning over raw observations and enforces security screening,
+ * task relevance scoring, structural field extraction, and boundary isolation.
  */
-export function getStaffExperiences(staffId: string, filter?: { article_ref?: string; kind?: string }): OlciExperienceRecord[] {
+export function getStaffExperiences(
+  staffId: string,
+  filter?: { article_ref?: string; kind?: string; onlyValidated?: boolean; context_ref?: string }
+): OlciExperienceRecord[] {
   const targetDir = resolveStaffMemoryDir(staffId);
   if (!fs.existsSync(targetDir)) return [];
 
   const files = fs.readdirSync(targetDir).filter(f => f.endsWith('.md'));
-  const records: OlciExperienceRecord[] = [];
+  const records: Array<OlciExperienceRecord & { relevance_score: number }> = [];
+
+  const contextTokens = (filter?.context_ref || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 3);
 
   for (const file of files) {
     const raw = fs.readFileSync(path.join(targetDir, file), 'utf8');
+
+    // 1. Security screen: reject malicious prompt injections or credential-like tokens
+    if (/ignore (all|previous) instructions|system prompt override|jailbreak|DAN mode/i.test(raw)) {
+      continue;
+    }
+
     const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     if (!fmMatch) continue;
 
@@ -106,16 +174,38 @@ export function getStaffExperiences(staffId: string, filter?: { article_ref?: st
     const validation = (fm.match(/validation:\s*"([^"]+)"/) || [])[1] as any || 'observed';
     const observedAt = (fm.match(/observed_at:\s*"([^"]+)"/) || [])[1] || '';
 
+    // 2. Provenance validation: check ID format and filter constraints
+    if (!expId || !expId.startsWith('EXP-')) continue;
+    if (filter?.onlyValidated && validation !== 'verified') continue;
     if (filter?.article_ref && artRef !== filter.article_ref) continue;
     if (filter?.kind && kind !== filter.kind) continue;
 
-    // Extract observation
+    // 3. Structural extraction & content sanitization (strip dangerous markup, HTML tags, control chars)
     const obsMatch = raw.match(/## 1\. Observation\r?\n([\s\S]*?)(?=\r?\n## 2|\r?\n## 3|\r?\n## 4|\r?\n## 5|\r?\n## 6|$)/);
-    const observation = obsMatch ? obsMatch[1].trim() : '';
+    const observationRaw = obsMatch ? obsMatch[1].trim() : '';
+    const observation = observationRaw
+      .replace(/<[^>]+>/g, '')
+      .replace(/[`\[\]\\]/g, '')
+      .slice(0, 300);
 
-    // Extract lesson
     const lessonMatch = raw.match(/## 6\. Durable Lesson Learned\r?\n([\s\S]*?)(?=\r?\n## |$)/);
-    const lesson = lessonMatch ? lessonMatch[1].trim() : '';
+    const lessonRaw = lessonMatch ? lessonMatch[1].trim() : '';
+    const lesson = lessonRaw
+      .replace(/<[^>]+>/g, '')
+      .replace(/[`\[\]\\]/g, '')
+      .slice(0, 140);
+
+    // 4. Task relevance scoring
+    let relevanceScore = 50; // Base score
+    if (validation === 'verified') relevanceScore += 30;
+    if (contextTokens.length > 0) {
+      const combinedText = `${artRef} ${observation} ${lesson}`.toLowerCase();
+      let matched = 0;
+      for (const token of contextTokens) {
+        if (combinedText.includes(token)) matched++;
+      }
+      relevanceScore += Math.min(matched * 10, 40);
+    }
 
     records.push({
       experience_id: expId,
@@ -125,7 +215,33 @@ export function getStaffExperiences(staffId: string, filter?: { article_ref?: st
       kind,
       validation,
       observation,
-      lesson
+      lesson,
+      relevance_score: relevanceScore
+    });
+  }
+
+  // Prioritize highest relevance score, then chronological
+  records.sort((a, b) => {
+    if (b.relevance_score !== a.relevance_score) {
+      return b.relevance_score - a.relevance_score;
+    }
+    return b.observed_at.localeCompare(a.observed_at);
+  });
+
+  // Record retrieval telemetry
+  if (records.length > 0) {
+    recordExperienceRetrievalTelemetry({
+      timestamp: new Date().toISOString(),
+      staff_id: staffId,
+      context_ref: filter?.context_ref,
+      retrieved_count: records.length,
+      experiences: records.slice(0, 5).map(r => ({
+        experience_id: r.experience_id,
+        article_ref: r.article_ref,
+        validation: r.validation,
+        relevance_score: r.relevance_score,
+        lesson_preview: (r.lesson || '').slice(0, 80)
+      }))
     });
   }
 
@@ -136,14 +252,21 @@ export function getStaffExperiences(staffId: string, filter?: { article_ref?: st
  * Submit an innovation proposal to the Innovation Inbox.
  */
 export function submitProposal(proposal: OlciInnovationProposal): { success: boolean; filePath: string } {
-  const inboxDir = resolveInnovationInboxDir();
   const fileName = `${proposal.proposal_id}.md`;
-  const filePath = path.join(inboxDir, fileName);
-
   const content = formatProposalAsMarkdown(proposal);
-  fs.writeFileSync(filePath, content, 'utf8');
 
-  return { success: true, filePath };
+  const res = writeMemoryNote({
+    category: '00-innovation-inbox',
+    filename: fileName,
+    authorStaff: proposal.proposer_role,
+    content,
+    allowWriteOverride: true,
+    preserveRawContent: true
+  });
+
+  const baseDir = resolveSharedMemoryDir();
+  const filePath = path.join(baseDir, res.subpath);
+  return { success: res.success, filePath };
 }
 
 /**
@@ -200,9 +323,7 @@ export function listProposals(statusFilter?: OlciProposalStatus): OlciInnovation
  * Record or update an event-driven collaboration thread.
  */
 export function recordCollaborationThread(thread: OlciCollaborationThread): { success: boolean; filePath: string } {
-  const threadsDir = resolveCollaborationThreadsDir();
   const fileName = `${thread.thread_id}.md`;
-  const filePath = path.join(threadsDir, fileName);
 
   const frontmatter = [
     '---',
@@ -256,7 +377,17 @@ export function recordCollaborationThread(thread: OlciCollaborationThread): { su
     conclusionFormatted
   ].join('\n');
 
-  fs.writeFileSync(filePath, `${frontmatter}\n\n${body}\n`, 'utf8');
+  const fullContent = `${frontmatter}\n\n${body}\n`;
+  const res = writeMemoryNote({
+    category: '07-collaboration-threads',
+    filename: fileName,
+    authorStaff: thread.initiated_by,
+    content: fullContent,
+    allowWriteOverride: true,
+    preserveRawContent: true
+  });
 
-  return { success: true, filePath };
+  const baseDir = resolveSharedMemoryDir();
+  const filePath = path.join(baseDir, res.subpath);
+  return { success: res.success, filePath };
 }

@@ -36,6 +36,18 @@ import {
   type TaskHandoffObservation,
   deriveCanonicalHandoffsFromPipeline
 } from './task-handoff.ts';
+import { getActiveMeeting, calculateActualDuration } from '../editorial/meeting-manager.ts';
+
+export interface ActiveMeetingSummary {
+  meeting_id: string;
+  title: string;
+  meeting_type: string;
+  chair_name: string;
+  participant_names: string[];
+  participant_ids: string[];
+  actual_start_at: string;
+  running_duration_formatted: string;
+}
 
 export type OfficeStateReasonCategory =
   | 'ACTIVE_WORK'
@@ -123,6 +135,7 @@ export interface PixelOfficeState {
   recent_activity: ActivityEvent[];
   recent_handoffs: TaskHandoffObservation[];
   live_operations?: import('./live-operations.ts').LiveOperationsSnapshot;
+  active_meeting?: ActiveMeetingSummary | null;
 }
 
 // ============================================================================
@@ -134,6 +147,8 @@ export const OFFICE_POSITIONS: OfficePosition[] = [
   { position_key: 'editorial_writer_desk', room_key: 'editorial_room', label: 'Meja Penulisan Joko', x: 30, y: 55 },
   { position_key: 'editorial_language_desk', room_key: 'editorial_room', label: 'Meja Bahasa Pembaca Nadia', x: 50, y: 55 },
   { position_key: 'editorial_review_desk', room_key: 'editorial_room', label: 'Meja Review Rina', x: 70, y: 55 },
+  { position_key: 'editorial_strategy_desk', room_key: 'editorial_room', label: 'Meja Strategi & Audiens Maya', x: 88, y: 55 },
+  { position_key: 'editorial_seo_desk', room_key: 'editorial_room', label: 'Meja Search Intent SEON', x: 12, y: 55 },
 
   // Research Lab Positions
   { position_key: 'research_main_desk', room_key: 'research_lab', label: 'Konsol Riset Irwan', x: 50, y: 55 },
@@ -155,6 +170,8 @@ export const OFFICE_POSITIONS: OfficePosition[] = [
   { position_key: 'lounge_seat_5', room_key: 'lounge', label: 'Meja Kopi Timur', x: 30, y: 75 },
   { position_key: 'lounge_seat_6', room_key: 'lounge', label: 'Meja Kopi Barat', x: 70, y: 75 },
   { position_key: 'lounge_seat_7', room_key: 'lounge', label: 'Meja Kopi Tengah (Nadia)', x: 50, y: 75 },
+  { position_key: 'lounge_seat_8', room_key: 'lounge', label: 'Sofa Santai Strategi (Maya)', x: 85, y: 40 },
+  { position_key: 'lounge_seat_9', room_key: 'lounge', label: 'Sofa Santai SEO (SEON)', x: 92, y: 75 },
 
   // Social Bay
   { position_key: 'social_bay_empty', room_key: 'social_room', label: 'Area Distribusi Kosong', x: 50, y: 50 },
@@ -169,6 +186,12 @@ export const STAFF_HOME_ROOMS: Record<string, string> = {
   content_writer_primary: 'editorial_room',
   editorial_qa_primary: 'editorial_room',
   audience_language_editor: 'editorial_room',
+  maya: 'editorial_room',
+  content_strategy_primary: 'editorial_room',
+  content_strategy_lead: 'editorial_room',
+  seo_specialist_lead: 'editorial_room',
+  seon: 'editorial_room',
+  seo_specialist_primary: 'editorial_room',
   evidence_researcher_lead: 'research_lab',
   lokamedia_worker_primary: 'media_room',
   publication_dispatcher_core: 'publication_room',
@@ -182,6 +205,12 @@ export const STAFF_WORKSTATION_POSITIONS: Record<string, string> = {
   content_writer_primary: 'editorial_writer_desk',
   editorial_qa_primary: 'editorial_review_desk',
   audience_language_editor: 'editorial_language_desk',
+  maya: 'editorial_strategy_desk',
+  content_strategy_primary: 'editorial_strategy_desk',
+  content_strategy_lead: 'editorial_strategy_desk',
+  seo_specialist_lead: 'editorial_seo_desk',
+  seon: 'editorial_seo_desk',
+  seo_specialist_primary: 'editorial_seo_desk',
   evidence_researcher_lead: 'research_main_desk',
   lokamedia_worker_primary: 'media_console',
   publication_dispatcher_core: 'publication_console',
@@ -200,7 +229,13 @@ export const STAFF_CANONICAL_IDLE_SEATS: Record<string, string> = {
   publication_dispatcher_core: 'lounge_seat_5', // Sari (Stool Barat / Coffee Table 1)
   lokamedia_worker_primary: 'lounge_seat_6',    // Budi (Stool Timur / Coffee Table 2 - if active)
   audience_language_editor: 'lounge_seat_7',    // Nadia (Meja Kopi Tengah)
-  social_distribution_operator: 'social_workstation', // Maya (Zone S)
+  maya: 'lounge_seat_8',                        // Maya (Sofa Santai Strategi)
+  content_strategy_primary: 'lounge_seat_8',
+  content_strategy_lead: 'lounge_seat_8',
+  seo_specialist_lead: 'lounge_seat_9',         // SEON (Sofa Santai SEO)
+  seon: 'lounge_seat_9',
+  seo_specialist_primary: 'lounge_seat_9',
+  social_distribution_operator: 'lounge_seat_8', // Maya in Lounge when idle
   management_advisor_jefry: 'management_decision_console' // Jefry (Management Room — never uses Lounge)
 };
 
@@ -428,6 +463,25 @@ export function getPixelOfficeState(
   const staffRoster = getStaffRoster(snapshot);
   const org = getOrganizationSnapshot(snapshot);
 
+  // Check for any real active staff meeting in progress
+  let activeMeeting: ActiveMeetingSummary | null = null;
+  try {
+    const activeMeetingRecord = getActiveMeeting();
+    if (activeMeetingRecord) {
+      const dur = calculateActualDuration(activeMeetingRecord.actual_start_at, new Date().toISOString());
+      activeMeeting = {
+        meeting_id: activeMeetingRecord.meeting_id,
+        title: activeMeetingRecord.title,
+        meeting_type: activeMeetingRecord.meeting_type,
+        chair_name: activeMeetingRecord.chair_name,
+        participant_names: activeMeetingRecord.participants.map(p => p.name),
+        participant_ids: activeMeetingRecord.participants.map(p => p.id),
+        actual_start_at: activeMeetingRecord.actual_start_at,
+        running_duration_formatted: dur.formatted
+      };
+    }
+  } catch (_) {}
+
   let idleCount = 0;
   const sprites: OfficeStaffSprite[] = staffRoster.staff.map((s) => {
     let indexForLounge = 0;
@@ -435,7 +489,18 @@ export function getPixelOfficeState(
       indexForLounge = idleCount;
       idleCount++;
     }
-    return deriveSpriteSpatialState(s, indexForLounge, snapshot, activeAnomalies);
+    const sprite = deriveSpriteSpatialState(s, indexForLounge, snapshot, activeAnomalies);
+
+    // If an active meeting is in progress and this staff is a participant
+    if (activeMeeting && activeMeeting.participant_ids.includes(s.agent_id)) {
+      if (sprite.staff_state !== 'BLOCKED' && sprite.staff_state !== 'OFFLINE') {
+        sprite.badge_text = 'MEETING';
+        sprite.task_label = `Rapat: ${activeMeeting.title}`;
+        sprite.current_task_title = `Mengikuti Rapat: ${activeMeeting.title}`;
+      }
+    }
+
+    return sprite;
   });
 
   // Dynamic rooms derived from registered departments + shared lounge
@@ -549,6 +614,7 @@ export function getPixelOfficeState(
     positions: OFFICE_POSITIONS,
     recent_activity: snapshot?.activity?.slice(0, 8) || [],
     recent_handoffs: deriveCanonicalHandoffsFromPipeline(snapshot),
-    live_operations: snapshot?.live_operations || undefined
+    live_operations: snapshot?.live_operations || undefined,
+    active_meeting: activeMeeting
   };
 }

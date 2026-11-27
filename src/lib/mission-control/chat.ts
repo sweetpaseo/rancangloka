@@ -380,6 +380,53 @@ export const COMMAND_ALLOWLIST: Record<string, CommandDefinition> = {
     required_parameters: []
   },
 
+  // --- MAYA (Content Strategy & Planning) ---
+  STRATEGY_AUDIT_REQUEST: {
+    command_type: 'STRATEGY_AUDIT_REQUEST',
+    label: 'Audit Strategi & Portofolio Konten',
+    description: 'Menanyakan status diversifikasi topik, pemerataan 8 kategori hunian, dan evaluasi portofolio editorial.',
+    target_agent_ids: ['maya', 'content_strategy_primary', 'content_strategy_lead'],
+    department_id: 'content_strategy',
+    authority_level: 'READ_ONLY',
+    required_parameters: []
+  },
+  CONTENT_CALENDAR_REQUEST: {
+    command_type: 'CONTENT_CALENDAR_REQUEST',
+    label: 'Rencana Kalender & Jadwal Produksi',
+    description: 'Menanyakan peta jalan dan kalender tema mingguan/bulanan berdasarkan target kategori.',
+    target_agent_ids: ['maya', 'content_strategy_primary', 'content_strategy_lead'],
+    department_id: 'content_strategy',
+    authority_level: 'READ_ONLY',
+    required_parameters: []
+  },
+  CATEGORY_BALANCE_REQUEST: {
+    command_type: 'CATEGORY_BALANCE_REQUEST',
+    label: 'Evaluasi Sebaran 8 Kategori Hunian',
+    description: 'Menampilkan rasio distribusi artikel terbit dan mendeteksi kategori yang kelaparan (starved).',
+    target_agent_ids: ['maya', 'content_strategy_primary', 'content_strategy_lead'],
+    department_id: 'content_strategy',
+    authority_level: 'READ_ONLY',
+    required_parameters: []
+  },
+  AUDIENCE_INTENT_ALIGNMENT: {
+    command_type: 'AUDIENCE_INTENT_ALIGNMENT',
+    label: 'Penyelarasan Intensi Audiens & Masalah Rumah',
+    description: 'Menganalisis kecocokan topik dengan fase kebutuhan riil pemilik rumah Indonesia.',
+    target_agent_ids: ['maya', 'content_strategy_primary', 'content_strategy_lead'],
+    department_id: 'content_strategy',
+    authority_level: 'READ_ONLY',
+    required_parameters: []
+  },
+  PRIORITIZE_TASK_REQUEST: {
+    command_type: 'PRIORITIZE_TASK_REQUEST',
+    label: 'Prioritisasi Backlog Riset & Penulisan',
+    description: 'Memberikan urutan prioritas topik berikutnya untuk riset Irwan dan penulisan Joko.',
+    target_agent_ids: ['maya', 'content_strategy_primary', 'content_strategy_lead'],
+    department_id: 'content_strategy',
+    authority_level: 'READ_ONLY',
+    required_parameters: []
+  },
+
   // --- SHARED READ-ONLY QUERIES ---
   CURRENT_TASK_QUERY: {
     command_type: 'CURRENT_TASK_QUERY',
@@ -392,7 +439,9 @@ export const COMMAND_ALLOWLIST: Record<string, CommandDefinition> = {
       'lokamedia_worker_primary',
       'publication_dispatcher_core',
       'telemetry_observer_jev',
-      'social_distribution_operator'
+      'social_distribution_operator',
+      'audience_language_editor',
+      'maya'
     ],
     department_id: 'shared',
     authority_level: 'READ_ONLY',
@@ -409,7 +458,9 @@ export const COMMAND_ALLOWLIST: Record<string, CommandDefinition> = {
       'lokamedia_worker_primary',
       'publication_dispatcher_core',
       'telemetry_observer_jev',
-      'social_distribution_operator'
+      'social_distribution_operator',
+      'audience_language_editor',
+      'maya'
     ],
     department_id: 'shared',
     authority_level: 'READ_ONLY',
