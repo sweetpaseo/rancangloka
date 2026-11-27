@@ -14,15 +14,17 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveSharedMemoryDir } from '../src/lib/editorial/shared-memory-adapter.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 
-// Set isolated test environment
+// Set test environment - respect configured shared memory or canonical resolution
 process.env.NODE_ENV = 'test';
-process.env.SHARED_MEMORY_DIR = path.resolve(PROJECT_ROOT, 'docs/shared-memory');
-process.env.RANCANGLOKA_SHARED_MEMORY_DIR = path.resolve(PROJECT_ROOT, 'docs/shared-memory');
+
+const activeSharedMemoryDir = resolveSharedMemoryDir();
+console.log(`[SHARED_MEMORY] Active resolved directory: ${activeSharedMemoryDir}`);
 
 console.log('=== TEST SUITE: SIGNATURE EDITORIAL VOICE & EDITORIAL INTELLIGENCE ===\n');
 
@@ -136,15 +138,17 @@ async function runTests() {
   const { getStaffPrimaryBrain } = await import('../src/lib/editorial/olci-manager.ts');
 
   test('3.1 Signature Editorial Voice Guide exists in shared memory', () => {
-    const guidePath = path.resolve(PROJECT_ROOT, 'docs/shared-memory/01-editorial-standards/signature-editorial-voice-guide.md');
-    assert.ok(fs.existsSync(guidePath), 'signature-editorial-voice-guide.md must exist');
+    const sharedMemDir = resolveSharedMemoryDir();
+    const guidePath = path.resolve(sharedMemDir, '01-editorial-standards/signature-editorial-voice-guide.md');
+    assert.ok(fs.existsSync(guidePath), `signature-editorial-voice-guide.md must exist in ${sharedMemDir}`);
     const content = fs.readFileSync(guidePath, 'utf8');
     assert.ok(content.includes('Berisi seperti ahli, ngobrol seperti teman, berpikir seperti penulis.'));
   });
 
   test('3.2 Rose Article Learning Case exists in shared memory', () => {
-    const casePath = path.resolve(PROJECT_ROOT, 'docs/shared-memory/01-editorial-standards/editorial-learning-case-rose-article.md');
-    assert.ok(fs.existsSync(casePath), 'editorial-learning-case-rose-article.md must exist');
+    const sharedMemDir = resolveSharedMemoryDir();
+    const casePath = path.resolve(sharedMemDir, '01-editorial-standards/editorial-learning-case-rose-article.md');
+    assert.ok(fs.existsSync(casePath), `editorial-learning-case-rose-article.md must exist in ${sharedMemDir}`);
     const content = fs.readFileSync(casePath, 'utf8');
     assert.ok(content.includes('Kenapa Bunga Mawar Layu Padahal Rajin Disiram?'));
     assert.ok(content.includes('Ubah jadwal menyiram menjadi jadwal memeriksa.'));
@@ -741,10 +745,13 @@ Sebelum menghubungi tukang atau membeli bergelondong-gelondong aluminium foil, l
   }
 
   console.log(`\n======================================================`);
-  console.log(`ALL TESTS PASSED: ${passed}/${total}`);
-  console.log(`======================================================\n`);
-
-  if (passed !== total) {
+  if (passed === total && total > 0) {
+    console.log(`ALL TESTS PASSED: ${passed}/${total}`);
+    console.log(`======================================================\n`);
+  } else {
+    const failed = total - passed;
+    console.log(`TESTS FAILED: ${failed} failed, ${passed}/${total} passed`);
+    console.log(`======================================================\n`);
     process.exit(1);
   }
 }
