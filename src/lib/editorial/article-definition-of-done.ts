@@ -178,21 +178,46 @@ export function evaluateArticleDoD(input: ArticleInputForDoD): ArticleDoDEvaluat
     });
   }
 
-  // A.1b Editorial Curiosity Principle (Owner Decision: Headline must end with '?' and opening awaken curiosity)
-  const isQuestionHeadline = title.endsWith('?');
+  // A.1b Editorial Curiosity Principle (Owner Decision: Natural question headline & curiosity hook)
+  const isLegacyArticle = Boolean(
+    input.status === 'published' ||
+    (typeof input.id === 'number' && input.id <= 14) ||
+    (typeof input.id === 'string' && parseInt(input.id, 10) <= 14 && parseInt(input.id, 10) > 0) ||
+    (input as any).is_legacy_approved
+  );
+
   const ecpEval = evaluateEditorialCuriosityPrinciple({
     headline: title,
     manuscript: contentMd,
     focusKeyword: String(input.focus_keyword || (input as any).primary_keyword || '')
   });
 
+  let ecpStatus: 'PASS' | 'WARNING' | 'BLOCKED' = 'PASS';
+  let ecpMessage = '';
+
+  if (isLegacyArticle) {
+    // Legacy published/approved articles: exempt from forced regeneration
+    ecpStatus = ecpEval.status === 'PASS' ? 'PASS' : 'WARNING';
+    ecpMessage = ecpEval.status === 'PASS'
+      ? `Headline mematuhi Editorial Curiosity Principle (skor ECP: ${ecpEval.overall_score}/100).`
+      : `Artikel warisan/terbit sebelumnya dikecualikan dari regenerasi paksa (skor ECP: ${ecpEval.overall_score}/100).`;
+  } else {
+    // New draft articles: ECP is mandatory and enforced via semantic evaluation
+    if (ecpEval.status === 'PASS') {
+      ecpStatus = 'PASS';
+      ecpMessage = `Headline & naskah mematuhi Editorial Curiosity Principle secara penuh (pertanyaan natural berakhiran '?', bebas clickbait, isi menjawab pertanyaan, skor ECP: ${ecpEval.overall_score}/100).`;
+    } else {
+      ecpStatus = 'BLOCKED';
+      const reasons = ecpEval.actionable_findings.join('; ');
+      ecpMessage = `Pelanggaran Editorial Curiosity Principle pada draf baru: ${reasons} (skor ECP: ${ecpEval.overall_score}/100). Sesuai arahan Owner, draf baru wajib berupa pertanyaan natural yang dijawab substantif oleh naskah.`;
+    }
+  }
+
   checksA.push({
     id: 'A.1b_EDITORIAL_CURIOSITY',
     name: 'Editorial Curiosity Principle (Headline & Opening)',
-    status: isQuestionHeadline ? 'PASS' : 'WARNING',
-    message: isQuestionHeadline
-      ? `Headline mematuhi Editorial Curiosity Principle (diakhiri tanda tanya, skor ECP: ${ecpEval.overall_score}/100).`
-      : `Advisori Redaksi (Editorial Curiosity Principle): Headline "${title}" belum diakhiri tanda tanya (?). Sesuai arahan Owner, headline draf baru wajib berupa pertanyaan alami yang berangkat dari rasa ingin tahu pemilik rumah.`
+    status: ecpStatus,
+    message: ecpMessage
   });
 
   // A.2 Search Intent First

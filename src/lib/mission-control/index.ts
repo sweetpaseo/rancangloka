@@ -28,7 +28,10 @@ import {
   CANONICAL_NADIA_STAFF_DEFINITION,
   registerNadiaStaffMember,
   CANONICAL_MAYA_STAFF_DEFINITION,
-  registerMayaStaffMember
+  registerMayaStaffMember,
+  CANONICAL_SEON_STAFF_DEFINITION,
+  registerSeonStaffMember,
+  registerAllCanonicalStaffMembers
 } from './staff-registry.ts';
 import {
   getOrganizationSnapshot,
@@ -101,6 +104,11 @@ export interface MissionControlOrganization {
 export function getMissionControlOrganization(
   snapshot: MissionControlSnapshot | null
 ): MissionControlOrganization {
+  // Ensure all canonical staff members, departments and capabilities are registered in active runtime
+  registerAllCanonicalStaffMembers();
+  registerContentStrategyDepartment();
+  ensureMayaCapabilitiesRegistered();
+
   const orgSnapshot = getOrganizationSnapshot(snapshot);
   const staffRoster = getStaffRoster(snapshot);
   const capabilities = getRegisteredCapabilities();

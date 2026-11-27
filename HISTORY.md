@@ -2,6 +2,35 @@
 
 Dokumen ini mencatat seluruh riwayat permasalahan, akar penyebab, solusi teknis yang telah diterapkan, serta status progres terkini dari platform media editorial **RancangLoka**.
 
+## PHASE-1-TARGETED-REMEDIATION: Operational Acceptance Audit & Targeted Governance Fixes (2026-11-27 Pukul 10:25 WIB)
+
+- **Milestone:** `PHASE-1-TARGETED-REMEDIATION-FINAL-CLOSURE`
+- **Active Git Branch:** `feat/jev-lokamedia-integration`
+- **Baseline Release Commit:** `4ee16c1` (Tersinkronisasi secara mandiri oleh Owner pada SumoPod HEAD)
+- **Hosted Operational Run ID:** `run_7629b7018e9e4b458a5d9372aba7e5a0` (Durasi: 561 detik, Biaya: $0.00, Status: Completed)
+- **Temuan Audit Hosted Hermes & Remediasi Terfokus:**
+  1. **OLCI Memory Write Governance:**
+     - Menghapus penggunaan `allowWriteOverride: true` yang sebelumnya membypass `ENABLE_SHARED_MEMORY_WRITES`.
+     - Mengimplementasikan otorisasi penulisan memori berbasis lingkup terkontrol (`withMemoryWriteAuthorization` dan objek `authorization`).
+     - Tanpa otorisasi yang sah atau bendera environment, seluruh jalur penulisan memori di shared-memory-adapter dan olci-manager berstatus mutlak fail-closed (`READ_ONLY_VIOLATION`).
+  2. **Second Brain Experience Retrieval Hardening:**
+     - Menegakkan `onlyValidated: true` pada pemanggilan retrieval di prompt builder Joko (`joko-prompt-builder.ts`) dan prompt evaluasi Nadia (`nadia-reader-voice.ts`).
+     - Memastikan hanya pembelajaran tervalidasi (`validation: 'verified'`) yang diserap sebagai pelajaran terpercaya ke dalam draf dan evaluasi, memisahkan observasi mentah dan hipotesis.
+     - Menambahkan fungsi kanonikal `getStaffPrimaryBrain(staffId)` pada `olci-manager.ts` untuk memuat berkas Primary Brain staf (termasuk SEON dan Maya).
+  3. **Editorial Curiosity Principle (ECP) Quality Gate Enforcement:**
+     - Pada `article-definition-of-done.ts` Gate A.1b, hasil evaluasi semantik `evaluateEditorialCuriosityPrinciple` ditegakkan secara absolut untuk draf artikel baru: jika melanggar (`REVISION_REQUIRED`), Gate A.1b berstatus `BLOCKED` (bukan sekadar `WARNING`).
+     - Artikel warisan/terbit sebelumnya (`status === 'published'` atau `id <= 14`) tetap dilindungi dengan pengecualian non-blocking (`WARNING`/`PASS`), mencegah regenerasi paksa artikel lama.
+  4. **Canonical Staff Runtime Integration:**
+     - Mendaftarkan seluruh 10 staf kanonikal (`Jefry`, `Joko`, `Irwan`, `Rina`, `Budi`, `Sari`, `Dimas`, `Nadia`, `Maya`, `SEON`) secara aktif di Mission Control runtime via `registerAllCanonicalStaffMembers()` pada `getMissionControlOrganization()`.
+     - Mengintegrasikan pemuatan Primary Brain SEON pada Step 0 pipeline `autonomous-workflow.ts`.
+     - Mempertahankan pemisahan absolut identitas JEV (`management_advisor_jefry`) dan Dimas (`telemetry_observer_jev`).
+  5. **Dokumentasi & Checkpoint Rekonsiliasi:**
+     - Memperbaiki ringkasan alias checkpoint Phase 1 agar selaras dengan source code (`dimas` $\rightarrow$ `telemetry_observer_jev`, `jev`/`jefry` $\rightarrow$ `management_advisor_jefry`).
+     - Mencatat status sinkronisasi hosted yang berhasil diverifikasi oleh Owner di SumoPod terminal.
+- **Invarian Keselamatan:** `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `Paid Spend = $0.00`. Zero unauthorized mutations.
+
+---
+
 ## PHASE-1-FINAL-CLOSURE: Canonical DoD Re-run, Alias Compatibility, ECP Hardening & Release Candidate (2026-11-27 Pukul 09:30 WIB)
 
 - **Milestone:** `PHASE-1-FINAL-CLOSURE-AND-HOSTED-READINESS`

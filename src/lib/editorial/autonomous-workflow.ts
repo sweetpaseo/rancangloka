@@ -60,6 +60,8 @@ import { renderArticleMarkdownSafely } from '../article/renderer.ts';
 import { resolveVisualPlacements } from '../media/anchor-resolver.ts';
 import type { VisualPlacementManifest } from '../media/manifest-loader.ts';
 import type { EvidencePackInput } from '../article/human-quality.ts';
+import { getStaffPrimaryBrain } from './olci-manager.ts';
+import { registerAllCanonicalStaffMembers } from '../mission-control/staff-registry.ts';
 
 export interface AutonomousEditorialInput {
   taskId: string;
@@ -210,6 +212,19 @@ export async function executeAutonomousEditorialWorkflow(
   const slug = input.slug || input.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const title = input.requestedTitle || input.topic;
   const articleId = input.articleId || 10001;
+
+  // Canonical Staff Registration in runtime
+  registerAllCanonicalStaffMembers();
+
+  // Step 0: SEON Search Intent & Primary Brain Alignment
+  const seonBrain = getStaffPrimaryBrain('seo_specialist_lead');
+  traceLog.push({
+    step: 'SEON_SEARCH_INTENT_ALIGNMENT',
+    status: seonBrain.found ? 'PASS' : 'WARN',
+    message: seonBrain.found
+      ? `SEON Primary Brain loaded for topic intent alignment: "${input.topic}".`
+      : `SEON Primary Brain not found in shared memory, continuing with default topic intent.`
+  });
 
   // Step 1: Draft Acquisition / Joko Authoring
   let rawDraft = input.manuscriptMd;

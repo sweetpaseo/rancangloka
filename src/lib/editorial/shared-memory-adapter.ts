@@ -51,6 +51,21 @@ const CANDIDATE_SHARED_MEMORY_PATHS: string[] = [
  * Resolve active shared memory directory from environment or candidate paths.
  */
 export function resolveSharedMemoryDir(): string {
+  const dynamicEnvPaths = [
+    process.env.RANCANGLOKA_SHARED_MEMORY_DIR,
+    process.env.SHARED_MEMORY_DIR
+  ].filter((p): p is string => Boolean(p && typeof p === 'string' && p.trim().length > 0));
+
+  for (const candidate of dynamicEnvPaths) {
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        return candidate;
+      }
+    } catch {
+      // Continue search
+    }
+  }
+
   for (const candidate of CANDIDATE_SHARED_MEMORY_PATHS) {
     try {
       if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
@@ -274,10 +289,35 @@ export function querySharedMemory(keywords: string[]): KnowledgeMatch[] {
   return matches;
 }
 
+export interface MemoryWriteAuthorization {
+  authorized: boolean;
+  staff_id: string;
+  reason: string;
+  approved_by?: string;
+}
+
+let activeWriteAuthorization: MemoryWriteAuthorization | null = null;
+
+/**
+ * Execute a callback within an explicit, audited memory write authorization scope.
+ */
+export function withMemoryWriteAuthorization<T>(
+  auth: MemoryWriteAuthorization,
+  fn: () => T
+): T {
+  const previous = activeWriteAuthorization;
+  activeWriteAuthorization = auth;
+  try {
+    return fn();
+  } finally {
+    activeWriteAuthorization = previous;
+  }
+}
+
 /**
  * Write a handoff, research note, or OLCI record into shared memory.
  * STRICT SAFETY ENFORCEMENT:
- * - Blocked if write is not permitted (requires allowWriteOverride or isSharedMemoryWriteEnabled()).
+ * - Blocked if write is not permitted (requires explicit authorization or isSharedMemoryWriteEnabled()).
  * - Allowed ONLY in designated shared memory namespaces.
  * - Defends against path traversal attacks.
  * - Rejects any content containing secret signatures.
@@ -288,15 +328,25 @@ export function writeMemoryNote(params: {
   filename: string;
   authorStaff: string;
   content: string;
+  authorization?: MemoryWriteAuthorization;
   allowWriteOverride?: boolean;
   preserveRawContent?: boolean;
 }): { success: boolean; subpath: string } {
-  const writePermitted = params.allowWriteOverride || isSharedMemoryWriteEnabled();
+  const isEnvWriteEnabled = isSharedMemoryWriteEnabled();
+  const explicitAuth = params.authorization || activeWriteAuthorization;
+  const isExplicitlyAuthorized = Boolean(
+    explicitAuth &&
+    explicitAuth.authorized &&
+    explicitAuth.staff_id &&
+    explicitAuth.reason
+  );
+
+  const writePermitted = isEnvWriteEnabled || isExplicitlyAuthorized || params.allowWriteOverride === true;
   
   if (!writePermitted) {
     throw new Error(
       `[SharedMemory:READ_ONLY_VIOLATION] Autonomous writes to shared memory are currently disabled. ` +
-      `Staff '${params.authorStaff}' attempted write to '${params.category}/${params.filename}'.`
+      `Staff '${params.authorStaff}' attempted write to '${params.category}/${params.filename}' without authorized scope.`
     );
   }
 

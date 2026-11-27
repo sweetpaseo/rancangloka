@@ -7,7 +7,11 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveSharedMemoryDir, writeMemoryNote } from './shared-memory-adapter.ts';
+import {
+  resolveSharedMemoryDir,
+  writeMemoryNote,
+  type MemoryWriteAuthorization
+} from './shared-memory-adapter.ts';
 import {
   type OlciExperienceRecord,
   type OlciInnovationProposal,
@@ -80,8 +84,12 @@ export function resolveCollaborationThreadsDir(): string {
 
 /**
  * Record a professional experience record for a staff member.
+ * Requires explicit write authorization or ENABLE_SHARED_MEMORY_WRITES=true.
  */
-export function recordExperience(record: OlciExperienceRecord): { success: boolean; filePath: string } {
+export function recordExperience(
+  record: OlciExperienceRecord,
+  options?: { authorization?: MemoryWriteAuthorization }
+): { success: boolean; filePath: string } {
   const roleSub = ROLE_DIR_MAP[record.staff_id.toLowerCase()] || record.staff_id.toLowerCase();
   const fileName = `${record.experience_id}.md`;
   const content = formatExperienceAsMarkdown(record);
@@ -92,7 +100,7 @@ export function recordExperience(record: OlciExperienceRecord): { success: boole
     filename: fileName,
     authorStaff: record.staff_id,
     content,
-    allowWriteOverride: true,
+    authorization: options?.authorization,
     preserveRawContent: true
   });
 
@@ -250,8 +258,12 @@ export function getStaffExperiences(
 
 /**
  * Submit an innovation proposal to the Innovation Inbox.
+ * Requires explicit write authorization or ENABLE_SHARED_MEMORY_WRITES=true.
  */
-export function submitProposal(proposal: OlciInnovationProposal): { success: boolean; filePath: string } {
+export function submitProposal(
+  proposal: OlciInnovationProposal,
+  options?: { authorization?: MemoryWriteAuthorization }
+): { success: boolean; filePath: string } {
   const fileName = `${proposal.proposal_id}.md`;
   const content = formatProposalAsMarkdown(proposal);
 
@@ -260,7 +272,7 @@ export function submitProposal(proposal: OlciInnovationProposal): { success: boo
     filename: fileName,
     authorStaff: proposal.proposer_role,
     content,
-    allowWriteOverride: true,
+    authorization: options?.authorization,
     preserveRawContent: true
   });
 
@@ -321,8 +333,12 @@ export function listProposals(statusFilter?: OlciProposalStatus): OlciInnovation
 
 /**
  * Record or update an event-driven collaboration thread.
+ * Requires explicit write authorization or ENABLE_SHARED_MEMORY_WRITES=true.
  */
-export function recordCollaborationThread(thread: OlciCollaborationThread): { success: boolean; filePath: string } {
+export function recordCollaborationThread(
+  thread: OlciCollaborationThread,
+  options?: { authorization?: MemoryWriteAuthorization }
+): { success: boolean; filePath: string } {
   const fileName = `${thread.thread_id}.md`;
 
   const frontmatter = [
@@ -383,11 +399,45 @@ export function recordCollaborationThread(thread: OlciCollaborationThread): { su
     filename: fileName,
     authorStaff: thread.initiated_by,
     content: fullContent,
-    allowWriteOverride: true,
+    authorization: options?.authorization,
     preserveRawContent: true
   });
 
   const baseDir = resolveSharedMemoryDir();
   const filePath = path.join(baseDir, res.subpath);
   return { success: res.success, filePath };
+}
+
+/**
+ * Load authoritative Primary Brain for a staff member from shared memory.
+ */
+export function getStaffPrimaryBrain(staffId: string): {
+  found: boolean;
+  path?: string;
+  content?: string;
+  staff_id: string;
+} {
+  const normalizedId = staffId.toLowerCase();
+  const roleSub = ROLE_DIR_MAP[normalizedId] || normalizedId;
+  const baseDir = resolveSharedMemoryDir();
+  const dir = path.join(baseDir, '06-staff-memory', roleSub);
+
+  if (!fs.existsSync(dir)) {
+    return { found: false, staff_id: staffId };
+  }
+
+  const files = fs.readdirSync(dir);
+  const primaryBrainFile = files.find(f => f.startsWith('PRIMARY_BRAIN_') && f.endsWith('.md'));
+  if (!primaryBrainFile) {
+    return { found: false, staff_id: staffId };
+  }
+
+  const fullPath = path.join(dir, primaryBrainFile);
+  const content = fs.readFileSync(fullPath, 'utf8');
+  return {
+    found: true,
+    path: fullPath,
+    content,
+    staff_id: staffId
+  };
 }

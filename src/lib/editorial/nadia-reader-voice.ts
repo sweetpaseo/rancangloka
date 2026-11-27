@@ -529,7 +529,10 @@ export function buildSecondBrainSemanticEvaluationPrompt(opts: {
   let nadiaLessonsBlock = '';
   let retrievedExperiences: Array<{ experience_id: string; article_ref: string; validation: string; lesson_excerpt: string }> = [];
   try {
-    const experiences = getStaffExperiences('audience_language_editor');
+    const experiences = getStaffExperiences('audience_language_editor', {
+      onlyValidated: true,
+      context_ref: opts.focusKeyword
+    });
     if (experiences && experiences.length > 0) {
       retrievedExperiences = experiences.slice(0, 3).map(e => ({
         experience_id: e.experience_id,

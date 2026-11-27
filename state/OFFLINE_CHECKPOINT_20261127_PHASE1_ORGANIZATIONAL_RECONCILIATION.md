@@ -30,35 +30,33 @@
 
 4. **Kompatibilitas 11 Historical Alias & Zero Duplicate Identity:**
    - Pemetaan kanonikal `CANONICAL_ALIAS_MAP` diintegrasikan ke `getStaffDefinitionByAgentId`:
-     `joko` $\rightarrow$ `content_writer_primary`, `irwan` $\rightarrow$ `evidence_researcher_lead`, `rina` $\rightarrow$ `editorial_qa_primary`, `budi` $\rightarrow$ `lokamedia_worker_primary`, `sari` $\rightarrow$ `publication_dispatcher_core`, `dimas`/`jev` $\rightarrow$ `telemetry_observer_jev`, `jefry` $\rightarrow$ `management_advisor_jefry`, `nadia` $\rightarrow$ `audience_language_editor`, `maya` $\rightarrow$ `maya`, `seon` $\rightarrow$ `seo_specialist_lead`.
+     `joko` $\rightarrow$ `content_writer_primary`, `irwan` $\rightarrow$ `evidence_researcher_lead`, `rina` $\rightarrow$ `editorial_qa_primary`, `budi` $\rightarrow$ `lokamedia_worker_primary`, `sari` $\rightarrow$ `publication_dispatcher_core`, `dimas` $\rightarrow$ `telemetry_observer_jev`, `jev`/`jefry` $\rightarrow$ `management_advisor_jefry`, `nadia` $\rightarrow$ `audience_language_editor`, `maya` $\rightarrow$ `maya`, `seon` $\rightarrow$ `seo_specialist_lead`.
+   - JEV/Jefry (Management Decision Advisor) dan Dimas (Systems Architect & Telemetry Operator) dipisahkan secara tegas dan absolut, dengan memori, telemetri, OLCI, dan atribusi tugas terpisah.
    - Seluruh histori memori, telemetri, task ownership, dan record OLCI lama kompatibel 100% tanpa menciptakan identitas ganda.
 
-5. **Penguatan Retrieval Pengalaman Joko & Nadia:**
-   - Pembelajaran tervalidasi (`validation: 'verified'`) diprioritaskan secara otomatis di atas observasi mentah.
+5. **Penguatan Retrieval Pengalaman Joko & Nadia (Targeted Remediation):**
+   - Jalur prompt builder Joko dan evaluasi Nadia mewajibkan opsi `onlyValidated: true`.
+   - Hanya pembelajaran tervalidasi (`validation: 'verified'`) yang diserap sebagai pelajaran terpercaya ke dalam prompt, sementara observasi mentah dan hipotesis dipisahkan secara ketat.
    - Skrining keamanan bawaan menolak file corrupt atau upaya prompt injection.
    - Provenance (`experience_id`, `article_ref`, `observed_at`, `validation`) tetap utuh.
    - Telemetri aktif `retrievedExperiences` dicatat pada metadata prompt Joko, prompt Nadia, dan store `getExperienceRetrievalTelemetry()`.
 
-6. **Release Candidate Manifest:**
-   - Dibuat di `state/RELEASE_CANDIDATE_PHASE1_ORGANIZATIONAL_RECONCILIATION.json` memuat 15 berkas eksak dengan ukuran bita dan SHA-256 kriptografis.
+6. **Tata Kelola Penulisan Memori OLCI (Memory Write Governance):**
+   - Menghapus bypass `allowWriteOverride: true` yang sebelumnya melewati `ENABLE_SHARED_MEMORY_WRITES`.
+   - Menggantikan dengan otorisasi berbasis lingkup eksplisit (`withMemoryWriteAuthorization` atau `MemoryWriteAuthorization`).
+   - Tanpa otorisasi aktif atau bendera env, seluruh jalur penulisan memori beroperasi secara mutlak **fail-closed** (`READ_ONLY_VIOLATION`).
+   - Penulisan memori yang sah oleh staf tetap dapat berjalan melalui otorisasi resmi.
 
-7. **Prosedur Rollback Terkendali:**
-   - Jika diperlukan pemulihan, langkah rollback bersifat non-destruktif:
-     ```bash
-     # Pulihkan modifikasi lokal:
-     git restore src/lib/mission-control/ src/lib/editorial/
-     # Bersihkan berkas baru:
-     rm src/lib/editorial/editorial-curiosity-principle.ts
-     rm docs/shared-memory/06-staff-memory/seon-seo/PRIMARY_BRAIN_SEON_SEARCH_INTENT_V1.md
-     rm scripts/test-phase1-organizational-reconciliation.mjs
-     rm state/RELEASE_CANDIDATE_PHASE1_ORGANIZATIONAL_RECONCILIATION.json
-     ```
+7. **Penegakan Editorial Curiosity Principle pada Quality Gates:**
+   - ECP ditegakkan secara semantik pada Gate A.1b:
+     * Draf baru wajib berstatus `PASS` pada evaluasi semantik ECP (judul pertanyaan natural diakhiri '?', bebas clickbait, pembuka rasa ingin tahu, dan isi menjawab pertanyaan). Jika melanggar, Gate A.1b berstatus **`BLOCKED`**.
+     * Artikel warisan/terbit sebelumnya (`id <= 14` atau `published`) dikecualikan dari regenerasi paksa (`WARNING`/`PASS`).
 
 8. **Perbedaan Status Empat Lapisan (Four-Layer State Matrix):**
    - **LOCAL IMPLEMENTED:** Seluruh 10 identitas staf, kapabilitas, Pixel Office, ECP engine, adapter izin memori, dan retrieval telemetri telah selesai dikodekan secara lokal.
-   - **LOCAL VERIFIED:** Diverifikasi 100% GREEN via `npx tsc --noEmit` (0 error), `npm run build` (0 error), `test-phase1-organizational-reconciliation.mjs` (11/11 PASS), `test-canonical-dod-runtime-integration.mjs` (30/30 PASS), dan `test-article-integrity-regression-suite.mjs` (12/12 PASS).
-   - **HOSTED AVAILABLE:** Hosted Hermes SumoPod EU (`sumopod`) memiliki endpoint API aktif di port 8642, autentikasi native peer valid, lingkungan Node.js v26 / Python venv siap, dan runner `/opt/data/rancangloka-runner` siap menerima sinkronisasi git saat diotorisasi.
-   - **HOSTED OPERATIONAL:** Hosted Hermes saat ini berada dalam status *supervised operational standby* (telah berhasil menyelesaikan self-assessment task `run_fc098ba0e3d340d7addb957a677202f1`). Belum dilakukan commit/push/pull kode Phase 1 ke host sesuai aturan keselamatan Owner.
+   - **LOCAL VERIFIED:** Diverifikasi 100% GREEN via `npx tsc --noEmit` (0 error), `npm run build` (0 error), `test-phase1-organizational-reconciliation.mjs` (11/11 PASS), `test-canonical-dod-runtime-integration.mjs` (30/30 PASS), dan `test-staff-registry.js` (16/16 PASS).
+   - **HOSTED AVAILABLE & SYNCHRONIZED:** Hosted Hermes SumoPod EU (`sumopod`) telah berhasil disinkronkan secara fast-forward ke Git HEAD `4ee16c15bd50b11ae19569d19443048d1f7a99ad` (dibuktikan dan diverifikasi oleh Owner via terminal SumoPod).
+   - **HOSTED OPERATIONAL:** Hosted Hermes telah menyelesaikan Operational Acceptance Audit via Run ID `run_7629b7018e9e4b458a5d9372aba7e5a0` (durasi 561 detik, biaya $0.00). Temuan audit tersebut telah ditindaklanjuti melalui Targeted Remediation.
 
 ---
 

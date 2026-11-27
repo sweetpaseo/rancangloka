@@ -820,7 +820,10 @@ ${prohibitedFormatted || '- Jangan mengarang nominal harga rupiah.\n- Jangan men
 
 ${(() => {
   try {
-    const experiences = getStaffExperiences('content_writer_primary');
+    const experiences = getStaffExperiences('content_writer_primary', {
+      onlyValidated: true,
+      context_ref: context.topic
+    });
     if (experiences && experiences.length > 0) {
       const lessons = experiences
         .filter(e => typeof e.lesson === 'string' && e.lesson.trim().length > 0)
@@ -906,7 +909,10 @@ Sebagai panduan umum yang fleksibel:
 
   let retrievedExperiences: Array<{ experience_id: string; article_ref: string; validation: string; lesson_excerpt: string }> = [];
   try {
-    const rawExp = getStaffExperiences('content_writer_primary', { context_ref: context.topic });
+    const rawExp = getStaffExperiences('content_writer_primary', {
+      onlyValidated: true,
+      context_ref: context.topic
+    });
     retrievedExperiences = rawExp.slice(0, 3).map(e => ({
       experience_id: e.experience_id,
       article_ref: e.article_ref,
