@@ -168,6 +168,9 @@ export interface EditorialJobInput {
   editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
   enableVoiceL4?: boolean;
   enableVoiceL5?: boolean;
+  authorsLens?: string;
+  articleAngle?: string;
+  originalInsight?: string;
   expectedContentHash?: string;
   revisionContext?: {
     attempt: number;
@@ -471,6 +474,15 @@ export async function executeEditorialDraftJob(
   const enableVoiceL4 = editorialVoiceLevel === 'L4';
   const enableVoiceL5 = editorialVoiceLevel === 'L5';
 
+  const derivedAuthorsLens = input.authorsLens || (
+    input.editorialBrief?.article_family === 'MATERIAL_COMPARISON' ? 'Comparative Analyst (membedah komparasi berimbang)' :
+    input.editorialBrief?.article_family === 'PROBLEM_SOLVER' ? 'Investigator (membongkar penyebab tersembunyi)' :
+    input.editorialBrief?.article_family === 'BUILDING_GUIDE' ? 'Problem Solver (mengurai masalah rumit menjadi solusi praktis)' :
+    undefined
+  );
+
+  const derivedArticleAngle = input.articleAngle || input.visitorContext?.openingAngle;
+
   const basePromptContext: JokoPromptContext = {
     topic: input.topic,
     requestedTitle: input.requestedTitle || input.topic,
@@ -481,12 +493,23 @@ export async function executeEditorialDraftJob(
     visitorContext: input.visitorContext,
     editorialVoiceLevel,
     enableVoiceL4,
-    enableVoiceL5
+    enableVoiceL5,
+    authorsLens: derivedAuthorsLens,
+    articleAngle: derivedArticleAngle,
+    originalInsight: input.originalInsight
   };
 
   // 3b. Editorial Planner: Compile Reader-Focused Editorial Brief
   const editorialBrief = input.editorialBrief || compileEditorialBrief(basePromptContext);
   basePromptContext.editorialBrief = editorialBrief;
+  if (!basePromptContext.authorsLens && editorialBrief.article_family) {
+    basePromptContext.authorsLens = (
+      editorialBrief.article_family === 'MATERIAL_COMPARISON' ? 'Comparative Analyst (membedah komparasi berimbang)' :
+      editorialBrief.article_family === 'PROBLEM_SOLVER' ? 'Investigator (membongkar penyebab tersembunyi)' :
+      editorialBrief.article_family === 'BUILDING_GUIDE' ? 'Problem Solver (mengurai masalah rumit menjadi solusi praktis)' :
+      'Advisor (memberikan pertimbangan bertahap yang tenang)'
+    );
+  }
 
   addTraceEvent(
     'EDITORIAL_PLAN_COMPILED',

@@ -74,7 +74,8 @@ async function main() {
     operatorAuth: {
       authorizedBy: 'Chief Editor Test',
       timestamp: new Date().toISOString()
-    }
+    },
+    editorialVoiceLevel: 'L3'
   };
 
   // --- SECTION 1: Grounded Draft Envelope Parsing & Claim-ID Validation ---
@@ -358,7 +359,7 @@ Sebelum membeli material atau menyewa tukang, lakukan pengecekan mandiri:
         },
         {
           claim_id: 'CLM-004',
-          article_excerpt: 'Ventilasi atap diperlukan bila loteng tertutup rapat...',
+          article_excerpt: 'Ventilasi atap (kisi jalusi sopi-sopi atau ventilasi bubungan) diperlukan bila loteng tertutup rapat...',
           usage_type: 'DIRECT_PARAPHRASE'
         },
         {

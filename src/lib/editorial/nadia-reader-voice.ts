@@ -39,6 +39,7 @@ import {
 } from './shared-memory-adapter.ts';
 import { getStaffExperiences } from './olci-manager.ts';
 import { evaluateEditorialCuriosityPrinciple } from './editorial-curiosity-principle.ts';
+import { CANONICAL_SIGNATURE_EDITORIAL_VOICE } from '../article/editorial-knowledge.ts';
 import type { EditorialLlmProvider } from './editorial-llm-provider.ts';
 
 import {
@@ -567,6 +568,15 @@ You must compare the manuscript against RancangLoka's Golden Benchmark (Article 
 7. Non-formulaic transitions: Smooth, varied transitions (e.g., "Nah,", "Coba perhatikan,", "Lain cerita kalau,").
 8. Practical reader recommendations: Concrete, actionable trade-offs and next steps rather than generic bureaucratic advice.
 9. Consistency with Golden Article #9993: Emulates the warm, authoritative, yet casual voice of Article #9993.
+
+SIGNATURE EDITORIAL VOICE & AUTHORIAL PRESENCE PRESERVATION:
+- Philosophy: "${CANONICAL_SIGNATURE_EDITORIAL_VOICE.philosophy}"
+- Authorial Presence: ${CANONICAL_SIGNATURE_EDITORIAL_VOICE.five_capability_pillars.editorial_intelligence.authorial_presence.guideline}
+- Measured use of first-person "saya" for professional editorial evaluation (e.g. "Saya justru lebih menyarankan...", "Saya kurang menyarankan membongkar pot...") is strictly legitimate and valued. DO NOT flag or penalize "saya" when used for editorial judgment.
+- Stance & Insight: ${CANONICAL_SIGNATURE_EDITORIAL_VOICE.five_capability_pillars.editorial_intelligence.editorial_stance.nature} Protect Joko's original insights without diluting them into neutral chatbot tone.
+- Editorial Restraint & Economy: ${CANONICAL_SIGNATURE_EDITORIAL_VOICE.five_capability_pillars.editorial_maturity.editorial_restraint.guidelines[0]}
+- Reader Value: ${CANONICAL_SIGNATURE_EDITORIAL_VOICE.five_capability_pillars.reader_value.curiosity_satisfaction}
+- Reference the Rose Article learning case ("${CANONICAL_SIGNATURE_EDITORIAL_VOICE.editorial_learning_case_rose_article.title}") for mature restraint, organic rhythm, and memorable takeaways.
 
 OUTPUT FORMAT:
 Return strict JSON with this exact schema:
@@ -1892,6 +1902,11 @@ PRINSIP PENYUNTINGAN NADIA (EDITORIAL VOICE V3):
    - DILARANG memperkuat klaim ("bisa mengurangi" DILARANG diubah jadi "pasti menghilangkan").
    - DILARANG mengarang fakta baru.
    - Otoritas publikasi Anda adalah 0 (hanya menyunting bahasa).
+7. PERLINDUNGAN SUARA PERSONAL JOKO & EDITORIAL STANCE:
+   - ${CANONICAL_SIGNATURE_EDITORIAL_VOICE.five_capability_pillars.editorial_intelligence.authorial_presence.guideline}
+   - DILARANG menetralkan atau menghapus kata "saya" yang digunakan Joko secara sah untuk menyampaikan pertimbangan atau rekomendasi editorial profesional.
+   - DILARANG menetralkan pendirian editorial Joko yang didukung bukti kuat menjadi bahasa yang bimbang atau tanpa arah (${CANONICAL_SIGNATURE_EDITORIAL_VOICE.five_capability_pillars.editorial_intelligence.editorial_stance.nature}).
+   - HINDARI OVERPOLISHING: Jangan menghaluskan kalimat sampai kehilangan karakter personal, intisari berharga (${CANONICAL_SIGNATURE_EDITORIAL_VOICE.five_capability_pillars.reader_value.memorable_editorial_takeaway.forms.join(', ')}), atau terdengar seperti teks chatbot netral.
 
 OUTPUT: Kembalikan naskah lengkap hasil suntingan dalam format Markdown bersih, tanpa salam, tanpa obrolan meta, dan tanpa tag pembungkus selain naskah itu sendiri.`;
 

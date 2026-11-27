@@ -1,3 +1,97 @@
+# 🤖 Antigravity Master Milestone Handoff: HOSTED_ACCESS_AND_SYNCHRONIZATION_RECOVERY
+
+**Tanggal / Waktu:** 2026-11-27T16:15:00+07:00  
+**Eksekutor:** Gravy (Lead Engineering & Implementation Agent)  
+**Mandat:** Owner Directive 2026-11-27 — Hosted Access & Synchronization Recovery  
+**Branch:** `feat/jev-lokamedia-integration`  
+**Status Multi-Dimensi Operasional (6-Layer Consistency Matrix):**
+1. **Local source implementation:** `PREPARED & VERIFIED` (10 berkas source & tests, 28/28 tests PASS, TypeScript 0 error)
+2. **Local knowledge update:** `PREPARED & VERIFIED` (7 berkas standards & staff brains di `docs/shared-memory/`)
+3. **Remote Git release:** `PENDING_AUTHORIZATION` (Local HEAD `62ecdff`, uncommitted V2 release candidate)
+4. **Hosted source synchronization:** `NOT_STARTED` (Hosted HEAD `7ba7c05` di `/opt/data/rancangloka-runner`)
+5. **Hosted knowledge synchronization:** `NOT_STARTED` (Syncthing lokal dihentikan, pending start)
+6. **Effective Hermes runtime verification:** `NOT_VERIFIED` (Runtime belum menerima upgrade V2)
+
+**Status Operasional Terkait:**
+- **Hosted access:** `BLOCKED` (HTTP 302 to SumoPod Cloudflare login gate, requires Owner web terminal access)
+- **Credential security:** `REVIEW_REQUIRED` (Bearer token exposed in prior turn, rotation procedure identified)
+- **Pilot:** `PENDING` (Estimates $0.50–$0.65 USD, pending Owner authorization)
+- **Phase 2:** `HOLD` (Strictly paused per Owner Directive)
+  **Release Manifest:** `REL-20261127-SIGNATURE-EDITORIAL-V2` (20 sealed artifacts, 100% SHA-256 match)  
+  **Target Environment:** Local Workspace & Native Hermes Peer (`sumopod` EU)  
+  **Production Deployment Authorization:** `FALSE` (Production D1 dan Production Worker tetap FROZEN / UNTOUCHED)  
+  **TypeSafe Jev Mode:** `SHADOW_MODE_ONLY` (`PUBLISHING_AUTHORITY = 0`)  
+  **Safety Invariants:** `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `manual_hold = 1`, `DEC-09 = ENFORCED`  
+  **Financial Spend:** **$0.00 USD** (Zero paid API spend, Zero regeneration)
+
+---
+
+## Ringkasan Eksekutif Pemulihan Akses & Sinkronisasi
+
+1. **Insiden Keamanan Kredensial:** Token Bearer pada `mcp_config.json` diidentifikasi dan dimasking (`[REDACTED_BEARER_TOKEN]`). Prosedur rotasi pada `/opt/data/rancangloka/antigravity-bridge/bridge.token` telah disiapkan menunggu otorisasi Owner.
+2. **Pemulihan Syncthing Lokal:** Ditemukan binary `syncthing.exe` di `%LOCALAPPDATA%\Programs\Syncthing` dan `config.xml` di `%LOCALAPPDATA%\Syncthing`. Log mencatat Syncthing dihentikan secara bersih ("Syncthing is being stopped") pada 09:15 UTC. Rencana pemulihan minimal disiapkan tanpa reset konfigurasi atau force-add shared memory ke Git.
+3. **Inspeksi Script Diagnostik Hosted:** `scripts/diagnostic-sumopod-hermes.sh` (SHA-256: `bbb58d1c9b65c16a5e2faf505626610f79a5e3f404fd8c285f6cb1b08c81ea21`) diverifikasi aman dan 100% read-only tanpa mutasi.
+4. **Perlindungan Rilis & Rollback:** Snapshot cadangan rilis lokal disimpan di `state/backups/release-v2-editorial-20261127/` (100% SHA-256 verified). Menegaskan bahwa snapshot pra-rilis remote wajib diambil di hosted sebelum aktivasi.
+5. **Infrastruktur Hosted Terverifikasi (Bukti Terminal SumoPod):**
+   - Git Repository: `/opt/data/rancangloka-runner` (Branch: `feat/jev-lokamedia-integration`, HEAD: `7ba7c058b9023e8cb0d9738871a07b8f7a86c467`).
+   - Operational Workspace: `/opt/data/rancangloka`.
+   - Shared Memory: `/opt/data/rancangloka/shared-memory` (tersinkronisasi via Syncthing).
+   - Diagnostic Script: `/opt/data/rancangloka-runner/scripts/diagnostic-sumopod-hermes.sh` (SHA-256: `bbb58d1c9b65c16a5e2faf505626610f79a5e3f404fd8c285f6cb1b08c81ea21`).
+   - Kesenjangan Rilis Terverifikasi: 6 berkas editorial dan 7 berkas knowledge V2 belum ada di hosted.
+   - Relasi Commit: Hosted HEAD `7ba7c05` adalah direct parent dari Local HEAD `62ecdff` (selisih 1 commit checkpoint dokumentasi). Security patch Phase 1 utuh di kedua sisi.
+   - Perlindungan Canary: 2 berkas untracked `canary-10011` di hosted wajib dilindungi dari `git clean`.
+6. **Insiden Keamanan Kredensial:** Token Bearer pada `mcp_config.json` diidentifikasi dan dimasking (`[REDACTED_BEARER_TOKEN]`). Prosedur rotasi pada `/opt/data/rancangloka/antigravity-bridge/bridge.token` telah disiapkan menunggu otorisasi Owner.
+7. **Pemulihan Syncthing Lokal:** Ditemukan binary `syncthing.exe` di `%LOCALAPPDATA%\Programs\Syncthing` dan `config.xml` di `%LOCALAPPDATA%\Syncthing`. Log mencatat Syncthing dihentikan secara bersih ("Syncthing is being stopped") pada 09:15 UTC. Rencana pemulihan minimal disiapkan tanpa reset konfigurasi atau force-add shared memory ke Git.
+8. **Inspeksi Script Diagnostik Hosted:** `scripts/diagnostic-sumopod-hermes.sh` (SHA-256: `bbb58d1c9b65c16a5e2faf505626610f79a5e3f404fd8c285f6cb1b08c81ea21`) diverifikasi aman dan 100% read-only tanpa mutasi.
+9. **Perlindungan Rilis & Rollback:** Snapshot cadangan rilis lokal disimpan di `state/backups/release-v2-editorial-20261127/` (100% SHA-256 verified). Menegaskan bahwa snapshot pra-rilis remote wajib diambil di hosted sebelum aktivasi.
+
+---
+
+# 🤖 Antigravity Master Milestone Handoff: SIGNATURE_EDITORIAL_VOICE_TARGETED_REMEDIATION_AND_CANONICAL_INTEGRATION
+
+**Tanggal / Waktu:** 2026-11-27T14:05:00+07:00  
+**Eksekutor:** Gravy (Lead Engineering & Implementation Agent)  
+**Mandat:** Owner Directive 2026-11-27 — Targeted Editorial Remediation & Canonical Runtime Integration  
+**Branch:** `feat/jev-lokamedia-integration`  
+**Status Sesi:** `LOCAL_REMEDIATION_VERIFIED_RELEASE_CANDIDATE_READY`  
+**Current Authoritative Git Commit SHA:** Pending commit / sync to hosted SumoPod  
+**Release Manifest:** `RC-SIGNATURE-EDITORIAL-VOICE-REMEDIATION-20261127`  
+**Target Environment:** Local Workspace & Native Hermes Peer (`sumopod` EU)  
+**Production Deployment Authorization:** `FALSE` (Production D1 dan Production Worker tetap FROZEN / UNTOUCHED)  
+**TypeSafe Jev Mode:** `SHADOW_MODE_ONLY` (`PUBLISHING_AUTHORITY = 0`)  
+**Safety Invariants:** `AUTO_PUBLISH = OFF`, `publishingAuthority = 0`, `manual_hold = 1`  
+**Financial Spend:** **$0.00 USD** (Zero paid API spend, Zero regeneration)
+
+---
+
+## Ringkasan Eksekutif Implementasi Suara Editorial Khas & Kecerdasan Redaksi
+
+1. **Filosofi Suara Khas:**
+   - _"Berisi seperti ahli, ngobrol seperti teman, berpikir seperti penulis."_
+2. **Pondasi Pengetahuan & Memori Resmi:**
+   - Mengekspor `RANCANGLOKA_EDITORIAL_KNOWLEDGE_V2_VERSION` dan `CANONICAL_SIGNATURE_EDITORIAL_VOICE` di `editorial-knowledge.ts`.
+   - Membuat `docs/shared-memory/01-editorial-standards/signature-editorial-voice-guide.md` dan `editorial-learning-case-rose-article.md`.
+   - Mengonsolidasikan Primary Brain untuk Joko (`PRIMARY_BRAIN_JOKO_EDITORIAL_WRITER_V1.md`), Nadia (`PRIMARY_BRAIN_NADIA_READER_VOICE_V1.md`), dan Irwan (`PRIMARY_BRAIN_IRWAN_EVIDENCE_RESEARCH_V1.md`).
+3. **Pembelajaran Second Brain (OLCI):**
+   - Menelan catatan pembelajaran terverifikasi `EXP-JOKO-20261127-EDITORIAL-INTELLIGENCE-ROSE-CASE.md` dan `EXP-NADIA-20261127-EDITORIAL-INTELLIGENCE-PRESERVATION-ROSE-CASE.md`.
+   - Memutakhirkan `ROLE_DIR_MAP` di `olci-manager.ts` sehingga seluruh machine ID kanonikal terpetakan langsung.
+4. **Integrasi Pipeline Prompt:**
+   - `joko-prompt-builder.ts`: Menyuntikkan 5 pilar suara khas, panduan authorial presence dengan kata "saya" yang sah untuk pertimbangan profesional, larangan kuota mekanis, serta blok fokus kecerdasan editorial.
+   - `nadia-reader-voice.ts`: Melindungi suara personal Joko, melarang penghapusan kata "saya" yang sah, dan mencegah _overpolishing_ mekanis.
+5. **Quality Gate A & Definition of Done:**
+   - Menambahkan pemeriksaan `A.13_AUTHENTIC_CONTEXTUAL_EVIDENCE` pada `article-definition-of-done.ts` untuk memblokir klaim pengujian/inspeksi lapangan fiktif tanpa memblokir penggunaan sah kata "saya" untuk pertimbangan editorial.
+6. **Verifikasi & Regresi 100% Green:**
+   - `test-signature-editorial-voice.mjs`: ✅ **16/16 PASS**
+   - `test-editorial-knowledge.js`: ✅ **19/19 PASS**
+   - `test-phase1-targeted-remediation.mjs`: ✅ **14/14 PASS**
+   - `test-phase1-organizational-reconciliation.mjs`: ✅ **11/11 PASS**
+   - `test-canonical-dod-runtime-integration.mjs`: ✅ **30/30 PASS**
+   - `test-staff-registry.js`: ✅ **16/16 PASS**
+   - `test-mission-control.js`: ✅ **10/10 PASS**
+   - `npx tsc --noEmit`: ✅ **0 error**
+
+---
+
 # 🤖 Antigravity Master Milestone Handoff: PHASE_1_FINAL_MEMORY_GOVERNANCE_PATCH
 
 **Tanggal / Waktu:** 2026-11-27T11:10:00+07:00  

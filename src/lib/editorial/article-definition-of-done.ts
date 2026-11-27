@@ -97,6 +97,14 @@ export interface ArticleInputForDoD {
   manuscript_sha256?: string;
   nadia_evaluation?: any;
   jev_receipt?: any;
+  evidence_pack?: any;
+  evidence_review?: {
+    status?: 'PENDING_REVIEW' | 'APPROVED_BY_RESEARCHER' | 'RESOLVED' | string;
+    verified_firsthand_claims?: string[];
+    unverified_experience_claims?: string[];
+    confirmed_fabrications?: string[];
+  };
+  grounding_audit?: any;
 }
 
 export function computeArticleSha256(content: string): string {
@@ -545,6 +553,88 @@ export function evaluateArticleDoD(input: ArticleInputForDoD): ArticleDoDEvaluat
     }
   }
 
+  // A.13 Authentic Contextual Evidence (Layer 5 & Signature Editorial Voice: Zero Fabricated Hands-On Claims)
+  // Evaluates 8 canonical review semantics:
+  // 1. Legitimate first-person editorial judgment ("saya menyarankan", "saya melihat") -> PASS
+  // 2. Properly attributed third-party statements (quotes from standards, architects) -> PASS / WARNING
+  // 3. Documented firsthand experience (verified in evidence pack / report) -> PASS
+  // 4. Clearly identified hypothetical examples ("bayangkan jika", "misalnya") -> PASS
+  // 5. Paraphrased fabricated experience without evidence -> BLOCKED / WARNING
+  // 6. Attributed quotations with unverified/suspicious claims -> WARNING (routes to Irwan/Rina evidence review)
+  // 7. Unverified experience claims -> WARNING (requires review before publication)
+  // 8. Evidence-confirmed integrity violations (fake lab tests, fake client testimonials) -> BLOCKED
+
+  const blatantFakeLabRegex = /\b(?:uji coba lab internal kami membuktikan|hasil uji lab kami menunjukkan|lab independen kami mengonfirmasi|sertifikasi rahasia kami)\b/i;
+  const blatantFakeTestimonyRegex = /\b(?:klien kami,?\s+(?:bapak|ibu|pak|bu)\s+[a-z]+|menurut kesaksian klien kami|salah satu klien kami mengaku|testimoni pelanggan kami menunjukkan)\b/i;
+  const directFabricatedHandsOnRegex = /\b(?:berdasarkan pengalaman kami di lapangan selama \w+ tahun|kami menguji secara langsung berbagai \w+|dari proyek yang kami tangani bertahun-tahun|saat tim kami memeriksa lokasi klien)\b/i;
+
+  const confirmedFabrications = input.evidence_review?.confirmed_fabrications || [];
+  const documentedExperiences = new Set(input.evidence_review?.verified_firsthand_claims || []);
+
+  const hasConfirmedLabViolation = blatantFakeLabRegex.test(contentMd);
+  const hasConfirmedTestimonyViolation = blatantFakeTestimonyRegex.test(contentMd);
+  const hasDirectFabricatedViolation = directFabricatedHandsOnRegex.test(contentMd);
+
+  const isDocumented = (text: string) =>
+    Array.from(documentedExperiences).some(claim => text.includes(claim)) ||
+    Boolean(input.evidence_pack?.verified_field_reports?.some((r: any) => text.includes(r.id || r.title)));
+
+  // Check if quote attribution applies
+  const isAttributedQuote = /(?:"[^"]*(?:berdasarkan pengalaman|kami menguji|hasil inspeksi|tim kami)[^"]*"|'[^']*(?:berdasarkan pengalaman|kami menguji|hasil inspeksi|tim kami)[^']*'|(?:mengatakan|mengklaim|menyebutkan|sesumbar|berujar)\s*:\s*[^\n]+)/i.test(contentMd);
+
+  // Severe / Fraudulent Violations (Fake lab tests, fake client testimonials, confirmed fabrications in review):
+  // ZERO TOLERANCE: Quotation marks CANNOT bypass fake lab tests or fake client testimonials!
+  const hasSevereFabrication = hasConfirmedLabViolation || hasConfirmedTestimonyViolation || confirmedFabrications.length > 0;
+  
+  // Direct author hands-on claims: if NOT an attributed quote and NOT documented, it is strictly BLOCKED.
+  const hasUnattributedDirectHandsOn = hasDirectFabricatedViolation && !isAttributedQuote;
+
+  if ((hasSevereFabrication || hasUnattributedDirectHandsOn) && !isDocumented(contentMd)) {
+    // Zero Tolerance: Quotation marks CANNOT bypass confirmed fabrication!
+    checksA.push({
+      id: 'A.13_AUTHENTIC_CONTEXTUAL_EVIDENCE',
+      name: 'Integritas Bukti & Ketiadaan Pengalaman Palsu',
+      status: 'BLOCKED',
+      message: 'Terdeteksi klaim pengalaman lapangan/inspeksi/testimoni klien fiktif yang melanggar Layer 5 Trust & Editorial Integrity. Sesuai Signature Editorial Voice, otoritas redaksi bersumber dari riset empiris dan penalaran jernih, bukan rekayasa pengalaman tangan pertama (tanda kutip dilarang menjadi celah bypass integritas).'
+    });
+  } else if (isDocumented(contentMd)) {
+    checksA.push({
+      id: 'A.13_AUTHENTIC_CONTEXTUAL_EVIDENCE',
+      name: 'Integritas Bukti & Ketiadaan Pengalaman Palsu',
+      status: 'PASS',
+      message: 'Integritas bukti valid: klaim pengalaman tangan pertama didukung oleh laporan pengujian/riset empiris terverifikasi dalam evidence pack.'
+    });
+  } else {
+    const suspiciousExperienceRegex = /\b(?:berdasarkan pengalaman kami|dari proyek yang kami tangani|hasil inspeksi kami|kami menguji|tim kami menemukan di lapangan|menurut praktisi kami di lapangan)\b/i;
+    const hasSuspiciousClaims = suspiciousExperienceRegex.test(contentMd) || hasDirectFabricatedViolation;
+    const unverifiedClaims = input.evidence_review?.unverified_experience_claims || [];
+
+    if (hasSuspiciousClaims || unverifiedClaims.length > 0) {
+      if (isAttributedQuote) {
+        checksA.push({
+          id: 'A.13_AUTHENTIC_CONTEXTUAL_EVIDENCE',
+          name: 'Integritas Bukti & Ketiadaan Pengalaman Palsu',
+          status: 'WARNING',
+          message: 'Terdeteksi kutipan pernyataan pihak ketiga/tukang mengenai klaim lapangan. Dialihkan ke tinjauan bukti Rina/Irwan untuk memastikan kutipan tidak disajikan sebagai fakta ilmiah terverifikasi.'
+        });
+      } else {
+        checksA.push({
+          id: 'A.13_AUTHENTIC_CONTEXTUAL_EVIDENCE',
+          name: 'Integritas Bukti & Ketiadaan Pengalaman Palsu',
+          status: 'WARNING',
+          message: 'Terdeteksi klaim pengalaman lapangan yang belum terverifikasi oleh evidence pack (advisory). Dialihkan ke Rina QA dan Irwan Evidence Review sebelum publikasi.'
+        });
+      }
+    } else {
+      checksA.push({
+        id: 'A.13_AUTHENTIC_CONTEXTUAL_EVIDENCE',
+        name: 'Integritas Bukti & Ketiadaan Pengalaman Palsu',
+        status: 'PASS',
+        message: 'Integritas bukti valid: bebas dari klaim pengalaman lapangan atau pengujian laboratorium fiktif.'
+      });
+    }
+  }
+
   const isGateAPass = checksA.every(c => c.status === 'PASS' || c.status === 'WARNING');
   const scoreA = Math.round((checksA.filter(c => c.status === 'PASS').length / checksA.length) * 100);
 
@@ -832,11 +922,21 @@ export function evaluateArticleDoD(input: ArticleInputForDoD): ArticleDoDEvaluat
     authBlockingReasons.push('EDITORIAL_APPROVAL_MISSING: Persetujuan redaksi Chief Editor belum tercatat.');
   }
 
-  const isPublicationReady = isGateAPass && isGateBPass && isOwnerAuthorized;
+  // Publication Integrity Gate: WARNING on A.13 (unverified experience claims) cannot silently bypass publication
+  const checkA13 = checksA.find(c => c.id === 'A.13_AUTHENTIC_CONTEXTUAL_EVIDENCE');
+  const hasUnresolvedExperienceReview = checkA13?.status === 'WARNING' &&
+    (!input.evidence_review || (input.evidence_review.status !== 'APPROVED_BY_RESEARCHER' && input.evidence_review.status !== 'RESOLVED'));
+  if (hasUnresolvedExperienceReview) {
+    authBlockingReasons.push('UNRESOLVED_EXPERIENCE_CLAIMS: Klaim pengalaman atau kutipan lapangan (Check A.13 WARNING) belum diselesaikan/disetujui oleh evidence review peneliti sebelum publikasi.');
+  }
+
+  const isPublicationReady = isGateAPass && isGateBPass && isOwnerAuthorized && !hasUnresolvedExperienceReview;
 
   let nextAction = '';
   if (!isGateAPass) {
     nextAction = 'Revisi naskah teks editorial hingga seluruh checklist Gerbang A terpenuhi.';
+  } else if (hasUnresolvedExperienceReview) {
+    nextAction = 'Selesaikan verifikasi bukti untuk klaim pengalaman/kutipan lapangan bersama Irwan/Rina sebelum penerbitan.';
   } else if (!hasApprovedCoverPhoto || !isInlineSufficient) {
     nextAction = 'Eksekusi paket visual Photo-First (1 cover + 3 inline supporting + 1 pre-closing) dan ajukan untuk otorisasi foto Owner.';
   } else if (!isHoldCleared) {

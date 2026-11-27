@@ -141,6 +141,7 @@ export interface ArticleIntentProfile {
 
 import {
   RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
+  RANCANGLOKA_EDITORIAL_KNOWLEDGE_V2_VERSION,
   CANONICAL_TERMINOLOGY_MAP,
   CANONICAL_NATIVE_INDONESIAN_AUTHORING_RULE,
   TECHNICAL_ENGLISH_ALLOWLIST
@@ -149,6 +150,7 @@ import type { ProductReviewType } from './product-review-knowledge.ts';
 
 export interface HumanWritingQualityResult {
   knowledge_version: string;
+  effective_knowledge_version?: string;
   total_score: number;
   decision: HumanWritingDecision;
   passed: boolean;
@@ -2492,6 +2494,11 @@ export interface EvaluationOptions {
   isProductReview?: boolean;
   affiliateCTAPosition?: 'BEFORE_RECOMMENDATION' | 'AFTER_RECOMMENDATION' | 'NONE';
   declaredVariant?: string;
+  // Editorial Voice level and knowledge version options
+  editorialVoiceLevel?: 'L3' | 'L4' | 'L5';
+  enableVoiceL5?: boolean;
+  knowledgeVersion?: string;
+  effectiveKnowledgeVersion?: string;
   // Evidence provenance & source verification options (EDITORIAL-EVIDENCE-SOURCE-VERIFICATION-1)
   hasMissingClaimProvenance?: boolean;
   missingProvenanceClaims?: string[];
@@ -2785,9 +2792,28 @@ export function evaluateHumanWritingQuality(
   const evaluatedAt = options.evaluatedAt ?? new Date().toISOString();
   const evaluatedBy = 'editorial_qa_primary'; // Rina canonical owner
 
+  // Derive effective policy version dynamically from actual loaded policy/context (Owner Preflight Blocker 5)
+  // Invariant: Do NOT infer policy V2 solely from editorialVoiceLevel L5.
+  // Voice level and knowledge policy version are distinct concepts.
+  // If actual provenance is unavailable, report 'UNVERIFIED' rather than falsely claiming proven V1.
+  let effectiveKnowledgeVersion: string;
+  if (options.effectiveKnowledgeVersion) {
+    effectiveKnowledgeVersion = options.effectiveKnowledgeVersion;
+  } else if (options.knowledgeVersion === RANCANGLOKA_EDITORIAL_KNOWLEDGE_V2_VERSION) {
+    effectiveKnowledgeVersion = RANCANGLOKA_EDITORIAL_KNOWLEDGE_V2_VERSION;
+  } else if (options.knowledgeVersion === RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION) {
+    effectiveKnowledgeVersion = RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION;
+  } else if (options.knowledgeVersion) {
+    effectiveKnowledgeVersion = String(options.knowledgeVersion);
+  } else {
+    // Missing / unverified context: do not falsely classify as proven V1
+    effectiveKnowledgeVersion = 'UNVERIFIED';
+  }
+
   if (!contentMd || typeof contentMd !== 'string' || !contentMd.trim()) {
     return {
       knowledge_version: RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
+      effective_knowledge_version: effectiveKnowledgeVersion,
       total_score: 0,
       decision: 'HUMAN_WRITING_REWRITE',
       passed: false,
@@ -4091,6 +4117,7 @@ export function evaluateHumanWritingQuality(
 
   return {
     knowledge_version: RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION,
+    effective_knowledge_version: effectiveKnowledgeVersion,
     total_score: totalScore,
     decision,
     passed,

@@ -23,33 +23,44 @@ import {
 
 const ROLE_DIR_MAP: Record<string, string> = {
   'content_strategy_primary': 'maya-content-strategy',
+  'content_strategy_lead': 'maya-content-strategy',
   'social_distribution_operator': 'maya-content-strategy',
   'maya': 'maya-content-strategy',
   'media_director_primary': 'budi-media-director',
   'lokamedia_worker_primary': 'budi-media-director',
+  'visual_media_specialist': 'budi-media-director',
   'budi': 'budi-media-director',
   'researcher_primary': 'irwan-researcher',
+  'lead_technical_researcher': 'irwan-researcher',
   'evidence_researcher_lead': 'irwan-researcher',
   'irwan': 'irwan-researcher',
   'content_writer_primary': 'joko-author',
+  'editorial_writer_lead': 'joko-author',
   'joko': 'joko-author',
   'voice_evaluator_primary': 'nadia-voice-editor',
+  'audience_editor_lead': 'nadia-voice-editor',
   'audience_language_editor': 'nadia-voice-editor',
+  'reader_voice_editor': 'nadia-voice-editor',
   'nadia': 'nadia-voice-editor',
   'qa_lead_primary': 'rina-qa',
   'editorial_qa_primary': 'rina-qa',
+  'editorial_qa_lead': 'rina-qa',
   'rina': 'rina-qa',
   'seo_specialist_primary': 'seon-seo',
   'seo_specialist_lead': 'seon-seo',
   'seon': 'seon-seo',
-  'assembler_primary': 'dimas-assembler',
-  'telemetry_observer_jev': 'dimas-assembler',
-  'dimas': 'dimas-assembler',
+  'assembler_primary': 'dimas-systems-architect',
+  'systems_architect_lead': 'dimas-systems-architect',
+  'dimas-assembler': 'dimas-systems-architect',
+  'telemetry_observer_jev': 'dimas-systems-architect',
+  'dimas': 'dimas-systems-architect',
   'publisher_primary': 'sari-publisher',
   'publication_dispatcher_core': 'sari-publisher',
+  'publication_operations_lead': 'sari-publisher',
   'sari': 'sari-publisher',
   'coordinator_primary': 'jefry-coordinator',
   'management_advisor_jefry': 'jefry-coordinator',
+  'management_decision_advisor': 'jefry-coordinator',
   'jefry': 'jefry-coordinator',
   'jev': 'jefry-coordinator'
 };
@@ -181,6 +192,7 @@ export function getStaffExperiences(
     const kind = (fm.match(/kind:\s*"([^"]+)"/) || [])[1] as any || 'observation';
     const validation = (fm.match(/validation:\s*"([^"]+)"/) || [])[1] as any || 'observed';
     const observedAt = (fm.match(/observed_at:\s*"([^"]+)"/) || [])[1] || '';
+    const sourceOrigin = (fm.match(/source_origin:\s*"([^"]+)"/) || [])[1] || undefined;
 
     // 2. Provenance validation: check ID format and filter constraints
     if (!expId || !expId.startsWith('EXP-')) continue;
@@ -220,6 +232,7 @@ export function getStaffExperiences(
       staff_id: staff,
       article_ref: artRef,
       observed_at: observedAt,
+      source_origin: sourceOrigin,
       kind,
       validation,
       observation,

@@ -47,6 +47,7 @@ export interface OlciExperienceRecord {
   kind: OlciExperienceKind;
   observation: string;
   evidence_refs?: string[];
+  source_origin?: string;
   context?: string;
   hypothesis?: string;
   action?: string;

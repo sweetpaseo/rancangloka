@@ -15,6 +15,115 @@
  */
 
 export const RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION = 'RANCANGLOKA_EDITORIAL_KNOWLEDGE_V1';
+export const RANCANGLOKA_EDITORIAL_KNOWLEDGE_V2_VERSION = 'RANCANGLOKA_EDITORIAL_KNOWLEDGE_V2';
+
+export interface SignatureEditorialVoicePillars {
+  philosophy: string;
+  five_capability_pillars: {
+    knowledge_and_evidence: {
+      description: string;
+      principles: string[];
+    };
+    editorial_intelligence: {
+      description: string;
+      authors_lens: {
+        nature: string;
+        examples: string[];
+        rule: string;
+      };
+      editorial_stance: {
+        nature: string;
+        allowed_forms: string[];
+        prohibitions: string[];
+      };
+      authorial_presence: {
+        first_person_usage: string;
+        example_quote: string;
+        guideline: string;
+        prohibitions: string[];
+      };
+      original_editorial_insight: {
+        nature: string;
+        examples: string[];
+        prohibitions: string[];
+      };
+      editorial_sharpness: string;
+      critical_reasoning: string;
+      contextual_understanding: string[];
+    };
+    dynamic_natural_conversational: {
+      language_tier: string;
+      sapaan: string;
+      negation: string;
+      conversational_warmth: string;
+    };
+    editorial_maturity: {
+      editorial_economy: {
+        guidelines: string[];
+        banned_assumptions: string[];
+      };
+      editorial_restraint: {
+        guidelines: string[];
+        banned_mechanisms: string[];
+      };
+      organic_structural_rhythm: {
+        guidelines: string[];
+        avoid_patterns: string[];
+      };
+      epistemic_honesty: {
+        tiers: string[];
+        guideline: string;
+      };
+      authentic_contextual_evidence: {
+        policy: string;
+        permitted_sources: string[];
+        prohibited_fabrications: string[];
+      };
+      natural_keyword_integration: {
+        rule: string;
+        banned_practices: string[];
+      };
+      editorial_coherence: string;
+    };
+    reader_value: {
+      practical_understanding: string[];
+      memorable_editorial_takeaway: {
+        forms: string[];
+        examples: string[];
+      };
+      reader_companionship: string[];
+      curiosity_satisfaction: string;
+    };
+  };
+  conceptual_distinctions: {
+    topic: string;
+    search_intent: string;
+    focus_keyword: string;
+    article_angle: string;
+    authors_lens: string;
+    editorial_stance: string;
+    evidence: string;
+    original_editorial_insight: string;
+    reader_takeaway: string;
+    case_study_rose_article: {
+      topic: string;
+      search_intent: string;
+      focus_keyword: string;
+      article_angle: string;
+      authors_lens: string;
+      editorial_stance: string;
+      evidence: string;
+      original_editorial_insight: string;
+      reader_takeaway: string;
+    };
+  };
+  editorial_learning_case_rose_article: {
+    title: string;
+    role: string;
+    anchor_quotes: string[];
+    key_lessons: string[];
+  };
+}
 
 export type ClaimHierarchyClass =
   | 'VERIFIED_FACT'
@@ -345,9 +454,11 @@ export interface ContinuousEditorialIntelligence {
 }
 
 export interface RancangLokaEditorialKnowledge {
-  version: typeof RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION;
+  version: typeof RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION | typeof RANCANGLOKA_EDITORIAL_KNOWLEDGE_V2_VERSION | string;
+  effective_version?: string;
   title: string;
   last_updated: string;
+  signature_editorial_voice?: SignatureEditorialVoicePillars;
   layer1_human_writing: EditorialLayer1_HumanWriting;
   layer2_language_cohesion: EditorialLayer2_LanguageCohesion;
   layer3_expert_consultation: EditorialLayer3_ExpertConsultation;
@@ -362,6 +473,224 @@ export interface RancangLokaEditorialKnowledge {
   layer_4_decision_support?: EditorialLayer4_DecisionSupport;
   layer_5_trust_and_editorial_integrity?: EditorialLayer5_TrustAndIntegrity;
 }
+
+// ============================================================================
+// Signature Editorial Voice & Editorial Intelligence (Owner Directive 2026-11-27)
+// ============================================================================
+
+export const CANONICAL_SIGNATURE_EDITORIAL_VOICE: SignatureEditorialVoicePillars = {
+  philosophy: 'Berisi seperti ahli, ngobrol seperti teman, berpikir seperti penulis.',
+  five_capability_pillars: {
+    knowledge_and_evidence: {
+      description: 'Fondasi keilmuan dan fakta empiris bangunan/hunian yang akurat tanpa kompromi.',
+      principles: [
+        'Evidence-first: Setiap klaim teknis berakar pada sains bangunan, standar industri (SNI/PUIL), atau uji empiris.',
+        'Monetary Silence: Dilarang mengarang nominal biaya, estimasi harga, atau angka fiktif tanpa riset pasar terverifikasi.',
+        'No Fabricated Lab Tests: Dilarang menyebut hasil laboratorium atau sertifikasi yang tidak pernah ada.'
+      ]
+    },
+    editorial_intelligence: {
+      description: 'Kecerdasan redaksional dalam menyusun sudut pandang, pendirian, dan kontribusi wawasan berharga.',
+      authors_lens: {
+        nature: 'Sudut pandang berpikir yang dipilih penulis sesuai topik, search intent, dan risiko pemahaman pembaca.',
+        examples: [
+          'Investigator (membongkar penyebab tersembunyi)',
+          'Observer (mengamati fenomena lapangan yang sering terlewat)',
+          'Advisor (memberikan pertimbangan bertahap yang tenang)',
+          'Problem Solver (mengurai masalah rumit menjadi solusi praktis)',
+          'Design Interpreter (menerjemahkan bahasa teknis arsitektur ke bahasa rumah)',
+          'Myth Buster (meluruskan mitos dan kebiasaan keliru)',
+          'Explainer (menjelaskan sains di balik gejala material)',
+          'Companion (menemani proses keputusan renovasi)',
+          'Comparative Analyst (membedah komparasi berimbang)'
+        ],
+        rule: 'Bukan taksonomi kaku; dapat dikombinasikan secara natural. Dilarang mencantumkan label nama Author Lens di naskah pembaca.'
+      },
+      editorial_stance: {
+        nature: 'Pendirian redaksi yang kokoh berdasarkan bukti dan pertimbangan masuk akal, bukan opini subjektif liar.',
+        allowed_forms: [
+          'Pertimbangan komparatif kondisi hunian spesifik',
+          'Rekomendasi prioritas pemeriksaan masalah',
+          'Penjelasan mengapa pendekatan tertentu lebih masuk akal pada kondisi tertentu'
+        ],
+        prohibitions: [
+          'Klaim subjektif tanpa dasar ilmiah',
+          'Pernyataan kontroversial demi engagement',
+          'Kesimpulan yang ditentukan sebelum riset bukti selesai'
+        ]
+      },
+      authorial_presence: {
+        first_person_usage: 'Penggunaan sudut pandang orang pertama (termasuk kata "saya") diperbolehkan secara terukur saat menyampaikan pertimbangan/penilaian editorial.',
+        example_quote: 'Saya kurang menyarankan membongkar pot hanya karena menemukan satu atau dua helai daun yang layu.',
+        guideline: 'Menyampaikan pertimbangan editorial profesional, bukan menceritakan pengalaman pribadi fiktif.',
+        prohibitions: [
+          'Dilarang menetapkan kuota mekanis minimum atau maksimum kata "saya".',
+          'Dilarang mengubah penulis menjadi figur narsistik yang selalu membicarakan diri sendiri.'
+        ]
+      },
+      original_editorial_insight: {
+        nature: 'Kontribusi pemikiran berfaedah yang lahir dari sintesis fakta, membedakan gejala dari akar masalah.',
+        examples: [
+          'Menghubungkan fakta sains dengan kebiasaan pemilik rumah (misal: "Ubah jadwal menyiram menjadi jadwal memeriksa")',
+          'Membantu pembaca membedakan antara gejala visual dan kerusakan struktural',
+          'Memberikan kerangka berpikir jernih sebelum mengeluarkan biaya perbaikan'
+        ],
+        prohibitions: [
+          'Dilarang memaksakan slogan, jargon buatan, atau novelty yang tidak didukung bukti empiris.'
+        ]
+      },
+      editorial_sharpness: 'Gagasan disampaikan secara lugas, jelas, efisien, dan berbobot tanpa menjadi agresif, dramatis, atau menggurui.',
+      critical_reasoning: 'Mempertimbangkan alternatif, kondisi pengecualian, hubungan sebab-akibat, dan batas kepastian bukti.',
+      contextual_understanding: [
+        'Realitas iklim tropis Indonesia (panas terik, hujan lebat, tampias, kelembapan tinggi)',
+        'Karakteristik hunian urban/suburban (lahan terbatas, kanopi teras, ventilasi terbatas)',
+        'Kebiasaan praktis penghuni dan ketersediaan material di pasar lokal'
+      ]
+    },
+    dynamic_natural_conversational: {
+      language_tier: 'Bahasa Indonesia santai berisi (L5 Conversational Editorial), hangat, cerdas, dan akrab.',
+      sapaan: 'Sapaan hangat "kamu/rumahmu", mutlak melarang "Anda".',
+      negation: 'Negasi formal "tidak", melarang slang media sosial seperti "nggak/gak/kalo/bener-bener".',
+      conversational_warmth: 'Berbicara seperti editor yang paham teknis tetapi ngobrol santai di teras rumah.'
+    },
+    editorial_maturity: {
+      editorial_economy: {
+        guidelines: [
+          'Kurangi pengulangan informasi, basa-basi pembuka, dan subbab yang berulang substansinya.',
+          'Pertahankan kedalaman teknis, penjelasan sebab-akibat, bukti, dan nuansa argumentasi.',
+          'Fokus pada efisiensi penyampaian makna, bukan target mekanis pemangkasan kata.'
+        ],
+        banned_assumptions: [
+          'Dilarang menetapkan target pemangkasan 15–20% sebagai aturan universal.'
+        ]
+      },
+      editorial_restraint: {
+        guidelines: [
+          'Humor, analogi, metafora, dan pertanyaan retoris digunakan secara kontekstual dan selektif.',
+          'Detail konkret sering kali jauh lebih bernilai daripada humor generik.',
+          'Humor tidak wajib ada di setiap artikel dan dilarang pada topik kerusakan fatal atau keselamatan.'
+        ],
+        banned_mechanisms: [
+          'Dilarang memaksakan punchline di setiap akhir subbab.',
+          'Dilarang menggunakan perangkat gaya sebagai checklist kuantitatif.'
+        ]
+      },
+      organic_structural_rhythm: {
+        guidelines: [
+          'Variasikan panjang kalimat, paragraf, dan kedalaman seksi secara organik mengikuti materi.',
+          'Biarkan alur tulisan mengalir wajar tanpa pemaksaan pola ritmis mekanis.'
+        ],
+        avoid_patterns: [
+          'Membuka setiap seksi dengan pertanyaan.',
+          'Mengakhiri setiap seksi dengan punchline.',
+          'Panjang seksi yang seragam seperti template.',
+          'Pola repetitif "Perhatikan juga", "Pertimbangkan juga", "Periksa apakah".',
+          'Pola dikotomi klise "Bukan X, melainkan Y" secara berlebihan.'
+        ]
+      },
+      epistemic_honesty: {
+        tiers: [
+          'Fakta terbukti (laboratorium/standar)',
+          'Konsensus teknis praktisi',
+          'Observasi lapangan kontekstual',
+          'Kemungkinan / hipotesis terarah',
+          'Batas kepastian yang memerlukan verifikasi langsung di lokasi'
+        ],
+        guideline: 'Tingkat kepastian bahasa wajib selaras dengan kekuatan bukti. Hindari hedging berlebih pada fakta kuat, hindari kepastian palsu pada kondisi kondisional.'
+      },
+      authentic_contextual_evidence: {
+        policy: 'Pengalaman autentik adalah nilai tambah bernilai tinggi, tetapi BUKAN kewajiban buatan.',
+        permitted_sources: [
+          'Dokumentasi proyek lapangan nyata',
+          'Catatan studi kasus arsitek/kontraktor resmi',
+          'Hasil observasi terverifikasi dengan atribusi jelas'
+        ],
+        prohibited_fabrications: [
+          'Dilarang mengarang pengalaman berkebun, renovasi, pemasangan, atau survei fiktif atas nama Joko.',
+          'Dilarang mengarang wawancara atau pengamatan fisik yang tidak pernah dilakukan.'
+        ]
+      },
+      natural_keyword_integration: {
+        rule: 'Focus keyword wajib hadir alami pada kalimat naratif pertama dan terakhir tanpa merusak alur berpikir.',
+        banned_practices: [
+          'Keyword stuffing atau penempatan paksa yang merusak tata bahasa.',
+          'Mengorbankan kekuatan kesimpulan demi memasukkan keyword.'
+        ]
+      },
+      editorial_coherence: 'Seluruh elemen (headline, angle, lens, bukti, narasi, penutup) terikat dalam satu benang merah utuh tanpa penyimpangan artifisial.'
+    },
+    reader_value: {
+      practical_understanding: [
+        'Memberi kejelasan cara memeriksa masalah hunian secara bertahap.',
+        'Membantu membedakan mana tindakan mandiri yang aman vs kapan wajib memanggil teknisi profesional.',
+        'Memberi panduan memilih solusi yang paling masuk akal secara biaya dan keawetan.'
+      ],
+      memorable_editorial_takeaway: {
+        forms: [
+          'Prinsip panduan yang mudah diingat',
+          'Urutan pemeriksaan yang intuitif',
+          'Pembalikan cara pandang yang mencerahkan'
+        ],
+        examples: [
+          'Jari ke media tanam, mata ke daun, baru tangan ke penyiram, itu pun kalau memang perlu.',
+          'Ubah jadwal menyiram menjadi jadwal memeriksa.',
+          'Kebiasaan merawatnya boleh kamu pelajari. Jadwalnya tidak harus kamu tiru.'
+        ]
+      },
+      reader_companionship: [
+        'Menemani pembaca seperti kawan berpengetahuan yang tenang.',
+        'Bebas nada menggurui, meremehkan, atau sok akrab berlebihan.'
+      ],
+      curiosity_satisfaction: 'Menjawab tuntas janji rasa ingin tahu pada headline dengan bukti substantif.'
+    }
+  },
+  conceptual_distinctions: {
+    topic: 'Subjek bahasan umum (contoh: Bunga mawar layu).',
+    search_intent: 'Tujuan pencarian pembaca (contoh: Memahami penyebab mawar layu dan cara mengatasinya).',
+    focus_keyword: 'Frasa kunci target pencarian (contoh: Bunga mawar layu padahal rajin disiram).',
+    article_angle: 'Sudut pandang pembahasan materi (contoh: Hubungan media tanam, drainase, oksigen akar, dan kebiasaan siram).',
+    authors_lens: 'Lensa pendekatan berpikir penulis (contoh: Pemeriksa yang diagnostik, bertahap, dan hati-hati).',
+    editorial_stance: 'Sikap redaksi yang beralasan (contoh: Jangan menambah air hanya berdasarkan jadwal).',
+    evidence: 'Fakta dan rujukan empiris (contoh: Porositas media, drainase pot, rujukan Royal Horticultural Society).',
+    original_editorial_insight: 'Sintesis pemikiran bermakna (contoh: Ubah jadwal menyiram menjadi jadwal memeriksa).',
+    reader_takeaway: 'Intisari berharga yang menempel di ingatan (contoh: Jari ke media tanam, mata ke daun, baru tangan ke penyiram).',
+    case_study_rose_article: {
+      topic: 'Bunga mawar layu',
+      search_intent: 'Memahami penyebab dan cara mengatasi',
+      focus_keyword: 'Bunga mawar layu padahal rajin disiram',
+      article_angle: 'Kondisi media, penyiraman, drainase, akar, dan kemungkinan penyebab lain',
+      authors_lens: 'Pemeriksa yang diagnostik, bertahap, dan hati-hati',
+      editorial_stance: 'Jangan menambah air hanya berdasarkan jadwal',
+      evidence: 'Kelembapan media, kondisi akar, drainase, rujukan Royal Horticultural Society (RHS)',
+      original_editorial_insight: 'Ubah jadwal menyiram menjadi jadwal memeriksa',
+      reader_takeaway: 'Jari ke media tanam, mata ke daun, baru tangan ke penyiram, itu pun kalau memang perlu'
+    }
+  },
+  editorial_learning_case_rose_article: {
+    title: 'Kenapa Bunga Mawar Layu Padahal Rajin Disiram?',
+    role: 'Editorial learning case untuk kalibrasi gaya menulis Joko & evaluasi Nadia (bukan pengganti Golden Article #9993).',
+    anchor_quotes: [
+      'Kebiasaan merawatnya boleh kamu pelajari. Jadwalnya tidak harus kamu tiru.',
+      'Ubah jadwal menyiram menjadi jadwal memeriksa.',
+      'Jari ke media tanam, mata ke daun, baru tangan ke penyiram, itu pun kalau memang perlu.'
+    ],
+    key_lessons: [
+      'Kelengkapan materi tidak boleh mengorbankan karakter personal tulisan.',
+      'Pendirian editorial beralasan memperkuat kehadiran penulis (authorial presence).',
+      'Penggunaan kata "saya" sah untuk pertimbangan editorial, bukan pengalaman pribadi palsu.',
+      'Detail konkret lebih bernilai dibanding humor generik.',
+      'Hindari punchline mekanis di setiap subbab.',
+      'Variasikan panjang seksi secara organik; hindari ritme template.',
+      'Bedakan gejala luar dari akar masalah fisik.',
+      'Klaim teknis spesifik wajib berakar pada sumber empiris terpercaya.',
+      'Pengulangan wajib dipangkas tanpa membuang substansi kunci.',
+      'Penutup harus meninggalkan kerangka berpikir praktis yang menempel di ingatan.',
+      'Focus keyword wajib melebur alami dalam kalimat pertama dan terakhir.',
+      'Penyuntingan Nadia wajib menjaga pendirian editorial Joko, bukan menetralkannya.',
+      'Evaluasi pihak ketiga adalah bahan refleksi, bukan pemegang otoritas kebijakan editorial.'
+    ]
+  }
+};
 
 // ============================================================================
 // Master Canonical Editorial Knowledge Object
@@ -794,6 +1123,7 @@ export const CANONICAL_EDITORIAL_KNOWLEDGE_V1: RancangLokaEditorialKnowledge = {
 };
 
 // Populate snake_case aliases for layer access
+CANONICAL_EDITORIAL_KNOWLEDGE_V1.signature_editorial_voice = CANONICAL_SIGNATURE_EDITORIAL_VOICE;
 CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_1_human_writing = CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer1_human_writing;
 CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_2_language_and_cohesion = CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer2_language_cohesion;
 CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_3_expert_consultation = CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer3_expert_consultation;
@@ -801,8 +1131,17 @@ CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_4_decision_support = CANONICAL_EDITORIAL_
 CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer_5_trust_and_editorial_integrity = CANONICAL_EDITORIAL_KNOWLEDGE_V1.layer5_trust_and_integrity;
 CANONICAL_EDITORIAL_KNOWLEDGE_V1.native_indonesian_authoring = CANONICAL_NATIVE_INDONESIAN_AUTHORING_RULE;
 
-// Master alias
-export const CANONICAL_EDITORIAL_KNOWLEDGE = CANONICAL_EDITORIAL_KNOWLEDGE_V1;
+export const CANONICAL_EDITORIAL_KNOWLEDGE_V2: RancangLokaEditorialKnowledge = {
+  ...CANONICAL_EDITORIAL_KNOWLEDGE_V1,
+  version: RANCANGLOKA_EDITORIAL_KNOWLEDGE_VERSION, // Maintains backward type compatibility
+  effective_version: RANCANGLOKA_EDITORIAL_KNOWLEDGE_V2_VERSION,
+  title: 'RancangLoka Canonical Editorial Knowledge Foundation (V2 - Signature Editorial Voice & Editorial Intelligence)',
+  last_updated: '2026-11-27T12:00:00.000Z',
+  signature_editorial_voice: CANONICAL_SIGNATURE_EDITORIAL_VOICE
+};
+
+// Master alias (Reflects canonical V2 foundation while preserving backward-compatible signature)
+export const CANONICAL_EDITORIAL_KNOWLEDGE = CANONICAL_EDITORIAL_KNOWLEDGE_V2;
 
 export const CLAIM_HIERARCHY_CLASSES: ClaimHierarchyClass[] = [
   'VERIFIED_FACT',
@@ -1014,6 +1353,7 @@ export interface IrwanEvidenceKnowledgeView {
   persona: string;
   role: string;
   voice_ownership: boolean;
+  signature_editorial_voice?: SignatureEditorialVoicePillars;
   authority: {
     author_human_voice: boolean;
     verify_evidence: boolean;
@@ -1039,6 +1379,7 @@ export interface JokoAuthoringKnowledgeView {
   persona: string;
   role: string;
   voice_ownership: boolean;
+  signature_editorial_voice?: SignatureEditorialVoicePillars;
   authority: {
     author_human_voice: boolean;
     override_technical_facts: boolean;
@@ -1075,6 +1416,7 @@ export interface RinaQAKnowledgeView {
   persona: string;
   role: string;
   voice_ownership: boolean;
+  signature_editorial_voice?: SignatureEditorialVoicePillars;
   authority: {
     evaluate_editorial_quality: boolean;
     silent_rewrite_authoring: boolean;
@@ -1124,6 +1466,7 @@ export interface JefryAdvisoryKnowledgeView {
   persona: string;
   role: string;
   operating_mode: 'SHADOW_MODE_ONLY';
+  signature_editorial_voice?: SignatureEditorialVoicePillars;
   authority: {
     autonomous_execution: boolean;
     editorial_approval: boolean;
@@ -1140,6 +1483,7 @@ export interface JefryAdvisoryKnowledgeView {
 export interface SeonSearchKnowledgeView {
   persona: string;
   role: string;
+  signature_editorial_voice?: SignatureEditorialVoicePillars;
   search_intent_model: string;
   semantic_search_principles: string[];
   entity_matching: {
@@ -1160,6 +1504,7 @@ export interface SeonSearchKnowledgeView {
 export interface NadiaVoiceKnowledgeView {
   persona: string;
   role: string;
+  signature_editorial_voice?: SignatureEditorialVoicePillars;
   reader_satisfaction: string;
   clarity_and_flow: string[];
   natural_language_rubric: string[];
@@ -1172,6 +1517,7 @@ export interface NadiaVoiceKnowledgeView {
 export interface MayaContentStrategyKnowledgeView {
   persona: string;
   role: string;
+  signature_editorial_voice?: SignatureEditorialVoicePillars;
   category_balance: {
     target_categories: string[];
     distribution_policy: string;
@@ -1653,6 +1999,7 @@ export function getIrwanEvidenceKnowledge(): IrwanEvidenceKnowledgeView {
     persona: 'Irwan — Research & Evidence Specialist',
     role: 'Irwan — Lead Technical Researcher',
     voice_ownership: false,
+    signature_editorial_voice: CANONICAL_SIGNATURE_EDITORIAL_VOICE,
     authority: {
       author_human_voice: false,
       verify_evidence: true,
@@ -1685,6 +2032,7 @@ export function getJokoAuthoringKnowledge(): JokoAuthoringKnowledgeView {
     persona: 'Joko — Writer / Expert Advisor',
     role: 'Joko — Content Writer & Expert Advisor',
     voice_ownership: true,
+    signature_editorial_voice: CANONICAL_SIGNATURE_EDITORIAL_VOICE,
     authority: {
       author_human_voice: true,
       override_technical_facts: false,
@@ -1746,6 +2094,7 @@ export function getRinaQAKnowledge(): RinaQAKnowledgeView {
     persona: 'Rina — Senior Editorial QA',
     role: 'Rina — Senior Editorial QA',
     voice_ownership: false,
+    signature_editorial_voice: CANONICAL_SIGNATURE_EDITORIAL_VOICE,
     authority: {
       evaluate_editorial_quality: true,
       silent_rewrite_authoring: false,
@@ -1820,6 +2169,7 @@ export function getJefryAdvisoryKnowledge(): JefryAdvisoryKnowledgeView {
     persona: 'Jefry — Management Decision Advisor (TypeSafe JEV)',
     role: 'Jefry / TypeSafe JEV — Shadow Editorial Decision Advisor',
     operating_mode: 'SHADOW_MODE_ONLY',
+    signature_editorial_voice: CANONICAL_SIGNATURE_EDITORIAL_VOICE,
     authority: {
       autonomous_execution: false,
       editorial_approval: false,
@@ -1853,6 +2203,7 @@ export function getSeonSearchKnowledge(): SeonSearchKnowledgeView {
   return {
     persona: 'SEON — Search Intelligence Specialist',
     role: 'SEON — Lead Search & Intent Specialist',
+    signature_editorial_voice: CANONICAL_SIGNATURE_EDITORIAL_VOICE,
     search_intent_model: 'Google Search Essentials: Memahami intent pengguna (informational, navigational, transactional) tanpa keyword stuffing.',
     semantic_search_principles: [
       'Entity recognition & disambiguation (membedakan material, standar, dan fungsi)',
@@ -1887,6 +2238,7 @@ export function getNadiaVoiceKnowledge(): NadiaVoiceKnowledgeView {
   return {
     persona: 'Nadia — Audience & Language Editor',
     role: 'Nadia — Audience & Language Editor',
+    signature_editorial_voice: CANONICAL_SIGNATURE_EDITORIAL_VOICE,
     reader_satisfaction: 'Memastikan artikel terasa seperti konsultasi ramah, mengalir lancar, dan mudah dipahami pemilik rumah.',
     clarity_and_flow: [
       'Sapaan akrab kamu/rumahmu tanpa formalitas kaku Anda',
@@ -1954,6 +2306,7 @@ export function getMayaContentStrategyKnowledge(): MayaContentStrategyKnowledgeV
   return {
     persona: 'Maya — Head of Content Strategy, Planning & Audience Intelligence',
     role: 'Maya — Head of Content Strategy, Planning & Audience Intelligence',
+    signature_editorial_voice: CANONICAL_SIGNATURE_EDITORIAL_VOICE,
     category_balance: {
       target_categories: [
         'Arsitektur & Renovasi',
